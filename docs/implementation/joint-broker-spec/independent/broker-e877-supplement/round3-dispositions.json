@@ -1,0 +1,52 @@
+[
+  {
+    "id": "P1-1a",
+    "status": "fixed_tests_only",
+    "details": "Existing lease ID conflicts on held and resolved rows, both FK modes, INSERT/IGNORE/REPLACE/upsert strategies; independent existing-id guard mutants wrongly replace/reopen and are killed."
+  },
+  {
+    "id": "P1-1b",
+    "status": "fixed_tests_only",
+    "details": "Two stop-branch cardinality mutants each admit extra proof/ref; candidate rejects without write."
+  },
+  {
+    "id": "P1-1c",
+    "status": "fixed_tests_only",
+    "details": "Six integer-type predicate mutants each admit raw JSON real/string counterexample, candidate rejects. No SQL changed."
+  },
+  {
+    "id": "P2-1",
+    "status": "evidence_included",
+    "details": "Full actual verification.json included in round4 input with both SQLite versions3.53.1 and raw command records; doc now says validation runner records versions, not test function."
+  },
+  {
+    "id": "P2-2",
+    "status": "fixed_metadata",
+    "details": "manifest/freeze runtime_storage_requires now exact J17.scoped requires; test cross-checks actual central gate. Does not qualify gate."
+  },
+  {
+    "id": "P2-3",
+    "status": "fixed_doc",
+    "details": "Host step3 explicitly compares receipt spec/DDL/fixture/candidate/build to pinned qualified tuple/running build, not just envelope agreement."
+  },
+  {
+    "id": "P2-4",
+    "status": "clarified",
+    "details": "Chronology is agent-reported and not self-proving; no authenticated principal or formal oracle qualification."
+  },
+  {
+    "id": "P2-5",
+    "status": "acknowledged_parent_owned",
+    "details": "Existing central digest-catalog prose omission of source/target catalog fields is confirmed and parent registered debt; actual existing algorithm unchanged."
+  },
+  {
+    "id": "P2-6",
+    "status": "tests_added",
+    "details": "NULL identity/lease/decision generations explicitly rejected with FK OFF; NOT NULL semantics exercised."
+  },
+  {
+    "id": "P2-7",
+    "status": "tests_and_boundary",
+    "details": "Broker identity immutable test now FK OFF; redundant lease guard defense-in-depth explicitly not claimed exhaustive mutation coverage."
+  }
+]

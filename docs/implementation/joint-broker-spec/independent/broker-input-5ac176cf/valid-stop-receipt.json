@@ -1,0 +1,50 @@
+{
+  "kind": "recovery_receipt",
+  "schema_version": 1,
+  "binding_generation": null,
+  "owner_generation": 2,
+  "schema_spec_digest": "b5bf81da5fad778bdf538f11f8e559746d5bd878e859a4ca38687a3628b41bc6",
+  "support_profile_digest": null,
+  "proof_refs": [
+    "proof:1"
+  ],
+  "operator_ref": "operator-a",
+  "request_id": "req-a",
+  "decision": "proven_stopped",
+  "target": "broker",
+  "observed_at_ms": 100,
+  "authorization_ref": "auth-a",
+  "scope_id": "scope-a",
+  "tenant_id": "tenant-a",
+  "target_home_id": "home-a",
+  "recovery_build_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "prior_phase": "broker_unknown",
+  "if_revision": 0,
+  "actual_target_schema": 1,
+  "ddl_digest": "ff1f07214aef16a362129cfa78090a977324e36ebe85f3668bd4441c40d75a03",
+  "fixture_digest": "958bbda11aa814a4cb2eab77e361a00205799cf2fe21ce127fc61152ce56d909",
+  "candidate_sha": "5ac176cfc54be8c150b28db6a60003aef20f46a7",
+  "proofs": [
+    {
+      "record_ref": "proof:1",
+      "type": "invocation_contained",
+      "evidence_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "producer_ref": "trusted-producer",
+      "subject_digest": "a4f7a9cce1d2a0b48160a6cdb109d62b2255b6a33a4815915c5b4259a670b8c1",
+      "broker_identity": {
+        "broker_id": "broker-fixture",
+        "lease_id": "lease-a",
+        "schema": 1,
+        "owner_generation": 2
+      }
+    }
+  ],
+  "subject": {
+    "kind": "broker_lease",
+    "home_id": "home-a",
+    "broker_id": "broker-fixture",
+    "lease_id": "lease-a"
+  },
+  "subject_digest": "a4f7a9cce1d2a0b48160a6cdb109d62b2255b6a33a4815915c5b4259a670b8c1",
+  "prior_resolution": "none"
+}

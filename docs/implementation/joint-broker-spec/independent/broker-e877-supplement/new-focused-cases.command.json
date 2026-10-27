@@ -1,0 +1,25 @@
+{
+  "command": [
+    "env",
+    "PATH=/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+    "OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack",
+    "OSSTACK_HOME=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/independent/broker-e877-supplement/test-home",
+    "pnpm",
+    "exec",
+    "vitest",
+    "run",
+    "src/state/broker-recovery-spec.test.ts",
+    "-t",
+    "protects existing lease identity|kills existing-id REPLACE|stop .* cardinality|receipt integer type|NULL generations"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-broker-spec/packages/core",
+  "code_sha": "e8770e3c8dee5b2e57c5c3ca9a7d551607e1a59c",
+  "started_at": "2026-10-27T17:00:04.869516+00:00",
+  "ended_at": "2026-10-27T17:00:05.766293+00:00",
+  "exit_code": 0,
+  "stdout": "new-focused-cases.stdout",
+  "stdout_sha256": "5380dbeb36d58f6f043ebc673615cdd2a1e9427c37f9fb3a5f333c81e902d09b",
+  "stderr": "new-focused-cases.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79"
+}

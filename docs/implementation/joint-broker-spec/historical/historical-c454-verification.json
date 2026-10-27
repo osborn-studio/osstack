@@ -1,0 +1,142 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+  "status": "focused_passed_full_pending",
+  "commands": [
+    {
+      "name": "build-final",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:38.177482+00:00",
+      "ended_at": "2026-10-27T16:37:45.153238+00:00",
+      "exit_code": 0,
+      "log": "build-final.log",
+      "log_sha256": "94f7554af2c3e8385b5fddbaa6b7debac623ffa6c628e807d5e8115f8a2fbfd6"
+    },
+    {
+      "name": "typecheck-final",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/core",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:45.153628+00:00",
+      "ended_at": "2026-10-27T16:37:46.084068+00:00",
+      "exit_code": 0,
+      "log": "typecheck-final.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "focused-final",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/core",
+        "exec",
+        "vitest",
+        "run",
+        "src/state/broker-recovery-spec.test.ts",
+        "src/state/operator-recovery-spec.test.ts"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:46.084418+00:00",
+      "ended_at": "2026-10-27T16:37:47.276033+00:00",
+      "exit_code": 0,
+      "log": "focused-final.log",
+      "log_sha256": "751241abfee4b3bb4d3c99bc24797e49c1f88eb5b0e7a5ace29560075c2852d7"
+    },
+    {
+      "name": "freeze-final",
+      "command": [
+        "python3",
+        "-I",
+        "packages/core/fixtures/broker-recovery/freeze.py",
+        "--check"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:47.276402+00:00",
+      "ended_at": "2026-10-27T16:37:47.300878+00:00",
+      "exit_code": 0,
+      "log": "freeze-final.log",
+      "log_sha256": "f2aae06ed268c9510adf772f7ee410de22589273c52a0e8bb056e6622f4ef52b"
+    },
+    {
+      "name": "lint-final",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:47.301227+00:00",
+      "ended_at": "2026-10-27T16:37:48.151309+00:00",
+      "exit_code": 0,
+      "log": "lint-final.log",
+      "log_sha256": "95b74775eaa257d13581f35bdb03a78a44ab00d72374d73d23d397992b341efb"
+    },
+    {
+      "name": "inventory-final",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:48.151669+00:00",
+      "ended_at": "2026-10-27T16:37:48.357892+00:00",
+      "exit_code": 0,
+      "log": "inventory-final.log",
+      "log_sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    },
+    {
+      "name": "changeset-final",
+      "command": [
+        "node",
+        "scripts/check-changeset-coverage.mjs",
+        "--base",
+        "d3fa7ef681efc79a5fb2dff92172ef1be0978774"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:48.358239+00:00",
+      "ended_at": "2026-10-27T16:37:48.427857+00:00",
+      "exit_code": 0,
+      "log": "changeset-final.log",
+      "log_sha256": "b19c092cf1224c2cd3cfd5807214b4b82d9c8b8c06d520cc8e803a960c1d879b"
+    },
+    {
+      "name": "docs-hygiene-final",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/governance",
+        "exec",
+        "vitest",
+        "run",
+        "src/knowledge-hygiene/osstack-config.test.ts"
+      ],
+      "code_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "started_at": "2026-10-27T16:37:48.428224+00:00",
+      "ended_at": "2026-10-27T16:37:49.648313+00:00",
+      "exit_code": 0,
+      "log": "docs-hygiene-final.log",
+      "log_sha256": "ca7e4953a8aba6ea16f79d5bd7b97de695a88c5eda0cf41ea9360ec86c06509c"
+    }
+  ],
+  "node": "v22.22.1",
+  "pnpm": "11.4.0",
+  "environment": {
+    "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/broker-spec/home",
+    "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+    "OSSTACK_SOCKET": "unset; uses explicit scratch home/test fixture home"
+  },
+  "sqlite_versions": {
+    "python": "3.53.1",
+    "better_sqlite3": "3.53.1"
+  }
+}

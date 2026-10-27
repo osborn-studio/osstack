@@ -1,0 +1,40 @@
+{
+  "new_candidate_sha": "812080ae697e82362e74e43df5c67e55c921d38b",
+  "tested_sql_candidate_sha": "858316061196ebb7a195d7e9aa5261fea874d968",
+  "prior_freeze_checked_candidate_sha": "c454c0d02108255dcb77395be25034b6911b9bf5",
+  "files": [
+    {
+      "path": "packages/core/fixtures/broker-recovery/schema.sql",
+      "sha256": "475da5b56ee089f1dca3a632247188db6d0382c12db6dbd88ea51cd3375148a5",
+      "compared_to": "858316061196ebb7a195d7e9aa5261fea874d968",
+      "identical": true
+    },
+    {
+      "path": "packages/core/fixtures/broker-recovery/held-orphan.sql",
+      "sha256": "958bbda11aa814a4cb2eab77e361a00205799cf2fe21ce127fc61152ce56d909",
+      "compared_to": "858316061196ebb7a195d7e9aa5261fea874d968",
+      "identical": true
+    },
+    {
+      "path": "packages/core/fixtures/broker-recovery/catalog.json",
+      "sha256": "12ca45ba5358e5e6657c1d37eaf78a8a3ae28a7e2bd32ad4990578af257994cc",
+      "compared_to": "858316061196ebb7a195d7e9aa5261fea874d968",
+      "identical": true
+    },
+    {
+      "path": "packages/core/fixtures/broker-recovery/manifest.json",
+      "sha256": "5dd5020ef1eca2722e9c45cf4fa06093c0c885cde22e871b0234aee568f9fde8",
+      "compared_to": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "identical": true
+    },
+    {
+      "path": "packages/core/fixtures/broker-recovery/freeze.py",
+      "sha256": "0eae632c3754ebb720fa8fd3c174febe686c44be93ee557703f1891f3105501b",
+      "compared_to": "c454c0d02108255dcb77395be25034b6911b9bf5",
+      "identical": true
+    }
+  ],
+  "oracle_bytes_exact_match": true,
+  "sql_checks_rerun": false,
+  "scope": "35 independent SQL observations inherit only identical SQL/fixture/catalog bytes. Original freeze helper and manifest also identical to executed c454 check; no new runtime qualification or independent verification of owner-reported 76 tests."
+}

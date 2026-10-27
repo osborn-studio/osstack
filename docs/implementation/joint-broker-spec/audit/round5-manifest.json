@@ -1,0 +1,62 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "closure_base": "e8770e3c8dee5b2e57c5c3ca9a7d551607e1a59c",
+  "code_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+  "scope": "small delta after full PASS; prior full review retained",
+  "input_sha256": "4346be2fbe6361b71c769f72595ff222c8011858dc307b1336a774994b39fcdc",
+  "reviewed_files": {
+    "docs/design/broker-recovery-schema.md": "9f4776259e96b956ccdae27e1b5eb7ec8c9c6eae11c6a50499c292ddd7f03c49",
+    "packages/core/fixtures/broker-recovery/.gitattributes": "173316e6b0d0d351af82ace5a3662304898a76889dc247e6312c2f8d342bd925",
+    "packages/core/fixtures/broker-recovery/catalog.json": "12ca45ba5358e5e6657c1d37eaf78a8a3ae28a7e2bd32ad4990578af257994cc",
+    "packages/core/fixtures/broker-recovery/freeze.py": "230534f0772033ddd31538e004ed2f6ba80a8cc47fde09f72a34894f4f1906b7",
+    "packages/core/fixtures/broker-recovery/held-orphan.sql": "958bbda11aa814a4cb2eab77e361a00205799cf2fe21ce127fc61152ce56d909",
+    "packages/core/fixtures/broker-recovery/manifest.json": "7552cba0d22bd1263b841e4540dc5d1fc405d94d2325917ccbc3876ecfbc605f",
+    "packages/core/fixtures/broker-recovery/oracle-freeze.json": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+    "packages/core/fixtures/broker-recovery/schema.sql": "475da5b56ee089f1dca3a632247188db6d0382c12db6dbd88ea51cd3375148a5",
+    "packages/core/src/state/broker-recovery-spec.test.ts": "3963ec7ba95f64109607e2d35663773999de345b2bcbe081fd01fb81babbf24c"
+  },
+  "argv": [
+    "/opt/homebrew/bin/claude",
+    "-p",
+    "--model",
+    "claude-sonnet-5-5",
+    "--effort",
+    "high",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/broker-spec/empty-mcp.json",
+    "--safe-mode",
+    "--no-session-persistence",
+    "--permission-mode",
+    "dontAsk",
+    "--setting-sources",
+    "",
+    "--settings",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/broker-spec/settings.json"
+  ],
+  "started_at": "2026-10-27T17:05:46.846983+00:00",
+  "exit_code": 0,
+  "ended_at": "2026-10-27T17:06:19.755983+00:00",
+  "is_error": false,
+  "modelUsage": {
+    "claude-sonnet-5-5": {
+      "inputTokens": 2,
+      "outputTokens": 3872,
+      "cacheReadInputTokens": 1444,
+      "cacheCreationInputTokens": 54291,
+      "webSearchRequests": 0,
+      "costUSD": 0.2561768,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 2273,
+      "canonicalModel": "claude-sonnet-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  }
+}

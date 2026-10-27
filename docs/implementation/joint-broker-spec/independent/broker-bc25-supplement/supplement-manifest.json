@@ -1,0 +1,70 @@
+{
+  "candidate_sha": "bc25b1cf1889f89178f29a309d7b8c6191d01d40",
+  "files": [
+    {
+      "path": "broker-recovery-schema.md",
+      "sha256": "9f4776259e96b956ccdae27e1b5eb7ec8c9c6eae11c6a50499c292ddd7f03c49",
+      "bytes": 15043
+    },
+    {
+      "path": "broker-recovery-spec.test.ts",
+      "sha256": "3963ec7ba95f64109607e2d35663773999de345b2bcbe081fd01fb81babbf24c",
+      "bytes": 29087
+    },
+    {
+      "path": "byte-metadata-result.json",
+      "sha256": "4c6855cce635f47fc4a4221cab4e01e9f6a753ada6871ab27c85e81887275b87",
+      "bytes": 2066
+    },
+    {
+      "path": "byte-metadata.command.json",
+      "sha256": "7115ec2825a1983076a392464b9d01bafa5c5d6e04ac596cf6dc2bb496a48bd0",
+      "bytes": 757
+    },
+    {
+      "path": "byte-metadata.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "byte-metadata.stdout",
+      "sha256": "4c6855cce635f47fc4a4221cab4e01e9f6a753ada6871ab27c85e81887275b87",
+      "bytes": 2066
+    },
+    {
+      "path": "candidate.diff",
+      "sha256": "8d57b0cf204c8970678f95c83ed2cb4d7e1ecf971638abd5ee3a6a0942ef9598",
+      "bytes": 14267
+    },
+    {
+      "path": "check-byte-metadata.py",
+      "sha256": "e779c6aba3f2e0103f2fab164e3c2967f60fcd998adaae2ab5db3e57e8706883",
+      "bytes": 2391
+    },
+    {
+      "path": "freeze.py",
+      "sha256": "230534f0772033ddd31538e004ed2f6ba80a8cc47fde09f72a34894f4f1906b7",
+      "bytes": 4306
+    },
+    {
+      "path": "independent-bc25-review.md",
+      "sha256": "f5a724850d0df3ef22d0dc0ea13680798869758bec762965abf3ee8e1e5b4bda",
+      "bytes": 2197
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "7552cba0d22bd1263b841e4540dc5d1fc405d94d2325917ccbc3876ecfbc605f",
+      "bytes": 2376
+    },
+    {
+      "path": "oracle-freeze.json",
+      "sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+      "bytes": 21916
+    },
+    {
+      "path": "run-recorded.py",
+      "sha256": "f1b434f5b1dc01bdd7ce4fd8f7ecc714352518f8bb6421140da58057dd44adfe",
+      "bytes": 1501
+    }
+  ]
+}

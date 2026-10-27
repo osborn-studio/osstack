@@ -1,0 +1,16 @@
+{
+  "command": [
+    "python3",
+    "broker-fixed.py"
+  ],
+  "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-nextwave-20261028/independent",
+  "code_sha": "858316061196ebb7a195d7e9aa5261fea874d968",
+  "started_at": "2026-10-27T16:26:21.735650+00:00",
+  "ended_at": "2026-10-27T16:26:21.828265+00:00",
+  "exit_code": 0,
+  "stdout": "broker-fixed.stdout",
+  "stdout_sha256": "9d2e10bbef95e95a2ed8bba8787da8f45c7a466b6bddd82f54c845aea3cac126",
+  "stderr": "broker-fixed.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79"
+}

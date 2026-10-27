@@ -1,0 +1,245 @@
+{
+  "candidate_sha": "858316061196ebb7a195d7e9aa5261fea874d968",
+  "sqlite_version": "3.53.3",
+  "oracle_sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
+  "catalog_manifest_hashes_verified": true,
+  "initial_real_sqlite_rows": {
+    "broker_identity": [
+      [
+        1,
+        "broker-fixture",
+        "osstack.resource-broker",
+        1,
+        2,
+        "broker-recovery-owner"
+      ]
+    ],
+    "broker_leases": [
+      [
+        "lease-a",
+        "broker-fixture",
+        "home-a",
+        "scope-a",
+        "tenant-a",
+        "exclusive-resource-a",
+        "invocation-a",
+        null,
+        1,
+        "held_orphan",
+        0
+      ]
+    ],
+    "broker_recovery_decisions": []
+  },
+  "results": [
+    {
+      "id": "positive-preserve",
+      "expected": "held_revision_1",
+      "actual": "held_revision_1"
+    },
+    {
+      "id": "decision-generation-negative",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "decision-generation-zero",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "decision-generation-stale",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "decision-generation-fractional",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "cannot store REAL value in INTEGER column broker_recovery_decisions.owner_generation"
+    },
+    {
+      "id": "decision-generation-unsafe",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "decision-generation-null",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "wrong-subject-broker_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: (json_type(receipt_json)='object'\n    AND json_extract(receipt_json,'$.kind')='recovery_receipt'\n    AND json_type(receipt_json,'$.schema_version')='integer' AND json_extract(receipt_json,'$.schema_version')=1\n    AND json_extract(receipt_json,'$.target')='broker'\n    AND json_extract(receipt_json,'$.prior_phase')='broker_unknown'\n    AND json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')\n    AND json_type(receipt_json,'$.subject')='object'\n    AND json_extract(receipt_json,'$.subject.kind')='broker_lease'\n    AND json_extract(receipt_json,'$.subject.broker_id')=broker_id\n    AND json_extract(receipt_json,'$.subject.lease_id')=lease_id\n    AND json_extract(receipt_json,'$.subject.home_id')=json_extract(receipt_json,'$.target_home_id')\n    AND json_type(receipt_json,'$.if_revision')='integer' AND json_extract(receipt_json,'$.if_revision')=prior_revision\n    AND json_type(receipt_json,'$.owner_generation')='integer' AND json_extract(receipt_json,'$.owner_generation')=owner_generation\n    AND json_type(receipt_json,'$.actual_target_schema')='integer' AND json_extract(receipt_json,'$.actual_target_schema')=1\n    AND json_extract(receipt_json,'$.decision')=decision\n    AND json_extract(receipt_json,'$.request_id')=request_id\n    AND json_extract(receipt_json,'$.operator_ref')=principal_ref\n    AND json_type(receipt_json,'$.proof_refs')='array' AND json_type(receipt_json,'$.proofs')='array') IS 1"
+    },
+    {
+      "id": "wrong-subject-lease_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: (json_type(receipt_json)='object'\n    AND json_extract(receipt_json,'$.kind')='recovery_receipt'\n    AND json_type(receipt_json,'$.schema_version')='integer' AND json_extract(receipt_json,'$.schema_version')=1\n    AND json_extract(receipt_json,'$.target')='broker'\n    AND json_extract(receipt_json,'$.prior_phase')='broker_unknown'\n    AND json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')\n    AND json_type(receipt_json,'$.subject')='object'\n    AND json_extract(receipt_json,'$.subject.kind')='broker_lease'\n    AND json_extract(receipt_json,'$.subject.broker_id')=broker_id\n    AND json_extract(receipt_json,'$.subject.lease_id')=lease_id\n    AND json_extract(receipt_json,'$.subject.home_id')=json_extract(receipt_json,'$.target_home_id')\n    AND json_type(receipt_json,'$.if_revision')='integer' AND json_extract(receipt_json,'$.if_revision')=prior_revision\n    AND json_type(receipt_json,'$.owner_generation')='integer' AND json_extract(receipt_json,'$.owner_generation')=owner_generation\n    AND json_type(receipt_json,'$.actual_target_schema')='integer' AND json_extract(receipt_json,'$.actual_target_schema')=1\n    AND json_extract(receipt_json,'$.decision')=decision\n    AND json_extract(receipt_json,'$.request_id')=request_id\n    AND json_extract(receipt_json,'$.operator_ref')=principal_ref\n    AND json_type(receipt_json,'$.proof_refs')='array' AND json_type(receipt_json,'$.proofs')='array') IS 1"
+    },
+    {
+      "id": "wrong-subject-home_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "wrong-scope_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "wrong-tenant_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "duplicate-held-resource",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker lease identity or initial state conflict"
+    },
+    {
+      "id": "held-resource-or-replace",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker lease identity or initial state conflict"
+    },
+    {
+      "id": "held-resource-replace",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker lease identity or initial state conflict"
+    },
+    {
+      "id": "direct-release",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker projection requires an immutable current decision"
+    },
+    {
+      "id": "skip-revision",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "same-request-plain",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "same-request-replace",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "same-request-ignore",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "request-digest-conflict",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "request-upsert",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "same-revision-other-request",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "history-delete",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery history immutable"
+    },
+    {
+      "id": "history-update",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery history immutable"
+    },
+    {
+      "id": "lease-delete",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker lease history immutable"
+    },
+    {
+      "id": "stop-missing-proof_refs",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: (json_type(receipt_json)='object'\n    AND json_extract(receipt_json,'$.kind')='recovery_receipt'\n    AND json_type(receipt_json,'$.schema_version')='integer' AND json_extract(receipt_json,'$.schema_version')=1\n    AND json_extract(receipt_json,'$.target')='broker'\n    AND json_extract(receipt_json,'$.prior_phase')='broker_unknown'\n    AND json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')\n    AND json_type(receipt_json,'$.subject')='object'\n    AND json_extract(receipt_json,'$.subject.kind')='broker_lease'\n    AND json_extract(receipt_json,'$.subject.broker_id')=broker_id\n    AND json_extract(receipt_json,'$.subject.lease_id')=lease_id\n    AND json_extract(receipt_json,'$.subject.home_id')=json_extract(receipt_json,'$.target_home_id')\n    AND json_type(receipt_json,'$.if_revision')='integer' AND json_extract(receipt_json,'$.if_revision')=prior_revision\n    AND json_type(receipt_json,'$.owner_generation')='integer' AND json_extract(receipt_json,'$.owner_generation')=owner_generation\n    AND json_type(receipt_json,'$.actual_target_schema')='integer' AND json_extract(receipt_json,'$.actual_target_schema')=1\n    AND json_extract(receipt_json,'$.decision')=decision\n    AND json_extract(receipt_json,'$.request_id')=request_id\n    AND json_extract(receipt_json,'$.operator_ref')=principal_ref\n    AND json_type(receipt_json,'$.proof_refs')='array' AND json_type(receipt_json,'$.proofs')='array') IS 1"
+    },
+    {
+      "id": "stop-missing-proofs",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: (json_type(receipt_json)='object'\n    AND json_extract(receipt_json,'$.kind')='recovery_receipt'\n    AND json_type(receipt_json,'$.schema_version')='integer' AND json_extract(receipt_json,'$.schema_version')=1\n    AND json_extract(receipt_json,'$.target')='broker'\n    AND json_extract(receipt_json,'$.prior_phase')='broker_unknown'\n    AND json_extract(receipt_json,'$.prior_resolution') IN ('none','abandoned_unknown')\n    AND json_type(receipt_json,'$.subject')='object'\n    AND json_extract(receipt_json,'$.subject.kind')='broker_lease'\n    AND json_extract(receipt_json,'$.subject.broker_id')=broker_id\n    AND json_extract(receipt_json,'$.subject.lease_id')=lease_id\n    AND json_extract(receipt_json,'$.subject.home_id')=json_extract(receipt_json,'$.target_home_id')\n    AND json_type(receipt_json,'$.if_revision')='integer' AND json_extract(receipt_json,'$.if_revision')=prior_revision\n    AND json_type(receipt_json,'$.owner_generation')='integer' AND json_extract(receipt_json,'$.owner_generation')=owner_generation\n    AND json_type(receipt_json,'$.actual_target_schema')='integer' AND json_extract(receipt_json,'$.actual_target_schema')=1\n    AND json_extract(receipt_json,'$.decision')=decision\n    AND json_extract(receipt_json,'$.request_id')=request_id\n    AND json_extract(receipt_json,'$.operator_ref')=principal_ref\n    AND json_type(receipt_json,'$.proof_refs')='array' AND json_type(receipt_json,'$.proofs')='array') IS 1"
+    },
+    {
+      "id": "stop-wrong-proof-broker_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: ((decision='preserve_unknown' AND json_array_length(receipt_json,'$.proofs')=0 AND json_array_length(receipt_json,'$.proof_refs')=0)\n    OR (decision='proven_stopped'\n      AND json_array_length(receipt_json,'$.proofs')=1 AND json_array_length(receipt_json,'$.proof_refs')=1\n      AND json_extract(receipt_json,'$.proofs[0].type')='invocation_contained'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].record_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].record_ref')=json_extract(receipt_json,'$.proof_refs[0]')\n      AND json_extract(receipt_json,'$.proofs[0].subject_digest')=json_extract(receipt_json,'$.subject_digest')\n      AND length(json_extract(receipt_json,'$.proofs[0].evidence_digest'))=64\n      AND json_extract(receipt_json,'$.proofs[0].evidence_digest') NOT GLOB '*[^0-9a-f]*'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].producer_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.broker_id')=broker_id\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.lease_id')=lease_id\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.schema')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.schema')=1\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.owner_generation')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.owner_generation')=owner_generation)) IS 1"
+    },
+    {
+      "id": "stop-wrong-proof-lease_id",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: ((decision='preserve_unknown' AND json_array_length(receipt_json,'$.proofs')=0 AND json_array_length(receipt_json,'$.proof_refs')=0)\n    OR (decision='proven_stopped'\n      AND json_array_length(receipt_json,'$.proofs')=1 AND json_array_length(receipt_json,'$.proof_refs')=1\n      AND json_extract(receipt_json,'$.proofs[0].type')='invocation_contained'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].record_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].record_ref')=json_extract(receipt_json,'$.proof_refs[0]')\n      AND json_extract(receipt_json,'$.proofs[0].subject_digest')=json_extract(receipt_json,'$.subject_digest')\n      AND length(json_extract(receipt_json,'$.proofs[0].evidence_digest'))=64\n      AND json_extract(receipt_json,'$.proofs[0].evidence_digest') NOT GLOB '*[^0-9a-f]*'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].producer_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.broker_id')=broker_id\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.lease_id')=lease_id\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.schema')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.schema')=1\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.owner_generation')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.owner_generation')=owner_generation)) IS 1"
+    },
+    {
+      "id": "stop-wrong-proof-schema",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: ((decision='preserve_unknown' AND json_array_length(receipt_json,'$.proofs')=0 AND json_array_length(receipt_json,'$.proof_refs')=0)\n    OR (decision='proven_stopped'\n      AND json_array_length(receipt_json,'$.proofs')=1 AND json_array_length(receipt_json,'$.proof_refs')=1\n      AND json_extract(receipt_json,'$.proofs[0].type')='invocation_contained'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].record_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].record_ref')=json_extract(receipt_json,'$.proof_refs[0]')\n      AND json_extract(receipt_json,'$.proofs[0].subject_digest')=json_extract(receipt_json,'$.subject_digest')\n      AND length(json_extract(receipt_json,'$.proofs[0].evidence_digest'))=64\n      AND json_extract(receipt_json,'$.proofs[0].evidence_digest') NOT GLOB '*[^0-9a-f]*'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].producer_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.broker_id')=broker_id\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.lease_id')=lease_id\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.schema')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.schema')=1\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.owner_generation')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.owner_generation')=owner_generation)) IS 1"
+    },
+    {
+      "id": "stop-wrong-proof-owner_generation",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "CHECK constraint failed: ((decision='preserve_unknown' AND json_array_length(receipt_json,'$.proofs')=0 AND json_array_length(receipt_json,'$.proof_refs')=0)\n    OR (decision='proven_stopped'\n      AND json_array_length(receipt_json,'$.proofs')=1 AND json_array_length(receipt_json,'$.proof_refs')=1\n      AND json_extract(receipt_json,'$.proofs[0].type')='invocation_contained'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].record_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].record_ref')=json_extract(receipt_json,'$.proof_refs[0]')\n      AND json_extract(receipt_json,'$.proofs[0].subject_digest')=json_extract(receipt_json,'$.subject_digest')\n      AND length(json_extract(receipt_json,'$.proofs[0].evidence_digest'))=64\n      AND json_extract(receipt_json,'$.proofs[0].evidence_digest') NOT GLOB '*[^0-9a-f]*'\n      AND length(trim(json_extract(receipt_json,'$.proofs[0].producer_ref')))>0\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.broker_id')=broker_id\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.lease_id')=lease_id\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.schema')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.schema')=1\n      AND json_type(receipt_json,'$.proofs[0].broker_identity.owner_generation')='integer'\n      AND json_extract(receipt_json,'$.proofs[0].broker_identity.owner_generation')=owner_generation)) IS 1"
+    },
+    {
+      "id": "takeover-does-not-release-or-admit-stale-proof",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    },
+    {
+      "id": "positive-stop-reuse",
+      "expected": "old_resolved_new_held",
+      "actual": "old_resolved_new_held"
+    },
+    {
+      "id": "sealed-stopped-chain",
+      "expected": "reject_no_mutation",
+      "actual": "reject_no_mutation",
+      "error": "broker recovery request, identity, owner or revision conflict"
+    }
+  ],
+  "limits": "Synthetic structurally matching proof is not authentic containment; SQL is subset only. No runtime, gate or formal principal qualification."
+}

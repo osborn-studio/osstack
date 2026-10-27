@@ -1,0 +1,92 @@
+[
+  {
+    "id": "P0-1",
+    "decision": "confirmed_fixed",
+    "rationale": "858316: BEFORE INSERT rejects occupied broker/resource key before REPLACE uniqueness handling. Two new RED tests reproduced deletion; 28-test GREEN and independent SQLite results confirm fix."
+  },
+  {
+    "id": "P1-1",
+    "decision": "coverage_added",
+    "rationale": "Different principal/request with same lease/revision now exercises OR REPLACE and ON CONFLICT DO NOTHING/UPDATE. Independent oracle also tests upserts."
+  },
+  {
+    "id": "P1-2",
+    "decision": "coverage_hardened",
+    "rationale": "Negative SQL assertions now require actual Database.SqliteError and SQLITE_CONSTRAINT code, with mutated request args constructed before SQL. REPLACE guard mutation was reproduced RED then GREEN. Defence-in-depth controls are not required to fail independently when another guard protects the same invariant."
+  },
+  {
+    "id": "P1-3",
+    "decision": "boundary_clarified_not_sql_protocol_parity",
+    "rationale": "Original spec explicitly requires strict protocol decode, canonical receipt serialization, digest/proof verification before INSERT. SQL is a defensive subset and is not claimed to accept iff protocol accepts. Adding all protocol validation to DDL is not this slice. New pure-function composition test rejects malformed/tampered inputs before insertion and strict-parses stored canonical receipt; doc makes duplicate-key/type/unknown-field rejection boundary explicit."
+  },
+  {
+    "id": "P1-4",
+    "decision": "coverage_added",
+    "rationale": "Actual RecoveryRequest/recoveryRequestInputDigest/RecoveryReceipt/verifyRecoveryProofEnvelopes now composed with successful plain SQL insertion and request/scope/digest/envelope tampering; no synthetic grant is called authenticated."
+  },
+  {
+    "id": "P1-5",
+    "decision": "artifact_attached_and_claim_corrected",
+    "rationale": "Verbatim pre-freeze criteria file included and raw hash checked by Python/TS. Claim explicitly prospective_criteria_only_not_candidate_qualification. Original criteria may legitimately evaluate a revised SQL candidate; candidate result is separately bound to SHA. No retroactive criteria freeze or authenticated principal claim."
+  },
+  {
+    "id": "P2-1",
+    "decision": "fixed",
+    "rationale": "freeze compares and writes exact UTF-8 bytes, JSON/Python -text attributes preserve bytes."
+  },
+  {
+    "id": "P2-2",
+    "decision": "clarified",
+    "rationale": "Minimum SQLite3.37+STRICT and JSON requirement explicit. freeze rejects older version. Actual SQLite versions recorded in validation evidence, not deterministic schema manifest (catalog/digest must agree across qualifying engines)."
+  },
+  {
+    "id": "P2-3",
+    "decision": "deferred_deployment_choice",
+    "rationale": "Dedicated namespace is pinned in broker_identity CHECK and exact catalog/change ID. No deployed file/open path exists. application_id may be selected at actual state-owner deployment freeze; claiming it reserved now would exceed the candidate scope."
+  },
+  {
+    "id": "P2-4",
+    "decision": "existing_protocol_domain_preserved",
+    "rationale": "The registered schemaSpecDigest and raw catalog hash match existing home contract. No new protocol domain invented. Deployment flags outside that domain bind via audited commit/raw manifest hash; candidate test checks explicit unreserved status."
+  },
+  {
+    "id": "P2-5",
+    "decision": "host_requirement_explicit",
+    "rationale": "Trusted canonical resource-key admission must reject padding/NUL/alias ambiguities. Offline one-key uniqueness is not path-overlap scheduling or worker-string authorization."
+  },
+  {
+    "id": "P2-6",
+    "decision": "fixed_doc_and_test",
+    "rationale": "Plain INSERT plus changes===1 mandatory. Added real OR IGNORE CHECK-failure probe confirming zero changes leaves receipt/slot unchanged, never success."
+  },
+  {
+    "id": "P2-7",
+    "decision": "limitation_explicit",
+    "rationale": "broker_identity is current ownership projection, not full election history. Future host qualification requires immutable authority/proof provenance outside this candidate, not reconstruction from the overwritten row."
+  },
+  {
+    "id": "P2-8",
+    "decision": "existing_immutable_ref_contract",
+    "rationale": "Existing joint protocol pins immutable proof refs/content and envelope context. Future host loads/authenticates them; JSON shape and candidate tests do not provide runtime immutable storage qualification."
+  },
+  {
+    "id": "P2-9",
+    "decision": "limitation_explicit",
+    "rationale": "Terminal chain cannot reopen in this protocol; correcting wrong resolution needs reviewed protocol change, never silent rewrite."
+  },
+  {
+    "id": "P2-10",
+    "decision": "declaration_check_added",
+    "rationale": "Test compares schema/recovery stage requirements to actual central execution-gates JSON. Actual diff path manifest will be bound in evidence; candidate-stage statements do not pass central gates."
+  },
+  {
+    "id": "P2-11",
+    "decision": "already_deferred",
+    "rationale": "Exact invocation/resource/grant-generation tie remains host trusted-evidence verification per original joint schema and doc. Does not justify extending protocol within this offline fixture slice."
+  },
+  {
+    "id": "P2-12",
+    "decision": "already_deferred",
+    "rationale": "Cross-database/WAL/authenticated replay remain J12/J17 qualification, explicitly not implemented or claimed passed."
+  }
+]
