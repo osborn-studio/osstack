@@ -54,6 +54,8 @@
       "import": "./dist/joint-json.js",
       "default": "./dist/joint-json.js"
     },
-    "./*": "./*"
+    "./*": "./*",
+    "./dist/joint-generate.js": null,
+    "./dist/joint-generate": null
   }
 }

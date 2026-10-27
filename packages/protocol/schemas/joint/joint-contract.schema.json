@@ -1480,6 +1480,35 @@
             "observed_at_ms": {
               "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
             },
+            "binding_generation": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "support_profile_digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prior_phase": {
+              "$ref": "#/definitions/JointContract/anyOf/6/properties/prior_phase"
+            },
+            "schema_spec_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "recovery_build_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
             "record_ref": {
               "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
             },
@@ -1494,6 +1523,11 @@
             "proof",
             "owner_generation",
             "observed_at_ms",
+            "binding_generation",
+            "support_profile_digest",
+            "prior_phase",
+            "schema_spec_digest",
+            "recovery_build_digest",
             "record_ref",
             "authorization_ref"
           ],

@@ -59,7 +59,7 @@ describe('recovery decision matrix', () => {
       const v = original('valid-recovery_receipt');
       const type = {preserve_unknown:'invocation_contained',proven_not_started:'cancelled_before_dispatch',proven_stopped:'invocation_contained',applied_observed:'applied_completion'}[decision];
       Object.assign(v,{prior_phase:phase,decision,proof_refs:decision==='preserve_unknown'?[]:['proof'],proofs:decision==='preserve_unknown'?[]:[{...proof,type}]});
-      const allowed = phase === 'reserved' ? ['preserve_unknown','proven_not_started'] : phase === 'dispatch_committed' ? ['preserve_unknown','proven_stopped','applied_observed'] : phase === 'legacy_unknown' ? ['preserve_unknown'] : [];
+      const allowed = phase === 'reserved' ? ['preserve_unknown','proven_not_started'] : phase === 'dispatch_committed' ? ['preserve_unknown','proven_stopped','applied_observed'] : [];
       expect(RecoveryReceipt.safeParse(v).success, `${phase}/${decision}`).toBe(allowed.includes(decision));
     }
   });
@@ -73,7 +73,7 @@ describe('recovery decision matrix', () => {
     const r = {kind:'recovery_request',schema_version:1,request_id:'r',if_revision:0,subject,decision:'preserve_unknown',proof_refs:[],schema_spec_digest:hash};
     expect(RecoveryRequest.safeParse(r).success).toBe(true);
     expect(RecoveryRequest.safeParse({...r,operator_ref:'admin'}).success).toBe(false);
-    const e = {kind:'recovery_proof',schema_version:1,subject,proof,owner_generation:1,observed_at_ms:1,record_ref:'proof',authorization_ref:'a'};
+    const e = {kind:'recovery_proof',schema_version:1,subject,proof,owner_generation:1,observed_at_ms:1,record_ref:'proof',authorization_ref:'a',binding_generation:1,support_profile_digest:hash,prior_phase:'dispatch_committed',schema_spec_digest:hash,recovery_build_digest:hash};
     expect(RecoveryProofEnvelope.safeParse(e).success).toBe(true);
     expect(RecoveryProofEnvelope.safeParse({...e,proof:{...proof,subject_digest:hash}}).success).toBe(false);
   });
