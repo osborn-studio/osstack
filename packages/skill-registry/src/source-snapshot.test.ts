@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync
 import { join } from 'node:path';
 import { createScratchDir } from '@osstack/core';
 import { decodeJointContractAs, SourcePin, SourceSnapshot } from '@osstack/protocol/joint';
-import { inspectGitSource } from './source-snapshot.js';
+import { inspectGitSource, type GitSourceOptions } from './source-snapshot.js';
 
 const gitBinary = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
 const roots: string[] = [];
@@ -101,7 +101,7 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
   });
   it('rejects missing objects, missing directories, non-trees and format mismatch', async () => {
     const { options } = await fixture();
-    for (const [patch,code] of [[{ commit: 'f'.repeat(40) },'OBJECT_UNAVAILABLE'],[{ commit: 'f'.repeat(64) },'INVALID_INPUT'],[{ commit: 'HEAD' },'INVALID_INPUT'],[{ subdir: 'absent' },'OBJECT_UNAVAILABLE'],[{ subdir: 'LICENSE' },'UNSAFE_ENTRY'],[{ licensePaths: ['absent'] },'OBJECT_UNAVAILABLE']] as const) {
+    for (const [patch,code] of [[{ commit: 'f'.repeat(40) },'OBJECT_UNAVAILABLE'],[{ commit: 'f'.repeat(64) },'INVALID_INPUT'],[{ commit: 'HEAD' },'INVALID_INPUT'],[{ subdir: 'absent' },'OBJECT_UNAVAILABLE'],[{ subdir: 'LICENSE' },'UNSAFE_ENTRY'],[{ licensePaths: ['absent'] },'OBJECT_UNAVAILABLE']] satisfies Array<[Partial<GitSourceOptions>,string]>) {
       expect(() => inspectGitSource({ ...options, ...patch })).toThrow(code);
     }
   });
