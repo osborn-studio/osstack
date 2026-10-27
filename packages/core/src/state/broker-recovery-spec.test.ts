@@ -104,6 +104,15 @@ describe('JP-17a independent broker storage candidate', () => {
       expect(lease(db)).toEqual(original);expect(decisions(db)).toEqual([]);
     } finally {db.close();}
   });
+  it.each(['INSERT OR REPLACE','REPLACE'])('does not let %s silently evict another lease from a held resource', prefix => {
+    const db=fixture(); try {
+      const original=lease(db);
+      const sql=`${prefix} INTO broker_leases SELECT 'new-lease',broker_id,home_id,scope_id,tenant_id,resource_key,'new-invocation',effect_id,grant_generation,'held_orphan',0 FROM broker_leases WHERE lease_id='lease-a'`;
+      expect(()=>db.exec(sql)).toThrow();
+      expect(lease(db)).toEqual(original);
+      expect(db.prepare('SELECT COUNT(*) AS n FROM broker_leases').get()).toEqual({n:1});
+    } finally {db.close();}
+  });
   it('rejects a stale owner after another generation takes over, without interpreting home ownership as broker authority', () => {
     const db=fixture(); try {
       db.exec("UPDATE broker_identity SET owner_generation=3,owner_ref='third-broker-owner'");

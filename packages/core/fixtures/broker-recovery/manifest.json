@@ -16,17 +16,17 @@
     "schema_change_id": "broker-dedicated-recovery-candidate-v1",
     "source_schema": 0,
     "target_schema": 1,
-    "ddl_digest": "ff1f07214aef16a362129cfa78090a977324e36ebe85f3668bd4441c40d75a03",
+    "ddl_digest": "475da5b56ee089f1dca3a632247188db6d0382c12db6dbd88ea51cd3375148a5",
     "fixture_digest": "958bbda11aa814a4cb2eab77e361a00205799cf2fe21ce127fc61152ce56d909",
     "source_schema_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-    "target_schema_digest": "8c25928e836b3c3484b9b88d2262fb4020fa70777800e4e9594fdedf4f8fd194",
+    "target_schema_digest": "5a449f9feb167cbd4a41df52ee0f4e9e4279444a23fb79bbb5b304c0df8cada6",
     "expected_lineage_tables": [
       "broker_identity",
       "broker_leases",
       "broker_recovery_decisions"
     ]
   },
-  "schema_spec_digest": "b5bf81da5fad778bdf538f11f8e559746d5bd878e859a4ca38687a3628b41bc6",
+  "schema_spec_digest": "30712be8cfdc955fb30e2076da3777253985140d42adc0c7dde4faf55edb396c",
   "source_catalog": [],
   "target_catalog_file": "catalog.json",
   "qualification": {

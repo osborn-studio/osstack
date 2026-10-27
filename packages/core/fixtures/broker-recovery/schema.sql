@@ -37,6 +37,7 @@ CREATE TABLE broker_leases (
 CREATE UNIQUE INDEX broker_one_held_resource ON broker_leases(broker_id,resource_key) WHERE state='held_orphan';
 CREATE TRIGGER broker_lease_insert_guard BEFORE INSERT ON broker_leases
 WHEN EXISTS(SELECT 1 FROM broker_leases WHERE lease_id=NEW.lease_id)
+  OR EXISTS(SELECT 1 FROM broker_leases WHERE broker_id=NEW.broker_id AND resource_key=NEW.resource_key AND state='held_orphan')
   OR NEW.state<>'held_orphan' OR NEW.recovery_revision<>0
   OR NOT EXISTS(SELECT 1 FROM broker_identity WHERE broker_id=NEW.broker_id AND owner_generation>=NEW.grant_generation)
 BEGIN SELECT RAISE(ABORT,'broker lease identity or initial state conflict'); END;

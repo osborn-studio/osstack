@@ -45,7 +45,7 @@
     "type": "trigger",
     "name": "broker_lease_insert_guard",
     "tbl_name": "broker_leases",
-    "sql": "CREATE TRIGGER broker_lease_insert_guard BEFORE INSERT ON broker_leases\nWHEN EXISTS(SELECT 1 FROM broker_leases WHERE lease_id=NEW.lease_id)\n  OR NEW.state<>'held_orphan' OR NEW.recovery_revision<>0\n  OR NOT EXISTS(SELECT 1 FROM broker_identity WHERE broker_id=NEW.broker_id AND owner_generation>=NEW.grant_generation)\nBEGIN SELECT RAISE(ABORT,'broker lease identity or initial state conflict'); END"
+    "sql": "CREATE TRIGGER broker_lease_insert_guard BEFORE INSERT ON broker_leases\nWHEN EXISTS(SELECT 1 FROM broker_leases WHERE lease_id=NEW.lease_id)\n  OR EXISTS(SELECT 1 FROM broker_leases WHERE broker_id=NEW.broker_id AND resource_key=NEW.resource_key AND state='held_orphan')\n  OR NEW.state<>'held_orphan' OR NEW.recovery_revision<>0\n  OR NOT EXISTS(SELECT 1 FROM broker_identity WHERE broker_id=NEW.broker_id AND owner_generation>=NEW.grant_generation)\nBEGIN SELECT RAISE(ABORT,'broker lease identity or initial state conflict'); END"
   },
   {
     "type": "trigger",
