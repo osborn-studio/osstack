@@ -23,6 +23,6 @@ describe('joint contracts', () => {
     profile.budget_enforceability = {wall:'enforceable',actions:'enforceable',tokens:'enforceable',cost:'unavailable'};
     p.support_profile_digest = supportProfileDigest(profile); p.repository = profile.canonical_repo;
     expect(trialBudgetIssues(p, profile)).toContain('cost_not_enforceable');
-    delete p.max_cost_microusd; expect(trialBudgetIssues(p, profile)).toEqual([]);
+    delete p.max_cost_microusd; expect(trialBudgetIssues(p, profile)).toEqual(['adapter_invocations_unattested']);
   });
 });

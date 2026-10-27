@@ -64,13 +64,30 @@ export function verifyMethodBinding(input: unknown): MethodBinding {
   if (binding.binding_digest !== bindingDigest(binding)) throw Error('BINDING_DIGEST_MISMATCH');
   return binding;
 }
+/** Join the immutable proposal and recipe after the host loads their pinned content. */
+export function verifyBindingAgainst(input: unknown, proposalInput: unknown, recipeInput: unknown): MethodBinding {
+  const binding = verifyMethodBinding(input);
+  const proposal = MethodProposal.parse(proposalInput);
+  const recipe = MethodRecipe.parse(recipeInput);
+  if (binding.task_id !== proposal.task_id || binding.proposal_digest !== methodProposalDigest(proposal)
+    || proposal.recipe_digest !== methodRecipeDigest(recipe) || binding.recipe_version !== recipe.recipe_version
+    || proposal.recipe_version !== recipe.recipe_version || binding.source_snapshot_digest !== recipe.source_snapshot_digest
+    || proposal.source_snapshot_digest !== recipe.source_snapshot_digest || proposal.required_artifacts_digest !== recipe.required_artifacts_digest) throw Error('BINDING_PROPOSAL_MISMATCH');
+  for (const material of binding.role_materials) {
+    const expected = recipe.role_materials.find(r => r.role === material.role);
+    if (!expected || expected.method_text_sha256 !== material.method_text_sha256 || expected.role_required_artifacts_digest !== material.role_required_artifacts_digest) throw Error('BINDING_RECIPE_ROLE_MISMATCH');
+  }
+  return binding;
+}
 export function roleRequirementsDigest(role: z.infer<typeof Role>, requirementsDigest: string): string {
   return jointDigest('osstack.joint.role-artifact-requirements.v1', { schema_version: 1, role: Role.parse(role), requirements_digest: Digest.parse(requirementsDigest) });
 }
 /** Shape/cap compatibility only. Host grant, profile authenticity and live counters remain mandatory. */
 export function trialBudgetIssues(input: unknown, profileInput: unknown): string[] {
   const permit = TrialPermit.parse(input); const profile = SupportProfile.parse(profileInput);
-  const issues: string[] = [];
+  // Profile v2 does not attest invocation counting. Fail closed until a future
+  // profile/consumer supplies that measurement; actions cannot stand in for it.
+  const issues: string[] = ['adapter_invocations_unattested'];
   if (permit.support_profile_digest !== supportProfileDigest(profile)) issues.push('support_profile_digest_mismatch');
   if (permit.repository !== profile.canonical_repo) issues.push('repository_mismatch');
   for (const axis of ['wall', 'actions', 'tokens', 'cost'] as const) {

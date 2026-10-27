@@ -124,7 +124,7 @@ it('rejects contradictory or unlinked proofs and oversized request IDs before a 
   expect(RecoveryRequest.safeParse(r).success).toBe(false);
   expect(RecoveryRequest.safeParse({...r,request_id:'x',subject:{kind:'effect',home_id:'h',effect_id:'x'.repeat(257)}}).success).toBe(false);
 });
-it('rejects unsafe source trees before adoption', () => {
+it('rejects listed source manifest syntax and collision hazards', () => {
   const file=(path:string,mode='100644')=>({path,mode,blob:'a'.repeat(40)});
   const base={kind:'source_snapshot',schema_version:1,pin:original('valid-source_pin'),dependencies:[]};
   for (const files of [[file('.git/hooks/post-checkout')],[file('A'),file('a')],[file('é'),file('e\u0301')],[file('a'),file('a/b')],[file('link','120000')],[file('module','160000')]]) expect(SourceSnapshot.safeParse({...base,files}).success).toBe(false);
