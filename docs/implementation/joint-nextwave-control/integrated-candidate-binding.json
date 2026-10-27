@@ -1,0 +1,77 @@
+{
+  "n0_audited_sha": "380e2c618bd5060e2f556f5108fb229d169c932b",
+  "integration_commit": "3c30c02989ad2b77a23c3243aa8c459c2f800ed2",
+  "verified_identical_paths": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/README.md",
+      "sha256": "e485ac92f207aa066a78c6b8321f1b610417ef46f775d4a2d0c72b821165acec"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "sha256": "606b4e894aa7d89af0e225cfc8d12859377c29c664733dfce03839c65eeb003b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/audit-specifications.md",
+      "sha256": "e5fd5916b357d28e1a2ff0847cdc635db69fedce3918c67ba7a35ac1f6942bc5"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-map.json",
+      "sha256": "b6c5bc2b78d54ba83655363f1cf4ee03613eb55d923cfb2652b587424d60e25b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contracts.md",
+      "sha256": "44c0968e4ae336ab683cb28852bdf7d569037374c6be34674e00de9496b3b9c1"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/component-case-specs.json",
+      "sha256": "e559ee91429e4908bfc6ec0278d20726c8f2b1023c2a83a5d1ec50e454cec73d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/component-slice-specs.json",
+      "sha256": "d81b5bf43a0af7fdb7695cb8cb4b8460671cc42679e885161ea40c7ef3877ace"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/ja01-ja02-original.json",
+      "sha256": "d7740ae67078c478c32a6d7a36f997a7f16ae649d6391b699e4ee22512bd6fbb"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/o06-preflight.json",
+      "sha256": "e44819bb3a9d32169cd00673e96a76e5011c0ed3ad9b54e7b706ed0cb57f050b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/transitive-impact.json",
+      "sha256": "fce8d782afebfb87b867620be6cbfcd157c045b056bb145661c4c46f3587d510"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-gates.json",
+      "sha256": "489a7388a2ed1705deee7aaff76c65f7acd31a15d6b83d3b7f7c9747a35c97ee"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/gate-layers.md",
+      "sha256": "62d7004df8460c07059657a31510dc697070807a6cb233a6cfc624ff2d7867d0"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/test_validate_design.py",
+      "sha256": "1fbe5d44178daac4bc2b47707460baf47cb8621755a0c821d2632509d5c4e66a"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validate-design.py",
+      "sha256": "9726ef8173ce72d2632884e784b9a2e3066a8d8748de9e0f48fb99472dac3125"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/verification-spec.md",
+      "sha256": "98483f20dd6eb2d9d9894c115e9ac18106850f667d402bd5e3411cd5457d6d1e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-package-index.md",
+      "sha256": "98234b1f19a122def52023c35eeed9abfd684271354c6615d7cfc2eb2e4dc45c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-packages.json",
+      "sha256": "ff2403b1813b42f2a7adac93bd2ede70ea2ac7b654ec27880e2cfd6738bfa750"
+    }
+  ],
+  "control_audited_sha": "4aaef732",
+  "validation": "validation.json",
+  "qualification": "Design and offline specification checks only; no runtime gate passes."
+}

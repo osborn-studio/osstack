@@ -1,0 +1,193 @@
+{
+  "full_run": {
+    "candidate_sha": "4ab1d80edaca6bb7b4b02f61bebfe223a57d3545",
+    "command": [
+      "pnpm",
+      "test"
+    ],
+    "started_at": "2026-10-27T16:34:01.769895+00:00",
+    "finished_at": "2026-10-27T16:42:28.034888+00:00",
+    "exit_code": 0,
+    "log": "test-full-final.log",
+    "log_sha256": "e497638b07d7f6c790c2c493dd42088aa2096f09561a8b27dd0775cc1fc93adc",
+    "package_results": [
+      {
+        "package": "packages/contracts",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/compliance",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/github",
+        "passed": 107,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/knowledge",
+        "passed": 44,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/neat-eval",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/protocol",
+        "passed": 477,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/runtime",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/governance",
+        "passed": 301,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/knowledge-cloud",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/graph",
+        "passed": 257,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/core",
+        "passed": 1000,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/plugins",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/hermes-adapter",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/skills",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/autonomy",
+        "passed": 201,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/skill-registry",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/agents",
+        "passed": 361,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/config",
+        "passed": 30,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/loop",
+        "passed": 515,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/supervisor",
+        "passed": 88,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/conformance",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "package": "packages/cli",
+        "passed": 2756,
+        "failed": 0,
+        "skipped": 5
+      }
+    ],
+    "summary": {
+      "passed": 6293,
+      "failed": 0,
+      "skipped": 5
+    },
+    "scope": "Complete run on 4ab1d80e; later design-only corrections require separately bound affected-scope tests, not relabeling this run."
+  },
+  "affected_scope": {
+    "candidate_sha": "241099b63c6f3ee9c12514348727052bddbb2ce9",
+    "governance": {
+      "passed": 301,
+      "failed": 0,
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/governance",
+        "test"
+      ],
+      "exit_code": 0,
+      "log": "governance-final.log.gz"
+    },
+    "python": {
+      "passed": 241,
+      "failed": 0,
+      "command": [
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "docs/design/2026-10-27-joint-engineering",
+        "-p",
+        "test_validate*.py"
+      ],
+      "exit_code": 0,
+      "log": "python-final.log.gz"
+    }
+  },
+  "historical_failure": {
+    "candidate_sha": "56ab5cd586f22c70798081616df1f8d95876d8db",
+    "exit_code": 1,
+    "reason": "Coordinator restored stale generated knowledge/dist before tests; forced rebuild fixed 33 focused regressions, then full 4ab1 run passed.",
+    "log": "test-full.log.gz",
+    "disposition": "dist-failure-disposition.json.gz"
+  },
+  "qualification": "No runtime gate or deployment qualification. Full and affected-scope runs retain their actual separate SHAs."
+}
