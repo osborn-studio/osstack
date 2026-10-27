@@ -1,0 +1,58 @@
+{
+  "base_sha": "28d116f3f8c15f64bebb314308adf320d8380b2b",
+  "code_sha": "c60850c4461f42c76508ae7f63c0c3b17b951733",
+  "node": "v22.22.1",
+  "changed_files": {
+    ".changeset/session-terminal-boundary.md": "26e0b8d4cf536a3378c06ec793395a186ff4df29bc61cd7dbdc074e8c202ed37",
+    "packages/cli/src/daemon.ts": "e7f0ede3fb6e72b5703955d78103581bec60e914ff1fbc608b0a6c0ad9234247",
+    "packages/cli/src/session-send-receipt.test.ts": "8996150fae32f2aefc4cebca2c7db9b808defb722fbba86f3ea183bf3535a5a6"
+  },
+  "observed_at": "2026-10-27T11:15:38.954274+00:00",
+  "build_note": "Build passed on f35360a1; c60850c4 changes only adjacent tests and changeset wording. Runtime source unchanged. Final typecheck/lint/focused checks run with those exact changes, then full suite on c60850c4.",
+  "test_full": "passed",
+  "commands": [
+    {
+      "command": "pnpm install --frozen-lockfile --offline",
+      "log": "install.log",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm build",
+      "log": "build.log",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm --filter @osstack/cli exec vitest run src/session-send-receipt.test.ts src/session-rpc.test.ts src/session-wait.test.ts src/session-command.test.ts src/daemon-drain-recovery.test.ts src/adapter-lifecycle.test.ts",
+      "log": "focused-final.log",
+      "exit_code": 0,
+      "passed": 90
+    },
+    {
+      "command": "pnpm typecheck:check",
+      "log": "typecheck-final.log",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm lint",
+      "log": "lint-final.log",
+      "exit_code": 0
+    },
+    {
+      "command": "node scripts/generate-inventory.mjs --check",
+      "log": "inventory.log",
+      "exit_code": 0
+    },
+    {
+      "command": "node scripts/check-changeset-coverage.mjs --base 28d116f3f8c15f64bebb314308adf320d8380b2b",
+      "log": "changeset-final.log",
+      "exit_code": 0
+    },
+    {
+      "command": "pnpm test",
+      "log": "test-full.log",
+      "exit_code": 0,
+      "code_sha": "c60850c4461f42c76508ae7f63c0c3b17b951733"
+    }
+  ],
+  "completed_at": "2026-10-27T11:25:12.358434+00:00"
+}
