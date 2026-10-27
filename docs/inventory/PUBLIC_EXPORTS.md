@@ -120,6 +120,8 @@ export * from "./hub-package.js";
 ```ts
 export * as protocol from "@osstack/protocol";
 export * from "./capability.js";
+export { evaluateBehaviorRegistry } from "./behavior-registry.js";
+export type { BehaviorRegistryInput, BehaviorRegistryTrust, BehaviorRegistryPolicy,
 export * from "./state/index.js";
 export * from "./state/protocol-mappers.js";
 export * from "./privacy/index.js";
