@@ -16,7 +16,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "generate:schemas": "node scripts/generate-schemas.mjs",
-    "check:schemas": "node scripts/generate-schemas.mjs --check"
+    "check:schemas": "node scripts/generate-schemas.mjs --check",
+    "generate:joint-schemas": "node scripts/generate-joint-schemas.mjs",
+    "check:joint-schemas": "node scripts/generate-joint-schemas.mjs --check"
   },
   "dependencies": {
     "zod": "^3.25.76"
@@ -35,5 +37,23 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./joint": {
+      "types": "./dist/joint.d.ts",
+      "import": "./dist/joint.js",
+      "default": "./dist/joint.js"
+    },
+    "./joint-json": {
+      "types": "./dist/joint-json.d.ts",
+      "import": "./dist/joint-json.js",
+      "default": "./dist/joint-json.js"
+    },
+    "./*": "./*"
   }
 }

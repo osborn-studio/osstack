@@ -1,0 +1,76 @@
+{
+  "$ref": "#/definitions/MaterialIntentFrame",
+  "definitions": {
+    "MaterialIntentFrame": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "number",
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "material:intent_frame"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "intent_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "non_goals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialIntentFrame/properties/goals/items"
+          },
+          "maxItems": 128
+        },
+        "observations": {
+          "$ref": "#/definitions/MaterialIntentFrame/properties/non_goals"
+        },
+        "hypotheses": {
+          "$ref": "#/definitions/MaterialIntentFrame/properties/non_goals"
+        },
+        "unknowns": {
+          "$ref": "#/definitions/MaterialIntentFrame/properties/non_goals"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialIntentFrame/properties/task_id"
+          },
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "task_id",
+        "intent_revision",
+        "goals",
+        "non_goals",
+        "observations",
+        "hypotheses",
+        "unknowns",
+        "source_refs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shape only. Use @osstack/protocol/joint decodeJointContract for lexical and semantic checks. Host must authenticate provenance, resolve principal aliases, load referenced evidence, verify current authority and enforce durable CAS. Parsing grants no authority."
+}
