@@ -1,0 +1,16 @@
+# Final refresh-script schema review
+
+Result: **PASS within the requested schema/adaptation scope; no confirmed new issue.** Read-only worktree/Git review, scratch-only verification, no Claude call, full tests, board/RPC writes or execution of the live refresh script.
+
+Reviewed script SHA-256: `4991a926520762fb7ec790ab895f075d3988a4061a36d406e39e1ee82acb10d4`. Published archive: `3202b790952e358b83ced50746d78909cda31c4c`; product code: `cb76b6432d597d1c057d241f17e652308286b8ee`; base: `ede5aadced37ac9dc29dd21f0e307ad2c46d2976`.
+
+Executed `python3 independent-final-refresh-check.py`. It extracts only the archive/readiness helpers and exact binding-verification statements from the actual script via Python AST, then runs them against bytes materialized from the immutable published Git object. It does not run the script's publication, fetch, board or ledger mutations. Initial harness selection hit the wrong AST if-node and stopped before the evidence checks; the corrected run completed successfully. Raw structured result is independent-final-refresh-check.json; reproducible harness is independent-final-refresh-check.py.
+
+- Actual verification schema has `status: passed` and argv-array commands. Accepting either exact `pnpm test` string or exact `["pnpm", "test"]` is a representation adaptation, not a weaker pass criterion: one and only one full command is required, every command has exit 0 and the exact code SHA, and validation_source must equal its selected log.
+- The selected log is **test-full-final.log**, not a prior failed/superseded run. The exact script recount found **6293 passed, 5 skipped, 0 failed across 22 distinct packages** and matched test-summary.json.
+- **8 current command records** were checked against their raw decompressed log SHA-256. Archive membership/compressed SHA/raw SHA and byte lengths passed across **62 manifest members**; raw audit report/input/response are exact manifest members with exact raw hashes. No fallback silently accepts absent logs.
+- The actual raw Claude response has is_error=false and claude-sonnet-5-5 modelUsage. Its result exactly equals the preserved report with a standalone VERDICT: PASS. All **8 reviewed source-file hashes** matched Git bytes at the bound code SHA. This remains an owner-collected audit record, not cryptographic proof of remote model execution or GitHub approval.
+- Code is an ancestor of published head; code-to-head changed paths are confined to docs/ and .changeset/. The script still materializes the observed committed archive rather than reading mutable worktree evidence.
+- Readiness positive case passed; four negative cases (missing required job, duplicate job name, SUCCESS while IN_PROGRESS, and an additional completed failed job) all returned pending_or_failed_at_observation. The explicit COMPLETED requirement does not misclassify an in-flight success field.
+
+Also read management-final-report.md and its raw response: final scoped audit PASS, is_error=false, actual modelUsage includes Sonnet 5.5. No whole-project architectural review was repeated. The live refresh still must perform its final observed-head/base checks and published-validator gate; this check does not claim those future actions happened or substitute for the owner's final doc/tests/push/CI checks.

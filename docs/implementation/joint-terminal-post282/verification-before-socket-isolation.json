@@ -1,0 +1,122 @@
+{
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+  "started_at": "2026-10-27T13:51:57.012200+00:00",
+  "node": "v22.22.1",
+  "pnpm": "11.4.0",
+  "commands": [
+    {
+      "name": "install",
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--offline"
+      ],
+      "started_at": "2026-10-27T13:51:57.234161+00:00",
+      "ended_at": "2026-10-27T13:51:57.457590+00:00",
+      "exit_code": 0,
+      "log": "install.log",
+      "log_sha256": "409924e816b930fd98e5e673f641a665c7feb9971ace8366cb7702158f2ff802"
+    },
+    {
+      "name": "build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "started_at": "2026-10-27T13:51:57.457880+00:00",
+      "ended_at": "2026-10-27T13:52:03.284913+00:00",
+      "exit_code": 0,
+      "log": "build.log",
+      "log_sha256": "ff6c4dccbc4c33e24677f03bb348b74ea176a95c1314a43a948f553100566bf6"
+    },
+    {
+      "name": "focused",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/session-send-receipt.test.ts",
+        "src/session-rpc.test.ts",
+        "src/session-wait.test.ts",
+        "src/session-command.test.ts",
+        "src/daemon-drain-recovery.test.ts",
+        "src/adapter-lifecycle.test.ts"
+      ],
+      "started_at": "2026-10-27T13:52:03.285328+00:00",
+      "ended_at": "2026-10-27T13:52:09.709810+00:00",
+      "exit_code": 0,
+      "log": "focused.log",
+      "log_sha256": "614a362fb9a0ee023d9f7e40798c62b1b1b8e1a5ef3811c40a7868f5489148f5"
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "started_at": "2026-10-27T13:52:09.710157+00:00",
+      "ended_at": "2026-10-27T13:52:16.233017+00:00",
+      "exit_code": 0,
+      "log": "typecheck.log",
+      "log_sha256": "a285f7c87fa244d9152e1cf02686368cbe967ab5e928be6572ae2f2e5de55e11"
+    },
+    {
+      "name": "lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "started_at": "2026-10-27T13:52:16.233396+00:00",
+      "ended_at": "2026-10-27T13:52:16.985983+00:00",
+      "exit_code": 0,
+      "log": "lint.log",
+      "log_sha256": "d64247079e89ea43255200aaa9e62f6e63480bf9c0b0dd520b9f7f215adb3bfd"
+    },
+    {
+      "name": "inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "started_at": "2026-10-27T13:52:16.986327+00:00",
+      "ended_at": "2026-10-27T13:52:17.158049+00:00",
+      "exit_code": 0,
+      "log": "inventory.log",
+      "log_sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    },
+    {
+      "name": "changeset",
+      "command": [
+        "node",
+        "scripts/check-changeset-coverage.mjs",
+        "--base",
+        "ede5aadced37ac9dc29dd21f0e307ad2c46d2976"
+      ],
+      "started_at": "2026-10-27T13:52:17.158376+00:00",
+      "ended_at": "2026-10-27T13:52:17.224900+00:00",
+      "exit_code": 0,
+      "log": "changeset.log",
+      "log_sha256": "f221a464d65a3b1fd02e2bf0374d9afa85b69e335cb8c7a93ed22e24cc86a1c9"
+    },
+    {
+      "name": "test-full",
+      "command": [
+        "pnpm",
+        "test"
+      ],
+      "started_at": "2026-10-27T13:52:17.225209+00:00",
+      "ended_at": "2026-10-27T14:00:43.136330+00:00",
+      "exit_code": 1,
+      "log": "test-full.log",
+      "log_sha256": "aba8731580df9226d9a65a7322511aec571a8837cfc86a20c8bc7082763f2101"
+    }
+  ],
+  "status": "failed",
+  "product_patch_unchanged_on_merge": true
+}

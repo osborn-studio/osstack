@@ -1,0 +1,55 @@
+{
+  "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "checks": [
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/serve-install-cli.test.ts"
+      ],
+      "name": "installer-reproduction",
+      "started_at": "2026-10-27T13:59:22.412528+00:00",
+      "ended_at": "2026-10-27T13:59:24.104317+00:00",
+      "exit_code": 1,
+      "log": "installer-reproduction.log",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-terminal-post282-20261027/home",
+      "OSSTACK_SOCKET": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-terminal-post282-20261027/daemon.sock",
+      "log_sha256": "f1a4ca98e14e9952714decf3f5901723e800cab5e578287c82ba1a8d2ab95143"
+    },
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/serve-install-cli.test.ts"
+      ],
+      "name": "installer-isolated",
+      "started_at": "2026-10-27T13:59:24.104587+00:00",
+      "ended_at": "2026-10-27T13:59:25.759442+00:00",
+      "exit_code": 0,
+      "log": "installer-isolated.log",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-terminal-post282-20261027/home",
+      "OSSTACK_SOCKET": "unset; derived from each explicit test scratch home",
+      "log_sha256": "7b8efbf1e330e084fff52addccd64f6c4256d634f231ed004eca7c0274985c4c"
+    }
+  ],
+  "source_comparison": {
+    "packages/cli/src/bin.ts": {
+      "same_as_base": true,
+      "sha256": "99dbbaa1e4a535f94509df2e03a204cab30da6057de6c30a23c5212cad5a3c47"
+    },
+    "packages/cli/src/serve-install-cli.test.ts": {
+      "same_as_base": true,
+      "sha256": "109fdd3447b611978b6d544c0af459e4486e65bacda3168487fe741b9dc6f096"
+    }
+  },
+  "explanation": "The fixture overrides OSSTACK_HOME but does not isolate OSSTACK_SOCKET. An explicit outer socket overrides the expected per-fixture home/daemon.sock. Reproduction and isolated rerun use identical source; installer bin and fixture are byte-identical to base. No serving process is installed or loaded (--no-load)."
+}

@@ -1,0 +1,38 @@
+{
+  "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+  "checks": [
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/session-send-receipt.test.ts",
+        "src/adapter-lifecycle.test.ts",
+        "src/daemon-engineering.test.ts"
+      ],
+      "exit_code": 0,
+      "passed": 63,
+      "log": "fix-focused.log",
+      "scope": "Test changes before commit; identical tested file committed as code SHA"
+    },
+    {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/cli",
+        "exec",
+        "vitest",
+        "run",
+        "src/collaborator-rpc.test.ts",
+        "src/session-rpc.test.ts"
+      ],
+      "exit_code": 0,
+      "passed": 43,
+      "log": "caller-focused.log",
+      "scope": "Fresh exact committed candidate"
+    }
+  ]
+}

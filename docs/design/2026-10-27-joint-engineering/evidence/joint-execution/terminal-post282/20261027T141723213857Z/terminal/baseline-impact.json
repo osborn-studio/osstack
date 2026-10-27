@@ -1,0 +1,14 @@
+{
+  "new_base": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "prior_base": "28d116f3f8c15f64bebb314308adf320d8380b2b",
+  "observed_at": "2026-10-27T13:49:35.503273+00:00",
+  "changed_product_paths": [
+    "packages/core/src/behavior-registry.test.ts",
+    "packages/core/src/behavior-registry.ts",
+    "packages/core/src/index.ts"
+  ],
+  "changed_shared_contract_paths": [],
+  "terminal_patch_before_sha256": "b65840c235c1966ec91c34d5e9f610b4df8b764b21eb1e37f86feb92d7d9c1cd",
+  "terminal_patch_after_sha256": "b65840c235c1966ec91c34d5e9f610b4df8b764b21eb1e37f86feb92d7d9c1cd",
+  "assessment": "PR282 modifies core behavior registry implementation/test and its public export. Shared protocol/recovery contract source is unchanged. #279 product patch after merging is byte-identical to previous main-based patch. New full build/typecheck/runtime tests and independent Claude audit are still required for the composed candidate."
+}

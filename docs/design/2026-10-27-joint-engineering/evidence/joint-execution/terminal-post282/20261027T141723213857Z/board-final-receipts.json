@@ -1,0 +1,38 @@
+{
+  "base_sha": "ede5aadced37ac9dc29dd21f0e307ad2c46d2976",
+  "observed_at": "2026-10-27T14:17:20.156722+00:00",
+  "expected_statuses": {
+    "card_d1a582eb": "blocked",
+    "card_9ccb91b2": "done",
+    "card_6d5d3d02": "running",
+    "card_79cdb3e7": "running"
+  },
+  "actions": [
+    {
+      "comment_id": 340,
+      "card_id": "card_d1a582eb",
+      "author": "joint-entry",
+      "body": "#279 post-#282 revalidation complete on main ede5aadced37ac9dc29dd21f0e307ad2c46d2976. Product/test cb76b6432d597d1c057d241f17e652308286b8ee; evidence head3202b790952e358b83ced50746d78909cda31c4c (metadata only). New final full run6293 passed/5 skipped/0 failed/22packages; focused94. Actual claude-sonnet-5-5 final PASS with original nonblocking notes retained; four confirmed-stop late-fault cases added. Build/typecheck/lint/inventory/changeset pass. Original environment socket failure and transient document-link failure preserved, corrected final run separate. Current-head CI must finish after final ledger publication; user approval/merge only after that. DEBT02 and whole J01/J11 acceptance unchanged.",
+      "created_at": 1793110640.155
+    },
+    {
+      "card_id": "card_d1a582eb",
+      "board": "session-pilot-debt",
+      "task_id": null,
+      "title": "[AUDIT-R3-H6] Require Session terminal completion before releasing execution",
+      "body": "Confirmed host-boundary counterexample: registered Session adapter ends its iterator without terminal; send returns agent_failed but releases, start records success and releases. Deterministic real SQLite/RPC/lock probe shows confirmStopped false was never consulted. Implement a separate narrow fix for start/send: incomplete terminal protocol is not settled proof; confirm stop or retain. No operator recovery API or per-turn stop-proof redesign. Red/green regressions and parent full tests + Sonnet 5.5 required. Evidence: firstmate-batch1-20261026/thread-b-round3-hypotheses.md. This is an audit defect, not a new roadmap feature.",
+      "status": "blocked",
+      "priority": 1,
+      "assignee": "thread-b",
+      "blocked_reason": "#279 tests and Sonnet5.5 audit passed on post-#282 main; completing metadata publication and latest-head CI, then gilberthello approval/merge.",
+      "tenant_id": null,
+      "card_type": "implementation",
+      "meta": null,
+      "created_at": 1793081376.111,
+      "updated_at": 1793110640.156,
+      "started_at": 1793081386.278,
+      "completed_at": null
+    }
+  ],
+  "scope": "New current actions; original R02 closeout and session assignment receipts preserved in this batch archive."
+}

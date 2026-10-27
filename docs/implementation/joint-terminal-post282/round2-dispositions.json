@@ -1,0 +1,17 @@
+[
+  {
+    "id": "R2-1",
+    "decision": "nonblocking_shared_branch",
+    "rationale": "Cancelled terminal without an abort enters the same non-completed branch as failed. No new separate cancelled grammar or alternate release behavior is introduced; no confirmed product defect."
+  },
+  {
+    "id": "R2-2",
+    "decision": "verified",
+    "rationale": "Fresh caller-focused command executed collaborator-rpc.test.ts and session-rpc.test.ts on this code SHA: 43 passed, 0 failed. It covers actual delegated resume and Attention answer success/uncertain replay through the shared helper. This is deterministic fixture coverage, not live-provider qualification."
+  },
+  {
+    "id": "R2-3",
+    "decision": "nonblocking_style",
+    "rationale": "Whole-repository Biome passed. Existing long test lines/double spacing do not change behavior; avoid unrelated formatting churn."
+  }
+]

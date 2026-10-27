@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { join } from "node:path";
-import type { AgentSessionEvent, AgentSessionInput, SessionCapableAdapter } from "@osstack/agents";
+import { CodexCliAdapter, type AgentSessionEvent, type AgentSessionInput, type SessionCapableAdapter } from "@osstack/agents";
 import * as autonomy from "@osstack/autonomy";
 import { createScratchDir, insertRun, insertTask, openDb, SessionRepository } from "@osstack/core";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
@@ -16,6 +16,9 @@ class ReceiptAdapter implements SessionCapableAdapter {
   readonly cost_tier = "low" as const;
   readonly resumed: AgentSessionInput[] = [];
   readonly started: string[] = [];
+  readonly stopChecks: string[] = [];
+  omitTerminal = false;
+  afterTerminal: "throw" | "failed" | undefined;
   failStart = false;
   failResume = false;
   failStop = false;
@@ -29,9 +32,12 @@ class ReceiptAdapter implements SessionCapableAdapter {
     yield { type: "native_session.started", native_session_id: "private-started-native" };
     if (this.failStart) throw new Error("injected lost start response");
     yield { type: "assistant.message", message_id: "start-reply", text: "Session started" };
-    yield { type: "session.terminal", state: "completed" };
+    if (!this.omitTerminal) yield { type: "session.terminal", state: "completed" };
+    if (this.afterTerminal === "throw") throw new Error("injected post-terminal fault");
+    if (this.afterTerminal === "failed") yield { type: "session.terminal", state: "failed", error_code: "late_failure" };
   }
-  async confirmStopped() {
+  async confirmStopped(runId: string) {
+    this.stopChecks.push(runId);
     if (this.failStop) throw new Error("injected stop verifier failure");
     if (this.stopUnconfirmed) return { stopped: false as const };
     return { stopped: true as const, evidence: "fixture has no external producer" };
@@ -41,7 +47,9 @@ class ReceiptAdapter implements SessionCapableAdapter {
     yield { type: "native_session.started", native_session_id: input.native_session_id };
     if (this.failResume) throw new Error("injected lost execution response");
     yield { type: "assistant.message", message_id: "reply", text: "Instruction complete" };
-    yield { type: "session.terminal", state: "completed" };
+    if (!this.omitTerminal) yield { type: "session.terminal", state: "completed" };
+    if (this.afterTerminal === "throw") throw new Error("injected post-terminal fault");
+    if (this.afterTerminal === "failed") yield { type: "session.terminal", state: "failed", error_code: "late_failure" };
   }
 }
 
@@ -74,14 +82,14 @@ function rpc(method: string, params: unknown = {}): Promise<Response> {
   });
 }
 
-async function boot() {
-  daemon = await startDaemon({ socketPath: socket, adapters: [adapter], autonomyHealth: async () => {
+async function boot(registeredAdapter: SessionCapableAdapter = adapter) {
+  daemon = await startDaemon({ socketPath: socket, adapters: [registeredAdapter], autonomyHealth: async () => {
     await admissionBlocked?.();
     return healthyAutonomyHealth();
   } });
 }
 
-async function fixture() {
+async function fixture({ failCleanup = true, builtInCodex = false } = {}) {
   root = await createScratchDir("tests", "send-receipt");
   socket = join(root, "d.sock");
   const repo = join(realpathSync(root), "repo");
@@ -94,28 +102,47 @@ async function fixture() {
   vi.stubEnv("OSSTACK_ATTENTION", "0");
   vi.stubEnv("OSSTACK_ENGINEERING", "0");
   adapter = new ReceiptAdapter();
+  let registeredAdapter: SessionCapableAdapter = adapter;
+  if (builtInCodex) {
+    const bin = join(root, "codex-fixture");
+    writeFileSync(bin, `#!${process.execPath}
+if (process.argv.includes("--help")) process.exit(0);
+for (const event of [
+  {type:"thread.started",thread_id:"private-native"},
+  {type:"item.completed",item:{id:"reply",type:"agent_message",text:"Normal completion"}},
+  {type:"turn.completed"}
+]) console.log(JSON.stringify(event));
+`, { mode: 0o700 });
+    registeredAdapter = new CodexCliAdapter({ bin, cwd: repo, strictCompletion: true,
+      env: { CODEX_HOME: root } });
+  }
   cleanupAttempts = 0;
-  await boot();
+  await boot(registeredAdapter);
   const db = openDb({ path: daemon!.dbPath });
   try {
     insertTask(db, daemon!.dbPath, { task_id: "task", title: "Receipt fixture", created_at: 1 });
-    insertRun(db, daemon!.dbPath, { run_id: "run", task_id: "task", session_id: "session", agent_id: adapter.id,
+    insertRun(db, daemon!.dbPath, { run_id: "run", task_id: "task", session_id: "session", agent_id: registeredAdapter.id,
       capability_id: "code", phase: "execute", started_at: 1 });
     const sessions = new SessionRepository(db, daemon!.dbPath);
-    sessions.createSession({ session_id: "session", task_id: "task", run_id: "run", agent_id: adapter.id,
+    sessions.createSession({ session_id: "session", task_id: "task", run_id: "run", agent_id: registeredAdapter.id,
       request_sha256: "a".repeat(64), native_session_id: "private-native", repo_path: repo, state: "idle",
       resume_supported: true, version: 1, updated_at: 1 });
     sessions.appendTurn({ turn_id: "turn", session_id: "session", ordinal: 1, state: "idle", assistant_text: "Ready",
       decision: null, created_at: 1, updated_at: 1 });
   } finally { db.close(); }
-  // Fail only the physical cleanup boundary. Admission, SQLite transactions,
+  // Inject cleanup failure only when requested. Admission, SQLite transactions,
   // framing and replay use the real implementations and the real writer lock.
   const acquire = autonomy.acquireRepoWriteLock;
   vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
     const lock = await acquire(...args);
     releaseFixtures.push(() => lock.release());
-    return { ...lock, release: async () => { cleanupAttempts++; throw new Error("injected physical cleanup failure"); } };
+    return { ...lock, release: async () => {
+      cleanupAttempts++;
+      if (failCleanup) throw new Error("injected physical cleanup failure");
+      await lock.release();
+    } };
   });
+  return registeredAdapter;
 }
 
 function persisted() {
@@ -331,5 +358,215 @@ it("preserves a completed Session start when cleanup and diagnostic writes both 
   expect(cleanupAttempts).toBe(1);
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
     drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+});
+
+it.each(["confirmed", "unconfirmed", "throws"] as const)(
+  "rejects a start without terminal and releases only after stop is %s", async stop => {
+    await fixture({ failCleanup: false });
+    adapter.omitTerminal = true;
+    adapter.stopUnconfirmed = stop === "unconfirmed";
+    adapter.failStop = stop === "throws";
+    const params = { request_id: "start-without-terminal", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Missing terminal", prompt: "Start once" };
+    expect(await rpc("session.start", params)).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(adapter.stopChecks).toHaveLength(1);
+    expect(cleanupAttempts).toBe(stop === "confirmed" ? 1 : 0);
+    const db = openDb({ path: daemon!.dbPath });
+    let sessionId: string;
+    try {
+      const session = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+        .get() as { session_id: string; run_id: string; state: string; version: number };
+      sessionId = session.session_id;
+      expect(session).toMatchObject({ state: "failed", version: 2 });
+      expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+      expect(db.prepare("SELECT status FROM kanban_cards WHERE card_id = ?").get(`card_${session.run_id}`)).toEqual({ status: "blocked" });
+      expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(sessionId)).toEqual({ count: 0 });
+    } finally { db.close(); }
+    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+      drained: stop === "confirmed", active_runs: 0, execution_lease_holds: stop === "confirmed" ? 0 : 1,
+    } });
+    await rpc("daemon.resume");
+    const replay = { ok: true, result: { session_id: sessionId, state: "failed", version: 2 } };
+    expect(await rpc("session.start", params)).toMatchObject(replay);
+    await daemon!.close(); daemon = undefined;
+    await boot();
+    expect(await rpc("session.start", params)).toMatchObject(replay);
+    expect(adapter.started).toEqual([params.prompt]);
+    expect(adapter.stopChecks).toHaveLength(1);
+  },
+);
+
+it.each(["confirmed", "unconfirmed", "throws"] as const)(
+  "keeps a terminal-free send uncertain and releases only after stop is %s", async stop => {
+    await fixture({ failCleanup: false });
+    adapter.omitTerminal = true;
+    adapter.stopUnconfirmed = stop === "unconfirmed";
+    adapter.failStop = stop === "throws";
+    expect(await rpc("session.send", request)).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(adapter.stopChecks).toEqual(["run"]);
+    expect(cleanupAttempts).toBe(stop === "confirmed" ? 1 : 0);
+    const before = persisted();
+    expect(before.message).toMatchObject({ state: "failed", applied_at: null });
+    expect(before.snapshot).toMatchObject({ turn_id: "turn", version: 2 });
+    expect(before.turns).toBe(1);
+    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+      drained: stop === "confirmed", active_runs: 0, execution_lease_holds: stop === "confirmed" ? 0 : 1,
+    } });
+    await rpc("daemon.resume");
+    const replay = { ok: false, error: { code: "delivery_uncertain" } };
+    expect(await rpc("session.send", request)).toMatchObject(replay);
+    await daemon!.close(); daemon = undefined;
+    await boot();
+    expect(await rpc("session.send", request)).toMatchObject(replay);
+    expect(persisted()).toEqual(before);
+    expect(adapter.resumed).toHaveLength(1);
+    expect(adapter.stopChecks).toEqual(["run"]);
+  },
+);
+
+it("retains a terminal-free accepted receipt when writing the failure state also fails", async () => {
+  await fixture({ failCleanup: false });
+  adapter.omitTerminal = true; adapter.stopUnconfirmed = true;
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    db.exec(`CREATE TRIGGER reject_failure BEFORE UPDATE OF state ON session_messages
+      WHEN NEW.state = 'failed' BEGIN SELECT RAISE(ABORT, 'injected failure receipt failure'); END;`);
+  } finally { db.close(); }
+  const uncertain = { ok: false, error: { code: "delivery_uncertain" } };
+  expect(await rpc("session.send", request)).toMatchObject(uncertain);
+  const before = persisted();
+  expect(before.message).toMatchObject({ state: "accepted", applied_at: null });
+  expect(before.turns).toBe(1);
+  expect(cleanupAttempts).toBe(0);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+  await rpc("daemon.resume");
+  expect(await rpc("session.send", request)).toMatchObject(uncertain);
+  await daemon!.close(); daemon = undefined;
+  await boot();
+  expect(await rpc("session.send", request)).toMatchObject(uncertain);
+  expect(persisted()).toEqual(before);
+  expect(adapter.resumed).toHaveLength(1);
+  expect(adapter.stopChecks).toEqual(["run"]);
+});
+
+it.each(["start", "send"] as const)("releases a normally completed %s without requesting stop proof", async route => {
+  await fixture({ failCleanup: false });
+  // A regression that routes normal completion through stop verification must fail.
+  adapter.failStop = true;
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: "normal-start", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Normal completion", prompt: "Start once" })
+    : await rpc("session.send", request);
+  expect(response).toMatchObject({ ok: true, result: { state: route === "start" ? "idle" : "applied" } });
+  expect(adapter.stopChecks).toEqual([]);
+  expect(cleanupAttempts).toBe(1);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: true, active_runs: 0, execution_lease_holds: 0,
+  } });
+});
+
+it.each(["start", "send"] as const)("releases a completed built-in Codex %s with no stop verifier", async route => {
+  // Use the shipped adapter implementation and a local fake executable, never a model call.
+  const registered = await fixture({ failCleanup: false, builtInCodex: true });
+  expect(registered).toBeInstanceOf(CodexCliAdapter);
+  expect("confirmStopped" in registered).toBe(false);
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: "normal-codex-start", agent_id: registered.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Normal Codex completion", prompt: "Start once" })
+    : await rpc("session.send", { ...request, runtime_id: registered.id });
+  expect(response).toMatchObject({ ok: true, result: { state: route === "start" ? "idle" : "applied" } });
+  expect(cleanupAttempts).toBe(1);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: true, active_runs: 0, execution_lease_holds: 0,
+  } });
+});
+
+it.each([
+  ["start", "throw", true], ["start", "failed", true], ["send", "throw", true], ["send", "failed", true],
+  ["start", "throw", false], ["start", "failed", false], ["send", "throw", false], ["send", "failed", false],
+] as const)("settles %s admission after late %s with stop unconfirmed=%s", async (route, fault, stopUnconfirmed) => {
+  await fixture({ failCleanup: false });
+  adapter.afterTerminal = fault; adapter.stopUnconfirmed = stopUnconfirmed;
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: "late-failed-start", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Late failure", prompt: "Start once" })
+    : await rpc("session.send", request);
+  expect(response).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+  expect(adapter.stopChecks).toHaveLength(1);
+  expect(cleanupAttempts).toBe(stopUnconfirmed ? 0 : 1);
+  if (route === "start") {
+    const db = openDb({ path: daemon!.dbPath });
+    try {
+      const session = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+        .get() as { session_id: string; run_id: string; state: string; version: number };
+      expect(session).toMatchObject({ state: "failed", version: 2 });
+      expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+      expect(db.prepare("SELECT status FROM kanban_cards WHERE card_id = ?").get(`card_${session.run_id}`)).toEqual({ status: "blocked" });
+      expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(session.session_id)).toEqual({ count: 0 });
+    } finally { db.close(); }
+  } else {
+    const state = persisted();
+    expect(state.message).toMatchObject({ state: "failed", applied_at: null });
+    expect(state.snapshot).toMatchObject({ turn_id: "turn", version: 2 });
+    expect(state.turns).toBe(1);
+  }
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: !stopUnconfirmed, active_runs: 0, execution_lease_holds: stopUnconfirmed ? 1 : 0,
+  } });
+});
+
+
+it.each([
+  ["start", "empty"], ["send", "empty"],
+  ["start", "missing_stop_verifier"], ["send", "missing_stop_verifier"],
+] as const)("retains %s admission for %s without terminal evidence", async (route, boundary) => {
+  await fixture({ failCleanup: false });
+  if (boundary === "empty") {
+    adapter.stopUnconfirmed = true;
+    if (route === "start") vi.spyOn(adapter, "startSession").mockImplementation(async function* () {});
+    else vi.spyOn(adapter, "resumeSession").mockImplementation(async function* () {});
+  } else {
+    adapter.omitTerminal = true;
+    Object.defineProperty(adapter, "confirmStopped", { value: undefined });
+  }
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: `preflight-${boundary}`, agent_id: adapter.id,
+      repo_path: join(realpathSync(root!), "repo"), title: "Terminal boundary", prompt: "Start once" })
+    : await rpc("session.send", request);
+  expect(response).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+  expect(adapter.stopChecks).toHaveLength(boundary === "empty" ? 1 : 0);
+  expect(cleanupAttempts).toBe(0);
+  if (route === "send") {
+    expect(persisted().message).toMatchObject({ state: "failed", applied_at: null });
+    expect(persisted().turns).toBe(1);
+  }
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+});
+
+
+it("releases completed invocation even when missing native id makes Session start fail", async () => {
+  await fixture({ failCleanup: false });
+  adapter.failStop = true;
+  vi.spyOn(adapter, "startSession").mockImplementation(async function* () {
+    yield { type: "session.terminal", state: "completed" };
+  });
+  expect(await rpc("session.start", { request_id: "completed-without-native-id", agent_id: adapter.id,
+    repo_path: join(realpathSync(root!), "repo"), title: "Missing native id", prompt: "Start once" }))
+    .toMatchObject({ ok: false, error: { code: "agent_failed" } });
+  expect(adapter.stopChecks).toEqual([]);
+  expect(cleanupAttempts).toBe(1);
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(db.prepare("SELECT state,native_session_id FROM agent_sessions WHERE session_id != 'session'").get())
+      .toEqual({ state: "failed", native_session_id: null });
+    expect(db.prepare("SELECT count(*) AS count FROM session_turns").get()).toEqual({ count: 1 });
+  } finally { db.close(); }
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: true, active_runs: 0, execution_lease_holds: 0,
   } });
 });
