@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MethodRecipe, methodRecipeDigest, methodProposalDigest, verifyBindingAgainst, bindingDigest, verifyMethodBinding, trialBudgetIssues, supportProfileDigest } from './method-binding.js';
-import { decodeJointContractAs, decodeJointContractBytesAs } from './joint-contracts.js';
-import { recoverySubjectDigest, RecoveryReceipt, verifyRecoveryProofEnvelopes } from './joint-recovery.js';
+import { JointContract, decodeJointContractAs, decodeJointContractBytesAs } from './joint-contracts.js';
+import { recoverySubjectDigest, RecoveryProofEnvelope, RecoveryReceipt, verifyRecoveryProofEnvelopes } from './joint-recovery.js';
 import { parseJointJson } from './joint-json.js';
 const cases = (parseJointJson(readFileSync(new URL('../fixtures/joint/contracts.json', import.meta.url), 'utf8')) as unknown as { fixtures: Array<{ id: string; payload: Record<string, unknown> }> }).fixtures;
 const sample = (id: string) => structuredClone(cases.find(f => f.id === id)!.payload);
@@ -62,6 +62,18 @@ describe('joint integrity boundaries', () => {
     const legacy = sample('legacy-recovery-null-identities');
     expect(RecoveryReceipt.safeParse(legacy).success).toBe(true);
     expect(RecoveryReceipt.safeParse({...legacy,binding_generation:1}).success).toBe(false);
+  });
+  it('safeParse returns failure instead of throwing on dirty recovery subjects', () => {
+    const receipt = sample('valid-recovery_receipt');
+    for (const home_id of ['', '\ud800']) {
+      const subject = {kind:'effect',home_id,effect_id:'x'};
+      expect(RecoveryReceipt.safeParse({...receipt,subject}).success).toBe(false);
+      expect(JointContract.safeParse({...receipt,subject}).success).toBe(false);
+      const proof = {record_ref:'proof',type:'invocation_contained',effect_id:'x',subject_digest:'a'.repeat(64),evidence_digest:'a'.repeat(64),producer_ref:'host'};
+      const envelope = {kind:'recovery_proof',schema_version:1,subject,proof,record_ref:'proof',authorization_ref:'host',observed_at_ms:1,owner_generation:1,binding_generation:1,support_profile_digest:'a'.repeat(64),prior_phase:'dispatch_committed',schema_spec_digest:'a'.repeat(64),recovery_build_digest:'a'.repeat(64)};
+      expect(RecoveryProofEnvelope.safeParse(envelope).success).toBe(false);
+      expect(JointContract.safeParse(envelope).success).toBe(false);
+    }
   });
   it('joins proof envelopes to the exact receipt context and content', () => {
     const receipt = sample('valid-recovery_receipt');

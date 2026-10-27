@@ -25,8 +25,10 @@ export const RecoveryProofEnvelope = z.object({
   schema_spec_digest: Digest, recovery_build_digest: Digest,
   record_ref: Ref, authorization_ref: Ref,
 }).strict().superRefine((v, ctx) => {
+  let subjectDigest: string;
+  try { subjectDigest = recoverySubjectDigest(v.subject); } catch { issue(ctx, 'INVALID_SUBJECT'); return; }
   if (v.record_ref !== v.proof.record_ref) issue(ctx, 'PROOF_RECORD_MISMATCH');
-  if (v.proof.subject_digest !== recoverySubjectDigest(v.subject)) issue(ctx, 'PROOF_SUBJECT_MISMATCH');
+  if (v.proof.subject_digest !== subjectDigest) issue(ctx, 'PROOF_SUBJECT_MISMATCH');
   if (v.subject.kind === 'effect' ? v.proof.effect_id !== v.subject.effect_id : v.proof.effect_id !== undefined) issue(ctx, 'PROOF_EFFECT_MISMATCH');
   if (v.subject.kind === 'broker_lease') {
     const b = v.proof.broker_identity;
@@ -37,8 +39,10 @@ export type RecoveryProofEnvelope = z.infer<typeof RecoveryProofEnvelope>;
 
 /** Structural evidence consistency only. J12 must load and authenticate every referenced fact. */
 export const RecoveryReceipt = RecoveryReceiptShape.superRefine((v, ctx) => {
+  let subjectDigest: string;
+  try { subjectDigest = recoverySubjectDigest(v.subject); } catch { issue(ctx, 'INVALID_SUBJECT'); return; }
   const broker = v.subject.kind === 'broker_lease';
-  if (v.subject_digest !== recoverySubjectDigest(v.subject) || v.subject.home_id !== v.target_home_id) issue(ctx, 'SUBJECT_MISMATCH');
+  if (v.subject_digest !== subjectDigest || v.subject.home_id !== v.target_home_id) issue(ctx, 'SUBJECT_MISMATCH');
   if (broker !== (v.target === 'broker') || broker !== (v.prior_phase === 'broker_unknown')) issue(ctx, 'TARGET_PHASE_MISMATCH');
   if (v.subject.kind === 'effect') {
     if (v.effect_id !== v.subject.effect_id || v.binding_generation === null || v.support_profile_digest === null) issue(ctx, 'EFFECT_IDENTITY_MISSING');

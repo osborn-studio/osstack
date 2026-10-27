@@ -145,6 +145,14 @@ it('pins effect, legacy and broker identity rejection independently of other pha
   expect(RecoveryReceipt.safeParse({...broker,decision:'proven_stopped',proof_refs:['proof'],proofs:[missingIdentity]}).success).toBe(false);
   for(const receipt of [effect,attention]) {
     const p={...proof,subject_digest:receipt.subject_digest,...(receipt===effect?{effect_id:effect.effect_id}:{})};
-    expect(RecoveryReceipt.safeParse({...receipt,decision:'proven_stopped',proof_refs:['proof'],proofs:[p]}).success).toBe(false);
+    const result=RecoveryReceipt.safeParse({...receipt,decision:'proven_stopped',proof_refs:['proof'],proofs:[p]});
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.map(i=>i.message)).toContain('UNEXPECTED_BROKER_PROOF');
   }
+});
+
+it('accepts a committed Attention containment receipt without broker proof identity', () => {
+  const receipt=original('valid-recovery-attention-subject');
+  const proof={record_ref:'proof',type:'invocation_contained',evidence_digest:hash,producer_ref:'host',subject_digest:receipt.subject_digest};
+  expect(RecoveryReceipt.safeParse({...receipt,prior_phase:'dispatch_committed',decision:'proven_stopped',proof_refs:['proof'],proofs:[proof]}).success).toBe(true);
 });
