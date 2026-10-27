@@ -3037,6 +3037,48 @@
       "covers_negative_ids": [
         "PS12:N01"
       ]
+    },
+    {
+      "id": "JA70",
+      "owner_work_item": "J01",
+      "title": "组件形状与身份约束不签发主机资格",
+      "given": "冻结的全部 Joint 组件类型与独立正负例，包含十类材料、身份投影和 Binding/Recipe/Proposal 的结构关联",
+      "when": "通过严格原始 JSON 与按预期 kind 的 decoder 解析，并逐类型删除必需字段、添加未知字段、交换身份/版本/角色摘要",
+      "then": "合法组件逐字节与预期一致；缺字段、未知字段、错 kind/version/identity/role digest 均拒绝；结果不授予运行权限，也不证明真实主机授权或完成",
+      "bad_variant": "跳过 expected-kind 或 identity/role 校验；把结构合法映射为主机合格",
+      "oracle": "独立固定输入与错误分类矩阵、TS/Python bytes/hash、边界 helper 输出；无真实主机资格声明",
+      "required_evidence": [
+        "JA70: 冻结每类组件的正例、字段删除/未知字段/错kind/version/identity/role矩阵及预期错误",
+        "JA70: 精确候选、完整边界trace、独立TS/Python结果与原始日志摘要",
+        "JA70: 去掉expected-kind/identity校验的变异被拒绝，结构结果不签发权限"
+      ],
+      "layer": "contract",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS21",
+        "FM-15"
+      ],
+      "asserts": [
+        "PS21:observable",
+        "FM-15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "contract-owner",
+        "observation_boundary": "独立固定输入与错误分类矩阵、TS/Python bytes/hash、边界 helper 输出；无真实主机资格声明",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
     }
   ]
 }

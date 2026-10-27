@@ -122,3 +122,7 @@ schema 中的 source.repository 是规范来源 URL，trial/check repository 是
 E2 的 40 个任务定位为探索，不能保证检出 5pp。预登记必须提供功效/精度分析；例如配对不一致率假设 20%、目标差 5pp、80% 功效的正态近似，双侧 5% 检验约需 620 对，单侧约 489 对。这是设计假设计算，不是已测结果，也不是精确样本量承诺；真实不一致率更高通常提高方差和所需样本。预算不够则报告不确定并保留受限 opt-in，不能降低安全门槛制造默认启用结论。
 
 完整新对象形状（SupportProfile、MethodRecipe、MethodProposal、ArtifactRequirements）见 contract.schema.json；摘要字段逐项定义见 [digest-catalog.json](digest-catalog.json)。recovery typed subject 在同一 schema 中区分 attention_action/effect/broker_lease，旧 action 无需伪造 effect ID。method_recipe 本版仅允许 bug_fix；其他 recipe 必须另提交版本/资格，不由此 schema 宣称已支持。
+
+## 12. 组件契约与真实主机边界
+
+[gate-layers.md](gate-layers.md) 定义严格的四项组件前置替换、J08无副作用真实admission子阶段与独立JA命名空间。J01.scoped仍保留JA01/JA02全部原语义；J08完整trial、legacy和release不允许仅凭J01.contracts通过。组件层和主机层的候选、oracle与证据分别绑定，计划校验不签发运行资格。

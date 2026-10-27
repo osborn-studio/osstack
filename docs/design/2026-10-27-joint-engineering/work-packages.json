@@ -23,7 +23,8 @@
       "outputs": [
         "versioned strict MethodRecipe/Proposal/Binding, SupportProfile v2, ArtifactRequirements and ten material body schemas",
         "strict raw JSON parser + joint-canonical-v1 vectors + role projection definition",
-        "errors, identity, migration-spec and oracle/gate lifecycle contracts"
+        "errors, identity, migration-spec and oracle/gate lifecycle contracts",
+        "Separate component evidence (JA59/JA70) and unchanged real-host JA01/JA02; no schema-only host qualification"
       ],
       "acceptance": [
         "拒绝范围扩大、完成级别混用与错误版本"
@@ -37,14 +38,15 @@
         "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
         "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
       },
-      "requires_further_pr_slicing": false,
+      "requires_further_pr_slicing": true,
       "blocked_by": [
         "O06"
       ],
       "acceptance_ids": [
         "JA01",
         "JA02",
-        "JA59"
+        "JA59",
+        "JA70"
       ],
       "merge_after": [],
       "path_disposition": {
@@ -59,6 +61,12 @@
         "FM:D01",
         "FM:C01",
         "FM:E01"
+      ],
+      "planned_pr_slices": [
+        "JP-01a strict JSON and canonical bytes",
+        "JP-01b shared structural contracts",
+        "JP-01c independent component acceptance (J01.contracts)",
+        "JP-01d real host completion and admission acceptance (J01.scoped)"
       ]
     },
     {
@@ -123,7 +131,10 @@
         "FM:R04",
         "PS:W01",
         "PS:W02"
-      ]
+      ],
+      "dependency_gate_overrides": {
+        "J01": "J01.contracts"
+      }
     },
     {
       "id": "J03",
@@ -198,7 +209,10 @@
         "FM:D07",
         "FM:D08",
         "PS:W06"
-      ]
+      ],
+      "dependency_gate_overrides": {
+        "J01": "J01.contracts"
+      }
     },
     {
       "id": "J04",
@@ -269,7 +283,10 @@
       "legacy_task_ids": [
         "FM:C07",
         "PS:W05"
-      ]
+      ],
+      "dependency_gate_overrides": {
+        "J01": "J01.contracts"
+      }
     },
     {
       "id": "J05",
@@ -512,7 +529,7 @@
         "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
         "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
       },
-      "requires_further_pr_slicing": false,
+      "requires_further_pr_slicing": true,
       "blocked_by": [
         "O06"
       ],
@@ -544,6 +561,29 @@
       "schema_recovery_gate": "J08.recovery",
       "legacy_task_ids": [
         "PS:W04"
+      ],
+      "planned_pr_slices": [
+        "JP-08a real-host non-effecting admission boundary (J08.admission_boundary)",
+        "JP-08b restricted trial admission after J01.scoped and original recovery prerequisites"
+      ],
+      "component_slices": [
+        {
+          "id": "JP-08a",
+          "gate": "J08.admission_boundary",
+          "requires": [
+            "J01.contracts"
+          ],
+          "write_paths": [
+            "packages/cli/src/method-admission.ts",
+            "packages/cli/src/method-admission.test.ts"
+          ],
+          "scope": "Actual trusted host entry, strict proposal and current repository/scope authorization comparison; no permit creation, run creation, executor invocation or persistent consumption. The full trial must consume this same checked boundary.",
+          "case_producer_for": [
+            "JA02"
+          ],
+          "case_owner_work_item": "J01",
+          "qualification": "No gate is passed by this plan. JA02 retains its independent real-host oracle; later trial wiring must prove no bypass."
+        }
       ]
     },
     {
@@ -734,7 +774,10 @@
         "FM:C02",
         "FM:I04",
         "FM:DEBT02"
-      ]
+      ],
+      "dependency_gate_overrides": {
+        "J01": "J01.contracts"
+      }
     },
     {
       "id": "J12",

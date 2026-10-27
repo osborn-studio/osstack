@@ -22,6 +22,107 @@ class DesignChecks(unittest.TestCase):
     def test_valid_design(self):
         self.assertEqual(v.validate(self.data)['runtime_cases_executed'],0)
 
+    def gate(self, gid):
+        return next(x for x in self.data['execution-gates.json']['gates'] if x['id'] == gid)
+
+    def work(self, wid):
+        return next(x for x in self.data['work-packages.json']['items'] if x['id'] == wid)
+
+    def test_component_override_cannot_bypass_recovery(self):
+        self.work('J08')['dependency_gate_overrides'] = {'J12': 'J01.contracts'}
+        with self.assertRaisesRegex(ValueError, 'unregistered component dependency override'):
+            v.validate(self.data)
+
+    def test_component_override_must_remain_explicit(self):
+        self.work('J02').pop('dependency_gate_overrides')
+        with self.assertRaisesRegex(ValueError, 'unregistered component dependency override'):
+            v.validate(self.data)
+
+    def test_component_override_cannot_use_another_owner_gate(self):
+        self.work('J02')['dependency_gate_overrides'] = {'J01': 'J08.admission_boundary'}
+        with self.assertRaisesRegex(ValueError, 'unregistered component dependency override'):
+            v.validate(self.data)
+
+    def test_component_gate_cannot_claim_runtime_evidence(self):
+        self.gate('J01.contracts')['evidence_state'] = 'passed'
+        with self.assertRaisesRegex(ValueError, 'gate overclaims evidence'):
+            v.validate(self.data)
+
+    def test_scope_case_list_cannot_silently_drop_runtime_obligations(self):
+        self.gate('J01.scoped')['joint_case_requirements'] = ['JA59', 'JA70']
+        with self.assertRaisesRegex(ValueError, 'joint case coverage drift'):
+            v.validate(self.data)
+
+    def test_component_and_legacy_case_namespaces_are_distinct(self):
+        self.gate('J01.contracts')['case_requirements'] = ['JA59']
+        with self.assertRaisesRegex(ValueError, 'unknown legacy case gate'):
+            v.validate(self.data)
+
+    def test_unknown_joint_case_and_duplicates_rejected(self):
+        for required in (['JA59', 'JA999'], ['JA59', 'JA70', 'JA70'], 'JA59'):
+            with self.subTest(required=required):
+                self.gate('J01.contracts')['joint_case_requirements'] = required
+                with self.assertRaisesRegex(ValueError, 'unknown/duplicate joint case requirement'):
+                    v.validate(self.data)
+
+    def test_component_cannot_consume_a_host_case_in_place_of_structure(self):
+        self.gate('J01.contracts')['joint_case_requirements'] = ['JA01', 'JA02']
+        with self.assertRaisesRegex(ValueError, 'joint case coverage drift'):
+            v.validate(self.data)
+
+    def test_new_gate_cannot_silently_consume_joint_cases(self):
+        self.gate('J10.protocol')['joint_case_requirements'] = ['JA59']
+        with self.assertRaisesRegex(ValueError, 'unregistered joint case consumer'):
+            v.validate(self.data)
+
+    def test_same_owner_is_required_for_component_producer(self):
+        self.gate('J01.contracts')['owner_work_item'] = 'J08'
+        with self.assertRaisesRegex(ValueError, 'component override producer mismatch'):
+            v.validate(self.data)
+
+    def test_original_host_case_semantics_remain_exact(self):
+        for cid, field, replacement in [('JA01', 'when', '请求 task implementation_verified'),
+                                         ('JA01', 'layer', 'contract'),
+                                         ('JA02', 'then', '结构合法即可通过'),
+                                         ('JA02', 'oracle', 'parser spy only')]:
+            with self.subTest(cid=cid, field=field):
+                self.data = v.load()
+                next(x for x in self.data['acceptance-cases.json']['cases'] if x['id'] == cid)[field] = replacement
+                with self.assertRaisesRegex(ValueError, 'protected host semantics changed'):
+                    v.validate(self.data)
+
+    def test_first_trial_cannot_precede_host_acceptance(self):
+        self.gate('J08.scoped')['requires'].remove('J01.scoped')
+        with self.assertRaisesRegex(ValueError, 'trial precedes J01 host acceptance'):
+            v.validate(self.data)
+
+    def test_host_acceptance_requires_actual_admission_boundary(self):
+        self.gate('J01.scoped')['requires'].remove('J08.admission_boundary')
+        with self.assertRaisesRegex(ValueError, 'J01 host acceptance lacks real admission boundary'):
+            v.validate(self.data)
+
+    def test_reverse_full_trial_dependency_is_a_cycle(self):
+        self.gate('J01.scoped')['requires'] = ['J01.contracts', 'J08.scoped']
+        with self.assertRaisesRegex(ValueError, 'cycle'):
+            v.validate(self.data)
+
+    def test_release_cannot_qualify_using_only_component_closure(self):
+        # Replace every downstream J01 host edge while leaving first-trial guard intact.
+        # The other invariants still fail closed; no alternate producer grants release.
+        for gate in self.data['execution-gates.json']['gates']:
+            if gate['id'] not in ('J08.scoped',):
+                gate['requires'] = ['J01.contracts' if x == 'J01.scoped' else x for x in gate['requires']]
+        with self.assertRaises(ValueError):
+            v.validate(self.data)
+
+    def test_components_do_not_satisfy_original_host_cases(self):
+        summary = v.validate(self.data)
+        self.assertEqual(summary['runtime_cases_executed'], 0)
+        self.assertEqual(summary['future_product_cases'], 70)
+        self.assertEqual(summary['stage_gates'], 126)
+        self.assertEqual(summary['legacy_cases_retained'], 114)
+        self.assertEqual(v.preflight_blockers(self.data, 'J02', 'implementation_start'), ['O06'])
+
     def test_missing_capability(self):
         self.rejects(lambda d:d['capability-map.json']['capabilities'].pop())
 

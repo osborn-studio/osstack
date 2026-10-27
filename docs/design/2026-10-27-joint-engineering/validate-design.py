@@ -166,6 +166,67 @@ def preflight_blockers(data, work_item, stage):
     return [u['id'] for u in data['unknowns.json']['items'] if u['status']=='open'
             and {'work_item':work_item,'stage':stage} in u['blocks']]
 
+# Reviewed component substitutions are a closed list, never arbitrary dependency bypasses.
+COMPONENT_GATE_OVERRIDES = {work: {'J01': 'J01.contracts'} for work in ('J02', 'J03', 'J04', 'J11')}
+PROTECTED_HOST_CASE_FIELDS = ('id', 'owner_work_item', 'title', 'given', 'when', 'then',
+    'bad_variant', 'oracle', 'required_evidence', 'layer', 'capabilities', 'asserts', 'covers_negative_ids')
+PROTECTED_HOST_CASE_DIGESTS = {
+    'JA01': '93ba311087389cd57098152941ae9dded1bdf244c77af2787a6d1295eabf60ce',
+    'JA02': 'bf72e8d50bdd66f5306a18198689199cd5cbdbc9cb0a95db551dee4f36862f4d',
+}
+
+def component_dependency_gates(work, gm):
+    overrides = work.get('dependency_gate_overrides', {})
+    expected = COMPONENT_GATE_OVERRIDES.get(work['id'], {})
+    require(isinstance(overrides, dict) and overrides == expected,
+            work['id'] + ': unregistered component dependency override')
+    for producer, gate in overrides.items():
+        require(producer in work['depends_on'] and gate in gm
+                and gm[gate]['owner_work_item'] == producer,
+                work['id'] + ': component override producer mismatch')
+    return {overrides.get(dep, dep + '.scoped') for dep in work['depends_on']}
+
+def validate_gate_layers(data, wm, gm, cases, closure):
+    case_map = {case['id']: case for case in cases}
+    for cid, expected in PROTECTED_HOST_CASE_DIGESTS.items():
+        require(cid in case_map, cid + ': protected host case missing')
+        case = case_map[cid]
+        require(all(field in case for field in PROTECTED_HOST_CASE_FIELDS), cid + ': protected host field missing')
+        actual = sha(json.dumps({field: case[field] for field in PROTECTED_HOST_CASE_FIELDS},
+                                sort_keys=True, ensure_ascii=False).encode())
+        require(actual == expected, cid + ': protected host semantics changed')
+    component_cases = {'J01.contracts': ['JA59', 'JA70'], 'J08.admission_boundary': ['JA02']}
+    for gid, owner, stage in [('J01.contracts', 'J01', 'component_contract_acceptance'),
+                              ('J08.admission_boundary', 'J08', 'real_host_non_effecting_admission_boundary')]:
+        require(gid in gm and gm[gid]['owner_work_item'] == owner and gm[gid]['stage'] == stage,
+                gid + ': component gate owner/stage mismatch')
+    require(gm['J01.contracts']['requires'] == []
+            and gm['J08.admission_boundary']['requires'] == ['J01.contracts'], 'component producer prerequisites changed')
+    require({'J01.contracts', 'J08.admission_boundary'} <= set(gm['J01.scoped']['requires']),
+            'J01 host acceptance lacks real admission boundary')
+    require('J01.scoped' in gm['J08.scoped']['requires'], 'trial precedes J01 host acceptance')
+    for gate in gm.values():
+        required = gate.get('joint_case_requirements', [])
+        require(isinstance(required, list) and all(isinstance(cid, str) for cid in required)
+                and len(required) == len(set(required)) and set(required) <= set(case_map),
+                gate['id'] + ': unknown/duplicate joint case requirement')
+        expected = component_cases.get(gate['id'])
+        if gate['id'] == gate['owner_work_item'] + '.scoped':
+            expected = wm[gate['owner_work_item']]['acceptance_ids']
+        if expected is not None:
+            require(set(required) == set(expected), gate['id'] + ': joint case coverage drift')
+        else:
+            require(not required, gate['id'] + ': unregistered joint case consumer')
+    require(case_map['JA70']['owner_work_item'] == 'J01' and case_map['JA70']['layer'] == 'contract',
+            'component case misclassified as host acceptance')
+    for target in ('J27.scoped', 'J27.default_enable', 'J27.full_original_completion'):
+        require('J01.scoped' in closure(target), target + ': release bypasses J01 host acceptance')
+    boundary_slices = wm['J08'].get('component_slices', [])
+    require(len(boundary_slices) == 1 and boundary_slices[0]['gate'] == 'J08.admission_boundary'
+            and boundary_slices[0]['requires'] == ['J01.contracts']
+            and boundary_slices[0]['case_producer_for'] == ['JA02']
+            and boundary_slices[0]['case_owner_work_item'] == 'J01', 'admission boundary slice missing or mismatched')
+
 def validate_audit_additions(data, root, works, caps, cases):
     wm={x['id']:x for x in works}
     assertions={a['id']:a for c in caps for a in c['semantic_assertions']}
@@ -204,7 +265,8 @@ def validate_audit_additions(data, root, works, caps, cases):
         require(item['owner_work_item'] in wm and item['evidence_state']=='specified_not_run', 'gate overclaims evidence')
     gm={x['id']:x for x in g['gates']}
     for w in works:
-        require({d+'.scoped' for d in w['depends_on']}<=set(gm[w['id']+'.scoped']['requires']) or w['id']=='J25', f"{w['id']}: package dependency absent from stage gate")
+        required_dependencies = component_dependency_gates(w, gm)
+        require(required_dependencies <= set(gm[w['id']+'.scoped']['requires']) or w['id']=='J25', f"{w['id']}: package dependency absent from stage gate")
         require(w['pr']['key']=='JP-'+w['id'][1:],f"{w['id']}: PR key mismatch")
         if w.get('introduces_schema'):
             require({'packages/core/src/state/db.ts','packages/core/src/state/migrations.ts','packages/core/src/state/schema.ts'}<=set(w['write_paths']),f"{w['id']}: schema registration paths missing")
@@ -225,6 +287,7 @@ def validate_audit_additions(data, root, works, caps, cases):
         for dep in gm[id]['requires']:
             if dep not in found:found.add(dep);closure(dep,found)
         return found
+    validate_gate_layers(data, wm, gm, cases, closure)
     lg={r['id']:r for r in g['legacy_gate_map']}
     for row in g['legacy_gate_map']:
         require({lg[dep]['producer_gate'] for dep in row['original_requires']}<=closure(row['producer_gate']),f"{row['id']}: original producer closure missing")
@@ -317,7 +380,7 @@ def validate(data, root=ROOT, check_inputs=True):
     unique(fixtures, 'fixtures')
     require(cap_ids == {f'FM-{i:02}' for i in range(1,25)} | {f'PS{i:02}' for i in range(1,25)}, 'source capability set incomplete')
     require(work_ids == {f'J{i:02}' for i in range(1,33)}, 'joint milestone set incomplete')
-    require(case_ids == {f'JA{i:02}' for i in range(1,70)}, 'acceptance set incomplete')
+    require(case_ids == {f'JA{i:02}' for i in range(1,71)}, 'acceptance set incomplete')
     fm_snapshot = json.loads((root/'evidence/inputs/firstmate-work-packages.json').read_text())
     expected_legacy = {'FM:'+x['id'] for x in fm_snapshot['items']} | {'PS:W'+str(i).zfill(2) for i in range(1,20)}
     require(legacy_ids == expected_legacy, 'legacy task coverage incomplete')

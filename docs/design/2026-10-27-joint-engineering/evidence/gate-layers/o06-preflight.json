@@ -1,0 +1,118 @@
+{
+  "kind": "implementation_start_preflight_observation_not_gate_pass",
+  "main_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "observed_at": "2026-10-27T16:14:12.106868+00:00",
+  "scope": "N0 gate-layer design-only change",
+  "pr271_merge_sha": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+  "pr271_changed_paths": [
+    "README.md",
+    "README.zh.md",
+    "docs/design/2026-10-25-engineering-agent/README.md",
+    "docs/design/2026-10-25-engineering-agent/REGISTRY.md",
+    "docs/design/2026-10-25-engineering-agent/implementation-plan.md",
+    "docs/design/2026-10-26-firstmate-upgrade/README.md",
+    "docs/design/2026-10-26-firstmate-upgrade/audit-contracts.json",
+    "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+    "docs/design/2026-10-26-firstmate-upgrade/board-projection.json",
+    "docs/design/2026-10-26-firstmate-upgrade/board-receipt.md",
+    "docs/design/2026-10-26-firstmate-upgrade/capability-map.json",
+    "docs/design/2026-10-26-firstmate-upgrade/current-evidence.json",
+    "docs/design/2026-10-26-firstmate-upgrade/delivery-gates.json",
+    "docs/design/2026-10-26-firstmate-upgrade/review-snapshot.json",
+    "docs/design/2026-10-26-firstmate-upgrade/source-additions.json",
+    "docs/design/2026-10-26-firstmate-upgrade/test_validate_roadmap.py",
+    "docs/design/2026-10-26-firstmate-upgrade/validate-roadmap.py",
+    "docs/design/2026-10-26-firstmate-upgrade/validation.md",
+    "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/README.md",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/audit-metadata.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/final-host-verification.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/followup-board-receipt.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/followups.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/original-validator-after.log",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round1-input-manifest.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round1-request.txt",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round1.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round1.md",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round2-input-manifest.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round2-request.txt",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round2.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round2.md",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round3-input-manifest.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round3-request.txt",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round3.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round3.md",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round4-input-manifest.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round4-request.txt",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round4.json",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/round4.md",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/source-validation-final.log",
+    "docs/reports/2026-10-27-firstmate-roadmap-audit/validator-tests-final.log"
+  ],
+  "pr271_product_paths": [],
+  "consumed_inputs": [
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/capability-map.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-capabilities.json",
+      "archived_sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
+      "main_sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
+      "equal": true
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-work-packages.json",
+      "archived_sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "main_sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "equal": true
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/work-items.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-base-work-items.json",
+      "archived_sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "main_sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "equal": true
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/delivery-gates.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-delivery-gates.json",
+      "archived_sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff",
+      "main_sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff",
+      "equal": true
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/sources.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-sources.json",
+      "archived_sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327",
+      "main_sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327",
+      "equal": true
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/source-additions.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-source-additions.json",
+      "archived_sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
+      "main_sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
+      "equal": true
+    },
+    {
+      "path": "docs/reports/2026-10-27-firstmate-roadmap-audit/followups.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-audit-followups.json",
+      "archived_sha256": "783b7e7297e51ff86c14a9635ae95b79e5b0a744ef972f497ad74818c05c756f",
+      "main_sha256": "783b7e7297e51ff86c14a9635ae95b79e5b0a744ef972f497ad74818c05c756f",
+      "equal": true
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/pilot-scenarios.json",
+      "archived_path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-pilot-scenarios.json",
+      "archived_sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e",
+      "main_sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e",
+      "equal": true
+    }
+  ],
+  "interface_impact": "All eight archived Firstmate inputs match current main; PR271 changed only documentation. This slice changes planning and validation, not runtime product interfaces.",
+  "invalidation": "Recheck if main, a consumed interface, or this slice write scope changes. No durable global O06 resolution or runtime gate is asserted.",
+  "protected_paths": [
+    "execution-ledger.json",
+    "execution.md",
+    "project-operations.md"
+  ]
+}
