@@ -1,7 +1,7 @@
 /** J02a: single-source evidence only. No registry admission or dependency closure. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { z } from 'zod';
@@ -19,7 +19,7 @@ const Input = z.object({
   expectedContentSha256: Hex.optional(),
 }).strict();
 export type GitSourceOptions = z.infer<typeof Input>;
-export type SourceInspectionErrorCode = 'INVALID_INPUT' | 'UNSUPPORTED_GIT' | 'PARTIAL_STORE' | 'ALTERNATE_STORE' | 'UNSAFE_ENTRY' | 'RESOURCE_LIMIT' | 'SOURCE_TIMEOUT' | 'OBJECT_UNAVAILABLE' | 'OBJECT_MISMATCH' | 'CONTENT_DRIFT';
+export type SourceInspectionErrorCode = 'INVALID_INPUT' | 'UNSUPPORTED_GIT' | 'PARTIAL_STORE' | 'ALTERNATE_STORE' | 'UNSAFE_ENTRY' | 'RESOURCE_LIMIT' | 'SOURCE_TIMEOUT' | 'OBJECT_UNAVAILABLE' | 'OBJECT_MISMATCH' | 'CONTENT_DRIFT' | 'INTERNAL';
 export class SourceInspectionError extends Error {
   readonly retryable: boolean;
   constructor(readonly code: SourceInspectionErrorCode) {
@@ -54,7 +54,8 @@ export interface GitSourceInspection {
 export function inspectGitSource(options: GitSourceOptions): GitSourceInspection {
   try { return inspect(options); } catch (error) {
     if (error instanceof SourceInspectionError) throw error;
-    return fail('OBJECT_UNAVAILABLE');
+    if (error instanceof Error && 'code' in error) return fail('OBJECT_UNAVAILABLE');
+    return fail('INTERNAL');
   }
 }
 function inspect(options: GitSourceOptions): GitSourceInspection {
@@ -81,7 +82,7 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
     try {
       return execFileSync(binary, ['--no-pager', '--no-optional-locks', '-c', 'protocol.allow=never', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
         ...(gitDir ? ['--git-dir', gitDir] : ['-C', repo]), ...args],
-        { env, timeout: Math.max(1, Math.min(5000, Math.floor(left))), maxBuffer, stdio: ['ignore', 'pipe', 'pipe'] });
+        { env, cwd: gitDir ?? repo, killSignal: 'SIGKILL', timeout: Math.max(1, Math.min(5000, Math.floor(left))), maxBuffer, stdio: ['ignore', 'pipe', 'ignore'] });
     } catch (error) {
       const e = error as { code?: string; status?: number; stdout?: Buffer };
       if (allowMissingConfig && e.status === 1 && e.stdout?.length === 0) return Buffer.alloc(0);
@@ -99,7 +100,7 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
   if (git(['config', '--includes', '--get-regexp', '^(extensions.partialclone|remote..*.promisor)$'], 65536, true).length) return fail('PARTIAL_STORE');
   const objects = utf8(git(['rev-parse', '--path-format=absolute', '--git-path', 'objects'], 4096)).trim();
   for (const file of ['alternates', 'http-alternates']) {
-    const p = join(objects, 'info', file); if (existsSync(p) && readFileSync(p).length) return fail('ALTERNATE_STORE');
+    const p = join(objects, 'info', file); if (existsSync(p) && statSync(p).size) return fail('ALTERNATE_STORE');
   }
   const pack = join(objects, 'pack');
   if (existsSync(pack) && readdirSync(pack).some(p => p.endsWith('.promisor'))) return fail('PARTIAL_STORE');
@@ -129,7 +130,7 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
     const match = entry.slice(0, tab).match(/^(100644|100755) blob ([a-f0-9]+)$/);
     if (!match || !pathSafe(path) || match[2]?.length !== o.commit.length) return fail('UNSAFE_ENTRY');
     selected.push({ path, mode: match[1] as '100644' | '100755', blob: match[2] });
-    if (inside) sourceCount++;
+    if (inside && !licenses.has(path)) sourceCount++;
     if (selected.length > FILE_LIMIT) return fail('RESOURCE_LIMIT');
   }
   if (!sourceCount || o.licensePaths.some(p => !selected.some(f => f.path === p))) return fail('OBJECT_UNAVAILABLE');

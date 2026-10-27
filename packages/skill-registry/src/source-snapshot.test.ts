@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createScratchDir } from '@osstack/core';
 import { inspectGitSource } from './source-snapshot.js';
@@ -158,9 +158,36 @@ print('verified')`], { input: JSON.stringify(a), encoding: 'utf8' });
     const { root, options } = await fixture(); const stub = join(root, 'git-stub');
     writeFileSync(stub, `#!${process.execPath}\nconsole.log('git version 2.47.9');\n`, { mode: 0o755 });
     expect(() => inspectGitSource({ ...options, gitBinary: stub })).toThrow('UNSUPPORTED_GIT');
-    writeFileSync(stub, `#!${process.execPath}\nsetTimeout(() => {}, 15000);\n`);
+    writeFileSync(stub, `#!${process.execPath}\nprocess.on('SIGTERM', () => {}); setTimeout(() => {}, 15000);\n`);
     try { inspectGitSource({ ...options, gitBinary: stub }); throw new Error('timeout not enforced'); }
     catch (e) { expect(e).toMatchObject({ code: 'SOURCE_TIMEOUT', retryable: true }); }
   }, 15000);
+
+  it('accepts a bare clone with identical evidence and rejects redirected gitfiles and git-dir symlinks', async () => {
+    const { root, options } = await fixture(); const before = inspectGitSource(options);
+    const bare = await createScratchDir('tests', 'source-bare'); roots.push(bare);
+    execFileSync(gitBinary, ['clone', '--bare', '--no-hardlinks', root, bare], { stdio: 'pipe' });
+    expect(inspectGitSource({ ...options, repositoryPath: bare })).toEqual(before);
+    const redirected = join(root, 'redirected'); mkdirSync(redirected);
+    writeFileSync(join(redirected, '.git'), `gitdir: ${join(root, '.git')}\n`);
+    expect(() => inspectGitSource({ ...options, repositoryPath: redirected })).toThrow('INVALID_INPUT');
+    rmSync(join(redirected, '.git')); symlinkSync(join(root, '.git'), join(redirected, '.git'));
+    expect(() => inspectGitSource({ ...options, repositoryPath: redirected })).toThrow('INVALID_INPUT');
+  });
+  it('requires a non-license source and classifies long missing paths without stderr overflow', async () => {
+    const { root, options, git } = await fixture();
+    expect(() => inspectGitSource({ ...options, subdir: 'x'.repeat(200) })).toThrow('OBJECT_UNAVAILABLE');
+    git('rm', '-r', 'method'); mkdirSync(join(root, 'method')); writeFileSync(join(root, 'method/LICENSE'), 'license only');
+    git('add', '.'); git('commit', '-qm', 'license only');
+    expect(() => inspectGitSource({ ...options, commit: git('rev-parse', 'HEAD'), licensePaths: ['method/LICENSE'] })).toThrow('OBJECT_UNAVAILABLE');
+  });
+  it('successfully inspects exactly 512 files within the declared operation budget', async () => {
+    const { root, options, git } = await fixture(); const blob = git('rev-parse', 'HEAD:LICENSE');
+    execFileSync(gitBinary, ['-C', root, 'update-index', '--index-info'], { input: Array.from({ length: 509 }, (_, i) => `100644 ${blob}\tmethod/f${i}\n`).join('') });
+    git('commit', '-qm', '512 files');
+    const start = performance.now();
+    expect(inspectGitSource({ ...options, commit: git('rev-parse', 'HEAD') }).files).toHaveLength(512);
+    console.info('512-file inspection elapsed_ms=' + Math.round(performance.now() - start));
+  }, 45000);
 
 });
