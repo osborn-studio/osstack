@@ -5,37 +5,62 @@
     {
       "id": "J01.scoped",
       "owner_work_item": "J01",
-      "requires": [],
+      "requires": [
+        "J01.contracts",
+        "J08.admission_boundary"
+      ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA01",
+        "JA02",
+        "JA59",
+        "JA70"
+      ]
     },
     {
       "id": "J02.scoped",
       "owner_work_item": "J02",
       "requires": [
-        "J01.scoped"
+        "J01.contracts"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA03",
+        "JA04"
+      ]
     },
     {
       "id": "J03.scoped",
       "owner_work_item": "J03",
       "requires": [
-        "J01.scoped"
+        "J01.contracts"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA05",
+        "JA06",
+        "JA44"
+      ]
     },
     {
       "id": "J04.scoped",
       "owner_work_item": "J04",
       "requires": [
-        "J01.scoped",
+        "J01.contracts",
         "J02.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA07",
+        "JA08",
+        "JA09",
+        "JA46",
+        "JA53"
+      ]
     },
     {
       "id": "J05.scoped",
@@ -52,7 +77,11 @@
           "continue",
           "shrink"
         ]
-      }
+      },
+      "joint_case_requirements": [
+        "JA10",
+        "JA11"
+      ]
     },
     {
       "id": "J06.scoped",
@@ -61,7 +90,11 @@
         "J03.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA12",
+        "JA13"
+      ]
     },
     {
       "id": "J07.scoped",
@@ -71,7 +104,14 @@
         "J05.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA14",
+        "JA15",
+        "JA45",
+        "JA50",
+        "JA68"
+      ]
     },
     {
       "id": "J08.scoped",
@@ -80,10 +120,17 @@
         "J03.scoped",
         "J07.scoped",
         "J12.scoped",
-        "J08.recovery"
+        "J08.recovery",
+        "J01.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA16",
+        "JA17",
+        "JA49",
+        "JA61"
+      ]
     },
     {
       "id": "J09.scoped",
@@ -92,7 +139,10 @@
         "J08.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA18"
+      ]
     },
     {
       "id": "J10.scoped",
@@ -112,16 +162,23 @@
           "continue",
           "safety_only"
         ]
-      }
+      },
+      "joint_case_requirements": [
+        "JA19"
+      ]
     },
     {
       "id": "J11.scoped",
       "owner_work_item": "J11",
       "requires": [
-        "J01.scoped"
+        "J01.contracts"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA20",
+        "JA47"
+      ]
     },
     {
       "id": "J12.scoped",
@@ -131,7 +188,12 @@
         "J12.bootstrap_preflight"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA21",
+        "JA51",
+        "JA52"
+      ]
     },
     {
       "id": "J13.scoped",
@@ -141,7 +203,11 @@
         "J13.recovery"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA22",
+        "JA23"
+      ]
     },
     {
       "id": "J14.scoped",
@@ -152,7 +218,10 @@
         "J23.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA24"
+      ]
     },
     {
       "id": "J15.scoped",
@@ -162,7 +231,12 @@
         "J06.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA25",
+        "JA63",
+        "JA67"
+      ]
     },
     {
       "id": "J16.scoped",
@@ -175,7 +249,11 @@
         "J23.harness"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA26",
+        "JA27"
+      ]
     },
     {
       "id": "J17.scoped",
@@ -186,7 +264,10 @@
         "J17.recovery"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA28"
+      ]
     },
     {
       "id": "J18.scoped",
@@ -197,7 +278,10 @@
         "J16.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA29"
+      ]
     },
     {
       "id": "J19.scoped",
@@ -207,7 +291,11 @@
         "J15.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA30",
+        "JA69"
+      ]
     },
     {
       "id": "J20.scoped",
@@ -216,7 +304,13 @@
         "J15.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA31",
+        "JA54",
+        "JA55",
+        "JA64"
+      ]
     },
     {
       "id": "J21.scoped",
@@ -227,7 +321,11 @@
         "J21.recovery"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA32",
+        "JA65"
+      ]
     },
     {
       "id": "J22.scoped",
@@ -238,7 +336,11 @@
         "J22.recovery"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA33",
+        "JA48"
+      ]
     },
     {
       "id": "J23.scoped",
@@ -248,7 +350,10 @@
         "J03.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA34"
+      ]
     },
     {
       "id": "J24.scoped",
@@ -258,7 +363,10 @@
         "J20.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA35"
+      ]
     },
     {
       "id": "J25.scoped",
@@ -267,7 +375,12 @@
         "J25.e1"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA36",
+        "JA58",
+        "JA62"
+      ]
     },
     {
       "id": "J26.scoped",
@@ -277,7 +390,11 @@
         "J02.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA37",
+        "JA60"
+      ]
     },
     {
       "id": "J27.scoped",
@@ -415,6 +532,10 @@
         "PS:A46",
         "PS:A47",
         "PS:A48"
+      ],
+      "joint_case_requirements": [
+        "JA38",
+        "JA66"
       ]
     },
     {
@@ -424,7 +545,10 @@
         "J11.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA39"
+      ]
     },
     {
       "id": "J29.scoped",
@@ -433,7 +557,10 @@
         "J25.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA40"
+      ]
     },
     {
       "id": "J30.scoped",
@@ -443,7 +570,11 @@
         "J16.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA41",
+        "JA57"
+      ]
     },
     {
       "id": "J31.scoped",
@@ -453,7 +584,11 @@
         "J07.scoped"
       ],
       "stage": "scoped_acceptance",
-      "evidence_state": "specified_not_run"
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA42",
+        "JA56"
+      ]
     },
     {
       "id": "J32.scoped",
@@ -468,6 +603,9 @@
         "continue",
         "inconclusive",
         "stop"
+      ],
+      "joint_case_requirements": [
+        "JA43"
       ]
     },
     {
@@ -1694,6 +1832,29 @@
       ],
       "stage": "all_original_capabilities_and_cases",
       "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J01.contracts",
+      "owner_work_item": "J01",
+      "requires": [],
+      "stage": "component_contract_acceptance",
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA59",
+        "JA70"
+      ]
+    },
+    {
+      "id": "J08.admission_boundary",
+      "owner_work_item": "J08",
+      "requires": [
+        "J01.contracts"
+      ],
+      "stage": "real_host_non_effecting_admission_boundary",
+      "evidence_state": "specified_not_run",
+      "joint_case_requirements": [
+        "JA02"
+      ]
     }
   ],
   "legacy_gate_map": [
@@ -2171,5 +2332,6 @@
     "PS:A30",
     "PS:A31",
     "PS:A32"
-  ]
+  ],
+  "joint_case_evidence_rule": "joint_case_requirements names joint acceptance cases, separately from legacy case_requirements. Each required case needs independently frozen oracle and passing exact-candidate/support-cell evidence; planned rows and component structure checks grant no runtime authority. All rows here remain specified_not_run."
 }

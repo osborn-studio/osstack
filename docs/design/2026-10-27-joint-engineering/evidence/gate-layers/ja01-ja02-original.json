@@ -1,0 +1,89 @@
+{
+  "source_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "cases": [
+    {
+      "id": "JA01",
+      "owner_work_item": "J01",
+      "title": "完成层级不可替代",
+      "given": "Session 已观察回复，task 没有 checks/review",
+      "when": "请求 task local_verified",
+      "then": "拒绝完成；保留 observed_turn",
+      "bad_variant": "将 observed_turn 直接映射为 task done",
+      "oracle": "读取 task 与 session 独立记录",
+      "required_evidence": [
+        "JA01: Session 已观察回复，task 没有 checks/review",
+        "JA01: 读取 task 与 session 独立记录",
+        "JA01: bad variant trace — 将 observed_turn 直接映射为 task done"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-13",
+        "PS17"
+      ],
+      "asserts": [
+        "FM-13:observable",
+        "PS17:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "contract-owner",
+        "observation_boundary": "读取 task 与 session 独立记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA02",
+      "owner_work_item": "J01",
+      "title": "任务授权绑定",
+      "given": "proposal 仓库 A，授权仓库 B",
+      "when": "提交 admission",
+      "then": "拒绝且执行器调用数为零",
+      "bad_variant": "移除 repo/scope 比对",
+      "oracle": "adapter spy + admission error",
+      "required_evidence": [
+        "JA02: proposal 仓库 A，授权仓库 B",
+        "JA02: adapter spy + admission error",
+        "JA02: bad variant trace — 移除 repo/scope 比对"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS03",
+        "FM-12"
+      ],
+      "asserts": [
+        "PS03:observable",
+        "FM-12:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "contract-owner",
+        "observation_boundary": "adapter spy + admission error",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    }
+  ]
+}

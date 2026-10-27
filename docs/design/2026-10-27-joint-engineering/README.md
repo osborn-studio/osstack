@@ -29,7 +29,7 @@
 | [contract.schema.json](contract.schema.json) / [fixtures](fixtures) | 拟议运行时边界的严格 schema 与固定正负例；未被产品加载 |
 | [baseline.json](baseline.json) / [sources.json](sources.json) | 固定版本、观察状态、来源 hash 和检查范围 |
 | [claude-audit.md](claude-audit.md) / [closeout-specifications.md](closeout-specifications.md) | Claude审计原文索引、47条处置、复审修订与未来实施条件 |
-| [execution-gates.json](execution-gates.json) / [legacy-case-map.json](legacy-case-map.json) | 124个阶段节点、114原场景、发布与逐迁移证据要求 |
+| [execution-gates.json](execution-gates.json) / [legacy-case-map.json](legacy-case-map.json) | 126个阶段节点、114原场景、发布与逐迁移证据要求 |
 | [digest-catalog.json](digest-catalog.json) / [artifact-catalog.json](artifact-catalog.json) | 摘要输入/域与方法材料分类 |
 | [validation.md](validation.md) | 本轮真正执行的验证及明确未执行的产品验收 |
 
@@ -76,3 +76,5 @@ python3 docs/design/2026-10-27-joint-engineering/test_validate_design.py
 当前实现：#273 共享契约、#274 J11 恢复规格、#281 J02a 来源检查、#276 原始 R02 评估器及 #278 Session 清理均已合并。#282 补齐 #276 合并时尚未进入该旧候选的审计修复；#279 基于合并后的 main 收口终态保护。#274/#281 当时分别完成 6,174 / 6,194 项通过，各 5 项跳过、零失败；这些历史数字不代替新候选验证。当前 PR 状态、精确候选、CI 观察与用户审批义务以 [账本](execution-ledger.json) 为准。
 
 本批 [J11 复验记录](evidence/joint-execution/successors-retarget/recovery/README.md) 和 [J02a 复验记录](evidence/joint-execution/successors-retarget/source/README.md) 保留范围、修订与完整审计入口。J02b 来源认证/闭包/分型注册、J12 真实恢复均未因此完成，也没有启用运行时能力。当前待交付批次为 #282 / #279，后续按 [项目推进规则](project-operations.md) 的真实阶段门槛滚动推进。
+
+组件阶段修订见 [gate-layers.md](gate-layers.md)：新增组件/真实主机分层，JA01/JA02与原发布义务不变，所有新gate与case仍未执行。

@@ -37,4 +37,8 @@
 | J31 / JP-31 | 清理前保全与应用回执修复 | J12, J07 / 无 | state-owner | JA42, JA56 |
 | J32 / JP-32 | 联合四组对照与冷用户验收 | J16, J25 / 无 | evaluation-owner | JA43 |
 
-J27 scoped只表示local opt-in；default-enable另要求J32。124个阶段节点包含原full gate wrapper和逐迁移门槛，不能把32个工作包直接视作32个一次性PR。
+J27 scoped只表示local opt-in；default-enable另要求J32。126个阶段节点包含原full gate wrapper和逐迁移门槛，不能把32个工作包直接视作32个一次性PR。
+
+## 组件依赖层
+
+[组件/主机分层](gate-layers.md) 为 J02/J03/J04/J11 显式选择 J01.contracts；表中工作包 J01 依赖保留。J01.scoped 仍要求原 JA01/JA02 真实主机行为，J08完整trial新增该前置；两个新gate不代表已执行。J01新增JA70组件负例，J08拆出无副作用的真实host admission边界。
