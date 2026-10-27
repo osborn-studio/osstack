@@ -380,6 +380,7 @@ it.each(["confirmed", "unconfirmed", "throws"] as const)(
       sessionId = session.session_id;
       expect(session).toMatchObject({ state: "failed", version: 2 });
       expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+      expect(db.prepare("SELECT status FROM kanban_cards WHERE card_id = ?").get(`card_${session.run_id}`)).toEqual({ status: "blocked" });
       expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(sessionId)).toEqual({ count: 0 });
     } finally { db.close(); }
     expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
@@ -477,7 +478,6 @@ it.each(["start", "send"] as const)("releases a completed built-in Codex %s with
       title: "Normal Codex completion", prompt: "Start once" })
     : await rpc("session.send", { ...request, runtime_id: registered.id });
   expect(response).toMatchObject({ ok: true, result: { state: route === "start" ? "idle" : "applied" } });
-  expect(adapter.stopChecks).toEqual([]);
   expect(cleanupAttempts).toBe(1);
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
     drained: true, active_runs: 0, execution_lease_holds: 0,
@@ -496,6 +496,22 @@ it.each([
   expect(response).toMatchObject({ ok: false, error: { code: "agent_failed" } });
   expect(adapter.stopChecks).toHaveLength(1);
   expect(cleanupAttempts).toBe(0);
+  if (route === "start") {
+    const db = openDb({ path: daemon!.dbPath });
+    try {
+      const session = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+        .get() as { session_id: string; run_id: string; state: string; version: number };
+      expect(session).toMatchObject({ state: "failed", version: 2 });
+      expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+      expect(db.prepare("SELECT status FROM kanban_cards WHERE card_id = ?").get(`card_${session.run_id}`)).toEqual({ status: "blocked" });
+      expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(session.session_id)).toEqual({ count: 0 });
+    } finally { db.close(); }
+  } else {
+    const state = persisted();
+    expect(state.message).toMatchObject({ state: "failed", applied_at: null });
+    expect(state.snapshot).toMatchObject({ turn_id: "turn", version: 2 });
+    expect(state.turns).toBe(1);
+  }
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
     drained: false, active_runs: 0, execution_lease_holds: 1,
   } });
@@ -528,5 +544,28 @@ it.each([
   }
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
     drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+});
+
+
+it("releases completed invocation even when missing native id makes Session start fail", async () => {
+  await fixture({ failCleanup: false });
+  adapter.failStop = true;
+  vi.spyOn(adapter, "startSession").mockImplementation(async function* () {
+    yield { type: "session.terminal", state: "completed" };
+  });
+  expect(await rpc("session.start", { request_id: "completed-without-native-id", agent_id: adapter.id,
+    repo_path: join(realpathSync(root!), "repo"), title: "Missing native id", prompt: "Start once" }))
+    .toMatchObject({ ok: false, error: { code: "agent_failed" } });
+  expect(adapter.stopChecks).toEqual([]);
+  expect(cleanupAttempts).toBe(1);
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    expect(db.prepare("SELECT state,native_session_id FROM agent_sessions WHERE session_id != 'session'").get())
+      .toEqual({ state: "failed", native_session_id: null });
+    expect(db.prepare("SELECT count(*) AS count FROM session_turns").get()).toEqual({ count: 1 });
+  } finally { db.close(); }
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: true, active_runs: 0, execution_lease_holds: 0,
   } });
 });
