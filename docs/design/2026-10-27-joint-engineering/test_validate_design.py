@@ -123,6 +123,19 @@ class DesignChecks(unittest.TestCase):
         self.assertEqual(summary['legacy_cases_retained'], 114)
         self.assertEqual(v.preflight_blockers(self.data, 'J02', 'implementation_start'), ['O06'])
 
+    def test_broker_enabled_text_cannot_expand_home_only_exception(self):
+        override = self.data['execution-gates.json']['local_override']
+        override['forbidden_when'] = ''
+        override['consumer_override'] = 'home-only gate qualifies broker-enabled full legacy recovery'
+        with self.assertRaisesRegex(ValueError, 'JADR12 home-only exception semantics changed'):
+            v.validate(self.data)
+
+    def test_home_only_exception_cannot_drop_full_legacy_retention(self):
+        override = self.data['execution-gates.json']['local_override']
+        override['derived_local_gates'] = []
+        with self.assertRaisesRegex(ValueError, 'JADR12 home-only exception semantics changed'):
+            v.validate(self.data)
+
     def test_missing_capability(self):
         self.rejects(lambda d:d['capability-map.json']['capabilities'].pop())
 

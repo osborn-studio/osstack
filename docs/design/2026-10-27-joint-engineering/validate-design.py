@@ -315,6 +315,9 @@ def validate_audit_additions(data, root, works, caps, cases):
     require(g['oracle_policy']['independent_principals'] and g['oracle_policy']['freeze_before']=='candidate_created_at_ms','oracle execution gate weak')
     require(g['legacy_release_requirements']==oldg['release_requirements'], 'inherited release gate lost')
     require(g['local_override']['decision']=='JADR12' and g['local_override']['scope']=='local_without_broker', 'unscoped recovery gate relaxation')
+    # Preserve the complete existing JADR12 exception, including its broker prohibition.
+    require(sha(json.dumps(g['local_override'], sort_keys=True, ensure_ascii=False).encode())
+            == '4440b3481a0047923f36d4af8dc08434b85816bfa43e77f7bdd3ff8233629200', 'JADR12 home-only exception semantics changed')
     unknowns=data['unknowns.json']['items'];require(unique(unknowns,'unknowns')=={f'O{i:02}' for i in range(1,7)}, 'unknown coverage incomplete')
     for u in unknowns:
         require(u['status']=='open' and not u['evidence_refs'], 'unresolved unknown marked resolved without execution')
