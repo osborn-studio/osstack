@@ -6,6 +6,9 @@
 export * as protocol from "@osstack/protocol";
 
 export * from "./capability.js";
+export { loadBehaviorRegistry } from "./behavior-registry.js";
+export type { BehaviorRegistryInput, BehaviorRegistryTrust, BehaviorRegistryPolicy,
+  BehaviorRegistryEntry, BehaviorRegistrySnapshot } from "./behavior-registry.js";
 export * from "./state/index.js";
 export * from "./state/protocol-mappers.js";
 export * from "./privacy/index.js";
