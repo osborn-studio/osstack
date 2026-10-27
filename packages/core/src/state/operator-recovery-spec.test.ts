@@ -350,18 +350,19 @@ function compositionGraph(): Gate[] {
     {id:'fixture:broker-spec',requires:material});
   gates.find(g=>g.id==='J11.scoped')!.requires.push('fixture:home-spec','fixture:broker-spec');return gates;
 }
-function validateProducerGraph(gates: Gate[]): string[] {
+type BrokerDependencies = {schema_qualification_requires:string[];recovery_qualification_requires:string[];runtime_storage_requires:string[];recovery_requires_runtime_controller:boolean};
+function validateProducerGraph(gates: Gate[], dependencies:BrokerDependencies=composedBrokerSpec.dependencies): string[] {
   const order=producerOrder(gates);const graph=new Map(gates.map(g=>[g.id,g.requires]));
   const activation=new Set(['J13.scoped','J14.scoped','J17.scoped']);
   const walk=(id:string,path:string[]):void=>{
     if(activation.has(id))throw Error('RECOVERY_REQUIRES_ACTIVATION: '+[...path,id].join(' -> '));
     for(const dep of graph.get(id)??[])walk(dep,[...path,id]);
   };
-  for(const recovery of ['J12.bootstrap_preflight','J12.scoped','J17.schema_spec','J17.recovery'])walk(recovery,[]);
+  for(const recovery of ['J12.bootstrap_preflight','J12.scoped','J12.full_recovery','J17.schema_spec','J17.recovery','legacy:C03.schema_spec','legacy:X03.schema_spec','legacy:I04.recovery_home','legacy:I04.recovery_broker','legacy:I04.compat_recovery'])walk(recovery,[]);
   for(const [id,dependency] of requiredProducerEdges)if(!graph.get(id)?.includes(dependency))throw Error('MISSING_PRODUCER_EDGE: '+id+' -> '+dependency);
   const mapping=[['J17.schema_spec','schema_qualification_requires'],['J17.recovery','recovery_qualification_requires'],['J17.scoped','runtime_storage_requires']] as const;
-  for(const [id,key] of mapping)if(canonicalJointJson(graph.get(id))!==canonicalJointJson(composedBrokerSpec.dependencies[key]))throw Error('BROKER_MANIFEST_DEPENDENCY_MISMATCH: '+id);
-  if(composedBrokerSpec.dependencies.recovery_requires_runtime_controller!==false)throw Error('BROKER_RECOVERY_REQUIRES_CONTROLLER');
+  for(const [id,key] of mapping)if(canonicalJointJson([...(graph.get(id)??[])].sort())!==canonicalJointJson([...dependencies[key]].sort()))throw Error('BROKER_MANIFEST_DEPENDENCY_MISMATCH: '+id);
+  if(dependencies.recovery_requires_runtime_controller!==false)throw Error('BROKER_RECOVERY_REQUIRES_CONTROLLER');
   return order;
 }
 function brokerFixture(): Database.Database {
@@ -444,10 +445,23 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
     gate.requires=gate.requires.filter(dep=>dep!==to);expect(()=>producerOrder(graph)).not.toThrow();
     expect(()=>validateProducerGraph(graph)).toThrow('MISSING_PRODUCER_EDGE: '+from+' -> '+to);
   });
-  it('rejects an acyclic recovery dependency on start admission', () => {
-    const graph=compositionGraph();graph.find(g=>g.id==='J17.recovery')!.requires.push('J14.scoped');
+  it.each(['J17.recovery','legacy:I04.recovery_home','legacy:I04.recovery_broker','legacy:I04.compat_recovery'])('rejects an acyclic %s dependency on start admission', recovery => {
+    const graph=compositionGraph();graph.find(g=>g.id===recovery)!.requires.push('J14.scoped');
     expect(()=>producerOrder(graph)).not.toThrow();
-    expect(()=>validateProducerGraph(graph)).toThrow('RECOVERY_REQUIRES_ACTIVATION: J17.recovery -> J14.scoped');
+    expect(()=>validateProducerGraph(graph)).toThrow('RECOVERY_REQUIRES_ACTIVATION:');
+    expect(()=>validateProducerGraph(graph)).toThrow(recovery+' -> J14.scoped');
+  });
+  it('rejects a missing runtime manifest prerequisite and a recovery-controller requirement', () => {
+    const graph=compositionGraph();const storage=graph.find(g=>g.id==='J17.scoped')!;
+    storage.requires=storage.requires.filter(id=>id!=='J12.scoped');
+    expect(()=>producerOrder(graph)).not.toThrow();expect(()=>validateProducerGraph(graph)).toThrow('BROKER_MANIFEST_DEPENDENCY_MISMATCH: J17.scoped');
+    const dependencies=structuredClone(composedBrokerSpec.dependencies) as BrokerDependencies;
+    dependencies.recovery_requires_runtime_controller=true;
+    expect(()=>validateProducerGraph(compositionGraph(),dependencies)).toThrow('BROKER_RECOVERY_REQUIRES_CONTROLLER');
+  });
+  it('compares manifest prerequisite sets independently of list ordering', () => {
+    const graph=compositionGraph();for(const g of graph)g.requires.reverse();
+    expect(()=>validateProducerGraph(graph)).not.toThrow();
   });
   it('pins the receipt required-field matrix cardinality independently of generated cases', () => {
     expect(receiptShape.required).toHaveLength(27);expect(new Set(receiptShape.required).size).toBe(27);
@@ -489,14 +503,16 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
       const subject={...r.subject};if(bad==='home')subject.home_id='other';if(bad==='mission')subject.mission_id='other';if(bad==='action')subject.action_id='other';if(bad==='message')subject.message_id='other';
       r=RecoveryReceipt.parse({...r,subject,target_home_id:subject.home_id,subject_digest:recoverySubjectDigest(subject),...(bad==='scope'?{scope_id:'other'}:{}),...(bad==='phase'?{prior_phase:'reserved'}:{}),...(bad==='resolution'?{prior_resolution:'none'}:{}),...(bad==='owner'?{owner_generation:8}:{}),...(bad==='tenant'?{tenant_id:'other'}:{})});
       // Protocol consistency alone accepts this adversarial input; actual rows/context reject it.
-      expect(()=>persistHomeExample(home,r)).toThrow(/MISMATCH/);expect(legacy(home)).toEqual(before);
+      expect(()=>persistHomeExample(home,r)).toThrow(bad==='owner'||bad==='tenant'?'SYNTHETIC_MAINTENANCE_CONTEXT_MISMATCH':'HOME_LIVE_SUBJECT_MISMATCH');expect(legacy(home)).toEqual(before);
       expect(home.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:0});
     }finally{home.close();}
   });
-  it.each(['session','mission_scope','wait_state','action_message'])('rejects FK-valid live-row %s cross-wiring before the shared illustrative write', mutation => {
+  it.each(['session','mission_scope','action_scope','wait_state','action_message'])('rejects FK-valid live-row %s cross-wiring before the shared illustrative write', mutation => {
     const home=fixture();try{home.exec(ddl);
+      expect(()=>homeAttentionFacts(home,composedReceipt('attention_action',false))).not.toThrow();
       if(mutation==='session')home.exec("INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,state,resume_supported,version,updated_at,repo_path) SELECT 's2',task_id,run_id,agent_id,request_sha256,state,resume_supported,version,updated_at,repo_path FROM agent_sessions WHERE session_id='s'; UPDATE engineering_missions SET session_id='s2' WHERE mission_id='mission'");
       if(mutation==='mission_scope')home.exec("INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES('scope2','t','/fixture2',1); UPDATE engineering_missions SET scope_id='scope2' WHERE mission_id='mission'");
+      if(mutation==='action_scope')home.exec("INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES('scope2','t','/fixture2',1); UPDATE attention_actions SET scope_id='scope2' WHERE action_id='action'");
       if(mutation==='wait_state')home.exec("UPDATE engineering_waits SET state='cleared' WHERE wait_id='wait'");
       if(mutation==='action_message')home.exec("INSERT INTO session_messages SELECT 'msg2',session_id,turn_id,direction,kind,payload_json,state,created_at,applied_at FROM session_messages WHERE message_id='msg'; UPDATE attention_actions SET message_id='msg2' WHERE action_id='action'");
       expect(home.pragma('foreign_key_check')).toEqual([]);const before=legacy(home);
