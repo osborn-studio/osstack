@@ -1,0 +1,13 @@
+{
+  "candidate_sha": "380e2c618bd5060e2f556f5108fb229d169c932b",
+  "baseline_graph_exact_git_source": true,
+  "newly_inherits_E0": [],
+  "all_original_legacy_direct_safety_edges_preserved": true,
+  "legacy_case_requirements_unchanged": true,
+  "J05_original_E0_value_gate_preserved": true,
+  "unique_JP08a_paths": [
+    "packages/cli/src/method-host-admission.ts",
+    "packages/cli/src/method-host-admission.test.ts"
+  ],
+  "tracked_future_extensions_not_initial_prerequisites": true
+}

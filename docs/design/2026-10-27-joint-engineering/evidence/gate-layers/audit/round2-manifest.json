@@ -1,0 +1,17 @@
+{
+  "code_sha": "1b9d90987e8ba4290f521b60a68f7e62332a031a",
+  "base_sha": "b2d9c723c96ccc40ef48fb63e649239b69ab2c6e",
+  "files": {
+    "docs/design/2026-10-27-joint-engineering/gate-layers.md": "a364aae1b49b391a7ce641440169789b30f7d11806b9d071255345d5d326aeb5",
+    "docs/design/2026-10-27-joint-engineering/validate-design.py": "68adb251c3c1f29490cb8a42ab8a6ce6afe97d536b5c7ea2b10b742fee1a4986",
+    "docs/design/2026-10-27-joint-engineering/test_validate_design.py": "d10796400ca7c23df17c6fc582d797984553e0550237fdfc32960e2fbcaf8f48",
+    "docs/design/2026-10-27-joint-engineering/execution-gates.json": "0b8ed7da670a05c54eaf90480d0d7ce38f46794690a46827c3f066db0e174d19",
+    "docs/design/2026-10-27-joint-engineering/work-packages.json": "74d78e8028074350572079bfe9e3d039b965e720747bbcbd20a3e172007af677",
+    "docs/design/2026-10-27-joint-engineering/acceptance-cases.json": "606b4e894aa7d89af0e225cfc8d12859377c29c664733dfce03839c65eeb003b",
+    "docs/design/2026-10-27-joint-engineering/contracts.md": "44c0968e4ae336ab683cb28852bdf7d569037374c6be34674e00de9496b3b9c1",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/ja01-ja02-original.json": "d7740ae67078c478c32a6d7a36f997a7f16ae649d6391b699e4ee22512bd6fbb",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/component-case-specs.json": "e559ee91429e4908bfc6ec0278d20726c8f2b1023c2a83a5d1ec50e454cec73d",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/component-slice-specs.json": "761206b2d4a79ed10a0c32c1e9f89eed349d8f71137bd7a27d046d80ad81f97d",
+    "docs/design/2026-10-27-joint-engineering/evidence/gate-layers/transitive-impact.json": "88aeb0fdac98289c0e784d7caccb1fb232be1d70c93d4c94da41d472fae35296"
+  }
+}
