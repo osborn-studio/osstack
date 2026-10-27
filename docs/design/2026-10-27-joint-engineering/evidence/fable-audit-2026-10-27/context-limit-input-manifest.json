@@ -1,0 +1,1464 @@
+{
+  "created_at": "2026-10-27T03:52:59.368145+00:00",
+  "files": [
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/README.md",
+      "bytes": 5195,
+      "sha256": "90114de8be5a4750bdd7e5a8a1473f9d17eb79cf507d9e57b8b0903573cb6d09",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "bytes": 37983,
+      "sha256": "ec4eaebebb3bff98facb1d550c7f6386864081227ef7ef56934894123fa76106",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/architecture.md",
+      "bytes": 8473,
+      "sha256": "ef007165294537a955f3e3752ab26cd967245aad7340110d48d95ec37addd6ae",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/baseline.json",
+      "bytes": 5494,
+      "sha256": "7748ebdf99b013c8102dc176acae7d76422d66976f87063e66f64fe73d1bcf38",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/capability-index.md",
+      "bytes": 5292,
+      "sha256": "70518b240b78bf04aa959b9714bd99ea95ebac368b516fa8566953091e6ea058",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/capability-map.json",
+      "bytes": 55522,
+      "sha256": "32ba03b34da5d672229f696052bfeae30e4f771c447494d2818e0113e23bb5a7",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/contract.schema.json",
+      "bytes": 14189,
+      "sha256": "0bedf1aea47b7a08a97107df23be5192e019ecd08fad480cf99982104d2f739c",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/contracts.md",
+      "bytes": 13415,
+      "sha256": "b724f934818739067d6e9c7aee0ab5886c31608f47cf8646642463292f472d8d",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/implementation-plan.md",
+      "bytes": 8616,
+      "sha256": "99fd728f90e5f9ee3734203133130dcf286a084f1b29fbd997eae94db1831f2d",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/legacy-work-map.json",
+      "bytes": 23719,
+      "sha256": "bc18aa95637deffeb74fa8bf85985095e573b987446049f3022d6020eb2258a9",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/reconciliation.md",
+      "bytes": 6188,
+      "sha256": "25fd2d1b4abdef4ff8ff7507db6704aba21720c4777f134f78a7624433a1f43c",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/sources.json",
+      "bytes": 93619,
+      "sha256": "b8bad71927675319daa7573cd975882687d6ffa407bc08f2c4ebc25c23fba684",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/test_validate_design.py",
+      "bytes": 5542,
+      "sha256": "737bba5ed1fa55045d06c1d3946ccc4d6cf568941b2533fc71af0eda1c27cee6",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/validate-design.py",
+      "bytes": 13401,
+      "sha256": "c18f511d4509ab8ddf03cea77da73ec517f5e1c15d5eac6ca0c958cd594f67ba",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/validation.md",
+      "bytes": 3713,
+      "sha256": "59073bfc745c357443558f59b98414d04c1890e3aaa27ebe7590baa10b33aa97",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/verification-spec.md",
+      "bytes": 8076,
+      "sha256": "2d808164ea8d60e6f3a5e3f61a8044569edc09003fdf1507afd509874a2d370b",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/work-package-index.md",
+      "bytes": 3474,
+      "sha256": "db732a1410a17bae3dcac6422fbf15d9ca849c56cfba4c015e3803d3dac40f9f",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/work-packages.json",
+      "bytes": 51949,
+      "sha256": "9fcd78bbc3e84b1ca9ab9ca21e944142d1fa78cddc63b85424bbaaf44ebe72bf",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/fixtures/contracts.json",
+      "bytes": 23640,
+      "sha256": "55ea17c5e7fe625419c6111358efa8a34b0f9fddc0abc56cf0859d2e6090f3b0",
+      "kind": "current_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-audit-followups.json",
+      "bytes": 1951,
+      "sha256": "783b7e7297e51ff86c14a9635ae95b79e5b0a744ef972f497ad74818c05c756f",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-base-work-items.json",
+      "bytes": 12371,
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-capabilities.json",
+      "bytes": 16527,
+      "sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-delivery-gates.json",
+      "bytes": 10257,
+      "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-source-additions.json",
+      "bytes": 25888,
+      "sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-sources.json",
+      "bytes": 33440,
+      "sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-work-packages.json",
+      "bytes": 34375,
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-acceptance-cases.json",
+      "bytes": 24725,
+      "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-capability-map.json",
+      "bytes": 52944,
+      "sha256": "465371693560451eb70cee101cd20587e4f4f4d1bf10c43c10749c71448234b0",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+      "bytes": 35349,
+      "sha256": "14f63ad459e3e9256d53d9aefe81ce66fd1bdc17ebb84acfee0ca43dabd96443",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-author-reading.md",
+      "bytes": 7743,
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-capability-catalog.md",
+      "bytes": 28352,
+      "sha256": "17dd8b9f347bf7c6882d84a5a2d20e8555c136da2311f669c7e39bc71c4931bb",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-integration-spec.md",
+      "bytes": 53620,
+      "sha256": "e11209a123253ab579f989d813f961cdcf0eece6f7e0b40424fcba345b356d58",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+      "bytes": 8858,
+      "sha256": "fe93865dbd60b5fb7a150ed87f4a6b9038daec258880287ba3d05449db2b6750",
+      "kind": "frozen_prior_design"
+    },
+    {
+      "label": "docs/reports/2026-10-26-pstack/author-reading.md",
+      "bytes": 7743,
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f",
+      "kind": "prior_reading_or_audit_not_independent_article_text"
+    },
+    {
+      "label": "docs/reports/2026-10-26-pstack/evidence/author-articles.json",
+      "bytes": 3102,
+      "sha256": "0c96a97dc6f5e5d3197ffe50f2c189d05132ca8807fe83cc8bdd7e4b3c2f287b",
+      "kind": "prior_reading_or_audit_not_independent_article_text"
+    },
+    {
+      "label": "docs/reports/2026-10-26-pstack/claude-audit.md",
+      "bytes": 17451,
+      "sha256": "c0f5a592aca0e48e9c8db7fe6e16bee6374943e683c32c198c71381120b51cf5",
+      "kind": "prior_reading_or_audit_not_independent_article_text"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:AGENTS.md",
+      "bytes": 50896,
+      "sha256": "1d67d8fea74b30be6b4de1e1eec0d41f5ed7c7d0215c79d873c3facef96e3896",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "AGENTS.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-crew-state.sh",
+      "bytes": 67315,
+      "sha256": "245882a72e5efaa1833bb7584b9847ef246118a6d6b491ca4cb6c7ce5018c536",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-crew-state.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-lease-lib.sh",
+      "bytes": 16260,
+      "sha256": "f6880b43a333ea8b947282c46f52f414895a8a140dd307d9b2b57fba0bd55687",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-lease-lib.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-turnend-guard.sh",
+      "bytes": 26014,
+      "sha256": "2359dd92cc1324153caab79d9c7082a6df1083bc0cfc83f28f697ef9ecb3456b",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-turnend-guard.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-send.sh",
+      "bytes": 61967,
+      "sha256": "de4fb8dcede4c4d2cf6271d61785396da17f3c1f44fbf082c93ba0aa27865b91",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-send.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-afk-contract.sh",
+      "bytes": 34796,
+      "sha256": "5c0c9f8af53d74e36d7dc7b18e2ef1f9ac0d7bb06f75cd5af5ad8c26b634d401",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-afk-contract.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-wake-drain.sh",
+      "bytes": 49805,
+      "sha256": "126c22dc8e297872ea59025c995775696e6a0e458383f6ff93c230d49e439d3d",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-wake-drain.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-brief.sh",
+      "bytes": 53019,
+      "sha256": "7dba01bde0a4d31afab92c3c62d30acb8e2f493a3a57a29efe26fa9082ce431b",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-brief.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-backend.sh",
+      "bytes": 55540,
+      "sha256": "5ff7ed0a730e4336821359afde3196753487e8587ba27ac20dfdd36111adfe1f",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-backend.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-remote-secondmate-control.sh",
+      "bytes": 22033,
+      "sha256": "fda7f091793e4c5f4beef31a303a224ce24adc3728d26c423a96f6ffae3261ed",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-remote-secondmate-control.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-inbox.sh",
+      "bytes": 41565,
+      "sha256": "9ebd8c2d786c035976f2c0a87f024ef779a841241e5276cbad82ac88b3cf8da9",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-inbox.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-stow-cascade.sh",
+      "bytes": 9237,
+      "sha256": "686bb48ce7afdd3c4083aaf10013ba4cb886017011f109d142b4759951844c05",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-stow-cascade.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-role-lib.sh",
+      "bytes": 20670,
+      "sha256": "dfbd09127769ceab9abc1b38f0a677808bc45bd514bd635afed08414ddcb9df0",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-role-lib.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-update.sh",
+      "bytes": 12080,
+      "sha256": "8bad35d2ca30b00d5add3581bb49774cd0b89b2433c1f2d57e59f02f6e1ebd3b",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-update.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-classify-decision-key.test.sh",
+      "bytes": 31543,
+      "sha256": "e946a469248d247ed54cb149942dae50f10be1f3f2a87032cd4da6111565815e",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-classify-decision-key.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-wake-drain-open-decisions.test.sh",
+      "bytes": 10965,
+      "sha256": "61431536420bfd801d07e195296b5db64f4cfc074aa3934e4fab5d14cb9a6a96",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-wake-drain-open-decisions.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:README.md",
+      "bytes": 22217,
+      "sha256": "8d481add11dea0345107d3079b14fec2b568c296284b37657e13e85ff2690661",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "README.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:LICENSE",
+      "bytes": 1065,
+      "sha256": "945016bd37e1ba7211622ef60ee1d23ab727896ba7710edd21e8fbe983863969",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "LICENSE"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/architecture.md",
+      "bytes": 117385,
+      "sha256": "95b55e5dd461be17dbf01b1cd88b05f841b4786d33d2a98e5c2be3dee7b6c6ce",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/architecture.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/secondmate-parent-channel.md",
+      "bytes": 8908,
+      "sha256": "bc201844f26c856e87d7a1d29211a328dff65e1682fa7429c5c5735142dde274",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/secondmate-parent-channel.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/calm.md",
+      "bytes": 20645,
+      "sha256": "44eb6f996322eac6f8f934d516bc54af33d64b296a19ddf0c02fb73260421330",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/calm.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-capacity.sh",
+      "bytes": 30837,
+      "sha256": "69b18847430f78bce72643b8c6f12335ef23e2003bef6e20f3ac2c4eb360f0ce",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-capacity.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-project-capacity-lib.sh",
+      "bytes": 11086,
+      "sha256": "8722b50acaa6c2988b7b31c1e56a12ec23769c3c3675d5afdc487e1480a0ba94",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-project-capacity-lib.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-dispatch-resolve.sh",
+      "bytes": 34115,
+      "sha256": "b1c723539770abb6d8d7fbdbdcf8809e9927ce19e69d2cb80256c6d1ff396bdc",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-dispatch-resolve.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-operational-input.sh",
+      "bytes": 17263,
+      "sha256": "b796910c2ebbc2f77c18ef73722cbe76abb874d6f120cc9e2e326fbae219334d",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-operational-input.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-tool-update-check.sh",
+      "bytes": 37826,
+      "sha256": "a2eeb3ae350808f025f797d7ec71baf6082dfaed9e3148aa115155d8676b3cc5",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-tool-update-check.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-backlog-handoff.sh",
+      "bytes": 42866,
+      "sha256": "6db0062a926a4e133636d7368c75915b1f7054b62c11dc945d38f5906be8895f",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-backlog-handoff.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/remote-secondmates.md",
+      "bytes": 42793,
+      "sha256": "8f0d36d7e88568caaabf323b3da67f7f2f074ae147bb0866409f6f7a683f7e00",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/remote-secondmates.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/voice-relay.md",
+      "bytes": 19938,
+      "sha256": "aaefb4510f8e46f70a7781236a947c8ff67302af080c5edbcd6e16a8cebd9087",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/voice-relay.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/verification/stow-memory.md",
+      "bytes": 2591,
+      "sha256": "ae09fd38a6c252b8056823f4112a5d24ba0999d17fac8b7ba63490923b7be05c",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/stow-memory.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/verification/dispatch-auth.md",
+      "bytes": 12385,
+      "sha256": "883379ee3d0238647ad949e33068eed9ed0fed4b77d6e1b8e5986f6494181648",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/dispatch-auth.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/verification/dispatch-resolve.md",
+      "bytes": 13024,
+      "sha256": "1d21bfd3ca414730b0e6e7f35d3928931d431de3ef8803e6c446d40f5fd35ec3",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/dispatch-resolve.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/gerrit-change-watch.md",
+      "bytes": 8802,
+      "sha256": "632428a2835852dbbf5ae45c508379ab5f40bcce4f5ae85b707baa8b4c170b75",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/gerrit-change-watch.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/gitlab-merge-watch.md",
+      "bytes": 13670,
+      "sha256": "e442cb99ec3714ddecd46da5fe6da444029112ac6c2634a9c6074097d9a4e1c2",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/gitlab-merge-watch.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/forgejo-tea-integration.md",
+      "bytes": 11705,
+      "sha256": "1359317289f9ef694ba3e0d4964db29868a35cd3c36c0289b60867523cadd63f",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/forgejo-tea-integration.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/gerrit-forge-integration.md",
+      "bytes": 34929,
+      "sha256": "1a8cd1558d900a380e2621df177b50c4aa1bbd94d1d9868202b975ba146029d4",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/gerrit-forge-integration.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-capacity.test.sh",
+      "bytes": 28490,
+      "sha256": "f7c46ba01bc114e1d75a6c63855898abcbe83d8b85a5f2e1ce32102c255d5ccd",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-capacity.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-project-capacity.test.sh",
+      "bytes": 30955,
+      "sha256": "4e9b3100854b65467bfdfc870414e374e4e58789fb0e09a4453eea570d31ed08",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-project-capacity.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-remote-backlog-handoff.test.sh",
+      "bytes": 39250,
+      "sha256": "1b96c9af6b33e6f7cc4194b633b813c7d47850f0ad3efae013e4b52cf1770698",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-remote-backlog-handoff.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-remote-secondmate-parent-binding.test.sh",
+      "bytes": 15897,
+      "sha256": "873030f1137de4e5ad77ce34a863f2cabe9bb2e3342b46144e7480c2790d1095",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-remote-secondmate-parent-binding.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-calm-claude-mod.test.sh",
+      "bytes": 39500,
+      "sha256": "7eb3bd51b8c29f2a554fdb334a246550212001909d19382d34a9126581aed633",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-calm-claude-mod.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-self-repo-role.test.sh",
+      "bytes": 39160,
+      "sha256": "b72c2a94436a045d958afa9a4121b7f10759784aadc118990869692471310e58",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-self-repo-role.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-update.test.sh",
+      "bytes": 25528,
+      "sha256": "ad7c65d5ddfeca2d132c55ca65472f3c8bea7991da3fdf933f852fbad6435a4e",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-update.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-public-followup-lib.sh",
+      "bytes": 25872,
+      "sha256": "56ecfab51971ee517030b65df5ab82930d07f7279c5d8f97d7bf823df5730212",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-public-followup-lib.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-x-lib.sh",
+      "bytes": 44306,
+      "sha256": "caeff5a03213e19439a809c8afa53b4451c3119c1b59f3ac895cc9ca71436ea3",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-x-lib.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-contributions.sh",
+      "bytes": 42796,
+      "sha256": "df536ce59f8a3be707f63582d86297be98082fd90f506625fb926b45d26641de",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-contributions.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/verification/process-event-sources.md",
+      "bytes": 41886,
+      "sha256": "397c9f01ec580f964dc5d4341b812fc3a18acfe7a8a4f382f54240f4626e9536",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/verification/process-event-sources.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+      "bytes": 14238,
+      "sha256": "1363cc07343fe86aab42853b1bd4563288cbcbdf12f1c265b3b3b1afa25c09cb",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/automations/benny/skills/setup-benny/SKILL.md",
+      "bytes": 13992,
+      "sha256": "5a3cbe63360c9f6373b6cb6c79a1eaf7e0eba181bfaa1577e2e6431af3407282",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/automations/benny/skills/setup-benny/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+      "bytes": 10320,
+      "sha256": "216a758b8711e64d19a55e6032c496527daac6364d010611040f3c04ef1a448f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/automations/benny/skills/triage-issue-reports/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/architect/SKILL.md",
+      "bytes": 5469,
+      "sha256": "31f8e97a52bfa5432edd61f68ade2a8632ef0bacbc2d2a6802d7a0e6821944ac",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/architect/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/arena/SKILL.md",
+      "bytes": 4511,
+      "sha256": "ed72f6c132b1ce3974d949581d0adc5dade424fe20793ac3b4c4fae22ecb9354",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/arena/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/automate-me/SKILL.md",
+      "bytes": 7297,
+      "sha256": "30b35f3628c4fd8c11af0ada06d14cdc3b28901810caca2480f627d4d21acfbe",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/automate-me/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/benchmark-checklist/SKILL.md",
+      "bytes": 5002,
+      "sha256": "ba109e96c8f6c1c391baccf19e5d11e14370df7b3f2605e1572cd565a6c0fca0",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/benchmark-checklist/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/blast-radius/SKILL.md",
+      "bytes": 3856,
+      "sha256": "2e10745b97f5862323dcda3b29ca60d56b5c3c98e37020085d26b48efbe0a436",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/blast-radius/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/bro/SKILL.md",
+      "bytes": 267,
+      "sha256": "aa329d0ceeeecb6822a7174ad76bb07a7826a3c52ceb6a588dec4138815084bb",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/bro/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/correct/SKILL.md",
+      "bytes": 2478,
+      "sha256": "e347045d00c967a0b831ef883cc6ac79d21329aa10b5968637df95de7febf0ba",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/correct/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/create-formal-verification-skill/SKILL.md",
+      "bytes": 5672,
+      "sha256": "5e489d938620883502c27c9c2f32143ae7aa8c0543088dad996b2c815d2acc52",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/create-formal-verification-skill/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/create-verification-skill/SKILL.md",
+      "bytes": 6533,
+      "sha256": "d353973547bf8ad8977eca645f4cd4feaed0d32f4b43d1448f906b0a76c4d694",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/create-verification-skill/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/figure-it-out/SKILL.md",
+      "bytes": 4111,
+      "sha256": "bdb23cdbd82a1e6af094b495691c832a6f7f3ab9706ba9edbeb664ef51a726e1",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/figure-it-out/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/how/SKILL.md",
+      "bytes": 2651,
+      "sha256": "08a00079bb15b4258874ac3ff62d4ca7e94350ffedb521d0fd296dc9dd21904e",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/how/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/in-your-own-words/SKILL.md",
+      "bytes": 315,
+      "sha256": "fa8ba74e27d7be371dc270ec78bbf816411477d0dfab185356c861ac8dd413ad",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/in-your-own-words/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/interrogate/SKILL.md",
+      "bytes": 4548,
+      "sha256": "a16dfe179005abc22a4651b82f25b0c8ab953284276efe4e6dc341958fb63647",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/interrogate/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/ketchup-video/SKILL.md",
+      "bytes": 2880,
+      "sha256": "74f1b9e61f8479e2be5b91a4f53136f6ad8e144fd950c9848de6aa1cdbb7645c",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/ketchup-video/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/ketchup/SKILL.md",
+      "bytes": 6426,
+      "sha256": "f2923ffd14f6fc778f75a47aaed1f317fb5fd00b5701ca769d6446c74106dead",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/ketchup/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/maintain-formal-verification-skill/SKILL.md",
+      "bytes": 7012,
+      "sha256": "0c96f54293542d3818b68754562b338073958781a9684454611dca37592e2d2c",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/maintain-formal-verification-skill/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/maintain-verification-skill/SKILL.md",
+      "bytes": 4922,
+      "sha256": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/maintain-verification-skill/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/make-bot-ui/SKILL.md",
+      "bytes": 4649,
+      "sha256": "ad19d0bc6764287ec08c2521701974e7dac941f72e4d0fe81a24f4614494586f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/make-bot-ui/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/no-comments/SKILL.md",
+      "bytes": 2693,
+      "sha256": "078ecfe224eafbb017f6476870612838bf6dbe38c0b697e12f0c887d0313f17e",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/no-comments/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-help/SKILL.md",
+      "bytes": 15804,
+      "sha256": "587793b0f9959dbea7d5d009b8a6513795380d7150dd478a6cb05e604058e315",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-help/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/SKILL.md",
+      "bytes": 20362,
+      "sha256": "2755f102e7a6d0496b429d1031a22fb353e1f3d523543367caeaae5c4ed6f544",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/authoring-a-skill.md",
+      "bytes": 831,
+      "sha256": "f6a13a445c360b48d6cd72780ac01955f45b82826476efe0e67c7559329407aa",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/authoring-a-skill.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+      "bytes": 1982,
+      "sha256": "6ac974fd2b09748add56493e89f578a35a6a9289e1026515878d81ef3cf129d1",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/autonomous-run.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+      "bytes": 6596,
+      "sha256": "acf4f4a58c11045f9d3e8807d907a877e61ca6432b079f1087d7d30fc931566f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/autopilot-full.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+      "bytes": 2205,
+      "sha256": "c6bcb18b2ce605e77a2a2225854590a4b9a687911f79331746d91a4fe9a52e60",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/autopilot-stack.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/babysit.md",
+      "bytes": 7619,
+      "sha256": "e261c1ff5581e0f8fc6c686f34de4b535f87473e77beabea7dd8323021214610",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/babysit.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/bug-fix.md",
+      "bytes": 2359,
+      "sha256": "66e26542dad131cfd7df80ac0cdf81ed4d85e7b5e3f0eb65b933888760c4831f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/bug-fix.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/eval.md",
+      "bytes": 2628,
+      "sha256": "a93d449a908236afa6645179651844094b1547dbab4e484cffcdda630e4b90bf",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/eval.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/feature.md",
+      "bytes": 2870,
+      "sha256": "af8ce700b99953741cb547e34308fde0cf6b98ce67e1652c800d0deedf53aba1",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/feature.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/hillclimb.md",
+      "bytes": 4507,
+      "sha256": "942c1565b75ad02a2cb6230dd7c1ebd87e19f59a00319ebac2b6616007bf018f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/hillclimb.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/investigation.md",
+      "bytes": 928,
+      "sha256": "dc66bcf6af3a074fc7f67aa5e12b93ef571a4fb4d8e17f2f1af5ae5359f42e46",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/investigation.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/orchestrate.md",
+      "bytes": 17127,
+      "sha256": "08dce6c9e7be1d13bc6944ab9b51665f935c531437f5e088bc53d2a62099ef05",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/orchestrate.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/pause-safely.md",
+      "bytes": 1135,
+      "sha256": "77968cfe5f4a71a8cd33e0ae8ffcdbd88dd693a212c240457773e6c40c96c21d",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/pause-safely.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/perf-issue.md",
+      "bytes": 1550,
+      "sha256": "c12aa2f82de7651a11676a3d5fea168f539b7f0faaa3a501d279255dd2a469c8",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/perf-issue.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/prototype.md",
+      "bytes": 2161,
+      "sha256": "7aa1f52c691c3d46d5afc527b23f90977fce869ce33573c73c81a4c7f0cde962",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/prototype.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/refactoring.md",
+      "bytes": 3315,
+      "sha256": "0f5dd38113379ea8cf61e2182eca0a7478eea9a869eb40c2dddab3335aeca197",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/refactoring.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/session-pickup.md",
+      "bytes": 1782,
+      "sha256": "d194f2a7ef392c1598ef3f0e3b561370ca25c2c7a78308007af4aa46ada8ee12",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/session-pickup.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/shipping.md",
+      "bytes": 4387,
+      "sha256": "bf56339bdf7e0223bcff5abf4e8599e3f5b547b3fcc3b4ce9475e6e7dda14a9f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/shipping.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+      "bytes": 2947,
+      "sha256": "be04ae0afe19d4a4da5bcc4e94455f68dbebd1cda6eb0f456ca0d358ecf76c00",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/worktree-cleanup.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/scripts/orch/store.ts",
+      "bytes": 44758,
+      "sha256": "bf0ed29c44093ee3b333aa10b138612f773c81eda73df7dc5337c59713f35a97",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/scripts/orch/store.ts"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "bytes": 25407,
+      "sha256": "2d4823aeea788acab258ec60eb52e7b9e3a23a6649850af128d6ada5c33d7778",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.ts"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/principle-explain-the-number/SKILL.md",
+      "bytes": 1663,
+      "sha256": "cd5a25f9e7cf023627ccb470dc5faa97542f29b4319496a32b839a8e1e988047",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/principle-explain-the-number/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/recall/SKILL.md",
+      "bytes": 5345,
+      "sha256": "b0ceb996259c3404532f61e4b010df4e3d80d7ddbed85b3c302895723eb62a89",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/recall/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/reflect/SKILL.md",
+      "bytes": 4995,
+      "sha256": "9648df23cabaae99b78ed59cd93b6f35ebbf02105d228e3d0b5c3a3b3419d753",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/reflect/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/setup-pstack/SKILL.md",
+      "bytes": 6305,
+      "sha256": "b45512f6ca5e96e81681984683b7472bfe892581da3a89a73cca4159438f29ed",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/setup-pstack/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/sharpen/SKILL.md",
+      "bytes": 661,
+      "sha256": "563dfc460c605d311e650726288e2f1cbd61eab817db178d6e7e29643e07e7a2",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/sharpen/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/show-me-your-work/SKILL.md",
+      "bytes": 6551,
+      "sha256": "920a8217cbb62f92a2222fb81fc9eab17ecd554a0277e444a95a927195139bd1",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/show-me-your-work/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/statechart/SKILL.md",
+      "bytes": 7690,
+      "sha256": "b1c544782b1527ba09e63311e4faa4c277c86aa33b0506590f8082b7b4bea505",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/statechart/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/swarm/SKILL.md",
+      "bytes": 2739,
+      "sha256": "fea6bfbbf21e067a4e2d2ebab034bc3af508118e9df1abc9d2ba040d58a6df3a",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/swarm/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/teach/SKILL.md",
+      "bytes": 5623,
+      "sha256": "bd286e5a6290673be2cd28aef7af2ec7f1fb138e6bce156ea657368c7e7fc8a4",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/teach/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/technical-writing/SKILL.md",
+      "bytes": 9093,
+      "sha256": "61fe9c424a798ebf36ad94941f87be049cb8827bdf86d21474a0dde37b513c43",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/technical-writing/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/typescript-best-practices/SKILL.md",
+      "bytes": 2765,
+      "sha256": "ec1dac086d3708e5940d45d250c30a37dd953b4e3cb2ca0692f5851d7a039e27",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/typescript-best-practices/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/unslop/SKILL.md",
+      "bytes": 5827,
+      "sha256": "ccab208e315ce05e2fab8eeee2f7879f1289b5c6844840b2d307adf31c79144f",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/unslop/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:pstack/skills/why/SKILL.md",
+      "bytes": 8903,
+      "sha256": "144d42e7712723d763e607bc0a969e5f1cdf83ec7228519d87677cc534571bed",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/why/SKILL.md"
+    },
+    {
+      "label": "pstack@99b609a72323b70204eab407c622f436e858e112:scripts/generate-pstack-harness-trees.mjs",
+      "bytes": 9662,
+      "sha256": "d158bb93afd0c67dffbf5a43592ca3958bc541c8664bb1a80bbca74827abda86",
+      "kind": "primary_source",
+      "repository": "pstack",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "scripts/generate-pstack-harness-trees.mjs"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/protocol/src/engineering.ts",
+      "bytes": 5052,
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/protocol/src/engineering.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/engineering-host.ts",
+      "bytes": 11854,
+      "sha256": "23f234aa550132bfaf0af44d865d13a86384ce912083efcb554caacbbafe233e",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/engineering-host.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/engineering-store.ts",
+      "bytes": 52841,
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/core/src/state/engineering-store.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/engineering-ddl.ts",
+      "bytes": 6322,
+      "sha256": "e7067bfc981362f7d9740ac574bebe87c246e62fbd1bb0e2e0ac71b6b18fb5c3",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/core/src/state/engineering-ddl.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/engineering-dispatch.ts",
+      "bytes": 3390,
+      "sha256": "36b03aea0604875d67c41ac2c2c1e807d0e4cc7d2dc593ac9b4c2a24ae469abd",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/core/src/state/engineering-dispatch.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/attention-actions.ts",
+      "bytes": 14470,
+      "sha256": "795c2d55d41277282b4ca6bc95e115b4e468bc5403e6a81f14c51db8bef04da7",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/core/src/state/attention-actions.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/delivery-contract.ts",
+      "bytes": 7152,
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/core/src/delivery-contract.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/execution-context.ts",
+      "bytes": 18267,
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/execution-context.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-execution-context.ts",
+      "bytes": 7309,
+      "sha256": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/graph-execution-context.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-contract-host.ts",
+      "bytes": 9692,
+      "sha256": "27f50eb26a2271162255df9b82dcdc22ab3a95b6e070af953679b994d644510c",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/graph-contract-host.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-delivery-contract.ts",
+      "bytes": 7848,
+      "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/graph-delivery-contract.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-check-suite.ts",
+      "bytes": 2290,
+      "sha256": "425976d7561ad9de24e45a373342e56e25fbfb396824cc26ad2001d29263d29b",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/graph-check-suite.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/skill-registry/src/manifest.ts",
+      "bytes": 3978,
+      "sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/skill-registry/src/manifest.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/loop/src/reviewer-isolation.ts",
+      "bytes": 11014,
+      "sha256": "7fede405c975abf0e014939d6be46032d3a7afcf81201d3cf01fd91d027755e1",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/loop/src/reviewer-isolation.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/engineering-upgrade-guard.ts",
+      "bytes": 1094,
+      "sha256": "909b03a706135e0b70904063d82938e3c1f7b4e783f68e0cc2a1af92eef2c7df",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/cli/src/engineering-upgrade-guard.ts"
+    },
+    {
+      "label": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/knowledge/src/context-budget.ts",
+      "bytes": 7913,
+      "sha256": "3a41933465cb2738c3cef17f401ebab968537fef4a3c80e5457b13cf3ccc0682",
+      "kind": "primary_source",
+      "repository": "osstack",
+      "commit": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+      "path": "packages/knowledge/src/context-budget.ts"
+    },
+    {
+      "label": "osstack@4199d9aadf776042d924a0a307c62aef1a729088:docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "bytes": 34771,
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "kind": "inherited_normative_design",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md"
+    },
+    {
+      "label": "osstack@4199d9aadf776042d924a0a307c62aef1a729088:docs/design/2026-10-26-firstmate-upgrade/README.md",
+      "bytes": 25602,
+      "sha256": "f9fe5bedddc488bfb0fbcc218ced364ca11f3e3362438b8f3cf6c3a3429c0ecb",
+      "kind": "inherited_normative_design",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/README.md"
+    },
+    {
+      "label": "osstack@4199d9aadf776042d924a0a307c62aef1a729088:docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "bytes": 15825,
+      "sha256": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+      "kind": "inherited_normative_design",
+      "repository": "osstack",
+      "commit": "4199d9aadf776042d924a0a307c62aef1a729088",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md"
+    }
+  ],
+  "file_count": 160,
+  "source_bytes": 2821199,
+  "prompts": {
+    "review": {
+      "sha256": "abca87ec77d1fe9c39e3cf54838dd461337ad0d18e4339d678be03beb3e74d27",
+      "bytes": 2858877
+    },
+    "challenge": {
+      "sha256": "9611a91bce9e81e577f0b8c365f0c355d9076f8fc97402eb9a7282dcabf3a011",
+      "bytes": 2858960
+    }
+  },
+  "limits": [
+    "No independent full X article text",
+    "No current remote re-observation",
+    "Static document/source audit; no product execution"
+  ],
+  "omitted_primary_sources": [
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-classify-lib.sh",
+      "bytes": 130396,
+      "sha256": "0bb6d8f8f72d79443d12704687ed2c42c92a21053d3fd8c8b5bf99c508ae1bc4",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-classify-lib.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-watch.sh",
+      "bytes": 219362,
+      "sha256": "fd63f22c408931edeb8ad88ee5e0c5b67dcc1eb7e95ec36ebb9583c051b4ff38",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-watch.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-supervise-daemon.sh",
+      "bytes": 99975,
+      "sha256": "7b358ea66b84ac04bb365ae4efa85fbe03b16304d9dee847b29a547a4121ea92",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-supervise-daemon.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-captain-hold.sh",
+      "bytes": 97480,
+      "sha256": "88982d5cb9508a8bcaf441dfe6b238aa82c96065990d76edf0b22963e1513a90",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-captain-hold.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:bin/fm-teardown.sh",
+      "bytes": 190440,
+      "sha256": "4a7630a5c47916f6672ea0a39a70bd5155266f66be89dde931dea1ce0f899101",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-teardown.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-send-resolve-key.test.sh",
+      "bytes": 48421,
+      "sha256": "64c773e292fb7b16455a741b21094a9f347eab7081ca3f63901f5ecf7bb7bb92",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-send-resolve-key.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:docs/configuration.md",
+      "bytes": 291822,
+      "sha256": "dd089ab478ff1c10885a0dfd6d4af6d417fc48794d1d34eb84e6ee84cbfd7a9d",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "docs/configuration.md"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-backlog-handoff.test.sh",
+      "bytes": 62146,
+      "sha256": "46c108dc09ce568547be9db06cb6e9e8093ede9e33b423a8f1cae9d96fbc9ee1",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-backlog-handoff.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-secondmate-safety.test.sh",
+      "bytes": 169473,
+      "sha256": "e079d9729ef0711e62148ae8e0b1663f1868fd3fdb32e62541fe788ae5ed1e3b",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-secondmate-safety.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-calm-pi-extension.test.sh",
+      "bytes": 242269,
+      "sha256": "7fe4e791b68e79e070b53f42d313aa25af8a727fa05ba2ef55af314594886ee9",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-calm-pi-extension.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-public-followup.test.sh",
+      "bytes": 216441,
+      "sha256": "29263ef204b84027e803bca4dfcc4f70b7c9873fbc171d8e53a9ea26c36c7f78",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-public-followup.test.sh"
+    },
+    {
+      "label": "firstmate@af1c6817fc47589b162cbc361671c43cdb150933:tests/fm-tool-update-check.test.sh",
+      "bytes": 63656,
+      "sha256": "8a7478f3f440c2466587be5f2fa5d96a597bbce0ba5e76c8da8f3cf35f460639",
+      "kind": "primary_source",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-tool-update-check.test.sh"
+    }
+  ]
+}

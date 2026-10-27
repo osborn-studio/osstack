@@ -1,0 +1,3042 @@
+{
+  "schema_version": 1,
+  "kind": "future_product_acceptance_not_execution_results",
+  "cases": [
+    {
+      "id": "JA01",
+      "owner_work_item": "J01",
+      "title": "完成层级不可替代",
+      "given": "Session 已观察回复，task 没有 checks/review",
+      "when": "请求 task local_verified",
+      "then": "拒绝完成；保留 observed_turn",
+      "bad_variant": "将 observed_turn 直接映射为 task done",
+      "oracle": "读取 task 与 session 独立记录",
+      "required_evidence": [
+        "JA01: Session 已观察回复，task 没有 checks/review",
+        "JA01: 读取 task 与 session 独立记录",
+        "JA01: bad variant trace — 将 observed_turn 直接映射为 task done"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-13",
+        "PS17"
+      ],
+      "asserts": [
+        "FM-13:observable",
+        "PS17:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "contract-owner",
+        "observation_boundary": "读取 task 与 session 独立记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA02",
+      "owner_work_item": "J01",
+      "title": "任务授权绑定",
+      "given": "proposal 仓库 A，授权仓库 B",
+      "when": "提交 admission",
+      "then": "拒绝且执行器调用数为零",
+      "bad_variant": "移除 repo/scope 比对",
+      "oracle": "adapter spy + admission error",
+      "required_evidence": [
+        "JA02: proposal 仓库 A，授权仓库 B",
+        "JA02: adapter spy + admission error",
+        "JA02: bad variant trace — 移除 repo/scope 比对"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS03",
+        "FM-12"
+      ],
+      "asserts": [
+        "PS03:observable",
+        "FM-12:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "contract-owner",
+        "observation_boundary": "adapter spy + admission error",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA03",
+      "owner_work_item": "J02",
+      "title": "来源与实际依赖固定",
+      "given": "固定 commit/subdir、一个采用依赖和一个未采用插件",
+      "when": "分别改变源 blob、采用依赖、未采用插件",
+      "then": "前两者生成新候选并需重评；未采用项不盲目撤销",
+      "bad_variant": "仅比较版本字符串",
+      "oracle": "两次快照摘要及采用清单差异",
+      "required_evidence": [
+        "JA03: 固定 commit/subdir、一个采用依赖和一个未采用插件",
+        "JA03: 两次快照摘要及采用清单差异",
+        "JA03: bad variant trace — 仅比较版本字符串"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS21"
+      ],
+      "asserts": [
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "source-owner",
+        "observation_boundary": "两次快照摘要及采用清单差异",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA04",
+      "owner_work_item": "J02",
+      "title": "路径与兼容",
+      "given": "v1 合法旧 manifest；v2 含 ../ 或未知字段",
+      "when": "分别解析",
+      "then": "旧格式按原规则；新非法格式拒绝，无脚本执行",
+      "bad_variant": "全局 strict 改坏 v1，或执行安装 hook",
+      "oracle": "原 manifest 回归 + 文件/进程观察",
+      "required_evidence": [
+        "JA04: v1 合法旧 manifest；v2 含 ../ 或未知字段",
+        "JA04: 原 manifest 回归 + 文件/进程观察",
+        "JA04: bad variant trace — 全局 strict 改坏 v1，或执行安装 hook"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS20",
+        "PS21"
+      ],
+      "asserts": [
+        "PS20:observable",
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "source-owner",
+        "observation_boundary": "原 manifest 回归 + 文件/进程观察",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA05",
+      "owner_work_item": "J03",
+      "title": "命名夹具真实驱动",
+      "given": "scratch 中已有一个待答 Session，问题 Q1",
+      "when": "doctor→drive answer Q1→observe→cleanup",
+      "then": "可读出原发送 receipt 与实际回复回合，清理仅自有资源",
+      "bad_variant": "mock 返回成功而未调用原 host",
+      "oracle": "原 host receipt、DB/export trace、资源归属",
+      "required_evidence": [
+        "JA05: scratch 中已有一个待答 Session，问题 Q1",
+        "JA05: 原 host receipt、DB/export trace、资源归属",
+        "JA05: bad variant trace — mock 返回成功而未调用原 host"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS08",
+        "FM-04",
+        "FM-08"
+      ],
+      "asserts": [
+        "PS08:observable",
+        "FM-04:observable",
+        "FM-08:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "原 host receipt、DB/export trace、资源归属",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA06",
+      "owner_work_item": "J03",
+      "title": "dry-run 无副作用",
+      "given": "同夹具与文件/DB基线",
+      "when": "仅执行 driver dry-run",
+      "then": "返回预期动作；DB/文件/进程无变化",
+      "bad_variant": "dry-run 先创建 Session",
+      "oracle": "快照差异和调用计数",
+      "required_evidence": [
+        "JA06: 同夹具与文件/DB基线",
+        "JA06: 快照差异和调用计数",
+        "JA06: bad variant trace — dry-run 先创建 Session"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS23"
+      ],
+      "asserts": [
+        "PS23:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "快照差异和调用计数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA07",
+      "owner_work_item": "J04",
+      "title": "必需材料不可裁剪",
+      "given": "方法 16KiB 加任务/合同超过总预算",
+      "when": "通过真实新增 wrapper invoke",
+      "then": "invoke 前明确失败；raw adapter 未调用",
+      "bad_variant": "把 method 降为 optional",
+      "oracle": "raw adapter spy 和错误类别",
+      "required_evidence": [
+        "JA07: 方法 16KiB 加任务/合同超过总预算",
+        "JA07: raw adapter spy 和错误类别",
+        "JA07: bad variant trace — 把 method 降为 optional"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS01",
+        "PS20"
+      ],
+      "asserts": [
+        "PS01:observable",
+        "PS20:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "raw adapter spy 和错误类别",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA08",
+      "owner_work_item": "J04",
+      "title": "完整实际调用证据",
+      "given": "固定 method/config/binding 与测试 adapter",
+      "when": "通过实际包装器调用并篡改 prepared/observed 一字段",
+      "then": "原始调用摘要可对照；篡改拒绝",
+      "bad_variant": "只验证 renderer 输出",
+      "oracle": "捕获实际 AgentTask，两个 receipt 与 link",
+      "required_evidence": [
+        "JA08: 固定 method/config/binding 与测试 adapter",
+        "JA08: 捕获实际 AgentTask，两个 receipt 与 link",
+        "JA08: bad variant trace — 只验证 renderer 输出"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS20",
+        "PS13"
+      ],
+      "asserts": [
+        "PS20:observable",
+        "PS13:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "捕获实际 AgentTask，两个 receipt 与 link",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA09",
+      "owner_work_item": "J04",
+      "title": "冻结合同不可改写",
+      "given": "有效 FrozenDeliveryContractV2",
+      "when": "追加 brief 或改 goal 后仍用旧授权",
+      "then": "原校验拒绝",
+      "bad_variant": "为塞材料删除 digest/admission 检查",
+      "oracle": "既有 assertFrozen/assertAdmission 负例",
+      "required_evidence": [
+        "JA09: 有效 FrozenDeliveryContractV2",
+        "JA09: 既有 assertFrozen/assertAdmission 负例",
+        "JA09: bad variant trace — 为塞材料删除 digest/admission 检查"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS01"
+      ],
+      "asserts": [
+        "PS01:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "既有 assertFrozen/assertAdmission 负例",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA10",
+      "owner_work_item": "J05",
+      "title": "跨仓库检查与 primary",
+      "given": "A、B 两仓库注册不同检查；同一 recipe",
+      "when": "各自编译；再给零个/两个 primary、未注册检查",
+      "then": "正确本地绑定；非法映射拒绝",
+      "bad_variant": "按数组第一项随意当 primary",
+      "oracle": "实际注册引用、冻结检查集合与拒绝码",
+      "required_evidence": [
+        "JA10: A、B 两仓库注册不同检查；同一 recipe",
+        "JA10: 实际注册引用、冻结检查集合与拒绝码",
+        "JA10: bad variant trace — 按数组第一项随意当 primary"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS07",
+        "FM-12"
+      ],
+      "asserts": [
+        "PS07:observable",
+        "FM-12:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "method-owner",
+        "observation_boundary": "实际注册引用、冻结检查集合与拒绝码",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA11",
+      "owner_work_item": "J05",
+      "title": "建议检查不暗中执行",
+      "given": "required check A，建议 check B",
+      "when": "生成合同并执行",
+      "then": "A 必须执行；B 仅作为建议且执行数零",
+      "bad_variant": "把所有建议自动作为命令",
+      "oracle": "冻结合同与受控命令调用记录",
+      "required_evidence": [
+        "JA11: required check A，建议 check B",
+        "JA11: 冻结合同与受控命令调用记录",
+        "JA11: bad variant trace — 把所有建议自动作为命令"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS01"
+      ],
+      "asserts": [
+        "PS01:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "method-owner",
+        "observation_boundary": "冻结合同与受控命令调用记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA12",
+      "owner_work_item": "J06",
+      "title": "意图和原型反证",
+      "given": "固定 transcript 混有症状、用户猜测和非目标",
+      "when": "独立重述并比较两种调用草图",
+      "then": "猜测保留为 hypothesis；改变设计的未知有实验或 unknown",
+      "bad_variant": "把用户假设提升为事实",
+      "oracle": "隐藏语义 rubric + 冷调用者观察",
+      "required_evidence": [
+        "JA12: 固定 transcript 混有症状、用户猜测和非目标",
+        "JA12: 隐藏语义 rubric + 冷调用者观察",
+        "JA12: bad variant trace — 把用户假设提升为事实"
+      ],
+      "layer": "semantic_evaluation",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS02",
+        "PS03",
+        "PS04",
+        "PS23"
+      ],
+      "asserts": [
+        "PS02:observable",
+        "PS03:observable",
+        "PS04:observable",
+        "PS23:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "method-owner",
+        "observation_boundary": "隐藏语义 rubric + 冷调用者观察",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS23:N01",
+        "PS23:N02"
+      ]
+    },
+    {
+      "id": "JA13",
+      "owner_work_item": "J06",
+      "title": "功能地图健康",
+      "given": "三条已命名路径，固定入口与 owner",
+      "when": "移除一条入口或使 driver 报环境缺失",
+      "then": "分别标 map drift/tool/env；不删除失败条目报通过",
+      "bad_variant": "将所有失败归为产品 defect",
+      "oracle": "地图引用、driver 输出及维护责任",
+      "required_evidence": [
+        "JA13: 三条已命名路径，固定入口与 owner",
+        "JA13: 地图引用、driver 输出及维护责任",
+        "JA13: bad variant trace — 将所有失败归为产品 defect"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS08",
+        "PS09"
+      ],
+      "asserts": [
+        "PS08:observable",
+        "PS09:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "method-owner",
+        "observation_boundary": "地图引用、driver 输出及维护责任",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA14",
+      "owner_work_item": "J07",
+      "title": "产物真的被消费",
+      "given": "候选 A 要求 reproduce/check/review 三种产物",
+      "when": "删除 review 或替换为候选 B 产物",
+      "then": "禁止 local_verified 这里替换的是最终 candidate_checks/independent_review；合法旧 baseline artifact 按 JA50 保留。",
+      "bad_variant": "仅检查 required_artifacts 字段存在",
+      "oracle": "host 读取记录、candidate digest 和 gate",
+      "required_evidence": [
+        "JA14: 候选 A 要求 reproduce/check/review 三种产物",
+        "JA14: host 读取记录、candidate digest 和 gate",
+        "JA14: bad variant trace — 仅检查 required_artifacts 字段存在",
+        "JA14: 这里替换的是最终 candidate_checks/independent_review；合法旧 baseline artifact 按 JA50 保留。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS06",
+        "PS07",
+        "FM-13"
+      ],
+      "asserts": [
+        "PS06:observable",
+        "PS07:observable",
+        "FM-13:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "host 读取记录、candidate digest 和 gate",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS07:N01"
+      ]
+    },
+    {
+      "id": "JA15",
+      "owner_work_item": "J07",
+      "title": "产物路径与证据循环",
+      "given": "host 证据根之外有 symlink；候选 diff 固定",
+      "when": "提交越界 artifact，再提交合法 host artifact",
+      "then": "越界拒绝；合法证据不改变候选 tree/diff",
+      "bad_variant": "把 receipt 写进 candidate 后沿用旧 diff",
+      "oracle": "文件树、no-follow 拒绝、候选身份",
+      "required_evidence": [
+        "JA15: host 证据根之外有 symlink；候选 diff 固定",
+        "JA15: 文件树、no-follow 拒绝、候选身份",
+        "JA15: bad variant trace — 把 receipt 写进 candidate 后沿用旧 diff"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS13",
+        "FM-14"
+      ],
+      "asserts": [
+        "PS13:observable",
+        "FM-14:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "文件树、no-follow 拒绝、候选身份",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA16",
+      "owner_work_item": "J08",
+      "title": "资格从空状态启动",
+      "given": "无 active/qualified recipe，存在精确受限试验授权",
+      "when": "先失败试跑再成功试跑",
+      "then": "两者都经正常 admission；失败不激活；成功仍需独立测量 第一次失败许可 P1 已消费；原义务处置后第二次使用不同许可 P2，绝不复活 P1。",
+      "bad_variant": "candidate 自动当 active 或 planner 自签许可",
+      "oracle": "授权 lookup、调用 trace、registry 前后",
+      "required_evidence": [
+        "JA16: 无 active/qualified recipe，存在精确受限试验授权",
+        "JA16: 授权 lookup、调用 trace、registry 前后",
+        "JA16: bad variant trace — candidate 自动当 active 或 planner 自签许可",
+        "JA16: 第一次失败许可 P1 已消费；原义务处置后第二次使用不同许可 P2，绝不复活 P1。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS21"
+      ],
+      "asserts": [
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "授权 lookup、调用 trace、registry 前后",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA17",
+      "owner_work_item": "J08",
+      "title": "过期与扩大范围试验",
+      "given": "permit 绑定 repo A、profile P、预算 B",
+      "when": "过期或更换 repo/profile/预算后调用",
+      "then": "拒绝且无副作用",
+      "bad_variant": "只检查 permit ID 存在",
+      "oracle": "精确绑定与 raw invoke 计数",
+      "required_evidence": [
+        "JA17: permit 绑定 repo A、profile P、预算 B",
+        "JA17: 精确绑定与 raw invoke 计数",
+        "JA17: bad variant trace — 只检查 permit ID 存在"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-15",
+        "PS21"
+      ],
+      "asserts": [
+        "FM-15:observable",
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "精确绑定与 raw invoke 计数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA18",
+      "owner_work_item": "J09",
+      "title": "首个 bug-fix E2E",
+      "given": "固定版本故障夹具、原路径红色复现、同预算",
+      "when": "经正常 Graph host 修复并运行验收",
+      "then": "原问题消失、相邻负例保持、候选一致；仅局部试验",
+      "bad_variant": "只跑新写的单测，不驱动原表面",
+      "oracle": "前后同表面日志 + host completion evidence",
+      "required_evidence": [
+        "JA18: 固定版本故障夹具、原路径红色复现、同预算",
+        "JA18: 前后同表面日志 + host completion evidence",
+        "JA18: bad variant trace — 只跑新写的单测，不驱动原表面"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS01",
+        "PS08"
+      ],
+      "asserts": [
+        "PS01:observable",
+        "PS08:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "integration-owner",
+        "observation_boundary": "前后同表面日志 + host completion evidence",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA19",
+      "owner_work_item": "J10",
+      "title": "升级漂移与旧运行",
+      "given": "run A 固定 recipe v1，候选 v2 未测",
+      "when": "尝试激活 v2，再撤销 v1 新启动",
+      "then": "未测 v2 拒绝；新启动受撤销约束；A 不被改写",
+      "bad_variant": "覆盖原 snapshot 或依赖版本忽略",
+      "oracle": "registry 历史和 A 的固定 binding",
+      "required_evidence": [
+        "JA19: run A 固定 recipe v1，候选 v2 未测",
+        "JA19: registry 历史和 A 的固定 binding",
+        "JA19: bad variant trace — 覆盖原 snapshot 或依赖版本忽略"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS09",
+        "PS21",
+        "FM-15"
+      ],
+      "asserts": [
+        "PS09:observable",
+        "PS21:observable",
+        "FM-15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "registry 历史和 A 的固定 binding",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS09:N01",
+        "PS09:N02"
+      ]
+    },
+    {
+      "id": "JA20",
+      "owner_work_item": "J11",
+      "title": "恢复存储前置无环",
+      "given": "home 目标 DDL、旧 attention hold、未来 broker DDL",
+      "when": "检查 migration/恢复依赖闭包",
+      "then": "home/broker 各自先有 schema spec 与对应恢复构建",
+      "bad_variant": "让 recovery 实现反依赖启动该迁移的 controller",
+      "oracle": "目标 schema fixture 与依赖图，非运行资格",
+      "required_evidence": [
+        "JA20: home 目标 DDL、旧 attention hold、未来 broker DDL",
+        "JA20: 目标 schema fixture 与依赖图，非运行资格",
+        "JA20: bad variant trace — 让 recovery 实现反依赖启动该迁移的 controller"
+      ],
+      "layer": "contract",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-24"
+      ],
+      "asserts": [
+        "FM-24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "目标 schema fixture 与依赖图，非运行资格",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA21",
+      "owner_work_item": "J12",
+      "title": "未知效果与孤儿 lease",
+      "given": "真实持久 unknown hold / broker held orphan",
+      "when": "以旧 owner、错误 generation、无静默证明请求释放",
+      "then": "全部拒绝；正确受控证明只处置精确对象",
+      "bad_variant": "直接删除锁/用 daemon.resume 清义务",
+      "oracle": "原持久 hold、owner、裁决 receipt 与恢复 trace",
+      "required_evidence": [
+        "JA21: 真实持久 unknown hold / broker held orphan",
+        "JA21: 原持久 hold、owner、裁决 receipt 与恢复 trace",
+        "JA21: bad variant trace — 直接删除锁/用 daemon.resume 清义务"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-03",
+        "FM-09",
+        "FM-14",
+        "PS19"
+      ],
+      "asserts": [
+        "FM-03:observable",
+        "FM-09:observable",
+        "FM-14:observable",
+        "PS19:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "原持久 hold、owner、裁决 receipt 与恢复 trace",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA22",
+      "owner_work_item": "J13",
+      "title": "重放不产生副作用",
+      "given": "含模型建议与已执行 effect 的持久事件序列",
+      "when": "重启并重放两次",
+      "then": "状态相同；模型和外部执行新增调用均零",
+      "bad_variant": "重放时重新问模型或再发命令",
+      "oracle": "独立 reducer 模型和调用计数",
+      "required_evidence": [
+        "JA22: 含模型建议与已执行 effect 的持久事件序列",
+        "JA22: 独立 reducer 模型和调用计数",
+        "JA22: bad variant trace — 重放时重新问模型或再发命令"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-02",
+        "FM-05",
+        "FM-07",
+        "PS16"
+      ],
+      "asserts": [
+        "FM-02:observable",
+        "FM-05:observable",
+        "FM-07:observable",
+        "PS16:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "独立 reducer 模型和调用计数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA23",
+      "owner_work_item": "J13",
+      "title": "预算不会重置或双释放",
+      "given": "父预算有限，子任务有 unknown 预留",
+      "when": "重新规划、切引擎、重复 receipt release",
+      "then": "剩余额度不增加，unknown 不释放，已结算不重复",
+      "bad_variant": "每次路由生成全新预算",
+      "oracle": "持久 reservation 与独立账本守恒断言",
+      "required_evidence": [
+        "JA23: 父预算有限，子任务有 unknown 预留",
+        "JA23: 持久 reservation 与独立账本守恒断言",
+        "JA23: bad variant trace — 每次路由生成全新预算"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-21",
+        "PS15"
+      ],
+      "asserts": [
+        "FM-21:observable",
+        "PS15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "持久 reservation 与独立账本守恒断言",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA24",
+      "owner_work_item": "J14",
+      "title": "启动崩溃不重复",
+      "given": "effect 派生 run_id 已持久，外部启动后 receipt 前崩溃",
+      "when": "恢复并查询 adapter",
+      "then": "能证明未执行才首次执行；否则 reconcile/hold",
+      "bad_variant": "换 run_id 重发或把超时当没执行",
+      "oracle": "故障点外部调用日志与恢复记录",
+      "required_evidence": [
+        "JA24: effect 派生 run_id 已持久，外部启动后 receipt 前崩溃",
+        "JA24: 故障点外部调用日志与恢复记录",
+        "JA24: bad variant trace — 换 run_id 重发或把超时当没执行"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-09",
+        "FM-15"
+      ],
+      "asserts": [
+        "FM-09:observable",
+        "FM-15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "executor-owner",
+        "observation_boundary": "故障点外部调用日志与恢复记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA25",
+      "owner_work_item": "J15",
+      "title": "决定绑定和范围纠正",
+      "given": "Q1/Q2 同时开放，用户说继续",
+      "when": "先含糊回答，再明确 Q1；另尝试只读转写",
+      "then": "含糊不猜；Q1 不清 Q2；扩大范围重新授权",
+      "bad_variant": "按最新问题猜测或修改目标但复用旧批准",
+      "oracle": "具体 question/ref/version 与授权记录",
+      "required_evidence": [
+        "JA25: Q1/Q2 同时开放，用户说继续",
+        "JA25: 具体 question/ref/version 与授权记录",
+        "JA25: bad variant trace — 按最新问题猜测或修改目标但复用旧批准"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-01",
+        "FM-08",
+        "FM-12",
+        "PS03"
+      ],
+      "asserts": [
+        "FM-01:observable",
+        "FM-08:observable",
+        "FM-12:observable",
+        "PS03:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "具体 question/ref/version 与授权记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-12:N01"
+      ]
+    },
+    {
+      "id": "JA26",
+      "owner_work_item": "J16",
+      "title": "联合目标到验收",
+      "given": "方法绑定、主控、Q1 等待和待修复候选",
+      "when": "回答后恢复，修改候选，再独立检查",
+      "then": "Session observed_turn 与 task local_verified 分别有证据；同入口完整显示",
+      "bad_variant": "以回复正文“完成”跳过检查",
+      "oracle": "真实单入口 transcript + 状态/候选/check receipts",
+      "required_evidence": [
+        "JA26: 方法绑定、主控、Q1 等待和待修复候选",
+        "JA26: 真实单入口 transcript + 状态/候选/check receipts",
+        "JA26: bad variant trace — 以回复正文“完成”跳过检查"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-01",
+        "FM-13",
+        "PS01",
+        "PS13"
+      ],
+      "asserts": [
+        "FM-01:observable",
+        "FM-13:observable",
+        "PS01:observable",
+        "PS13:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "integration-owner",
+        "observation_boundary": "真实单入口 transcript + 状态/候选/check receipts",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA27",
+      "owner_work_item": "J16",
+      "title": "取消与派发竞争",
+      "given": "取消和 dispatch 两个并发事务",
+      "when": "枚举取消先提交/派发先提交及重启",
+      "then": "未派发有证明则零启动；已派发等待停止证明",
+      "bad_variant": "把 AbortSignal 当已停止",
+      "oracle": "受控调度顺序、真实 effect/stop receipt",
+      "required_evidence": [
+        "JA27: 取消和 dispatch 两个并发事务",
+        "JA27: 受控调度顺序、真实 effect/stop receipt",
+        "JA27: bad variant trace — 把 AbortSignal 当已停止"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-03",
+        "FM-04",
+        "PS19"
+      ],
+      "asserts": [
+        "FM-03:observable",
+        "FM-04:observable",
+        "PS19:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "integration-owner",
+        "observation_boundary": "受控调度顺序、真实 effect/stop receipt",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS19:N01"
+      ]
+    },
+    {
+      "id": "JA28",
+      "owner_work_item": "J17",
+      "title": "写集合和公平容量",
+      "given": "两个任务争同一写集合，第三个不冲突",
+      "when": "并发预留，释放后重试；故障制造孤儿",
+      "then": "冲突串行，不冲突可执行；无超卖或无限饥饿",
+      "bad_variant": "只按工作树不同认定无冲突",
+      "oracle": "可控调度、容量计数、队列序列",
+      "required_evidence": [
+        "JA28: 两个任务争同一写集合，第三个不冲突",
+        "JA28: 可控调度、容量计数、队列序列",
+        "JA28: bad variant trace — 只按工作树不同认定无冲突"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS05",
+        "PS16",
+        "FM-21"
+      ],
+      "asserts": [
+        "PS05:observable",
+        "PS16:observable",
+        "FM-21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "可控调度、容量计数、队列序列",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-21:N01",
+        "PS16:N01",
+        "PS16:N02"
+      ]
+    },
+    {
+      "id": "JA29",
+      "owner_work_item": "J18",
+      "title": "覆盖、竞赛与合成",
+      "given": "预声明三个必需覆盖单元或一个竞赛规则",
+      "when": "缺一覆盖；另合成两个已测候选",
+      "then": "覆盖缺失拒绝；合成重新验证；不事后换规则",
+      "bad_variant": "按返回数或模型投票当覆盖完成",
+      "oracle": "声明、产物集合、合成 candidate 新证据",
+      "required_evidence": [
+        "JA29: 预声明三个必需覆盖单元或一个竞赛规则",
+        "JA29: 声明、产物集合、合成 candidate 新证据",
+        "JA29: bad variant trace — 按返回数或模型投票当覆盖完成"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS04",
+        "PS05",
+        "PS17"
+      ],
+      "asserts": [
+        "PS04:observable",
+        "PS05:observable",
+        "PS17:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "executor-owner",
+        "observation_boundary": "声明、产物集合、合成 candidate 新证据",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS04:N01",
+        "PS04:N02",
+        "PS05:N01"
+      ]
+    },
+    {
+      "id": "JA30",
+      "owner_work_item": "J19",
+      "title": "记忆与方法改进隔离",
+      "given": "项目 A 经验含过期结论和命令文本",
+      "when": "检索项目 B；生成反思改进",
+      "then": "跨项目不注入；来源/过期可见；改进仅 candidate",
+      "bad_variant": "反思直接改 active 或记忆提升权限",
+      "oracle": "检索结果、资格状态与反例回归",
+      "required_evidence": [
+        "JA30: 项目 A 经验含过期结论和命令文本",
+        "JA30: 检索结果、资格状态与反例回归",
+        "JA30: bad variant trace — 反思直接改 active 或记忆提升权限"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-20",
+        "PS12",
+        "PS24"
+      ],
+      "asserts": [
+        "FM-20:observable",
+        "PS12:observable",
+        "PS24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "检索结果、资格状态与反例回归",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-20:N01"
+      ]
+    },
+    {
+      "id": "JA31",
+      "owner_work_item": "J20",
+      "title": "监督、hook 与 quiet",
+      "given": "仍有未决 Q1，hook 重复/缺失，用户 away",
+      "when": "多次空唤醒、返回并读取简报",
+      "then": "持久责任未丢；空轮询不调用模型；重复 hook 幂等",
+      "bad_variant": "把阅读游标清除 Q1 或隐藏即批准",
+      "oracle": "事件游标、模型计数、未决事项与用户视图",
+      "required_evidence": [
+        "JA31: 仍有未决 Q1，hook 重复/缺失，用户 away",
+        "JA31: 事件游标、模型计数、未决事项与用户视图",
+        "JA31: bad variant trace — 把阅读游标清除 Q1 或隐藏即批准"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-02",
+        "FM-05",
+        "FM-06",
+        "FM-07",
+        "FM-10",
+        "FM-11",
+        "PS24"
+      ],
+      "asserts": [
+        "FM-02:observable",
+        "FM-05:observable",
+        "FM-06:observable",
+        "FM-07:observable",
+        "FM-10:observable",
+        "FM-11:observable",
+        "PS24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "事件游标、模型计数、未决事项与用户视图",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-06:N01",
+        "FM-07:N01",
+        "PS24:N01",
+        "PS24:N02"
+      ]
+    },
+    {
+      "id": "JA32",
+      "owner_work_item": "J21",
+      "title": "远端断连与人工介入",
+      "given": "父任务绑定远端 child，已开始且预算预留",
+      "when": "断连并在 worker 可见界面人工 steering",
+      "then": "保留原绑定 unknown；不本地替代；steering 有版本事件",
+      "bad_variant": "窗口标题当身份、断连当停止",
+      "oracle": "父子 receipt、remote identity、预算与 intervention event",
+      "required_evidence": [
+        "JA32: 父任务绑定远端 child，已开始且预算预留",
+        "JA32: 父子 receipt、remote identity、预算与 intervention event",
+        "JA32: bad variant trace — 窗口标题当身份、断连当停止"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-16",
+        "FM-17",
+        "FM-19"
+      ],
+      "asserts": [
+        "FM-16:observable",
+        "FM-17:observable",
+        "FM-19:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "executor-owner",
+        "observation_boundary": "父子 receipt、remote identity、预算与 intervention event",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-16:N01"
+      ]
+    },
+    {
+      "id": "JA33",
+      "owner_work_item": "J22",
+      "title": "来源消息与公开承诺",
+      "given": "外部文本包含命令和发送请求但无授权",
+      "when": "接收消息；另对已授权承诺模拟发送后断连",
+      "then": "仅观察不扩权；未知发送不重复；责任持久",
+      "bad_variant": "聊天内容直接发帖或换任务清额度",
+      "oracle": "source principal、授权、effect 与承诺 receipt",
+      "required_evidence": [
+        "JA33: 外部文本包含命令和发送请求但无授权",
+        "JA33: source principal、授权、effect 与承诺 receipt",
+        "JA33: bad variant trace — 聊天内容直接发帖或换任务清额度"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-18",
+        "FM-22",
+        "FM-23",
+        "PS22"
+      ],
+      "asserts": [
+        "FM-18:observable",
+        "FM-22:observable",
+        "FM-23:observable",
+        "PS22:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "source principal、授权、effect 与承诺 receipt",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS22:N01"
+      ]
+    },
+    {
+      "id": "JA34",
+      "owner_work_item": "J23",
+      "title": "支持组合不能外推",
+      "given": "只有可信本地某 Adapter/Profile 的实测",
+      "when": "请求远端/其他租户/恶意同 UID 资格",
+      "then": "unsupported/not_run，不继承本地通过",
+      "bad_variant": "单次成功认证全部支持矩阵",
+      "oracle": "精确 tuple 与独立宿主测量",
+      "required_evidence": [
+        "JA34: 只有可信本地某 Adapter/Profile 的实测",
+        "JA34: 精确 tuple 与独立宿主测量",
+        "JA34: bad variant trace — 单次成功认证全部支持矩阵"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-15",
+        "PS20"
+      ],
+      "asserts": [
+        "FM-15:observable",
+        "PS20:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "精确 tuple 与独立宿主测量",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA35",
+      "owner_work_item": "J24",
+      "title": "升级与实际版本",
+      "given": "新 schema、未知 hold、旧进程仍可能活着",
+      "when": "升级、回退、旧二进制打开 DB",
+      "then": "旧写者拒绝；hold 保留；目标恢复入口可处理；版本以实际进程为准",
+      "bad_variant": "以 installed version 代替 running version",
+      "oracle": "真实启动/锁/schema/恢复证据",
+      "required_evidence": [
+        "JA35: 新 schema、未知 hold、旧进程仍可能活着",
+        "JA35: 真实启动/锁/schema/恢复证据",
+        "JA35: bad variant trace — 以 installed version 代替 running version"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-24"
+      ],
+      "asserts": [
+        "FM-24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "真实启动/锁/schema/恢复证据",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA36",
+      "owner_work_item": "J25",
+      "title": "方法价值因果与分母",
+      "given": "预登记任务、固定预算、随机顺序与隐藏验收",
+      "when": "运行 baseline/P，包含失败和超时",
+      "then": "所有尝试计入，区分工具/产品失败；报告区间",
+      "bad_variant": "删失败样本或仅报最佳运行",
+      "oracle": "原始 trial ledger、独立 rubric 与统计脚本",
+      "required_evidence": [
+        "JA36: 预登记任务、固定预算、随机顺序与隐藏验收",
+        "JA36: 原始 trial ledger、独立 rubric 与统计脚本",
+        "JA36: bad variant trace — 删失败样本或仅报最佳运行"
+      ],
+      "layer": "product_evaluation",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS14",
+        "PS15"
+      ],
+      "asserts": [
+        "PS14:observable",
+        "PS15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-evaluation-custodian",
+        "implementation_owner_role": "evaluation-owner",
+        "observation_boundary": "原始 trial ledger、独立 rubric 与统计脚本",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA37",
+      "owner_work_item": "J26",
+      "title": "规划和证据投影",
+      "given": "planned 包及普通 README 引用",
+      "when": "尝试投影 done 或 qualified",
+      "then": "拒绝，只有精确范围和独立实际证据可升级",
+      "bad_variant": "只检查 evidence 字段非空",
+      "oracle": "负例验证器与状态投影结果",
+      "required_evidence": [
+        "JA37: planned 包及普通 README 引用",
+        "JA37: 负例验证器与状态投影结果",
+        "JA37: bad variant trace — 只检查 evidence 字段非空"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-19",
+        "PS21"
+      ],
+      "asserts": [
+        "FM-19:observable",
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "source-owner",
+        "observation_boundary": "负例验证器与状态投影结果",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA38",
+      "owner_work_item": "J27",
+      "title": "灰度与回退",
+      "given": "local opt-in 支持格与仍未资格的 remote 格",
+      "when": "扩大启用，随后触发重复 effect 报警",
+      "then": "remote 拒绝；停止新自动执行，保留旧任务查询恢复",
+      "bad_variant": "关闭 feature 同时删除旧状态",
+      "oracle": "发布清单、开关前后与恢复演练",
+      "required_evidence": [
+        "JA38: local opt-in 支持格与仍未资格的 remote 格",
+        "JA38: 发布清单、开关前后与恢复演练",
+        "JA38: bad variant trace — 关闭 feature 同时删除旧状态"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-23",
+        "FM-24"
+      ],
+      "asserts": [
+        "FM-23:observable",
+        "FM-24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "release-owner",
+        "observation_boundary": "发布清单、开关前后与恢复演练",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA39",
+      "owner_work_item": "J28",
+      "title": "形式化有边界且能找坏例",
+      "given": "精简 owner/dispatch/cancel 模型和源码映射",
+      "when": "运行有限状态 TLC；删除 fence 再运行",
+      "then": "好模型无该范围反例；坏模型产生可映射轨迹",
+      "bad_variant": "只渲染状态图就声称验证通过",
+      "oracle": "TLC 完整输出、模型参数和代码反例",
+      "required_evidence": [
+        "JA39: 精简 owner/dispatch/cancel 模型和源码映射",
+        "JA39: TLC 完整输出、模型参数和代码反例",
+        "JA39: bad variant trace — 只渲染状态图就声称验证通过"
+      ],
+      "layer": "formal_model",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS10",
+        "PS11"
+      ],
+      "asserts": [
+        "PS10:observable",
+        "PS11:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "TLC 完整输出、模型参数和代码反例",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS10:N01",
+        "PS11:N01"
+      ]
+    },
+    {
+      "id": "JA40",
+      "owner_work_item": "J29",
+      "title": "端到端性能与改进预算",
+      "given": "固定 baseline、硬预算与端到端指标",
+      "when": "多次测量候选，插入局部快而总体慢变体",
+      "then": "总体无改善不采纳，超预算停止；盲评含全部尝试",
+      "bad_variant": "只选微基准最优且换 baseline",
+      "oracle": "原始计时/成本/失败样本与候选 hash",
+      "required_evidence": [
+        "JA40: 固定 baseline、硬预算与端到端指标",
+        "JA40: 原始计时/成本/失败样本与候选 hash",
+        "JA40: bad variant trace — 只选微基准最优且换 baseline"
+      ],
+      "layer": "product_evaluation",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS14",
+        "PS15"
+      ],
+      "asserts": [
+        "PS14:observable",
+        "PS15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-evaluation-custodian",
+        "implementation_owner_role": "evaluation-owner",
+        "observation_boundary": "原始计时/成本/失败样本与候选 hash",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA41",
+      "owner_work_item": "J30",
+      "title": "栈前沿和组合候选",
+      "given": "PR A/B 各自通过，但组合破坏检查",
+      "when": "构造最新 main+A+B 候选并变更 base/head",
+      "then": "组合失败阻止推进；旧审查/检查失效需重测",
+      "bad_variant": "只看两个 PR 绿灯",
+      "oracle": "组合 SHA/tree、真实 CI 与分类器负例",
+      "required_evidence": [
+        "JA41: PR A/B 各自通过，但组合破坏检查",
+        "JA41: 组合 SHA/tree、真实 CI 与分类器负例",
+        "JA41: bad variant trace — 只看两个 PR 绿灯"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-13",
+        "PS17",
+        "PS18"
+      ],
+      "asserts": [
+        "FM-13:observable",
+        "PS17:observable",
+        "PS18:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "组合 SHA/tree、真实 CI 与分类器负例",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS17:N01"
+      ]
+    },
+    {
+      "id": "JA42",
+      "owner_work_item": "J31",
+      "title": "已应用回执不被清理错误抹掉",
+      "given": "原 send 已写 applied receipt",
+      "when": "cleanup 抛错，再以同 request_id 查询/重试",
+      "then": "仍可读 applied，禁止重复投递；资源故障单列",
+      "bad_variant": "捕获清理错误后覆写 failed 或再发送",
+      "oracle": "原 receipt 主键/状态与发送次数",
+      "required_evidence": [
+        "JA42: 原 send 已写 applied receipt",
+        "JA42: 原 receipt 主键/状态与发送次数",
+        "JA42: bad variant trace — 捕获清理错误后覆写 failed 或再发送"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-09",
+        "FM-14"
+      ],
+      "asserts": [
+        "FM-09:observable",
+        "FM-14:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "原 receipt 主键/状态与发送次数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA43",
+      "owner_work_item": "J32",
+      "title": "联合收益和协同效应",
+      "given": "固定当前 baseline，开关仅控制本次新增 F/P",
+      "when": "执行四组配对任务与冷用户复现",
+      "then": "分开报告 F、P、组合与交互；小样本不报确定 ROI",
+      "bad_variant": "把已有 Firstmate 从 baseline 隐藏或改预算",
+      "oracle": "版本化任务集、盲评与完整分母",
+      "required_evidence": [
+        "JA43: 固定当前 baseline，开关仅控制本次新增 F/P",
+        "JA43: 版本化任务集、盲评与完整分母",
+        "JA43: bad variant trace — 把已有 Firstmate 从 baseline 隐藏或改预算"
+      ],
+      "layer": "product_evaluation",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-01",
+        "PS01"
+      ],
+      "asserts": [
+        "FM-01:observable",
+        "PS01:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-evaluation-custodian",
+        "implementation_owner_role": "evaluation-owner",
+        "observation_boundary": "版本化任务集、盲评与完整分母",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-01:N01",
+        "PS01:N01",
+        "PS01:N02"
+      ]
+    },
+    {
+      "id": "JA44",
+      "owner_work_item": "J03",
+      "title": "控制动作重试边界",
+      "given": "drive/setup/cleanup 的资源句柄持久且归本 run",
+      "when": "重复同一动作 key，改变输入重用 key",
+      "then": "相同输入返回原 receipt；不同输入拒绝；无重复动作",
+      "bad_variant": "把 driver 操作当任意 check shell",
+      "oracle": "resource/action ledger 与外部动作数",
+      "required_evidence": [
+        "JA44: drive/setup/cleanup 的资源句柄持久且归本 run",
+        "JA44: resource/action ledger 与外部动作数",
+        "JA44: bad variant trace — 把 driver 操作当任意 check shell"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS08"
+      ],
+      "asserts": [
+        "PS08:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "resource/action ledger 与外部动作数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS08:N01",
+        "PS08:N02",
+        "PS08:N03"
+      ]
+    },
+    {
+      "id": "JA45",
+      "owner_work_item": "J07",
+      "title": "语义评审有反例",
+      "given": "有效 JSON 报告误把假设称为事实，reviewer 身份仅 reported",
+      "when": "运行隐藏 transcript 判定与独立评审",
+      "then": "结构可通过但语义失败；不声明身份隔离认证",
+      "bad_variant": "字段齐全即理解正确、多模型一致即通过",
+      "oracle": "独立 rubric 判分、disposition 与 identity scope",
+      "required_evidence": [
+        "JA45: 有效 JSON 报告误把假设称为事实，reviewer 身份仅 reported",
+        "JA45: 独立 rubric 判分、disposition 与 identity scope",
+        "JA45: bad variant trace — 字段齐全即理解正确、多模型一致即通过"
+      ],
+      "layer": "semantic_evaluation",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS02",
+        "PS06"
+      ],
+      "asserts": [
+        "PS02:observable",
+        "PS06:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "独立 rubric 判分、disposition 与 identity scope",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS02:N01",
+        "PS02:N02"
+      ]
+    },
+    {
+      "id": "JA46",
+      "owner_work_item": "J04",
+      "title": "加载后撤权/过期",
+      "given": "材料加载完成到实际 invoke 之间改变配置或授权",
+      "when": "经过同步 dispatch fence 调用",
+      "then": "调用前拒绝；不得只检查 renderer 时的授权",
+      "bad_variant": "异步 fence 未等待或忽略配置漂移",
+      "oracle": "可控时序、实际 raw adapter 计数",
+      "required_evidence": [
+        "JA46: 材料加载完成到实际 invoke 之间改变配置或授权",
+        "JA46: 可控时序、实际 raw adapter 计数",
+        "JA46: bad variant trace — 异步 fence 未等待或忽略配置漂移"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS20",
+        "FM-03"
+      ],
+      "asserts": [
+        "PS20:observable",
+        "FM-03:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "可控时序、实际 raw adapter 计数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA47",
+      "owner_work_item": "J11",
+      "title": "恢复 receipt 字段完整",
+      "given": "符合 schema 的 operator 恢复回执",
+      "when": "逐字段删 effect/owner/generation/schema/proof/裁决绑定",
+      "then": "每个缺失版本都拒绝",
+      "bad_variant": "只验证 receipt 文件存在",
+      "oracle": "字段变异集合与 validator 输出",
+      "required_evidence": [
+        "JA47: 符合 schema 的 operator 恢复回执",
+        "JA47: 字段变异集合与 validator 输出",
+        "JA47: bad variant trace — 只验证 receipt 文件存在"
+      ],
+      "layer": "contract",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-24"
+      ],
+      "asserts": [
+        "FM-24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "字段变异集合与 validator 输出",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA48",
+      "owner_work_item": "J22",
+      "title": "渠道配置与语音身份",
+      "given": "文本/语音输入来自不同认证主体，远端来源未注册",
+      "when": "尝试以转写文本授权公开发送",
+      "then": "文本作为输入，授权另验主体/渠道；未注册拒绝",
+      "bad_variant": "把转写内容中的“我批准”当凭证",
+      "oracle": "principal/channel 映射和授权审计",
+      "required_evidence": [
+        "JA48: 文本/语音输入来自不同认证主体，远端来源未注册",
+        "JA48: principal/channel 映射和授权审计",
+        "JA48: bad variant trace — 把转写内容中的“我批准”当凭证"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-18",
+        "FM-22"
+      ],
+      "asserts": [
+        "FM-18:observable",
+        "FM-22:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "principal/channel 映射和授权审计",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-18:N01",
+        "FM-22:N01"
+      ]
+    },
+    {
+      "id": "JA49",
+      "owner_work_item": "J08",
+      "title": "试验许可原子消费与双层预算",
+      "given": "同一 permit 绑定 root effect E1、Binding B1；预算容纳 implement+review，两个 host 并发申请，之后首次 host 在登记消费后崩溃",
+      "when": "CAS 消费后恢复同 E1；另以同许可启动 E2，并重复登记内部 effect receipt；插入 adapter 调用预算不足与 cost unknown 变体",
+      "then": "仅一个 root run 被接受；E1 只查询/对账不重复启动；E2 拒绝；内部调用逐 slot 预留且重放不重复扣减/释放；容量不足在启动前拒绝，费用未知不按零计算 根 ID 在签发前从 scope/idempotency/permit ID 派生；消费与 GraphRunStore.create 同事务；graph_actions 是唯一槽位账本；permit≤policy，无法强制费用时不填写虚假硬上限。",
+      "bad_variant": "max_invocations=1 既当 root 额度又当 adapter 额度；或读后写消费导致双 root；重启换 effect",
+      "oracle": "可信持久 permit 消费记录与独立外部调用计数、slot 预算账本三方一致",
+      "layer": "integration",
+      "capabilities": [
+        "PS21",
+        "FM-15"
+      ],
+      "required_evidence": [
+        "JA49: 同一 permit 绑定 root effect E1、Binding B1；预算容纳 implement+review，两个 host 并发申请，之后首次 host 在登记消费后崩溃",
+        "JA49: 可信持久 permit 消费记录与独立外部调用计数、slot 预算账本三方一致",
+        "JA49: bad variant trace — max_invocations=1 既当 root 额度又当 adapter 额度；或读后写消费导致双 root；重启换 effect",
+        "JA49: 根 ID 在签发前从 scope/idempotency/permit ID 派生；消费与 GraphRunStore.create 同事务；graph_actions 是唯一槽位账本；permit≤policy，无法强制费用时不填写虚假硬上限。"
+      ],
+      "status": "specified_not_run",
+      "executed": false,
+      "asserts": [
+        "PS21:observable",
+        "FM-15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "可信持久 permit 消费记录与独立外部调用计数、slot 预算账本三方一致",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA50",
+      "owner_work_item": "J07",
+      "title": "基线复现与最终候选证据分相位",
+      "given": "基线 B 在场景 S 失败；候选 C 修复；同 run/Binding；intent 在 C 出现前生成，cleanup 只引用资源账本",
+      "when": "消费 baseline reproduction 与 C 的 checks/review；再把另一场景或环境的 baseline 搭配 C；另把 B 的 review 当 C 评审",
+      "then": "合法 B→C 证据链可验收；错误场景/环境/check registry 或错误候选 review 拒绝；不伪造基线产物属于 C；intent/cleanup 不强求候选字段",
+      "bad_variant": "所有产物都要求最终 tree；或接受任意基线红色日志证明 C 修复",
+      "oracle": "不可变 baseline artifact、scenario/environment/check digests、C 候选证据和 host 关联记录",
+      "layer": "integration",
+      "capabilities": [
+        "PS06",
+        "PS13",
+        "FM-13"
+      ],
+      "required_evidence": [
+        "JA50: 基线 B 在场景 S 失败；候选 C 修复；同 run/Binding；intent 在 C 出现前生成，cleanup 只引用资源账本",
+        "JA50: 不可变 baseline artifact、scenario/environment/check digests、C 候选证据和 host 关联记录",
+        "JA50: bad variant trace — 所有产物都要求最终 tree；或接受任意基线红色日志证明 C 修复"
+      ],
+      "status": "specified_not_run",
+      "executed": false,
+      "asserts": [
+        "PS06:observable",
+        "PS13:observable",
+        "FM-13:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "不可变 baseline artifact、scenario/environment/check digests、C 候选证据和 host 关联记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS13:N01",
+        "PS13:N02"
+      ]
+    },
+    {
+      "id": "JA51",
+      "owner_work_item": "J12",
+      "title": "恢复 phase/decision/proof 矩阵",
+      "given": "committed/legacy/reserved 的真实 hold，包含同形但错 effect 的 proof",
+      "when": "逐组合请求裁决并以同 request 换 decision",
+      "then": "committed→not_started 拒绝；停止必须验证精确 invocation；applied 必须读原完成记录；不重发原 action 验证 decision→后态表的 hold/reservation/wait/upgrade 四列；abandoned_unknown 单独读取；legacy_unknown 仅允许 preserve_unknown。",
+      "bad_variant": "只验字段存在，不检 phase/证明来源",
+      "oracle": "持久 phase/receipt、外部调用数与权限校验轨迹",
+      "required_evidence": [
+        "JA51: frozen inputs and independent expected observation",
+        "JA51: ordered boundary trace and original results",
+        "JA51: negative variant rejection and evidence hashes",
+        "JA51: 验证 decision→后态表的 hold/reservation/wait/upgrade 四列；abandoned_unknown 单独读取；legacy_unknown 仅允许 preserve_unknown。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-03",
+        "FM-09"
+      ],
+      "asserts": [
+        "FM-03:observable",
+        "FM-09:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "持久 phase/receipt、外部调用数与权限校验轨迹",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-09:N01"
+      ]
+    },
+    {
+      "id": "JA52",
+      "owner_work_item": "J12",
+      "title": "带 hold 的恢复账本 bootstrap",
+      "given": "旧 schema 带 committed unknown hold；只含账本 DDL 的白名单迁移",
+      "when": "DDL 前、中、提交后退出，再恢复；注入 UPDATE phases 和普通升级",
+      "then": "原 hold 字节不变；仅旧无账本或新完整账本；坏 DDL/普通升级被拒；新构建能持久裁决 普通 openDb 遇 hold 在任何迁移前拒绝；专用模式只执行白名单单步；N+1 证据不能资格另一 DDL 或 N+2。",
+      "bad_variant": "存在 hold 时禁止一切恢复记账；或迁移清空 hold",
+      "oracle": "独立 SQLite 快照/行摘要、schema/DDL/构建与事务日志",
+      "required_evidence": [
+        "JA52: frozen inputs and independent expected observation",
+        "JA52: ordered boundary trace and original results",
+        "JA52: negative variant rejection and evidence hashes",
+        "JA52: 普通 openDb 遇 hold 在任何迁移前拒绝；专用模式只执行白名单单步；N+1 证据不能资格另一 DDL 或 N+2。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-24",
+        "FM-14"
+      ],
+      "asserts": [
+        "FM-24:observable",
+        "FM-14:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "独立 SQLite 快照/行摘要、schema/DDL/构建与事务日志",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA53",
+      "owner_work_item": "J04",
+      "title": "按受信角色装配材料",
+      "given": "builder/reviewer/verifier 三种独立 marker，冻结 node-role 映射",
+      "when": "捕获三个实际 raw AgentTask，交换 role/材料 digest",
+      "then": "每种材料仅到对应角色；错 role/跨角色材料拒绝；原 v1 兼容 每角色摘要为 {schema_version:1,role,requirements_digest}，role 交换必须失败；whole requirements 不被误当 role projection。",
+      "bad_variant": "全局方法段进入 reviewer；从 prompt 猜角色",
+      "oracle": "真实 wrapper 捕获字节与节点映射的独立对照",
+      "required_evidence": [
+        "JA53: frozen inputs and independent expected observation",
+        "JA53: ordered boundary trace and original results",
+        "JA53: negative variant rejection and evidence hashes",
+        "JA53: 每角色摘要为 {schema_version:1,role,requirements_digest}，role 交换必须失败；whole requirements 不被误当 role projection。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS06",
+        "PS20"
+      ],
+      "asserts": [
+        "PS06:observable",
+        "PS20:observable",
+        "PS06:role-isolation"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "真实 wrapper 捕获字节与节点映射的独立对照",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS20:N01",
+        "PS20:N02"
+      ]
+    },
+    {
+      "id": "JA54",
+      "owner_work_item": "J20",
+      "title": "执行状态优先级",
+      "given": "dead/unknown/busy/idle 的固定事件序列与来源可信度",
+      "when": "unknown 后出现普通进度文本；退出事实与旧 busy 同时存在",
+      "then": "unknown 不被猜为 busy；可信 dead 覆盖陈旧 busy；每次输出有依据",
+      "bad_variant": "无证据 unknown→busy",
+      "oracle": "冻结事件表和人工核验的状态真值表",
+      "required_evidence": [
+        "JA54: frozen inputs and independent expected observation",
+        "JA54: ordered boundary trace and original results",
+        "JA54: negative variant rejection and evidence hashes"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-02"
+      ],
+      "asserts": [
+        "FM-02:observable",
+        "FM-02:state-precedence"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "冻结事件表和人工核验的状态真值表",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-02:N01"
+      ]
+    },
+    {
+      "id": "JA55",
+      "owner_work_item": "J20",
+      "title": "简报增量与待决优先",
+      "given": "游标前后事件含 Q1、无关进度与重复事件",
+      "when": "连续读取简报、重启后重读与返回",
+      "then": "只报未呈现变化；Q1 仍显著；重复不累计，游标更新与呈现边界可追踪",
+      "bad_variant": "重播全历史或推进游标丢待决",
+      "oracle": "事件序列、持久游标、预先登记的呈现快照",
+      "required_evidence": [
+        "JA55: frozen inputs and independent expected observation",
+        "JA55: ordered boundary trace and original results",
+        "JA55: negative variant rejection and evidence hashes"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-11"
+      ],
+      "asserts": [
+        "FM-11:observable",
+        "FM-11:incremental-brief"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "事件序列、持久游标、预先登记的呈现快照",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-11:N01"
+      ]
+    },
+    {
+      "id": "JA56",
+      "owner_work_item": "J31",
+      "title": "清理前保全未交付资产",
+      "given": "dirty/unlanded 候选、自有与非自有槽位、未知 Worker",
+      "when": "请求 teardown/cleanup，含强删变体",
+      "then": "保全 dirty/未交付/未知；拒绝非自有资源清理；已应用 receipt 仍可查询 未终态或 unknown root 的内容寻址配置与 registration 禁止清理；恢复查询/停止不走已过期 permit authorize。",
+      "bad_variant": "只看进程退出或工作树目录存在就删除",
+      "oracle": "文件/候选证据前后快照与资源所有权记录",
+      "required_evidence": [
+        "JA56: frozen inputs and independent expected observation",
+        "JA56: ordered boundary trace and original results",
+        "JA56: negative variant rejection and evidence hashes",
+        "JA56: 未终态或 unknown root 的内容寻址配置与 registration 禁止清理；恢复查询/停止不走已过期 permit authorize。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-14"
+      ],
+      "asserts": [
+        "FM-14:observable",
+        "FM-14:preserve-before-cleanup"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "state-owner",
+        "observation_boundary": "文件/候选证据前后快照与资源所有权记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-14:N01"
+      ]
+    },
+    {
+      "id": "JA57",
+      "owner_work_item": "J30",
+      "title": "Forge 分类拒绝 BLOCKED/UNKNOWN",
+      "given": "checks green 但 review required/blocked、缺页、超时、旧 head",
+      "when": "分别分类并请求推进",
+      "then": "均非 ready；缺页/超时 unknown；观察器不调用 push/merge",
+      "bad_variant": "仅 checks green 就 ready",
+      "oracle": "固定平台原始响应、独立期待表和写 API 调用数零",
+      "required_evidence": [
+        "JA57: frozen inputs and independent expected observation",
+        "JA57: ordered boundary trace and original results",
+        "JA57: negative variant rejection and evidence hashes"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS18"
+      ],
+      "asserts": [
+        "PS18:observable",
+        "PS18:non-permissive-classifier"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "固定平台原始响应、独立期待表和写 API 调用数零",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS18:N01"
+      ]
+    },
+    {
+      "id": "JA58",
+      "owner_work_item": "J25",
+      "title": "实验对称、封存与小样本判定",
+      "given": "12 个封存 bug-fix holdout，两臂验收摘要相同，费用可为 unknown",
+      "when": "一例净翻转、替换一臂 oracle、删除失败、费用 unknown",
+      "then": "一例不报收益通过；不对称/删失败拒绝；unknown 成本不可判定；安全失败可停止 E1 continue 只表示可行性和保护指标，safety_only 可显式 opt-in；J32 continue 才可 default-enable。",
+      "bad_variant": "n=12 一次翻转宣布5pp收益或unknown当零",
+      "oracle": "保管人封存记录、两臂 ledger 与独立统计复算",
+      "required_evidence": [
+        "JA58: frozen inputs and independent expected observation",
+        "JA58: ordered boundary trace and original results",
+        "JA58: negative variant rejection and evidence hashes",
+        "JA58: E1 continue 只表示可行性和保护指标，safety_only 可显式 opt-in；J32 continue 才可 default-enable。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS14",
+        "PS15"
+      ],
+      "asserts": [
+        "PS14:observable",
+        "PS15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-evaluation-custodian",
+        "implementation_owner_role": "evaluation-owner",
+        "observation_boundary": "保管人封存记录、两臂 ledger 与独立统计复算",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS14:N01",
+        "PS15:N01"
+      ]
+    },
+    {
+      "id": "JA59",
+      "owner_work_item": "J01",
+      "title": "摘要域与规范字节互操作",
+      "given": "固定 digest vectors 与独立 TS/Python 实现",
+      "when": "交换域、null/absent、Unicode、数组次序、负零、重复键",
+      "then": "有效向量逐字节一致；非法输入及错域拒绝；旧摘要未改变",
+      "bad_variant": "直接拼 hex 或复用 localeCompare helper",
+      "oracle": "固定预期 bytes/hash 与两个实现结果",
+      "required_evidence": [
+        "JA59: frozen inputs and independent expected observation",
+        "JA59: ordered boundary trace and original results",
+        "JA59: negative variant rejection and evidence hashes"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS21",
+        "FM-15"
+      ],
+      "asserts": [
+        "PS21:observable",
+        "FM-15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "contract-owner",
+        "observation_boundary": "固定预期 bytes/hash 与两个实现结果",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA60",
+      "owner_work_item": "J26",
+      "title": "继承门槛、开放未知与迁移队列",
+      "given": "legacy 114 场景与33个原 milestone；O02 未解；两个无序 schema 候选",
+      "when": "删除 A27 映射、弱化 release gate、推进 J04 merge、同时分配迁移号",
+      "then": "分别拒绝；纯调查仍可做；第二迁移需基于新 main 分配并重测 检查所有 legacy producer 闭包及 case 消费边；删除 FM:WD-16 或引入 legacy 环须失败。",
+      "bad_variant": "只检映射非空或DAG无环即放行",
+      "oracle": "规划校验器负例、候选 PR 路径 manifest 与组合队列结果",
+      "required_evidence": [
+        "JA60: frozen inputs and independent expected observation",
+        "JA60: ordered boundary trace and original results",
+        "JA60: negative variant rejection and evidence hashes",
+        "JA60: 检查所有 legacy producer 闭包及 case 消费边；删除 FM:WD-16 或引入 legacy 环须失败。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS21",
+        "FM-24"
+      ],
+      "asserts": [
+        "PS21:observable",
+        "FM-24:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "source-owner",
+        "observation_boundary": "规划校验器负例、候选 PR 路径 manifest 与组合队列结果",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-24:N01"
+      ]
+    },
+    {
+      "id": "JA61",
+      "owner_work_item": "J08",
+      "title": "试验信任与精确环境",
+      "given": "operator-attested profile 和真实 scratch repo/home；planner 自报许可",
+      "when": "签发后变异 Binding 任一字段，换 symlink/serving home 或 issuer",
+      "then": "全部在启动前拒绝；profile 不升级 production 资格 SupportProfile v2 明列 start identity/query/containment；hard finance cap 与 enforceability 联合核验。",
+      "bad_variant": "把任意 repository 字符串或 planner issuer 当受信授权",
+      "oracle": "宿主授权/realpath、permit 与 Binding 重算、启动计数",
+      "required_evidence": [
+        "JA61: frozen inputs and independent expected observation",
+        "JA61: ordered boundary trace and original results",
+        "JA61: negative variant rejection and evidence hashes",
+        "JA61: SupportProfile v2 明列 start identity/query/containment；hard finance cap 与 enforceability 联合核验。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS21",
+        "FM-15"
+      ],
+      "asserts": [
+        "PS21:observable",
+        "FM-15:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "宿主授权/realpath、permit 与 Binding 重算、启动计数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-15:N01",
+        "PS21:N01"
+      ]
+    },
+    {
+      "id": "JA62",
+      "owner_work_item": "J25",
+      "title": "判定器独立与冻结",
+      "given": "开发者和独立 custodian，候选冻结前的判定器登记",
+      "when": "把 oracle author 改为实现 owner 或在观察结果后换 rubric",
+      "then": "拒绝该批次通过；语义争议保持 uncertain；原分母保留 oracle unassigned→assigned→frozen→executed；人员独立且 freeze 早于候选；合法冻结元数据可通过，未冻结执行必须拒绝。",
+      "bad_variant": "作者同时改结果和判定器制造通过",
+      "oracle": "独立保管/签收记录及版本化判定器 manifest",
+      "required_evidence": [
+        "JA62: frozen inputs and independent expected observation",
+        "JA62: ordered boundary trace and original results",
+        "JA62: negative variant rejection and evidence hashes",
+        "JA62: oracle unassigned→assigned→frozen→executed；人员独立且 freeze 早于候选；合法冻结元数据可通过，未冻结执行必须拒绝。"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS03",
+        "PS06"
+      ],
+      "asserts": [
+        "PS03:observable",
+        "PS06:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-evaluation-custodian",
+        "implementation_owner_role": "evaluation-owner",
+        "observation_boundary": "独立保管/签收记录及版本化判定器 manifest",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS03:N01",
+        "PS03:N02"
+      ]
+    },
+    {
+      "id": "JA63",
+      "owner_work_item": "J15",
+      "title": "等待责任不因噪声消失",
+      "given": "Q1 开放，发生超时、来源暂失和无关任务完成",
+      "when": "刷新决定与回答 Q2",
+      "then": "Q1 保持；Q2 不清 Q1；来源无法确认显示 unknown",
+      "bad_variant": "超时/来源消失自动解除等待",
+      "oracle": "持久 wait/action 与精确 Q1/Q2 记录",
+      "required_evidence": [
+        "JA63: Q1 开放，发生超时、来源暂失和无关任务完成",
+        "JA63: 持久 wait/action 与精确 Q1/Q2 记录",
+        "JA63: bad variant — 超时/来源消失自动解除等待"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-04",
+        "FM-08"
+      ],
+      "asserts": [
+        "FM-04:observable",
+        "FM-08:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "持久 wait/action 与精确 Q1/Q2 记录",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-04:N01"
+      ]
+    },
+    {
+      "id": "JA64",
+      "owner_work_item": "J20",
+      "title": "事件 gap 与洪水",
+      "given": "持久序列存在 gap，短时事件洪水",
+      "when": "重放并施加有界背压",
+      "then": "gap 可检测并补读或显式 unknown；不静默丢待决；模型调用有界",
+      "bad_variant": "跳过缺口推进游标",
+      "oracle": "独立事件序列、背压计数与决定集合",
+      "required_evidence": [
+        "JA64: 持久序列存在 gap，短时事件洪水",
+        "JA64: 独立事件序列、背压计数与决定集合",
+        "JA64: bad variant — 跳过缺口推进游标"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-05"
+      ],
+      "asserts": [
+        "FM-05:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "独立事件序列、背压计数与决定集合",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-05:N01"
+      ]
+    },
+    {
+      "id": "JA65",
+      "owner_work_item": "J21",
+      "title": "父回执由持久路径发布",
+      "given": "远端 child terminal，SSH exit 0 但父 receipt 尚未到达",
+      "when": "重启 parent 并请求 teardown",
+      "then": "不能以 exit 0 完成事务；host 重新查询/发布同事件而不重做 effect；缺父确认保全",
+      "bad_variant": "模型口述完成或漏父回执仍 teardown",
+      "oracle": "child/parent receipt 主键和持久发布状态",
+      "required_evidence": [
+        "JA65: 远端 child terminal，SSH exit 0 但父 receipt 尚未到达",
+        "JA65: child/parent receipt 主键和持久发布状态",
+        "JA65: bad variant — 模型口述完成或漏父回执仍 teardown"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-17",
+        "FM-19"
+      ],
+      "asserts": [
+        "FM-17:observable",
+        "FM-19:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "executor-owner",
+        "observation_boundary": "child/parent receipt 主键和持久发布状态",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-17:N01",
+        "FM-19:N01"
+      ]
+    },
+    {
+      "id": "JA66",
+      "owner_work_item": "J27",
+      "title": "发布权限不跨层级",
+      "given": "主体有 push 权但无 merge/deploy，local 验收已通过",
+      "when": "尝试 merge/deploy 或投影已发布",
+      "then": "逐层拒绝，保持实际 local/PR 事实",
+      "bad_variant": "push 成功即自动 merge/deploy",
+      "oracle": "现有授权系统和平台效果计数",
+      "required_evidence": [
+        "JA66: 主体有 push 权但无 merge/deploy，local 验收已通过",
+        "JA66: 现有授权系统和平台效果计数",
+        "JA66: bad variant — push 成功即自动 merge/deploy"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-23",
+        "FM-13"
+      ],
+      "asserts": [
+        "FM-23:observable",
+        "FM-13:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "release-owner",
+        "observation_boundary": "现有授权系统和平台效果计数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-23:N01"
+      ]
+    },
+    {
+      "id": "JA67",
+      "owner_work_item": "J15",
+      "title": "planner 不能代答决定",
+      "given": "人类 owner 的 Q1 及 controller/planner 身份，away 状态",
+      "when": "planner 使用 owner 文本/actor 自报提交回答或批准",
+      "then": "拒绝；away 不转移权限；已明示授权的其他自动动作仍按原 policy",
+      "bad_variant": "把模型请求当 owner 回答",
+      "oracle": "认证 principal 与原决定/权限审计",
+      "required_evidence": [
+        "JA67: 人类 owner 的 Q1 及 controller/planner 身份，away 状态",
+        "JA67: 认证 principal 与原决定/权限审计",
+        "JA67: bad variant — 把模型请求当 owner 回答"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-03",
+        "FM-08",
+        "FM-10"
+      ],
+      "asserts": [
+        "FM-03:observable",
+        "FM-08:observable",
+        "FM-10:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "controller-owner",
+        "observation_boundary": "认证 principal 与原决定/权限审计",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-03:N01",
+        "FM-08:N01",
+        "FM-10:N01"
+      ]
+    },
+    {
+      "id": "JA68",
+      "owner_work_item": "J07",
+      "title": "可信失败与 blocking finding 不被覆盖",
+      "given": "可信 check failed 和未处置 blocking finding，worker 提交更晚 pass 文本",
+      "when": "消费独立评审与候选检查",
+      "then": "未有可信新证据与裁决前拒绝完成；记录原因",
+      "bad_variant": "后写模型 pass 覆盖可信 failed",
+      "oracle": "host check/review 原记录及 disposition 消费",
+      "required_evidence": [
+        "JA68: 可信 check failed 和未处置 blocking finding，worker 提交更晚 pass 文本",
+        "JA68: host check/review 原记录及 disposition 消费",
+        "JA68: bad variant — 后写模型 pass 覆盖可信 failed"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS06",
+        "FM-13"
+      ],
+      "asserts": [
+        "PS06:observable",
+        "FM-13:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "verification-owner",
+        "observation_boundary": "host check/review 原记录及 disposition 消费",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "FM-13:N01",
+        "PS06:N01",
+        "PS06:N02"
+      ]
+    },
+    {
+      "id": "JA69",
+      "owner_work_item": "J19",
+      "title": "经验规则抓坏例且保正常",
+      "given": "封存历史坏例与相邻正常样例",
+      "when": "候选新规则测试并尝试晋升",
+      "then": "必须抓指定坏例且不误伤正常；没证据仍 candidate",
+      "bad_variant": "规则只对演示坏例有效或一律拒绝",
+      "oracle": "独立历史 corpus 与逐样本结果",
+      "required_evidence": [
+        "JA69: 封存历史坏例与相邻正常样例",
+        "JA69: 独立历史 corpus 与逐样本结果",
+        "JA69: bad variant — 规则只对演示坏例有效或一律拒绝"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "PS12"
+      ],
+      "asserts": [
+        "PS12:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "context-owner",
+        "observation_boundary": "独立历史 corpus 与逐样本结果",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": [
+        "PS12:N01"
+      ]
+    }
+  ]
+}

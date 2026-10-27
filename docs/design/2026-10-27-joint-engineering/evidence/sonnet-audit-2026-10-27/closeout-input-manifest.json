@@ -1,0 +1,237 @@
+{
+  "files": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/README.md",
+      "bytes": 5536,
+      "sha256": "c84c236ac7ebb01649698fb7cd7bfff855792f7061b19e9bff3c1a14e690a3ee"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "bytes": 103989,
+      "sha256": "7637eab5edf73de5ccb7bec8fdae7942695e7d1652742b7b5f532cebf74e23d3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/architecture.md",
+      "bytes": 9545,
+      "sha256": "7b961a88c0b0749d7a18b864a77bd39d7eb91ee4cff8158fd4facaa343809748"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/artifact-catalog.json",
+      "bytes": 4846,
+      "sha256": "c3736fda8145e321881ec52f1420e9aa200c145d0aa224b1c0a4ab05c67dacd6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/audit-specifications.md",
+      "bytes": 22689,
+      "sha256": "d13ea35afc3cfc75e36e8875b9179465754a3c247e60026f08471bfaafd85b9e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/baseline.json",
+      "bytes": 5858,
+      "sha256": "7fbf5538d7e0cb40ec900ee3ac600d04658518de364d9bfa6201beaafb8cd70f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-index.md",
+      "bytes": 5485,
+      "sha256": "39b455eec20a492add658433f22d2d138501950136bbcf2a21f9cd4e74907233"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-map.json",
+      "bytes": 95346,
+      "sha256": "996026a73e1495e1404060f9dfb22f4b9197c9e6bf343e33b79722cb9d91dae6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "bytes": 9956,
+      "sha256": "27efd07f0899023e74256f155d6084b7b1b95274375fb69e229a50cac6665461"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contract.schema.json",
+      "bytes": 36398,
+      "sha256": "13d2aad35db769f63b02d860adcb3b35e140d52ad1c9ee5701d26d53e80e54c0"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contracts.md",
+      "bytes": 14514,
+      "sha256": "9b38be5abd57ed47b6aec22f363913de8b5468cc5521155e6b75354ca660cb25"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/digest-catalog.json",
+      "bytes": 4972,
+      "sha256": "288d36315cad397084e8260030f3734171ce6550f651ead9a67b75c43cb6cf34"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-gates.json",
+      "bytes": 21727,
+      "sha256": "efef3ee6b73ad8848ef1473fc76b29f456799a931dc9690c7efff569534726c8"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/implementation-plan.md",
+      "bytes": 9691,
+      "sha256": "b6560df6c185d0b56ad2cb62fe30a95b58d5c306060dedcddd053a65097a4b6e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-case-map.json",
+      "bytes": 67602,
+      "sha256": "8bf21889f617925d6e109beb2c78a1f454642ebeede3c54fe4e0b912f23d7cc3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-work-map.json",
+      "bytes": 23674,
+      "sha256": "bb8a4588453f458d33a68af682f08ba0b6d4d9797d928ea66c46a6711830b85e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/reconciliation.md",
+      "bytes": 6581,
+      "sha256": "63e2a66db986d1bc30c984565b887238151baca7e09819ee377ebb6adc803986"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/source-coverage.json",
+      "bytes": 73967,
+      "sha256": "142cfa78a689e52ca247a9f376d2fe6b45f7dbb409a268d2010f7ed6f5e90fb3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/sources.json",
+      "bytes": 107426,
+      "sha256": "dc86b0ca22dd398f3430e54679db8205b8b8c4d4592abe5b53d6e88d1c1ac20d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/test_validate_design.py",
+      "bytes": 10522,
+      "sha256": "19848b32a800c7f1e6bd83ed7bcbca0cbc1827e004f921545db11da120b8c56d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/unknowns.json",
+      "bytes": 5909,
+      "sha256": "34f586e2164b1b0c3c9d136d067c3b788c21abfc8a86596c7e44ae2dda835083"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validate-design.py",
+      "bytes": 26807,
+      "sha256": "5d76a484a3d31a148bd39eceb457322fb76dc964e41d2355a9116edd3cf43001"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validation.md",
+      "bytes": 3713,
+      "sha256": "59073bfc745c357443558f59b98414d04c1890e3aaa27ebe7590baa10b33aa97"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/verification-spec.md",
+      "bytes": 8676,
+      "sha256": "13aa84fe7a31b98ab069f553c969e9da749fb2688614d1e4d9f1838ca5b7b4fe"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-package-index.md",
+      "bytes": 3501,
+      "sha256": "9fc010277ec367fa7d1c9c09a8db296dc8773b36e744064bd357ea0653bf114e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-packages.json",
+      "bytes": 72135,
+      "sha256": "f058dc8853f4d0820d7aa1a5c7b1b4be1ae8a928efca97986391f03897c24ca6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/fixtures/contracts.json",
+      "bytes": 118986,
+      "sha256": "ff0933118a9df8c80394bdf7720516799097d1a7d177f3a3bc2b05222ccc94f4"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/fixtures/digest-vectors.json",
+      "bytes": 12643,
+      "sha256": "f72f08e091d47721c4d8711b30a3320d860d447370ead5a5dc323ff6254844f6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "bytes": 21142,
+      "sha256": "b33cc9fc2d9250d26cdd07938f77d4aeae5a0d0de7ee545526b700dd24e6371d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-recovered-raw.md",
+      "bytes": 30535,
+      "sha256": "5e17512cf8d0a6a7ac77952fda80d356066092975663c83f2fbc06cbe0ddc728"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-raw.md",
+      "bytes": 22928,
+      "sha256": "3b8da76952281b7140fad458f14aa9d9f8cc527a65883f0b83bc5979f22c2600"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/candidate-design-checks.json",
+      "bytes": 768,
+      "sha256": "36c401ae4557c84418668b5329c9615f49605f093b9beb120605d726dcbc4738"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/candidate-validator-tests.log",
+      "bytes": 4994,
+      "sha256": "f4816709ee7e86d83c8b07e529b736113e86b1f69df2b6e3b70340f2f27dc8bc"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/host-pre-revision-probes.json",
+      "bytes": 651,
+      "sha256": "21bd0cad2dedf3853dc2d66bafc5b9e30a32f77b3adb9baa376eef30377b9a2d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-delivery-gates.json",
+      "bytes": 10257,
+      "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-work-packages.json",
+      "bytes": 34375,
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/delivery-contract.ts",
+      "bytes": 7152,
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-contract-host.ts",
+      "bytes": 9692,
+      "sha256": "27f50eb26a2271162255df9b82dcdc22ab3a95b6e070af953679b994d644510c"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-delivery-contract.ts",
+      "bytes": 7848,
+      "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-execution-context.ts",
+      "bytes": 7309,
+      "sha256": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/execution-context.ts",
+      "bytes": 18267,
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/knowledge/src/context-budget.ts",
+      "bytes": 7913,
+      "sha256": "3a41933465cb2738c3cef17f401ebab968537fef4a3c80e5457b13cf3ccc0682"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/graph/src/legacy/code-delivery-v4.ts",
+      "bytes": 13832,
+      "sha256": "95add8856e1a8a9c05c042caf8c6a3a8cb380fd185871d9d9ab4c89851394061"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/db.ts",
+      "bytes": 6927,
+      "sha256": "bda761c2999f90292d546b6b871ad83567b851cc605767d6d6cc12417f183fee"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/migrations.ts",
+      "bytes": 89613,
+      "sha256": "0cc34dcc37827eb56d6aa5b8627be927dc410428fa43593ba3bea4d89a79237b"
+    },
+    {
+      "path": "osstack@4199d9aadf776042d924a0a307c62aef1a729088:docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "bytes": 34771,
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee"
+    }
+  ],
+  "count": 46,
+  "prompt_sha256": "187054513d5808ae785a2ac5d52ffc75bff5a9b880efd6fda07459ad30b03e01",
+  "prompt_bytes": 1227237
+}

@@ -1,0 +1,672 @@
+{
+  "version": 1,
+  "note": "Path/hash verification is not semantic certification. contract_read marks selected source reviewed in this design. Existing tests are not implied to have run.",
+  "sources": [
+    {
+      "id": "SRC-001",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "AGENTS.md",
+      "sha256": "1d67d8fea74b30be6b4de1e1eec0d41f5ed7c7d0215c79d873c3facef96e3896",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/AGENTS.md",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-002",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/start-control-command.ts",
+      "sha256": "073ff55a62bf7d7e86f66bfade6f931e57bbaa58ce6271b8e8876d6773dc146c",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/start-control-command.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-003",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/delivery-entrypoint.test.ts",
+      "sha256": "af32bdd88eadd45f97c48b87522d0f04afa9729144c25fffb9bf6fe5cedbfc5d",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/delivery-entrypoint.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-004",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-crew-state.sh",
+      "sha256": "245882a72e5efaa1833bb7584b9847ef246118a6d6b491ca4cb6c7ce5018c536",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-crew-state.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-005",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/attention.ts",
+      "sha256": "a63130752c8c87298a3d154955cfc66dcfe7a0190deccf5f9e492e6af61ef888",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/attention.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-006",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-observer.test.ts",
+      "sha256": "dee5e36a2d410fbedab7c7e9edf8c03902f7fcca7b9d46bafbce64399de5d54d",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-observer.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-007",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-lease-lib.sh",
+      "sha256": "f6880b43a333ea8b947282c46f52f414895a8a140dd307d9b2b57fba0bd55687",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-lease-lib.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-008",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-store.ts",
+      "sha256": "b6ffc14f93f2bc7d5f3a830e859c4ba59bb75d55d42c88b663be3ce666bcb788",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-store.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-009",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-store.test.ts",
+      "sha256": "38ee825a1dab74bfccdbca0edfca6af722314d4c145b83bce3832c7e449a5712",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-store.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-010",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-classify-lib.sh",
+      "sha256": "0bb6d8f8f72d79443d12704687ed2c42c92a21053d3fd8c8b5bf99c508ae1bc4",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-classify-lib.sh",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-011",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-actions.test.ts",
+      "sha256": "b7799a12867dd7b63f18cd4deb2e52559bb66c3706991897e52809db883f331e",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-actions.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-012",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-watch.sh",
+      "sha256": "fd63f22c408931edeb8ad88ee5e0c5b67dcc1eb7e95ec36ebb9583c051b4ff38",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-watch.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-013",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/source-observations.ts",
+      "sha256": "245a04dda8e30f08ab9257b3d474a395523c4f758fe9bb023f063a855d6f5197",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/source-observations.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-014",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/source-observations.test.ts",
+      "sha256": "49132b20920cfe94c0a250321fb97b641ae60797c3434bff2fee980395fac06a",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/source-observations.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-015",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-turnend-guard.sh",
+      "sha256": "2359dd92cc1324153caab79d9c7082a6df1083bc0cfc83f28f697ef9ecb3456b",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-turnend-guard.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-016",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/attention-hook.ts",
+      "sha256": "3e9395bb68ee0485e5f6f397339026d9f14c26c63c515da0523ac9d34313564f",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/attention-hook.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-017",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/attention-hook.test.ts",
+      "sha256": "4b7157b7eec42684bd496048fcd45db3c0985afdacc08da87db9a1b85484807c",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/attention-hook.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-018",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-supervise-daemon.sh",
+      "sha256": "7b358ea66b84ac04bb365ae4efa85fbe03b16304d9dee847b29a547a4121ea92",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-supervise-daemon.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-019",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/supervisor/src/attention.ts",
+      "sha256": "0967871b667ff348f2a53671a0620306db5a64a748a939773de05c6ae6e550d6",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/supervisor/src/attention.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-020",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/supervisor/src/attention.test.ts",
+      "sha256": "c92f91beeae63310658ff34423522df4da7fdf800577c88044db61249c0783db",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/supervisor/src/attention.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-021",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-captain-hold.sh",
+      "sha256": "88982d5cb9508a8bcaf441dfe6b238aa82c96065990d76edf0b22963e1513a90",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-captain-hold.sh",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-022",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-actions.ts",
+      "sha256": "1d13f9e5801a4c741644f783367f77bd9103ca1e1f31d1f6cf13c46d445dd68c",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-actions.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-023",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-send.sh",
+      "sha256": "de4fb8dcede4c4d2cf6271d61785396da17f3c1f44fbf082c93ba0aa27865b91",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-send.sh",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-024",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/session-continuations.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-025",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/session-continuations.test.ts",
+      "sha256": "8dd7e8a6d86c58289f7bcf2b260a00565b3300cb92f61bd3794526b9c17c0717",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/session-continuations.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-026",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-afk-contract.sh",
+      "sha256": "5c0c9f8af53d74e36d7dc7b18e2ef1f9ac0d7bb06f75cd5af5ad8c26b634d401",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-afk-contract.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-027",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-experience.ts",
+      "sha256": "6e526c702bae4afab0d6ca010fa5700126c141a009541988becf346b0e9acf43",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-experience.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-028",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-experience.test.ts",
+      "sha256": "cca4df300ad01031c13855aa59dd31e30a94d603f8517dd23c746f4fc3977059",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-experience.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-029",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-wake-drain.sh",
+      "sha256": "126c22dc8e297872ea59025c995775696e6a0e458383f6ff93c230d49e439d3d",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-wake-drain.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-030",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/daily-attention.ts",
+      "sha256": "40bed215c4ea37a39125f57f16a9cfb0097deb792ed72a5cd99ad83db71b54a5",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/daily-attention.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-031",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/daily-attention.test.ts",
+      "sha256": "03f8c85e349154f8cc82680967c6f3b264088b02921707af03e0f33f4232c47c",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/daily-attention.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-032",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-brief.sh",
+      "sha256": "7dba01bde0a4d31afab92c3c62d30acb8e2f493a3a57a29efe26fa9082ce431b",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-brief.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-033",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/scout-command.ts",
+      "sha256": "dacfbb91c610361cea38fd682536eec34a4f2cf67e4d92990e6b33da2fe4fda8",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/scout-command.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-034",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/scout-command.test.ts",
+      "sha256": "b25c3688bfdb83c554607c3f31a3b364a38926e13497c8e3a564eaf5be80fb3a",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/scout-command.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-035",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-teardown.sh",
+      "sha256": "4a7630a5c47916f6672ea0a39a70bd5155266f66be89dde931dea1ce0f899101",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-teardown.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-036",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/delivery-contract.ts",
+      "sha256": "fca14f4dc312e8021f0a3049c3ac8be4981569512fce42a122ec781d11984ce3",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/delivery-contract.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-037",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/delivery-contract.test.ts",
+      "sha256": "979de2d38ef083e8b735ad5dffe624e050b65b6262e072404dbd52d8b0e4bc3c",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/delivery-contract.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-038",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-recovery-view.ts",
+      "sha256": "e90c79424b1c5cb47fec7cb52bfa2d315b1fcc14e0bf313fe33d1950190e69bd",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-recovery-view.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-039",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-recovery-view.test.ts",
+      "sha256": "1e001b7cab3e44c0f8a2091802346771c1872c13a8a535c4f96db7327b55ede9",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-recovery-view.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-040",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-backend.sh",
+      "sha256": "5ff7ed0a730e4336821359afde3196753487e8587ba27ac20dfdd36111adfe1f",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-backend.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-041",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/capability.ts",
+      "sha256": "7180332bfdb2b71fefc47c88de1014fb4b2eb9434dcbae757884009cbd2cfdcb",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/capability.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-042",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/skill-registry/src/manifest.test.ts",
+      "sha256": "fbc6da2f76d4e3a0e83c1a92c984c68702d357e692160f5fe6710ff40e3995fc",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/skill-registry/src/manifest.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-043",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/worker-viewer-launch.ts",
+      "sha256": "02ba7e8c148fff5e316f328f45ed6e2e200b70ab55b90c24c464e99c3ae3cd71",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/worker-viewer-launch.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-044",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/worker-viewer-launch.test.ts",
+      "sha256": "651479462e98cf383eff9bb46d4c1a0704dccd2c21be7e18956a757fcaf29616",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/worker-viewer-launch.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-045",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-remote-secondmate-control.sh",
+      "sha256": "fda7f091793e4c5f4beef31a303a224ce24adc3728d26c423a96f6ffae3261ed",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-remote-secondmate-control.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-046",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/remote-home-protocol.ts",
+      "sha256": "4fe5967e8c3e9d02d2ec2c72a7d9d3fc71162782add9f20026e1c2e55c54cb6c",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/remote-home-protocol.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-047",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/remote-home-integration.test.ts",
+      "sha256": "7ae191d75794fa80196734135f5f67c91b35a61095805a508d99b5d35d8454ca",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/remote-home-integration.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-048",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/source-observation-host.ts",
+      "sha256": "154dcde431f8970317fe79d132d5772ae07e8b5348ee9c0a506d32f4d579afd6",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/source-observation-host.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-049",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-inbox.sh",
+      "sha256": "9ebd8c2d786c035976f2c0a87f024ef779a841241e5276cbad82ac88b3cf8da9",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-inbox.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-050",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/follow-up-delivery.ts",
+      "sha256": "5a6ffa6094e200189c5f323b1403857c56a511f76cfead0ba372026d9008f887",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/follow-up-delivery.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-051",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/follow-up-delivery.test.ts",
+      "sha256": "c8e5887dc608062a92aa2760b998c7c88f1870294af9809ac8c7e475420aa727",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/follow-up-delivery.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-052",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-stow-cascade.sh",
+      "sha256": "686bb48ce7afdd3c4083aaf10013ba4cb886017011f109d142b4759951844c05",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-stow-cascade.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-053",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/attention-lesson.ts",
+      "sha256": "8eaac70c561d5b60cef5797ac48647d98ae10a8cb5eae3d1ebd498ac869060a7",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/attention-lesson.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-054",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/attention-lesson.test.ts",
+      "sha256": "88985cfa053c11850d7724bf38fb7069fa532a3390450378cb853a37c3b9eea0",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/attention-lesson.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-055",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/supervisor/src/routing-evaluation.ts",
+      "sha256": "37cf04d8fba4b7d61555199ed8c3c52e75d47473c991c5a5a0368677a0dde6c5",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/supervisor/src/routing-evaluation.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-056",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/supervisor/src/routing-evaluation.test.ts",
+      "sha256": "520643391debad4315f5ae9f358dbafedd7e758463cc11f9612953d084c3a007",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/supervisor/src/routing-evaluation.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-057",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/follow-up-delivery-host.ts",
+      "sha256": "6e39e975b954189214daa42a1dd4b8014f9673f4dd34d395b2d8bcfe2c1361b8",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/follow-up-delivery-host.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-058",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/follow-up-delivery-host.test.ts",
+      "sha256": "89cd2c0028888b221b2f8ac775e8a6cda4d7866ebc5182a8893b4a1eee306223",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/follow-up-delivery-host.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-059",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-role-lib.sh",
+      "sha256": "dfbd09127769ceab9abc1b38f0a677808bc45bd514bd635afed08414ddcb9df0",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-role-lib.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-060",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/deliver-command.ts",
+      "sha256": "bfc9d583b6c9e35f9019a510df104401ebc79c3373e89097162d705cff0cf006",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/deliver-command.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-061",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/delivery-policy-host.test.ts",
+      "sha256": "556fed4be30a58f96c1151d6bcfacb45b679e77759455271f060adda36a963a9",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/delivery-policy-host.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-062",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "bin/fm-update.sh",
+      "sha256": "8bad35d2ca30b00d5add3581bb49774cd0b89b2433c1f2d57e59f02f6e1ebd3b",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-update.sh",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-063",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/upgrade-coordinator.ts",
+      "sha256": "2111fa5f28b69e44e9c496e16f93c8726d72c082fb19de847816220dc0b78351",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/upgrade-coordinator.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-064",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/upgrade-coordinator.test.ts",
+      "sha256": "685a0fb39de6efbbee4f4a100dde6540e651ec77de89e3cb8019d5fffffd3616",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/upgrade-coordinator.test.ts",
+      "inspection": "path_and_hash_verified"
+    },
+    {
+      "id": "SRC-065",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-classify-decision-key.test.sh",
+      "sha256": "e946a469248d247ed54cb149942dae50f10be1f3f2a87032cd4da6111565815e",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/tests/fm-classify-decision-key.test.sh",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-066",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-wake-drain-open-decisions.test.sh",
+      "sha256": "61431536420bfd801d07e195296b5db64f4cfc074aa3934e4fab5d14cb9a6a96",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/tests/fm-wake-drain-open-decisions.test.sh",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-067",
+      "repository": "firstmate",
+      "commit": "af1c6817fc47589b162cbc361671c43cdb150933",
+      "path": "tests/fm-send-resolve-key.test.sh",
+      "sha256": "64c773e292fb7b16455a741b21094a9f347eab7081ca3f63901f5ecf7bb7bb92",
+      "url": "https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/tests/fm-send-resolve-key.test.sh",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-068",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/attention-run-projection.ts",
+      "sha256": "a0ad6a39803d9cf1746117100ae5a4deef9a9ccf8ae42b73acebde711dbc182f",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/attention-run-projection.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-069",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/protocol/schemas/session-decision.schema.json",
+      "sha256": "b97f8130a57ff75fa0db3ec67c238219a7551b7cd6b19dba6d85c6728c54349b",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/protocol/schemas/session-decision.schema.json",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-070",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "8aa53df69d425073d05a3b38378283600230300baccc6b05268bf36c345bb99a",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/daemon.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-071",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/sessions.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-072",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/db.ts",
+      "sha256": "72057b005cdec61b08d27459d4fcf58b9bfea672056537038cdefe9b1b74f2c2",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/db.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-073",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/core/src/state/migrations.ts",
+      "sha256": "d66c7ca9b521eb3989ee423690def37bcb61b1c66924d7165f8925a825b6beb8",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/core/src/state/migrations.ts",
+      "inspection": "contract_read"
+    },
+    {
+      "id": "SRC-074",
+      "repository": "osstack",
+      "commit": "14e7433b70f103499059c15fb9bf2ed87b0b0279",
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "url": "https://github.com/osborn-studio/osstack/blob/14e7433b70f103499059c15fb9bf2ed87b0b0279/packages/cli/src/adapter-lifecycle.ts",
+      "inspection": "contract_read"
+    }
+  ]
+}

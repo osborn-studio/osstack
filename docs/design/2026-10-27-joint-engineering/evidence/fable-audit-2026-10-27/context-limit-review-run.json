@@ -1,0 +1,62 @@
+{
+  "mode": "review",
+  "argv": [
+    "/opt/homebrew/bin/claude",
+    "-p",
+    "--model",
+    "claude-fable-5-1",
+    "--effort",
+    "high",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-fable-audit-20261027/empty-mcp.json",
+    "--safe-mode",
+    "--no-session-persistence",
+    "--permission-mode",
+    "dontAsk",
+    "--setting-sources",
+    "",
+    "--settings",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-fable-audit-20261027/settings.json"
+  ],
+  "cli_version": "2.1.291",
+  "requested_model": "claude-fable-5-1",
+  "max_output_tokens_env": 64000,
+  "started_at_utc": "2026-10-27T03:53:34.378322+00:00",
+  "elapsed_seconds": 4.26,
+  "exit_code": 1,
+  "is_error": true,
+  "subtype": "success",
+  "model_usage": {},
+  "usage": {
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "input_tokens": 0,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 0,
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "session_id": "c11ae2d1-d6f7-40e4-a48e-3a7ca1d90a61",
+  "num_turns": 1,
+  "result_characters": 291,
+  "complete_markers": false
+}

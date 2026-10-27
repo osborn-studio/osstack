@@ -1,0 +1,60 @@
+{
+  "scope": "host_document_checks_not_product_acceptance",
+  "empty_work_package_mappings": [
+    {
+      "id": "PS05",
+      "priority": "P1",
+      "title": "覆盖式并行与预先声明的竞赛"
+    },
+    {
+      "id": "PS10",
+      "priority": "P2",
+      "title": "形式化验证生命周期"
+    },
+    {
+      "id": "PS11",
+      "priority": "P2",
+      "title": "状态图与反例解释"
+    },
+    {
+      "id": "PS12",
+      "priority": "P1",
+      "title": "反思转结构化约束"
+    },
+    {
+      "id": "PS17",
+      "priority": "P1",
+      "title": "栈前沿与候选绑定验证"
+    },
+    {
+      "id": "PS18",
+      "priority": "P1",
+      "title": "forge 观察器分类"
+    },
+    {
+      "id": "PS19",
+      "priority": "P1",
+      "title": "暂停与恢复对账"
+    },
+    {
+      "id": "PS21",
+      "priority": "P0",
+      "title": "来源快照与能力资格验证"
+    },
+    {
+      "id": "PS22",
+      "priority": "P2",
+      "title": "事件 intake 与补偿模式"
+    }
+  ],
+  "empty_p0_work_package_count": 1,
+  "reviewed_report_files_unchanged": {
+    "report/README.md": true,
+    "report/author-reading.md": true,
+    "report/integration-spec.md": true,
+    "report/capability-catalog.md": true,
+    "report/capability-map.json": true,
+    "report/acceptance-cases.json": true,
+    "report/validation.md": true
+  }
+}

@@ -1,0 +1,383 @@
+{
+  "schema_version": 1,
+  "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
+  "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+  "main_sha": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
+  "observed_at": "pending_final_snapshot",
+  "runtime_enabled": false,
+  "handoff": {
+    "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
+    "state": "closing_current_batch"
+  },
+  "milestones": [
+    {
+      "id": "J01",
+      "state": "candidate_pr_open",
+      "depends_on": [],
+      "merge_after": [],
+      "slices": [
+        {
+          "pr": 272,
+          "url": "https://github.com/osborn-studio/osstack/pull/272",
+          "state": "open"
+        },
+        {
+          "pr": 273,
+          "url": "https://github.com/osborn-studio/osstack/pull/273",
+          "state": "open"
+        }
+      ],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J02",
+      "state": "planned",
+      "depends_on": [
+        "J01"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J03",
+      "state": "planned",
+      "depends_on": [
+        "J01"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J04",
+      "state": "planned",
+      "depends_on": [
+        "J01",
+        "J02"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J05",
+      "state": "planned",
+      "depends_on": [
+        "J02",
+        "J06"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J06",
+      "state": "planned",
+      "depends_on": [
+        "J03"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J07",
+      "state": "planned",
+      "depends_on": [
+        "J04",
+        "J05"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J08",
+      "state": "planned",
+      "depends_on": [
+        "J03",
+        "J07",
+        "J12"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J09",
+      "state": "planned",
+      "depends_on": [
+        "J08"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J10",
+      "state": "planned",
+      "depends_on": [
+        "J09",
+        "J23",
+        "J12"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J11",
+      "state": "candidate_pr_open",
+      "depends_on": [
+        "J01"
+      ],
+      "merge_after": [],
+      "slices": [
+        {
+          "pr": 274,
+          "url": "https://github.com/osborn-studio/osstack/pull/274",
+          "state": "open"
+        }
+      ],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J12",
+      "state": "planned",
+      "depends_on": [
+        "J11"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J13",
+      "state": "planned",
+      "depends_on": [
+        "J12"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J14",
+      "state": "planned",
+      "depends_on": [
+        "J13",
+        "J02",
+        "J23"
+      ],
+      "merge_after": [
+        "J04"
+      ],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J15",
+      "state": "planned",
+      "depends_on": [
+        "J14",
+        "J06"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J16",
+      "state": "planned",
+      "depends_on": [
+        "J15",
+        "J10",
+        "J07"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J17",
+      "state": "planned",
+      "depends_on": [
+        "J14",
+        "J12"
+      ],
+      "merge_after": [
+        "J15"
+      ],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J18",
+      "state": "planned",
+      "depends_on": [
+        "J17",
+        "J10",
+        "J16"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J19",
+      "state": "planned",
+      "depends_on": [
+        "J04",
+        "J15"
+      ],
+      "merge_after": [
+        "J10"
+      ],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J20",
+      "state": "planned",
+      "depends_on": [
+        "J15"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J21",
+      "state": "planned",
+      "depends_on": [
+        "J17",
+        "J20"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J22",
+      "state": "planned",
+      "depends_on": [
+        "J30",
+        "J20"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J23",
+      "state": "planned",
+      "depends_on": [
+        "J01",
+        "J03"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J24",
+      "state": "planned",
+      "depends_on": [
+        "J12",
+        "J20"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J25",
+      "state": "planned",
+      "depends_on": [
+        "J03"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J26",
+      "state": "planned",
+      "depends_on": [
+        "J01",
+        "J02"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J27",
+      "state": "planned",
+      "depends_on": [
+        "J16",
+        "J23",
+        "J24",
+        "J26",
+        "J31"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J28",
+      "state": "planned",
+      "depends_on": [
+        "J11"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J29",
+      "state": "planned",
+      "depends_on": [
+        "J25"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J30",
+      "state": "planned",
+      "depends_on": [
+        "J07",
+        "J16"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J31",
+      "state": "planned",
+      "depends_on": [
+        "J12",
+        "J07"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    },
+    {
+      "id": "J32",
+      "state": "planned",
+      "depends_on": [
+        "J16",
+        "J25"
+      ],
+      "merge_after": [],
+      "slices": [],
+      "acceptance": "not_executed_as_complete_milestone"
+    }
+  ]
+}

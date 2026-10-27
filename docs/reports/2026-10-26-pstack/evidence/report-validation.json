@@ -1,0 +1,56 @@
+{
+  "generated_at_utc": "2026-10-26T17:22:25.845237+00:00",
+  "status": "pass",
+  "scope": "report_integrity_not_product_acceptance",
+  "checks": [
+    {
+      "check": "pinned_upstream_identity_and_clean_clone",
+      "result": "pass"
+    },
+    {
+      "check": "200_upstream_and_51_osstack_blob_hashes",
+      "result": "pass"
+    },
+    {
+      "check": "24_capabilities_acyclic_and_full_58_skill_23_playbook_mapping",
+      "result": "pass"
+    },
+    {
+      "check": "48_future_acceptance_cases_and_19_acyclic_work_packages",
+      "result": "pass"
+    },
+    {
+      "check": "two_primary_articles_12_design_deltas_bidirectional_traceability",
+      "result": "pass"
+    },
+    {
+      "check": "markdown_links_pinned_sources_and_fences",
+      "result": "pass"
+    },
+    {
+      "check": "actual_research_results_82_tests_6_probes",
+      "result": "pass"
+    },
+    {
+      "check": "preexisting_workspace_path_status_preserved",
+      "result": "pass"
+    },
+    {
+      "check": "report_text_whitespace",
+      "result": "pass"
+    }
+  ],
+  "counts": {
+    "upstream_files": 200,
+    "osstack_source_files": 51,
+    "skills": 58,
+    "playbooks": 23,
+    "capability_groups": 24,
+    "work_packages": 19,
+    "future_acceptance_cases": 48,
+    "author_articles_read": 2,
+    "article_design_deltas": 12,
+    "upstream_tests_passed": 82,
+    "semantic_probes_passed": 6
+  }
+}
