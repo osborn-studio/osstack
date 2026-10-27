@@ -79,7 +79,7 @@
     {
       "field": "schema_spec_digest",
       "domain": "osstack.joint.schema-spec.v1",
-      "input": "schema_change_id, source/target schema numbers, ddl_digest, fixture_digest, expected lineage tables sorted; no future receipt"
+      "input": "schema_change_id, source/target schema numbers, ddl_digest, fixture_digest, source_schema_digest, target_schema_digest, expected lineage tables sorted; no future receipt"
     },
     {
       "field": "ddl_digest",
