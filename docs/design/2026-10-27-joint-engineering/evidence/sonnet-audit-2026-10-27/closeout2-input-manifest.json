@@ -1,0 +1,227 @@
+{
+  "files": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/README.md",
+      "bytes": 5944,
+      "sha256": "52dd9756ccf82e87465daf663ea6fe690049bc82062be36f48970b4c72561c04"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "bytes": 125123,
+      "sha256": "68ffc4aaa1c257f2f8fd381f28669b86af11b611a431c63621b1d171a7f07540"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/architecture.md",
+      "bytes": 9545,
+      "sha256": "7b961a88c0b0749d7a18b864a77bd39d7eb91ee4cff8158fd4facaa343809748"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/artifact-catalog.json",
+      "bytes": 4846,
+      "sha256": "c3736fda8145e321881ec52f1420e9aa200c145d0aa224b1c0a4ab05c67dacd6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/audit-specifications.md",
+      "bytes": 22899,
+      "sha256": "0b3e7f81a17c8ef7222491586b9d0736fb036c4910fb1880fee107d4bd535001"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/baseline.json",
+      "bytes": 5882,
+      "sha256": "c5abfc57246c5672880b6d31b092c7f0f2bcc91d228ee38c2e3fa7ceacb04d9a"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-index.md",
+      "bytes": 5485,
+      "sha256": "39b455eec20a492add658433f22d2d138501950136bbcf2a21f9cd4e74907233"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-map.json",
+      "bytes": 95346,
+      "sha256": "996026a73e1495e1404060f9dfb22f4b9197c9e6bf343e33b79722cb9d91dae6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "bytes": 11952,
+      "sha256": "9bc9b90fe097a7ec2306561b453b6e6fa76cde58c60daaef1bf31881ad3a9800"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/closeout-specifications.md",
+      "bytes": 15001,
+      "sha256": "c188c0d75e510e5299f5faab31e5ffc76a4d3725ea6fd5e7277fc781026d38b2"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contract.schema.json",
+      "bytes": 38412,
+      "sha256": "582af5adede90c8756c3d5b1a0da9baa1782afb19922d5dc85c5396ab1dff534"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contracts.md",
+      "bytes": 14730,
+      "sha256": "dd896c14c80e08d161e7dcfc8e79144575e81ec88f7529ed924edff3e50a7539"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/digest-catalog.json",
+      "bytes": 5384,
+      "sha256": "ad115ecb0ff373d0883a75dec59d3921c31a5958d670d31af980ba6acb0fe408"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-gates.json",
+      "bytes": 51565,
+      "sha256": "acb88e990651f07d852c1d85130a350026bb812eed9d862390c523419e3641fb"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/implementation-plan.md",
+      "bytes": 10182,
+      "sha256": "d0419d15a715ab84c4cbb0140023b908d732ad2b3f41ab4ede54bb180b363a11"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-case-map.json",
+      "bytes": 91680,
+      "sha256": "80f1975ca2911e69468e7772bc12d25a495ac70a66cc24bc12f27bed2b206564"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-work-map.json",
+      "bytes": 23674,
+      "sha256": "bb8a4588453f458d33a68af682f08ba0b6d4d9797d928ea66c46a6711830b85e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/reconciliation.md",
+      "bytes": 6581,
+      "sha256": "63e2a66db986d1bc30c984565b887238151baca7e09819ee377ebb6adc803986"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/source-coverage.json",
+      "bytes": 73967,
+      "sha256": "142cfa78a689e52ca247a9f376d2fe6b45f7dbb409a268d2010f7ed6f5e90fb3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/sources.json",
+      "bytes": 107426,
+      "sha256": "dc86b0ca22dd398f3430e54679db8205b8b8c4d4592abe5b53d6e88d1c1ac20d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/test_digest_vectors.mjs",
+      "bytes": 1302,
+      "sha256": "baaae776c0dc000052e4f3ced2acbd989d8132bbdc1d4e49c95358e45d8ca293"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/test_validate_design.py",
+      "bytes": 15423,
+      "sha256": "053575aaf77ccd4e88f30ae23687b102b0cca6bff3df5791a59bdc85b9f8c366"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/unknowns.json",
+      "bytes": 5909,
+      "sha256": "34f586e2164b1b0c3c9d136d067c3b788c21abfc8a86596c7e44ae2dda835083"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validate-design.py",
+      "bytes": 32240,
+      "sha256": "c0d656f81b83bd15cff3001e35d0c4a3cacfa6b0e333eb67a9e6eec22d8c52b5"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validation.md",
+      "bytes": 3454,
+      "sha256": "a51d14ffcc92fe423a22c754673b0a1d0059090c3b0921c9446955ac590020c7"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/verification-spec.md",
+      "bytes": 8892,
+      "sha256": "ce03e850a9ddab3c116f2b2c668583268f8a810c368cb72e1b35c5111284556b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-package-index.md",
+      "bytes": 3680,
+      "sha256": "a79f495add870be977b835446a58d004432927c1d1e5611bf1717f865d08e826"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-packages.json",
+      "bytes": 73691,
+      "sha256": "277448c28e06dd371685acc529a7f361734a0699bc0cf3ae29a266d2fbfc2d50"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/fixtures/contracts.json",
+      "bytes": 130901,
+      "sha256": "7b3b88ca2003e97603b288904fd573351e1bf08c10a925f0be8490dd897c5f8b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/fixtures/digest-vectors.json",
+      "bytes": 13490,
+      "sha256": "fb3c303b130730b8d1f85b6e8dd6b1374221ad9663525a40193a7e3748684ea8"
+    },
+    {
+      "path": "audit/closeout-raw.md",
+      "bytes": 11377,
+      "sha256": "0cbbcf752d91a7e1cdb778b41fdefc9c9c092693709070a7241a0136abcbc065"
+    },
+    {
+      "path": "audit/closeout-dispositions.json",
+      "bytes": 3648,
+      "sha256": "2d839dda1af35c2d68da4cb24ad2d89730a1b6a60d5d17946ab899ab91896ce3"
+    },
+    {
+      "path": "audit/revision3-design-checks.json",
+      "bytes": 770,
+      "sha256": "5991e86bda68596bddf8bfcc0c8309cfcc8a503f110e8b746faeeafd8f993f60"
+    },
+    {
+      "path": "audit/revision3-validator-tests.log",
+      "bytes": 6886,
+      "sha256": "d39b0f3d9e203b2853ca0d130939994e6a8955ff1826ff47942658171928c90c"
+    },
+    {
+      "path": "audit/revision3-digest-check.json",
+      "bytes": 129,
+      "sha256": "0ceebb7f86105cc0403a411e74eb95a765f536bc80eff78429bffd4233d3995b"
+    },
+    {
+      "path": "original/firstmate-delivery-gates.json",
+      "bytes": 10257,
+      "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff"
+    },
+    {
+      "path": "original/firstmate-pilot-scenarios.json",
+      "bytes": 28718,
+      "sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/db.ts",
+      "bytes": 6927,
+      "sha256": "bda761c2999f90292d546b6b871ad83567b851cc605767d6d6cc12417f183fee"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/graph-runs.ts",
+      "bytes": 16643,
+      "sha256": "74cecc8aeeec533b65e9d98b9664ab0f0f8b3f5fcb47b4711816b9b41663b5d4"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/core/src/state/graph-actions.ts",
+      "bytes": 36446,
+      "sha256": "d634025139efd10094eef8f3d559ba654c155f547f22cf701cc43f48a76f6d8d"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-rpc.ts",
+      "bytes": 33498,
+      "sha256": "1eddb74d63000bfff8dfe2c3b1de18a9446c97a49b3af487027c8568e5502dee"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-action-broker.ts",
+      "bytes": 49812,
+      "sha256": "51b4e929cbb4a810018e7d7d49bd55010e6250fe4a92efa57944723331f97457"
+    },
+    {
+      "path": "osstack@daad404e00c000247fdfb2adda13127c4c1c8e26:packages/cli/src/graph-contract-host.ts",
+      "bytes": 9692,
+      "sha256": "27f50eb26a2271162255df9b82dcdc22ab3a95b6e070af953679b994d644510c"
+    },
+    {
+      "path": "osstack@4199d9aadf776042d924a0a307c62aef1a729088:docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "bytes": 34771,
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee"
+    }
+  ],
+  "count": 44,
+  "prompt_sha256": "56c4ed6e2ae32fd4651636ad410fccb213ab343c858193079772c671acec2d0d",
+  "prompt_bytes": 1268939
+}

@@ -1,0 +1,13 @@
+{
+  "kind": "github_read_only_observation",
+  "number": 271,
+  "url": "https://github.com/osborn-studio/osstack/pull/271",
+  "state": "open",
+  "draft": true,
+  "merged": false,
+  "head_sha": "4199d9aadf776042d924a0a307c62aef1a729088",
+  "base_sha": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "title": "docs(engineering): define the complete Firstmate integration roadmap",
+  "updated_at": "2026-10-27T00:23:56Z",
+  "scope": "metadata_only_not_CI_status"
+}

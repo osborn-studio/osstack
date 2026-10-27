@@ -1,0 +1,85 @@
+{
+  "mode": "challenge",
+  "argv": [
+    "/opt/homebrew/bin/claude",
+    "-p",
+    "--model",
+    "claude-fable-5-1",
+    "--effort",
+    "high",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "--safe-mode",
+    "--no-session-persistence",
+    "--permission-mode",
+    "dontAsk"
+  ],
+  "started_at_utc": "2026-10-26T23:30:30.140776+00:00",
+  "elapsed_seconds": 360.82,
+  "exit_code": 0,
+  "requested_model": "claude-fable-5-1",
+  "is_error": false,
+  "subtype": "success",
+  "model": null,
+  "model_usage": {
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 23416,
+      "cacheReadInputTokens": 535,
+      "cacheCreationInputTokens": 232942,
+      "webSearchRequests": 0,
+      "costUSD": 5.82979375,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 15222,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 232942,
+    "cache_read_input_tokens": 535,
+    "output_tokens": 23416,
+    "output_tokens_details": {
+      "thinking_tokens": 15222
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 232942,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 23416,
+        "cache_read_input_tokens": 535,
+        "cache_creation_input_tokens": 232942,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 232942
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "duration_api_ms": 359372,
+  "total_cost_usd": 5.82979375,
+  "session_id": "df5e7809-c12d-4fce-b652-a9c699948220",
+  "num_turns": 1,
+  "result_characters": 10993,
+  "complete_report": true,
+  "max_output_tokens_env": 24000
+}

@@ -1,0 +1,120 @@
+{
+  "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+  "repo": "/Users/osborn/Developer/CodeX/.worktrees/osstack/firstmate-batch1-integration",
+  "scope": "local Node22/macOS; no real provider or physical power loss",
+  "steps": [
+    {
+      "name": "lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.172,
+      "log": "final-lint.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "build",
+      "command": [
+        "pnpm",
+        "build"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 10.117,
+      "log": "final-build.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "typecheck:check"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 9.562,
+      "log": "final-typecheck.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "test",
+      "command": [
+        "pnpm",
+        "test"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 489.069,
+      "log": "final-test.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "decision-smoke",
+      "command": [
+        "pnpm",
+        "smoke:engineering-decision"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 3.667,
+      "log": "final-decision-smoke.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "startup",
+      "command": [
+        "node",
+        "scripts/bench-cli-startup.mjs"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.865,
+      "log": "final-startup.log",
+      "candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5"
+    },
+    {
+      "name": "inventory",
+      "command": [
+        "node",
+        "scripts/generate-inventory.mjs",
+        "--check"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.198,
+      "log": "final-inventory-recheck.log",
+      "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c"
+    },
+    {
+      "name": "changeset",
+      "command": [
+        "node",
+        "scripts/check-changeset-coverage.mjs",
+        "--base",
+        "origin/main"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.066,
+      "log": "final-changeset-recheck.log",
+      "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c"
+    },
+    {
+      "name": "python-protocol",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "legacy-python/deepseek/tests"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.296,
+      "log": "final-python-protocol-recheck.log",
+      "candidate": "dd0f8d09687c6d77394771f61102c9685ec33b2c"
+    }
+  ],
+  "finished_at_utc": "2026-10-27T06:35:56.544704+00:00",
+  "production_test_candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
+  "production_equivalence": {
+    "verified": true,
+    "only_changed_paths": [
+      "docs/inventory/PUBLIC_EXPORTS.md"
+    ]
+  }
+}

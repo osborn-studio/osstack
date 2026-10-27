@@ -1,0 +1,89 @@
+{
+  "mode": "closeout3",
+  "argv": [
+    "/opt/homebrew/bin/claude",
+    "-p",
+    "--model",
+    "claude-sonnet-5-5",
+    "--effort",
+    "medium",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-sonnet-audit-20261027/empty-mcp.json",
+    "--safe-mode",
+    "--no-session-persistence",
+    "--permission-mode",
+    "dontAsk",
+    "--setting-sources",
+    "",
+    "--settings",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-sonnet-audit-20261027/settings.json"
+  ],
+  "cli_version": "2.1.291",
+  "requested_model": "claude-sonnet-5-5",
+  "max_output_tokens_env": 128000,
+  "started_at_utc": "2026-10-27T04:52:19.001939+00:00",
+  "elapsed_seconds": 50.77,
+  "exit_code": 0,
+  "is_error": false,
+  "subtype": "success",
+  "model_usage": {
+    "claude-sonnet-5-5": {
+      "inputTokens": 2,
+      "outputTokens": 6361,
+      "cacheReadInputTokens": 1444,
+      "cacheCreationInputTokens": 152667,
+      "webSearchRequests": 0,
+      "costUSD": 0.6745708,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 4731,
+      "canonicalModel": "claude-sonnet-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 152667,
+    "cache_read_input_tokens": 1444,
+    "output_tokens": 6361,
+    "output_tokens_details": {
+      "thinking_tokens": 4731
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 152667,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 6361,
+        "cache_read_input_tokens": 1444,
+        "cache_creation_input_tokens": 152667,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 152667
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "session_id": "66ba9c0d-f554-44f1-8a4e-d08aee034d77",
+  "num_turns": 1,
+  "result_characters": 2354,
+  "complete_markers": true
+}

@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "O01",
+      "question": "实际 host 是否能查询/停止并满足支持组合",
+      "blocks": [
+        {
+          "work_item": "J23",
+          "stage": "qualification"
+        },
+        {
+          "work_item": "J14",
+          "stage": "automatic_start"
+        }
+      ],
+      "resolution": "exact profile and real stop/query evidence",
+      "status": "open",
+      "evidence_refs": [],
+      "owner_role": "qualification-owner"
+    },
+    {
+      "id": "O02",
+      "question": "role/method 接线会否改变冻结 Graph 程序或缺失受信 role seam",
+      "blocks": [
+        {
+          "work_item": "J04",
+          "stage": "merge"
+        }
+      ],
+      "resolution": "program output comparison, role mapping and actual wrapper probes",
+      "status": "open",
+      "evidence_refs": [],
+      "owner_role": "context-owner"
+    },
+    {
+      "id": "O03",
+      "question": "恢复账本与业务 schema 的实际 DDL、谱系、编号",
+      "blocks": [
+        {
+          "work_item": "J11",
+          "stage": "complete"
+        },
+        {
+          "work_item": "J12",
+          "stage": "merge"
+        }
+      ],
+      "resolution": "frozen schema spec and fixture digests; assigned against actual main",
+      "status": "open",
+      "evidence_refs": [],
+      "owner_role": "state-owner"
+    },
+    {
+      "id": "O04",
+      "question": "独立 holdout 保管、预算及真实成本可测性",
+      "blocks": [
+        {
+          "work_item": "J25",
+          "stage": "experiment"
+        },
+        {
+          "work_item": "J32",
+          "stage": "experiment"
+        }
+      ],
+      "resolution": "preregistered protocol, custodian assignment and enforceability profile",
+      "status": "open",
+      "evidence_refs": [],
+      "owner_role": "evaluation-owner"
+    },
+    {
+      "id": "O05",
+      "question": "新增远端/租户/恶意同UID/断电支持组合",
+      "blocks": [
+        {
+          "work_item": "J17",
+          "stage": "expanded_support_enable"
+        },
+        {
+          "work_item": "J21",
+          "stage": "expanded_support_enable"
+        },
+        {
+          "work_item": "J22",
+          "stage": "expanded_support_enable"
+        },
+        {
+          "work_item": "J24",
+          "stage": "expanded_support_enable"
+        },
+        {
+          "work_item": "J27",
+          "stage": "expanded_support_enable"
+        }
+      ],
+      "resolution": "per-cell qualification; unsupported until evidence",
+      "status": "open",
+      "evidence_refs": [],
+      "owner_role": "qualification-owner"
+    },
+    {
+      "id": "O06",
+      "question": "实施前 main 与 #271 是否变化",
+      "blocks": [
+        {
+          "work_item": "J01",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J02",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J03",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J04",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J05",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J06",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J07",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J08",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J09",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J10",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J11",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J12",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J13",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J14",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J15",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J16",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J17",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J18",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J19",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J20",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J21",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J22",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J23",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J24",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J25",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J26",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J27",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J28",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J29",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J30",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J31",
+          "stage": "implementation_start"
+        },
+        {
+          "work_item": "J32",
+          "stage": "implementation_start"
+        }
+      ],
+      "resolution": "fresh baseline and interface impact analysis",
+      "status": "open",
+      "evidence_refs": [],
+      "owner_role": "integration-owner"
+    }
+  ]
+}

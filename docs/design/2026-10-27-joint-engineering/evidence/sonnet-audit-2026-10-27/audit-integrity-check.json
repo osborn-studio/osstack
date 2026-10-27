@@ -1,0 +1,23 @@
+{
+  "status": "passed_audit_integrity_only",
+  "actual_model": "claude-sonnet-5-5",
+  "initial_input_files": 94,
+  "complete_calls": [
+    "probe",
+    "review-recovered",
+    "challenge",
+    "closeout",
+    "closeout2",
+    "closeout3"
+  ],
+  "partial_calls_preserved": [
+    "review"
+  ],
+  "dispositions": 47,
+  "round_counts": {
+    "RV_CH": 34,
+    "CO": 10,
+    "CF": 3
+  },
+  "product_runtime_validated": false
+}

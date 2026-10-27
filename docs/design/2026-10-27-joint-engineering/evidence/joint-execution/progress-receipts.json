@@ -1,0 +1,23 @@
+[
+  {
+    "comment_id": 285,
+    "card_id": "card_6d5d3d02",
+    "author": "joint-entry",
+    "body": "As of 2026-10-27T07:01:44.685229+00:00, #272–#274 enabled CI checks passed; paid DeepSeek smoke configured skipped. All PRs remain unmerged. #273/#274 are Draft until predecessor merge/retarget/revalidation. J01/J11 scoped candidates only; J12 runtime recovery not implemented.",
+    "created_at": 1793084825.425
+  },
+  {
+    "comment_id": 286,
+    "card_id": "card_a502fa36",
+    "author": "joint-entry",
+    "body": "J02a 936aced8 committed; 28 targeted tests passed after audit fixes, full final monorepo checks running. Actual pstack 99b609a7: 200 files / 4,007,689 bytes; Firstmate harness-adapters af1c6817: 21 files / 142,640 bytes; fixed content digest replay passed. All results explicitly not_performed dependency resolution, no runtime activation. Sonnet second review pending.",
+    "created_at": 1793084825.427
+  },
+  {
+    "comment_id": 287,
+    "card_id": "card_79cdb3e7",
+    "author": "joint-entry",
+    "body": "As of 2026-10-27T07:01:44.685229+00:00, #272–#274 enabled CI checks passed; paid DeepSeek smoke configured skipped. All PRs remain unmerged. #273/#274 are Draft until predecessor merge/retarget/revalidation. J01/J11 scoped candidates only; J12 runtime recovery not implemented.",
+    "created_at": 1793084825.428
+  }
+]

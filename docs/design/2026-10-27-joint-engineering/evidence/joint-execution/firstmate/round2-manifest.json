@@ -1,0 +1,112 @@
+{
+  "base": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "candidate": "20fcb748b42910fb8863552ab3227a1a2ff1399b",
+  "files": [
+    {
+      "path": ".changeset/behavior-capability-contracts.md",
+      "sha256": "94970661a694eb1b632f92beac41c550894df9acd8b48f3653925e5a44994d8b",
+      "bytes": 289
+    },
+    {
+      "path": ".changeset/behavior-registry-loader.md",
+      "sha256": "5c29c778d9ef3d8c87954658246579dbccd7f0ccf128b3b7434f5b79abb4385e",
+      "bytes": 297
+    },
+    {
+      "path": "packages/core/src/behavior-registry.test.ts",
+      "sha256": "c21922b0002aa604dfacc9b4472ac67cf3103848e220edda09e746aad1d0b13a",
+      "bytes": 23010
+    },
+    {
+      "path": "packages/core/src/behavior-registry.ts",
+      "sha256": "bc81ed7b284c0803e0af177695951d17d9ea802c6bc588d0d61e3bf601504bf0",
+      "bytes": 19142
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "9f265b2ee3f3744b62a396933bcfd12b9a52f8f9a02375e522a32ced8e1ab318",
+      "bytes": 3976
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.test.ts",
+      "sha256": "a0467fe692a799f7b1b8ffdd17efa5805d7fd96f25b6b697b1a3359ec8784f05",
+      "bytes": 10628
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.ts",
+      "sha256": "25e56b353f76cdd3dff1bf03fb45aee99882ea38c3970d02c079fa47be6bc2a8",
+      "bytes": 8881
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "sha256": "d84235f3b73cd8a586850bdbfcca6388e97680c169c01ac10d8a0917acd97618",
+      "bytes": 5069
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "ec2585eabc24605c27e2385705ab8fa7da853dc69558675cf600d38ede51cc6f",
+      "bytes": 205229
+    },
+    {
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1",
+      "bytes": 20452
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "bytes": 13767
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+      "bytes": 12773
+    },
+    {
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "bytes": 2273
+    },
+    {
+      "path": "packages/protocol/scripts/generate-schemas.mjs",
+      "sha256": "f9f1d17436d0cd8d7b0737a582c6f89760cc5f26446c33722e1e0fd89ef0fb4c",
+      "bytes": 2086
+    },
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "bytes": 5052
+    },
+    {
+      "path": "packages/core/src/state/engineering-store.ts",
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705",
+      "bytes": 52841
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "ref": "4199d9aa",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "ref": "4199d9aa",
+      "sha256": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+      "bytes": 15825
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "ref": "4199d9aa",
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "bytes": 34375
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/qualification-contract.schema.json",
+      "ref": "4199d9aa",
+      "sha256": "18936d35983b4cf32eb9cbfc894dd8a07b148280fa7b56fe1c3ae6297779f865",
+      "bytes": 8053
+    }
+  ],
+  "diff_sha256": "8cebef6b3a79e98a0a90c1640b7bfac8cdee9df4dd5e990fb17b3b49c1ecc2db",
+  "prompt_sha256": "f18b3196a06f0503a67f7a34c991191fb6fb77fc5347811152a104af23cbe891"
+}

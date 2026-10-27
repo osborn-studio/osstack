@@ -1,0 +1,465 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-26T23:30:06.872554+00:00",
+  "client_date": "2026-10-27",
+  "requested_model": "claude-fable-5-1",
+  "cli_version": "2.1.291 (Claude Code)",
+  "source_lock": {
+    "schema_version": 1,
+    "research_date_client": "2026-10-26",
+    "captured_at_utc": "2026-10-26T16:04:56.389792+00:00",
+    "pstack": {
+      "repository": "https://github.com/cursor/plugins.git",
+      "path": "pstack",
+      "clone": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "pstack_tree": "880564357e051d7c7802da1cb5d8df1d0b008299",
+      "version": "0.15.32",
+      "clone_mode": "partial clone, sparse checkout including complete pstack, scripts, harness/pstack and workflow manifests",
+      "license": "MIT",
+      "tracked_files": 200,
+      "skills": 58,
+      "principles": 24,
+      "playbooks": 23,
+      "agents": 2,
+      "automation_skills": 3
+    },
+    "osstack": {
+      "workspace_head": "0a61d278a6cede4fa7b3142fae3e7ab13cc4ed41",
+      "workspace_branch": "codex/firstmate-supervision",
+      "integration_baseline": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "remote_main_verified_by": "git ls-remote origin refs/heads/main",
+      "workspace_clean": false,
+      "uncommitted_material": "Existing 2026-10-25 engineering-agent design consulted as design context, not source of implementation truth."
+    },
+    "report_revision": 2,
+    "supplemental_sources": {
+      "record": "author-articles.json",
+      "article_ids": [
+        "ART1",
+        "ART2"
+      ],
+      "upstream_git_pin_unchanged": true,
+      "osstack_integration_baseline_unchanged": true
+    }
+  },
+  "files": [
+    {
+      "path": "report/README.md",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "14f63ad459e3e9256d53d9aefe81ce66fd1bdc17ebb84acfee0ca43dabd96443",
+      "bytes": 35349,
+      "lines": 323,
+      "coverage": "full"
+    },
+    {
+      "path": "report/author-reading.md",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f",
+      "bytes": 7743,
+      "lines": 70,
+      "coverage": "full"
+    },
+    {
+      "path": "report/integration-spec.md",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "e11209a123253ab579f989d813f961cdcf0eece6f7e0b40424fcba345b356d58",
+      "bytes": 53620,
+      "lines": 730,
+      "coverage": "full"
+    },
+    {
+      "path": "report/capability-catalog.md",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "17dd8b9f347bf7c6882d84a5a2d20e8555c136da2311f669c7e39bc71c4931bb",
+      "bytes": 28352,
+      "lines": 172,
+      "coverage": "full"
+    },
+    {
+      "path": "report/capability-map.json",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "465371693560451eb70cee101cd20587e4f4f4d1bf10c43c10749c71448234b0",
+      "bytes": 52944,
+      "lines": 1277,
+      "coverage": "full"
+    },
+    {
+      "path": "report/acceptance-cases.json",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d",
+      "bytes": 24725,
+      "lines": 680,
+      "coverage": "full"
+    },
+    {
+      "path": "report/validation.md",
+      "kind": "report_under_review",
+      "commit": null,
+      "sha256": "fe93865dbd60b5fb7a150ed87f4a6b9038daec258880287ba3d05449db2b6750",
+      "bytes": 8858,
+      "lines": 102,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/source-lock.json",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "5dae8799f01dfcee29950fc8ec4e792ef142f91c066e1a0c061b6c91096ee3a5",
+      "bytes": 1412,
+      "lines": 39,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/author-articles.json",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "0c96a97dc6f5e5d3197ffe50f2c189d05132ca8807fe83cc8bdd7e4b3c2f287b",
+      "bytes": 3102,
+      "lines": 79,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/article-design-deltas.json",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "348889ddf73572a2599dcc9f1564967674db6d04be8da0331531d293dd8c5f7e",
+      "bytes": 5125,
+      "lines": 19,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/capability-refinements-v2.json",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "3b481a4ac21c43ef723d8b2dde8994b65253b8f536eba81d3095d0e33efba8c9",
+      "bytes": 5649,
+      "lines": 15,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/research-checks.json",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "2227ae4037c63bcc34548c1b2ffebad414d5b9dbb529079dd2b104d59d279355",
+      "bytes": 2555,
+      "lines": 90,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/semantic-probes.ts",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "508bc4b3552c940c93e815b81c598d7320b32e11524e029ab9baefd2ae8266a5",
+      "bytes": 2871,
+      "lines": 42,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/semantic-probes.log",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "08e8ae27020f78b24c19cdddecd2752c2fe0487e122f5aa09ef3a98247addd4c",
+      "bytes": 1365,
+      "lines": 48,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/upstream-tools-tests.log",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "f4f4e92e11ed11a658204def6a6377c117596a75e5a4bc4da5be09441d3d304a",
+      "bytes": 7405,
+      "lines": 99,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/validate-report.py",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "b758a0ddaef72989c269453dce5f0e67ccc8f03ce5561f97f7f55b479d937ae3",
+      "bytes": 9865,
+      "lines": 171,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/report-validation.json",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "b3dc578c4c58979dec2fb262ed29473e38331d6f2239f72edad262999cae5808",
+      "bytes": 1388,
+      "lines": 56,
+      "coverage": "full"
+    },
+    {
+      "path": "report/evidence/build-acceptance-cases.py",
+      "kind": "research_evidence_not_independent_article_text",
+      "commit": null,
+      "sha256": "e9a038598747363db25ece852f126265ff3413f67569d16a3674eea035ffa946",
+      "bytes": 14187,
+      "lines": 62,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "2755f102e7a6d0496b429d1031a22fb353e1f3d523543367caeaae5c4ed6f544",
+      "bytes": 20362,
+      "lines": 149,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/architect/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "31f8e97a52bfa5432edd61f68ade2a8632ef0bacbc2d2a6802d7a0e6821944ac",
+      "bytes": 5469,
+      "lines": 79,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/arena/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "ed72f6c132b1ce3974d949581d0adc5dade424fe20793ac3b4c4fae22ecb9354",
+      "bytes": 4511,
+      "lines": 48,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "d353973547bf8ad8977eca645f4cd4feaed0d32f4b43d1448f906b0a76c4d694",
+      "bytes": 6533,
+      "lines": 44,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8",
+      "bytes": 4922,
+      "lines": 39,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/figure-it-out/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "bdb23cdbd82a1e6af094b495691c832a6f7f3ab9706ba9edbeb664ef51a726e1",
+      "bytes": 4111,
+      "lines": 52,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/teach/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "bd286e5a6290673be2cd28aef7af2ec7f1fb138e6bce156ea657368c7e7fc8a4",
+      "bytes": 5623,
+      "lines": 21,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/technical-writing/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "61fe9c424a798ebf36ad94941f87be049cb8827bdf86d21474a0dde37b513c43",
+      "bytes": 9093,
+      "lines": 106,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/principle-experience-first/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "58903529d733b1c1a7c9ccf127d45ef3c7d0d9f0b81164a4dc6b80efe6f2912b",
+      "bytes": 1184,
+      "lines": 19,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/principle-build-the-lever/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "3434b0ad0c640c6f1d7960be7a8986c3bcdc14e26060360dec29903df60074ff",
+      "bytes": 2386,
+      "lines": 23,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/principle-subtract-before-you-add/SKILL.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "8c93bb9d1a7f38e2ef37655d93f0e790fa59903105af3d500cc8a663ebe45f3f",
+      "bytes": 909,
+      "lines": 18,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/prototype.md",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "7aa1f52c691c3d46d5afc527b23f90977fce869ce33573c73c81a4c7f0cde962",
+      "bytes": 2161,
+      "lines": 14,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "2d4823aeea788acab258ec60eb52e7b9e3a23a6649850af128d6ada5c33d7778",
+      "bytes": 25407,
+      "lines": 842,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/fakes.test-helper.ts",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "cf0c5ee61b4a73444c1b775cfb6c81a40d312e055dd21a1f5eae6276e54de13f",
+      "bytes": 3357,
+      "lines": 129,
+      "coverage": "full"
+    },
+    {
+      "path": "pstack/skills/poteto-mode/scripts/orch/store.ts",
+      "kind": "pinned_upstream_source",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "bf0ed29c44093ee3b333aa10b138612f773c81eda73df7dc5337c59713f35a97",
+      "bytes": 44758,
+      "lines": 1681,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/skill-registry/src/manifest.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6",
+      "bytes": 3978,
+      "lines": 98,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/skill-registry/src/watcher.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "9b288bb0c6668b8214f3210ab12f2b1d6dc1a2ac63b7f34fc56f10003edc9e28",
+      "bytes": 2603,
+      "lines": 77,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-delivery-contract.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86",
+      "bytes": 7848,
+      "lines": 104,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/graph-execution-context.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "1a96a939552a41908c47c7c6c50bb4338d65643c7faebdd095fabf8243518173",
+      "bytes": 7309,
+      "lines": 103,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/engineering-host.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "23f234aa550132bfaf0af44d865d13a86384ce912083efcb554caacbbafe233e",
+      "bytes": 11854,
+      "lines": 203,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/execution-context.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "aa5298f4ccef92779fd012ec6fed61adef96a805282a19ded76f6a0093afb7f6",
+      "bytes": 18267,
+      "lines": 246,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/cli/src/delivery-contract-host.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "99351ba224b3d6d7667eec217d2a8d62c996951ce688239c4d4616afa5222363",
+      "bytes": 14661,
+      "lines": 213,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/graph/src/legacy/code-delivery-v4.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "95add8856e1a8a9c05c042caf8c6a3a8cb380fd185871d9d9ab4c89851394061",
+      "bytes": 13832,
+      "lines": 218,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/graph/src/legacy/code-delivery-registry-v3.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "64bde75484c36e71f0e972d362a1156aff61e097aff90892c9c95cf6340433f4",
+      "bytes": 3986,
+      "lines": 61,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/protocol/src/delivery-contract.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "b4ae1d5ef1a5d4497ccbc74a05559f03b35f2db69786e10748594af04ac94ed1",
+      "bytes": 7476,
+      "lines": 104,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "bytes": 5052,
+      "lines": 94,
+      "coverage": "full"
+    },
+    {
+      "path": "packages/loop/src/evaluation-spec.ts",
+      "kind": "pinned_osstack_source",
+      "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+      "sha256": "1a0e35f4d8030533607e9cad7b12eac25e7276dac1e4738eacab831cc9d0f5e9",
+      "bytes": 3930,
+      "lines": 109,
+      "coverage": "full"
+    }
+  ],
+  "prompts": {
+    "audit": {
+      "sha256": "412249ba02d2ea9a11a1482493cefddb3b8fb0bb5cd7903bd180a185afe44e67",
+      "bytes": 559962
+    },
+    "challenge": {
+      "sha256": "40b60389cf09a8da1cf1df4e03b7e4a8dd229bd2fa6fcc9cb0aea4fccb535125",
+      "bytes": 560256
+    }
+  },
+  "article_body_included": false,
+  "primary_article_audit_limitation": "Reading records only; no independent article re-read by nested Claude."
+}

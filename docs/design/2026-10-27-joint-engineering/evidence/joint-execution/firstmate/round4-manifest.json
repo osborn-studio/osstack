@@ -1,0 +1,143 @@
+{
+  "base": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "candidate": "10c648122094963e926cf7c5f2d340a2af2d301c",
+  "files": [
+    {
+      "path": ".changeset/behavior-capability-contracts.md",
+      "sha256": "f5e76194680df8ebc3ae1f156234529004a13f162939dcdf7ea08eb7377d1170",
+      "bytes": 316
+    },
+    {
+      "path": ".changeset/behavior-registry-loader.md",
+      "sha256": "a34c420995358f4993a5c8a010dfabf644398d7ce65aececa796a5aa1434625d",
+      "bytes": 422
+    },
+    {
+      "path": "docs/guides/behavior-registry-evaluator.md",
+      "sha256": "6ec0b8e8113ad5850a684040d3392a54cb715742dfccbccdba96389defc4dbce",
+      "bytes": 7174
+    },
+    {
+      "path": "packages/core/src/behavior-registry.test.ts",
+      "sha256": "9021810b98708270e7095a9027d893e22468d0cb98b9690a1f0b103a8c491382",
+      "bytes": 31116
+    },
+    {
+      "path": "packages/core/src/behavior-registry.ts",
+      "sha256": "59c9a9f6c2aabb21849ca9b5810d22be6e74641a50a4bdea14af2443163f820f",
+      "bytes": 23364
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "5669521986fdefe9d20353a1b9524fd070acbd19a74bd23febb33f4b14a8c81e",
+      "bytes": 4015
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.test.ts",
+      "sha256": "934d0930b1ae291f304f6c83d1510b7c39909f4e5d78cd7bee908c691d00eaab",
+      "bytes": 11584
+    },
+    {
+      "path": "packages/protocol/src/behavior-capability.ts",
+      "sha256": "4e5468e963889fabb882518d694375d9ad145b6ead63fda9a1723cd655d69d5b",
+      "bytes": 9499
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "sha256": "db201457a045b99a08a8cb941d29201cb04dcbf6bd03a29eb2ef21a68a4cb88d",
+      "bytes": 5097
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "ec2585eabc24605c27e2385705ab8fa7da853dc69558675cf600d38ede51cc6f",
+      "bytes": 205229
+    },
+    {
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1",
+      "bytes": 20452
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "bytes": 13767
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+      "bytes": 12773
+    },
+    {
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "bytes": 2273
+    },
+    {
+      "path": "packages/protocol/scripts/generate-schemas.mjs",
+      "sha256": "f9f1d17436d0cd8d7b0737a582c6f89760cc5f26446c33722e1e0fd89ef0fb4c",
+      "bytes": 2086
+    },
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "bytes": 5052
+    },
+    {
+      "path": "packages/core/src/state/engineering-store.ts",
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705",
+      "bytes": 52841
+    },
+    {
+      "path": "packages/autonomy/src/repo-lock.ts",
+      "sha256": "be2ca6351a7c9c33e40b66f77749ef216cb72778f9dc9181fcefe471dc2d7a48",
+      "bytes": 14931
+    },
+    {
+      "path": "packages/agents/src/base.ts",
+      "sha256": "4d039a9370a0f1fb2db9be138bbb2db01b3933be04b5fdf8fb7be319aeb03026",
+      "bytes": 4774
+    },
+    {
+      "path": "packages/agents/src/adapters/codex-cli.ts",
+      "sha256": "630aa2ddbae0ed95aa4ebeefa626b36887c3f1e27c7fe579c4ce5d737caa3db8",
+      "bytes": 23189
+    },
+    {
+      "path": "packages/agents/src/adapters/claude-code.ts",
+      "sha256": "f183fba64234eb7158a18275aa42e08d14f0c05c52111a2b0730d625cdc5c9e6",
+      "bytes": 18182
+    },
+    {
+      "path": "packages/agents/src/controlled-session.ts",
+      "sha256": "8e3acb2b783ba4126edaeddecc7e5c134f9848b013efd1cf03bccb0c1c1cbde2",
+      "bytes": 18781
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "ref": "4199d9aa",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "ref": "4199d9aa",
+      "sha256": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+      "bytes": 15825
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "ref": "4199d9aa",
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "bytes": 34375
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/qualification-contract.schema.json",
+      "ref": "4199d9aa",
+      "sha256": "18936d35983b4cf32eb9cbfc894dd8a07b148280fa7b56fe1c3ae6297779f865",
+      "bytes": 8053
+    }
+  ],
+  "diff_sha256": "03f4f630bfc8a995aa38586caa124748eee50e2f9c3b9a6e6fa073b8498fec41",
+  "prompt_sha256": "34d1d3eab8fe6634ffc212126c765b8af44242a96cbf9a0cb566076bf45af78e",
+  "scope": "R01/R02 post-round2 revisions"
+}

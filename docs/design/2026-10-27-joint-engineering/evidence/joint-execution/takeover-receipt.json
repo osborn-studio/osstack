@@ -1,0 +1,18 @@
+{
+  "card_id": "card_a502fa36",
+  "board": "joint-firstmate-pstack",
+  "task_id": null,
+  "title": "[J02] \u5171\u7528\u6765\u6e90\u5feb\u7167\u4e0e\u5206\u578b\u6ce8\u518c",
+  "body": "{\"project\": \"Firstmate+pstack absorption into OSStack\", \"owner_thread\": \"01a178ed-616a-7bb1-8d20-13f4c1019245\", \"work_item\": \"J02\", \"depends_on\": [\"J01\"], \"merge_after\": [], \"acceptance_ids\": [\"JA03\", \"JA04\"], \"progress\": \"planned\", \"runtime_enabled\": false, \"source\": \"docs/design/2026-10-27-joint-engineering/execution-ledger.json\", \"dependency_enforcement\": \"owner checks frozen work graph; board text does not enforce it\"}",
+  "status": "running",
+  "priority": 0,
+  "assignee": "joint-entry",
+  "blocked_reason": null,
+  "tenant_id": null,
+  "card_type": "implementation",
+  "meta": null,
+  "created_at": 1793083533.963,
+  "updated_at": 1793083810.707,
+  "started_at": 1793083810.707,
+  "completed_at": null
+}

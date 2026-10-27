@@ -1,0 +1,88 @@
+{
+  "base": "daad404e00c000247fdfb2adda13127c4c1c8e26",
+  "candidate": "d1ab1d5e91c3ac7ebbb3c2192b953044321220c9",
+  "files": [
+    {
+      "path": ".changeset/session-send-receipt.md",
+      "sha256": "593308fbc72bf7428d6a0412e407b0c04f6991a72aafd056d6b263afc36895ba",
+      "bytes": 256
+    },
+    {
+      "path": ".changeset/session-start-cleanup.md",
+      "sha256": "4c1e2f8e3fd8acffe3faa49286bc0c2dac122d0c336caf14e0a6ac22d7594e4d",
+      "bytes": 263
+    },
+    {
+      "path": "packages/cli/src/daemon.ts",
+      "sha256": "92890d6be9d7d2cb1fb1d205de6f087a38230ae529e7f870ad802b3be3e742a6",
+      "bytes": 206086
+    },
+    {
+      "path": "packages/cli/src/session-send-receipt.test.ts",
+      "sha256": "02760d62fb06c3038d73399b46b27a5acb29c1f4630a65d33d020b571264dddc",
+      "bytes": 15401
+    },
+    {
+      "path": "packages/core/src/state/session-continuations.ts",
+      "sha256": "c9fb344662206a52dad35d20bd185c9a976a50bd27526f8ea7eda0a5473132a1",
+      "bytes": 20452
+    },
+    {
+      "path": "packages/core/src/state/sessions.ts",
+      "sha256": "923c69781b1bdf9370e92cefeaef2fdb8128c2105eb5bf20f4163d37d84d5710",
+      "bytes": 13767
+    },
+    {
+      "path": "packages/cli/src/governed-execution.ts",
+      "sha256": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+      "bytes": 12773
+    },
+    {
+      "path": "packages/cli/src/adapter-lifecycle.ts",
+      "sha256": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+      "bytes": 2273
+    },
+    {
+      "path": "packages/protocol/scripts/generate-schemas.mjs",
+      "sha256": "f9f1d17436d0cd8d7b0737a582c6f89760cc5f26446c33722e1e0fd89ef0fb4c",
+      "bytes": 2086
+    },
+    {
+      "path": "packages/protocol/src/engineering.ts",
+      "sha256": "d251764e375560b6a3146a92cf68887486a9001520ac15c3b8ec27cd3cca46ae",
+      "bytes": 5052
+    },
+    {
+      "path": "packages/core/src/state/engineering-store.ts",
+      "sha256": "a11803e6b2deab290e0fb1707576e99552fe106d1e4ea9725402b988fe8fe705",
+      "bytes": 52841
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/runtime-contract-v2.md",
+      "ref": "4199d9aa",
+      "sha256": "e2d3317ab71eb90ccdda4d9f4044fe0ce7ff9a07b7a8f432a1923d8eabe670ee",
+      "bytes": 34771
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/audit-revision.md",
+      "ref": "4199d9aa",
+      "sha256": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+      "bytes": 15825
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/work-packages.json",
+      "ref": "4199d9aa",
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
+      "bytes": 34375
+    },
+    {
+      "path": "docs/design/2026-10-25-engineering-agent/qualification-contract.schema.json",
+      "ref": "4199d9aa",
+      "sha256": "18936d35983b4cf32eb9cbfc894dd8a07b148280fa7b56fe1c3ae6297779f865",
+      "bytes": 8053
+    }
+  ],
+  "diff_sha256": "27d1380511c4b86fb8d0fe05943092ab1cf44b1eab54add571b232adbb9cc766",
+  "prompt_sha256": "775a65fc8dcf3659ba2a63b84dd67fcdfe7736226c3835b4747a2073c742e73b",
+  "scope": "DEBT03 send/start cleanup fixes"
+}

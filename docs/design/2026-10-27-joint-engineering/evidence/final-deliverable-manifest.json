@@ -1,0 +1,852 @@
+{
+  "schema_version": 1,
+  "kind": "final_audit_deliverable_snapshot",
+  "generated_at_utc": "2026-10-27T04:55:10.143796+00:00",
+  "excludes": [
+    "this manifest itself",
+    "__pycache__"
+  ],
+  "files": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/README.md",
+      "bytes": 6565,
+      "sha256": "61f9182fefc6c46e3c0ed50fa8a62c75b94914a9476f28f2453a93a7af707ebe"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "bytes": 125123,
+      "sha256": "68ffc4aaa1c257f2f8fd381f28669b86af11b611a431c63621b1d171a7f07540"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/architecture.md",
+      "bytes": 9791,
+      "sha256": "d12d067ef6073abdfc94f563a3ffd0f0acca1e949efdeaade556cce78ada5828"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/artifact-catalog.json",
+      "bytes": 4846,
+      "sha256": "c3736fda8145e321881ec52f1420e9aa200c145d0aa224b1c0a4ab05c67dacd6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/audit-specifications.md",
+      "bytes": 22923,
+      "sha256": "d26bc710e0d5edd965baf265704eb717c01504c7c02790774e53868266580a1d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/baseline.json",
+      "bytes": 5882,
+      "sha256": "c5abfc57246c5672880b6d31b092c7f0f2bcc91d228ee38c2e3fa7ceacb04d9a"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-index.md",
+      "bytes": 5485,
+      "sha256": "39b455eec20a492add658433f22d2d138501950136bbcf2a21f9cd4e74907233"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/capability-map.json",
+      "bytes": 95346,
+      "sha256": "996026a73e1495e1404060f9dfb22f4b9197c9e6bf343e33b79722cb9d91dae6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "bytes": 14592,
+      "sha256": "6c1db9580309fd8eb703a4a1b42abfe760c129c944edd81639a6498803ba46e6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/closeout-specifications.md",
+      "bytes": 15891,
+      "sha256": "0372fecf3be44148688b8139f4b99494e4dd2dd76ae7ff1dd158df4287be23f3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contract.schema.json",
+      "bytes": 38412,
+      "sha256": "582af5adede90c8756c3d5b1a0da9baa1782afb19922d5dc85c5396ab1dff534"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/contracts.md",
+      "bytes": 14730,
+      "sha256": "dd896c14c80e08d161e7dcfc8e79144575e81ec88f7529ed924edff3e50a7539"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/digest-catalog.json",
+      "bytes": 5384,
+      "sha256": "ad115ecb0ff373d0883a75dec59d3921c31a5958d670d31af980ba6acb0fe408"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/deliverable-manifest.json",
+      "bytes": 9578,
+      "sha256": "4f7bd68daa5894cfba92829746a53a1c1a4247d1209bf55f3b11b1b6711df66a"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/design-checks.json",
+      "bytes": 658,
+      "sha256": "dfc023694a138c4697c15f9c8e5e487b5731fb51b9dbe79288ab31d27f299c3f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/execution-record.json",
+      "bytes": 898,
+      "sha256": "bc9b29f0dbf8804426f9d3d2061870b29600347407c4e17c679e184bc3d8de01"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/before-design-checks.json",
+      "bytes": 658,
+      "sha256": "dfc023694a138c4697c15f9c8e5e487b5731fb51b9dbe79288ab31d27f299c3f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/before-validator-tests.log",
+      "bytes": 2344,
+      "sha256": "52f8a13c2cec2161e2e0c74a6db639309ee3ea6b4aaaed0a8ab134ffba33d09f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/challenge-input.txt.gz",
+      "bytes": 410472,
+      "sha256": "1da7259966dac8f473102d5ae687716f571b4f9e3ba9ec1fe5b396f6b1f8dc4c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/challenge-instructions.txt",
+      "bytes": 2163,
+      "sha256": "d8f9119965b55e190f91580ef62b65dfbcc688b00f77f0aa337eefec817bd94d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/challenge-response.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/challenge-run.json",
+      "bytes": 879,
+      "sha256": "0193b603127c730de4de5a8b671d64f79d45a6ffaa414aeec57d07531c50b2a8"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/challenge-running.json",
+      "bytes": 657,
+      "sha256": "6a566185c27b5d93f198b29893cb46f61ae7cad51dbba1eb2c25ef350210ae4a"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/challenge-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-challenge-input.txt.gz",
+      "bytes": 812272,
+      "sha256": "cb138dc85284b0105fda9ff7e49817f5b9e6121abcff956c478e20e7c05f583e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-challenge-raw.md",
+      "bytes": 294,
+      "sha256": "f39b6e4f61bbd82cd4b5bc65410f6580c7278e055de5a757c9b1cc02f1957701"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-challenge-response.json",
+      "bytes": 1463,
+      "sha256": "c62df8a7cfc35f1c99fff4d7aa15e224372cd2392b04443663de0209b46d41d8"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-challenge-run.json",
+      "bytes": 1543,
+      "sha256": "9cb7924d9600b9506d137f8a839e0570ebd9bb418336f0f710f66d41b145c28d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-challenge-running.json",
+      "bytes": 657,
+      "sha256": "5938d305d6543897a4edca79376b9095fde96c557c44e80b5fbb7f851ce99a62"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-challenge-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-input-manifest.json",
+      "bytes": 63425,
+      "sha256": "73200ee9d7a84e0a43438bddf68939357b6fb6c0e4ed0b9388215c06ec043953"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-review-input.txt.gz",
+      "bytes": 812234,
+      "sha256": "e1360f6f2564ec9d7dd7a2bf34686f37de7e1779a1fd5e17c5cd4be04a53944a"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-review-raw.md",
+      "bytes": 294,
+      "sha256": "3c6e7938c4216a81af9fc7ffbe059dcb2f6679ca1538fc358cbc8a1b65a4589c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-review-response.json",
+      "bytes": 1463,
+      "sha256": "61760b5565502ec66be37cf3e28b812d9ed86f87ea6fdc343e7922d9903d37ab"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-review-run.json",
+      "bytes": 1540,
+      "sha256": "1926312df439436e508b3ccc3593ed59377b69d5d9dd07046f854482756b2a9c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-review-running.json",
+      "bytes": 657,
+      "sha256": "c1e41b3c7d303919ac397168f7490196de84d913644400e33964353db366f8eb"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/context-limit-review-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/host-pre-revision-probes.json",
+      "bytes": 651,
+      "sha256": "21bd0cad2dedf3853dc2d66bafc5b9e30a32f77b3adb9baa376eef30377b9a2d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/input-manifest.json",
+      "bytes": 63424,
+      "sha256": "c142cd4d67e04a9266624f265cba39f28c9563fd8fed3bc63a6bc87a27500483"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/pre-audit-manifest.json",
+      "bytes": 8528,
+      "sha256": "3fde987ac8a3a087590da32738ef22a37a71c34f11121b894a09b061d257bd85"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/review-input.txt.gz",
+      "bytes": 410432,
+      "sha256": "632344be972f57686ad631bb0af55dafb2610853b340749bafec4c88c574e802"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/review-instructions.txt",
+      "bytes": 2080,
+      "sha256": "f1b0fb4c90a45221f6fc384c1aeebe874736d5a3de0d537da740475544b2b590"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/review-response.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/review-run.json",
+      "bytes": 876,
+      "sha256": "efc31eb092120964ba788cf2d54a2a9693f841901d70dd1d32ce93f4a1c9deff"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/review-running.json",
+      "bytes": 657,
+      "sha256": "33764a7836c1a6d09e0a2022705b9c444557a6771b60a13c8547ea837a15c33f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/review-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/user-model-switch.json",
+      "bytes": 397,
+      "sha256": "5b574d5a939ceb743baf90becd51081a0cc1429a6b05dd6e087e947bd639c8c6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/workspace-before.txt",
+      "bytes": 4515,
+      "sha256": "4813b6c41b124648c696adb038bfc2a1dd96288bcb7aa0dddacd89758da49908"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/fable-audit-2026-10-27/workspace-protected-hashes.json",
+      "bytes": 509345,
+      "sha256": "5301036098ee98623fc35e9a1f8a74db23943251e854aa4d633a3c207ef0f650"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/github-pr-271.json",
+      "bytes": 460,
+      "sha256": "8841898c2404028681a4762cd3f2d12a70c48c25a43a5fe3af36a464c4bd0c18"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-audit-followups.json",
+      "bytes": 1951,
+      "sha256": "783b7e7297e51ff86c14a9635ae95b79e5b0a744ef972f497ad74818c05c756f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-base-work-items.json",
+      "bytes": 12371,
+      "sha256": "9e89fcf6f59607ba4f229c9ef98718f3cffa04993341e278a24fa96b41e85770"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-capabilities.json",
+      "bytes": 16527,
+      "sha256": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-delivery-gates.json",
+      "bytes": 10257,
+      "sha256": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-pilot-scenarios.json",
+      "bytes": 28718,
+      "sha256": "b41c4fb3397922b2354f21f2f100c82e3227dd84522354754ea4be634790108e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-source-additions.json",
+      "bytes": 25888,
+      "sha256": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-sources.json",
+      "bytes": 33440,
+      "sha256": "30cd9f3a810c981ddb13706676af8394f7ec10a3a49bf42b7e52915e93b9b327"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/firstmate-work-packages.json",
+      "bytes": 34375,
+      "sha256": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-acceptance-cases.json",
+      "bytes": 24725,
+      "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-capability-map.json",
+      "bytes": 52944,
+      "sha256": "465371693560451eb70cee101cd20587e4f4f4d1bf10c43c10749c71448234b0"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+      "bytes": 35349,
+      "sha256": "14f63ad459e3e9256d53d9aefe81ce66fd1bdc17ebb84acfee0ca43dabd96443"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-author-reading.md",
+      "bytes": 7743,
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-capability-catalog.md",
+      "bytes": 28352,
+      "sha256": "17dd8b9f347bf7c6882d84a5a2d20e8555c136da2311f669c7e39bc71c4931bb"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-integration-spec.md",
+      "bytes": 53620,
+      "sha256": "e11209a123253ab579f989d813f961cdcf0eece6f7e0b40424fcba345b356d58"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+      "bytes": 8858,
+      "sha256": "fe93865dbd60b5fb7a150ed87f4a6b9038daec258880287ba3d05449db2b6750"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/preexisting-file-hashes.json",
+      "bytes": 11327,
+      "sha256": "94ffaf1d2582e01dea61b901658316bffc433c0eb334e3d5f55ecc6b50f5d3c1"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/scope-check.json",
+      "bytes": 625,
+      "sha256": "62481563c7b5133e58a5765f88d566d7bca1deb324757f083a613c032f241890"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/active-link-check.json",
+      "bytes": 37,
+      "sha256": "573769c20bdb2574dfb6eb3c26b32fd7f75dcadc42b37c398e372a6ff97494f8"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/audit-integrity-check.json",
+      "bytes": 421,
+      "sha256": "0185f0c81d3306e32afc782990a45a5c4805813958b5aeb65b9a6ff8d5f17066"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/before-design-checks.json",
+      "bytes": 658,
+      "sha256": "dfc023694a138c4697c15f9c8e5e487b5731fb51b9dbe79288ab31d27f299c3f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/before-validator-tests.log",
+      "bytes": 2344,
+      "sha256": "52f8a13c2cec2161e2e0c74a6db639309ee3ea6b4aaaed0a8ab134ffba33d09f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/candidate-design-checks.json",
+      "bytes": 768,
+      "sha256": "36c401ae4557c84418668b5329c9615f49605f093b9beb120605d726dcbc4738"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/candidate-validator-tests.log",
+      "bytes": 4994,
+      "sha256": "f4816709ee7e86d83c8b07e529b736113e86b1f69df2b6e3b70340f2f27dc8bc"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-input.txt.gz",
+      "bytes": 410472,
+      "sha256": "1da7259966dac8f473102d5ae687716f571b4f9e3ba9ec1fe5b396f6b1f8dc4c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-instructions.txt",
+      "bytes": 2163,
+      "sha256": "d8f9119965b55e190f91580ef62b65dfbcc688b00f77f0aa337eefec817bd94d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-raw.md",
+      "bytes": 22928,
+      "sha256": "3b8da76952281b7140fad458f14aa9d9f8cc527a65883f0b83bc5979f22c2600"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-response.json",
+      "bytes": 25096,
+      "sha256": "87b4a0702e3f026e2b5818e6693107d534546d2b94603587b223d59a79de5836"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-run.json",
+      "bytes": 2323,
+      "sha256": "4cb8345a95c6a134685c52ac348a3203722c13799142e20a61fb9fc8c1be8eca"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-running.json",
+      "bytes": 661,
+      "sha256": "c3e4cfb84b55c1017eeb3c5d2d5ccc79a11de28333a887f6362541671bc6ab41"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/challenge-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "bytes": 3648,
+      "sha256": "2d839dda1af35c2d68da4cb24ad2d89730a1b6a60d5d17946ab899ab91896ce3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-input-manifest.json",
+      "bytes": 9707,
+      "sha256": "ad5143e486123c134a7b2519e33463df05e428f2f457d2ef20d21cc2b53050a6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-input.txt.gz",
+      "bytes": 248798,
+      "sha256": "6ed550a533008c0498caad2a5276a4afc5e6cd34ca1355b9380b6b7f21a9d6cd"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-instructions.txt",
+      "bytes": 1555,
+      "sha256": "65fde50cf8bfa69044bbc7daa2974d9740a77ef22f217bab500040410b0905e4"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-raw.md",
+      "bytes": 11377,
+      "sha256": "0cbbcf752d91a7e1cdb778b41fdefc9c9c092693709070a7241a0136abcbc065"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-response.json",
+      "bytes": 13387,
+      "sha256": "38712b75aaee2b40a7e727a73d3c2d2034d9f01a7783cb3ddb0fc5fbcbe15924"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-run.json",
+      "bytes": 2324,
+      "sha256": "5e1480aaaadc3c55554a7a840aa657cb07c8475fbd5d828bbb126f1b275afc6c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-running.json",
+      "bytes": 663,
+      "sha256": "ba3e2d8db03b35b2727e4e695d528987dcf4f45bad5a65a2474aae999811338d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "bytes": 896,
+      "sha256": "db95507af14cb41208984f65e633e077b321d8fd015bf13cb85270d44c3a3f8d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-input-manifest.json",
+      "bytes": 8760,
+      "sha256": "8045bb07e70134bd8e310e1cbcd2724b1ebe4564f8988e5236d1d6e05419d694"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-input.txt.gz",
+      "bytes": 243784,
+      "sha256": "0bbef7dfced1cb78e6536fd293ad7543c6903e7969f67dc34675f65db43af094"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-instructions.txt",
+      "bytes": 1454,
+      "sha256": "6816bae756ee2001eb1fb3c6dda29cbba0ce81829ce81170862699e45a4560bf"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-raw.md",
+      "bytes": 6058,
+      "sha256": "ab25218f35860c5a24f61143b9c45c63d7116449e5dfacaf8ce5865c35266786"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-response.json",
+      "bytes": 7974,
+      "sha256": "8327a1f5c9ff8370d600f5f6ee4949c729619f6081e3ce6770c416c963b76203"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-run.json",
+      "bytes": 2325,
+      "sha256": "95231d004367881561c5b97fdbc6bccbdb41e663aec11d5f21b0ce2fb5258bb0"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-running.json",
+      "bytes": 663,
+      "sha256": "c4815cbbffcabf11b0d97c53c0d5fc67a951291c28b8e0df946db726a6c0ed59"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-followup.json",
+      "bytes": 1007,
+      "sha256": "c22f8b0cf6d8e93087b28325a0d04ce7fe93430fe13df5f8b567f870acd363d7"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-input-manifest.json",
+      "bytes": 2816,
+      "sha256": "0e91e80d35a55b88965dfc486bf6dc335769be47ff66c7291debee53c49febbb"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-input.txt.gz",
+      "bytes": 76018,
+      "sha256": "bb39d8613900ca4ad094ea682d9af119aa99eb22e1dcfd1d390abf0939837b83"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-instructions.txt",
+      "bytes": 1130,
+      "sha256": "35f2f03ecb9b0acf20ed45f9a7558b8c2661e19c2032635c418eeedb217a5557"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-raw.md",
+      "bytes": 3641,
+      "sha256": "a0a15dafae6d47da86ffd24c1ecbea65aab6e0d0f4b58aead50f69ae42e35e24"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-response.json",
+      "bytes": 5508,
+      "sha256": "ef260836e1be0dc3862fc67939aed774a4da3931efa46f8a26a189c732ca1d21"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-run.json",
+      "bytes": 2319,
+      "sha256": "3a74b4fa00f927bf40839b4f4b4104872b64a2283af5cdabe081255b41e4f5bc"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-running.json",
+      "bytes": 663,
+      "sha256": "e52be0e58ca8165161ee23391d0789f602ca1f57c21cbc50e1f39d973eb46af3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout3-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/digest-reference-check.json",
+      "bytes": 129,
+      "sha256": "f620269fda6a09f4f1ba6f27032b5a12532b204ccba5dcbc702658e11b78f0db"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "bytes": 21142,
+      "sha256": "b33cc9fc2d9250d26cdd07938f77d4aeae5a0d0de7ee545526b700dd24e6371d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/final-design-checks.json",
+      "bytes": 770,
+      "sha256": "c5460b2d2e1e12436c858f1e45577014712e2f733e8f3806c14e58c379442fe0"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/final-digest-check.json",
+      "bytes": 129,
+      "sha256": "0242d1b8bd775f7a589d261a9dd02c9a7294fea06403119c4a9a40f1ef0ae499"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/final-execution-record.json",
+      "bytes": 3794,
+      "sha256": "bb88a4f06e717a612f2811e3745b870a71a1d880799aae1b94f4c96735c42ec1"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/final-validator-tests.log",
+      "bytes": 7616,
+      "sha256": "adb3e5245b23ff9749b3bd2ea06aa77c98d4b4a3636df992efffd119dd0be482"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/host-additional-sources.json",
+      "bytes": 2009,
+      "sha256": "84d674b457380299f6b245e63d9728d51d9296eee8a0faf8bae1c737dd15f47c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/host-closeout-source-check.json",
+      "bytes": 1919,
+      "sha256": "9cabf441b71c3d6ee1ace2637da0f23cb983fdd076f14887e7e37cbbf8b00602"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/host-pre-revision-probes.json",
+      "bytes": 651,
+      "sha256": "21bd0cad2dedf3853dc2d66bafc5b9e30a32f77b3adb9baa376eef30377b9a2d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/input-manifest.json",
+      "bytes": 63424,
+      "sha256": "c142cd4d67e04a9266624f265cba39f28c9563fd8fed3bc63a6bc87a27500483"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/invocation-empty-mcp.json",
+      "bytes": 18,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/invocation-run.py",
+      "bytes": 3564,
+      "sha256": "dec27addcb199d760dfa8dac935dbbfe0f4d1550585967b79caa010b0ffb4678"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/invocation-settings.json",
+      "bytes": 25,
+      "sha256": "79ce827cfe1b577235a440271ebd5c93af5ed812a7a4561f253c7f0a031f04de"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/pre-audit-manifest.json",
+      "bytes": 8528,
+      "sha256": "3fde987ac8a3a087590da32738ef22a37a71c34f11121b894a09b061d257bd85"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/probe-raw.md",
+      "bytes": 44,
+      "sha256": "3b6bd94165a78b9792e4e56e8cece6921ce769ebbf1a7ff074954adfa000a0cb"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/probe-response.json",
+      "bytes": 1850,
+      "sha256": "c676b8ad151fc259b4f60315777c1c2b817b9443c7262c7bb42791573da3d6f8"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/probe-run.json",
+      "bytes": 2295,
+      "sha256": "cd92aa6e0478e123f7f49f3817f1fc5814c8902b9b5afbb71aeeb4bfdcfc8575"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/probe-running.json",
+      "bytes": 661,
+      "sha256": "a26a15c237ad01998c76f392ba519608b991433e37ab7cf57ab2343f3c0f5104"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/probe-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/release-edges-tests.log",
+      "bytes": 7227,
+      "sha256": "ee697fb271798ff8e475bc7206bd3a33020c328fd09be96f4249c13c565c859d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-input.txt.gz",
+      "bytes": 410432,
+      "sha256": "632344be972f57686ad631bb0af55dafb2610853b340749bafec4c88c574e802"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-instructions.txt",
+      "bytes": 2080,
+      "sha256": "f1b0fb4c90a45221f6fc384c1aeebe874736d5a3de0d537da740475544b2b590"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-raw.md",
+      "bytes": 3513,
+      "sha256": "d5efba8f45b46c51549f2c45b7b3ad1226c78c04cb26aaa9d5f76539f4ee00c1"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-recovered-raw.md",
+      "bytes": 30535,
+      "sha256": "5e17512cf8d0a6a7ac77952fda80d356066092975663c83f2fbc06cbe0ddc728"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-recovered-response.json",
+      "bytes": 32741,
+      "sha256": "37b99a19eeeb2dede3b567946a7c0699fe974ac635ca6e41a952f26648ad49af"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-recovered-run.json",
+      "bytes": 2312,
+      "sha256": "749b6730dd4f0b4b196497704d97c33877d259e0340bb2fab6c0b255245095a1"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-recovered-running.json",
+      "bytes": 661,
+      "sha256": "b2571bd5a3f0ce6ad2821d626295d7fa8105ada6ade9d05ed2b99d12f55219ef"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-recovered-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-response.json",
+      "bytes": 5386,
+      "sha256": "2964b853a67855ccb603d4d33fe7ae18725f7232e42fd6c31aa13a15e94a05b2"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-run.json",
+      "bytes": 2332,
+      "sha256": "41824c0e75def2c3fabaed0a25bd75e4b5e37ff13abb2922d74ffb34575f0d26"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-running.json",
+      "bytes": 661,
+      "sha256": "1a1c8451b33975c91fe2eda3112097651eda3d61321fee7d867673c63e0ec975"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/review-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/revision3-design-checks.json",
+      "bytes": 770,
+      "sha256": "5991e86bda68596bddf8bfcc0c8309cfcc8a503f110e8b746faeeafd8f993f60"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/revision3-digest-check.json",
+      "bytes": 129,
+      "sha256": "0ceebb7f86105cc0403a411e74eb95a765f536bc80eff78429bffd4233d3995b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/revision3-validator-tests.log",
+      "bytes": 6886,
+      "sha256": "d39b0f3d9e203b2853ca0d130939994e6a8955ff1826ff47942658171928c90c"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/scope-check.json",
+      "bytes": 453,
+      "sha256": "521b4afddcc834db7878331850c28a9620cc41c9aa1260034121d186048a7f30"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/source-inventory-check.json",
+      "bytes": 95,
+      "sha256": "85f29e5d292f443ff7b5f2ea91700a8bdb0686a94c0eeefacfe1994705cdd720"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/validate-audit.py",
+      "bytes": 4098,
+      "sha256": "572fd9ffad28e889e49f689d87e92758f6d8bcdf5ca3dae4ee10b070de6804fd"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/workspace-before.txt",
+      "bytes": 4515,
+      "sha256": "4813b6c41b124648c696adb038bfc2a1dd96288bcb7aa0dddacd89758da49908"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/workspace-protected-hashes.json",
+      "bytes": 509345,
+      "sha256": "5301036098ee98623fc35e9a1f8a74db23943251e854aa4d633a3c207ef0f650"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/validator-tests.log",
+      "bytes": 2344,
+      "sha256": "e87d4a9f6a9a865da5b2e23f99db97bd4d5793c6ef8db11d189504afd53cc665"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/workspace-before.txt",
+      "bytes": 4470,
+      "sha256": "a4b12b1ca651e97e5b675e1fff065e17e10a0575edb49a5704be5cfeeb545697"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-gates.json",
+      "bytes": 57506,
+      "sha256": "cd17e1bde66df78b98d97b0d1098ef52ed463fde813e9ccf481de2aea387b180"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/fixtures/contracts.json",
+      "bytes": 130901,
+      "sha256": "7b3b88ca2003e97603b288904fd573351e1bf08c10a925f0be8490dd897c5f8b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/fixtures/digest-vectors.json",
+      "bytes": 14553,
+      "sha256": "740b46f253e6650d71e600e1976db03176d7ba657bcd8762636b6fae98a3d8d7"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/implementation-plan.md",
+      "bytes": 10182,
+      "sha256": "d0419d15a715ab84c4cbb0140023b908d732ad2b3f41ab4ede54bb180b363a11"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-case-map.json",
+      "bytes": 91680,
+      "sha256": "80f1975ca2911e69468e7772bc12d25a495ac70a66cc24bc12f27bed2b206564"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-work-map.json",
+      "bytes": 23674,
+      "sha256": "bb8a4588453f458d33a68af682f08ba0b6d4d9797d928ea66c46a6711830b85e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/reconciliation.md",
+      "bytes": 7009,
+      "sha256": "d3579ebecddb0a443326408a48b7e1413d8bc9e4e85a10e3b9af13ef00461c55"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/source-coverage.json",
+      "bytes": 73967,
+      "sha256": "142cfa78a689e52ca247a9f376d2fe6b45f7dbb409a268d2010f7ed6f5e90fb3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/sources.json",
+      "bytes": 107426,
+      "sha256": "dc86b0ca22dd398f3430e54679db8205b8b8c4d4592abe5b53d6e88d1c1ac20d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/test_digest_vectors.mjs",
+      "bytes": 1302,
+      "sha256": "baaae776c0dc000052e4f3ced2acbd989d8132bbdc1d4e49c95358e45d8ca293"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/test_validate_design.py",
+      "bytes": 17036,
+      "sha256": "612668c5a83dbded4a91aadf89cd25df97ed6e74c1181695ffa00d3f37a66dd8"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/unknowns.json",
+      "bytes": 5909,
+      "sha256": "34f586e2164b1b0c3c9d136d067c3b788c21abfc8a86596c7e44ae2dda835083"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validate-design.py",
+      "bytes": 34063,
+      "sha256": "45c66747c57a34d574c11e8dd66ba8cdcbe96b6d0e3982d13c3a4f140b836f5f"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/validation.md",
+      "bytes": 4297,
+      "sha256": "1199e524f75f79a9553ef68deda8ec5d2c7218f12c31e055b5405b489aa71118"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/verification-spec.md",
+      "bytes": 8892,
+      "sha256": "ce03e850a9ddab3c116f2b2c668583268f8a810c368cb72e1b35c5111284556b"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-package-index.md",
+      "bytes": 3680,
+      "sha256": "2e35f49dab12b3adb520cc6798d88507926447511a1dec07bb271863431f9c67"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/work-packages.json",
+      "bytes": 73691,
+      "sha256": "6e33692c9e7c872042281ccdaea3c932ad4e7e8ffceb47050ee458c74b203b7c"
+    },
+    {
+      "path": "docs/design/2026-10-26-firstmate-upgrade/joint-design-addendum.md",
+      "bytes": 2859,
+      "sha256": "ce01da164b81f09a5d257b30dd2ebd915ab7214e44e501c2c5ce6866d985696f"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/capability-map.json",
+      "bytes": 59354,
+      "sha256": "ca921f4b0af76e5158a6745238f1d91c86b21feb378ee132318284e148781e79"
+    }
+  ],
+  "note": "Original initial manifest is preserved; final model reviews apply only to their exact archived input hashes."
+}

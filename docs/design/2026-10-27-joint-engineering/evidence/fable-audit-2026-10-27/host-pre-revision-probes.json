@@ -1,0 +1,22 @@
+[
+  {
+    "probe": "drop JA04 from owning J02 acceptance_ids",
+    "result": "accepted",
+    "scope": "in-memory mutated design; no runtime or product action"
+  },
+  {
+    "probe": "remove pstack W11 original dependency",
+    "result": "accepted",
+    "scope": "in-memory mutated design; no runtime or product action"
+  },
+  {
+    "probe": "erase all schema fixture coverage",
+    "result": "accepted",
+    "scope": "in-memory mutated design; no runtime or product action"
+  },
+  {
+    "probe": "J25 declares evaluation complete before J09 exists",
+    "result": "accepted",
+    "scope": "in-memory mutated design; no runtime or product action"
+  }
+]
