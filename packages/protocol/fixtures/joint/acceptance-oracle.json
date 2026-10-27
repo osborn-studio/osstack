@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 3,
   "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
   "scope": "component regression oracle only; no authenticated independent principal or gate claim",
   "domains": [
@@ -668,6 +668,180 @@
       "bytes_hex": "22e422",
       "accepted": false,
       "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "ascii-order",
+      "bytes_hex": "7b2261223a322c2242223a312c226131223a332c22615f62223a347d",
+      "accepted": true,
+      "canonical": "{\"B\":1,\"a\":2,\"a1\":3,\"a_b\":4}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "35713adb943f9bc15e0b7ffb77b0202cc19405ee9036b787f79440189c391939",
+        "osstack.joint.method-proposal.v1": "c2d05de676c5d55c868bb1617987f8ee589aa8964ec1b132e300de246bb33864",
+        "osstack.joint.support-profile.v2": "a569f8289f550b900d1de44269c754e5aae8d58ea7413b23a0528aba24fa8d0a",
+        "osstack.joint.source-snapshot.v1": "d121d6c304ac5ac22b43c2ce35ec1c161c1aa268fabd1bce81acd641bc0da73c",
+        "osstack.joint.artifact-requirements.v1": "0514841baac24738b357a096c09258ddeb1a18b5032d6a16dacdbd7a548263c0",
+        "osstack.joint.role-artifact-requirements.v1": "139af85ba78c2f5e4d8ca0e4503fff0862f335033d976973d7225bbe888a8deb",
+        "osstack.joint.check-binding.v1": "6aa7d7c82508bbbead00e7b91b8932bbdfb71ed447b910b01cda269a1ed5c61e",
+        "osstack.joint.intent.v1": "c9061b1a7685efc6a50df724a3f2c625c5f59b95b682d54bc2c6e2d32b01c61b",
+        "osstack.joint.method-recipe.v1": "af694a5acadce658f9fc951111ed6faa3019360910baeb9ef1daffbdb5471abc",
+        "osstack.joint.method-input.v1": "2cb36cf59992f94a2c9c8c2aa8f80cc54c93ef15809268cbd984fdcf79af0478",
+        "osstack.joint.environment.v1": "15f262a213d0753cc9aa90faa0b43088f058887f3a1e7d166075fdb98a0c3523",
+        "osstack.joint.scenario.v1": "1cf6b08e7e9c739e12214d35243701190081e3e28885065bd3a2703236ad5d10",
+        "osstack.joint.check-registry.v1": "fc82cf27accd7a7610a187f42b6d500d12f30235e102927f9f719e3b06479b74",
+        "osstack.joint.schema-spec.v1": "cd777a301ddb02a447af59b412753ad6d019f768c5e03b41a85beada72f30250",
+        "osstack.joint.recovery-subject.v1": "01478d0ea28658154aec598aa945aa2af7b7e3ccc3b05c6fcee0a264a068c5a8",
+        "osstack.joint.trial-root.v1": "4be2ac44b65fe343962d71d5611d0a71850ceee52e00380215fb7d3cadbef1b8",
+        "osstack.joint.recovery-request-input.v1": "eb4354a141471c667055f9e05690c5a0966faefc8e68e547805be5613a285767",
+        "osstack.joint.trial-consumption-input.v1": "9931dcf603a06ed727a20a6072aea8b4f729adfb9a5f26bd714c30566f7ae25e",
+        "osstack.joint.source-content.v1": "284b60e509baf16ec45f34aa6ec18c188f82c957001debec22a41a2f6c2b9cf4",
+        "osstack.joint.source-inspection.v1": "54dbedeea6185f851728bb8bbeeb5d2179c4e0a4dfd92ef7104333cbd70ff961"
+      }
+    },
+    {
+      "id": "depth64",
+      "bytes_hex": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b305d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "accepted": true,
+      "canonical": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "fa1307fda6f2db97cb5416e81354ed1a13bc57ba2bd9b9780b2cc4b535b71f08",
+        "osstack.joint.method-proposal.v1": "2708b6c349907705a3e29b4cea441c6b366d1f6e9eb6350506aae484ab52047f",
+        "osstack.joint.support-profile.v2": "90dda0ee86ac01941caaeeb5e5bfdcf776aa401afe2ee3245cabd7fa159ce89c",
+        "osstack.joint.source-snapshot.v1": "6ad9126055acdb393f3aa9a70838cc00477b77dc71c6a57a77cf815028e38265",
+        "osstack.joint.artifact-requirements.v1": "3c88ea6ec67ac6d924fa087a3276bc9717096ebdb516fe5b785fa67aafec7b30",
+        "osstack.joint.role-artifact-requirements.v1": "a47b749c75d5d5674e7492e0b7a53d2abc739d4c2bbca913d4e99e28b71781a1",
+        "osstack.joint.check-binding.v1": "027f258f76efa8a08e06552a12ac0c78523d4cbcc993d5f17d0070701c6e4454",
+        "osstack.joint.intent.v1": "9b1c6c64cbd7ebba24f818a44ebba7e9cdf35ea80ac1193770ed164dbda5de5c",
+        "osstack.joint.method-recipe.v1": "c0803d37fd4a201fad30c7e42c83b064420b29e4174f7715e28fd40677bf55ca",
+        "osstack.joint.method-input.v1": "7185291cb73dda59ee612f1ca61aed62367f20bea07e86cad5d23a486fe8be01",
+        "osstack.joint.environment.v1": "f5634d0a6d249cdf044a62d20964a715e67a1aa3d65e20f82fb6a93e71b44df9",
+        "osstack.joint.scenario.v1": "fe675e3867ff1bbdba640a9fde1bbb0b9801a42d28478878c08bf52756b4a5e3",
+        "osstack.joint.check-registry.v1": "ec38e1f836040d826b6bfb6ada71d2b6ba4f69012023dfdb761b8d73df0f21b2",
+        "osstack.joint.schema-spec.v1": "57c1d7e526a3aec8cf7f68a20b5f402fe459a73f8d4026d3f66ac26ece30fd66",
+        "osstack.joint.recovery-subject.v1": "9b53c2efc804d06991875c372a44d1cb7e2a5a0d8001a9d161aa9e79e415843e",
+        "osstack.joint.trial-root.v1": "86c06f78eb365cd4719fa7af538c15138f85d64c79aef6815fafe6868cd3a2ce",
+        "osstack.joint.recovery-request-input.v1": "b48fde33cb530bf2edc914444b70414a3e20f7c1494d6c7f1e68f8740f7f9dee",
+        "osstack.joint.trial-consumption-input.v1": "25b1b78e0c568c85fd8a54fa50090e21f9e84b68586d444f02e0686544c556f8",
+        "osstack.joint.source-content.v1": "bfcef731e4978b8646a09c5cc1a510805daeeb126cb15204293f4a25f3e566de",
+        "osstack.joint.source-inspection.v1": "bc43a6a85b374142492aa2e59a60849dbb36b6da56bb8c235d3e69e7eb76d829"
+      }
+    },
+    {
+      "id": "object-depth64",
+      "bytes_hex": "7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a307d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d",
+      "accepted": true,
+      "canonical": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":0}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}",
+      "hashes": {
+        "osstack.joint.method-binding.v1": "8a9abc2f5bf873707fe1f4d4e0a1e309335c0b7a6ee134dbad46514a3d53b3bb",
+        "osstack.joint.method-proposal.v1": "137329d946e269e40a671dfa8f9e9d048f715514ca2037b62d6c6bebfc717054",
+        "osstack.joint.support-profile.v2": "33ad07c0e4cbd1ffa306488cfd63460be9d2aca8fc83dd230c039196b5bd5e67",
+        "osstack.joint.source-snapshot.v1": "4be67dae6aeccafbe76cda1a7dfc94226dda23efcca08f85908d0c1149bd049c",
+        "osstack.joint.artifact-requirements.v1": "82f1a344b5132e24cb7ef2b7b83ef2da42a7122729eb8c28776103aa49e4df08",
+        "osstack.joint.role-artifact-requirements.v1": "877eb2b7cb25bde8170e6297d1dca695bed3cf37d47e32cb6552d02385e8abfc",
+        "osstack.joint.check-binding.v1": "8696322642600714a573904201178755d5c2ec6bc6f5d4ea1786ed798cb9ac3c",
+        "osstack.joint.intent.v1": "337b3d52be26f173cfc22dde4a9d565c5f3163421015c906b1e0d04259bf132e",
+        "osstack.joint.method-recipe.v1": "789598ca589e17612514e5a5c2a4446a89aeafb62fbb660f85bb4ad69c3c5e1a",
+        "osstack.joint.method-input.v1": "fe959820a5de7910f3d649c6ca1f5f3c60d12cae13b104ff04906e84e8d843a1",
+        "osstack.joint.environment.v1": "0c44d400aaa437b30b594698ae67fb0df21d2938dc31ec35f5a7f3c76d58d0bc",
+        "osstack.joint.scenario.v1": "80938d2283f3fbade443d4bdd35072e4d9236794c317c16ceef83a889f8e186b",
+        "osstack.joint.check-registry.v1": "3f2a0bff1dad145f2b4e7b363047635d8e0c3612f123c0b31f24a038ad3297e6",
+        "osstack.joint.schema-spec.v1": "488be0cd9a1aa67eb9a69ed5b8030e283a4ff5c474b2610428bc67a74ead5f16",
+        "osstack.joint.recovery-subject.v1": "b2f32c5daddf88172e1b6c9851ba0eb5eadd3bef319b71d2705b0e95587fef8a",
+        "osstack.joint.trial-root.v1": "1245f50fc551ac4b01fd5cfca54e22697f7332f0b2260c8f3bfd6333fe66411b",
+        "osstack.joint.recovery-request-input.v1": "3bf635924f2cb7cc1a0123b8bcab037b6dbac2bbbb79a4ad71f6020b166f5a31",
+        "osstack.joint.trial-consumption-input.v1": "d0c4e43b45a4a2b1cac6ff0ea26195f7088b55b966aa5192cb4b68d6ef222772",
+        "osstack.joint.source-content.v1": "5ce727504fcdb2812ffa2cf307cd605186621f91cc50dbd7ed065d960b7f6f16",
+        "osstack.joint.source-inspection.v1": "e42e057d9dc91384d01726fa94ca399c6e3f24f684b98bd3ad8eb3da98e14da5"
+      }
+    },
+    {
+      "id": "underflow",
+      "bytes_hex": "2d39303037313939323534373430393932",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "nested-duplicate",
+      "bytes_hex": "7b2278223a7b2261223a312c2261223a327d7d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "escaped-non-ascii-key",
+      "bytes_hex": "7b225c7530306539223a317d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "formfeed-whitespace",
+      "bytes_hex": "0c6e756c6c",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "verticaltab-whitespace",
+      "bytes_hex": "0b6e756c6c",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "nbsp-whitespace",
+      "bytes_hex": "c2a06e756c6c",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "object-depth65",
+      "bytes_hex": "7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a307d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-eof",
+      "bytes_hex": "22e4b8",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-out-of-range",
+      "bytes_hex": "f4908080",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-overlong-three",
+      "bytes_hex": "e08080",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-lone-continuation",
+      "bytes_hex": "80",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-ff",
+      "bytes_hex": "ff",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf16-bom",
+      "bytes_hex": "fffe",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-outside-string",
+      "bytes_hex": "5bff5d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
+    },
+    {
+      "id": "utf8-inside-key",
+      "bytes_hex": "7b22ff223a317d",
+      "accepted": false,
+      "error": "INVALID_JOINT_JSON"
     }
   ],
   "helper_cases": [
@@ -740,114 +914,11 @@
         "source_schema_digest": "7b4bb1608b12373cb3225d4c3614dc5cd1d1634b8c97e6db16a2acedb673159c",
         "target_schema_digest": "7d42339e7d0e14da3be37cc4b2f79df54220425f763248801f7ae9961a38459f",
         "expected_lineage_tables": [
-          "agent_sessions",
-          "agents",
-          "anchor_cases",
-          "approvals",
-          "attention_actions",
-          "attention_deliveries",
-          "attention_dispatch_phases",
-          "attention_foregrounds",
-          "attention_handoffs",
-          "attention_items",
-          "attention_postures",
-          "attention_receipt_resolutions",
-          "attention_run_cursors",
-          "attention_scopes",
-          "attention_seen",
-          "attention_subjects",
-          "attention_triage_attempts",
-          "autonomy_deploy_freezes",
-          "autonomy_notification_outbox",
-          "autonomy_rollback_drills",
-          "autonomy_run_projection",
-          "autonomy_run_transitions",
-          "clarifies",
-          "contract_approval_decisions",
-          "contract_approvals",
-          "daemon_owner",
-          "declared_dependency_edge_events",
-          "declared_dependency_edge_projection",
-          "dependency_obligation_events",
-          "dependency_obligation_projection",
-          "dependency_registry_scopes",
-          "engineering_completions",
-          "engineering_events",
-          "engineering_interactions",
-          "engineering_missions",
-          "engineering_requests",
-          "engineering_waits",
-          "evaluator_epochs",
-          "evaluator_versions",
-          "events",
-          "feedback_assets",
-          "follow_up_delivery_attempts",
-          "follow_up_delivery_clock",
-          "follow_up_delivery_events",
-          "follow_up_delivery_grants",
-          "follow_up_obligation_events",
-          "follow_up_obligations",
-          "graph_action_admissions",
-          "graph_actions",
-          "graph_apply_intents",
-          "graph_apply_resolutions",
-          "graph_checkpoint_requests",
-          "graph_checkpoint_writes",
-          "graph_checkpoints",
-          "graph_delivery_epochs",
-          "graph_invocation_requests",
-          "graph_invocation_responses",
-          "graph_public_delivery",
-          "graph_recovery_decisions",
-          "graph_requests",
-          "graph_runs",
-          "graph_verification_joins",
-          "graph_worker_launches",
-          "graph_worker_leases",
-          "graph_worker_process_events",
-          "improvement_executions",
-          "improvement_pr_deliveries",
-          "improvement_proposals",
-          "kanban_card_checks",
-          "kanban_card_comments",
-          "kanban_card_events",
-          "kanban_card_links",
-          "kanban_cards",
-          "kanban_notify_subs",
-          "knowledge_hygiene_finding_state_v2",
-          "knowledge_hygiene_findings",
-          "knowledge_hygiene_findings_v2",
-          "knowledge_hygiene_occurrences",
-          "knowledge_hygiene_occurrences_v2",
-          "knowledge_hygiene_plan_events",
-          "knowledge_hygiene_plan_projection",
-          "knowledge_hygiene_resolution_events_v2",
-          "knowledge_hygiene_resolutions",
-          "knowledge_hygiene_runs",
-          "knowledge_hygiene_runs_v2",
-          "memory_facts",
-          "operator_recovery_decisions",
-          "operator_upgrade_journal",
-          "pitfall_lessons",
-          "probe_artifacts",
-          "probe_command_receipts",
-          "probe_events",
-          "probe_items",
-          "probe_sessions",
-          "runs",
-          "score_quarantine",
-          "session_continuation_attempts",
-          "session_continuation_grants",
-          "session_messages",
-          "session_turns",
-          "source_observation_clock",
-          "source_observation_events",
-          "source_observation_generations",
-          "source_observation_streams",
-          "tasks"
+          "a_b",
+          "a1"
         ]
       },
-      "expected": "85bfa681b6cfa99b57bfaa1163968d870193852358ca026510f29982ad7e0ce4"
+      "expected": "88e85b360031fad07c1c2f57bb630001d6ff6e90b3de3336e909a8008616ff9f"
     },
     {
       "id": "recoveryRequestInputDigest",
@@ -976,12 +1047,15 @@
           "tokens": "enforceable",
           "cost": "enforceable"
         },
-        "measurement_refs": [],
+        "measurement_refs": [
+          "z",
+          "a"
+        ],
         "start_identity": "unqualified",
         "query_by_start_identity": false,
         "containment_domain": null
       },
-      "expected": "e9b31204addfdbad553a2d953d61c2ed2756bd91c6aa5f649b1049c9f5964641"
+      "expected": "92b8e1545765e73b73566f47d6ee0299d68333f04b829d30f1eb270b4124af70"
     },
     {
       "id": "sourceSnapshotDigest",
@@ -1003,19 +1077,39 @@
         },
         "files": [
           {
-            "path": "z",
+            "path": "a",
             "mode": "100644",
             "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
           {
-            "path": "a",
+            "path": "B",
             "mode": "100644",
-            "blob": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "a_b",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "a1",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "😀",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "path": "～",
+            "mode": "100644",
+            "blob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           }
         ],
         "dependencies": []
       },
-      "expected": "eabef38c71bb9c7df8e6e53701147dd29217e5d50c89fe03841d19c3209023c6"
+      "expected": "b30816773273f2250486ca0ae914503de975ab3d2cf3c4448a53745d27ee0acf"
     },
     {
       "id": "artifactRequirementsDigest",
@@ -1032,10 +1126,17 @@
             "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "required": true
+          },
+          {
+            "artifact_ref_kind": "candidate_checks",
+            "producer_role": "verifier",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
           }
         ]
       },
-      "expected": "fb003f8b1622e2b93df10bc59224639dd35e13492f7aa3e0d586d4410f5cd6ea"
+      "expected": "dbbd885fa9f55f1d7d303f7807a98fea598759c3bac50e6d3c3e5b6f908b2052"
     },
     {
       "id": "checkBindingDigest",
@@ -1067,7 +1168,8 @@
         "task_id": "t",
         "intent_revision": 0,
         "goals": [
-          "fix"
+          "z",
+          "a"
         ],
         "non_goals": [],
         "observations": [],
@@ -1077,7 +1179,7 @@
         ],
         "source_refs": []
       },
-      "expected": "274e235177ea3453ae981fa1cc49f680a096ce33eb9f8867b31cb67ef902a298"
+      "expected": "d7cd19151ff25fa707af76a01af16a73d843546020a99882102943c324c4cf78"
     },
     {
       "id": "methodRecipeDigest",
@@ -1126,9 +1228,12 @@
         "role": "builder",
         "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "requested_materials": []
+        "requested_materials": [
+          "z",
+          "a"
+        ]
       },
-      "expected": "beb2dc6a1f620b2afb50b8e2cf73cc7e4f0427b75dda39855705b519a51b2fbe"
+      "expected": "aa2cc0dcff083d57956503408f2cdfbad0f8b97064993f2b06635e5df69d43f5"
     },
     {
       "id": "environmentDigest",
@@ -1148,9 +1253,12 @@
         "model": "m",
         "runtime": "node",
         "isolation": "scratch",
-        "setup_fixture_digests": []
+        "setup_fixture_digests": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
       },
-      "expected": "48f7c77d8ad8bed6c57d37184304530b909953d715c793077acb34e81c48af13"
+      "expected": "7a616bfafef3240e93f28d801bc2386ae06f616a0aa3b659b452eb5df9d01cb8"
     },
     {
       "id": "scenarioDigest",
@@ -1262,8 +1370,35 @@
         "resource_ledger_ref",
         "scenario_digest"
       ],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "668efe0d30b97843e9d23a7fdff5635cc8f35504c34f00d998fbcd5737326533",
+      "optional_absence": {
+        "baseline_artifact_ref": {
+          "accepted": false,
+          "error": "MISSING_BASELINE"
+        },
+        "candidate": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        },
+        "check_registry_digest": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        },
+        "environment_digest": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        },
+        "resource_ledger_ref": {
+          "accepted": true,
+          "error": null
+        },
+        "scenario_digest": {
+          "accepted": false,
+          "error": "MISSING_CANDIDATE_BINDING"
+        }
+      }
     },
     {
       "kind": "artifact_requirements",
@@ -1288,8 +1423,10 @@
         "requirements"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "0e757d619c8b4ffdfeb5f53107be5a4d0740f29f94e92655ab209d269b7277d2",
+      "optional_absence": {}
     },
     {
       "kind": "check_binding",
@@ -1315,8 +1452,10 @@
         "checks"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "bbd5a110a592017060653c35c791bbdbb23eb86510a7ad3fc94fbcdf3348c0e9",
+      "optional_absence": {}
     },
     {
       "kind": "check_registry",
@@ -1352,8 +1491,10 @@
         "entries"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "ec529d16ae9128157a0b625de80988a198531e70447b5ace9e7cafbc1f860c6c",
+      "optional_absence": {}
     },
     {
       "kind": "context_receipt",
@@ -1398,8 +1539,10 @@
         "role_required_artifacts_digest"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "association role digests checked separately"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "f2195606a6ebe5ed07d90b175451da6995f8d96becc58087660233405d8ed0c6",
+      "optional_absence": {}
     },
     {
       "kind": "environment",
@@ -1436,8 +1579,10 @@
         "setup_fixture_digests"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "be2dd31fbd93209766d4782340acaa56ce5f0bebadb2abca3733b93e0f9613d3",
+      "optional_absence": {}
     },
     {
       "kind": "gate_evidence",
@@ -1497,8 +1642,10 @@
         "observed_at_ms"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "0076c2baa27406f8abb3c0fede59bcfea901610080f2656cee9e362ab1aef68f",
+      "optional_absence": {}
     },
     {
       "kind": "joint_error",
@@ -1517,8 +1664,10 @@
         "evidence_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "321ffed168319a6c73e91a268da9e08210c87c4496cd334764569584af3fbd48",
+      "optional_absence": {}
     },
     {
       "kind": "material:decision_trail",
@@ -1541,8 +1690,10 @@
         "evidence_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "192a705611ec8e1ce2f521a4f6e79c82506f1fa411a186267c1780ae74edf72e",
+      "optional_absence": {}
     },
     {
       "kind": "material:experiment_result",
@@ -1582,8 +1733,10 @@
         "uncertainty"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "544a7648eb49ab30e31a50d16e97d663f8c4911850c2716d94e7f25800b6d4bc",
+      "optional_absence": {}
     },
     {
       "kind": "material:feature_map",
@@ -1612,8 +1765,10 @@
         "owner"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "561cae5a50491053d1846502e5003e10427344d46bfa6e40c19120174e43ed22",
+      "optional_absence": {}
     },
     {
       "kind": "material:grounding",
@@ -1634,8 +1789,10 @@
         "source_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "b021e879c4922bd73029d8ac32b06a657154bad6cf2c133a93664a3b8b87ac49",
+      "optional_absence": {}
     },
     {
       "kind": "material:impact_map",
@@ -1658,8 +1815,10 @@
         "check_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "0f0da494eb547075396fe83ab63690cd148834a6e56f258d0b358b4f88e10c2c",
+      "optional_absence": {}
     },
     {
       "kind": "material:intent_frame",
@@ -1692,8 +1851,10 @@
         "source_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "2229b68a6f34afe8ba7715c4da40ad5685e08fc58198d9da671bf8c4c3a5ea58",
+      "optional_absence": {}
     },
     {
       "kind": "material:prototype_decision",
@@ -1718,8 +1879,10 @@
         "limits"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "223c2044fc0713a47ec6ee9f381545d0f023b3cf956b5662b3e1b39cd16208ed",
+      "optional_absence": {}
     },
     {
       "kind": "material:review_dispositions",
@@ -1742,8 +1905,10 @@
         "evidence_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "aa6d14caa17c23eac87d424f32fedc52727bce3fa1cd89946fa960342a9a8c5a",
+      "optional_absence": {}
     },
     {
       "kind": "material:usage_sketch",
@@ -1766,8 +1931,10 @@
         "alternatives"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "a1a86956d4049bd58046404c8a76257ba4a9be72ee7d463b68877433a1e30ded",
+      "optional_absence": {}
     },
     {
       "kind": "material:verification_plan",
@@ -1792,8 +1959,10 @@
         "environment_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "520316f7063e3971fbcd34e095fada8d361c9d2096d9c33a7ddb9bf1966235a5",
+      "optional_absence": {}
     },
     {
       "kind": "method_binding",
@@ -1853,8 +2022,15 @@
       "optional": [
         "trial_permit_id"
       ],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "association role digests checked separately"
+      "identity_applicability": "binding/proposal/recipe association covered",
+      "role_applicability": "binding/proposal/recipe role association covered",
+      "canonical_sha256": "456b24135e227d2e4fb8f6e155b6c7ecbdd0bf6cf45e6a82190da387f9168328",
+      "optional_absence": {
+        "trial_permit_id": {
+          "accepted": false,
+          "error": "TRIAL_PERMIT_MODE_MISMATCH"
+        }
+      }
     },
     {
       "kind": "method_input",
@@ -1875,8 +2051,10 @@
         "requested_materials"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "169c2c0cf4fdd17f644cc845c8667f311712286ee8817bdb515a19aed4f9ee1f",
+      "optional_absence": {}
     },
     {
       "kind": "method_proposal",
@@ -1909,8 +2087,10 @@
         "executable"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "binding/proposal/recipe association covered",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "1ea4b12212e4a32a65d0bec043c1b4cacd0e15d33ea7cdcd939793e2bfb556b9",
+      "optional_absence": {}
     },
     {
       "kind": "method_recipe",
@@ -1959,8 +2139,10 @@
         "publication"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "association role digests checked separately"
+      "identity_applicability": "binding/proposal/recipe association covered",
+      "role_applicability": "binding/proposal/recipe role association covered",
+      "canonical_sha256": "8560f2cc3b3d5785b153cef361f6ff0ed4bd696184e9e063031766214d848f39",
+      "optional_absence": {}
     },
     {
       "kind": "migration_spec",
@@ -2095,8 +2277,10 @@
         "expected_lineage_tables"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "fd4198912f0229729b11dc561d2449615071d3a6ff2592ae80268defdec4a476",
+      "optional_absence": {}
     },
     {
       "kind": "oracle_lifecycle",
@@ -2147,8 +2331,10 @@
         "executed_at_ms"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "f3da3d18934b32566f9e05add0466b824f503818c5a87ef1e4267716fb187601",
+      "optional_absence": {}
     },
     {
       "kind": "recovery_proof",
@@ -2194,8 +2380,10 @@
         "authorization_ref"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "1712ac2e579b4c5160f1aac381af097f4861b6ef03520e22131cf42fdc1186ef",
+      "optional_absence": {}
     },
     {
       "kind": "recovery_receipt",
@@ -2265,8 +2453,15 @@
       "optional": [
         "effect_id"
       ],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "146b3f9212a903180a0ae3d05e3b8d8f34e61ae33709159d0fc21a91d25d1887",
+      "optional_absence": {
+        "effect_id": {
+          "accepted": false,
+          "error": "EFFECT_IDENTITY_MISSING"
+        }
+      }
     },
     {
       "kind": "recovery_request",
@@ -2295,8 +2490,10 @@
         "schema_spec_digest"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "2110225a1af25ae957e912ef598218556a9c72f0e8a0a7f16d963e0078cd246c",
+      "optional_absence": {}
     },
     {
       "kind": "scenario",
@@ -2317,8 +2514,10 @@
         "input_fixture_digest"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "cdf3193a2419367d637be3ce572b8339923e4ce8298b438bb600ca420a2f2a95",
+      "optional_absence": {}
     },
     {
       "kind": "source_pin",
@@ -2343,8 +2542,10 @@
         "license_refs"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "cc1a6cb000f1ffc4a57ae0be39fec37594b9b343cce7aebb0d4c94d2e0a48723",
+      "optional_absence": {}
     },
     {
       "kind": "source_snapshot",
@@ -2384,8 +2585,10 @@
         "dependencies"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "7771176c4ebb28d2750bb38563b0c2e079f9481afb63306ef73e2d4332f2d3b0",
+      "optional_absence": {}
     },
     {
       "kind": "support_profile",
@@ -2447,8 +2650,10 @@
         "containment_domain"
       ],
       "optional": [],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "fd60a44cd2f68147b2fa83b92b932b9db253a63304386f73523270d8482c0c56",
+      "optional_absence": {}
     },
     {
       "kind": "trial_permit",
@@ -2500,8 +2705,19 @@
         "max_cost_microusd",
         "max_tokens"
       ],
-      "identity_applicability": "association and digest joins are verified separately for binding/proposal/recipe, proof/receipt, gate/oracle; standalone declared identities do not authenticate a host",
-      "role_applicability": "not a role-digest join boundary"
+      "identity_applicability": "cross-record association not covered by this slice; structural validation only",
+      "role_applicability": "cross-record role association not covered by this slice",
+      "canonical_sha256": "883c82ec231f522188b1e4672a0aa72fead82be42dbd156da6f0abcbd6ff49ea",
+      "optional_absence": {
+        "max_cost_microusd": {
+          "accepted": true,
+          "error": null
+        },
+        "max_tokens": {
+          "accepted": true,
+          "error": null
+        }
+      }
     }
   ],
   "not_applicable": [
@@ -2513,5 +2729,15 @@
       "domain": "osstack.joint.source-inspection.v1",
       "reason": "Domain primitive checked here; source-inspection producer and adoption closure belong to J02, not protocol helper acceptance"
     }
-  ]
+  ],
+  "revision_reason": "Post-audit regression revision, not retroactive independent oracle qualification",
+  "boundary_cases": {
+    "max_wire_bytes": 1048576,
+    "max_depth": 64,
+    "expected_error": "INVALID_JOINT_JSON"
+  },
+  "provenance": {
+    "component_samples": "baseline contracts.json and published schema, manually completed in initial prepare.py; existing role/subject constants inherited unchanged from baseline, not newly sampled TypeScript outputs",
+    "new_expectations": "Python standard-library canonical UTF-8 SHA-256 computed from fixed frozen inputs before revised candidate tests; same author, not independent principal"
+  }
 }
