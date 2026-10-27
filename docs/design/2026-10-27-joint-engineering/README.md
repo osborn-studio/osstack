@@ -8,6 +8,10 @@
 
 联合设计修订 3；新增 [审计规格](audit-specifications.md)、[阶段门槛](execution-gates.json)、[原验收继承](legacy-case-map.json) 与 [开放未知](unknowns.json)。
 
+## 项目管理
+
+用户负责审批合并已准备好的 PR。本会话负责其余开发、测试、审计修复、依赖与证据管理；最多三个有独立写边界的子代理并行推进。实际派发记录由 OSStack 保存，操作规则与下一批队列见 [项目推进规则](project-operations.md)。每 30 分钟的本会话续办检查已启用，无变化保持安静。
+
 ## 阅读与交付
 
 | 文件 | 内容 |
@@ -69,6 +73,6 @@ python3 docs/design/2026-10-27-joint-engineering/test_validate_design.py
 
 完整审计与47条原始意见处理见 [Claude审计报告](claude-audit.md)；[复审精确规格](closeout-specifications.md) 是共享契约和PR执行时必须读取的规范增量。
 
-当前实现：#273 共享契约已合并。#274（J11 恢复规格）和 #281（J02a 来源检查）已重定向 main，并分别完成最新契约适配、Sonnet 5.5 审计与全仓验证：6,174 / 6,194 项通过，各 5 项跳过、零失败。当前 PR 状态、精确候选、CI 观察与用户审批义务以 [账本](execution-ledger.json) 为准。
+当前实现：#273 共享契约、#274 J11 恢复规格、#281 J02a 来源检查、#276 原始 R02 评估器及 #278 Session 清理均已合并。#282 补齐 #276 合并时尚未进入该旧候选的审计修复；#279 基于合并后的 main 收口终态保护。#274/#281 当时分别完成 6,174 / 6,194 项通过，各 5 项跳过、零失败；这些历史数字不代替新候选验证。当前 PR 状态、精确候选、CI 观察与用户审批义务以 [账本](execution-ledger.json) 为准。
 
-本批 [J11 复验记录](evidence/joint-execution/successors-retarget/recovery/README.md) 和 [J02a 复验记录](evidence/joint-execution/successors-retarget/source/README.md) 保留范围、修订与完整审计入口。J02b 来源认证/闭包/分型注册、J12 真实恢复均未因此完成，也没有启用运行时能力。建议先合并 #274，再合并 #281；后继 #276 / #278 / #279 仍按各自依赖另批处理。
+本批 [J11 复验记录](evidence/joint-execution/successors-retarget/recovery/README.md) 和 [J02a 复验记录](evidence/joint-execution/successors-retarget/source/README.md) 保留范围、修订与完整审计入口。J02b 来源认证/闭包/分型注册、J12 真实恢复均未因此完成，也没有启用运行时能力。当前待交付批次为 #282 / #279，后续按 [项目推进规则](project-operations.md) 的真实阶段门槛滚动推进。

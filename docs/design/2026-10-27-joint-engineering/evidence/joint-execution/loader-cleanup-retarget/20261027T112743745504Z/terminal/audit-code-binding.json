@@ -1,0 +1,32 @@
+{
+  "code_sha": "c60850c4461f42c76508ae7f63c0c3b17b951733",
+  "base_sha": "28d116f3f8c15f64bebb314308adf320d8380b2b",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS",
+  "final_round": 2,
+  "reviewed_files": {
+    "packages/cli/src/adapter-lifecycle.ts": "39ced6878c09460c4ddaecde2a9ed7845c3a5de9ed6db45130e06dc2813d5fff",
+    "packages/cli/src/governed-execution.ts": "a58688226dfb47465ef317762fd50863d7c8e09a40e99f7eb719e9d243f95698",
+    "packages/cli/src/session-send-receipt.test.ts": "8996150fae32f2aefc4cebca2c7db9b808defb722fbba86f3ea183bf3535a5a6",
+    "packages/agents/src/session.ts": "5e99fac22134e8795d504c373c327db384205a935f596190770f01140fc61a69",
+    "packages/cli/src/daemon.ts": "e7f0ede3fb6e72b5703955d78103581bec60e914ff1fbc608b0a6c0ad9234247",
+    "packages/agents/src/adapters/codex-cli.ts": "630aa2ddbae0ed95aa4ebeefa626b36887c3f1e27c7fe579c4ce5d737caa3db8"
+  },
+  "reviewed_files_match": true,
+  "raw_report": "round2-raw.md",
+  "raw_response": "round2-response.json",
+  "input": "round2-input.txt",
+  "prior_dispositions": "round1-dispositions.json",
+  "scope": "Static review; no confirmed P0/P1/P2. Execution evidence separate; no cross-process recovery or live provider qualification.",
+  "reviewed_base": "28d116f3f8c15f64bebb314308adf320d8380b2b",
+  "verdict_parser": "last exact VERDICT line",
+  "validation": {
+    "passed": 6276,
+    "skipped": 5,
+    "failed": 0
+  },
+  "packages": 22,
+  "raw_report_sha256": "22f0c82febc024e4058ba1b37c79a0a2ee65860386bfb27efd99d3e60664b397",
+  "input_sha256": "ae43d73b1462a02d5b2ac00b7a9abaa4ea541213dc978129c437e1ee4a910ee1",
+  "raw_response_sha256": "2b9d57efd5a6fa5ea271c36e46cda8764daba39f4dd3a020fb020470090d2614"
+}

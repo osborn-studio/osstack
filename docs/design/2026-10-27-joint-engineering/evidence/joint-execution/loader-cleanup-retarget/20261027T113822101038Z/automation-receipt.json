@@ -1,0 +1,10 @@
+{
+  "id": "osstack",
+  "name": "OSStack 联合开发续办",
+  "status": "ACTIVE",
+  "created_at": 1793098759153,
+  "updated_at": 1793100114861,
+  "observed_at": "2026-10-27T11:22:25.946509+00:00",
+  "queue": "282 and279, then explicit J01/J11 stage gates",
+  "authority": "automation_update tool succeeded and persisted config re-read"
+}

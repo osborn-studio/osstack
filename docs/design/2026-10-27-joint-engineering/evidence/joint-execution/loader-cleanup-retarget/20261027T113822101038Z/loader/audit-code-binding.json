@@ -1,0 +1,20 @@
+{
+  "code_sha": "85e19da85a734fad6f53dc061b5cbcd28e1bbf02",
+  "reviewed_base": "28d116f3f8c15f64bebb314308adf320d8380b2b",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS",
+  "final_audit": "loader-audit-4.md",
+  "final_audit_sha256": "98301b35a19025627f5d028128463e978bb01dd7a24470bb65136208ed335f74",
+  "audit_input_sha256": "7e85aa1aefd66a7aa784c25106968ca37e73d5a48fbf8295508faf796bef5e8d",
+  "audit_response_sha256": "7e9d71f6861124ae5623dc6e0f39fbdbc6adf6f08789d8dd2667cbc26e68fb28",
+  "supplied_diff_sha256": "c5eef413f255072806ee3145350ccf690a88fa4317bf286d8dc78148f5ec94a5",
+  "audit_binding_method": "Exact input HEAD and supplied diff compared with Git base...code; final verdict parsed from verdict lines, not quoted substring",
+  "scope": "static review and separate executed tests; no runtime qualification",
+  "validation": {
+    "passed": 6269,
+    "skipped": 5,
+    "failed": 0
+  },
+  "packages": 22,
+  "observed_at": "2026-10-27T11:38:22.068321+00:00"
+}

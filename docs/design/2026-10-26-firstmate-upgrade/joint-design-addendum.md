@@ -20,3 +20,8 @@
 联合规范新增 JADR11：带 hold 的旧库只允许精确白名单 recovery-ledger bootstrap，普通升级/业务迁移继续阻断；JADR12：local_without_broker 的 home-only 恢复切片与原全量 I04.compat_recovery 分开。两项改变由联合设计明确承担，不改写原 #271 输入或旧通过记录。66 个 WD 场景保留为当前候选的继承 gate。完整边界、验收与原审计见 [联合审计规格](../2026-10-27-joint-engineering/audit-specifications.md) 和 [审计报告](../2026-10-27-joint-engineering/claude-audit.md)。
 
 复审修订3进一步明确 JADR15：精确已停止证明与独立恢复账本才能支持未来 hold/fence 处置，不能伪造 applied 或释放未知费用；legacy_unknown 仅保留未知。J12负责专用数据库打开与迁移前守卫，每个后续迁移独立资格。原gate使用完整依赖wrapper、66个WD有case级消费边，组件通过不等于原能力完成。详见 [复审精确规格](../2026-10-27-joint-engineering/closeout-specifications.md)。当前产品行为未修改。
+
+
+## 并行实施与统一收口
+
+当前执行状态以 [联合账本](../2026-10-27-joint-engineering/execution-ledger.json) 为准。#276 R02 和 #278 cleanup 已进入最新 main 重定向验证，#279 预检测试已提前完成但仍待前置合并后重验。原任务范围与验收门槛保留，用户只处理已准备好的审批合并批次。具体分工、OSStack 卡片、证据规则和下一批门槛见 [项目推进规则](../2026-10-27-joint-engineering/project-operations.md)。
