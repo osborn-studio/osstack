@@ -1,0 +1,283 @@
+{
+  "version": 1,
+  "authority": "Implementation registry, supersedes design placeholders only for the explicit audit corrections in the implementation README",
+  "domains": [
+    {
+      "domain": "osstack.joint.method-binding.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "task_id",
+        "proposal_digest",
+        "contract_digest",
+        "context_config_digest",
+        "support_profile_digest",
+        "source_snapshot_digest",
+        "recipe_version",
+        "authorization_ref",
+        "completion",
+        "publication",
+        "merge",
+        "mode",
+        "role_materials",
+        "trial_permit_id?"
+      ],
+      "array_rule": "role_materials sorted by role; exclude binding_digest only",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.method-proposal.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "task_id",
+        "intent_revision",
+        "intent_digest",
+        "source_snapshot_digest",
+        "recipe_digest",
+        "recipe_version",
+        "check_binding_digest",
+        "required_artifacts_digest",
+        "method_input_digest",
+        "executable"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.support-profile.v2",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "profile_class",
+        "principal_ref",
+        "scope_id",
+        "tenant_id",
+        "canonical_repo",
+        "execution_home_id",
+        "host_build_digest",
+        "adapter_version",
+        "provider",
+        "model",
+        "runtime_version",
+        "executor",
+        "template_tuple",
+        "isolation",
+        "can_query",
+        "can_request_stop",
+        "stop_proof_level",
+        "budget_enforceability",
+        "measurement_refs",
+        "start_identity",
+        "query_by_start_identity",
+        "containment_domain"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.source-snapshot.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "pin",
+        "files",
+        "dependencies"
+      ],
+      "array_rule": "files sorted by UTF-8 path bytes",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.artifact-requirements.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "recipe_version",
+        "requirements"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.role-artifact-requirements.v1",
+      "exact_top_level_keys": [
+        "schema_version",
+        "role",
+        "requirements_digest"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.check-binding.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "repository",
+        "primary_id",
+        "checks"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.intent.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "task_id",
+        "intent_revision",
+        "goals",
+        "non_goals",
+        "observations",
+        "hypotheses",
+        "unknowns",
+        "source_refs"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.method-recipe.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "recipe_id",
+        "recipe_version",
+        "source_snapshot_digest",
+        "intent_kind",
+        "logical_check_roles",
+        "role_materials",
+        "required_artifacts_digest",
+        "allowed_completion",
+        "publication"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.method-input.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "role",
+        "intent_digest",
+        "source_snapshot_digest",
+        "requested_materials"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.environment.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "scope_id",
+        "repository",
+        "home_id",
+        "os",
+        "arch",
+        "filesystem",
+        "host_build_digest",
+        "provider",
+        "model",
+        "runtime",
+        "isolation",
+        "setup_fixture_digests"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.scenario.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "driver_ref",
+        "definition_digest",
+        "action_schema_digest",
+        "input_fixture_digest"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.check-registry.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "schema_version",
+        "entries"
+      ],
+      "array_rule": "entries sorted by ASCII ref",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.schema-spec.v1",
+      "exact_top_level_keys": [
+        "schema_change_id",
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "source_schema_digest",
+        "target_schema_digest",
+        "expected_lineage_tables"
+      ],
+      "array_rule": "expected_lineage_tables sorted by ASCII name",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.recovery-subject.v1",
+      "exact_top_level_keys": [
+        "kind",
+        "home_id",
+        "effect_id?",
+        "mission_id?",
+        "action_id?",
+        "message_id?",
+        "broker_id?",
+        "lease_id?"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.trial-root.v1",
+      "exact_top_level_keys": [
+        "scope",
+        "idempotency_key",
+        "permit_id"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.recovery-request-input.v1",
+      "exact_top_level_keys": [
+        "schema_version",
+        "principal_ref",
+        "scope_id",
+        "tenant_id",
+        "request"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    },
+    {
+      "domain": "osstack.joint.trial-consumption-input.v1",
+      "exact_top_level_keys": [
+        "schema_version",
+        "principal_ref",
+        "scope_id",
+        "tenant_id",
+        "idempotency_key",
+        "permit",
+        "program_digest",
+        "input_digest"
+      ],
+      "array_rule": "preserve declared order",
+      "schema_rule": "Strict versioned schema-aware constructor; ? marks a conditional field, not an arbitrary optional key."
+    }
+  ]
+}

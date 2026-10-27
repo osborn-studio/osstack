@@ -1,0 +1,55 @@
+{
+  "$ref": "#/definitions/MaterialReviewDispositions",
+  "definitions": {
+    "MaterialReviewDispositions": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "number",
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "material:review_dispositions"
+        },
+        "finding_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "accept",
+            "reject",
+            "defer"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialReviewDispositions/properties/finding_ref"
+          },
+          "minItems": 1,
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "finding_ref",
+        "decision",
+        "rationale",
+        "evidence_refs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shape only. Use @osstack/protocol/joint decodeJointContract for lexical and semantic checks. Host must authenticate provenance, resolve principal aliases, load referenced evidence, verify current authority and enforce durable CAS. Parsing grants no authority."
+}
