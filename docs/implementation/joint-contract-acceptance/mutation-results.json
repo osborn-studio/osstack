@@ -1,0 +1,839 @@
+[
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": null,
+    "label": "control",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/control.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/control",
+    "started_at": "2026-10-27T17:59:39.318440+00:00",
+    "exit_code": 0,
+    "failed_tests": [],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 535,
+      "numFailedTests": 0
+    },
+    "expected": "pass",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "2f183d84dba2c56a311d1e4c09b98391818ccecea4cf3100c658d823c46f5d22",
+    "label": "skip-expected-kind",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/skip-expected-kind.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/skip-expected-kind",
+    "started_at": "2026-10-27T17:59:40.250900+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact_requirements rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder check_binding rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder check_registry rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder context_receipt rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder environment rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder gate_evidence rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder joint_error rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:decision_trail rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:experiment_result rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:feature_map rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:grounding rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:impact_map rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:intent_frame rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:prototype_decision rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:review_dispositions rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:usage_sketch rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:verification_plan rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_binding rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_input rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_proposal rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_recipe rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder migration_spec rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder oracle_lifecycle rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_proof rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_receipt rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_request rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder scenario rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder source_pin rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder source_snapshot rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder support_profile rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder trial_permit rejects an otherwise valid record at the wrong expected-kind boundary"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 503,
+      "numFailedTests": 32
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "3d8086ae1ab5e94dbd7b9bfb20d6bfb94faf36f48bb09eecd671217a7901e369",
+    "label": "skip-binding-identity",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/skip-binding-identity.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/skip-binding-identity",
+    "started_at": "2026-10-27T17:59:41.164313+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 identity joins remain mandatory after valid self digests rejects binding task_id substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding proposal_digest substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding recipe_version substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding source_snapshot_digest substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal recipe_digest substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal recipe_version substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal source_snapshot_digest substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal required_artifacts_digest substitution even when the binding names its new digest"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 527,
+      "numFailedTests": 8
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "20de4e386764ed9e2cc2785268efd38a06dace2979b9ba6cb18b330cf8980f52",
+    "label": "skip-role-binding",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/skip-role-binding.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/skip-role-binding",
+    "started_at": "2026-10-27T17:59:42.051522+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 identity joins remain mandatory after valid self digests rejects builder method_text_sha256 substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects builder role_required_artifacts_digest substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects reviewer method_text_sha256 substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects reviewer role_required_artifacts_digest substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects verifier method_text_sha256 substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects verifier role_required_artifacts_digest substitution with a valid binding self digest"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 529,
+      "numFailedTests": 6
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "680266e4c6f7969e108639c720d4b4b04c3e0f598c47d3dd96d734bf63b34778",
+    "label": "drop-duplicate-key-check",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/drop-duplicate-key-check.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/drop-duplicate-key-check",
+    "started_at": "2026-10-27T17:59:42.945952+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact_requirements rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder check_binding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder check_registry rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder context_receipt rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder environment rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder gate_evidence rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder joint_error rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:decision_trail rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:experiment_result rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:feature_map rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:grounding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:impact_map rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:intent_frame rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:prototype_decision rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:review_dispositions rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:usage_sketch rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder material:verification_plan rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_binding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_input rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_proposal rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_recipe rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder migration_spec rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder oracle_lifecycle rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_proof rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_receipt rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_request rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder scenario rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder source_pin rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder source_snapshot rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder support_profile rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder trial_permit rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA59 frozen cross-language wire and domain matrix duplicate",
+      "JA59 frozen cross-language wire and domain matrix decoded-duplicate",
+      "JA59 frozen cross-language wire and domain matrix nested-duplicate"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 500,
+      "numFailedTests": 35
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "d94396b93c77d49a037facdb4373ff6b327bc69795c05172c5096f2b09b2668c",
+    "label": "drop-domain-separator",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/drop-domain-separator.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/drop-domain-separator",
+    "started_at": "2026-10-27T17:59:43.862904+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_recipe accepts the declared structure through text and byte entrypoints without granting authority",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_recipe rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_proof accepts the declared structure through text and byte entrypoints without granting authority",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_proof rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_receipt accepts the declared structure through text and byte entrypoints without granting authority",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_receipt rejects an otherwise valid record at the wrong expected-kind boundary",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding task_id substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding proposal_digest substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding recipe_version substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects binding source_snapshot_digest substitution even with a recomputed self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal recipe_digest substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal recipe_version substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal source_snapshot_digest substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects proposal required_artifacts_digest substitution even when the binding names its new digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects builder method_text_sha256 substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects builder role_required_artifacts_digest substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects reviewer method_text_sha256 substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects reviewer role_required_artifacts_digest substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects verifier method_text_sha256 substitution with a valid binding self digest",
+      "JA70 identity joins remain mandatory after valid self digests rejects verifier role_required_artifacts_digest substitution with a valid binding self digest",
+      "JA70 conditional positives and role completeness allows a legacy action receipt without an effect identity",
+      "JA59 frozen cross-language wire and domain matrix null",
+      "JA59 frozen cross-language wire and domain matrix false",
+      "JA59 frozen cross-language wire and domain matrix safe-low",
+      "JA59 frozen cross-language wire and domain matrix safe-high",
+      "JA59 frozen cross-language wire and domain matrix whitespace",
+      "JA59 frozen cross-language wire and domain matrix numeric-keys",
+      "JA59 frozen cross-language wire and domain matrix null-field",
+      "JA59 frozen cross-language wire and domain matrix absent-field",
+      "JA59 frozen cross-language wire and domain matrix array-order",
+      "JA59 frozen cross-language wire and domain matrix array-reverse",
+      "JA59 frozen cross-language wire and domain matrix unicode",
+      "JA59 frozen cross-language wire and domain matrix unicode-escaped",
+      "JA59 frozen cross-language wire and domain matrix composed",
+      "JA59 frozen cross-language wire and domain matrix decomposed",
+      "JA59 frozen cross-language wire and domain matrix escapes",
+      "JA59 frozen cross-language wire and domain matrix prototype",
+      "JA59 frozen cross-language wire and domain matrix ascii-del",
+      "JA59 frozen cross-language wire and domain matrix ascii-order",
+      "JA59 frozen cross-language wire and domain matrix depth64",
+      "JA59 frozen cross-language wire and domain matrix object-depth64",
+      "JA59 frozen cross-language wire and domain matrix bindingDigest",
+      "JA59 frozen cross-language wire and domain matrix recoverySubjectDigest",
+      "JA59 frozen cross-language wire and domain matrix schemaSpecDigest",
+      "JA59 frozen cross-language wire and domain matrix recoveryRequestInputDigest",
+      "JA59 frozen cross-language wire and domain matrix trialRootEffectId",
+      "JA59 frozen cross-language wire and domain matrix trialConsumptionInputDigest",
+      "JA59 frozen cross-language wire and domain matrix methodProposalDigest",
+      "JA59 frozen cross-language wire and domain matrix supportProfileDigest",
+      "JA59 frozen cross-language wire and domain matrix sourceSnapshotDigest",
+      "JA59 frozen cross-language wire and domain matrix artifactRequirementsDigest",
+      "JA59 frozen cross-language wire and domain matrix checkBindingDigest",
+      "JA59 frozen cross-language wire and domain matrix intentDigest",
+      "JA59 frozen cross-language wire and domain matrix methodRecipeDigest",
+      "JA59 frozen cross-language wire and domain matrix methodInputDigest",
+      "JA59 frozen cross-language wire and domain matrix environmentDigest",
+      "JA59 frozen cross-language wire and domain matrix scenarioDigest",
+      "JA59 frozen cross-language wire and domain matrix checkRegistryDigest",
+      "JA59 frozen cross-language wire and domain matrix roleRequirementsDigest",
+      "JA59 frozen cross-language wire and domain matrix normalizes only explicitly declared sets while retaining recipe role order"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 475,
+      "numFailedTests": 60
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "9442c0b7eed852b665c4ffb01df3d873c1dd8d59fde693a5fd0c8e4676cb4f6c",
+    "label": "fatal-utf8-disabled",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/fatal-utf8-disabled.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/fatal-utf8-disabled",
+    "started_at": "2026-10-27T17:59:44.757061+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix overlong-utf8",
+      "JA59 frozen cross-language wire and domain matrix utf8-surrogate",
+      "JA59 frozen cross-language wire and domain matrix utf8-truncated"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 532,
+      "numFailedTests": 3
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "0fa77a66379440ae7d5358d917d288fe7c10e37535a12ccb0b166c94f34dfdb5",
+    "label": "remove-number-safety",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-number-safety.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-number-safety",
+    "started_at": "2026-10-27T17:59:45.653672+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix negative-zero",
+      "JA59 frozen cross-language wire and domain matrix nested-negative-zero",
+      "JA59 frozen cross-language wire and domain matrix overflow",
+      "JA59 frozen cross-language wire and domain matrix underflow"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 531,
+      "numFailedTests": 4
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "8f067f966f76df16d6698765f6aaf9ab63b7d01b27d62c66086b704337aa8e0e",
+    "label": "remove-unicode-validation",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-unicode-validation.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-unicode-validation",
+    "started_at": "2026-10-27T17:59:46.534197+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix surrogate-high",
+      "JA59 frozen cross-language wire and domain matrix surrogate-low",
+      "JA59 frozen cross-language wire and domain matrix surrogate-pair-invalid"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 532,
+      "numFailedTests": 3
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "b9442b005512617c6c3900e228c97e29f13bedac2695e462e85efa024e79f43c",
+    "label": "remove-ascii-key-check",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-ascii-key-check.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-ascii-key-check",
+    "started_at": "2026-10-27T17:59:47.408620+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix non-ascii-key",
+      "JA59 frozen cross-language wire and domain matrix escaped-non-ascii-key"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 533,
+      "numFailedTests": 2
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "637d718dcd8d3694fac54de5ba26e4cf1e8ef241d4b0382b065f1a53bc55019a",
+    "label": "depth-off-by-one",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/depth-off-by-one.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/depth-off-by-one",
+    "started_at": "2026-10-27T17:59:48.331833+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix depth64",
+      "JA59 frozen cross-language wire and domain matrix object-depth64"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 533,
+      "numFailedTests": 2
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "38366ab30b949912d7326a5151023f79f8103ef39be3fed785ed0c94dec59716",
+    "label": "size-off-by-one",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/size-off-by-one.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/size-off-by-one",
+    "started_at": "2026-10-27T17:59:49.257193+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix enforces exact raw-byte size boundaries at the parser and decoder"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 534,
+      "numFailedTests": 1
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "338dc77d38abbb12a51d140508ddcd715f9c0c16190a5257b1da3f98f4763eaf",
+    "label": "source-locale-sort",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/source-locale-sort.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/source-locale-sort",
+    "started_at": "2026-10-27T17:59:50.129804+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix sourceSnapshotDigest",
+      "JA59 frozen cross-language wire and domain matrix normalizes only explicitly declared sets while retaining recipe role order"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 533,
+      "numFailedTests": 2
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "57cf6b6c07c09c7df4d01cea51fe50eaeb42ac675594bea15bc23ded21a28777",
+    "label": "source-utf16-sort",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/source-utf16-sort.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/source-utf16-sort",
+    "started_at": "2026-10-27T17:59:51.025439+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix sourceSnapshotDigest",
+      "JA59 frozen cross-language wire and domain matrix normalizes only explicitly declared sets while retaining recipe role order"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 533,
+      "numFailedTests": 2
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "5daf6d96cff366f928afe7b206126b3f6b718bcfde224f17486d2c8d3532d419",
+    "label": "lineage-locale-sort",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/lineage-locale-sort.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/lineage-locale-sort",
+    "started_at": "2026-10-27T17:59:51.931467+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA59 frozen cross-language wire and domain matrix schemaSpecDigest",
+      "JA59 frozen cross-language wire and domain matrix normalizes only explicitly declared sets while retaining recipe role order"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 533,
+      "numFailedTests": 2
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "166b7fc9f7ad13e0786c4e9184a32380f0b410225c7e553b3bca02d12dd56297",
+    "label": "remove-strict-shapes",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-strict-shapes.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-strict-shapes",
+    "started_at": "2026-10-27T17:59:52.845276+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact_requirements rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder check_binding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder context_receipt rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_binding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_proposal rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_recipe rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_receipt rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder source_pin rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder support_profile rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder trial_permit rejects unknown fields, invalid kind/version and duplicated raw keys"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 524,
+      "numFailedTests": 11
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "9b5d86a65ced0e1db8eb8198d56aca653126c3084d0ecd940f138f9ec77d6315",
+    "label": "loose-schema-version",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/loose-schema-version.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/loose-schema-version",
+    "started_at": "2026-10-27T17:59:53.731543+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact_requirements rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder check_binding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_binding rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_proposal rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_recipe rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder recovery_receipt rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder source_pin rejects unknown fields, invalid kind/version and duplicated raw keys",
+      "JA70 all-kind top-level required-field matrix at the real strict decoder trial_permit rejects unknown fields, invalid kind/version and duplicated raw keys"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 526,
+      "numFailedTests": 9
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "c98c28557942445417609fe275c8d3b6935e5433db43cbf70af870c84af028a3",
+    "label": "remove-recipe-role-digest",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-recipe-role-digest.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-recipe-role-digest",
+    "started_at": "2026-10-27T17:59:54.643330+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 conditional positives and role completeness rejects missing, added or duplicate binding roles and mismatched recipe role digests"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 534,
+      "numFailedTests": 1
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "8802470871fd9a56744ef195b9cd92f0c94eaa7a37c362dae90813e69c216209",
+    "label": "remove-baseline-condition",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-baseline-condition.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-baseline-condition",
+    "started_at": "2026-10-27T17:59:55.670137+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder artifact checks absent optional/conditional baseline_artifact_ref"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 534,
+      "numFailedTests": 1
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "8985faef259a309c2df8729898778cdaf4601116fbf40e3a0fb6369dcb1c10ac",
+    "label": "remove-trial-condition",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/remove-trial-condition.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/remove-trial-condition",
+    "started_at": "2026-10-27T17:59:56.576281+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder method_binding checks absent optional/conditional trial_permit_id",
+      "JA70 conditional positives and role completeness accepts qualified bindings without permits and rejects contradictory modes"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 533,
+      "numFailedTests": 2
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  },
+  {
+    "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+    "test_source_sha256": {
+      "joint-reference.test.ts": "c6ea27320e163c87301cf2221da5316c67e4b46508225a2f20980b90b31c0d25",
+      "joint-admission.test.ts": "b3df55ae963a61c360115b9b7b5b3f46ddea9ed0bbf7fdec7fb30e3036832084"
+    },
+    "mutated_source_sha256": "7145a943b5062027f6e9f13be41a278239ef411fb965b810f2f9fc8fa183cf68",
+    "label": "require-optional-budget",
+    "command": [
+      "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance/node_modules/.bin/vitest",
+      "run",
+      "src/joint-reference.test.ts",
+      "src/joint-admission.test.ts",
+      "-t",
+      "JA59|JA70",
+      "--reporter=json",
+      "--outputFile=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/require-optional-budget.vitest.json"
+    ],
+    "cwd": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/contract-acceptance/mutants/require-optional-budget",
+    "started_at": "2026-10-27T17:59:57.654694+00:00",
+    "exit_code": 1,
+    "failed_tests": [
+      "JA70 all-kind top-level required-field matrix at the real strict decoder trial_permit checks absent optional/conditional max_tokens"
+    ],
+    "counts": {
+      "numTotalTests": 547,
+      "numPassedTests": 534,
+      "numFailedTests": 1
+    },
+    "expected": "kill_by_test_failure",
+    "valid": true
+  }
+]

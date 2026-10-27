@@ -1,0 +1,14 @@
+{
+  "author-evidence.tar.gz": {
+    "sha256": "a041857e0ea6aff5bcd1838f32a3560b86dd06331a3baba842a29d5ee10a749b",
+    "bytes": 726188
+  },
+  "contract-independent-evidence.tar.gz": {
+    "sha256": "b6e4bbabe338dfa7a9b09032ae7c6a03eb9e891dc855ede2bbbfd6dcc73e1422",
+    "bytes": 426244
+  },
+  "evidence-manifest.json": {
+    "sha256": "0f8cce6517d0531753e792e2a12e91ba557d9afcb029e24665883d222f924e3e",
+    "bytes": 31630
+  }
+}
