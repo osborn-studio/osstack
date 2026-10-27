@@ -1,0 +1,23 @@
+{
+  "reason": "Superseded candidate: add confirmed-stop late-terminal-fault tests from fresh Claude audit before final full verification",
+  "code_sha": "d5754edb8635015d6f66a27c8b71575f80344b67",
+  "terminated_processes": [
+    22549,
+    22631,
+    22695,
+    24317,
+    25112,
+    30029,
+    46345,
+    54563,
+    60090,
+    60107,
+    68055,
+    68075,
+    68094,
+    98022,
+    98036,
+    98049
+  ],
+  "observed_at": "2026-10-27T13:50:45.864211+00:00"
+}

@@ -1,0 +1,35 @@
+{
+  "code_sha": "cb76b6432d597d1c057d241f17e652308286b8ee",
+  "scope": "Final evidence additions; product/test sources unchanged",
+  "checks": [
+    {
+      "name": "docs-hygiene",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@osstack/governance",
+        "exec",
+        "vitest",
+        "run",
+        "src/knowledge-hygiene/osstack-config.test.ts"
+      ],
+      "started_at": "2026-10-27T14:14:39.931723+00:00",
+      "ended_at": "2026-10-27T14:14:40.960439+00:00",
+      "exit_code": 0,
+      "log": "docs-hygiene.log",
+      "log_sha256": "e2d11ac10e129da20919c5e876b2287a05ec65dbae43b4727c8c7eb5f1c1d18d"
+    },
+    {
+      "name": "lint-docs",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "started_at": "2026-10-27T14:14:40.960609+00:00",
+      "ended_at": "2026-10-27T14:14:41.687897+00:00",
+      "exit_code": 0,
+      "log": "lint-docs.log",
+      "log_sha256": "9ef933d2fb1d04d3223e77e2d37c1c03350fc5614f500817edc44be3e8a24629"
+    }
+  ]
+}
