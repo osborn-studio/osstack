@@ -3,15 +3,17 @@ import Database from 'better-sqlite3';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { runMigrations } from '../../dist/state/db.js';
-import { CURRENT_SCHEMA_VERSION } from '../../dist/state/migrations.js';
 import { canonicalJointJson, schemaSpecDigest } from '@osstack/protocol/joint';
 const root = new URL('./', import.meta.url);
 const base = process.argv[2];
 if (!base || !/^[a-f0-9]{40}$/.test(base)) throw Error('usage: freeze.mjs <reviewed-base-commit>');
 execFileSync('git', ['merge-base', '--is-ancestor', base, 'HEAD']);
 // The compiled migration runner must come from this reviewed source lineage.
-execFileSync('git', ['diff', '--exit-code', base, '--', 'packages/core/src/state/migrations.ts', 'packages/core/src/state/db.ts']);
+execFileSync('git', ['diff', '--exit-code', base, '--', 'packages/core/src/state/', ':(exclude)packages/core/src/state/*.test.ts']);
+// Force compilation before importing the runner, so stale dist cannot supply the catalog.
+execFileSync('pnpm', ['--filter', '@osstack/core', 'exec', 'tsc', '-b', '--force'], {stdio:'inherit'});
+const { runMigrations } = await import('../../dist/state/db.js');
+const { CURRENT_SCHEMA_VERSION } = await import('../../dist/state/migrations.js');
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const fileSha = name => sha(readFileSync(new URL(name, root)));
 const db = new Database(':memory:');

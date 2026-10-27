@@ -220,7 +220,7 @@ it('joins host-loaded proofs using the merged J01 context before persisting a re
   } finally {db.close();}
 });
 
-it('enforces the local-home phase/decision matrix in SQL independently of the TypeScript parser', () => {
+it('checks only Attention phase/decision SQL predicates; proof and effect identity still require the protocol verifier', () => {
   const fixtures=JSON.parse(readFileSync(new URL('../../../protocol/fixtures/joint/contracts.json',import.meta.url),'utf8')).fixtures as Array<{id:string;payload:Record<string,unknown>}>;
   const base=RecoveryReceipt.parse({...fixtures.find(f=>f.id==='valid-recovery-attention-subject')!.payload,if_revision:0});
   const post={preserve_unknown:'unknown',proven_not_started:'cancelled_before_dispatch',proven_stopped:'resolved_stopped',applied_observed:'applied_observed'};

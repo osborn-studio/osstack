@@ -16,3 +16,14 @@ Original round 1 report remains unchanged in evidence; model severity is advisor
 12. Model audit remains an independent advisory static check, separate from host test evidence, GitHub approval and runtime qualification.
 13. Documented future active-pointer/goal state transition enforcement as J08/J10/J13 implementation work; structural templates do not install that runtime.
 14. Existing CHECK deliberately allows stopped resolution from dispatch_committed or observed. Documented; no evidence supports narrowing observed away. The host's actual transition/containment invariants remain required.
+
+## Round 2
+
+- P1-1: reserved → committed between two preserve/resolve observations is not itself invalid. Added explicit J12 live cross-row continuity/regression obligations; no invented SQL-only phase authority.
+- P1-2: accepted clarity fix. SQL tests now explicitly name only Attention phase/decision predicates. Complete proof/cardinality/type and effect identity validation remains mandatory protocol parsing plus trusted join before INSERT; SQL is not a full admission boundary.
+- P1-3: report acknowledges the resolution predicate is correct. Clarified 40-combination Attention-only scope; effect identity is separately covered in protocol tests, not claimed by this SQL test.
+- P2-1: expanded freeze base comparison to the entire state implementation (including DDL helpers, excluding tests), force-build core before dynamically importing its runner. This closes the real stale-build/helper-source gap.
+- P2-2/P3-1: explicitly document bootstrap raw DDL, fixture and future template pins and the template's exclusion from schema_spec_digest.
+- P2-3: explicitly name recoveryRequestInputDigest replay/conflict and authority-change cases in J12 acceptance; no fake runtime implementation solely to satisfy a test-local suggestion.
+- P2-4: already ordering-only, as the audit acknowledges. Arbitrary JSON keys would not authenticate hold clearance; J12's typed/current evidence gate remains mandatory.
+- P3-2/P3-3: cosmetic/trusted-fixture suggestions do not change correctness; no unrelated reformat.
