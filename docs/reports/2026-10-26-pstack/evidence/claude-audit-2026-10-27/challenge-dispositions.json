@@ -1,0 +1,65 @@
+{
+  "scope": "host_assessment_of_claude_challenge",
+  "rows": [
+    {
+      "id": "CH01",
+      "disposition": "partially_accepted",
+      "host_priority": "P1",
+      "rationale": "首个具体场景和终点未固定，W06 范围偏宽。采纳先命名垂直切片；不机械规定四操作，也不把所有七个操作都视为已证实的先决条件。"
+    },
+    {
+      "id": "CH02",
+      "disposition": "partially_accepted",
+      "host_priority": "P1",
+      "rationale": "采纳必需材料通道和预算尚未收敛；16KiB 上限与 8KiB 默认预算本身不是逻辑矛盾。拒绝直接追加 frozen.brief、删除遗漏检查的建议；纯函数探针确认当前 host 拒绝该追加。"
+    },
+    {
+      "id": "CH03",
+      "disposition": "accepted",
+      "host_priority": "P1",
+      "rationale": "9 个 capability 的 work_packages 为空，其中 PS21 是 P0；生成器只从文章差异投影工作包，未覆盖全部集成安排。必须补完整映射并检验覆盖。"
+    },
+    {
+      "id": "CH04",
+      "disposition": "partially_accepted",
+      "host_priority": "P1",
+      "rationale": "应在完整方法包前增加有预算的价值比较；原稿 W17/A47 已有早期可用性试验，不能说所有价值证据都在 C3 之后。E0 的直接修改 frozen.brief 步骤不可执行；精确数量检查也不应简单改成下限。"
+    },
+    {
+      "id": "CH05",
+      "disposition": "not_accepted_as_defect",
+      "host_priority": "P2",
+      "rationale": "选择/隔离方法包不等于签发执行权限。运行中发现方法缺陷或 host profile 不再兼容即可能需要阻止新启动，包内定义也可能被 quarantine；可讨论简化持久化，但没有证据支持删除该能力。"
+    },
+    {
+      "id": "CH06",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "drive/recovery 动作目录的所有权、身份与重试语义需要明确；驱动有副作用且可能返回句柄，不能未经证明就等同 AcceptanceCommandSpec 的 exit-code 验收语义。共享 executor/identity 可实验。"
+    },
+    {
+      "id": "CH07",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "地图正文修改与运行证据登记需明确 writer、路径授权和提交时机。不推断现有系统存在越权，也不采用自动推断 CODEOWNERS 就是工具维护者的默认规则。"
+    },
+    {
+      "id": "CH08",
+      "disposition": "partially_accepted",
+      "host_priority": "P2",
+      "rationale": "采纳旧 manifest 的未知字段兼容，以及本地 Git 对象可用性/获取预算缺口。拒绝只支持 40 位 commit：当前协议同时允许 40/64 位；ls-remote 常规输出也不是 7 位 SHA。"
+    },
+    {
+      "id": "CH09",
+      "disposition": "accepted",
+      "host_priority": "P1",
+      "rationale": "必须固定 primaryRef 的选择来源或确定性算法，并绑定到 proposal/admission；新增字段是备选，不是唯一解。多检查情形否则留给各实现自行猜测。"
+    },
+    {
+      "id": "CH10",
+      "disposition": "accepted",
+      "host_priority": "P2",
+      "rationale": "technical-writing 对应四类文档目的；调用方式反推接口应引用 architect。ART2 对本次 Claude 是未独立核验，对上轮宿主是已直接读取的可变网页来源，两者不能混为一谈。"
+    }
+  ]
+}

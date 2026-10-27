@@ -1,0 +1,67 @@
+{
+  "$ref": "#/definitions/MaterialFeatureMap",
+  "definitions": {
+    "MaterialFeatureMap": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "number",
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "material:feature_map"
+        },
+        "entry": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialFeatureMap/properties/entry"
+          },
+          "maxItems": 128
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialFeatureMap/properties/entry"
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "observable_end": {
+          "$ref": "#/definitions/MaterialFeatureMap/properties/entry"
+        },
+        "recovery": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialFeatureMap/properties/entry"
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "entry",
+        "preconditions",
+        "actions",
+        "observable_end",
+        "recovery",
+        "owner"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shape only. Use @osstack/protocol/joint decodeJointContract for lexical and semantic checks. Host must authenticate provenance, resolve principal aliases, load referenced evidence, verify current authority and enforce durable CAS. Parsing grants no authority."
+}

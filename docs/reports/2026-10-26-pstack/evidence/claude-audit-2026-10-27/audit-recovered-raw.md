@@ -1,0 +1,116 @@
+先说明审计方式：我没有工具，只对照所附七份报告文件、所附固定上游源码与 c1cfccf 的 OSStack 源码做静态比对。涉及 orchestrate.md、swarm.md、multi-phase-plan.md、validate-plugins.yml、graph-check-suite.ts、assertDeliveryContractAdmission、knowledge 包的 assembleExecutionContext 以及两篇 X 原文的主张，我只能标为未核验。
+
+## 发现
+
+**AU01｜P1｜置信度高｜机器可读与散文不一致**
+位置：`report/capability-map.json` 第 297、541、575、620、878、922、977、1077、1127 行；`report/capability-catalog.md` 第 172 行；`report/integration-spec.md` 第 399-413、483-489 行；`report/evidence/validate-report.py` 第 40-64 行。
+违反的主张：目录第 172 行声明「产品依赖以修订后的 capability-map.json 为准」，README 第 296 行称依赖 DAG 已更新为 19 项实施安排。
+证据链：PS21 是 P0 且被 PS01、PS06、PS13、PS20 直接依赖，但其 `work_packages` 为空；规格 W01、W02、W11 显然是 PS21 的实施内容。PS05、PS10、PS11、PS12、PS17、PS18、PS19、PS22 同样为空，而规格 W12、W13、W14、W16 对应它们。再看 PS01 的 `work_packages` 恰好等于 AD01 与 AD12 两条 delta 的 `work_packages` 并集，PS06 等于 AD06 与 AD07 的并集。该字段实际是「文章 delta 涉及的包」而不是「实施该能力的包」。验证器只检查 delta 的 work_packages 落在规格内，不检查 capability 自身的 `work_packages`。
+失败场景：下游按 JSON 排期，会得出 PS21 无需任何实施、PS01 却能在第一期完成的结论，而 PS01 依赖 PS21。
+最小修正：把该字段改名为 `design_delta_work_packages`，或按规格重新填充；在验证器中要求每个非 reference-only 能力的 `work_packages` 非空且 ⊆ 19 个 W 编号。
+证伪测试：把 PS21 的 `work_packages` 改为 `["W99"]` 后运行 validate-report.py，当前实现仍输出 pass。
+
+**AU02｜P1｜置信度高｜与固定 OSStack 源码的定义性矛盾**
+位置：`report/integration-spec.md` 第 352-363 行，尤其第 363 行；`report/acceptance-cases.json` 第 193-204 行；对照 `packages/cli/src/delivery-contract-host.ts` 第 93-104 行。
+违反的主张：规格 5.2 称「沿用现有 binding 与 receipt」，同时规定「head 不同即默认失效」；A15 把 head 变化单列为必须使旧证据失效的身份。
+证据链：主机的 `verifyPersistedDeliveryReceipt` 在第 93-94 行注释里明确「A committed candidate may change HEAD, but its verified tree and base-relative diff must not change」，第 101-104 行通过 `expectedHeads` 允许 head 变化、只锁定 base_head、tree_id、diff_digest。规格的规则比主机严格，且方向相反。
+失败场景：W07 按 A15 实现方法附件校验后，正常的「验证通过后提交候选」步骤会让 head 变化，主机 receipt 仍有效，方法附件却报 METHOD_EVIDENCE_STALE，同一候选出现两套相反判定。
+最小修正：把第 363 行改为与主机一致的等价关系，即 base_head、tree_id、diff_digest、合同、检查注册、环境任一变化即失效，head 变化仅在 tree 或 diff 变化时失效；A15 的 given 去掉单独的 head。
+证伪测试：固定 fixture 中验证一个暂存候选，然后 `git commit` 不改任何内容，再分别调用主机校验与方法附件校验，两者结论必须一致。
+
+**AU03｜P1｜置信度中高｜契约欠定义，会改变实现**
+位置：`report/integration-spec.md` 第 139、150-152、219-222、240 行，第 384-389 行，第 419 行，README 第 610 行；对照 `packages/cli/src/graph-delivery-contract.ts` 第 62-75 行与 `packages/protocol/src/delivery-contract.ts` 第 34 行。
+违反的主张：A05 要求四份 recipe 来自本地已审查注册表并产生稳定 digest；W03 把 `recipes/bug-fix-v1.json` 作为包内随附定义。
+证据链：recipe 的 `checks` 只有 `id` 与 `required`，没有 `registry_ref`；主机的检查身份是命令文本的 sha256，由 `deliveryCheckReference` 生成，并且要求注册表中恰好一条匹配。一个随包发布的通用 bug-fix recipe 无法预知任何用户仓库的检查命令，`RecipeCompileInputV1` 也没有检查选择字段。第 240 行的表格又把「不能重复 registry_ref」归到 checks，与第 139 行的类型不符。recipe 中 `required: false` 的检查在 proposal 里没有去处。
+失败场景：对任一真实仓库编译 bug-fix recipe，要么每次都返回 METHOD_CHECK_UNREGISTERED，要么必须为每个仓库复制一份 recipe，这会破坏「已审查注册表」与 digest 稳定性。
+最小修正：在 recipe 中把 checks 改为角色声明，例如 `original_surface`、`regression`、`adjacent`，由仓库级配置把角色映射到注册项并进入 `allowed_check_catalog`；补充编译输入字段承载该映射；删除或定义 optional check 的目的地。
+证伪测试：用同一份 bug-fix recipe 对两个检查命令不同的 fixture 仓库编译，若两者都能得到 proposal 且 recipe_digest 不变，则机制成立。
+
+**AU04｜P1｜置信度中高｜契约欠定义，且与主机预算有具体冲突**
+位置：`report/integration-spec.md` 第 180、241、274-286、596 行；`report/acceptance-cases.json` 第 141-152 行；对照 `packages/cli/src/execution-context.ts` 第 54-55、76-78、98-105 行和 `packages/protocol/src/delivery-contract.ts` 第 70 行。
+违反的主张：4.4 把 `method_brief` 作为 proposal 字段并限 16KiB；4.6 又说方法摘要「在主机任务材料生成阶段确定」并要求「必需方法材料不能只放进普通知识搜索」；A11 的 given 假定它是可能被 assembly 裁剪的 artifact。
+证据链：主机只有三条通道。mandatory 条目固定为 instruction、safety、contract brief；optional 条目来自 `loadContext`，受默认 8192 字节知识预算约束，而 `validateContextSync` 只看 `selected`。16KiB 的 brief 走 optional 通道默认必被裁剪；走 contract brief 则进入冻结合同的 32000 字节限制并改变 contract_digest；走 prompt 则属于 instruction 而 A11 的场景不会发生。规格 10.3 把「放置点」列为未知，但 4.4、4.6、A11 已各自隐含一个不同答案。
+失败场景：W05 按 A11 实现 fence，W03 按 4.4 把 brief 放进 proposal，W04 又按 4.6 在 host 阶段重新渲染，三者组合下 proposal_digest 不再标识 agent 实际收到的方法材料。
+最小修正：在 4.6 明确唯一通道，建议并入 FrozenDeliveryContractV2.brief 作为 mandatory 条目并把 method_brief 上限收缩到合同 brief 剩余空间；若保留 optional 通道，则规定 `maxKnowledgeBytes` 的下限并由 fence 核对 proposal 中的 brief digest。
+证伪测试：用 16KiB brief 与默认预算运行 A11 的真实 wrapper，记录是走到了 adapter.invoke 还是在 fence 前被拒，并核对 receipt 中 brief 的 text_sha256 与 proposal 字段一致。
+
+**AU05｜P1｜置信度高｜控制接口与自身失败分类要求矛盾**
+位置：`report/integration-spec.md` 第 621、633、635、640-651、365-374、720 行；`report/author-reading.md` 第 45 行；`report/acceptance-cases.json` 第 614-628 行。
+违反的主张：第 621 行声明「失败分类必须保留」；12.5 要求区分产品行为失败、控制工具故障、地图漂移、环境前提不足；A45 要求三类原因分开。
+证据链：`ControlObservationV1.result` 只有 observed、failed、blocked、unsupported，没有字段表达失败归属；第 633 行要求 wait-settle 超时报 unknown，第 365-374 行定义了 unknown 状态，但枚举里没有 unknown；第 635 行要求 cleanup 在缺停止证明时不宣称终止，枚举同样无对应值。
+失败场景：harness 自身崩溃与产品断言失败都序列化为 `result: "failed"`，上层无法区分，直接违反「工具故障不能冒充产品缺陷」。
+最小修正：增加 `failure_class: "product" | "harness" | "environment" | "map_drift" | null`，并把 result 补上 `unknown`；或把 result 改为判别联合。
+证伪测试：分别构造 harness 进程异常与被测服务断言失败的两次 drive，比较两份 ControlObservationV1 的 JSON，必须在至少一个字段上可区分。
+
+**AU06｜P2｜置信度中｜admission 授权对象与主检查选择欠定义**
+位置：`report/integration-spec.md` 第 249-272 行；`report/acceptance-cases.json` 第 101-126 行；对照 `packages/cli/src/graph-delivery-contract.ts` 第 37-59、72-74、77-79 行，`packages/graph/src/legacy/code-delivery-v4.ts` 第 64-68 行，`packages/protocol/src/delivery-contract.ts` 第 28 行。
+违反的主张：admission 步骤 2 说 proposal「只能缩窄范围」，步骤 3 说「构造最终合同后再 freeze」。
+证据链：若最终合同由 proposal 构造，则「已有授权」是什么对象未说明；协议已有 `parent_contract_id` 可表达派生合同但规格未提及。`resolveGraphContractChecks` 要求 `request.spec.input.acceptanceRef` 必须是所选检查之一并排在首位，v4 的 tests 节点只接收这一个 `commandSpecRef`；规格第 240 行只写「满足现有 primaryRef 选择规则」，没有说 proposal 的哪一项成为 primary。`RecipeAdmissionLinkV1` 记录 contract_digest 却不记录 `graph-contract-input:` 的 envelope digest，而后者才绑定 policy 与 acceptance 顺序。
+失败场景：两次 admission 对同一 proposal 选择了不同 primary，产生不同 envelope 与不同 Graph 输入，但两条 link 完全相同，审计无法区分。
+最小修正：规定授权对象为用户已冻结的父合同，最终合同必须携带 `parent_contract_id`；在 proposal 中显式标记 `primary_check_id`；link 增加 `graph_input_ref`。
+证伪测试：同一 proposal 以不同 primary 选择两次 admission，断言两条 link 不相等。
+
+**AU07｜P2｜置信度高｜验收场景的可判别性**
+位置：`report/acceptance-cases.json` 第 498、514、559、575、674 行的 test_level，以及第 134 行；README 第 305-306、315 行；规格第 582 行。
+违反的主张：README 10 把「确定性 conformance 必须全部通过」与「产品试点先报告原始结果」分层。
+证据链：A37、A38、A41、A42、A48 的 then 要求「不把 inference 改写为 fact」「猜测形成待检验问题」「理由与缺口可见」，这些是模型输出的语义属性，却标为 unit 或 integration。没有模型参与时，它们只能实现为「schema 有这些字段」的形状测试，必然通过。A10 的 when 写的是「现有 Graph contract host admission」，这在 c1cfccf 上今天就通过，不经过 W04 新增的 method-admission，因此无法发现 W04 绕过限制。
+失败场景：实施者交付五个绿色 unit 测试，报告称认知类验收已满足，而没有任何证据表明 agent 分离了观察与假设。
+最小修正：把这五项的 test_level 改为 experiment 或新增 evaluation 级别，并指定固定 transcript fixture 与判定 oracle；A10 的 when 改为「经 method-admission 进入现有 Graph host」。
+证伪测试：用不含任何新代码的 c1cfccf 运行 A10 与 A37 的候选实现，若通过，则说明该用例不能判别本次工作。
+
+**AU08｜P2｜置信度高｜验证器保证范围**
+位置：`report/evidence/validate-report.py` 第 28-38、40-64、118-119、147-155、157-162 行；`report/validation.md` 第 90-92 行；`report/evidence/report-validation.json`。
+违反的主张：validation.md 第 90 行说验证器校验「引用、依赖无环、相对链接、哈希」，第 100 行称新增「文章→设计差异→能力→工作包→验收引用完整」。
+证据链：所有检查是存在性、计数与词法检查。第 118-119 行用字面串「本轮不创建任何定时任务」与「尚未实现」判断文档性质；第 28-33 行只验证清单内 200 条哈希，不与 `git ls-tree -r` 对比，清单漏掉一个跟踪文件仍通过；行号锚点只检查不超过文件长度；AU01 所述的 capability `work_packages` 完全不检查。第 158 行读取 `workspace-status-at-article-revision.txt`，而 validation.md 第 92 行引用的是 `workspace-status-at-research.txt`，两个文件均未附带。
+失败场景：report-validation.json 的 pass 被引用为「报告内部一致」，但 AU01、AU02 这类跨文件矛盾对其完全不可见。
+最小修正：在 validation.md 明确该脚本只证明链接与计数，并补充 AU01 的字段检查和 `git ls-tree` 对比；统一两个工作区快照文件名。
+证伪测试：删除 inventory 中一条记录并把计数改为 199 后，脚本若仍 pass 则证明它不保证完整性。
+
+**AU09｜P2｜置信度中｜生命周期缺少主机变化触发**
+位置：`report/integration-spec.md` 第 336-351、251、588 行；`report/acceptance-cases.json` 第 310-321 行。
+违反的主张：第 348 行要求资格记录绑定 host profile；admission 步骤 1 要求「确认仍为当前允许的资格版本」。
+证据链：状态图中只有「发现不满足不变量」会让 active 进入 quarantined，没有任何迁移由 host profile 变化触发；步骤 1 没有说比较什么；rejected 没有出边。
+失败场景：OSStack 升级改变检查上限或 receipt 字段后，旧 active recipe 继续被选择，直到某次无关失败才暴露资格已过期。
+最小修正：资格记录加入 `host_profile_digest`，admission 步骤 1 比对不一致则返回 METHOD_RECIPE_UNQUALIFIED；状态图增加 active→quarantined 的「host profile 变化」边与 rejected→candidate 边。
+证伪测试：A24 增加一个样例，仅改变 host profile digest，不改 recipe，断言新启动被拒且旧 run 不受影响。
+
+**AU10｜P2｜置信度中｜来源模型未覆盖跨插件引用**
+位置：`pstack/skills/poteto-mode/SKILL.md` 第 26、28、30 行；`report/integration-spec.md` 第 111、118 行；`report/acceptance-cases.json` 第 48-59 行。
+违反的主张：A04 的 then 允许「仅其他插件变化可标无方法内容变化」；快照 role 只有 method、reference、tool_source、license。
+证据链：入口技能把 prose 交给 `create-skill`，提交前交给 `cursor-team-kit` 的 `deslop`，CLI 与 UI 验证交给同一插件的 `control-cli`、`control-ui`。这些是 pstack 方法的组成部分，却不在 200 文件子树内。规格 4.2 只为生成脚本开了显式记录，没有表达外部方法依赖的方式。
+失败场景：cursor-team-kit 的 control-cli 语义变化，A04 判定「无方法内容变化」，而 PS08 对应方法的真实前提已经漂移。
+最小修正：在 `MethodSourceSnapshotV1` 增加 `external_refs: { plugin, skill, resolution: "unavailable" | "substituted_by_host_feature" }`，并把 A04 的「其他插件」改为「未被引用的其他插件」。
+证伪测试：构造上游提交只改动被 poteto-mode 引用的外部技能文件，断言显式来源检查产生 candidate 而不是「无变化」。
+
+**AU11｜P2｜置信度中｜required_artifacts 无消费者**
+位置：`report/integration-spec.md` 第 136、182、288-311、384-390、253 行；`report/acceptance-cases.json` 第 232-243 行；README 第 312 行；对照 `packages/graph/src/legacy/code-delivery-registry-v3.ts` 第 23-24 行。
+违反的主张：README 第 312 行以「方法命中率」衡量是否产出了指定材料；4.7 列出各产物的拒绝条件。
+证据链：没有错误码对应「必需产物缺失」；v4 review 节点输入只有 candidateRevision、acceptanceRef、workspaceLeaseRef，产物如何到达 reviewer 未说明；产物由模型生成，4.4 说语义判断由 reviewer 承担，但 reviewer 收不到产物就无从判断。A18 的 when 把 contract freeze 与候选 freeze 都写成「freeze」，与 4.5 步骤 3 的用法冲突。
+失败场景：recipe 要求 impact_map，worker 从未产出，Graph 仍可 join 成功，方法命中率无法从任何 receipt 导出。
+最小修正：规定产物作为候选 workspace 内固定路径或 freeze 节点 artifactRefs 进入 review 输入，缺失时在 join 前以新错误码拒绝；A18 区分 contract_freeze 与 candidate_freeze。
+证伪测试：A18 变体中删除 impact_map 产物，断言 join 不能到达 ready。
+
+**AU12｜P3｜置信度中高｜investigation 路径的错误语义**
+位置：`report/integration-spec.md` 第 44、222、249、322 行；`report/acceptance-cases.json` 第 259-269 行。
+违反的主张：4.8 把 METHOD_HOST_UNSUPPORTED 定义为「缺必需工具或当前 Graph 路径不支持」，可重试方式为「换已授权宿主或缩小任务」。
+证据链：4.4 规定 investigation 只接受 prepare_analysis，execute 模式在编译期严格拒绝，所以 admission 永远不会收到 investigation 的 execution_proposal；A20 的 when 却写「尝试执行 admission」。analysis_preparation 到达执行边界是种类不匹配，不是宿主能力不足，「换宿主」的重试建议会误导调用者。
+最小修正：新增 METHOD_RESULT_KIND_MISMATCH 或把 A20 的 when 改为编译期拒绝；修正 4.8 表的重试列。
+证伪测试：以 execute 模式编译 investigation，断言失败发生在 compileEngineeringRecipe 而非 admission。
+
+## 已核验的源码主张与未核验项
+
+以下报告主张与所附源码一致：watch-pr 在 BLOCKED 加 REVIEW_REQUIRED、以及 UNKNOWN 合并状态下返回 ready，对应 policy.ts 第 12-25、141-147、167-169、183-216 行，且 ready 的 proof 仍标 `mergeability: "clear"`；orch ledger 以 pr 加 sha 为键后写覆盖、不校验 SHA 与证据，对应 store.ts 第 1405-1430 行；Graph host 只接受 implement 加 local_verified 且无发布无合并，16 项检查与 16384 字节上限，对应 graph-delivery-contract.ts 第 46-47、64、73 行；receipt 身份来源 reported，对应 delivery-contract.ts 第 96 行；context receipt 边界为 agent_task_prompt_not_provider_wire；Engineering 完成级别只有 observed_turn；58、24、23 的计数与目录逐项相符；R1 到 R6 探针代码与日志相互一致。
+
+以下主张无法核验：orchestrate brief 字段清单、「verifier overrides worker」原文、multi-phase-plan 的十条 lane、swarm 的规则、validate-plugins.yml 的覆盖范围、graph-check-suite 对多检查的运行方式、assertDeliveryContractAdmission 的具体比对项、knowledge 包的 omitted 原因枚举。author-reading 与 author-articles 只是宿主作者的阅读记录，AD01 到 AD12 对原文的归因全部属于未核验，但它们在报告内部的翻译与所附 create-verification-skill、architect、prototype 源码没有冲突。
+
+## 就绪判定、三项决定与证据限制
+
+判定：作为研究与设计文档可以继续；作为「可执行集成规格」尚不满足自身第 5 行的承诺，因为 AU02、AU03、AU04 三项会改变 W03 到 W07 的实现形状，而规格没有把它们列入第 10 节的未知项。W06、W18、W19、W17 先行的次序不受上述问题影响，可以按 0.2 节开始。
+
+最有后果的三项决定：
+
+1. **候选证据等价关系**：是否与主机保持一致，即 head 变化不单独使证据失效。这决定 A15、W07 与 5.2 的全部文字。
+2. **通用 recipe 与仓库检查注册表的绑定方式**：角色映射还是按仓库派生 recipe。这决定 recipe 格式、digest 稳定性与 A05、A06 的可实现性。
+3. **方法摘要的唯一通道与预算**：mandatory 合同 brief 还是 optional 知识条目。这决定 proposal_digest 的含义、A11 的可发生性与 W05 的 fence 设计。
+
+证据限制：我未运行任何测试或脚本，未打开任何链接；对 c1cfccf 的判断仅基于所附 12 个 OSStack 源文件；对上游的判断仅基于所附 13 个 pstack 文件；未供应的 evidence 文件如 inventory、source-index、两份 workspace 快照未检查；所有「失败场景」是基于规格文字推演的具体路径，不是已复现的缺陷。

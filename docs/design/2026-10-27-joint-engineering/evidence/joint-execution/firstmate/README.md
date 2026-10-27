@@ -1,0 +1,1 @@
+Verbatim Firstmate sender evidence, archived from the directory recorded in joint-handoff.md. Relative log references in that historical report may be compressed here; archive-manifest.json maps original names and hashes. COMPLETE means handoff of the current batch, not merged PRs or runtime qualification. No credentials or live DB are included.

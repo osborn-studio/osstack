@@ -1,0 +1,15 @@
+{
+  "packages/protocol/src/joint-recovery.ts": "dd2efabe4b86dbf433b0e46974bef0c4ed7213b402acef89aa62a1e881b2278e",
+  "packages/protocol/src/joint-shapes.ts": "1b8ca8abab24b06f1c72e8ad44d48f78ddecd1f9907d6eee886495d05d1ff3e0",
+  "packages/protocol/src/joint-lifecycle.ts": "19a82afefc2bef4e84f4bfd4a46eddcc613d0552b4fbe5f3c0f23f8b115f1390",
+  "packages/protocol/src/joint-primitives.ts": "d0eeb917ea6ef91ed39943706ab78c9be84dc81ba89303f5e98d01cf89adc139",
+  "packages/core/fixtures/operator-recovery/bootstrap.sql": "c0fe68c3c5ca12dcdaa02c1c145f29860cefaf99500bae841153533d5aa79147",
+  "packages/core/fixtures/operator-recovery/future-storage.sql": "eaefb5bac43e66bb58a9713afde4e3ed6ab4ca6e77946298fcd5d2ece4138f14",
+  "packages/core/fixtures/operator-recovery/freeze.mjs": "39a3bbb2696b45196af8d74564ac0006634d0f7e9841e28c6fbe2bc9b47df1ac",
+  "packages/core/src/state/operator-recovery-spec.test.ts": "b5a2daf34cc2edc986c55cc0c5c810f69575812c77841ec4952cd94c7c25fc82",
+  "packages/protocol/scripts/joint-reference-vectors.py": "9fde5ed0c4cdc91c555758e80ec2b4a334820ebe0876e1647fa3594aad5d858f",
+  "packages/protocol/src/joint-reference.test.ts": "c159f4bbdfe2d102837f541a013da97329cad95e42391472d20400ec9b5a0c3f",
+  "packages/protocol/src/joint-foundation.test.ts": "7e7247ad39136331a375f78a4cb26f3949dcbc55554adfd302e1a7e53c9ae286",
+  "packages/protocol/fixtures/joint/digest-catalog.json": "5c603cafbe4761620777f5a60ff08baa360029dfd176b0054e0d9832d3b64a15",
+  "docs/design/operator-recovery-schema.md": "a5e650bc593a46106fe12c5a069fd09feda10b22b8b9b47b7fbce98fa815f6e8"
+}

@@ -1,0 +1,2175 @@
+{
+  "schema_version": 1,
+  "runtime_enabled": false,
+  "gates": [
+    {
+      "id": "J01.scoped",
+      "owner_work_item": "J01",
+      "requires": [],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J02.scoped",
+      "owner_work_item": "J02",
+      "requires": [
+        "J01.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J03.scoped",
+      "owner_work_item": "J03",
+      "requires": [
+        "J01.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J04.scoped",
+      "owner_work_item": "J04",
+      "requires": [
+        "J01.scoped",
+        "J02.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J05.scoped",
+      "owner_work_item": "J05",
+      "requires": [
+        "J02.scoped",
+        "J06.scoped",
+        "J25.e0"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run",
+      "decision_requirements": {
+        "J25.e0": [
+          "continue",
+          "shrink"
+        ]
+      }
+    },
+    {
+      "id": "J06.scoped",
+      "owner_work_item": "J06",
+      "requires": [
+        "J03.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J07.scoped",
+      "owner_work_item": "J07",
+      "requires": [
+        "J04.scoped",
+        "J05.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J08.scoped",
+      "owner_work_item": "J08",
+      "requires": [
+        "J03.scoped",
+        "J07.scoped",
+        "J12.scoped",
+        "J08.recovery"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J09.scoped",
+      "owner_work_item": "J09",
+      "requires": [
+        "J08.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J10.scoped",
+      "owner_work_item": "J10",
+      "requires": [
+        "J09.scoped",
+        "J23.scoped",
+        "J25.e1",
+        "J23.method_context",
+        "J12.scoped",
+        "J10.recovery"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run",
+      "decision_requirements": {
+        "J25.e1": [
+          "continue",
+          "safety_only"
+        ]
+      }
+    },
+    {
+      "id": "J11.scoped",
+      "owner_work_item": "J11",
+      "requires": [
+        "J01.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J12.scoped",
+      "owner_work_item": "J12",
+      "requires": [
+        "J11.scoped",
+        "J12.bootstrap_preflight"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J13.scoped",
+      "owner_work_item": "J13",
+      "requires": [
+        "J12.scoped",
+        "J13.recovery"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J14.scoped",
+      "owner_work_item": "J14",
+      "requires": [
+        "J13.scoped",
+        "J02.scoped",
+        "J23.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J15.scoped",
+      "owner_work_item": "J15",
+      "requires": [
+        "J14.scoped",
+        "J06.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J16.scoped",
+      "owner_work_item": "J16",
+      "requires": [
+        "J15.scoped",
+        "J10.scoped",
+        "J07.scoped",
+        "J14.qualification",
+        "J23.harness"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J17.scoped",
+      "owner_work_item": "J17",
+      "requires": [
+        "J14.scoped",
+        "J12.scoped",
+        "J17.recovery"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J18.scoped",
+      "owner_work_item": "J18",
+      "requires": [
+        "J17.scoped",
+        "J10.scoped",
+        "J16.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J19.scoped",
+      "owner_work_item": "J19",
+      "requires": [
+        "J04.scoped",
+        "J15.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J20.scoped",
+      "owner_work_item": "J20",
+      "requires": [
+        "J15.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J21.scoped",
+      "owner_work_item": "J21",
+      "requires": [
+        "J17.scoped",
+        "J20.scoped",
+        "J21.recovery"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J22.scoped",
+      "owner_work_item": "J22",
+      "requires": [
+        "J30.scoped",
+        "J20.scoped",
+        "J22.recovery"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J23.scoped",
+      "owner_work_item": "J23",
+      "requires": [
+        "J01.scoped",
+        "J03.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J24.scoped",
+      "owner_work_item": "J24",
+      "requires": [
+        "J12.scoped",
+        "J20.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J25.scoped",
+      "owner_work_item": "J25",
+      "requires": [
+        "J25.e1"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J26.scoped",
+      "owner_work_item": "J26",
+      "requires": [
+        "J01.scoped",
+        "J02.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J27.scoped",
+      "owner_work_item": "J27",
+      "requires": [
+        "J16.scoped",
+        "J23.scoped",
+        "J24.scoped",
+        "J26.scoped",
+        "J31.scoped",
+        "J25.e1",
+        "J27.release_channel",
+        "local:C03.budget_storage",
+        "local:C04.start_dispatch",
+        "legacy:I03.local_proof",
+        "J13.recovery",
+        "J12.scoped",
+        "legacy:DEBT01.safe_failure",
+        "legacy:DEBT02.recovery_contract",
+        "legacy:V02.S2_faults",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "local:E02.local_dispatch",
+        "legacy:V06.release_channel"
+      ],
+      "stage": "local_opt_in_only",
+      "evidence_state": "specified_not_run",
+      "decision_requirements": {
+        "J25.e1": [
+          "continue",
+          "safety_only"
+        ]
+      },
+      "case_requirements": [
+        "FM:WD-01",
+        "FM:WD-02",
+        "FM:WD-03",
+        "FM:WD-04",
+        "FM:WD-05",
+        "FM:WD-06",
+        "FM:WD-07",
+        "FM:WD-08",
+        "FM:WD-09",
+        "FM:WD-10",
+        "FM:WD-11",
+        "FM:WD-12",
+        "FM:WD-13",
+        "FM:WD-14",
+        "FM:WD-15",
+        "FM:WD-16",
+        "FM:WD-17",
+        "FM:WD-18",
+        "FM:WD-19",
+        "FM:WD-20",
+        "FM:WD-21",
+        "FM:WD-22",
+        "FM:WD-23",
+        "FM:WD-24",
+        "FM:WD-25",
+        "FM:WD-26",
+        "FM:WD-27",
+        "FM:WD-28",
+        "FM:WD-29",
+        "FM:WD-30",
+        "FM:WD-31",
+        "FM:WD-33",
+        "FM:WD-35",
+        "FM:WD-36",
+        "FM:WD-37",
+        "FM:WD-38",
+        "FM:WD-39",
+        "FM:WD-40",
+        "FM:WD-41",
+        "FM:WD-42",
+        "FM:WD-43",
+        "FM:WD-44",
+        "FM:WD-45",
+        "FM:WD-46",
+        "FM:WD-47",
+        "FM:WD-48",
+        "FM:WD-49",
+        "FM:WD-50",
+        "FM:WD-51",
+        "FM:WD-52",
+        "FM:WD-53",
+        "FM:WD-54",
+        "FM:WD-55",
+        "FM:WD-56",
+        "FM:WD-57",
+        "FM:WD-58",
+        "FM:WD-59",
+        "FM:WD-60",
+        "FM:WD-61",
+        "FM:WD-62",
+        "FM:WD-63",
+        "FM:WD-64",
+        "FM:WD-65",
+        "FM:WD-66",
+        "PS:A01",
+        "PS:A02",
+        "PS:A03",
+        "PS:A04",
+        "PS:A06",
+        "PS:A07",
+        "PS:A08",
+        "PS:A09",
+        "PS:A10",
+        "PS:A11",
+        "PS:A12",
+        "PS:A13",
+        "PS:A14",
+        "PS:A15",
+        "PS:A16",
+        "PS:A17",
+        "PS:A18",
+        "PS:A19",
+        "PS:A21",
+        "PS:A22",
+        "PS:A23",
+        "PS:A24",
+        "PS:A33",
+        "PS:A34",
+        "PS:A35",
+        "PS:A36",
+        "PS:A37",
+        "PS:A38",
+        "PS:A39",
+        "PS:A40",
+        "PS:A41",
+        "PS:A42",
+        "PS:A43",
+        "PS:A44",
+        "PS:A45",
+        "PS:A46",
+        "PS:A47",
+        "PS:A48"
+      ]
+    },
+    {
+      "id": "J28.scoped",
+      "owner_work_item": "J28",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J29.scoped",
+      "owner_work_item": "J29",
+      "requires": [
+        "J25.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J30.scoped",
+      "owner_work_item": "J30",
+      "requires": [
+        "J07.scoped",
+        "J16.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J31.scoped",
+      "owner_work_item": "J31",
+      "requires": [
+        "J12.scoped",
+        "J07.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J32.scoped",
+      "owner_work_item": "J32",
+      "requires": [
+        "J16.scoped",
+        "J25.scoped"
+      ],
+      "stage": "scoped_acceptance",
+      "evidence_state": "specified_not_run",
+      "allowed_decisions": [
+        "continue",
+        "inconclusive",
+        "stop"
+      ]
+    },
+    {
+      "id": "J25.protocol",
+      "owner_work_item": "J25",
+      "requires": [
+        "J03.scoped"
+      ],
+      "stage": "preregister",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J25.e0",
+      "owner_work_item": "J25",
+      "requires": [
+        "J25.protocol",
+        "J03.diagnostics"
+      ],
+      "stage": "feasibility_decision",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J25.e1",
+      "owner_work_item": "J25",
+      "requires": [
+        "J25.e0",
+        "J09.scoped"
+      ],
+      "stage": "feasibility_and_guardrail_decision",
+      "evidence_state": "specified_not_run",
+      "allowed_decisions": [
+        "continue",
+        "safety_only",
+        "stop"
+      ]
+    },
+    {
+      "id": "J23.method_context",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped",
+        "J04.scoped",
+        "J09.scoped",
+        "J23.harness"
+      ],
+      "stage": "exact_combination_measurement",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J14.qualification",
+      "owner_work_item": "J14",
+      "requires": [
+        "J14.scoped",
+        "J23.scoped",
+        "J23.harness"
+      ],
+      "stage": "wired_candidate_qualification",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J17.schema_spec",
+      "owner_work_item": "J17",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "broker_schema_spec",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J17.recovery",
+      "owner_work_item": "J17",
+      "requires": [
+        "J17.schema_spec",
+        "J12.scoped"
+      ],
+      "stage": "broker_recovery_qualification",
+      "evidence_state": "specified_not_run",
+      "identity_fields": [
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "schema_spec_digest",
+        "candidate_sha",
+        "recovery_build_digest"
+      ]
+    },
+    {
+      "id": "J23.harness",
+      "owner_work_item": "J23",
+      "requires": [
+        "J01.scoped",
+        "J03.scoped"
+      ],
+      "stage": "independent_model_and_fault_tools",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J12.full_recovery",
+      "owner_work_item": "J12",
+      "requires": [
+        "J12.scoped",
+        "J17.recovery"
+      ],
+      "stage": "full_home_and_broker_recovery",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J08.schema_spec",
+      "owner_work_item": "J08",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "exact_rebased_migration_spec",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J08.recovery",
+      "owner_work_item": "J08",
+      "requires": [
+        "J08.schema_spec",
+        "J12.scoped"
+      ],
+      "stage": "exact_target_recovery_qualification",
+      "evidence_state": "specified_not_run",
+      "identity_fields": [
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "schema_spec_digest",
+        "candidate_sha",
+        "recovery_build_digest"
+      ]
+    },
+    {
+      "id": "J10.schema_spec",
+      "owner_work_item": "J10",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "exact_rebased_migration_spec",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J10.recovery",
+      "owner_work_item": "J10",
+      "requires": [
+        "J10.schema_spec",
+        "J12.scoped"
+      ],
+      "stage": "exact_target_recovery_qualification",
+      "evidence_state": "specified_not_run",
+      "identity_fields": [
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "schema_spec_digest",
+        "candidate_sha",
+        "recovery_build_digest"
+      ]
+    },
+    {
+      "id": "J13.schema_spec",
+      "owner_work_item": "J13",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "exact_rebased_migration_spec",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J13.recovery",
+      "owner_work_item": "J13",
+      "requires": [
+        "J13.schema_spec",
+        "J12.scoped"
+      ],
+      "stage": "exact_target_recovery_qualification",
+      "evidence_state": "specified_not_run",
+      "identity_fields": [
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "schema_spec_digest",
+        "candidate_sha",
+        "recovery_build_digest"
+      ]
+    },
+    {
+      "id": "J21.schema_spec",
+      "owner_work_item": "J21",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "exact_rebased_migration_spec",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J21.recovery",
+      "owner_work_item": "J21",
+      "requires": [
+        "J21.schema_spec",
+        "J12.scoped"
+      ],
+      "stage": "exact_target_recovery_qualification",
+      "evidence_state": "specified_not_run",
+      "identity_fields": [
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "schema_spec_digest",
+        "candidate_sha",
+        "recovery_build_digest"
+      ]
+    },
+    {
+      "id": "J22.schema_spec",
+      "owner_work_item": "J22",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "exact_rebased_migration_spec",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J22.recovery",
+      "owner_work_item": "J22",
+      "requires": [
+        "J22.schema_spec",
+        "J12.scoped"
+      ],
+      "stage": "exact_target_recovery_qualification",
+      "evidence_state": "specified_not_run",
+      "identity_fields": [
+        "source_schema",
+        "target_schema",
+        "ddl_digest",
+        "fixture_digest",
+        "schema_spec_digest",
+        "candidate_sha",
+        "recovery_build_digest"
+      ]
+    },
+    {
+      "id": "J12.bootstrap_preflight",
+      "owner_work_item": "J12",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "isolated_bootstrap_fixture_qualification",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J10.protocol",
+      "owner_work_item": "J10",
+      "requires": [
+        "J01.scoped"
+      ],
+      "stage": "qualifier_protocol_only",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J27.release_channel",
+      "owner_work_item": "J27",
+      "requires": [
+        "J01.scoped"
+      ],
+      "stage": "artifact_channel_preparation",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J03.diagnostics",
+      "owner_work_item": "J03",
+      "requires": [
+        "J03.scoped"
+      ],
+      "stage": "diagnostic_retention_pretrial",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "legacy:D07.local_fixture",
+      "owner_work_item": "J03",
+      "requires": [
+        "J03.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "D07.local_fixture"
+    },
+    {
+      "id": "legacy:D08.local_journey",
+      "owner_work_item": "J16",
+      "requires": [
+        "J16.scoped",
+        "legacy:D07.local_fixture"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "D08.local_journey"
+    },
+    {
+      "id": "legacy:I01.local_contract",
+      "owner_work_item": "J16",
+      "requires": [
+        "J16.scoped",
+        "legacy:D08.local_journey"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "I01.local_contract"
+    },
+    {
+      "id": "legacy:C03.budget_storage",
+      "owner_work_item": "J13",
+      "requires": [
+        "J13.scoped",
+        "legacy:I04.compat_recovery"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "C03.budget_storage"
+    },
+    {
+      "id": "legacy:C04.start_dispatch",
+      "owner_work_item": "J14",
+      "requires": [
+        "J14.scoped",
+        "legacy:C03.budget_storage"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "C04.start_dispatch"
+    },
+    {
+      "id": "legacy:I03.local_proof",
+      "owner_work_item": "J07",
+      "requires": [
+        "J07.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "I03.local_proof"
+    },
+    {
+      "id": "legacy:I04.compat_recovery",
+      "owner_work_item": "J12",
+      "requires": [
+        "J12.full_recovery",
+        "legacy:I04.recovery_home",
+        "legacy:I04.recovery_broker"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "I04.compat_recovery"
+    },
+    {
+      "id": "legacy:DEBT01.safe_failure",
+      "owner_work_item": "J31",
+      "requires": [
+        "J31.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "DEBT01.safe_failure"
+    },
+    {
+      "id": "legacy:DEBT02.recovery_contract",
+      "owner_work_item": "J12",
+      "requires": [
+        "J12.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "DEBT02.recovery_contract"
+    },
+    {
+      "id": "legacy:V06.release_channel",
+      "owner_work_item": "J27",
+      "requires": [
+        "J27.release_channel"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V06.release_channel"
+    },
+    {
+      "id": "legacy:R05.qualifier_protocol",
+      "owner_work_item": "J10",
+      "requires": [
+        "J10.protocol"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "R05.qualifier_protocol"
+    },
+    {
+      "id": "legacy:V03.host_measurement",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped",
+        "legacy:R05.qualifier_protocol"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V03.host_measurement"
+    },
+    {
+      "id": "legacy:V06.trust_operations",
+      "owner_work_item": "J27",
+      "requires": [
+        "J27.scoped",
+        "legacy:R05.qualifier_protocol"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V06.trust_operations"
+    },
+    {
+      "id": "legacy:V03.diagnostic_retention",
+      "owner_work_item": "J03",
+      "requires": [
+        "J03.diagnostics"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V03.diagnostic_retention"
+    },
+    {
+      "id": "legacy:D07.host_qualification",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped",
+        "legacy:D07.local_fixture",
+        "legacy:V03.host_measurement"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "D07.host_qualification"
+    },
+    {
+      "id": "legacy:D08.host_qualification",
+      "owner_work_item": "J16",
+      "requires": [
+        "J16.scoped",
+        "legacy:D07.host_qualification",
+        "legacy:D08.local_journey"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "D08.host_qualification"
+    },
+    {
+      "id": "legacy:X03.broker_storage",
+      "owner_work_item": "J17",
+      "requires": [
+        "J17.scoped",
+        "legacy:I04.compat_recovery"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "X03.broker_storage"
+    },
+    {
+      "id": "legacy:C06.start_resolver",
+      "owner_work_item": "J15",
+      "requires": [
+        "J15.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "C06.start_resolver"
+    },
+    {
+      "id": "legacy:X01.plan_invalidation",
+      "owner_work_item": "J15",
+      "requires": [
+        "J15.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "X01.plan_invalidation"
+    },
+    {
+      "id": "legacy:E01.recoverable_profile",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped",
+        "legacy:R05.qualifier_protocol",
+        "legacy:V03.host_measurement"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "E01.recoverable_profile"
+    },
+    {
+      "id": "legacy:E02.local_dispatch",
+      "owner_work_item": "J14",
+      "requires": [
+        "J14.scoped",
+        "legacy:C03.budget_storage",
+        "legacy:C04.start_dispatch",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "legacy:I03.local_proof",
+        "legacy:DEBT02.recovery_contract"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "E02.local_dispatch"
+    },
+    {
+      "id": "legacy:R03.external_contracts",
+      "owner_work_item": "J02",
+      "requires": [
+        "J02.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "R03.external_contracts"
+    },
+    {
+      "id": "legacy:V02.S1_faults",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V02.S1_faults"
+    },
+    {
+      "id": "legacy:V02.S2_faults",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V02.S2_faults"
+    },
+    {
+      "id": "legacy:V02.S3_faults",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V02.S3_faults"
+    },
+    {
+      "id": "legacy:V02.S4_faults",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V02.S4_faults"
+    },
+    {
+      "id": "legacy:V02.S5_faults",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V02.S5_faults"
+    },
+    {
+      "id": "legacy:V02.S6_faults",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "V02.S6_faults"
+    },
+    {
+      "id": "legacy:C03.schema_spec",
+      "owner_work_item": "J11",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "C03.schema_spec"
+    },
+    {
+      "id": "legacy:X03.schema_spec",
+      "owner_work_item": "J17",
+      "requires": [
+        "J17.schema_spec"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "X03.schema_spec"
+    },
+    {
+      "id": "legacy:I04.recovery_home",
+      "owner_work_item": "J12",
+      "requires": [
+        "J12.scoped",
+        "legacy:C03.schema_spec",
+        "legacy:DEBT02.recovery_contract"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "I04.recovery_home"
+    },
+    {
+      "id": "legacy:I04.recovery_broker",
+      "owner_work_item": "J17",
+      "requires": [
+        "J17.recovery",
+        "legacy:X03.schema_spec",
+        "legacy:DEBT02.recovery_contract"
+      ],
+      "stage": "full_inherited_gate",
+      "evidence_state": "specified_not_run",
+      "legacy_id": "I04.recovery_broker"
+    },
+    {
+      "id": "J27.default_enable",
+      "owner_work_item": "J27",
+      "requires": [
+        "J27.scoped",
+        "J32.scoped",
+        "local:C03.budget_storage",
+        "local:C04.start_dispatch",
+        "legacy:I03.local_proof",
+        "J13.recovery",
+        "J12.scoped",
+        "legacy:DEBT01.safe_failure",
+        "legacy:DEBT02.recovery_contract",
+        "legacy:V02.S2_faults",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "local:E02.local_dispatch",
+        "legacy:R05.qualifier_protocol",
+        "legacy:V03.host_measurement",
+        "legacy:V06.trust_operations",
+        "legacy:V06.release_channel"
+      ],
+      "stage": "default_enable",
+      "evidence_state": "specified_not_run",
+      "decision_requirements": {
+        "J25.e1": [
+          "continue"
+        ],
+        "J32.scoped": [
+          "continue"
+        ]
+      }
+    },
+    {
+      "id": "J01.legacy_full",
+      "owner_work_item": "J01",
+      "requires": [
+        "J01.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J02.legacy_full",
+      "owner_work_item": "J02",
+      "requires": [
+        "J02.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A01",
+        "PS:A02",
+        "PS:A03",
+        "PS:A04"
+      ]
+    },
+    {
+      "id": "J03.legacy_full",
+      "owner_work_item": "J03",
+      "requires": [
+        "J03.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-01",
+        "FM:WD-02",
+        "FM:WD-04",
+        "FM:WD-33",
+        "FM:WD-34",
+        "FM:WD-35",
+        "PS:A13",
+        "PS:A14",
+        "PS:A33",
+        "PS:A34",
+        "PS:A43",
+        "PS:A44"
+      ]
+    },
+    {
+      "id": "J04.legacy_full",
+      "owner_work_item": "J04",
+      "requires": [
+        "J04.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A11",
+        "PS:A12",
+        "PS:A48"
+      ]
+    },
+    {
+      "id": "J05.legacy_full",
+      "owner_work_item": "J05",
+      "requires": [
+        "J05.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A06",
+        "PS:A07",
+        "PS:A08",
+        "PS:A09",
+        "PS:A10"
+      ]
+    },
+    {
+      "id": "J06.legacy_full",
+      "owner_work_item": "J06",
+      "requires": [
+        "J06.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A35",
+        "PS:A36",
+        "PS:A37",
+        "PS:A38",
+        "PS:A39",
+        "PS:A40",
+        "PS:A41",
+        "PS:A45",
+        "PS:A47"
+      ]
+    },
+    {
+      "id": "J07.legacy_full",
+      "owner_work_item": "J07",
+      "requires": [
+        "J07.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-27",
+        "PS:A15",
+        "PS:A16",
+        "PS:A17",
+        "PS:A42"
+      ]
+    },
+    {
+      "id": "J08.legacy_full",
+      "owner_work_item": "J08",
+      "requires": [
+        "J08.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J09.legacy_full",
+      "owner_work_item": "J09",
+      "requires": [
+        "J09.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A18",
+        "PS:A19"
+      ]
+    },
+    {
+      "id": "J10.legacy_full",
+      "owner_work_item": "J10",
+      "requires": [
+        "J10.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A05",
+        "PS:A20",
+        "PS:A23",
+        "PS:A24"
+      ]
+    },
+    {
+      "id": "J11.legacy_full",
+      "owner_work_item": "J11",
+      "requires": [
+        "J11.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J12.legacy_full",
+      "owner_work_item": "J12",
+      "requires": [
+        "J12.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-44"
+      ]
+    },
+    {
+      "id": "J13.legacy_full",
+      "owner_work_item": "J13",
+      "requires": [
+        "J13.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-31"
+      ]
+    },
+    {
+      "id": "J14.legacy_full",
+      "owner_work_item": "J14",
+      "requires": [
+        "J14.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-13",
+        "FM:WD-14",
+        "FM:WD-15",
+        "FM:WD-16",
+        "FM:WD-17",
+        "FM:WD-18",
+        "FM:WD-19",
+        "FM:WD-21",
+        "FM:WD-22",
+        "FM:WD-28",
+        "FM:WD-36",
+        "FM:WD-37",
+        "FM:WD-40",
+        "FM:WD-41",
+        "FM:WD-42",
+        "FM:WD-49",
+        "FM:WD-51",
+        "FM:WD-52",
+        "FM:WD-53",
+        "FM:WD-54",
+        "FM:WD-63",
+        "FM:WD-64",
+        "FM:WD-65"
+      ]
+    },
+    {
+      "id": "J15.legacy_full",
+      "owner_work_item": "J15",
+      "requires": [
+        "J15.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-05",
+        "FM:WD-06",
+        "FM:WD-07",
+        "FM:WD-08",
+        "FM:WD-09",
+        "FM:WD-10",
+        "FM:WD-11",
+        "FM:WD-12",
+        "FM:WD-20",
+        "FM:WD-24",
+        "FM:WD-38",
+        "FM:WD-39",
+        "FM:WD-48",
+        "FM:WD-55",
+        "FM:WD-56",
+        "FM:WD-57",
+        "FM:WD-58",
+        "FM:WD-59",
+        "FM:WD-60",
+        "FM:WD-62",
+        "FM:WD-66"
+      ]
+    },
+    {
+      "id": "J16.legacy_full",
+      "owner_work_item": "J16",
+      "requires": [
+        "J16.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A21",
+        "PS:A22",
+        "PS:A46"
+      ]
+    },
+    {
+      "id": "J17.legacy_full",
+      "owner_work_item": "J17",
+      "requires": [
+        "J17.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J18.legacy_full",
+      "owner_work_item": "J18",
+      "requires": [
+        "J18.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A25",
+        "PS:A26"
+      ]
+    },
+    {
+      "id": "J19.legacy_full",
+      "owner_work_item": "J19",
+      "requires": [
+        "J19.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A29"
+      ]
+    },
+    {
+      "id": "J20.legacy_full",
+      "owner_work_item": "J20",
+      "requires": [
+        "J20.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-03",
+        "FM:WD-23",
+        "FM:WD-25",
+        "FM:WD-26",
+        "FM:WD-29",
+        "FM:WD-30"
+      ]
+    },
+    {
+      "id": "J21.legacy_full",
+      "owner_work_item": "J21",
+      "requires": [
+        "J21.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-32"
+      ]
+    },
+    {
+      "id": "J22.legacy_full",
+      "owner_work_item": "J22",
+      "requires": [
+        "J22.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J23.legacy_full",
+      "owner_work_item": "J23",
+      "requires": [
+        "J23.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "FM:WD-43",
+        "FM:WD-45",
+        "FM:WD-46",
+        "FM:WD-47",
+        "FM:WD-50",
+        "FM:WD-61"
+      ]
+    },
+    {
+      "id": "J24.legacy_full",
+      "owner_work_item": "J24",
+      "requires": [
+        "J24.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J25.legacy_full",
+      "owner_work_item": "J25",
+      "requires": [
+        "J25.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J26.legacy_full",
+      "owner_work_item": "J26",
+      "requires": [
+        "J26.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J27.legacy_full",
+      "owner_work_item": "J27",
+      "requires": [
+        "J27.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J28.legacy_full",
+      "owner_work_item": "J28",
+      "requires": [
+        "J28.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A31",
+        "PS:A32"
+      ]
+    },
+    {
+      "id": "J29.legacy_full",
+      "owner_work_item": "J29",
+      "requires": [
+        "J29.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A30"
+      ]
+    },
+    {
+      "id": "J30.legacy_full",
+      "owner_work_item": "J30",
+      "requires": [
+        "J30.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": [
+        "PS:A27",
+        "PS:A28"
+      ]
+    },
+    {
+      "id": "J31.legacy_full",
+      "owner_work_item": "J31",
+      "requires": [
+        "J31.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "J32.legacy_full",
+      "owner_work_item": "J32",
+      "requires": [
+        "J32.scoped"
+      ],
+      "stage": "original_capability_case_completion",
+      "evidence_state": "specified_not_run",
+      "case_requirements": []
+    },
+    {
+      "id": "local:C03.budget_storage",
+      "owner_work_item": "J13",
+      "requires": [
+        "J13.scoped",
+        "J13.recovery",
+        "J12.scoped"
+      ],
+      "stage": "JADR12_local_home_only",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "local:C04.start_dispatch",
+      "owner_work_item": "J14",
+      "requires": [
+        "J14.scoped",
+        "local:C03.budget_storage"
+      ],
+      "stage": "JADR12_local_home_only",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "local:E02.local_dispatch",
+      "owner_work_item": "J14",
+      "requires": [
+        "J14.scoped",
+        "local:C03.budget_storage",
+        "local:C04.start_dispatch",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "legacy:I03.local_proof",
+        "legacy:DEBT02.recovery_contract"
+      ],
+      "stage": "JADR12_local_home_only",
+      "evidence_state": "specified_not_run"
+    },
+    {
+      "id": "J27.full_original_completion",
+      "owner_work_item": "J27",
+      "requires": [
+        "J01.legacy_full",
+        "J02.legacy_full",
+        "J03.legacy_full",
+        "J04.legacy_full",
+        "J05.legacy_full",
+        "J06.legacy_full",
+        "J07.legacy_full",
+        "J08.legacy_full",
+        "J09.legacy_full",
+        "J10.legacy_full",
+        "J11.legacy_full",
+        "J12.legacy_full",
+        "J13.legacy_full",
+        "J14.legacy_full",
+        "J15.legacy_full",
+        "J16.legacy_full",
+        "J17.legacy_full",
+        "J18.legacy_full",
+        "J19.legacy_full",
+        "J20.legacy_full",
+        "J21.legacy_full",
+        "J22.legacy_full",
+        "J23.legacy_full",
+        "J24.legacy_full",
+        "J25.legacy_full",
+        "J26.legacy_full",
+        "J27.legacy_full",
+        "J28.legacy_full",
+        "J29.legacy_full",
+        "J30.legacy_full",
+        "J31.legacy_full",
+        "J32.legacy_full",
+        "legacy:D07.local_fixture",
+        "legacy:D08.local_journey",
+        "legacy:I01.local_contract",
+        "legacy:C03.budget_storage",
+        "legacy:C04.start_dispatch",
+        "legacy:I03.local_proof",
+        "legacy:I04.compat_recovery",
+        "legacy:DEBT01.safe_failure",
+        "legacy:DEBT02.recovery_contract",
+        "legacy:V06.release_channel",
+        "legacy:R05.qualifier_protocol",
+        "legacy:V03.host_measurement",
+        "legacy:V06.trust_operations",
+        "legacy:V03.diagnostic_retention",
+        "legacy:D07.host_qualification",
+        "legacy:D08.host_qualification",
+        "legacy:X03.broker_storage",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "legacy:E02.local_dispatch",
+        "legacy:R03.external_contracts",
+        "legacy:V02.S1_faults",
+        "legacy:V02.S2_faults",
+        "legacy:V02.S3_faults",
+        "legacy:V02.S4_faults",
+        "legacy:V02.S5_faults",
+        "legacy:V02.S6_faults",
+        "legacy:C03.schema_spec",
+        "legacy:X03.schema_spec",
+        "legacy:I04.recovery_home",
+        "legacy:I04.recovery_broker"
+      ],
+      "stage": "all_original_capabilities_and_cases",
+      "evidence_state": "specified_not_run"
+    }
+  ],
+  "legacy_gate_map": [
+    {
+      "id": "D07.local_fixture",
+      "original_requires": [],
+      "producer_gate": "legacy:D07.local_fixture",
+      "original_definition_sha256": "e20edd643b04e12ceea3051217f4a73e0ac311fa146f4dc5151e88c465f8e14a",
+      "status": "specified_not_run",
+      "component_gate": "J03.scoped"
+    },
+    {
+      "id": "D08.local_journey",
+      "original_requires": [
+        "D07.local_fixture"
+      ],
+      "producer_gate": "legacy:D08.local_journey",
+      "original_definition_sha256": "fb45ae59a8eb475b8c5db8c3efbfbb55ff7f22575a4da9a14ef60513ac297cca",
+      "status": "specified_not_run",
+      "component_gate": "J16.scoped"
+    },
+    {
+      "id": "I01.local_contract",
+      "original_requires": [
+        "D08.local_journey"
+      ],
+      "producer_gate": "legacy:I01.local_contract",
+      "original_definition_sha256": "f82e4d25b8f6cbc76fc87dd3e1efd79ec264164e4310e0f3702c21a174633ded",
+      "status": "specified_not_run",
+      "component_gate": "J16.scoped"
+    },
+    {
+      "id": "C03.budget_storage",
+      "original_requires": [
+        "I04.compat_recovery"
+      ],
+      "producer_gate": "legacy:C03.budget_storage",
+      "original_definition_sha256": "a30b744990e96ba9fcf3b52034352e13db39576a8d92a528d929efde79264492",
+      "status": "specified_not_run",
+      "component_gate": "J13.scoped"
+    },
+    {
+      "id": "C04.start_dispatch",
+      "original_requires": [
+        "C03.budget_storage"
+      ],
+      "producer_gate": "legacy:C04.start_dispatch",
+      "original_definition_sha256": "5cca9b22f3ad9ac36f6a5145eb1154e69e7a08aff66120b3af7773ad6e66cbf6",
+      "status": "specified_not_run",
+      "component_gate": "J14.scoped"
+    },
+    {
+      "id": "I03.local_proof",
+      "original_requires": [],
+      "producer_gate": "legacy:I03.local_proof",
+      "original_definition_sha256": "39fab04acdea82dc26d1a57c47653929e4398692c53ef7ba1b04636e578f87b9",
+      "status": "specified_not_run",
+      "component_gate": "J07.scoped"
+    },
+    {
+      "id": "I04.compat_recovery",
+      "original_requires": [
+        "I04.recovery_home",
+        "I04.recovery_broker"
+      ],
+      "producer_gate": "legacy:I04.compat_recovery",
+      "original_definition_sha256": "b7b29f77d67e54ebef4320db3cc54302661edf41646e48b743e6991586c43570",
+      "status": "specified_not_run",
+      "component_gate": "J12.full_recovery"
+    },
+    {
+      "id": "DEBT01.safe_failure",
+      "original_requires": [],
+      "producer_gate": "legacy:DEBT01.safe_failure",
+      "original_definition_sha256": "e3d8ff6cac16718758fdfbd029c110acdcb98d2ad493cc5364eaf6858fa03c79",
+      "status": "specified_not_run",
+      "component_gate": "J31.scoped"
+    },
+    {
+      "id": "DEBT02.recovery_contract",
+      "original_requires": [],
+      "producer_gate": "legacy:DEBT02.recovery_contract",
+      "original_definition_sha256": "d3098234889ffc4861dbbf8eb988101f0a7f676c0e0d6d3a4e62439196830134",
+      "status": "specified_not_run",
+      "component_gate": "J12.scoped"
+    },
+    {
+      "id": "V06.release_channel",
+      "original_requires": [],
+      "producer_gate": "legacy:V06.release_channel",
+      "original_definition_sha256": "19b1b5502be4a880e449c5f569ac8a90e795c5c6134e43b7c30b3cdeb90a9507",
+      "status": "specified_not_run",
+      "component_gate": "J27.release_channel"
+    },
+    {
+      "id": "R05.qualifier_protocol",
+      "original_requires": [],
+      "producer_gate": "legacy:R05.qualifier_protocol",
+      "original_definition_sha256": "f61db5ed7960c497b07f9193317dc45b455cd3e1a6e4e6666aa4154a15ebd64f",
+      "status": "specified_not_run",
+      "component_gate": "J10.protocol"
+    },
+    {
+      "id": "V03.host_measurement",
+      "original_requires": [
+        "R05.qualifier_protocol"
+      ],
+      "producer_gate": "legacy:V03.host_measurement",
+      "original_definition_sha256": "4507acac09e51a821e5ebd84387326405e896133c16003ac37c0737ee12b252f",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "V06.trust_operations",
+      "original_requires": [
+        "R05.qualifier_protocol"
+      ],
+      "producer_gate": "legacy:V06.trust_operations",
+      "original_definition_sha256": "401f307125259190b673feb497d35e8e2009a9f2dc239c60c3207b68b6786eda",
+      "status": "specified_not_run",
+      "component_gate": "J27.scoped"
+    },
+    {
+      "id": "V03.diagnostic_retention",
+      "original_requires": [],
+      "producer_gate": "legacy:V03.diagnostic_retention",
+      "original_definition_sha256": "6aec7d8eaae0b00e960f213b762168ac9b04587cd5b7fb7d915d83e8a46676d7",
+      "status": "specified_not_run",
+      "component_gate": "J03.diagnostics"
+    },
+    {
+      "id": "D07.host_qualification",
+      "original_requires": [
+        "D07.local_fixture",
+        "V03.host_measurement"
+      ],
+      "producer_gate": "legacy:D07.host_qualification",
+      "original_definition_sha256": "7c76ad74081e1f25ed90592fb4ab2e2a0b2b34df5f3b6d754ca71ab29fb04385",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "D08.host_qualification",
+      "original_requires": [
+        "D07.host_qualification",
+        "D08.local_journey"
+      ],
+      "producer_gate": "legacy:D08.host_qualification",
+      "original_definition_sha256": "4910fa2bd4781125dc372a885d586041820577d5f25c44ec3b8f89d67a8fe647",
+      "status": "specified_not_run",
+      "component_gate": "J16.scoped"
+    },
+    {
+      "id": "X03.broker_storage",
+      "original_requires": [
+        "I04.compat_recovery"
+      ],
+      "producer_gate": "legacy:X03.broker_storage",
+      "original_definition_sha256": "943d94a745694e73e48924afc4cca4a0236f1e0fe091bc8272beffeaa1d2ffb5",
+      "status": "specified_not_run",
+      "component_gate": "J17.scoped"
+    },
+    {
+      "id": "C06.start_resolver",
+      "original_requires": [],
+      "producer_gate": "legacy:C06.start_resolver",
+      "original_definition_sha256": "d7edf5e37f79cc4a9732b33bc11a985acd2c70d015f72de78064fb9a2304f916",
+      "status": "specified_not_run",
+      "component_gate": "J15.scoped"
+    },
+    {
+      "id": "X01.plan_invalidation",
+      "original_requires": [],
+      "producer_gate": "legacy:X01.plan_invalidation",
+      "original_definition_sha256": "2dd70daa46de7297bb99fd95177e6e50b8faef524eec12338a5509246ee7e9e2",
+      "status": "specified_not_run",
+      "component_gate": "J15.scoped"
+    },
+    {
+      "id": "E01.recoverable_profile",
+      "original_requires": [
+        "R05.qualifier_protocol",
+        "V03.host_measurement"
+      ],
+      "producer_gate": "legacy:E01.recoverable_profile",
+      "original_definition_sha256": "ff9068e5ae7e74b055ad0a9b857a46a261753a5d22dee1877a3429e7fb0e71f7",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "E02.local_dispatch",
+      "original_requires": [
+        "C03.budget_storage",
+        "C04.start_dispatch",
+        "C06.start_resolver",
+        "X01.plan_invalidation",
+        "E01.recoverable_profile",
+        "I03.local_proof",
+        "DEBT02.recovery_contract"
+      ],
+      "producer_gate": "legacy:E02.local_dispatch",
+      "original_definition_sha256": "ee7d444dfaf45ea30433fdafca18a6e3cfde3f36822dc9f1819001c672bfb8f7",
+      "status": "specified_not_run",
+      "component_gate": "J14.scoped"
+    },
+    {
+      "id": "R03.external_contracts",
+      "original_requires": [],
+      "producer_gate": "legacy:R03.external_contracts",
+      "original_definition_sha256": "e85392d0067667f7eda559002b1af266d03b469f77fe9c495fe3cdf9fc47605c",
+      "status": "specified_not_run",
+      "component_gate": "J02.scoped"
+    },
+    {
+      "id": "V02.S1_faults",
+      "original_requires": [],
+      "producer_gate": "legacy:V02.S1_faults",
+      "original_definition_sha256": "63f685f898c7111fa1705f731b7cf9c934928431d30e320a48b552acdbf6fc40",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "V02.S2_faults",
+      "original_requires": [],
+      "producer_gate": "legacy:V02.S2_faults",
+      "original_definition_sha256": "c4b33052642227d5cbf4fd327db241aefb3fb597a3eb19eaf171c2a9579f95d5",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "V02.S3_faults",
+      "original_requires": [],
+      "producer_gate": "legacy:V02.S3_faults",
+      "original_definition_sha256": "cb484fbb3c9e2378e3a4540006ed5ef76faffcd3240a2f6ddf1025dbbd3fc4e1",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "V02.S4_faults",
+      "original_requires": [],
+      "producer_gate": "legacy:V02.S4_faults",
+      "original_definition_sha256": "b12dbb680422bfd99fe4a3a263adabc8cf54d7c7fdcc980b66add15a8e4e11d3",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "V02.S5_faults",
+      "original_requires": [],
+      "producer_gate": "legacy:V02.S5_faults",
+      "original_definition_sha256": "d9acb4fba3ffe6b84832f05bb88d041d040b4f4abd62549c09e4ab98fc07a435",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "V02.S6_faults",
+      "original_requires": [],
+      "producer_gate": "legacy:V02.S6_faults",
+      "original_definition_sha256": "8d2900083fd5144a086efa9c4d74ae1e46c7bab2c56243b1983d28903fd5e227",
+      "status": "specified_not_run",
+      "component_gate": "J23.scoped"
+    },
+    {
+      "id": "C03.schema_spec",
+      "original_requires": [],
+      "producer_gate": "legacy:C03.schema_spec",
+      "original_definition_sha256": "3b28dbe1879947c3b0925df7a3267dd0845ae5b360f4191b8280454fe66838d4",
+      "status": "specified_not_run",
+      "component_gate": "J11.scoped"
+    },
+    {
+      "id": "X03.schema_spec",
+      "original_requires": [],
+      "producer_gate": "legacy:X03.schema_spec",
+      "original_definition_sha256": "11b0b481eea115c87aa5b832ee26b0bcbceda743e6dcade04f2fd987e366e2e7",
+      "status": "specified_not_run",
+      "component_gate": "J17.schema_spec"
+    },
+    {
+      "id": "I04.recovery_home",
+      "original_requires": [
+        "C03.schema_spec",
+        "DEBT02.recovery_contract"
+      ],
+      "producer_gate": "legacy:I04.recovery_home",
+      "original_definition_sha256": "f0671964b84e3d70379231f8fb5e9395aaa8d7ebfe2e59394adb2c02b5afe664",
+      "status": "specified_not_run",
+      "component_gate": "J12.scoped"
+    },
+    {
+      "id": "I04.recovery_broker",
+      "original_requires": [
+        "X03.schema_spec",
+        "DEBT02.recovery_contract"
+      ],
+      "producer_gate": "legacy:I04.recovery_broker",
+      "original_definition_sha256": "1ab97f71040eccecad212edc0a1579ab1b6cc01c7f453c86440ce431f9173d5e",
+      "status": "specified_not_run",
+      "component_gate": "J17.recovery"
+    }
+  ],
+  "legacy_release_requirements": {
+    "before_new_schema": [
+      "I04.compat_recovery"
+    ],
+    "S2_opt_in": [
+      "C03.budget_storage",
+      "C04.start_dispatch",
+      "I03.local_proof",
+      "I04.compat_recovery",
+      "DEBT01.safe_failure",
+      "DEBT02.recovery_contract",
+      "V02.S2_faults",
+      "C06.start_resolver",
+      "X01.plan_invalidation",
+      "E01.recoverable_profile",
+      "E02.local_dispatch"
+    ],
+    "every_artifact_release": [
+      "V06.release_channel"
+    ],
+    "before_live_trial": [
+      "V03.diagnostic_retention"
+    ],
+    "S3_opt_in": [
+      "C03.budget_storage",
+      "C04.start_dispatch",
+      "I03.local_proof",
+      "I04.compat_recovery",
+      "DEBT01.safe_failure",
+      "DEBT02.recovery_contract",
+      "V02.S2_faults",
+      "C06.start_resolver",
+      "X01.plan_invalidation",
+      "E01.recoverable_profile",
+      "E02.local_dispatch",
+      "V02.S3_faults",
+      "R03.external_contracts",
+      "X03.broker_storage"
+    ],
+    "S5_public_opt_in": [
+      "C03.budget_storage",
+      "C04.start_dispatch",
+      "I03.local_proof",
+      "I04.compat_recovery",
+      "DEBT01.safe_failure",
+      "DEBT02.recovery_contract",
+      "V02.S2_faults",
+      "C06.start_resolver",
+      "X01.plan_invalidation",
+      "E01.recoverable_profile",
+      "E02.local_dispatch",
+      "V02.S3_faults",
+      "R03.external_contracts",
+      "X03.broker_storage",
+      "V02.S5_faults"
+    ],
+    "S2_default_enable": [
+      "C03.budget_storage",
+      "C04.start_dispatch",
+      "I03.local_proof",
+      "I04.compat_recovery",
+      "DEBT01.safe_failure",
+      "DEBT02.recovery_contract",
+      "V02.S2_faults",
+      "C06.start_resolver",
+      "X01.plan_invalidation",
+      "E01.recoverable_profile",
+      "E02.local_dispatch",
+      "R05.qualifier_protocol",
+      "V03.host_measurement",
+      "V06.trust_operations"
+    ]
+  },
+  "local_override": {
+    "decision": "JADR12",
+    "scope": "local_without_broker",
+    "replaces_only": [
+      "before_new_schema:I04.compat_recovery",
+      "S2_opt_in:I04.compat_recovery",
+      "S2_default_enable:I04.compat_recovery"
+    ],
+    "requires": [
+      "J13.recovery",
+      "J12.scoped"
+    ],
+    "forbidden_when": "broker enabled; original home+broker gate remains required",
+    "consumer_override": "component J13/J14 may use home-only gate only while broker disabled; full legacy wrapper remains unsatisfied until broker recovery",
+    "derived_local_gates": [
+      "local:C03.budget_storage",
+      "local:C04.start_dispatch",
+      "local:E02.local_dispatch"
+    ]
+  },
+  "resource_queues": [
+    {
+      "id": "state-owner-schema-queue",
+      "resource": "control_plane_schema",
+      "owner_role": "state-owner",
+      "rule": "one candidate at a time; rebase, allocate number, verify lineage and rerun on latest main",
+      "paths": [
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts"
+      ]
+    }
+  ],
+  "future_preflight": "Open unknown blocks only declared stage; every scoped gate needs exact candidate evidence and retained gates for enabled scope; no planned row is evidence",
+  "case_evidence_rule": "each referenced case must pass on exact candidate/support cell; original not_run is not evidence; deferred cases block corresponding scope activation and full legacy completion",
+  "merge_after_semantics": "conditional ordering when both PRs exist; no feature prerequisite if predecessor canceled; current-base shared-path review still required",
+  "oracle_policy": {
+    "states": [
+      "unassigned",
+      "assigned",
+      "frozen",
+      "executed"
+    ],
+    "freeze_before": "candidate_created_at_ms",
+    "independent_principals": true,
+    "critical_second_reviewer": true,
+    "concentration_report_required": true,
+    "arbitrary_author_quota": false
+  },
+  "migration_evidence_rule": "each queued PR freezes its actual N->N+1 and exact DDL/fixture/candidate after rebase; prior recovery certificate never qualifies another tuple",
+  "release_bindings": {
+    "J27.scoped": {
+      "original_release": "S2_opt_in",
+      "scope": "local_without_broker",
+      "required_producers": [
+        "local:C03.budget_storage",
+        "local:C04.start_dispatch",
+        "legacy:I03.local_proof",
+        "J13.recovery",
+        "J12.scoped",
+        "legacy:DEBT01.safe_failure",
+        "legacy:DEBT02.recovery_contract",
+        "legacy:V02.S2_faults",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "local:E02.local_dispatch"
+      ]
+    },
+    "J27.default_enable": {
+      "original_release": "S2_default_enable",
+      "scope": "local_without_broker",
+      "required_producers": [
+        "local:C03.budget_storage",
+        "local:C04.start_dispatch",
+        "legacy:I03.local_proof",
+        "J13.recovery",
+        "J12.scoped",
+        "legacy:DEBT01.safe_failure",
+        "legacy:DEBT02.recovery_contract",
+        "legacy:V02.S2_faults",
+        "legacy:C06.start_resolver",
+        "legacy:X01.plan_invalidation",
+        "legacy:E01.recoverable_profile",
+        "local:E02.local_dispatch",
+        "legacy:R05.qualifier_protocol",
+        "legacy:V03.host_measurement",
+        "legacy:V06.trust_operations"
+      ]
+    }
+  },
+  "local_deferred_case_ids": [
+    "FM:WD-32",
+    "FM:WD-34",
+    "PS:A05",
+    "PS:A20",
+    "PS:A25",
+    "PS:A26",
+    "PS:A27",
+    "PS:A28",
+    "PS:A29",
+    "PS:A30",
+    "PS:A31",
+    "PS:A32"
+  ]
+}

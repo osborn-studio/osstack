@@ -1,0 +1,83 @@
+{
+  "mode": "audit-recovered",
+  "reason": "Initial audit result began mid-finding after output-limit continuation; rerun identical prompt to obtain complete report.",
+  "argv": [
+    "/opt/homebrew/bin/claude",
+    "-p",
+    "--model",
+    "claude-fable-5-1",
+    "--effort",
+    "high",
+    "--output-format",
+    "json",
+    "--disable-slash-commands",
+    "--tools",
+    "",
+    "--strict-mcp-config",
+    "--safe-mode",
+    "--no-session-persistence",
+    "--permission-mode",
+    "dontAsk"
+  ],
+  "max_output_tokens_env": 64000,
+  "started_at_utc": "2026-10-26T23:38:31.345043+00:00",
+  "elapsed_seconds": 549.04,
+  "exit_code": 0,
+  "requested_model": "claude-fable-5-1",
+  "is_error": false,
+  "subtype": "success",
+  "model_usage": {
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 33495,
+      "cacheReadInputTokens": 233373,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 1.73311325,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 25175,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 233373,
+    "output_tokens": 33495,
+    "output_tokens_details": {
+      "thinking_tokens": 25175
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 33495,
+        "cache_read_input_tokens": 233373,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "session_id": "0c0f504d-b846-401b-8824-05ad9a04fe59",
+  "num_turns": 1,
+  "result_characters": 11725,
+  "complete_report": true
+}

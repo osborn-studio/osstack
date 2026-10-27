@@ -1,0 +1,1277 @@
+{
+  "schema_version": 1,
+  "report_revision": 2,
+  "document_kind": "research_capability_proposal",
+  "executable": false,
+  "status": "proposed_not_installed",
+  "source_commit": "99b609a72323b70204eab407c622f436e858e112",
+  "integration_baseline": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+  "capabilities": [
+    {
+      "id": "PS01",
+      "title": "单入口任务路由与渐进方法组合",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS03",
+        "PS08",
+        "PS21"
+      ],
+      "value": "从用户目标按需选择流程、功能地图和证据，解释路由并允许纠正，减少用户记忆技能的负担。",
+      "limitation": "不能把 playbook 文本作为 shell 或任意 Graph 程序执行。",
+      "acceptance": [
+        "同一固定来源与输入产生稳定 proposal；必需验证能力先就绪。",
+        "只加载相关方法与功能路径；模式纠正会形成新材料而不扩权。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-mode/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/figure-it-out/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/figure-it-out/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/feature.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/feature.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/bug-fix.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/bug-fix.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/investigation.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/investigation.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/refactoring.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/refactoring.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/skill-registry/src/index.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/index.ts"
+        },
+        {
+          "path": "packages/cli/src/graph-delivery-contract.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-delivery-contract.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1",
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD01",
+        "AD12"
+      ],
+      "work_packages": [
+        "W03",
+        "W05",
+        "W06",
+        "W09"
+      ]
+    },
+    {
+      "id": "PS02",
+      "title": "代码机制与历史动机取证",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "small",
+      "depends_on": [],
+      "value": "分别重建当前运行机制、历史动机与证据缺口，保留 fact/inference/unknown。",
+      "limitation": "只读取证需要基本来源标识与任务范围约束，不以前置完成注册系统为条件；进入生产 recipe 仍经过 PS21 的来源管理与既有 admission。",
+      "acceptance": [
+        "机制结论指向当前代码；历史动机带来源与不确定性。",
+        "缺证据的根因只能是待检验假设，不能直接成为实现约束。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/how/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/how/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/why/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/why/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/teach/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/teach/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/governance/src/probe/evaluation-compiler.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/governance/src/probe/evaluation-compiler.ts"
+        }
+      ],
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD03"
+      ],
+      "work_packages": [
+        "W03",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS03",
+      "title": "意图校准与可纠正的问题模型",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "small",
+      "depends_on": [
+        "PS02"
+      ],
+      "value": "区分目标理解错误和上下文不足；让模型先独立重述，再把用户假设作为假设核对。",
+      "limitation": "改写目标不得扩大授权或隐式增加工作范围。",
+      "acceptance": [
+        "目标、症状、假设、非目标和未知项分别表示；不把重述视为事实证明。",
+        "用户纠正更新材料，已有充分信息的可逆工作不新增机械确认步骤。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/sharpen/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/sharpen/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/in-your-own-words/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/in-your-own-words/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/figure-it-out/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/figure-it-out/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/governance/src/probe/evaluation-compiler.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/governance/src/probe/evaluation-compiler.ts"
+        },
+        {
+          "path": "packages/protocol/src/delivery-contract.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/protocol/src/delivery-contract.ts"
+        }
+      ],
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD03"
+      ],
+      "work_packages": [
+        "W03",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS04",
+      "title": "从使用草图到原型证据的架构循环",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS02",
+        "PS08",
+        "PS23"
+      ],
+      "value": "先写调用样例，比较结构不同的备选，以最小原型回答改变实现的未知，再选择接口。",
+      "limitation": "P0 是有预算的草图和顺序实验，不需要先扩展 Graph；动态多模型 arena 仍留 P1 并单独资格验证。",
+      "acceptance": [
+        "每个关键技术未知有实验/证据或明确未解决原因；原型不得当生产代码或交付通过。",
+        "相同形态的多处实现偏差触发重审设计；已选方向的合成结果重新验证。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/architect/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/arena/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/arena/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/prototype.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/prototype.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/graph/src/program-resolver.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/program-resolver.ts"
+        },
+        {
+          "path": "packages/loop/src/reviewer-isolation.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/reviewer-isolation.ts"
+        }
+      ],
+      "phase_scope": {
+        "P0": "usage sketch, interface experiment, design decision and deviation record",
+        "P1": "qualified parallel candidate execution"
+      },
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD04",
+        "AD05"
+      ],
+      "work_packages": [
+        "W03",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS05",
+      "title": "覆盖式并行与预先声明的竞赛",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "adapt",
+      "relative_cost": "large",
+      "depends_on": [
+        "PS01",
+        "PS16"
+      ],
+      "value": "区分覆盖、竞赛、混合模式，记录缺失 lane 与选胜规则。",
+      "limitation": "不能用模型自述或返回数量当完成证明。",
+      "acceptance": [
+        "缺任一必需覆盖单元不得通过；竞赛规则固定后不能事后切换。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/swarm/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/swarm/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/graph/src/join.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/join.ts"
+        },
+        {
+          "path": "packages/graph/src/program-resolver.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/program-resolver.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS06",
+      "title": "独立评审与意见裁决",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS21"
+      ],
+      "value": "对具体代码、调用草图、不变量与实验结果做独立评审，并逐条处理发现。",
+      "limitation": "多模型一致不是事实证明，reported identity 不等于独立性认证。",
+      "acceptance": [
+        "review 标明具体对象和依据；无证据猜测进入未知项而非自动扩大实现。",
+        "可信 blocking finding 未处理阻止完成；多模型一致不替代证据。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/interrogate/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/loop/src/reviewer-isolation.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/reviewer-isolation.ts"
+        },
+        {
+          "path": "packages/protocol/src/delivery-contract.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/protocol/src/delivery-contract.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1",
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD06",
+        "AD07"
+      ],
+      "work_packages": [
+        "W06",
+        "W07",
+        "W08",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS07",
+      "title": "影响面与关键前提验证",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS02"
+      ],
+      "value": "从调用方、格式、生命周期和配置寻找真正的失效面。",
+      "limitation": "静态引用列表不能替代实际调用链和副作用验证。",
+      "acceptance": [
+        "关键前提映射到检查/证据；未验证项不会标记 verified。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/blast-radius/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/blast-radius/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/refactoring.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/refactoring.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/governance/src/probe/evaluation-compiler.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/governance/src/probe/evaluation-compiler.ts"
+        },
+        {
+          "path": "packages/loop/src/evaluation-spec.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/evaluation-spec.ts"
+        }
+      ],
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD05"
+      ],
+      "work_packages": [
+        "W03",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS08",
+      "title": "可操控的验证基础设施与功能地图",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [],
+      "value": "先提供可组合、可诊断的控制工具及真实行为观察，让开发者自行闭合修复循环。",
+      "limitation": "只使用已有授权与隔离；self-check 不是正式 local_verified；地图种子不能冒充全覆盖。",
+      "acceptance": [
+        "冷启动环境可完成 doctor→drive→observe→cleanup，动作和结果证据均保留。",
+        "有机器输出、渐进帮助、可行动错误和实际无写入的 dry-run。",
+        "按用户路径检索功能地图，明确前提、入口覆盖、陷阱、恢复及版本。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/create-verification-skill/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/cli/src/graph-check-suite.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-check-suite.ts"
+        },
+        {
+          "path": "packages/cli/src/graph-verification.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-verification.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1"
+      ],
+      "design_delta_ids": [
+        "AD01",
+        "AD02",
+        "AD07"
+      ],
+      "work_packages": [
+        "W03",
+        "W05",
+        "W06",
+        "W07",
+        "W08",
+        "W18"
+      ]
+    },
+    {
+      "id": "PS09",
+      "title": "验证基础设施的健康、归属与漂移维护",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS08"
+      ],
+      "value": "为控制工具与地图定义 owner、健康状态、变更触发维护和显式配置的周期运行。",
+      "limitation": "不能删除失败 feature 或降低验收来伪造修复。",
+      "acceptance": [
+        "文档漂移、harness 故障、产品回归分开处理；不降低 gate 恢复绿色。",
+        "工具故障阻止相关验证结论；本轮不创建定时任务。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/skill-registry/src/watcher.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/watcher.ts"
+        },
+        {
+          "path": "packages/supervisor/src/evaluator-epoch.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/evaluator-epoch.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1"
+      ],
+      "design_delta_ids": [
+        "AD02",
+        "AD09"
+      ],
+      "work_packages": [
+        "W05",
+        "W11",
+        "W18",
+        "W19"
+      ]
+    },
+    {
+      "id": "PS10",
+      "title": "形式化验证生命周期",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P2",
+      "extraction_strategy": "adapt",
+      "relative_cost": "large",
+      "depends_on": [
+        "PS08",
+        "PS09"
+      ],
+      "value": "对高风险不变量建模，维护代码映射并通过 mutation 证明敏感性。",
+      "limitation": "property 模式标签不是形式化证明；有界模型结果不能外推所有执行。",
+      "acceptance": [
+        "记录模型/代码/工具/上界；坏变体失败；反例可解释。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/create-formal-verification-skill/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-formal-verification-skill/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/maintain-formal-verification-skill/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-formal-verification-skill/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/loop/src/evaluation-spec.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/evaluation-spec.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS11",
+      "title": "状态图与反例解释",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P2",
+      "extraction_strategy": "selective-port",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS10"
+      ],
+      "value": "把模型状态与反例映射成人可读路径并尝试在代码复现。",
+      "limitation": "渲染与 TLC 依赖隔离；不能把好看的图当验证完成。",
+      "acceptance": [
+        "图对应模型哈希；轨迹定位有效；超时不等于无反例。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/statechart/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/statechart/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/graph/src/nodes/branch.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/nodes/branch.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS12",
+      "title": "反思转结构化约束",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS06",
+        "PS13"
+      ],
+      "value": "将重复失败变成架构、类型、lint 或行为检查。",
+      "limitation": "不自动修改全局规则、权限或评测门槛。",
+      "acceptance": [
+        "新规则能抓到历史错误且通过无关正常用例；保持 draft 直至晋升。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/correct/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/correct/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/reflect/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/reflect/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/loop/src/lesson-draft.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/lesson-draft.ts"
+        },
+        {
+          "path": "packages/supervisor/src/evaluator-epoch.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/evaluator-epoch.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS13",
+      "title": "决策轨迹与证据归因",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "small",
+      "depends_on": [
+        "PS21"
+      ],
+      "value": "保留可信决策与证据历史，同时将结束或被替代的战术计划退出当前检索。",
+      "limitation": "TSV 为可读导出，不成为第二个权威状态源。",
+      "acceptance": [
+        "追加更正保留旧记录；当前视图不把历史计划当指令。",
+        "可读导出不反向修改权威状态。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/show-me-your-work/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/show-me-your-work/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/core/src/state/graph-runs.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/graph-runs.ts"
+        },
+        {
+          "path": "packages/cli/src/proof-pack.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/proof-pack.ts"
+        }
+      ],
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD10"
+      ],
+      "work_packages": [
+        "W10",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS14",
+      "title": "性能结论审查",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "adapt",
+      "relative_cost": "small",
+      "depends_on": [
+        "PS08"
+      ],
+      "value": "检查测量是否做了真实工作，交错基线并解释瓶颈与噪声。",
+      "limitation": "样本数建议不保证统计可靠；不比较不同场景的比例。",
+      "acceptance": [
+        "保留原始样本/失败/环境；基线不等价时拒绝相对提升。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/benchmark-checklist/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/benchmark-checklist/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/principle-explain-the-number/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-explain-the-number/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/perf-issue.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/perf-issue.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/loop/src/evaluation-spec.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/loop/src/evaluation-spec.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1",
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD11"
+      ],
+      "work_packages": [
+        "W15"
+      ]
+    },
+    {
+      "id": "PS15",
+      "title": "有预算的 hillclimb 与盲评",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P2",
+      "extraction_strategy": "adapt",
+      "relative_cost": "large",
+      "depends_on": [
+        "PS14",
+        "PS12"
+      ],
+      "value": "固定 harness、单变量实验、保留或回退并记录评价版本。",
+      "limitation": "不能无限追分、泄漏答案或悄悄调整 gate。",
+      "acceptance": [
+        "预算耗尽停止；judge 标签盲化；评测变更产生新 epoch。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/hillclimb.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/hillclimb.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/eval.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/eval.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/supervisor/src/evaluator-epoch.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/evaluator-epoch.ts"
+        },
+        {
+          "path": "packages/supervisor/src/adversarial-pool.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/adversarial-pool.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1",
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD11"
+      ],
+      "work_packages": [
+        "W15"
+      ]
+    },
+    {
+      "id": "PS16",
+      "title": "自包含单元与协调者边界",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS01",
+        "PS13"
+      ],
+      "value": "自包含 brief 与单写者外，还明确端口、DB、身份、依赖和容量，避免把文件隔离当运行隔离。",
+      "limitation": "orch 是文件管理器，不是执行器；不替换 core 数据库。",
+      "acceptance": [
+        "brief 缺验收/环境前提拒绝派发；共享资源冲突限制并行。",
+        "恢复依赖主机事实；不因云模型可用就自动获得部署权限。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/orchestrate.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/orchestrate.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autopilot-full.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autopilot-stack.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/scripts/orch/store.ts",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/orch/store.ts"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/core/src/state/graph-runs.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/graph-runs.ts"
+        },
+        {
+          "path": "packages/graph/src/program-resolver.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/program-resolver.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1"
+      ],
+      "design_delta_ids": [
+        "AD08"
+      ],
+      "work_packages": [
+        "W06",
+        "W12"
+      ]
+    },
+    {
+      "id": "PS17",
+      "title": "栈前沿与候选绑定验证",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS06",
+        "PS16"
+      ],
+      "value": "连续已验证前缀、一个拓扑拥有者、每次 head 变化明确重判。",
+      "limitation": "不因 patch-id 相同自动继承证据；当前 Graph host 无发布权限。",
+      "acceptance": [
+        "head/base/env/acceptance 任一变化使旧验证不可用于新候选。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/shipping.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/shipping.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autopilot-stack.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/github/src/stack.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/github/src/stack.ts"
+        },
+        {
+          "path": "packages/graph/src/join.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/graph/src/join.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS18",
+      "title": "forge 观察器分类",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "selective-port",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS17"
+      ],
+      "value": "纯读取与纯分类分离，输出阻塞项、未知项和数据新鲜度。",
+      "limitation": "上游 ready 不是合并许可；watcher 不拥有发布权限。",
+      "acceptance": [
+        "BLOCKED/UNKNOWN 不产出 permit；失败读回明确标 unknown。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/babysit.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/babysit.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/scripts/watch-pr/policy.ts"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/github/src/attention-ci.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/github/src/attention-ci.ts"
+        },
+        {
+          "path": "packages/github/src/delivery.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/github/src/delivery.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS19",
+      "title": "暂停与恢复对账",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P1",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS13",
+        "PS16"
+      ],
+      "value": "暂停时保存当前事实，恢复时核对分支、head、会话与副作用。",
+      "limitation": "笔记不优先于当前事实；observed_turn 不是 delivered。",
+      "acceptance": [
+        "未知终止状态不作完成；对账幂等；只清理拥有的工作区。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/pause-safely.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/pause-safely.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/session-pickup.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/session-pickup.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/worktree-cleanup.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/autonomous-run.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/cli/src/engineering-host.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/engineering-host.ts"
+        },
+        {
+          "path": "packages/core/src/state/engineering-store.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/engineering-store.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS20",
+      "title": "跨宿主方法适配",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS21"
+      ],
+      "value": "按需加载方法和地图，声明宿主工具与环境能力；本地与未来远端使用相同证据语义。",
+      "limitation": "文本替换不证明等价；缺必需工具不能静默跳过验收。",
+      "acceptance": [
+        "required 功能缺失拒绝；optional 降级明确。",
+        "本地 stand-in 成功不标远端 verified；实际 prompt 的材料选择可追踪。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/setup-pstack/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/setup-pstack/SKILL.md"
+        },
+        {
+          "path": "scripts/generate-pstack-harness-trees.mjs",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/scripts/generate-pstack-harness-trees.mjs"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/core/src/capability.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/capability.ts"
+        },
+        {
+          "path": "packages/cli/src/graph-execution-context.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/graph-execution-context.ts"
+        }
+      ],
+      "article_ids": [
+        "ART1",
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD02",
+        "AD08",
+        "AD12"
+      ],
+      "work_packages": [
+        "W05",
+        "W06",
+        "W09",
+        "W12",
+        "W18"
+      ]
+    },
+    {
+      "id": "PS21",
+      "title": "来源快照与能力资格验证",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "new-glue",
+      "relative_cost": "medium",
+      "depends_on": [],
+      "value": "固定子目录/commit/digest/许可和转换身份，对上游升级分阶段验证。",
+      "limitation": "完整来源管理在验证工具的价值试点后收敛；基本 pin 和现有权限始终保留，不让 registry 成为探索的虚假前置成果。",
+      "acceptance": [
+        "目录越界拒绝；变更只生成 candidate；旧 run 仍绑定原快照。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/poteto-help/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-help/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/authoring-a-skill.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/authoring-a-skill.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/skill-registry/src/manifest.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/manifest.ts"
+        },
+        {
+          "path": "packages/skill-registry/src/watcher.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/skill-registry/src/watcher.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS22",
+      "title": "事件 intake 与补偿模式",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P2",
+      "extraction_strategy": "adapt",
+      "relative_cost": "large",
+      "depends_on": [
+        "PS18",
+        "PS19"
+      ],
+      "value": "借鉴 Benny 的来源定位、去重、复现证据与外部写入补偿。",
+      "limitation": "Benny 为独立 dormant automation；不默认开放 Slack、发消息或发布。",
+      "acceptance": [
+        "重复事件不重复副作用；部分成功有 readback/补偿；失败不瞎修。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/triage-issue-reports/SKILL.md"
+        },
+        {
+          "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md"
+        },
+        {
+          "path": "pstack/automations/benny/skills/setup-benny/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/automations/benny/skills/setup-benny/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/core/src/state/attention-actions.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/core/src/state/attention-actions.ts"
+        },
+        {
+          "path": "packages/cli/src/engineering-host.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/engineering-host.ts"
+        }
+      ],
+      "article_ids": [],
+      "design_delta_ids": [],
+      "work_packages": []
+    },
+    {
+      "id": "PS23",
+      "title": "使用方式驱动的接口与文档设计",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "medium",
+      "depends_on": [
+        "PS03",
+        "PS08"
+      ],
+      "value": "以使用教程和调用样例反推接口，并区分教程、操作指南、参考、解释；个人文风和额外 lint 后置。",
+      "limitation": "个人写作偏好不是产品质量 gate；不硬迁英文标点规则。",
+      "acceptance": [
+        "冷读者能按教程完成命名场景，API 草图通过实际调用验证。",
+        "旧计划退出当前上下文；不强制英文标点或无关风格。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/typescript-best-practices/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/typescript-best-practices/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/technical-writing/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/technical-writing/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/unslop/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/unslop/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/no-comments/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/no-comments/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/cli/src/execution-context.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/execution-context.ts"
+        },
+        {
+          "path": "packages/protocol/src/delivery-contract.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/protocol/src/delivery-contract.ts"
+        }
+      ],
+      "phase_scope": {
+        "P0": "consumer usage sketch and documentation-purpose contract",
+        "P2": "optional writing style and additional code conventions"
+      },
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD04",
+        "AD10"
+      ],
+      "work_packages": [
+        "W10",
+        "W17"
+      ]
+    },
+    {
+      "id": "PS24",
+      "title": "历史上下文恢复与可理解的决策说明",
+      "status": "proposed",
+      "enabled": false,
+      "priority": "P0",
+      "extraction_strategy": "adapt",
+      "relative_cost": "small",
+      "depends_on": [
+        "PS02"
+      ],
+      "value": "把任务相关历史与当前事实连接，解释取舍以帮助用户纠偏，也暴露 agent 自己的知识缺口。",
+      "limitation": "视频/个性化和 Cursor webhook 属可选界面，不进入核心执行依赖。",
+      "acceptance": [
+        "旧假设必须经当前证据重验；不会因解释流畅就提高事实置信度。",
+        "只读任务授权范围，用户能看到目标、关键依据与未决取舍。"
+      ],
+      "sources": [
+        {
+          "path": "pstack/skills/recall/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/recall/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/ketchup/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/ketchup/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/ketchup-video/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/ketchup-video/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/bro/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/bro/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/automate-me/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/automate-me/SKILL.md"
+        },
+        {
+          "path": "pstack/skills/make-bot-ui/SKILL.md",
+          "commit": "99b609a72323b70204eab407c622f436e858e112",
+          "url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/make-bot-ui/SKILL.md"
+        }
+      ],
+      "existing_integration_points": [
+        {
+          "path": "packages/supervisor/src/attention-planning.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/supervisor/src/attention-planning.ts"
+        },
+        {
+          "path": "packages/cli/src/engineering-command.ts",
+          "commit": "c1cfccf18df97fa4b8bc2ed1752071feda9c3670",
+          "url": "https://github.com/osborn-studio/osstack/blob/c1cfccf18df97fa4b8bc2ed1752071feda9c3670/packages/cli/src/engineering-command.ts"
+        }
+      ],
+      "phase_scope": {
+        "P0": "scoped recall, explain and correction",
+        "P2": "optional video, personal-style and webhook UI"
+      },
+      "article_ids": [
+        "ART2"
+      ],
+      "design_delta_ids": [
+        "AD03",
+        "AD12"
+      ],
+      "work_packages": [
+        "W03",
+        "W05",
+        "W09",
+        "W17"
+      ]
+    }
+  ]
+}

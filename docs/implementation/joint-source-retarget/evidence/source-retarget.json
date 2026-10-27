@@ -1,0 +1,10 @@
+{
+  "old_base": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+  "old_head": "b5eba602745c9c12e0e61a09bbad721f858448ca",
+  "new_base": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
+  "merged_head": "73c3b0111881fe016ddcffa37cc2728b33236d04",
+  "old_diff_sha256": "eaffd15c5e4c122bdfd87f8efa91d3141102bf19f0a5e92be85ac9b9e2771ef5",
+  "initial_retarget_diff_sha256": "eaffd15c5e4c122bdfd87f8efa91d3141102bf19f0a5e92be85ac9b9e2771ef5",
+  "initial_retarget_patch_identical": true,
+  "note": "Before new contract adaptation. Later edits are reviewed separately."
+}

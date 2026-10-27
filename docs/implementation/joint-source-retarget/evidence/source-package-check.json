@@ -1,0 +1,25 @@
+{
+  "archive_sha256": "2220f6bb5a845eceb59605becc2e645c3ceaa479b1c688a3c682014c11c5f1b4",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./source-snapshot": {
+      "types": "./dist/source-snapshot.d.ts",
+      "import": "./dist/source-snapshot.js",
+      "default": "./dist/source-snapshot.js"
+    },
+    "./*": "./*"
+  },
+  "dependencies": {
+    "js-yaml": "^4.3.0",
+    "zod": "^3.25.76",
+    "@osstack/core": "0.22.0",
+    "@osstack/protocol": "0.22.0"
+  },
+  "file_count": 14,
+  "compiled_tests_included": false,
+  "scope": "Final local pnpm pack; no publish or installation claimed"
+}

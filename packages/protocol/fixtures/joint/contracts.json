@@ -1,0 +1,3074 @@
+{
+  "fixtures": [
+    {
+      "id": "valid-source_pin",
+      "valid": true,
+      "payload": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "repository": "https://github.com/cursor/plugins",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "pstack",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license_refs": [
+          "LICENSE"
+        ]
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-source_pin",
+      "valid": false,
+      "payload": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "repository": "https://github.com/cursor/plugins",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "pstack",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license_refs": [
+          "LICENSE"
+        ],
+        "unexpected": "reject"
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-source_pin",
+      "valid": false,
+      "payload": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "pstack",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license_refs": [
+          "LICENSE"
+        ]
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "valid-method_binding",
+      "valid": true,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-method_binding",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "unexpected": "reject",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-method_binding",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "valid-check_binding",
+      "valid": true,
+      "payload": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "accept",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-check_binding",
+      "valid": false,
+      "payload": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "accept",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ],
+        "unexpected": "reject"
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-check_binding",
+      "valid": false,
+      "payload": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "primary_id": "accept",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "valid-trial_permit",
+      "valid": true,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-trial_permit",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "unexpected": "reject",
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-trial_permit",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "valid-artifact",
+      "valid": true,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-artifact",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "unexpected": "reject",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-artifact",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "valid-context_receipt",
+      "valid": true,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-context_receipt",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "unexpected": "reject",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-context_receipt",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "valid-recovery_receipt",
+      "valid": true,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "shape_and_local_semantics_only_not_authority"
+    },
+    {
+      "id": "unknown-recovery_receipt",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "unexpected": "reject",
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "strict_unknown_field"
+    },
+    {
+      "id": "missing-recovery_receipt",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "required_identity_missing"
+    },
+    {
+      "id": "completion-confusion",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "observed_turn",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "completion-confusion"
+    },
+    {
+      "id": "permission-expansion",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "automatic",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "permission-expansion"
+    },
+    {
+      "id": "boundary-overclaim",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "boundary-overclaim"
+    },
+    {
+      "id": "qualification-overclaim",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": true,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "qualification-overclaim"
+    },
+    {
+      "id": "expiry-order",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 500,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "expiry-order"
+    },
+    {
+      "id": "path-escape",
+      "valid": false,
+      "payload": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "repository": "https://github.com/cursor/plugins",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "../escape",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license_refs": [
+          "LICENSE"
+        ]
+      },
+      "reason": "path-escape"
+    },
+    {
+      "id": "primary-missing",
+      "valid": false,
+      "payload": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "missing",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "reason": "primary-missing"
+    },
+    {
+      "id": "valid-artifact-intent",
+      "valid": true,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "intent_frame",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "intent"
+      },
+      "reason": "phase-specific evidence identity, shape only"
+    },
+    {
+      "id": "valid-artifact-baseline",
+      "valid": true,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "reproduction",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "baseline",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "reason": "phase-specific evidence identity, shape only"
+    },
+    {
+      "id": "valid-artifact-cleanup",
+      "valid": true,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "cleanup_receipt",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "cleanup",
+        "resource_ledger_ref": "resources-run-1"
+      },
+      "reason": "phase-specific evidence identity, shape only"
+    },
+    {
+      "id": "review-cannot-use-baseline-phase",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "baseline",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "final review requires candidate phase"
+    },
+    {
+      "id": "trial-root-run-expansion",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 2,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "permit allows exactly one root run"
+    },
+    {
+      "id": "committed-not-started",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [
+          "fixture-ref"
+        ],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "proven_not_started",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "audit semantic or shape negative"
+    },
+    {
+      "id": "stopped-wrong-proof",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [
+          "fixture-ref"
+        ],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "proven_stopped",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "audit semantic or shape negative"
+    },
+    {
+      "id": "trial-binding-missing-permit",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "audit semantic or shape negative"
+    },
+    {
+      "id": "check-ref-not-command-digest",
+      "valid": false,
+      "payload": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "accept",
+        "checks": [
+          {
+            "id": "accept",
+            "role": "acceptance",
+            "registry_ref": "npm test",
+            "required": true
+          }
+        ]
+      },
+      "reason": "audit semantic or shape negative"
+    },
+    {
+      "id": "candidate-not-git-id",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "branch-name",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "audit semantic or shape negative"
+    },
+    {
+      "id": "trial-ttl-too-long",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 86401001,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "24 hour TTL ceiling"
+    },
+    {
+      "id": "too-many-checks",
+      "valid": false,
+      "payload": {
+        "kind": "check_binding",
+        "schema_version": 1,
+        "repository": "/fixture/repo",
+        "primary_id": "check-0",
+        "checks": [
+          {
+            "id": "check-0",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "required": true
+          },
+          {
+            "id": "check-1",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+            "required": true
+          },
+          {
+            "id": "check-2",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+            "required": true
+          },
+          {
+            "id": "check-3",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+            "required": true
+          },
+          {
+            "id": "check-4",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+            "required": true
+          },
+          {
+            "id": "check-5",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000005",
+            "required": true
+          },
+          {
+            "id": "check-6",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000006",
+            "required": true
+          },
+          {
+            "id": "check-7",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000007",
+            "required": true
+          },
+          {
+            "id": "check-8",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000008",
+            "required": true
+          },
+          {
+            "id": "check-9",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000009",
+            "required": true
+          },
+          {
+            "id": "check-10",
+            "role": "acceptance",
+            "registry_ref": "sha256:000000000000000000000000000000000000000000000000000000000000000a",
+            "required": true
+          },
+          {
+            "id": "check-11",
+            "role": "acceptance",
+            "registry_ref": "sha256:000000000000000000000000000000000000000000000000000000000000000b",
+            "required": true
+          },
+          {
+            "id": "check-12",
+            "role": "acceptance",
+            "registry_ref": "sha256:000000000000000000000000000000000000000000000000000000000000000c",
+            "required": true
+          },
+          {
+            "id": "check-13",
+            "role": "acceptance",
+            "registry_ref": "sha256:000000000000000000000000000000000000000000000000000000000000000d",
+            "required": true
+          },
+          {
+            "id": "check-14",
+            "role": "acceptance",
+            "registry_ref": "sha256:000000000000000000000000000000000000000000000000000000000000000e",
+            "required": true
+          },
+          {
+            "id": "check-15",
+            "role": "acceptance",
+            "registry_ref": "sha256:000000000000000000000000000000000000000000000000000000000000000f",
+            "required": true
+          },
+          {
+            "id": "check-16",
+            "role": "acceptance",
+            "registry_ref": "sha256:0000000000000000000000000000000000000000000000000000000000000010",
+            "required": true
+          }
+        ]
+      },
+      "reason": "host limit 16"
+    },
+    {
+      "id": "source-noncanonical-path",
+      "valid": false,
+      "payload": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "repository": "https://github.com/cursor/plugins",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "pstack//x\n",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "license_refs": [
+          "LICENSE"
+        ]
+      },
+      "reason": "empty segment and control character"
+    },
+    {
+      "id": "valid-recovery-attention-subject",
+      "valid": true,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "binding_generation": null,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": null,
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "attention_action",
+          "home_id": "fixture-home",
+          "mission_id": "m1",
+          "action_id": "a1",
+          "message_id": "msg1"
+        },
+        "subject_digest": "fc3db101e235f3c2a060c7f78c40fa91a3e1e9514be7ecd01f27d51e4716dae2",
+        "prior_resolution": "none"
+      },
+      "reason": "legacy attention identity without inventing an effect ID"
+    },
+    {
+      "id": "valid-support_profile",
+      "valid": true,
+      "payload": {
+        "kind": "support_profile",
+        "schema_version": 2,
+        "profile_class": "operator_attested_trial",
+        "principal_ref": "fixture-ref",
+        "scope_id": "fixture-ref",
+        "tenant_id": "fixture-ref",
+        "canonical_repo": "fixture-ref",
+        "execution_home_id": "fixture-ref",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "adapter_version": "fixture-ref",
+        "provider": "fixture-ref",
+        "model": "fixture-ref",
+        "runtime_version": "fixture-ref",
+        "executor": "fixture-ref",
+        "template_tuple": "fixture-ref",
+        "isolation": "trusted_local",
+        "can_query": false,
+        "can_request_stop": false,
+        "stop_proof_level": "unavailable",
+        "budget_enforceability": {
+          "wall": "enforceable",
+          "actions": "enforceable",
+          "tokens": "enforceable",
+          "cost": "enforceable"
+        },
+        "measurement_refs": [],
+        "start_identity": "unqualified",
+        "query_by_start_identity": false,
+        "containment_domain": null
+      },
+      "reason": "shape only; trusted host verification still required"
+    },
+    {
+      "id": "unknown-support_profile",
+      "valid": false,
+      "payload": {
+        "kind": "support_profile",
+        "schema_version": 2,
+        "profile_class": "operator_attested_trial",
+        "principal_ref": "fixture-ref",
+        "scope_id": "fixture-ref",
+        "tenant_id": "fixture-ref",
+        "canonical_repo": "fixture-ref",
+        "execution_home_id": "fixture-ref",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "adapter_version": "fixture-ref",
+        "provider": "fixture-ref",
+        "model": "fixture-ref",
+        "runtime_version": "fixture-ref",
+        "executor": "fixture-ref",
+        "template_tuple": "fixture-ref",
+        "isolation": "trusted_local",
+        "can_query": false,
+        "can_request_stop": false,
+        "stop_proof_level": "unavailable",
+        "budget_enforceability": {
+          "wall": "enforceable",
+          "actions": "enforceable",
+          "tokens": "enforceable",
+          "cost": "enforceable"
+        },
+        "measurement_refs": [],
+        "unregistered_field": true,
+        "start_identity": "unqualified",
+        "query_by_start_identity": false,
+        "containment_domain": null
+      },
+      "reason": "strict object"
+    },
+    {
+      "id": "missing-support_profile",
+      "valid": false,
+      "payload": {
+        "kind": "support_profile",
+        "schema_version": 2,
+        "principal_ref": "fixture-ref",
+        "scope_id": "fixture-ref",
+        "tenant_id": "fixture-ref",
+        "canonical_repo": "fixture-ref",
+        "execution_home_id": "fixture-ref",
+        "host_build_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "adapter_version": "fixture-ref",
+        "provider": "fixture-ref",
+        "model": "fixture-ref",
+        "runtime_version": "fixture-ref",
+        "executor": "fixture-ref",
+        "template_tuple": "fixture-ref",
+        "isolation": "trusted_local",
+        "can_query": false,
+        "can_request_stop": false,
+        "stop_proof_level": "unavailable",
+        "budget_enforceability": {
+          "wall": "enforceable",
+          "actions": "enforceable",
+          "tokens": "enforceable",
+          "cost": "enforceable"
+        },
+        "measurement_refs": [],
+        "start_identity": "unqualified",
+        "query_by_start_identity": false,
+        "containment_domain": null
+      },
+      "reason": "required field"
+    },
+    {
+      "id": "valid-method_recipe",
+      "valid": true,
+      "payload": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_id": "fixture-ref",
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
+          }
+        ],
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "allowed_completion": "local_verified",
+        "publication": "none"
+      },
+      "reason": "shape only; trusted host verification still required"
+    },
+    {
+      "id": "unknown-method_recipe",
+      "valid": false,
+      "payload": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_id": "fixture-ref",
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
+          }
+        ],
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "allowed_completion": "local_verified",
+        "publication": "none",
+        "unregistered_field": true
+      },
+      "reason": "strict object"
+    },
+    {
+      "id": "missing-method_recipe",
+      "valid": false,
+      "payload": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
+          }
+        ],
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "allowed_completion": "local_verified",
+        "publication": "none"
+      },
+      "reason": "required field"
+    },
+    {
+      "id": "valid-method_proposal",
+      "valid": true,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "shape only; trusted host verification still required"
+    },
+    {
+      "id": "unknown-method_proposal",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false,
+        "unregistered_field": true
+      },
+      "reason": "strict object"
+    },
+    {
+      "id": "missing-method_proposal",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "required field"
+    },
+    {
+      "id": "valid-artifact_requirements",
+      "valid": true,
+      "payload": {
+        "kind": "artifact_requirements",
+        "schema_version": 1,
+        "recipe_version": "fixture-ref",
+        "requirements": [
+          {
+            "artifact_ref_kind": "independent_review",
+            "producer_role": "reviewer",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "reason": "shape only; trusted host verification still required"
+    },
+    {
+      "id": "unknown-artifact_requirements",
+      "valid": false,
+      "payload": {
+        "kind": "artifact_requirements",
+        "schema_version": 1,
+        "recipe_version": "fixture-ref",
+        "requirements": [
+          {
+            "artifact_ref_kind": "independent_review",
+            "producer_role": "reviewer",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ],
+        "unregistered_field": true
+      },
+      "reason": "strict object"
+    },
+    {
+      "id": "missing-artifact_requirements",
+      "valid": false,
+      "payload": {
+        "kind": "artifact_requirements",
+        "schema_version": 1,
+        "requirements": [
+          {
+            "artifact_ref_kind": "independent_review",
+            "producer_role": "reviewer",
+            "body_schema_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "verifier_policy_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "required": true
+          }
+        ]
+      },
+      "reason": "required field"
+    },
+    {
+      "id": "invalid-digest-source_pin-content_sha256",
+      "valid": false,
+      "payload": {
+        "kind": "source_pin",
+        "schema_version": 1,
+        "repository": "https://github.com/cursor/plugins",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subdir": "pstack",
+        "content_sha256": "bad-digest",
+        "license_refs": [
+          "LICENSE"
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_binding-proposal_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "bad-digest",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_binding-contract_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "bad-digest",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_binding-context_config_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "bad-digest",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_binding-support_profile_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "bad-digest",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_binding-source_snapshot_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "bad-digest",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_binding-binding_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_binding",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "completion": "local_verified",
+        "publication": "none",
+        "merge": "none",
+        "binding_digest": "bad-digest",
+        "mode": "trial",
+        "trial_permit_id": "trial-1",
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ]
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-trial_permit-candidate_method_digest",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "bad-digest",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-trial_permit-contract_digest",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "bad-digest",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-trial_permit-support_profile_digest",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "bad-digest",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-trial_permit-binding_digest",
+      "valid": false,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bad-digest",
+        "max_adapter_invocations": 8,
+        "max_actions": 32,
+        "max_tokens": 100000,
+        "max_cost_microusd": 10000000
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-artifact-binding_digest",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "bad-digest",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-artifact-content_sha256",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "bad-digest",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-artifact-scenario_digest",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "bad-digest",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-artifact-environment_digest",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "bad-digest",
+        "check_registry_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-artifact-check_registry_digest",
+      "valid": false,
+      "payload": {
+        "kind": "artifact",
+        "schema_version": 1,
+        "artifact_kind": "independent_review",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "effect_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "candidate": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "diff_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "workspace_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "producer_role": "fixture-ref",
+        "host_record_ref": "fixture-ref",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1,
+        "identity_assurance": "reported",
+        "artifact_phase": "candidate",
+        "scenario_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "environment_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "check_registry_digest": "bad-digest",
+        "baseline_artifact_ref": "artifact-baseline-1"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-binding_digest",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "bad-digest",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-contract_digest",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "bad-digest",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-context_config_digest",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "bad-digest",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-method_text_sha256",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "bad-digest",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-prompt_sha256",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "bad-digest",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-required_artifacts_digest",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "bad-digest"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-context_receipt-proposal_digest",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 1024,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 4096,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "bad-digest",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-recovery_receipt-schema_spec_digest",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "bad-digest",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-recovery_receipt-support_profile_digest",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "bad-digest",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-recovery_receipt-recovery_build_digest",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "bad-digest",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-recovery_receipt-ddl_digest",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "bad-digest",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-recovery_receipt-fixture_digest",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bad-digest",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-recovery_receipt-subject_digest",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "bad-digest",
+        "prior_resolution": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-support_profile-host_build_digest",
+      "valid": false,
+      "payload": {
+        "kind": "support_profile",
+        "schema_version": 2,
+        "profile_class": "operator_attested_trial",
+        "principal_ref": "fixture-ref",
+        "scope_id": "fixture-ref",
+        "tenant_id": "fixture-ref",
+        "canonical_repo": "fixture-ref",
+        "execution_home_id": "fixture-ref",
+        "host_build_digest": "bad-digest",
+        "adapter_version": "fixture-ref",
+        "provider": "fixture-ref",
+        "model": "fixture-ref",
+        "runtime_version": "fixture-ref",
+        "executor": "fixture-ref",
+        "template_tuple": "fixture-ref",
+        "isolation": "trusted_local",
+        "can_query": false,
+        "can_request_stop": false,
+        "stop_proof_level": "unavailable",
+        "budget_enforceability": {
+          "wall": "enforceable",
+          "actions": "enforceable",
+          "tokens": "enforceable",
+          "cost": "enforceable"
+        },
+        "measurement_refs": [],
+        "start_identity": "unqualified",
+        "query_by_start_identity": false,
+        "containment_domain": null
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_recipe-source_snapshot_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_id": "fixture-ref",
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "bad-digest",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "a182a30f92b1526e83b5b9ff115d0c188b57263c936a63d6e89fd757f883c172"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "74816d1c586fad22cedf7ada79fad3a44ebf74967e4a867dd4632177a8bc3d1e"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "aa2b51b280a39941f4ed3ef9be51139351d1a23d3356010827b0f0324d681c39"
+          }
+        ],
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "allowed_completion": "local_verified",
+        "publication": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_recipe-required_artifacts_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_recipe",
+        "schema_version": 1,
+        "recipe_id": "fixture-ref",
+        "recipe_version": "fixture-ref",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "intent_kind": "bug_fix",
+        "logical_check_roles": [
+          "reproduce"
+        ],
+        "role_materials": [
+          {
+            "role": "builder",
+            "method_text_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "role_required_artifacts_digest": "05e18e3d04bfa58bb98f9821081a9583a002899e6e2a3a3ab78a76979d9f29d6"
+          },
+          {
+            "role": "reviewer",
+            "method_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "role_required_artifacts_digest": "974dec72ad39b69edad7aeee27e0d7b196bf375f805d88d39c92258119f5ad55"
+          },
+          {
+            "role": "verifier",
+            "method_text_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "role_required_artifacts_digest": "c1e07c31311cab2b93b507fb80f0dbc013d3433f9254462ffdd61eb859cd8c61"
+          }
+        ],
+        "required_artifacts_digest": "bad-digest",
+        "allowed_completion": "local_verified",
+        "publication": "none"
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_proposal-intent_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "bad-digest",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_proposal-source_snapshot_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "bad-digest",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_proposal-recipe_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "bad-digest",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_proposal-check_binding_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "bad-digest",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_proposal-required_artifacts_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "bad-digest",
+        "method_input_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "executable": false
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "invalid-digest-method_proposal-method_input_digest",
+      "valid": false,
+      "payload": {
+        "kind": "method_proposal",
+        "schema_version": 1,
+        "task_id": "fixture-ref",
+        "intent_revision": 0,
+        "intent_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "recipe_version": "fixture-ref",
+        "check_binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_input_digest": "bad-digest",
+        "executable": false
+      },
+      "reason": "single digest pattern violation"
+    },
+    {
+      "id": "method-material-too-large",
+      "valid": false,
+      "payload": {
+        "kind": "context_receipt",
+        "schema_version": 2,
+        "phase": "prepared",
+        "evidence_boundary": "agent_task_prompt_not_provider_wire",
+        "task_id": "fixture-ref",
+        "run_id": "fixture-ref",
+        "session_id": "fixture-ref",
+        "binding_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context_config_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method_bytes": 16385,
+        "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "prompt_bytes": 65536,
+        "token_window_qualification": "unqualified",
+        "role": "builder",
+        "proposal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "role_required_artifacts_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "single method byte bound violation"
+    },
+    {
+      "id": "legacy-recovery-null-identities",
+      "valid": true,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "binding_generation": null,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": null,
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "legacy_unknown",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "attention_action",
+          "home_id": "fixture-home",
+          "mission_id": "m1",
+          "action_id": "a1",
+          "message_id": "msg1"
+        },
+        "subject_digest": "fc3db101e235f3c2a060c7f78c40fa91a3e1e9514be7ecd01f27d51e4716dae2",
+        "prior_resolution": "none"
+      }
+    },
+    {
+      "id": "legacy-cannot-claim-stopped",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "binding_generation": null,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": null,
+        "proof_refs": [
+          "fixture-ref"
+        ],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "proven_stopped",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "legacy_unknown",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "attention_action",
+          "home_id": "fixture-home",
+          "mission_id": "m1",
+          "action_id": "a1",
+          "message_id": "msg1"
+        },
+        "subject_digest": "fc3db101e235f3c2a060c7f78c40fa91a3e1e9514be7ecd01f27d51e4716dae2",
+        "prior_resolution": "none"
+      }
+    },
+    {
+      "id": "abandoned-reserved-cannot-cancel",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [
+          "fixture-ref"
+        ],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "proven_not_started",
+        "target": "home",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "reserved",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "abandoned_unknown"
+      }
+    },
+    {
+      "id": "home-broker-target-mismatch",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "effect_id": "fixture-ref",
+        "binding_generation": 1,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "broker",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "dispatch_committed",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "effect",
+          "home_id": "fixture-home",
+          "effect_id": "fixture-ref"
+        },
+        "subject_digest": "54fe5083cccf6898dafd569079d7e4b3fb4b572ace57f9ea758939a06c56d08d",
+        "prior_resolution": "none"
+      }
+    },
+    {
+      "id": "trial-observation-only-finance",
+      "valid": true,
+      "payload": {
+        "kind": "trial_permit",
+        "schema_version": 1,
+        "permit_id": "fixture-ref",
+        "issuer_ref": "fixture-ref",
+        "authorization_ref": "fixture-ref",
+        "candidate_method_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contract_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "/fixture/repo",
+        "max_wall_ms": 1,
+        "issued_at_ms": 1000,
+        "expires_at_ms": 2000,
+        "scope": "trusted_isolated_development_trial",
+        "production_qualified": false,
+        "max_root_runs": 1,
+        "root_effect_id": "trial-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "binding_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "max_adapter_invocations": 8,
+        "max_actions": 32
+      }
+    },
+    {
+      "id": "valid-broker-recovery",
+      "valid": true,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "binding_generation": null,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": null,
+        "proof_refs": [],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "preserve_unknown",
+        "target": "broker",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "broker_unknown",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [],
+        "subject": {
+          "kind": "broker_lease",
+          "home_id": "fixture-home",
+          "broker_id": "broker-1",
+          "lease_id": "lease-1"
+        },
+        "subject_digest": "34e9dbe0655fd476838f533c86e01932b53fdacdedae1b342a0f4029f01ef170",
+        "prior_resolution": "none"
+      }
+    },
+    {
+      "id": "broker-stopped-missing-identity",
+      "valid": false,
+      "payload": {
+        "kind": "recovery_receipt",
+        "schema_version": 1,
+        "binding_generation": null,
+        "owner_generation": 1,
+        "schema_spec_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "support_profile_digest": null,
+        "proof_refs": [
+          "fixture-ref"
+        ],
+        "operator_ref": "fixture-ref",
+        "request_id": "fixture-ref",
+        "decision": "proven_stopped",
+        "target": "broker",
+        "observed_at_ms": 1,
+        "authorization_ref": "fixture-authorization",
+        "scope_id": "fixture-scope",
+        "tenant_id": "default",
+        "target_home_id": "fixture-home",
+        "recovery_build_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "prior_phase": "broker_unknown",
+        "if_revision": 3,
+        "actual_target_schema": 48,
+        "ddl_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "fixture_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "candidate_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "proofs": [
+          {
+            "type": "invocation_contained",
+            "evidence_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "producer_ref": "host:1",
+            "subject_digest": "34e9dbe0655fd476838f533c86e01932b53fdacdedae1b342a0f4029f01ef170",
+            "record_ref": "fixture-ref"
+          }
+        ],
+        "subject": {
+          "kind": "broker_lease",
+          "home_id": "fixture-home",
+          "broker_id": "broker-1",
+          "lease_id": "lease-1"
+        },
+        "subject_digest": "34e9dbe0655fd476838f533c86e01932b53fdacdedae1b342a0f4029f01ef170",
+        "prior_resolution": "none"
+      }
+    }
+  ],
+  "note": "synthetic fixtures; no valid operational credentials or qualification claims",
+  "implementation_adjustment": "Role materials use role_required_artifacts_digest; recovery subject digests are recomputed; proof records bind refs; trial root IDs use the frozen trial prefix. Original design inputs remain unchanged."
+}

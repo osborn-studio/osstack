@@ -1,0 +1,145 @@
+CLOSEOUT_BEGIN
+
+**判定：REVISE（设计层，收敛型）**
+
+上轮 RV/CH 的主体缺口已实质关闭。剩余问题集中在已定义对象之间的接缝，其中 CO01、CO02、CO04、CO08 是 P1，按现有文面无法实现或会自相矛盾。本次未运行任何命令。53 个文档测试只证明规划自洽，不是产品正确性。未来产品验证尚未运行，列为实施条件，不算新缺陷。
+
+## 仍需修订
+
+**CO01 P1：恢复裁决缺"裁决后状态"**
+- 位置：audit-specifications §1 矩阵，`recovery_receipt.prior_phase`。
+- 矩阵只定义了"允许的组合与证明"，没有定义裁决落库后的结果：
+  1. 是否清除 `attention_dispatch_holds`，是否让 ADR-16 升级守卫放行。
+  2. 预算和资源预留是否释放。
+  3. `applied_observed` 是否写 `message.applied` 和 completed turn，即 ADR-06 的等待清除谓词。
+  4. committed 且已有 `attention_receipt_resolutions(abandoned_unknown)` 的行，对应 `prior_phase` 的哪个值。枚举没有这一维。
+  5. `legacy_unknown` 没有 invocation 记录，"验证精确 invocation"无对象可验。
+- 反例：`proven_stopped` 后 hold 仍在，则 J13 迁移永远被阻。若自动清除，则等于放行升级，而 ADR-16 原文是"无受支持解除通道"。
+- 建议：
+  1. 增加 decision→后态表，列出 hold、reservation、wait、upgrade guard 四列。
+  2. legacy 行只允许 `preserve_unknown`，或另定停止证明的对象。
+  3. JA51 增加后态断言。
+
+**CO02 P1：bootstrap 入口与迁移证据粒度**
+- 位置：`db.ts` 的 `openDb`→`runMigrations`，J12 write_paths，J11/J12/J13 的 `schema_recovery_gate`。
+- (a) 任何读写打开都会应用全部 pending 迁移。账本迁移一旦进入产品 `MIGRATIONS`，普通 daemon 启动就绕过了"专用操作+独占 fence"。
+  - 现有 hold 检查在 `engineering-upgrade-guard`，归 J24，不在 J12 的 write_paths。
+  - 须定义 recovery 模式 openDb：只跑白名单迁移，使用独立的 CURRENT 版本。
+  - 须定义普通构建遇 hold 加该迁移时的行为，并把 guard 改动归 J12。
+- (b) J11 冻结 `actual_target_schema` 和 `ddl_digest`，但 §7 说编号在 PR 时才分配。
+  - I04 规则是"N+1 证据不能资格 N+2"。
+  - 而 J08/J10/J13 的恢复 gate 都指向 J12.scoped，J12 只证明 J11 的 fixture。
+  - 须声明迁移链：账本一步，其后每个业务迁移各有 `schema_spec_digest` 和恢复 gate。
+  - 或者 J11 冻结单一 union 迁移，并要求 J13/J08 的实际 DDL 摘要等于冻结值。后一条检查目前没写。
+
+**CO03 P2：typed subject 缺交叉约束与 legacy 取值**
+- 位置：`recovery_receipt`，fixture `valid-recovery-attention-subject`。
+- `binding_generation`、`support_profile_digest` 必填，但旧试点 attention hold 没有 binding 和 profile。该 fixture 靠填 1 和 "aaaa…" 通过，等于要求伪造。
+- `target`(home|broker) 与 `subject.kind` 无约束。`broker_lease`+`home` 能通过 schema。
+- §1 要求 broker proof 带 broker identity、schema、owner generation、lease ID。`proofs[]` 没有这些字段，`prior_phase` 也没有 lease 相位。
+- 建议：
+  1. legacy 用显式 null/sentinel，校验器按 `subject.kind` 分支。
+  2. 加 `kind`↔`target` 约束。
+  3. 定义 broker proof 形状并补负例。
+
+**CO04 P1：试验 root 的标识、CAS 位点与预算账本**
+- 位置：`trial_permit`，audit-specifications §3，J08 write_paths。
+- (a) `root_effect_id` 的所指未定。
+  - Graph v4 有 `graph_run_id` 和逐节点 `effect_key`。`engineering-dispatch` 的 phase 属 attention/C04，不在 Graph 路径上。
+  - J08 的 write_paths 没有 Graph run 或 action 启动事务文件，"消费与首次 dispatch CAS 同事务"无落点。
+  - 若 root 取自启动时随机生成的 run id，permit 无法预绑。
+  - 建议：root 取启动时可确定性派生的 `graph_run_id`，消费行放入 Graph 启动事务，并补 J08 路径。
+- (b) 内部 slot 账本 `(root,node,slot,attempt)` 复制了 `graph_actions` 的 UNIQUE 与 `reservation_tokens`。它与 graph-policy limits 的关系未定，permit 是否只能收窄、谁是唯一扣减源都没写。建议改为对 `graph_actions` 的约束投影，并写明 permit≤policy。
+- (c) permit 必填 `max_tokens` 和 `max_cost_microusd`（min 1），与"不可强制维度不得接受硬预算"冲突。cost 为 unavailable 时，要么无法签发，要么被迫填虚假上限，违反 WD-47。建议按 profile 的 enforceability 让字段可缺省或标 `observed_only`，校验器与 profile 交叉检查。
+
+**CO05 P2：摘要/Profile 对象仍有歧义**
+- 位置：`required_artifacts_digest`，digest-catalog，audit-specifications §4，`support_profile`，work-packages 的 J01 outputs。
+1. `required_artifacts_digest` 在 recipe、`role_materials[]`、proposal、context_receipt 四处同名，catalog 只定义"整个 ArtifactRequirements"。per-role 摘要的对象未定，JA53 的角色交换无法判定。
+2. §4 声明五个 domain 且"不能互换"，catalog 实际用了十余个。`artifact-manifest` 反而没有任何字段使用。
+3. 规则 1 说输入是"已通过 schema 的 JSON 值"，但拒绝重复键和负零是文本层属性，`JSON.parse` 做不到。J01 须规定原始文本严格解析器。向量也缺引号和控制字符转义用例。这是对受限算法的实现条件，不是否定该算法。
+4. `SupportProfile` 没有 E01 自动 start 所需的字段，即 effect 派生 run_id 的幂等启动/查询和 containment 域。J23 又被规定"只填充不重定义形状"，所以 `measured_qualified` 必然要改形状。应声明它是 profile v2，并在 J01 预留版本位。
+5. J01 的 outputs 仅写"schema/fixture"，应显式列入 Recipe、Proposal、Profile、body schema。
+
+**CO06 P2：v2 host 配置的重启身份**
+- 位置：audit-specifications §9，`graph-contract-host.ts` 的 `readBounded`，J04/J31 路径。
+1. 配置含三角色模板（各≤16384B）、意图和 `binding_inputs`，而 `readBounded` 和 `loadExecutionContextConfig` 上限是 65536B。须声明配置总上限并从中分配角色预算。
+2. "受信 registration 记录 digest 和路径"没有持久位置和 owner。J04 无存储路径且早于 J08/J12。须明确为内容寻址文件加请求引用，不依赖表。
+3. cleanup 只清自有资源，配置快照属于自有资源。但对 unknown 或非终态 root，它是重启重算所必需的，应列入保全。JA56 未覆盖。
+4. 重启后的 query/stop/reconcile 路径不得经 `authorize`，否则 permit 过期会堵死恢复。
+
+**CO07 P2：原 gate 与 114 case 的继承只验"映射存在"**
+- 位置：`execution-gates.json` 的 `legacy_gate_map`，legacy-case-map，validate-design.py。
+1. producer 替换后出现环或缺边。
+   - `V03.host_measurement` 原需 `R05`（producer 为 J10.scoped），其 producer 是 J23.scoped，而 J10.scoped 需 J23.scoped。这是环。`E01.recoverable_profile` 同理。
+   - `E02.local_dispatch` 原需 C06/X01（J15.scoped），晚于其 producer J14.scoped。
+   - `D07.host_qualification` 原需 V03，但 producer J03.scoped 不含 J23。
+   - 校验器只查 producer 存在。
+2. 114 个 `retained_as_gate` 在 execution-gates 中没有消费边。J14.scoped 或 J27 可以通过，而 FM:WD-16 仍是 not_run。`release_requirements` 也只列里程碑。
+3. 建议：
+   - 校验器检查每个 legacy gate 的 producer 闭包是否覆盖原 requires 的 producer，否则必须显式写 scope override 及原因。
+   - 给 case 加 `gates:` 字段，并让 `Jxx.scoped` 或对应 release 引用 case 级证据。
+
+**CO08 P1：E0/E1/J27 相互矛盾**
+- 位置：execution-gates 的 J27 与 `J25.e1`，audit-specifications §6，work-packages 的 J14 `merge_after`。
+- J27.scoped 含 JA38 的 local opt-in，却要求 `J25.e1=continue` 且 `J32.scoped=continue`。而 §6 明确允许 safety_only opt-in，E1 在 n=12 下本来就不能产生收益结论。结果是 safety_only 下没有任何发布 gate。
+- E1 的 continue 判据没有定义，可能被"可行性"偷换成"价值"。J32 没有 decision 字段。
+- J14 `merge_after` J04。E0=stop 时 J04 可能被取消，该边变得不可满足，等于把 Firstmate 路径重新耦合到方法实验，而 CH09 要求的是解耦。
+- 建议：
+  1. 拆 J27 为 opt-in 和 default-enable。opt-in 要求 e1∈{continue, safety_only}，不需要 J32；default-enable 要求 J32 的价值决定。
+  2. 预登记 E1 各决定的判据：continue=可行且保护指标无退化，价值只由 E2 判定。
+  3. 声明 `merge_after` 只表示"两者都存在时的顺序"，不是前置。
+
+**CO09 P2：oracle 只有占位，没有生命周期**
+- 位置：`oracle_spec`，validate-design.py。
+- 校验器强制所有 case 的 `pinned_digest` 为 null、`assignment_state` 固定。冻结后的真实状态反而过不了校验。
+- gate 里没有"oracle 冻结早于候选 SHA"的要求。
+- 独立性只靠角色名字符串不同。`independent-verification-owner` 同时承担 J23 的 harness 工作流，又给约 45 个 case 当 oracle 作者，也没有人员不相交规则。
+- 建议：
+  1. 定义状态机 unassigned→assigned→frozen(digest, custodian, 时间)→executed。
+  2. gate 要求 frozen 早于 candidate。
+  3. 加人员不相交与作者集中度上限。
+
+**CO10 P3：文档漂移**
+- `validation.md` 仍写 48 个 JA、28 项 fixture(7+21)、27 tests、225 锚点，实际为 69/93/53/227。
+- `implementation-plan.md` §2 的 P0-B 链和 mermaid 缺 J11→J12→J08 与 J03→J08，而 J08 的 gate 需要它们。这正是"首条价值路径的阻塞阶段"，必须写明。
+- `claude-audit.md` 末节"待修订候选的…复审完成"是占位句，应改为本次复审的记录引用。
+
+## 已确认关闭（不重提）
+- 恢复 bootstrap 已采用明确的白名单迁移方案，JADR11/12 把原 hold 规则的例外范围写清。
+- 试验 root 与内部预算已分层，消费 CAS 同事务。
+- baseline、candidate、cleanup 三相位 schema 与负例。
+- 角色材料分离，host-owned v2 配置选型。
+- E0/E1 先后边，O01–O06 机器化，schema queue 资源与路径。
+- `joint-canonical-v1` 是明确定义的受限算法，不要求 RFC 8785。
+
+## RV/CH 覆盖结论
+原审计（RV01–18、CH01–16）与本次复审是两轮不同的意见：下表是对"修订是否关闭原意见"的判断，CO 是本次新增的残留项。
+
+| 编号 | 结论 |
+|---|---|
+| RV01 | 基本关闭，残留 CO05 |
+| RV02 | 关闭，迁移粒度残留 CO02 |
+| RV03 | 基本关闭，残留 CO04 |
+| RV04 | 关闭，残留 CO05 |
+| RV05 | 部分，残留 CO02、CO03 |
+| RV06 | 关闭，残留 CO06 |
+| RV07 | 部分，残留 CO03 |
+| RV08 | 关闭 |
+| RV09 | 关闭，残留 CO07 |
+| RV10、RV11、RV14、RV15、RV16、RV18 | 关闭 |
+| RV12 | 关闭，残留 CO08 |
+| RV13 | 部分采纳合理 |
+| RV17 | 部分，残留 CO07、CO09 |
+| CH01 | 残留 CO01 |
+| CH02、CH13 | 残留 CO02 |
+| CH03 | 关闭 |
+| CH04 | 残留 CO04 |
+| CH05 | 关闭，CO05(3) 是实现条件 |
+| CH06 | 残留 CO07 |
+| CH07、CH08、CH14、CH16 | 关闭 |
+| CH09、CH10 | 残留 CO08 |
+| CH11 | 残留 CO04(c) |
+| CH12 | 残留 CO09 |
+| CH15 | 关闭，O02 为实施条件 |
+
+CLOSEOUT_END

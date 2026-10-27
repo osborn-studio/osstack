@@ -1,0 +1,2114 @@
+{
+  "schema_version": 1,
+  "kind": "joint_scoped_milestones_not_runtime_scheduler",
+  "runtime_enabled": false,
+  "rule": "dependencies apply to scoped outputs, not completion of every original capability; original gates remain preserved in legacy-work-map",
+  "items": [
+    {
+      "id": "J01",
+      "title": "共享身份、完成与资格契约",
+      "phase": "contract",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [],
+      "owner_role": "contract-owner",
+      "write_paths": [
+        "packages/protocol/src/engineering.ts",
+        "packages/protocol/src/method-binding.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "固定边界与严格正负例"
+      ],
+      "outputs": [
+        "versioned strict MethodRecipe/Proposal/Binding, SupportProfile v2, ArtifactRequirements and ten material body schemas",
+        "strict raw JSON parser + joint-canonical-v1 vectors + role projection definition",
+        "errors, identity, migration-spec and oracle/gate lifecycle contracts"
+      ],
+      "acceptance": [
+        "拒绝范围扩大、完成级别混用与错误版本"
+      ],
+      "rollback": "停止新格式准入，保留既有 v1 路径",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-01",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA01",
+        "JA02",
+        "JA59"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/protocol/src/engineering.ts": "extend_existing",
+        "packages/protocol/src/method-binding.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J01.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:R01",
+        "FM:D01",
+        "FM:C01",
+        "FM:E01"
+      ]
+    },
+    {
+      "id": "J02",
+      "title": "共用来源快照与分型注册",
+      "phase": "source",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J01"
+      ],
+      "owner_role": "source-owner",
+      "write_paths": [
+        "packages/skill-registry/src/manifest.ts",
+        "packages/skill-registry/src/source-snapshot.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "Git 对象、subdir 与采用依赖"
+      ],
+      "outputs": [
+        "稳定快照和 typed registry refs",
+        "R03/R04 行为来源映射、24+8 fixture 规格、实际采用依赖闭包与毒化输入夹具"
+      ],
+      "acceptance": [
+        "离线重放相同摘要，缺对象/越界/漂移均拒绝"
+      ],
+      "rollback": "保留旧快照，撤销新 active 指针",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-02",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA03",
+        "JA04"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/skill-registry/src/manifest.ts": "extend_existing",
+        "packages/skill-registry/src/source-snapshot.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A01",
+        "PS:A02",
+        "PS:A03",
+        "PS:A04"
+      ],
+      "entry_gate": "J02.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:R01",
+        "FM:R02",
+        "FM:R03",
+        "FM:R04",
+        "PS:W01",
+        "PS:W02"
+      ]
+    },
+    {
+      "id": "J03",
+      "title": "session-answer-receipt 驱动夹具",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J01"
+      ],
+      "owner_role": "verification-owner",
+      "write_paths": [
+        "scripts/method-control.mjs",
+        "scripts/lib/method-control-driver.mjs",
+        "scripts/fixtures/session-answer-receipt.json"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "已有 Session 采纳路径、隔离 home"
+      ],
+      "outputs": [
+        "JP-03a session-answer-receipt 与 JP-03b bug-fix-fixture 两个注册 driver；同一动作 registry 与资源清理"
+      ],
+      "acceptance": [
+        "真实原路径产生回执，cleanup 错误不改应用事实"
+      ],
+      "rollback": "停止夹具，仅清理已证明属于本 run 的资源",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-03",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA05",
+        "JA06",
+        "JA44"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/method-control.mjs": "proposed_new_recheck_before_implementation",
+        "scripts/lib/method-control-driver.mjs": "proposed_new_recheck_before_implementation",
+        "scripts/fixtures/session-answer-receipt.json": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-01",
+        "FM:WD-02",
+        "FM:WD-04",
+        "FM:WD-33",
+        "FM:WD-34",
+        "FM:WD-35",
+        "PS:A13",
+        "PS:A14",
+        "PS:A33",
+        "PS:A34",
+        "PS:A43",
+        "PS:A44"
+      ],
+      "entry_gate": "J03.scoped",
+      "write_resources": [],
+      "planned_pr_slices": [
+        "JP-03a session driver",
+        "JP-03b bug-fix driver"
+      ],
+      "legacy_task_ids": [
+        "FM:D07",
+        "FM:D08",
+        "PS:W06"
+      ]
+    },
+    {
+      "id": "J04",
+      "title": "必需方法材料与 v2 调用回执",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J01",
+        "J02"
+      ],
+      "owner_role": "context-owner",
+      "write_paths": [
+        "packages/cli/src/execution-context.ts",
+        "packages/cli/src/graph-execution-context.ts",
+        "packages/cli/src/graph-contract-host.ts",
+        "packages/knowledge/src/context-budget.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/method-context-snapshots.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "方法固定文本、现有 contextDigest"
+      ],
+      "outputs": [
+        "显式 method mandatory 通道及实际 adapter 证据"
+      ],
+      "acceptance": [
+        "裁剪/替换/撤权前拒绝，v1 回归保持"
+      ],
+      "rollback": "禁止新 v2 启动，活动任务沿原 host 对账",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-04",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O02",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA07",
+        "JA08",
+        "JA09",
+        "JA46",
+        "JA53"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/cli/src/execution-context.ts": "extend_existing",
+        "packages/cli/src/graph-execution-context.ts": "extend_existing",
+        "packages/cli/src/graph-contract-host.ts": "extend_existing",
+        "packages/knowledge/src/context-budget.ts": "extend_existing",
+        "packages/cli/src/graph-rpc.ts": "extend_existing_recheck_before_implementation",
+        "packages/cli/src/method-context-snapshots.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A11",
+        "PS:A12",
+        "PS:A48"
+      ],
+      "entry_gate": "J04.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:C07",
+        "PS:W05"
+      ]
+    },
+    {
+      "id": "J05",
+      "title": "检查映射与单方法纯编译",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J02",
+        "J06"
+      ],
+      "owner_role": "method-owner",
+      "write_paths": [
+        "packages/skill-registry/src/recipe-compiler.ts",
+        "packages/protocol/src/engineering-recipe.ts",
+        "packages/cli/src/method-admission.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "usage 草图、recipe、仓库检查注册表"
+      ],
+      "outputs": [
+        "稳定 proposal、明确 primary 与 required artifact 契约"
+      ],
+      "acceptance": [
+        "两个仓库命令映射正确，未注册/多 primary 拒绝"
+      ],
+      "rollback": "关闭新增 method admission，旧合同不改",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-05",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA10",
+        "JA11"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/skill-registry/src/recipe-compiler.ts": "proposed_new_recheck_before_implementation",
+        "packages/protocol/src/engineering-recipe.ts": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/method-admission.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A06",
+        "PS:A07",
+        "PS:A08",
+        "PS:A09",
+        "PS:A10"
+      ],
+      "entry_gate": "J05.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:X02",
+        "PS:W03",
+        "PS:W04"
+      ]
+    },
+    {
+      "id": "J06",
+      "title": "使用草图与三条功能地图",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J03"
+      ],
+      "owner_role": "method-owner",
+      "write_paths": [
+        "docs/guides/method-control.md",
+        "packages/skill-registry/fixtures/feature-map.json"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "冷调用者操作记录、原始机制与假设"
+      ],
+      "outputs": [
+        "调用草图、复现/等待/取消三条地图及 owner",
+        "V05 中英文文档示例逐条执行，冷调用者记录与错误预期"
+      ],
+      "acceptance": [
+        "操作可独立复现；每个未知有观察或标记"
+      ],
+      "rollback": "回退地图版本，失效路径禁止声称覆盖",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-06",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA12",
+        "JA13"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "docs/guides/method-control.md": "proposed_new_recheck_before_implementation",
+        "packages/skill-registry/fixtures/feature-map.json": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A35",
+        "PS:A36",
+        "PS:A37",
+        "PS:A38",
+        "PS:A39",
+        "PS:A40",
+        "PS:A41",
+        "PS:A45",
+        "PS:A47"
+      ],
+      "entry_gate": "J06.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:V05",
+        "PS:W17",
+        "PS:W18",
+        "PS:W19"
+      ]
+    },
+    {
+      "id": "J07",
+      "title": "产物消费与同候选评审",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J04",
+        "J05"
+      ],
+      "owner_role": "verification-owner",
+      "write_paths": [
+        "packages/cli/src/method-evidence.ts",
+        "packages/cli/src/graph-verification.ts",
+        "packages/protocol/src/method-artifact.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "Binding、现有候选身份与 required artifacts"
+      ],
+      "outputs": [
+        "host 管理的产物引用、完整性与独立评审范围"
+      ],
+      "acceptance": [
+        "移除/替换产物及使用旧候选都阻止完成"
+      ],
+      "rollback": "保留实际回执，禁止无证据完成",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-07",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA14",
+        "JA15",
+        "JA45",
+        "JA50",
+        "JA68"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/cli/src/method-evidence.ts": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/graph-verification.ts": "extend_existing",
+        "packages/protocol/src/method-artifact.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-27",
+        "PS:A15",
+        "PS:A16",
+        "PS:A17",
+        "PS:A42"
+      ],
+      "entry_gate": "J07.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:I03",
+        "PS:W07"
+      ]
+    },
+    {
+      "id": "J08",
+      "title": "首次受限试验准入",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J03",
+        "J07",
+        "J12"
+      ],
+      "owner_role": "qualification-owner",
+      "write_paths": [
+        "packages/cli/src/method-admission.ts",
+        "packages/skill-registry/src/recipe-qualification.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts",
+        "packages/core/src/state/graph-runs.ts",
+        "packages/core/src/state/graph-actions.ts",
+        "packages/cli/src/graph-rpc.ts",
+        "packages/cli/src/graph-action-broker.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "现有授权、精确候选、受控环境与预算"
+      ],
+      "outputs": [
+        "不依赖 active 的 trial permit 绑定",
+        "host deterministic trial graph_run_id + atomic createAndConsumeTrial in existing GraphRunStore transaction; graph_actions remains sole slot/accounting ledger",
+        "permit budget clamps existing Graph policy; absent finance caps mean no cap claim"
+      ],
+      "acceptance": [
+        "空注册表能合法试验，失败不激活，不能扩权"
+      ],
+      "rollback": "撤销试验许可并按既有取消/对账处理",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-08",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA16",
+        "JA17",
+        "JA49",
+        "JA61"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/cli/src/method-admission.ts": "proposed_new_recheck_before_implementation",
+        "packages/skill-registry/src/recipe-qualification.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/graph-runs.ts": "extend_existing",
+        "packages/core/src/state/graph-actions.ts": "extend_existing",
+        "packages/cli/src/graph-rpc.ts": "extend_existing",
+        "packages/cli/src/graph-action-broker.ts": "extend_existing"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J08.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "resource_queue": "state-owner-schema-queue",
+      "introduces_schema": true,
+      "schema_recovery_gate": "J08.recovery",
+      "legacy_task_ids": [
+        "PS:W04"
+      ]
+    },
+    {
+      "id": "J09",
+      "title": "首个本地 bug-fix 方法旅程",
+      "phase": "pilot",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J08"
+      ],
+      "owner_role": "integration-owner",
+      "write_paths": [
+        "scripts/smoke-method-bug-fix.mjs",
+        "packages/cli/src/method-report.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "受限试验环境与稳定缺陷夹具",
+        "J03 的 bug-fix-fixture 注册动作，不得用自证 smoke 替代"
+      ],
+      "outputs": [
+        "复现→修复→同候选检查→报告全链证据"
+      ],
+      "acceptance": [
+        "真实 host 路径通过且坏变体失败，明确非生产资格"
+      ],
+      "rollback": "停用新方法，保留证据与候选",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-09",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA18"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/smoke-method-bug-fix.mjs": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/method-report.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A18",
+        "PS:A19"
+      ],
+      "entry_gate": "J09.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "PS:W08"
+      ]
+    },
+    {
+      "id": "J10",
+      "title": "方法资格与激活漂移管理",
+      "phase": "method",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J09",
+        "J23",
+        "J12"
+      ],
+      "owner_role": "qualification-owner",
+      "write_paths": [
+        "packages/skill-registry/src/recipe-qualification.ts",
+        "packages/skill-registry/src/method-improvement.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "独立实测、精确 profile、来源/方法版本"
+      ],
+      "outputs": [
+        "qualified 记录及只影响新运行的 active 指针"
+      ],
+      "acceptance": [
+        "依赖漂移/撤销拒绝，旧运行快照不覆盖"
+      ],
+      "rollback": "回退 active 指针，撤销证据不删除",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-10",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA19"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/skill-registry/src/recipe-qualification.ts": "proposed_new_recheck_before_implementation",
+        "packages/skill-registry/src/method-improvement.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration"
+      },
+      "legacy_gate_ids": [
+        "PS:A05",
+        "PS:A20",
+        "PS:A23",
+        "PS:A24"
+      ],
+      "entry_gate": "J10.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "introduces_schema": true,
+      "resource_queue": "state-owner-schema-queue",
+      "schema_recovery_gate": "J10.recovery",
+      "legacy_task_ids": [
+        "FM:R02",
+        "FM:R05",
+        "PS:W09",
+        "PS:W11"
+      ]
+    },
+    {
+      "id": "J11",
+      "title": "恢复回执目标 schema 规格",
+      "phase": "controller",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J01"
+      ],
+      "owner_role": "state-owner",
+      "write_paths": [
+        "docs/design/operator-recovery-schema.md",
+        "packages/core/fixtures/operator-recovery-schema.sql"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "现有 hold/dispatch/broker 合同"
+      ],
+      "outputs": [
+        "恢复账本 bootstrap + home 目标 schema/DDL/fixture、proof/decision 矩阵、实际迁移谱系规格",
+        "冻结 recovery-ledger、method-state 和 engineering-goal-storage-v1 的实际 schema/DDL/fixture；broker shape 由 J17.schema_spec 冻结"
+      ],
+      "acceptance": [
+        "包含旧 attention hold 与 broker orphan；依赖无环"
+      ],
+      "rollback": "规格可修订，不执行 DB 迁移",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-11",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O03",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA20",
+        "JA47"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "docs/design/operator-recovery-schema.md": "proposed_new_recheck_before_implementation",
+        "packages/core/fixtures/operator-recovery-schema.sql": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J11.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "resource_queue": "state-owner-schema-queue",
+      "legacy_task_ids": [
+        "FM:D02",
+        "FM:C02",
+        "FM:I04",
+        "FM:DEBT02"
+      ]
+    },
+    {
+      "id": "J12",
+      "title": "目标 schema 恢复与操作员处置",
+      "phase": "controller",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J11"
+      ],
+      "owner_role": "state-owner",
+      "write_paths": [
+        "packages/core/src/state/engineering-store.ts",
+        "packages/core/src/state/operator-recovery.ts",
+        "packages/cli/src/operator-recovery-host.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts",
+        "packages/cli/src/engineering-upgrade-guard.ts",
+        "packages/core/src/state/graph-recovery.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "J11 目标 schema 和真实未知义务夹具"
+      ],
+      "outputs": [
+        "仅允许白名单恢复账本迁移的恢复构建、真实旧 hold 原子裁决、目标 home schema 恢复实测",
+        "recovery-only openDb migration selector and ordinary pre-migration hold guard; JADR15 post-state verifier"
+      ],
+      "acceptance": [
+        "真实 hold、旧 owner、错误静默证明不能释放"
+      ],
+      "rollback": "冻结新派发，保留查询与合格恢复入口",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-12",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O03",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA21",
+        "JA51",
+        "JA52"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/core/src/state/engineering-store.ts": "extend_existing",
+        "packages/core/src/state/operator-recovery.ts": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/operator-recovery-host.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/cli/src/engineering-upgrade-guard.ts": "extend_existing",
+        "packages/core/src/state/graph-recovery.ts": "extend_existing"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-44"
+      ],
+      "entry_gate": "J12.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "resource_queue": "state-owner-schema-queue",
+      "legacy_task_ids": [
+        "FM:D04",
+        "FM:C04",
+        "FM:I04",
+        "FM:DEBT02"
+      ],
+      "schema_recovery_gate": "J12.bootstrap_preflight"
+    },
+    {
+      "id": "J13",
+      "title": "主控事件模型与累计预算",
+      "phase": "controller",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J12"
+      ],
+      "owner_role": "controller-owner",
+      "write_paths": [
+        "packages/supervisor/src/engineering/controller.ts",
+        "packages/supervisor/src/engineering/planner.ts",
+        "packages/core/src/state/engineering-store.ts",
+        "packages/core/src/state/engineering-ddl.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "目标恢复构建、现有 Mission 与 dispatch"
+      ],
+      "outputs": [
+        "纯 reducer、计划/预算预留和结构化建议"
+      ],
+      "acceptance": [
+        "重放无副作用；重复释放、换引擎重置均拒绝"
+      ],
+      "rollback": "停止新自动派发，已存在义务持续可恢复",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-13",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA22",
+        "JA23"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/supervisor/src/engineering/controller.ts": "proposed_new_recheck_before_implementation",
+        "packages/supervisor/src/engineering/planner.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/engineering-store.ts": "extend_existing",
+        "packages/core/src/state/engineering-ddl.ts": "extend_existing",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-31"
+      ],
+      "entry_gate": "J13.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "resource_queue": "state-owner-schema-queue",
+      "introduces_schema": true,
+      "schema_recovery_gate": "J13.recovery",
+      "legacy_task_ids": [
+        "FM:D06",
+        "FM:C02",
+        "FM:C03",
+        "FM:C05",
+        "FM:C06"
+      ]
+    },
+    {
+      "id": "J14",
+      "title": "Loop/Graph 准入与单次启动",
+      "phase": "controller",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J13",
+        "J02",
+        "J23"
+      ],
+      "owner_role": "executor-owner",
+      "write_paths": [
+        "packages/cli/src/deliver-command.ts",
+        "packages/cli/src/graph-contract-host.ts",
+        "packages/protocol/src/engineering-executor.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "控制器意图、已测 support profile",
+        "J13 提供 store/phase 接口；如需新增 DDL，加入 schema queue 后重审"
+      ],
+      "outputs": [
+        "服务接口、effect 派生身份、启动/查询/停止契约"
+      ],
+      "acceptance": [
+        "旧批准不自动执行；未知启动不重发"
+      ],
+      "rollback": "关闭新自动启动，保留原手动入口与对账",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-14",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O01",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA24"
+      ],
+      "merge_after": [
+        "J04"
+      ],
+      "path_disposition": {
+        "packages/cli/src/deliver-command.ts": "extend_existing",
+        "packages/cli/src/graph-contract-host.ts": "extend_existing",
+        "packages/protocol/src/engineering-executor.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-13",
+        "FM:WD-14",
+        "FM:WD-15",
+        "FM:WD-16",
+        "FM:WD-17",
+        "FM:WD-18",
+        "FM:WD-19",
+        "FM:WD-21",
+        "FM:WD-22",
+        "FM:WD-28",
+        "FM:WD-36",
+        "FM:WD-37",
+        "FM:WD-40",
+        "FM:WD-41",
+        "FM:WD-42",
+        "FM:WD-49",
+        "FM:WD-51",
+        "FM:WD-52",
+        "FM:WD-53",
+        "FM:WD-54",
+        "FM:WD-63",
+        "FM:WD-64",
+        "FM:WD-65"
+      ],
+      "entry_gate": "J14.scoped",
+      "write_resources": [
+        "dispatch_store"
+      ],
+      "legacy_task_ids": [
+        "FM:C04",
+        "FM:E01",
+        "FM:E02",
+        "FM:E03"
+      ]
+    },
+    {
+      "id": "J15",
+      "title": "统一入口、范围纠正与路由",
+      "phase": "controller",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J14",
+        "J06"
+      ],
+      "owner_role": "controller-owner",
+      "write_paths": [
+        "packages/cli/src/engineering-command.ts",
+        "packages/supervisor/src/engineering/router.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "用户目标、当前权限、容量与方法建议"
+      ],
+      "outputs": [
+        "可解释方法/执行器选择和有版本纠正"
+      ],
+      "acceptance": [
+        "多问题继续不猜测；调查不自动升写权限"
+      ],
+      "rollback": "回退为显式调用，保留既有 Mission 状态",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-15",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA25",
+        "JA63",
+        "JA67"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/cli/src/engineering-command.ts": "extend_existing",
+        "packages/supervisor/src/engineering/router.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-05",
+        "FM:WD-06",
+        "FM:WD-07",
+        "FM:WD-08",
+        "FM:WD-09",
+        "FM:WD-10",
+        "FM:WD-11",
+        "FM:WD-12",
+        "FM:WD-20",
+        "FM:WD-24",
+        "FM:WD-38",
+        "FM:WD-39",
+        "FM:WD-48",
+        "FM:WD-55",
+        "FM:WD-56",
+        "FM:WD-57",
+        "FM:WD-58",
+        "FM:WD-59",
+        "FM:WD-60",
+        "FM:WD-62",
+        "FM:WD-66"
+      ],
+      "entry_gate": "J15.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:D05",
+        "FM:C06",
+        "FM:E04",
+        "FM:E05",
+        "FM:X01"
+      ]
+    },
+    {
+      "id": "J16",
+      "title": "跨方法与监督的联合旅程",
+      "phase": "integration",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J15",
+        "J10",
+        "J07"
+      ],
+      "owner_role": "integration-owner",
+      "write_paths": [
+        "scripts/smoke-joint-engineering.mjs",
+        "packages/cli/src/engineering-crash.integration.test.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "单入口、等待恢复、方法材料与候选证据"
+      ],
+      "outputs": [
+        "Session observed_turn 和任务 local_verified 分层证据"
+      ],
+      "acceptance": [
+        "取消/重启/旧证据/丢回执均按合同处理"
+      ],
+      "rollback": "停用新联合路由，不删除原 run",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-16",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA26",
+        "JA27"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/smoke-joint-engineering.mjs": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/engineering-crash.integration.test.ts": "extend_existing"
+      },
+      "legacy_gate_ids": [
+        "PS:A21",
+        "PS:A22",
+        "PS:A46"
+      ],
+      "entry_gate": "J16.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:D01",
+        "FM:D02",
+        "FM:D03",
+        "FM:D04",
+        "FM:D05",
+        "FM:D06",
+        "FM:D07",
+        "FM:D08",
+        "FM:V02",
+        "PS:W10"
+      ]
+    },
+    {
+      "id": "J17",
+      "title": "容量、写集合与集成候选",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J14",
+        "J12"
+      ],
+      "owner_role": "controller-owner",
+      "write_paths": [
+        "packages/supervisor/src/engineering/resource-broker.ts",
+        "packages/supervisor/src/engineering/router.ts",
+        "packages/core/src/state/resource-leases.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "同任务预算、home/broker 恢复证明",
+        "独立 broker schema→recovery→migration，不把 home 测量替代 broker"
+      ],
+      "outputs": [
+        "有界并发、公平预留、合成候选重新验证"
+      ],
+      "acceptance": [
+        "两 worker 争同路径和孤儿 lease 不超卖/误释放"
+      ],
+      "rollback": "drain 新任务，未知 lease 保持待对账",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-17",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O05",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA28"
+      ],
+      "merge_after": [
+        "J15"
+      ],
+      "path_disposition": {
+        "packages/supervisor/src/engineering/resource-broker.ts": "proposed_new_recheck_before_implementation",
+        "packages/supervisor/src/engineering/router.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/resource-leases.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J17.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "planned_pr_slices": [
+        "JP-17a broker schema spec",
+        "JP-17b broker recovery build and orphan proof",
+        "JP-17c broker storage and routing"
+      ],
+      "resource_queue": "state-owner-schema-queue",
+      "introduces_schema": true,
+      "schema_recovery_gate": "J17.recovery",
+      "legacy_task_ids": [
+        "FM:C04",
+        "FM:E05",
+        "FM:E06",
+        "FM:X03",
+        "FM:DEBT02"
+      ]
+    },
+    {
+      "id": "J18",
+      "title": "竞争与覆盖模式的多候选扩展",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J17",
+        "J10",
+        "J16"
+      ],
+      "owner_role": "executor-owner",
+      "write_paths": [
+        "packages/protocol/src/method-candidates.ts",
+        "packages/skill-registry/src/candidate-selection.ts",
+        "packages/graph/src/program-resolver.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "先声明覆盖/竞赛规则、合格容量"
+      ],
+      "outputs": [
+        "产物合同；需要执行扩展时另注册新 Graph tuple"
+      ],
+      "acceptance": [
+        "缺覆盖不能胜出，合成产物必须重测"
+      ],
+      "rollback": "关闭新 tuple，原冻结程序继续可重放",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-18",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA29"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/protocol/src/method-candidates.ts": "proposed_new_recheck_before_implementation",
+        "packages/skill-registry/src/candidate-selection.ts": "proposed_new_recheck_before_implementation",
+        "packages/graph/src/program-resolver.ts": "extend_existing"
+      },
+      "legacy_gate_ids": [
+        "PS:A25",
+        "PS:A26"
+      ],
+      "entry_gate": "J18.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "PS:W12"
+      ]
+    },
+    {
+      "id": "J19",
+      "title": "上下文恢复与受控经验",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J04",
+        "J15"
+      ],
+      "owner_role": "context-owner",
+      "write_paths": [
+        "packages/loop/src/lesson-draft.ts",
+        "packages/skill-registry/src/method-improvement.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "真实错误与解释、来源/预算/有效期"
+      ],
+      "outputs": [
+        "经验草案、历史查询与受控方法改进候选"
+      ],
+      "acceptance": [
+        "记忆不能扩权；纠正/过期/跨项目污染被隔离"
+      ],
+      "rollback": "停用新候选，历史材料保留可查",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-19",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA30",
+        "JA69"
+      ],
+      "merge_after": [
+        "J10"
+      ],
+      "path_disposition": {
+        "packages/loop/src/lesson-draft.ts": "extend_existing",
+        "packages/skill-registry/src/method-improvement.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A29"
+      ],
+      "entry_gate": "J19.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:C07",
+        "PS:W10",
+        "PS:W14"
+      ]
+    },
+    {
+      "id": "J20",
+      "title": "事件监督、低打扰与增量简报",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J15"
+      ],
+      "owner_role": "controller-owner",
+      "write_paths": [
+        "packages/supervisor/src/engineering/controller.ts",
+        "packages/cli/src/engineering-command.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "持久事件和既有未决事项"
+      ],
+      "outputs": [
+        "有界唤醒、hook 支持、away/return 视图"
+      ],
+      "acceptance": [
+        "空轮询不调模型，隐藏展示不丢审批或改变权限"
+      ],
+      "rollback": "恢复原展示和显式监督，不丢原事件",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-20",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA31",
+        "JA54",
+        "JA55",
+        "JA64"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/supervisor/src/engineering/controller.ts": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/engineering-command.ts": "extend_existing"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-03",
+        "FM:WD-23",
+        "FM:WD-25",
+        "FM:WD-26",
+        "FM:WD-29",
+        "FM:WD-30"
+      ],
+      "entry_gate": "J20.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:C05",
+        "FM:I01",
+        "FM:X06"
+      ]
+    },
+    {
+      "id": "J21",
+      "title": "远端子主管与父子回执",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J17",
+        "J20"
+      ],
+      "owner_role": "executor-owner",
+      "write_paths": [
+        "packages/supervisor/src/engineering/remote-binding.ts",
+        "packages/protocol/src/engineering-executor.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "精确远端支持组合与剩余预算"
+      ],
+      "outputs": [
+        "持久子主管、原绑定与父回执"
+      ],
+      "acceptance": [
+        "断连保持 unknown，不本地替代、不重置预算"
+      ],
+      "rollback": "停止新远端派发，保留远端事实与对账",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-21",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O05",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA32",
+        "JA65"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/supervisor/src/engineering/remote-binding.ts": "proposed_new_recheck_before_implementation",
+        "packages/protocol/src/engineering-executor.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-32"
+      ],
+      "entry_gate": "J21.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "introduces_schema": true,
+      "resource_queue": "state-owner-schema-queue",
+      "schema_recovery_gate": "J21.recovery",
+      "legacy_task_ids": [
+        "FM:I02",
+        "FM:X04"
+      ]
+    },
+    {
+      "id": "J22",
+      "title": "外部事件与授权公开承诺",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J30",
+        "J20"
+      ],
+      "owner_role": "controller-owner",
+      "write_paths": [
+        "packages/supervisor/src/engineering/external-intake.ts",
+        "packages/protocol/src/engineering-commitment.ts",
+        "packages/core/src/state/db.ts",
+        "packages/core/src/state/migrations.ts",
+        "packages/core/src/state/schema.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "已注册来源、渠道/主体授权和脱敏策略"
+      ],
+      "outputs": [
+        "外部消息归属与持久承诺链"
+      ],
+      "acceptance": [
+        "聊天不等于授权，未知发送不重复，voice 身份独立"
+      ],
+      "rollback": "关闭新渠道，保留已承诺责任和回执",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-22",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O05",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA33",
+        "JA48"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/supervisor/src/engineering/external-intake.ts": "proposed_new_recheck_before_implementation",
+        "packages/protocol/src/engineering-commitment.ts": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
+        "packages/core/src/state/schema.ts": "extend_existing_recheck_actual_migration_registration"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J22.scoped",
+      "write_resources": [
+        "control_plane_schema"
+      ],
+      "introduces_schema": true,
+      "resource_queue": "state-owner-schema-queue",
+      "schema_recovery_gate": "J22.recovery",
+      "legacy_task_ids": [
+        "FM:I03",
+        "FM:X07",
+        "PS:W16"
+      ]
+    },
+    {
+      "id": "J23",
+      "title": "宿主与执行器资格测量",
+      "phase": "qualification",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J01",
+        "J03"
+      ],
+      "owner_role": "qualification-owner",
+      "write_paths": [
+        "scripts/qualify-engineering-host.mjs",
+        "packages/protocol/fixtures/host-support-matrix.json"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "精确版本/隔离/账号/模型/Adapter/停止能力"
+      ],
+      "outputs": [
+        "先测既有 adapter 基础能力；J04/J09 后 method_context 测量；J14 接线后组合资格另验",
+        "独立状态模型/攻击语料、故障注入与 mutation harness；工具准备与精确候选测量分开"
+      ],
+      "acceptance": [
+        "可信同用户试验不认证恶意同 UID；未知效果可查询/容纳"
+      ],
+      "rollback": "撤销对应组合的新启动资格，保留旧记录",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-23",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O01",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA34"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/qualify-engineering-host.mjs": "proposed_new_recheck_before_implementation",
+        "packages/protocol/fixtures/host-support-matrix.json": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "FM:WD-43",
+        "FM:WD-45",
+        "FM:WD-46",
+        "FM:WD-47",
+        "FM:WD-50",
+        "FM:WD-61"
+      ],
+      "entry_gate": "J23.scoped",
+      "write_resources": [],
+      "workstreams": [
+        "qualification-owner: host measurement",
+        "independent-verification-owner: state model and fault/mutation harness"
+      ],
+      "legacy_task_ids": [
+        "FM:R04",
+        "FM:D07",
+        "FM:D08",
+        "FM:E01",
+        "FM:V01",
+        "FM:V02",
+        "FM:V03",
+        "FM:X05",
+        "PS:W19"
+      ]
+    },
+    {
+      "id": "J24",
+      "title": "有效版本、升级与恢复演练",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J12",
+        "J20"
+      ],
+      "owner_role": "state-owner",
+      "write_paths": [
+        "packages/cli/src/engineering-upgrade-guard.ts",
+        "scripts/smoke-engineering-upgrade.mjs"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "schema 恢复构建和受支持 host"
+      ],
+      "outputs": [
+        "升级/回退兼容矩阵、实际进程版本证据"
+      ],
+      "acceptance": [
+        "旧二进制拒绝新 DB，未解决 hold 不被升级清除"
+      ],
+      "rollback": "禁新迁移/启动，使用目标 schema 恢复构建",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-24",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O05",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA35"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/cli/src/engineering-upgrade-guard.ts": "extend_existing",
+        "scripts/smoke-engineering-upgrade.mjs": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J24.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:I04",
+        "FM:X08"
+      ]
+    },
+    {
+      "id": "J25",
+      "title": "早期方法价值实验",
+      "phase": "evaluation",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J03"
+      ],
+      "owner_role": "evaluation-owner",
+      "write_paths": [
+        "docs/evals/method-value-protocol.md",
+        "scripts/eval-method-value.mjs"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "预登记任务集、指标、预算与停止规则"
+      ],
+      "outputs": [
+        "J25.protocol 预登记",
+        "J25.e0 continue/shrink/stop 可行性决定",
+        "J25.e1 在 J09 后的增量实验与 continue/safety_only/stop 决定"
+      ],
+      "acceptance": [
+        "全部尝试计入分母，隐藏判定器及独立复核"
+      ],
+      "rollback": "收益不明则缩减方法，不扩四类 recipe",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-25",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O04",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA36",
+        "JA58",
+        "JA62"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "docs/evals/method-value-protocol.md": "proposed_new_recheck_before_implementation",
+        "scripts/eval-method-value.mjs": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J25.scoped",
+      "write_resources": [],
+      "planned_pr_slices": [
+        "JP-25a protocol baseline and E0",
+        "JP-25b E1 after J09"
+      ],
+      "legacy_task_ids": [
+        "FM:V00"
+      ]
+    },
+    {
+      "id": "J26",
+      "title": "来源能力与当前交付投影",
+      "phase": "source",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J01",
+        "J02"
+      ],
+      "owner_role": "source-owner",
+      "write_paths": [
+        "scripts/capabilities/validate.mjs",
+        "packages/core/src/state/capability-delivery.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "稳定 FM/PS/联合任务 ID 和版本化证据"
+      ],
+      "outputs": [
+        "单一进度投影与资格/设计分离",
+        "首期只读投影，不新增 DB 表；改为落库前必须登记 schema 共享资源"
+      ],
+      "acceptance": [
+        "planned 不能投影 done；普通 README 不能充当完成证据"
+      ],
+      "rollback": "停用错误投影，保留原始事件和版本",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-26",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA37",
+        "JA60"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/capabilities/validate.mjs": "proposed_new_recheck_before_implementation",
+        "packages/core/src/state/capability-delivery.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J26.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:R05",
+        "FM:M01",
+        "FM:M02"
+      ]
+    },
+    {
+      "id": "J27",
+      "title": "灰度与支持范围内启用",
+      "phase": "release",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J16",
+        "J23",
+        "J24",
+        "J26",
+        "J31"
+      ],
+      "owner_role": "release-owner",
+      "write_paths": [
+        "docs/runbooks/joint-engineering.md",
+        "scripts/verify-joint-release.mjs"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "同候选证据、独立资格、迁移/回退与产品结果"
+      ],
+      "outputs": [
+        "显式 opt-in→支持格内灰度→默认启用决策"
+      ],
+      "acceptance": [
+        "每个支持格满足门禁，未启用远端/渠道不冒称支持"
+      ],
+      "rollback": "停止新自动执行，保留查询/恢复与原任务",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-27",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O05",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA38",
+        "JA66"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "docs/runbooks/joint-engineering.md": "proposed_new_recheck_before_implementation",
+        "scripts/verify-joint-release.mjs": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J27.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:V06"
+      ]
+    },
+    {
+      "id": "J28",
+      "title": "高后果状态不变量形式化试点",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J11"
+      ],
+      "owner_role": "verification-owner",
+      "write_paths": [
+        "docs/models/joint-effect.tla",
+        "scripts/check-joint-model.mjs"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "一个风险明确的不变量及源码映射"
+      ],
+      "outputs": [
+        "有界模型、坏变体、代码反例对应"
+      ],
+      "acceptance": [
+        "TLC 结果有范围；模型通过不宣称代码绝对正确"
+      ],
+      "rollback": "保留反例，停止把模型结果作为准入证据",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-28",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA39"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "docs/models/joint-effect.tla": "proposed_new_recheck_before_implementation",
+        "scripts/check-joint-model.mjs": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A31",
+        "PS:A32"
+      ],
+      "entry_gate": "J28.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "PS:W16"
+      ]
+    },
+    {
+      "id": "J29",
+      "title": "性能与有预算的改进循环",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J25"
+      ],
+      "owner_role": "evaluation-owner",
+      "write_paths": [
+        "scripts/eval-method-performance.mjs",
+        "docs/evals/method-performance.md"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "固定基线、端到端指标与预算"
+      ],
+      "outputs": [
+        "盲评、重复测量、每个接受变化的候选证据"
+      ],
+      "acceptance": [
+        "忽略失败样本/换基线/超预算均不能报胜"
+      ],
+      "rollback": "退回最后有证据候选，保留失败实验",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-29",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA40"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/eval-method-performance.mjs": "proposed_new_recheck_before_implementation",
+        "docs/evals/method-performance.md": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A30"
+      ],
+      "entry_gate": "J29.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "PS:W15"
+      ]
+    },
+    {
+      "id": "J30",
+      "title": "Forge 观察与栈前沿验证",
+      "phase": "later",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J07",
+        "J16"
+      ],
+      "owner_role": "verification-owner",
+      "write_paths": [
+        "packages/cli/src/method-forge-observer.ts",
+        "packages/cli/src/method-report.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "精确 PR/head/base 与已授权平台读取"
+      ],
+      "outputs": [
+        "观察分类、依赖前沿、组合候选检查"
+      ],
+      "acceptance": [
+        "CI 绿不替代 review；base/head 变化必须重测"
+      ],
+      "rollback": "只停止新自动推进，不改远端 PR 状态",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-30",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": true,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA41",
+        "JA57"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/cli/src/method-forge-observer.ts": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/method-report.ts": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [
+        "PS:A27",
+        "PS:A28"
+      ],
+      "entry_gate": "J30.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:E06",
+        "FM:I03",
+        "FM:X02",
+        "PS:W13"
+      ]
+    },
+    {
+      "id": "J31",
+      "title": "清理前保全与应用回执修复",
+      "phase": "integration",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J12",
+        "J07"
+      ],
+      "owner_role": "state-owner",
+      "write_paths": [
+        "packages/core/src/state/attention-actions.ts",
+        "packages/cli/src/engineering-host.ts"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "旧 DEBT01/03 事实与真实资源所有权"
+      ],
+      "outputs": [
+        "应用回执优先、保守清理与遗留资源诊断"
+      ],
+      "acceptance": [
+        "cleanup 失败不丢 applied，未知锁不强删"
+      ],
+      "rollback": "保持保守资源保全，不清除未知义务",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-31",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA42",
+        "JA56"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "packages/core/src/state/attention-actions.ts": "extend_existing",
+        "packages/cli/src/engineering-host.ts": "extend_existing"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J31.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:D03",
+        "FM:E04",
+        "FM:I03",
+        "FM:DEBT01",
+        "FM:DEBT03"
+      ]
+    },
+    {
+      "id": "J32",
+      "title": "联合四组对照与冷用户验收",
+      "phase": "evaluation",
+      "state": "planned",
+      "runtime_enabled": false,
+      "depends_on": [
+        "J16",
+        "J25"
+      ],
+      "owner_role": "evaluation-owner",
+      "write_paths": [
+        "scripts/eval-joint-engineering.mjs",
+        "docs/evals/joint-engineering.md"
+      ],
+      "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
+      "inputs": [
+        "固定新能力开关、任务集、预算与盲评规则"
+      ],
+      "outputs": [
+        "baseline/F/P/F+P 对照和独立用户复现"
+      ],
+      "acceptance": [
+        "新能力归因可区分；样本不足报告不确定"
+      ],
+      "rollback": "组合无收益则只启用有证据的子集",
+      "verification": "参见 acceptance-cases.json 中 owner_work_item；实现候选需运行相关测试与仓库 CI",
+      "pr": {
+        "key": "JP-32",
+        "status": "planned_not_created",
+        "base": "main_after_dependencies",
+        "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+      },
+      "requires_further_pr_slicing": false,
+      "blocked_by": [
+        "O04",
+        "O06"
+      ],
+      "acceptance_ids": [
+        "JA43"
+      ],
+      "merge_after": [],
+      "path_disposition": {
+        "scripts/eval-joint-engineering.mjs": "proposed_new_recheck_before_implementation",
+        "docs/evals/joint-engineering.md": "proposed_new_recheck_before_implementation"
+      },
+      "legacy_gate_ids": [],
+      "entry_gate": "J32.scoped",
+      "write_resources": [],
+      "legacy_task_ids": [
+        "FM:V04"
+      ]
+    }
+  ]
+}

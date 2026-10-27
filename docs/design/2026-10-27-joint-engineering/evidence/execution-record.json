@@ -1,0 +1,28 @@
+{
+  "generated_at_utc": "2026-10-27T03:47:02.953048+00:00",
+  "python": "Python 3.11.15",
+  "jsonschema": "4.26.0",
+  "runs": [
+    {
+      "argv": [
+        "python3",
+        "docs/design/2026-10-27-joint-engineering/validate-design.py",
+        "--verify-sources"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "dfc023694a138c4697c15f9c8e5e487b5731fb51b9dbe79288ab31d27f299c3f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "python3",
+        "docs/design/2026-10-27-joint-engineering/test_validate_design.py"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e87d4a9f6a9a865da5b2e23f99db97bd4d5793c6ef8db11d189504afd53cc665"
+    }
+  ],
+  "product_tests_executed": false,
+  "new_model_audit_executed": false
+}

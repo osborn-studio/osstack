@@ -1,0 +1,134 @@
+$ vitest run
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/core
+
+Preparing worktree (detached HEAD 6a2f5ed)
+ ✓ src/state/attention-run-projection.test.ts (38 tests) 2534ms
+ ✓ src/state/graph-recovery.test.ts (46 tests) 2744ms
+ ✓ src/state/engineering-store.test.ts (46 tests) 3082ms
+Preparing worktree (detached HEAD 314ed46)
+ ✓ src/state/graph-actions.test.ts (37 tests) 3659ms
+   ✓ graph action ledger > serializes independent SQLite workers: same-key  904ms
+ ✓ src/state/follow-up-delivery.test.ts (51 tests) 3816ms
+   ✓ survives SIGKILL after durable consumption with no resend on restart  474ms
+Preparing worktree (detached HEAD 7cae594)
+ ✓ src/state/session-continuations.test.ts (33 tests) 1671ms
+ ✓ src/kanban/kanban.test.ts (42 tests) 1723ms
+ ✓ src/state/graph-invocations.test.ts (29 tests) 5321ms
+   ✓ survives process SIGKILL at before_commit without duplicate dispatch  1285ms
+   ✓ survives process SIGKILL at mid_transaction without duplicate dispatch  635ms
+   ✓ survives process SIGKILL at after_commit without duplicate dispatch  699ms
+   ✓ survives process SIGKILL at after_response without duplicate dispatch  594ms
+   ✓ survives process SIGKILL at after_receipt without duplicate dispatch  642ms
+Preparing worktree (detached HEAD 6ea55e6)
+ ✓ src/state/graph-runs.test.ts (40 tests) 3042ms
+   ✓ graph run storage > serializes independent SQLite workers: same-request  584ms
+ ✓ src/state/attention-observer.test.ts (23 tests) 2001ms
+   ✓ keeps capacity overflow explicit and advances the existing discovery cursor across passes  369ms
+ ✓ src/state/graph-checkpoints.test.ts (15 tests) 2253ms
+   ✓ paginates equal checkpoint IDs across namespaces without skipping and bounds response bytes  461ms
+   ✓ splits pages at transport traversal bounds even when many small pending writes fit the byte cap  898ms
+ ✓ src/state/graph-apply.test.ts (27 tests) 6535ms
+   ✓ does not repeat physical writes after SIGKILL at before_gate  1177ms
+   ✓ does not repeat physical writes after SIGKILL at mid_gate  614ms
+   ✓ does not repeat physical writes after SIGKILL at after_gate  626ms
+   ✓ does not repeat physical writes after SIGKILL at partial  605ms
+   ✓ does not repeat physical writes after SIGKILL at after_files  577ms
+   ✓ does not repeat physical writes after SIGKILL at mid_completion  779ms
+   ✓ does not repeat physical writes after SIGKILL at after_receipt  704ms
+ ✓ src/state/db.test.ts (24 tests) 1379ms
+ ✓ src/state/follow-up-obligations.test.ts (23 tests) 1360ms
+Preparing worktree (detached HEAD ee4b36b)
+Preparing worktree (detached HEAD ee4b36b)
+ ✓ src/state/attention-experience.test.ts (17 tests) 955ms
+ ✓ src/state/engineering-scenarios.test.ts (29 tests) 1849ms
+ ✓ src/graph/invocation-evidence.test.ts (17 tests) 901ms
+ ✓ src/state/improvement-proposals.test.ts (25 tests) 1140ms
+ ✓ src/state/graph-migration-lineage.test.ts (30 tests) 1106ms
+ ✓ src/state/source-observations.test.ts (12 tests) 697ms
+ ✓ src/state/improvement-executions.test.ts (31 tests) 1575ms
+ ✓ src/state/run-store.test.ts (13 tests) 574ms
+ ✓ src/state/attention-recovery-view.test.ts (12 tests) 631ms
+Preparing worktree (detached HEAD d8ff2a8)
+ ✓ src/state/probe-store.test.ts (9 tests) 597ms
+ ✓ src/state/attention-actions.test.ts (8 tests) 514ms
+ ✓ src/state/graph-delivery-epochs.test.ts (10 tests) 789ms
+ ✓ src/state/autonomy-runs.test.ts (9 tests) 574ms
+ ✓ src/state/attention-triage.test.ts (13 tests) 927ms
+ ✓ src/state/knowledge-hygiene-store.test.ts (7 tests) 677ms
+ ✓ src/state/memory.test.ts (8 tests) 714ms
+Preparing worktree (detached HEAD 42e4cf3)
+ ✓ src/state/contract-approvals.test.ts (4 tests) 249ms
+ ✓ src/state/knowledge-hygiene-recurrence.test.ts (5 tests) 303ms
+ ✓ src/state/lessons.test.ts (6 tests) 416ms
+ ✓ src/state/probe-outcome-metrics.test.ts (2 tests) 119ms
+ ✓ src/state/sessions.test.ts (7 tests) 348ms
+ ✓ src/state/graph-verification.test.ts (6 tests) 442ms
+ ✓ src/policy/profile.test.ts (37 tests) 112ms
+ ✓ src/graph/artifact-git.test.ts (1 test) 140ms
+ ✓ src/state/evaluator-epochs.test.ts (4 tests) 153ms
+ ✓ src/state/attention-store.test.ts (3 tests) 129ms
+ ✓ src/state/deploy-freezes.test.ts (3 tests) 179ms
+ ✓ src/state/knowledge-hygiene-store-v2.test.ts (5 tests) 229ms
+ ✓ src/state/notification-outbox.test.ts (3 tests) 162ms
+ ✓ src/state/probe-portfolio.test.ts (3 tests) 227ms
+ ✓ src/state/dependency-obligation-store.test.ts (2 tests) 74ms
+ ✓ src/state/rollback-drills.test.ts (2 tests) 121ms
+ ✓ src/policy/agent-scorecard.test.ts (2 tests) 52ms
+ ✓ src/state/knowledge-hygiene-history-v2.test.ts (2 tests) 99ms
+ ✓ src/state/feedback-assets.test.ts (2 tests) 99ms
+ ✓ src/orchestrator/router.test.ts (19 tests) 66ms
+ ✓ src/state/operator-recovery-spec.test.ts (8 tests) 397ms
+ ✓ src/delivery-contract.test.ts (4 tests) 48ms
+ ✓ src/scratch.test.ts (10 tests) 20ms
+ ✓ src/state/knowledge-hygiene-plan-store.test.ts (2 tests) 96ms
+ ✓ src/kanban/transition-guard.test.ts (3 tests) 6ms
+ ✓ src/privacy/redactor.test.ts (11 tests) 5ms
+ ✓ src/policy/engine.test.ts (8 tests) 3ms
+ ✓ src/state/protocol-mappers.test.ts (15 tests) 9ms
+Preparing worktree (detached HEAD 9dec183)
+Preparing worktree (detached HEAD 9dec183)
+Preparing worktree (detached HEAD 9dec183)
+Preparing worktree (detached HEAD 9dec183)
+Preparing worktree (detached HEAD 9dec183)
+Preparing worktree (detached HEAD 9dec183)
+Preparing worktree (detached HEAD 07ad920)
+Preparing worktree (detached HEAD 07ad920)
+Preparing worktree (detached HEAD c30d495)
+Preparing worktree (detached HEAD c30d495)
+Preparing worktree (detached HEAD 3a75f45)
+Preparing worktree (detached HEAD 3a75f45)
+Preparing worktree (detached HEAD cf25f1e)
+Preparing worktree (detached HEAD cf25f1e)
+Preparing worktree (detached HEAD dcf6983)
+ ✓ src/graph/repository-scope.test.ts (8 tests) 17863ms
+   ✓ retains completed Git output after the host stalls beyond the subprocess deadline  6122ms
+   ✓ bounds Git subprocess output and terminates a hung Git process  5731ms
+   ✓ bounds output drain when an exited Git leader leaves an inherited pipe open  5297ms
+Preparing worktree (detached HEAD dcf6983)
+Preparing worktree (detached HEAD dcf6983)
+Preparing worktree (detached HEAD d0e3ea8)
+Preparing worktree (detached HEAD d0e3ea8)
+Preparing worktree (detached HEAD d0e3ea8)
+ ✓ src/graph/artifact-store.test.ts (28 tests) 19573ms
+   ✓ trusted graph artifact freeze > restores full reachable history and exact raw tree after deleting original repo and worktree  3163ms
+   ✓ trusted graph artifact freeze > rechecks authority after durable publication before returning ready  1108ms
+   ✓ trusted graph artifact freeze > returns immutable candidate identity and artifact refs  1201ms
+   ✓ trusted graph artifact freeze > captures tracked-file to directory replacement with unusual filenames  1700ms
+   ✓ trusted graph artifact freeze > does not return ready if durable ID publication fails; exported bytes remain recoverable  1361ms
+   ✓ trusted graph artifact freeze > rejects manifest corruption under a pinned artifact digest  1078ms
+   ✓ trusted graph artifact freeze > rejects same ID with changed receipt or content  2160ms
+   ✓ trusted graph artifact freeze > does not invoke local hooks or filters during capture or restore  808ms
+   ✓ trusted graph artifact freeze > rejects corrupted bundles and manifests, including replay  709ms
+   ✓ trusted graph artifact freeze > refuses existing and escaping restore destinations  511ms
+   ✓ F07: a late real process writing the old directory cannot mutate the exported candidate or its new restore  766ms
+   ✓ rejects an oversized full-history bundle before reading it into memory  460ms
+   ✓ binds freeze and replay to the applied tree and invocation base tree  1068ms
+   ✓ constrained capture uses the same owner execute bit as the changeset applier  593ms
+   ✓ preserves historical ignored-file capture while constrained freeze detects the file  737ms
+
+ Test Files  60 passed (60)
+      Tests  939 passed (939)
+   Start at  23:03:07
+   Duration  20.17s (transform 1.53s, setup 1.41s, collect 7.00s, tests 97.08s, environment 8ms, prepare 4.78s)
+

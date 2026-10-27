@@ -1,0 +1,54 @@
+{
+  "$ref": "#/definitions/MaterialVerificationPlan",
+  "definitions": {
+    "MaterialVerificationPlan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "number",
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "material:verification_plan"
+        },
+        "scenario_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "required_checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialVerificationPlan/properties/scenario_refs/items"
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "environment_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MaterialVerificationPlan/properties/scenario_refs/items"
+          },
+          "minItems": 1,
+          "maxItems": 128
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "scenario_refs",
+        "required_checks",
+        "environment_refs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shape only. Use @osstack/protocol/joint decodeJointContract for lexical and semantic checks. Host must authenticate provenance, resolve principal aliases, load referenced evidence, verify current authority and enforce durable CAS. Parsing grants no authority."
+}

@@ -1,0 +1,28 @@
+{
+  "status": "passed_design_checks_only",
+  "source_capabilities": 48,
+  "normalized_capabilities": 13,
+  "legacy_tasks": 69,
+  "joint_milestones": 32,
+  "future_product_cases": 69,
+  "contract_fixtures": 93,
+  "source_anchors": 227,
+  "runtime_cases_executed": 0,
+  "legacy_cases_retained": 114,
+  "stage_gates": 41,
+  "semantic_assertions": 53,
+  "unresolved_unknowns": 6,
+  "historical_audit": {
+    "reviewed_report_and_evidence_files_verified": 18,
+    "frozen_report_files": 7,
+    "unchanged_research_evidence_files": 11,
+    "exact_prompt_archives_verified": 2,
+    "raw_responses_verified": 3,
+    "new_model_review_claimed": false
+  },
+  "sources": {
+    "anchors_verified": 227,
+    "unique_git_blobs_read": 224,
+    "network_fetch_performed": false
+  }
+}

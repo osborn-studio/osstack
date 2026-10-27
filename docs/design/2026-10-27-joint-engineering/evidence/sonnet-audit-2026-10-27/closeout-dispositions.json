@@ -1,0 +1,86 @@
+{
+  "round": "first_closeout",
+  "original_verdict": "REVISE",
+  "items": [
+    {
+      "id": "CO01",
+      "original_severity": "P1",
+      "disposition": "accepted",
+      "resolution": "后态四列表、legacy只保留未知、resolution独立读取、JADR13受控hold/fence处置，不能合成applied",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO02",
+      "original_severity": "P1",
+      "disposition": "accepted",
+      "resolution": "J12专用openRecoveryDb与普通pre-migration guard；每个实际迁移独立schema_spec/recovery，重编号重验",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO03",
+      "original_severity": "P2",
+      "disposition": "accepted",
+      "resolution": "legacy显式null、subject/target/home约束、broker相位与证明身份；补正反fixture",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO04",
+      "original_severity": "P1",
+      "disposition": "accepted",
+      "resolution": "根ID签发前确定；GraphRunStore创建事务消费；复用graph_actions且permit只能收窄policy；finance cap可缺省并交叉核验",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO05",
+      "original_severity": "P2",
+      "disposition": "accepted",
+      "resolution": "role摘要改名并定义输入；完整domain目录、原始JSON解析、转义向量、Profile v2自动start字段、J01明确产出",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO06",
+      "original_severity": "P2",
+      "disposition": "accepted",
+      "resolution": "64KiB配置总上限与角色分配；原子私有registration文件；未终态保留；恢复授权不走过期执行许可",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO07",
+      "original_severity": "P2",
+      "disposition": "accepted",
+      "resolution": "原gate独立full wrapper保留依赖闭包；114case有真实消费边；local明确12项延期；旧scope不被早期组件通过覆盖",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO08",
+      "original_severity": "P1",
+      "disposition": "accepted",
+      "resolution": "local opt-in/default分开、E1仅可行性与保护指标、J32输出价值决定；merge_after条件排序",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO09",
+      "original_severity": "P2",
+      "disposition": "partially_accepted",
+      "resolution": "oracle生命周期、实际主体独立、冻结早于候选及关键第二复核；不用任意作者占比上限，改为披露集中度",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    },
+    {
+      "id": "CO10",
+      "original_severity": "P3",
+      "disposition": "partially_accepted",
+      "resolution": "补P0-B恢复依赖和图边、最终统计与复审记录；统计指旧输入，首次closeout冻结后validation已更新，保留其当时原文",
+      "status": "design_revised_product_verification_pending",
+      "spec": "closeout-specifications.md"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "scope": "negative_probe_of_claude_recommendation_not_product_integration",
+  "original_frozen_contract": "accepted",
+  "appended_brief": "delivery_contract_digest_mismatch",
+  "changed_goal_under_original_authorization": "delivery_contract_admission_mismatch",
+  "commands_executed": [],
+  "database_access": false
+}

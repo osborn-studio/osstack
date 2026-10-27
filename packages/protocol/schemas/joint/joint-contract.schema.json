@@ -1,0 +1,2711 @@
+{
+  "$ref": "#/definitions/JointContract",
+  "definitions": {
+    "JointContract": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "source_pin"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "commit": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "subdir": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "content_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "license_refs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "minItems": 1,
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "repository",
+            "commit",
+            "subdir",
+            "content_sha256",
+            "license_refs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "method_binding"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "task_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "proposal_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "contract_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "context_config_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "support_profile_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "source_snapshot_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "recipe_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "authorization_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "completion": {
+              "type": "string",
+              "const": "local_verified"
+            },
+            "publication": {
+              "type": "string",
+              "const": "none"
+            },
+            "merge": {
+              "type": "string",
+              "const": "none"
+            },
+            "binding_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "trial",
+                "qualified"
+              ]
+            },
+            "role_materials": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "builder",
+                      "reviewer",
+                      "verifier"
+                    ]
+                  },
+                  "method_text_sha256": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "role_required_artifacts_digest": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  }
+                },
+                "required": [
+                  "role",
+                  "method_text_sha256",
+                  "role_required_artifacts_digest"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "trial_permit_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "task_id",
+            "proposal_digest",
+            "contract_digest",
+            "context_config_digest",
+            "support_profile_digest",
+            "source_snapshot_digest",
+            "recipe_version",
+            "authorization_ref",
+            "completion",
+            "publication",
+            "merge",
+            "binding_digest",
+            "mode",
+            "role_materials"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "check_binding"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "primary_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "reproduce",
+                      "regression",
+                      "acceptance"
+                    ]
+                  },
+                  "registry_ref": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 512,
+                    "pattern": "^sha256:[a-f0-9]{64}$"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "role",
+                  "registry_ref",
+                  "required"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 16
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "repository",
+            "primary_id",
+            "checks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "trial_permit"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "permit_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "issuer_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "authorization_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "candidate_method_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "contract_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "support_profile_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "max_wall_ms": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1800000
+            },
+            "issued_at_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "expires_at_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "scope": {
+              "type": "string",
+              "const": "trusted_isolated_development_trial"
+            },
+            "production_qualified": {
+              "type": "boolean",
+              "const": false
+            },
+            "max_root_runs": {
+              "type": "number",
+              "const": 1
+            },
+            "root_effect_id": {
+              "type": "string",
+              "pattern": "^trial-[a-f0-9]{64}$"
+            },
+            "binding_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "max_adapter_invocations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            },
+            "max_actions": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "max_tokens": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "max_cost_microusd": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "permit_id",
+            "issuer_ref",
+            "authorization_ref",
+            "candidate_method_digest",
+            "contract_digest",
+            "support_profile_digest",
+            "repository",
+            "max_wall_ms",
+            "issued_at_ms",
+            "expires_at_ms",
+            "scope",
+            "production_qualified",
+            "max_root_runs",
+            "root_effect_id",
+            "binding_digest",
+            "max_adapter_invocations",
+            "max_actions"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "artifact"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "artifact_kind": {
+              "type": "string",
+              "enum": [
+                "intent_frame",
+                "reproduction",
+                "candidate_checks",
+                "independent_review",
+                "cleanup_receipt"
+              ]
+            },
+            "task_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "effect_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "binding_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "candidate": {
+              "type": "object",
+              "properties": {
+                "base_head": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+                },
+                "head": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+                },
+                "tree": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+                },
+                "diff_sha256": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                "workspace_state_sha256": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                }
+              },
+              "required": [
+                "base_head",
+                "head",
+                "tree",
+                "diff_sha256",
+                "workspace_state_sha256"
+              ],
+              "additionalProperties": false
+            },
+            "producer_role": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "host_record_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "content_sha256": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1048576
+            },
+            "identity_assurance": {
+              "type": "string",
+              "enum": [
+                "reported",
+                "host_authenticated"
+              ]
+            },
+            "artifact_phase": {
+              "type": "string",
+              "enum": [
+                "intent",
+                "baseline",
+                "candidate",
+                "cleanup"
+              ]
+            },
+            "scenario_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "environment_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "check_registry_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "baseline_artifact_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "resource_ledger_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "artifact_kind",
+            "task_id",
+            "run_id",
+            "effect_id",
+            "binding_digest",
+            "producer_role",
+            "host_record_ref",
+            "content_sha256",
+            "bytes",
+            "identity_assurance",
+            "artifact_phase"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "context_receipt"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 2
+            },
+            "phase": {
+              "type": "string",
+              "enum": [
+                "prepared",
+                "adapter_observed"
+              ]
+            },
+            "evidence_boundary": {
+              "type": "string",
+              "const": "agent_task_prompt_not_provider_wire"
+            },
+            "task_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "binding_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "contract_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "context_config_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "method_text_sha256": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "method_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16384
+            },
+            "prompt_sha256": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "prompt_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65536
+            },
+            "token_window_qualification": {
+              "type": "string",
+              "const": "unqualified"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "builder",
+                "reviewer",
+                "verifier"
+              ]
+            },
+            "proposal_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "role_required_artifacts_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "phase",
+            "evidence_boundary",
+            "task_id",
+            "run_id",
+            "session_id",
+            "binding_digest",
+            "contract_digest",
+            "context_config_digest",
+            "method_text_sha256",
+            "method_bytes",
+            "prompt_sha256",
+            "prompt_bytes",
+            "token_window_qualification",
+            "role",
+            "proposal_digest",
+            "role_required_artifacts_digest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "recovery_receipt"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "effect_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "binding_generation": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "owner_generation": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "schema_spec_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "support_profile_digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "proof_refs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "minItems": 0,
+              "maxItems": 256
+            },
+            "operator_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "decision": {
+              "type": "string",
+              "enum": [
+                "preserve_unknown",
+                "proven_not_started",
+                "proven_stopped",
+                "applied_observed"
+              ]
+            },
+            "target": {
+              "type": "string",
+              "enum": [
+                "home",
+                "broker"
+              ]
+            },
+            "observed_at_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "authorization_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "scope_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "tenant_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "target_home_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "recovery_build_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "prior_phase": {
+              "type": "string",
+              "enum": [
+                "reserved",
+                "dispatch_committed",
+                "legacy_unknown",
+                "broker_unknown"
+              ]
+            },
+            "if_revision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "actual_target_schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "ddl_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "fixture_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "candidate_sha": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+            },
+            "proofs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "record_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "cancelled_before_dispatch",
+                      "invocation_contained",
+                      "applied_completion"
+                    ]
+                  },
+                  "evidence_digest": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "producer_ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "effect_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "subject_digest": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "broker_identity": {
+                    "type": "object",
+                    "properties": {
+                      "broker_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "lease_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "schema": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "owner_generation": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "broker_id",
+                      "lease_id",
+                      "schema",
+                      "owner_generation"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "record_ref",
+                  "type",
+                  "evidence_digest",
+                  "producer_ref",
+                  "subject_digest"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0,
+              "maxItems": 256
+            },
+            "subject": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "effect"
+                    },
+                    "home_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "effect_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "home_id",
+                    "effect_id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "attention_action"
+                    },
+                    "home_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "mission_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "action_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "message_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "home_id",
+                    "mission_id",
+                    "action_id",
+                    "message_id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "broker_lease"
+                    },
+                    "home_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "broker_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "lease_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "home_id",
+                    "broker_id",
+                    "lease_id"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "subject_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "prior_resolution": {
+              "type": "string",
+              "enum": [
+                "none",
+                "abandoned_unknown"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "binding_generation",
+            "owner_generation",
+            "schema_spec_digest",
+            "support_profile_digest",
+            "proof_refs",
+            "operator_ref",
+            "request_id",
+            "decision",
+            "target",
+            "observed_at_ms",
+            "authorization_ref",
+            "scope_id",
+            "tenant_id",
+            "target_home_id",
+            "recovery_build_digest",
+            "prior_phase",
+            "if_revision",
+            "actual_target_schema",
+            "ddl_digest",
+            "fixture_digest",
+            "candidate_sha",
+            "proofs",
+            "subject",
+            "subject_digest",
+            "prior_resolution"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "support_profile"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 2
+            },
+            "profile_class": {
+              "type": "string",
+              "enum": [
+                "operator_attested_trial",
+                "measured_qualified"
+              ]
+            },
+            "principal_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "scope_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "tenant_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "canonical_repo": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "execution_home_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "host_build_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "adapter_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "provider": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "runtime_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "executor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "template_tuple": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "isolation": {
+              "type": "string",
+              "enum": [
+                "trusted_local",
+                "qualified_other"
+              ]
+            },
+            "can_query": {
+              "type": "boolean"
+            },
+            "can_request_stop": {
+              "type": "boolean"
+            },
+            "stop_proof_level": {
+              "type": "string",
+              "enum": [
+                "unavailable",
+                "observed_exit",
+                "contained"
+              ]
+            },
+            "budget_enforceability": {
+              "type": "object",
+              "properties": {
+                "wall": {
+                  "type": "string",
+                  "enum": [
+                    "enforceable",
+                    "observed_only",
+                    "unavailable"
+                  ]
+                },
+                "actions": {
+                  "type": "string",
+                  "enum": [
+                    "enforceable",
+                    "observed_only",
+                    "unavailable"
+                  ]
+                },
+                "tokens": {
+                  "type": "string",
+                  "enum": [
+                    "enforceable",
+                    "observed_only",
+                    "unavailable"
+                  ]
+                },
+                "cost": {
+                  "type": "string",
+                  "enum": [
+                    "enforceable",
+                    "observed_only",
+                    "unavailable"
+                  ]
+                }
+              },
+              "required": [
+                "wall",
+                "actions",
+                "tokens",
+                "cost"
+              ],
+              "additionalProperties": false
+            },
+            "measurement_refs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "minItems": 0,
+              "maxItems": 256
+            },
+            "start_identity": {
+              "type": "string",
+              "enum": [
+                "unqualified",
+                "idempotent_effect_derived_run"
+              ]
+            },
+            "query_by_start_identity": {
+              "type": "boolean"
+            },
+            "containment_domain": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "profile_class",
+            "principal_ref",
+            "scope_id",
+            "tenant_id",
+            "canonical_repo",
+            "execution_home_id",
+            "host_build_digest",
+            "adapter_version",
+            "provider",
+            "model",
+            "runtime_version",
+            "executor",
+            "template_tuple",
+            "isolation",
+            "can_query",
+            "can_request_stop",
+            "stop_proof_level",
+            "budget_enforceability",
+            "measurement_refs",
+            "start_identity",
+            "query_by_start_identity",
+            "containment_domain"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "method_recipe"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "recipe_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "recipe_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "source_snapshot_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "intent_kind": {
+              "type": "string",
+              "const": "bug_fix"
+            },
+            "logical_check_roles": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "reproduce",
+                  "regression",
+                  "acceptance"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 256
+            },
+            "role_materials": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "builder",
+                      "reviewer",
+                      "verifier"
+                    ]
+                  },
+                  "method_text_sha256": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "role_required_artifacts_digest": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  }
+                },
+                "required": [
+                  "role",
+                  "method_text_sha256",
+                  "role_required_artifacts_digest"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "required_artifacts_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "allowed_completion": {
+              "type": "string",
+              "const": "local_verified"
+            },
+            "publication": {
+              "type": "string",
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "recipe_id",
+            "recipe_version",
+            "source_snapshot_digest",
+            "intent_kind",
+            "logical_check_roles",
+            "role_materials",
+            "required_artifacts_digest",
+            "allowed_completion",
+            "publication"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "method_proposal"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "task_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "intent_revision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "intent_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "source_snapshot_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "recipe_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "recipe_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "check_binding_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "required_artifacts_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "method_input_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "executable": {
+              "type": "boolean",
+              "const": false
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "task_id",
+            "intent_revision",
+            "intent_digest",
+            "source_snapshot_digest",
+            "recipe_digest",
+            "recipe_version",
+            "check_binding_digest",
+            "required_artifacts_digest",
+            "method_input_digest",
+            "executable"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "artifact_requirements"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "recipe_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "requirements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "artifact_ref_kind": {
+                    "type": "string",
+                    "enum": [
+                      "intent_frame",
+                      "reproduction",
+                      "candidate_checks",
+                      "independent_review",
+                      "cleanup_receipt",
+                      "material:intent_frame",
+                      "material:grounding",
+                      "material:impact_map",
+                      "material:verification_plan",
+                      "material:review_dispositions",
+                      "material:decision_trail",
+                      "material:feature_map",
+                      "material:experiment_result",
+                      "material:usage_sketch",
+                      "material:prototype_decision"
+                    ]
+                  },
+                  "producer_role": {
+                    "type": "string",
+                    "enum": [
+                      "builder",
+                      "reviewer",
+                      "verifier",
+                      "host"
+                    ]
+                  },
+                  "body_schema_digest": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "verifier_policy_digest": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "artifact_ref_kind",
+                  "producer_role",
+                  "body_schema_digest",
+                  "verifier_policy_digest",
+                  "required"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "recipe_version",
+            "requirements"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "recovery_request"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "if_revision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "subject": {
+              "$ref": "#/definitions/JointContract/anyOf/6/properties/subject"
+            },
+            "decision": {
+              "$ref": "#/definitions/JointContract/anyOf/6/properties/decision"
+            },
+            "proof_refs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+              },
+              "maxItems": 256
+            },
+            "schema_spec_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "request_id",
+            "if_revision",
+            "subject",
+            "decision",
+            "proof_refs",
+            "schema_spec_digest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "recovery_proof"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "subject": {
+              "$ref": "#/definitions/JointContract/anyOf/6/properties/subject"
+            },
+            "proof": {
+              "$ref": "#/definitions/JointContract/anyOf/6/properties/proofs/items"
+            },
+            "owner_generation": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "exclusiveMinimum": 0
+            },
+            "observed_at_ms": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+            },
+            "binding_generation": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "support_profile_digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prior_phase": {
+              "$ref": "#/definitions/JointContract/anyOf/6/properties/prior_phase"
+            },
+            "schema_spec_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "recovery_build_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "record_ref": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "authorization_ref": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "subject",
+            "proof",
+            "owner_generation",
+            "observed_at_ms",
+            "binding_generation",
+            "support_profile_digest",
+            "prior_phase",
+            "schema_spec_digest",
+            "recovery_build_digest",
+            "record_ref",
+            "authorization_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "number",
+                  "const": 1
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:intent_frame"
+                },
+                "task_id": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "intent_revision": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "goals": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "non_goals": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                  },
+                  "maxItems": 128
+                },
+                "observations": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "hypotheses": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "unknowns": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "source_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "task_id",
+                "intent_revision",
+                "goals",
+                "non_goals",
+                "observations",
+                "hypotheses",
+                "unknowns",
+                "source_refs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:grounding"
+                },
+                "facts": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "inferences": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "unknowns": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "source_refs": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/source_refs"
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "facts",
+                "inferences",
+                "unknowns",
+                "source_refs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:impact_map"
+                },
+                "changed_surfaces": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "assumptions": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "check_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "changed_surfaces",
+                "assumptions",
+                "check_refs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:verification_plan"
+                },
+                "scenario_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "required_checks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "environment_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "scenario_refs",
+                "required_checks",
+                "environment_refs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:review_dispositions"
+                },
+                "finding_ref": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "decision": {
+                  "type": "string",
+                  "enum": [
+                    "accept",
+                    "reject",
+                    "defer"
+                  ]
+                },
+                "rationale": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "evidence_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "finding_ref",
+                "decision",
+                "rationale",
+                "evidence_refs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:decision_trail"
+                },
+                "revision": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "supersedes": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decision": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "evidence_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "revision",
+                "supersedes",
+                "decision",
+                "evidence_refs"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:feature_map"
+                },
+                "entry": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "preconditions": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "actions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "observable_end": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "recovery": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "owner": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "entry",
+                "preconditions",
+                "actions",
+                "observable_end",
+                "recovery",
+                "owner"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:experiment_result"
+                },
+                "protocol": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "arms": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                      },
+                      "candidate_digest": {
+                        "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                      },
+                      "observation_refs": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                        },
+                        "minItems": 1,
+                        "maxItems": 128
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "candidate_digest",
+                      "observation_refs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 2,
+                  "maxItems": 16
+                },
+                "ledger": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "oracle_digest": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                "result": {
+                  "type": "string",
+                  "enum": [
+                    "inconclusive",
+                    "supports_hypothesis",
+                    "rejects_hypothesis"
+                  ]
+                },
+                "uncertainty": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "protocol",
+                "arms",
+                "ledger",
+                "oracle_digest",
+                "result",
+                "uncertainty"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:usage_sketch"
+                },
+                "caller": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "input": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "output": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "errors": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                },
+                "alternatives": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/non_goals"
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "caller",
+                "input",
+                "output",
+                "errors",
+                "alternatives"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/schema_version"
+                },
+                "kind": {
+                  "type": "string",
+                  "const": "material:prototype_decision"
+                },
+                "hypothesis": {
+                  "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                },
+                "observations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                },
+                "decision": {
+                  "type": "string",
+                  "enum": [
+                    "continue",
+                    "revise",
+                    "stop"
+                  ]
+                },
+                "limits": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/13/anyOf/0/properties/goals/items"
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "schema_version",
+                "kind",
+                "hypothesis",
+                "observations",
+                "decision",
+                "limits"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "oracle_lifecycle"
+                },
+                "schema_version": {
+                  "type": "number",
+                  "const": 1
+                },
+                "oracle_id": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "revision": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "unassigned"
+                }
+              },
+              "required": [
+                "kind",
+                "schema_version",
+                "oracle_id",
+                "revision",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/0/properties/kind"
+                },
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/0/properties/schema_version"
+                },
+                "oracle_id": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "revision": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "assigned"
+                },
+                "authors": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 64
+                },
+                "reviewers": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "maxItems": 64
+                },
+                "implementation_principals": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "minItems": 1,
+                  "maxItems": 64
+                },
+                "custodian": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "critical_safety": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "schema_version",
+                "oracle_id",
+                "revision",
+                "status",
+                "authors",
+                "reviewers",
+                "implementation_principals",
+                "custodian",
+                "critical_safety"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/0/properties/kind"
+                },
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/0/properties/schema_version"
+                },
+                "oracle_id": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "revision": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "frozen"
+                },
+                "authors": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/authors"
+                },
+                "reviewers": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/reviewers"
+                },
+                "implementation_principals": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/implementation_principals"
+                },
+                "custodian": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "critical_safety": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/critical_safety"
+                },
+                "pinned_digest": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                "frozen_at_ms": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "freeze_record_ref": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                }
+              },
+              "required": [
+                "kind",
+                "schema_version",
+                "oracle_id",
+                "revision",
+                "status",
+                "authors",
+                "reviewers",
+                "implementation_principals",
+                "custodian",
+                "critical_safety",
+                "pinned_digest",
+                "frozen_at_ms",
+                "freeze_record_ref"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/0/properties/kind"
+                },
+                "schema_version": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/0/properties/schema_version"
+                },
+                "oracle_id": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "revision": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "status": {
+                  "type": "string",
+                  "const": "executed"
+                },
+                "authors": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/authors"
+                },
+                "reviewers": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/reviewers"
+                },
+                "implementation_principals": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/implementation_principals"
+                },
+                "custodian": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "critical_safety": {
+                  "$ref": "#/definitions/JointContract/anyOf/14/anyOf/1/properties/critical_safety"
+                },
+                "pinned_digest": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                "frozen_at_ms": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "freeze_record_ref": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "candidate_created_at_ms": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                },
+                "candidate_sha": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+                },
+                "support_profile_digest": {
+                  "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                },
+                "result_ref": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                },
+                "executed_at_ms": {
+                  "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+                }
+              },
+              "required": [
+                "kind",
+                "schema_version",
+                "oracle_id",
+                "revision",
+                "status",
+                "authors",
+                "reviewers",
+                "implementation_principals",
+                "custodian",
+                "critical_safety",
+                "pinned_digest",
+                "frozen_at_ms",
+                "freeze_record_ref",
+                "candidate_created_at_ms",
+                "candidate_sha",
+                "support_profile_digest",
+                "result_ref",
+                "executed_at_ms"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "gate_evidence"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "gate_id": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "development",
+                "merge",
+                "trial",
+                "qualification",
+                "default_enablement"
+              ]
+            },
+            "candidate_sha": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+            },
+            "support_profile_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "dependency_evidence_refs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+              },
+              "maxItems": 256
+            },
+            "oracle": {
+              "$ref": "#/definitions/JointContract/anyOf/14"
+            },
+            "result": {
+              "type": "string",
+              "enum": [
+                "passed",
+                "failed",
+                "blocked"
+              ]
+            },
+            "evidence_refs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+              },
+              "minItems": 1,
+              "maxItems": 256
+            },
+            "verifier_ref": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "observed_at_ms": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "gate_id",
+            "stage",
+            "candidate_sha",
+            "support_profile_digest",
+            "dependency_evidence_refs",
+            "oracle",
+            "result",
+            "evidence_refs",
+            "verifier_ref",
+            "observed_at_ms"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "migration_spec"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "schema_change_id": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "source_schema": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+            },
+            "target_schema": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/if_revision"
+            },
+            "ddl_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "fixture_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "source_schema_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "target_schema_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "expected_lineage_tables": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "minItems": 1,
+              "maxItems": 512
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "schema_change_id",
+            "source_schema",
+            "target_schema",
+            "ddl_digest",
+            "fixture_digest",
+            "source_schema_digest",
+            "target_schema_digest",
+            "expected_lineage_tables"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "joint_error"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "code": {
+              "type": "string",
+              "enum": [
+                "INVALID_INPUT",
+                "REVISION_CONFLICT",
+                "IDEMPOTENCY_CONFLICT",
+                "AUTHORIZATION_REQUIRED",
+                "UNKNOWN_EXECUTION",
+                "PROOF_MISMATCH",
+                "SCHEMA_MISMATCH",
+                "CAPABILITY_UNSUPPORTED"
+              ]
+            },
+            "request_id": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "evidence_refs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+              },
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "code",
+            "request_id",
+            "evidence_refs"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "source_snapshot"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "pin": {
+              "$ref": "#/definitions/JointContract/anyOf/0"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "100644",
+                      "100755"
+                    ]
+                  },
+                  "blob": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/commit"
+                  }
+                },
+                "required": [
+                  "path",
+                  "mode",
+                  "blob"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 4096
+            },
+            "dependencies": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/0"
+              },
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "pin",
+            "files",
+            "dependencies"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "method_input"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "builder",
+                "reviewer",
+                "verifier"
+              ]
+            },
+            "intent_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "source_snapshot_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "requested_materials": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+              },
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "role",
+            "intent_digest",
+            "source_snapshot_digest",
+            "requested_materials"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "environment"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "scope_id": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "repository": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "home_id": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "os": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "arch": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "filesystem": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "host_build_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "provider": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "model": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "runtime": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "isolation": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "setup_fixture_digests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+              },
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "scope_id",
+            "repository",
+            "home_id",
+            "os",
+            "arch",
+            "filesystem",
+            "host_build_digest",
+            "provider",
+            "model",
+            "runtime",
+            "isolation",
+            "setup_fixture_digests"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "scenario"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "driver_ref": {
+              "$ref": "#/definitions/JointContract/anyOf/11/properties/request_id"
+            },
+            "definition_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "action_schema_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            },
+            "input_fixture_digest": {
+              "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "driver_ref",
+            "definition_digest",
+            "action_schema_digest",
+            "input_fixture_digest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "check_registry"
+            },
+            "schema_version": {
+              "type": "number",
+              "const": 1
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "type": "string",
+                    "pattern": "^sha256:[a-f0-9]{64}$"
+                  },
+                  "command_bytes_sha256": {
+                    "$ref": "#/definitions/JointContract/anyOf/0/properties/content_sha256"
+                  },
+                  "pass_codes": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "minItems": 1,
+                    "maxItems": 256
+                  },
+                  "fail_codes": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "minItems": 1,
+                    "maxItems": 256
+                  }
+                },
+                "required": [
+                  "ref",
+                  "command_bytes_sha256",
+                  "pass_codes",
+                  "fail_codes"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 256
+            }
+          },
+          "required": [
+            "kind",
+            "schema_version",
+            "entries"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Shape only. Use @osstack/protocol/joint decodeJointContract for lexical and semantic checks. Host must authenticate provenance, resolve principal aliases, load referenced evidence, verify current authority and enforce durable CAS. Parsing grants no authority."
+}

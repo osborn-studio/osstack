@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-10-27T03:58:22.988965+00:00",
+  "actions": [
+    {
+      "mode": "review",
+      "pid": 7785,
+      "action": "SIGTERM",
+      "reason": "user switched model to Sonnet 5.5; no quota failure inferred"
+    },
+    {
+      "mode": "challenge",
+      "pid": 7784,
+      "action": "SIGTERM",
+      "reason": "user switched model to Sonnet 5.5; no quota failure inferred"
+    }
+  ]
+}
