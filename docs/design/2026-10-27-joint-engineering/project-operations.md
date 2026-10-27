@@ -96,3 +96,14 @@ JA01 精确请求 `task local_verified`；早期预检笔记的 `implementation_
 JP-17a 使用 dedicated SQLite broker DB 作为明确的离线候选设计，namespace 与 home 分离；候选空库 0→1 只描述实际测试材料，不保留生产版本号、不改 home migration、不注册 runtime。部署路径、实际接线与正式资格留给后续受门槛约束的切片。门槛分层须独立审计并保留真实主机验收，不能因组件可并行实施而消除原义务。
 
 每项候选保留真实 Claude CLI `claude-sonnet-5-5` 输入、原始响应、处置和 SHA 绑定。独立反例冻结时间只约束尚未读取的新候选；不会补认历史实现的 oracle 独立性，也不把多个模型当作已认证的安全主体。
+
+
+## #284 合并后的执行窗口（2026-10-28，上海时间）
+
+已从 GitHub 与远端 Git 核实：#283 合入 `697d0b9c86009a8ee11a1d06931fb787cf600f12`，#284 合入最新 main `3192b424174e5eb977d640cc0418e67c6b1461d1`。main 的 tree `228b2a0b9ae6708bc68bb3019921198484538320` 与此前独立合成验证的最终树完全相同；历史测试仍绑定原候选 SHA，本次不将树一致性写成新测试运行。两 PR 的发布 head 五项 CI 均成功，付费语义 smoke 跳过。
+
+批次 `joint-post284` 三个独占任务已进入 OSStack：A 补齐 JP-01c 的 JA59 跨语言与 JA70 类型/关联回归；B 验证 JA20/JA47 home 与 broker 的真实离线输入及依赖反例；C 预冻结 J02b 离线采用闭包的夹具和边界。A/B 在隔离分支交付，C 仅写 scratch。中央账本及 PR 仍由主入口单一管理，全仓测试仅一个队列。
+
+`J01.contracts` 尚未正式通过，模型名称不能代替可信 oracle principal，测试数量不能替代预冻结与身份条件。J02b/J03 产品开工保持依赖阻断；J03 不依赖 J02。J11/J12/J17 的正式授权、文件级崩溃和旧 writer fencing 义务保留；home 48、broker 0→1 均未被本次分配为生产迁移。所有新候选继续实际 Claude CLI Sonnet 5.5 审计、修复并保留原始意见；通知审批前重新查询发布 head 的 CI。
+
+当前合并观察、三看板快照和派发回执见 [执行账本](execution-ledger.json)；较早章节是各自观察时刻的历史记录，不构成当前 Ready 或 gate 状态。

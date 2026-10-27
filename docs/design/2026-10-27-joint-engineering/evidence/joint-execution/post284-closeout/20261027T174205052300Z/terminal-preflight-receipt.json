@@ -1,0 +1,9 @@
+{
+  "base": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "merged_pr": 284,
+  "tree": "228b2a0b9ae6708bc68bb3019921198484538320",
+  "previous_composition_tree": "228b2a0b9ae6708bc68bb3019921198484538320",
+  "same_tree": true,
+  "historical_evidence_archive_sha256": "e391070dd0f9f49830b92aaf5d1d02d08e37faa2fca8c4199d3e669bf6bcd13e",
+  "scope": "tree identity only; original test/code bindings retained; no new test run claim"
+}

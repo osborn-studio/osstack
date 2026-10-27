@@ -2,8 +2,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
-  "observed_at": "2026-10-27T16:16:43.988910+00:00",
+  "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "observed_at": "2026-10-27T17:42:07.608599+00:00",
   "runtime_enabled": false,
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
@@ -2298,6 +2298,164 @@
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/282",
       "observed_at": "2026-10-27T16:16:43.890952+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-nextwave-control",
+      "headRefOid": "177176f2c6ceb247f3c4050783487c7fa45aeb5e",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "697d0b9c86009a8ee11a1d06931fb787cf600f12"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T17:29:30Z",
+      "number": 283,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:00:44Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338371787",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T17:00:45Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:02:46Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338369497",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T17:00:47Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:02:42Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338368862",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T17:00:48Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:04:29Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338369276",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T17:00:47Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:04:23Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122338369291",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T17:00:47Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:13:45Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40545896121/job/122339524271",
+          "name": "check",
+          "startedAt": "2026-10-27T17:02:48Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/283",
+      "observed_at": "2026-10-27T17:42:06.362551+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-broker-spec",
+      "headRefOid": "9cb4b63fce98ee6c0261b5ba3fe5e740aea9418c",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "3192b424174e5eb977d640cc0418e67c6b1461d1"
+      },
+      "mergeStateStatus": "UNKNOWN",
+      "mergeable": "UNKNOWN",
+      "mergedAt": "2026-10-27T17:39:42Z",
+      "number": 284,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:09:54Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343603997",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T17:09:55Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:25Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343602000",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T17:09:57Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:24Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343601619",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T17:09:57Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:36Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343602115",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T17:09:57Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:12:55Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122343602027",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T17:09:56Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T17:32:06Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40547958909/job/122345013779",
+          "name": "check",
+          "startedAt": "2026-10-27T17:12:27Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/284",
+      "observed_at": "2026-10-27T17:42:07.585073+00:00"
     }
   ],
   "management": {
@@ -2306,7 +2464,7 @@
     "binding": "See preserved handoff management entry; never use default home",
     "mode": "owner-driven OSStack ledger and bounded Codex collaboration subagents; no autonomous goal_dispatch",
     "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
-    "snapshot": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/joint-firstmate-pstack.json",
+    "snapshot": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/joint-firstmate-pstack.json",
     "entry_sha256": "9e2c366327a31ff71da277a21ea36571ebeca60ebce3372cee137af696eb89dc",
     "entry_identity": "installed Firstmate registry-install/bin/osstack; exact local binding is in sender handoff",
     "operations": "project-operations.md",
@@ -2319,60 +2477,60 @@
       "rrule": "FREQ=MINUTELY;INTERVAL=30",
       "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
       "created_at": 1793098759153,
-      "updated_at": 1793117689068,
-      "observed_at": "2026-10-27T16:16:43.998072+00:00",
-      "config_sha256": "49661a6c7ad58032324a8f657ad2ac269ddf8dbd800ca5600356be444104d5f0",
-      "queue": "N0 gate layers and JP-17a offline broker fixtures; no runtime qualification",
+      "updated_at": 1793122884206,
+      "observed_at": "2026-10-27T17:42:07.635317+00:00",
+      "config_sha256": "744e491d365b6061f84e5259885410b834e7b96ff1be9c34b6534e10a8c52d85",
+      "queue": "JP01c component acceptance; JA20/47 recovery composition; J02b offline preparation",
       "authority": "automation_update succeeded, persisted config reread; owner-attested tool result, not runtime scheduler proof",
       "goal_dispatch_enabled": false,
-      "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+      "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
       "observation_authority": "Owner-attested update tool receipt and re-read config; no scheduler execution attestation"
     },
     "socket_observation": {
       "uid": 501,
       "mode": "0o600",
-      "observed_at": "2026-10-27T16:16:43.998070+00:00"
+      "observed_at": "2026-10-27T17:42:07.635312+00:00"
     },
     "rpc_helper": {
-      "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/ledger-rpc-helper.py",
+      "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/ledger-rpc-helper.py",
       "sha256": "b1449d7b95df5012c9889d4afb2517f42fc7dc72c125948ba1018fbc40379e1e",
       "socket": "/tmp/osstack-debt-ledger.sock",
-      "scope": "pinned helper bytes and observed socket; no development CLI/default DB"
+      "scope": "pinned helper and observed socket; no development CLI/default DB"
     },
     "receipts": [
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/subagent-dispatch-receipts.json",
-        "sha256": "914e4a8bfcf49abbbcc2a53bf1b4050239dbbe1749798e7ff2d02581b5b98cce"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/subagent-dispatch-receipts.json",
+        "sha256": "1dd7df39d3d50941b21b85ebcfad9b4b2ebb503c6ee2d2099c90798b0eafadcd"
       },
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/terminal-preflight-receipt.json",
-        "sha256": "f6061a76ee6aaec9e711639a7b8cb033225aee30ac2258bd307450f179b2b8fd"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/terminal-preflight-receipt.json",
+        "sha256": "60d7d9aa930d7877e7ec9572d11b5b296dfaf42b50d78165cceff9bb585470aa"
       },
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/board-final-receipts.json",
-        "sha256": "1da74376298865f272d7b2b5d7ab8c808cf57bdc6df6cdefd051c35c894ff02b"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/board-final-receipts.json",
+        "sha256": "6f234552f93acbf06653851a8352ba4b5eb7df8ebcca3e204ac0fac043737437"
       },
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/automation-receipt.json",
-        "sha256": "a09cb0615576b9a15a9bb4127eaf36460f1b14d0d83d780f45cb4cc3cf60c350"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/automation-receipt.json",
+        "sha256": "2f7df09b319ff1c9929ab24862006fd3a2233c3141ea50d6ed97aff92fc00c79"
       }
     ],
-    "snapshot_sha256": "4b35f3d3f3f405868831a30b8b536ef1bd8d81576b3075b3392a16ef6d2435e5",
+    "snapshot_sha256": "f42e4b93c7d368afc73fa9903225f998428f7f96206a1d1b8f09053e560ec13b",
     "board_snapshots": [
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/joint-firstmate-pstack.json",
-        "sha256": "4b35f3d3f3f405868831a30b8b536ef1bd8d81576b3075b3392a16ef6d2435e5"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/joint-firstmate-pstack.json",
+        "sha256": "f42e4b93c7d368afc73fa9903225f998428f7f96206a1d1b8f09053e560ec13b"
       },
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/firstmate-upgrade-roadmap.json",
-        "sha256": "c31518c8dbc5c8f7e784a2fdb67db6c18a2aef9e711cf65e21cc3c4b4e53408f"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/firstmate-upgrade-roadmap.json",
+        "sha256": "34f17f5428d9747b931c69aa0691b7545825bd350d336a0df57baf63ae287f7a"
       },
       {
-        "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/session-pilot-debt.json",
-        "sha256": "0cf76f9a97b671452062c1050cf24cb7b86e94bc7bc347ea6c8a28f6cb5405f4"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/session-pilot-debt.json",
+        "sha256": "7ad79105e8aa9672cd10d09ef34e093de254c48e7325f3c59a5015bea7cb92ea"
       }
     ],
-    "evidence_scope": "Post-#279 merge checkpoint. Prior test/audit inputs remain pinned to their original code/base. Fresh three-board snapshots and bounded closeout receipts.",
+    "evidence_scope": "Post-#283/#284 merge and next-batch dispatch. Historical tests remain pinned to original code/base; formal gates remain unqualified.",
     "metadata_scope": "Code/head diff allows docs and changesets, including executable offline checkpoint checks; these have separate Python validation and management audit, not runtime pnpm qualification."
   },
   "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification.",
@@ -2393,9 +2551,9 @@
     "O01_O02_O04_O05": "retain original stage-specific blocks"
   },
   "observation_window": {
-    "started_at": "2026-10-27T16:16:30.423719+00:00",
-    "finished_at": "2026-10-27T16:16:43.998089+00:00",
-    "scope": "Sequential live forge/board observations; no atomic cross-service snapshot claim."
+    "started_at": "2026-10-27T17:42:05.049407+00:00",
+    "finished_at": "2026-10-27T17:42:07.635342+00:00",
+    "scope": "Latest #283/#284 and boards observed sequentially; older PRs retain own timestamps; no atomic snapshot claim."
   },
   "checkpoint_history": [
     {
@@ -2425,6 +2583,10 @@
     {
       "path": "evidence/joint-execution/post279-closeout/20261027T161630424378Z/ledger-before-e4ade4ca51da81e332aceec882d0ee2215339da312da8bd744ed6491e69bb566.json",
       "sha256": "e4ade4ca51da81e332aceec882d0ee2215339da312da8bd744ed6491e69bb566"
+    },
+    {
+      "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/ledger-before-1c758f416298d802d0fb90371bf45c218965c1f2ff8037210a87fd1fc252d1a5.json",
+      "sha256": "1c758f416298d802d0fb90371bf45c218965c1f2ff8037210a87fd1fc252d1a5"
     }
   ],
   "checkpoint_proof_version": 2,
@@ -2443,38 +2605,27 @@
     "report": "../../implementation/joint-behavior-retarget/subagent-terminal/report.md"
   },
   "next_batch": {
-    "id": "joint-nextwave-20261028",
-    "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+    "id": "joint-post284",
+    "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
     "runtime_enabled": false,
     "workers": [
       {
         "agent": "loader_adversarial",
-        "scope": "N0 gate-layer design and validator; preserves JA01/JA02/legacy/release",
-        "branch": "codex/joint-gate-layers"
+        "scope": "JP01c JA59/70 test/oracle coverage; no formal principal attestation",
+        "branch": "codex/joint-contract-acceptance"
       },
       {
         "agent": "terminal_preflight",
-        "scope": "JP-17a offline broker SQL/held-orphan candidate only",
-        "branch": "codex/joint-broker-spec"
+        "scope": "JA20/47 home+broker offline composition tests/spec",
+        "branch": "codex/joint-recovery-composition"
       },
       {
         "agent": "cleanup_regression",
-        "scope": "independent frozen counterexamples and candidate verification; scratch only"
+        "scope": "J02b offline adoption preparation; scratch only"
       }
     ],
-    "shared_owner": "root: execution ledger, execution.md, project-operations.md and PR publishing",
+    "shared_owner": "root: central ledger, execution.md, project-operations.md and PR publishing",
     "full_regression_queue": "root single queue",
-    "qualification": "all new gates specified_not_run; broker deployment not qualified",
-    "delivery_observations": [
-      {
-        "pr": 283,
-        "branch": "codex/joint-nextwave-control",
-        "observed_head": "f3a56a0ad48b496a5230b5c20f47ca8feb41ff48",
-        "status": "ready_with_ci_pending_at_observation",
-        "observation": "../../implementation/joint-nextwave-control/pr283-published.json.gz",
-        "scope": "N0 layered design and #279 closeout; latest head/CI must be queried before approval",
-        "product_gate_passed": false
-      }
-    ]
+    "qualification": "J01.contracts still specified_not_run; J02b/J03 product implementation blocked on formal gate; no runtime activation"
   }
 }

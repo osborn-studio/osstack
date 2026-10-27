@@ -1,0 +1,354 @@
+{
+  "changed": true,
+  "board": "session-pilot-debt",
+  "columns": [
+    {
+      "name": "triage",
+      "cards": []
+    },
+    {
+      "name": "todo",
+      "cards": [
+        {
+          "card_id": "card_c676432e",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "DEBT01 Refine pre-rename publication failure cleanup without weakening proof",
+          "body": "Only optimize after a phase-specific proof and crash/fault tests distinguish staged-file cleanup from published ownership. Current conservative retention is safe; no force-clear shortcut.",
+          "status": "todo",
+          "priority": 3,
+          "assignee": "future-runtime",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793010548.832,
+          "updated_at": 1793010548.832,
+          "started_at": null,
+          "completed_at": null,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 0,
+          "age_seconds": 112379
+        },
+        {
+          "card_id": "card_f251dadf",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "DEBT02 Design trusted operator recovery for retained unknown execution obligations",
+          "body": "Requires runtime contract and containment proof, including restart and physical-lock ownership. daemon.resume must not erase obligations.",
+          "status": "todo",
+          "priority": 3,
+          "assignee": "future-runtime",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793010548.833,
+          "updated_at": 1793010548.833,
+          "started_at": null,
+          "completed_at": null,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 1,
+          "age_seconds": 112379
+        }
+      ]
+    },
+    {
+      "name": "ready",
+      "cards": []
+    },
+    {
+      "name": "running",
+      "cards": []
+    },
+    {
+      "name": "blocked",
+      "cards": [
+        {
+          "card_id": "card_9a161476",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "DEBT03 Preserve applied receipt on manual session.send cleanup failure",
+          "body": "Pre-existing path: transport error after an applied receipt must remain distinguishable from failed delivery; preserve idempotent receipt and never resend automatically.",
+          "status": "blocked",
+          "priority": 3,
+          "assignee": "future-runtime",
+          "blocked_reason": "#277 Ready, enabled CI green; review and merge pending. No cross-process recovery qualification.",
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793010548.833,
+          "updated_at": 1793085717.193,
+          "started_at": 1793079096.074,
+          "completed_at": null,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 5,
+          "age_seconds": 112379
+        },
+        {
+          "card_id": "card_d21a83d5",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "LIVE01 Qualify live provider, containment and physical durability",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "blocked",
+          "priority": 0,
+          "assignee": "external-environment",
+          "blocked_reason": "Bounded real Codex start/resume passed; process containment, physical power loss, same-UID isolation, controlled Claude credentials, remote/nondefault tenants and the earlier untraced live trial remain unqualified.",
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.171,
+          "updated_at": 1793010548.832,
+          "started_at": null,
+          "completed_at": null,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 2,
+          "age_seconds": 115296
+        }
+      ]
+    },
+    {
+      "name": "done",
+      "cards": [
+        {
+          "card_id": "card_4e8147d9",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "[AUDIT-R1-06] Preserve Session start results after cleanup failure",
+          "body": "来源：实际Claude Sonnet5.5 round1 finding6，候选635be2a7。handleSessionStart finally的清理异常覆盖已提交结果且跳过activeRuns清理。由线程B核实与修复，独立小提交/PR，保留租约和未知义务，不增迁移。验收：真实DB/RPC故障测试、active_runs清零但execution_lease_holds保留、重放不重复启动。它是审计修复任务，不计作Firstmate新增能力，也不改写冻结50工作包。",
+          "status": "done",
+          "priority": 2,
+          "assignee": "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793080005.347,
+          "updated_at": 1793099419.139,
+          "started_at": 1793080005.349,
+          "completed_at": 1793099419.139,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 7,
+          "age_seconds": 42922
+        },
+        {
+          "card_id": "card_d1a582eb",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "[AUDIT-R3-H6] Require Session terminal completion before releasing execution",
+          "body": "Confirmed host-boundary counterexample: registered Session adapter ends its iterator without terminal; send returns agent_failed but releases, start records success and releases. Deterministic real SQLite/RPC/lock probe shows confirmStopped false was never consulted. Implement a separate narrow fix for start/send: incomplete terminal protocol is not settled proof; confirm stop or retain. No operator recovery API or per-turn stop-proof redesign. Red/green regressions and parent full tests + Sonnet 5.5 required. Evidence: firstmate-batch1-20261026/thread-b-round3-hypotheses.md. This is an audit defect, not a new roadmap feature.",
+          "status": "done",
+          "priority": 1,
+          "assignee": "thread-b",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793081376.111,
+          "updated_at": 1793117718.242,
+          "started_at": 1793081386.278,
+          "completed_at": 1793117718.242,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 16,
+          "age_seconds": 41552
+        },
+        {
+          "card_id": "card_f9a5c968",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "INT01 Repair main integration path for merged feature-base PRs",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "done",
+          "priority": 0,
+          "assignee": "root",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.17,
+          "updated_at": 1793022305.21,
+          "started_at": 1793007631.17,
+          "completed_at": 1793022305.21,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 19,
+          "age_seconds": 115296
+        },
+        {
+          "card_id": "card_f4e6a395",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "CORE01 Preserve identity reconciliation after original proof and manual turn",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "done",
+          "priority": 0,
+          "assignee": "pilot_completion",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.17,
+          "updated_at": 1793020245.45,
+          "started_at": 1793007631.17,
+          "completed_at": 1793020245.45,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 4,
+          "age_seconds": 115296
+        },
+        {
+          "card_id": "card_6bd0b827",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "RUN01 Prove drain safety across delayed and failed lease cleanup",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "done",
+          "priority": 0,
+          "assignee": "pilot_runtime_cleanup",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.17,
+          "updated_at": 1793020245.451,
+          "started_at": 1793007631.17,
+          "completed_at": 1793020245.451,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 5,
+          "age_seconds": 115296
+        },
+        {
+          "card_id": "card_a0d941ce",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "SMOKE01 Ship bounded compiled CLI and independent daemon smoke",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "done",
+          "priority": 0,
+          "assignee": "pilot_smoke",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.171,
+          "updated_at": 1793022305.21,
+          "started_at": 1793007631.171,
+          "completed_at": 1793022305.21,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 5,
+          "age_seconds": 115296
+        },
+        {
+          "card_id": "card_cb0c70ea",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "EVID01 Publish honest task and qualification evidence ledger",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "done",
+          "priority": 0,
+          "assignee": "root",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.171,
+          "updated_at": 1793022305.211,
+          "started_at": 1793007631.171,
+          "completed_at": 1793022305.211,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 4,
+          "age_seconds": 115296
+        },
+        {
+          "card_id": "card_a7b41724",
+          "board": "session-pilot-debt",
+          "task_id": null,
+          "title": "VERIFY01 Run full suite, Sonnet 5.5 audit and fix findings",
+          "body": "Acceptance and dependencies: docs/plans/2026-10-26-session-pilot-debt.md. Local tests are not provider or production qualification.",
+          "status": "done",
+          "priority": 0,
+          "assignee": "root",
+          "blocked_reason": null,
+          "tenant_id": null,
+          "card_type": "implementation",
+          "meta": null,
+          "created_at": 1793007631.171,
+          "updated_at": 1793010548.832,
+          "started_at": 1793007631.171,
+          "completed_at": 1793010548.832,
+          "link_counts": {
+            "parents": 0,
+            "children": 0
+          },
+          "comment_count": 5,
+          "age_seconds": 115296
+        }
+      ]
+    },
+    {
+      "name": "archived",
+      "cards": []
+    }
+  ],
+  "assignees": [
+    "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13",
+    "external-environment",
+    "future-runtime",
+    "pilot_completion",
+    "pilot_runtime_cleanup",
+    "pilot_smoke",
+    "root",
+    "thread-b"
+  ],
+  "latest_event_id": 648,
+  "stats": {
+    "total": 12,
+    "by_status": {
+      "todo": 2,
+      "blocked": 2,
+      "done": 8
+    },
+    "by_assignee": {
+      "future-runtime": 3,
+      "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13": 1,
+      "thread-b": 1,
+      "root": 3,
+      "pilot_completion": 1,
+      "pilot_runtime_cleanup": 1,
+      "pilot_smoke": 1,
+      "external-environment": 1
+    }
+  }
+}

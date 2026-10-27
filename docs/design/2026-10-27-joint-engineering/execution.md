@@ -116,3 +116,14 @@ GitHub 实际合并 #282 于 `ede5aadced37ac9dc29dd21f0e307ad2c46d2976`，包含
 OSStack terminal fence 卡按其限定范围关闭，DEBT02 跨进程恢复仍待完成。J01/J11 不因前置合并自动通过。新批次从上述 main 启动：N0 组件契约与主机门槛分层、JP-17a broker SQL/held-orphan 离线规格候选，以及二者的独立反例验证。分层修订必须保留原 JA01/JA02 与 legacy/release 义务；broker 候选必须有真实可执行字节和明确身份，不能用模板或候选 tuple 冒充已部署资格。
 
 本地主工作区仍保留历史 checkout 和其他未提交工作，不能从其旧账本推断最新进度。本检查点从已合并 Git 对象创建隔离工作树，原账本及测试、审计绑定保留在历史证据中。执行状态以新版本化检查点、当前 GitHub 和三看板共同核对。
+
+
+## #284 合并后的执行窗口（2026-10-28，上海时间）
+
+已从 GitHub 与远端 Git 核实：#283 合入 `697d0b9c86009a8ee11a1d06931fb787cf600f12`，#284 合入最新 main `3192b424174e5eb977d640cc0418e67c6b1461d1`。main 的 tree `228b2a0b9ae6708bc68bb3019921198484538320` 与此前独立合成验证的最终树完全相同；历史测试仍绑定原候选 SHA，本次不将树一致性写成新测试运行。两 PR 的发布 head 五项 CI 均成功，付费语义 smoke 跳过。
+
+批次 `joint-post284` 三个独占任务已进入 OSStack：A 补齐 JP-01c 的 JA59 跨语言与 JA70 类型/关联回归；B 验证 JA20/JA47 home 与 broker 的真实离线输入及依赖反例；C 预冻结 J02b 离线采用闭包的夹具和边界。A/B 在隔离分支交付，C 仅写 scratch。中央账本及 PR 仍由主入口单一管理，全仓测试仅一个队列。
+
+`J01.contracts` 尚未正式通过，模型名称不能代替可信 oracle principal，测试数量不能替代预冻结与身份条件。J02b/J03 产品开工保持依赖阻断；J03 不依赖 J02。J11/J12/J17 的正式授权、文件级崩溃和旧 writer fencing 义务保留；home 48、broker 0→1 均未被本次分配为生产迁移。所有新候选继续实际 Claude CLI Sonnet 5.5 审计、修复并保留原始意见；通知审批前重新查询发布 head 的 CI。
+
+当前合并观察、三看板快照和派发回执见 [执行账本](execution-ledger.json)；较早章节是各自观察时刻的历史记录，不构成当前 Ready 或 gate 状态。
