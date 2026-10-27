@@ -1,0 +1,52 @@
+[
+  {
+    "card_id": "card_79cdb3e7",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "[J11] 恢复回执目标 schema 规格",
+    "body": "{\"project\": \"Firstmate+pstack absorption into OSStack\", \"owner_thread\": \"01a178ed-616a-7bb1-8d20-13f4c1019245\", \"work_item\": \"J11\", \"depends_on\": [\"J01\"], \"merge_after\": [], \"acceptance_ids\": [\"JA20\", \"JA47\"], \"progress\": \"candidate_pr_open\", \"runtime_enabled\": false, \"source\": \"docs/design/2026-10-27-joint-engineering/execution-ledger.json\", \"dependency_enforcement\": \"owner checks frozen work graph; board text does not enforce it\"}",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "PR #274: local validation and Sonnet PASS; awaiting current-head CI and user approval/merge.",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793083533.965,
+    "updated_at": 1793097065.416,
+    "started_at": 1793083533.965,
+    "completed_at": null
+  },
+  {
+    "comment_id": 307,
+    "card_id": "card_79cdb3e7",
+    "author": "joint-entry",
+    "body": "PR #274 retargeted to main 69859eec; final code 7ea45584ce0de01860571100beb5daed4ff83f31; local full suite 6174 passed / 5 skipped / 0 failed, all 22 packages; build/typecheck/lint/inventory and Sonnet 5.5 PASS. Required current-head GitHub CI and gilberthello approval/merge remain external gates. No runtime qualification or whole-milestone completion.",
+    "created_at": 1793097065.417
+  },
+  {
+    "card_id": "card_a502fa36",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "[J02] 共用来源快照与分型注册",
+    "body": "{\"project\": \"Firstmate+pstack absorption into OSStack\", \"owner_thread\": \"01a178ed-616a-7bb1-8d20-13f4c1019245\", \"work_item\": \"J02\", \"depends_on\": [\"J01\"], \"merge_after\": [], \"acceptance_ids\": [\"JA03\", \"JA04\"], \"progress\": \"planned\", \"runtime_enabled\": false, \"source\": \"docs/design/2026-10-27-joint-engineering/execution-ledger.json\", \"dependency_enforcement\": \"owner checks frozen work graph; board text does not enforce it\"}",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "PR #281: local validation and Sonnet PASS; awaiting current-head CI and user approval/merge.",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793083533.963,
+    "updated_at": 1793097065.418,
+    "started_at": 1793083810.707,
+    "completed_at": null
+  },
+  {
+    "comment_id": 308,
+    "card_id": "card_a502fa36",
+    "author": "joint-entry",
+    "body": "PR #281 retargeted to main 69859eec; final code 26e7e02d4cdc931aa6d2b852d1b83cedc74238ef; local full suite 6194 passed / 5 skipped / 0 failed, all 22 packages; build/typecheck/lint/inventory and Sonnet 5.5 PASS. Required current-head GitHub CI and gilberthello approval/merge remain external gates. No runtime qualification or whole-milestone completion.",
+    "created_at": 1793097065.418
+  }
+]

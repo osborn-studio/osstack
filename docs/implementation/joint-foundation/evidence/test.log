@@ -1,0 +1,119 @@
+$ pnpm -r test
+Scope: 22 of 23 workspace projects
+packages/compliance test$ vitest run --passWithNoTests
+packages/contracts test$ vitest run
+packages/github test$ vitest run --passWithNoTests
+packages/governance test$ vitest run --passWithNoTests
+packages/github test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/github
+packages/governance test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/governance
+packages/compliance test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/compliance
+packages/contracts test:  RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/contracts
+packages/github test:  ✓ src/report.test.ts (1 test) 1ms
+packages/github test:  ✓ src/branch-scorer.test.ts (7 tests) 3ms
+packages/github test:  ✓ src/stack.test.ts (15 tests) 80ms
+packages/contracts test:  ✓ src/validator.test.ts (3 tests) 23ms
+packages/github test:  ✓ src/branch-scanner.test.ts (7 tests) 6ms
+packages/compliance test:  ✓ src/index.test.ts (17 tests) 91ms
+packages/compliance test:  Test Files  1 passed (1)
+packages/compliance test:       Tests  17 passed (17)
+packages/compliance test:    Start at  22:43:13
+packages/compliance test:    Duration  943ms (transform 96ms, setup 115ms, collect 138ms, tests 91ms, environment 0ms, prepare 78ms)
+packages/github test:  ✓ src/portfolio-status.test.ts (10 tests) 8ms
+packages/contracts test:  ✓ src/hub-package.test.ts (12 tests) 95ms
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  15 passed (15)
+packages/contracts test:    Start at  22:43:13
+packages/contracts test:    Duration  963ms (transform 112ms, setup 62ms, collect 185ms, tests 118ms, environment 0ms, prepare 161ms)
+packages/github test:  ✓ src/attention-ci.test.ts (2 tests) 2ms
+packages/compliance test: Done
+packages/knowledge test$ vitest run --passWithNoTests
+packages/contracts test: Done
+packages/neat-eval test$ vitest run --passWithNoTests
+packages/governance test:  ✓ src/knowledge-hygiene/types-v2.test.ts (8 tests) 10ms
+packages/governance test:  ✓ src/probe/evaluation-compiler.test.ts (3 tests) 12ms
+packages/github test: (node:27714) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+packages/github test: (Use `node --trace-warnings ...` to show where the warning was created)
+packages/governance test:  ✓ src/knowledge-hygiene/config.test.ts (18 tests) 39ms
+packages/github test:  ❯ src/delivery.test.ts (65 tests | 1 failed) 137ms
+packages/github test:    ✓ guarded GitHub delivery > pushes, creates, checks, protects, and SHA-binds a squash merge 7ms
+packages/github test:    ✓ guarded GitHub delivery > reuses an existing open PR only when it resolves to the pushed head 2ms
+packages/github test:    ✓ guarded GitHub delivery > recovers an already merged exact-head PR without repeating GitHub writes 1ms
+packages/github test:    ✓ guarded GitHub delivery > retries bounded PR resolution after a creation acknowledgement 1ms
+packages/github test:    ✓ guarded GitHub delivery > accepts effective ruleset-only protection 3ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on missing GitHub auth 1ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on missing remote 1ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on push rejection 1ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on CI failure 1ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on CI timeout 3ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on dirty worktree 8ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on wrong branch 3ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on malformed PR creation acknowledgement or PR metadata 2ms
+packages/github test:    ✓ guarded GitHub delivery > fails closed on no protection, unauthorized lookup, or zero required checks 4ms
+packages/github test:    ✓ guarded GitHub delivery > rejects stale or changed PR heads and merge conflicts 2ms
+packages/github test:    ✓ guarded GitHub delivery > rejects protected/injected branches and a missing proof body before push 2ms
+packages/github test:    ✓ guarded GitHub delivery > builds a minimal child environment without approval or notification secrets 1ms
+packages/github test:    ✓ guarded GitHub delivery > uses the configured CI timeout and retries push only within a bound 1ms
+packages/github test:    ✓ opt-in candidate evidence > skips push/watch only on full binding and still reads current rollup and remote twice 2ms
+packages/github test:    ✓ opt-in candidate evidence > refuses changed environmentFingerprint before writes 1ms
+packages/github test:    ✓ opt-in candidate evidence > refuses changed policyFingerprint before writes 1ms
+packages/github test:    ✓ opt-in candidate evidence > refuses changed testsFingerprint before writes 1ms
+packages/github test:    ✓ opt-in candidate evidence > rejects missing context, stale evidence and wrong SHA 4ms
+packages/github test:    ✓ opt-in candidate evidence > fresh CANCELLED CI prevents merge despite matching hint 1ms
+packages/github test:    ✓ opt-in candidate evidence > fresh FAILURE CI prevents merge despite matching hint 1ms
+packages/github test:    ✓ opt-in candidate evidence > fresh null CI prevents merge despite matching hint 2ms
+packages/github test:    ✓ opt-in candidate evidence > remote head race after current checks refuses merge 1ms
+packages/github test:    ✓ opt-in candidate evidence > current PR base mismatch refuses without push/watch 1ms
+packages/github test:    ✓ opt-in candidate evidence > conflicting stale green plus cancelled result cannot authorize merge 1ms
+packages/github test:    ✓ opt-in candidate evidence > required-check policy identity cannot narrow itself 0ms
+packages/github test:    ✓ opt-in candidate evidence > retargeted PR base after checks refuses at final current scope read 1ms
+packages/github test:    ✓ opt-in candidate evidence > missing remote ref refuses before writes 2ms
+packages/github test:    ✓ candidate evidence current-state regressions > two same-name required runs success plus cancelled refuse instead of selecting old green 1ms
+packages/github test:    ✓ candidate evidence current-state regressions > second remote read changing only base refuses despite unchanged candidate head 1ms
+packages/github test:    ✓ candidate evidence current-state regressions > future observation timestamp refuses before any publishing 0ms
+packages/github test:    ✓ candidate evidence current-state regressions > TTL expiring between initial binding and final current checks refuses merge 1ms
+packages/github test:    ✓ candidate evidence current-state regressions > matching hint with no current open PR refuses rather than creating or pushing 0ms
+packages/github test:    ✓ candidate evidence current-state regressions > second live protection lookup adding required check refuses before merge 1ms
+packages/github test:    ✓ stateless current candidate observer > observes current green reads, hands hint to same consumer and still repeats final CI 2ms
+packages/github test:    ✓ stateless current candidate observer > unproven missing returns no hint and performs no writes 1ms
+packages/github test:    ✓ stateless current candidate observer > unproven pending returns no hint and performs no writes 2ms
+packages/github test:    ✓ stateless current candidate observer > unproven cancelled returns no hint and performs no writes 1ms
+packages/github test:    ✓ stateless current candidate observer > unproven duplicate returns no hint and performs no writes 1ms
+packages/github test:    ✓ stateless current candidate observer > unproven merged returns no hint and performs no writes 1ms
+packages/github test:    ✓ stateless current candidate observer > unproven unmergeable returns no hint and performs no writes 1ms
+packages/github test:    ✓ stateless current candidate observer > contradictory local-branch refuses with zero writes 1ms
+packages/github test:    ✓ stateless current candidate observer > contradictory scope refuses with zero writes 2ms
+packages/github test:    ✓ stateless current candidate observer > contradictory repository refuses with zero writes 1ms
+packages/github test:    ✓ stateless current candidate observer > contradictory malformed refuses with zero writes 1ms
+packages/github test:    ✓ stateless current candidate observer > refuses cached hint input before runner invocation 1ms
+packages/github test:    ✓ current observer bounded ref metadata > legitimately absent remote ref "" yields no hint and no write 17ms
+packages/github test:    ✓ current observer bounded ref metadata > legitimately absent remote ref "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/osstack/task-123\n" yields no hint and no write 8ms
+packages/github test:    ✓ current observer bounded ref metadata > legitimately absent remote ref "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/heads/main\n" yields no hint and no write 7ms
+packages/github test:    ✓ current observer bounded ref metadata > contradictory ref bytes "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/osstack/task-123\nbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/heads/main\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/foreign\n" refuse without fallback or writes 1ms
+packages/github test:    ✓ current observer bounded ref metadata > contradictory ref bytes "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/osstack/task-123\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/osstack/task-123\n" refuse without fallback or writes 0ms
+packages/github test:    ✓ current observer bounded ref metadata > contradictory ref bytes "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/foreign\n" refuse without fallback or writes 0ms
+packages/github test:    ✓ current observer bounded ref metadata > contradictory ref bytes "badsha\trefs/heads/main\n" refuse without fallback or writes 1ms
+packages/github test:    ✓ current observer bounded ref metadata > PR closes between metadata and current rollup read cannot mint a hint 1ms
+packages/github test:    ✓ current observer bounded ref metadata > invalid raw context is rejected before any command 1ms
+packages/github test:    × source mutant omitting unique final current checks permits stale green plus cancelled merge only after full positive baseline 8ms
+packages/github test:      → The property 'options.mode' must be one of: 'strip'. Received 'transform'
+packages/github test:    ✓ current observer stale remote head returns no hint without writes so original consumer may decide pending push 2ms
+packages/github test:    ✓ contract PR-only publication > opens or reuses the exact PR and never watches CI or merges 2ms
+packages/github test:    ✓ contract PR-only publication > rejects repository and candidate mismatches before pushing 2ms
+packages/github test:    ✓ contract PR-only publication > does not claim draft publication when an existing PR is ready 2ms
+packages/github test:    ✓ contract PR-only publication > rechecks destination before push and refuses remote changes 1ms
+packages/governance test:  ✓ src/probe/reducer.test.ts (15 tests) 19ms
+packages/github test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+packages/github test:  FAIL  src/delivery.test.ts > source mutant omitting unique final current checks permits stale green plus cancelled merge only after full positive baseline
+packages/github test: TypeError: The property 'options.mode' must be one of: 'strip'. Received 'transform'
+packages/github test:  ❯ src/delivery.test.ts:1087:21
+packages/github test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+packages/github test:  Test Files  1 failed | 6 passed (7)
+packages/github test:       Tests  1 failed | 106 passed (107)
+packages/github test:    Start at  22:43:13
+packages/github test:    Duration  1.25s (transform 491ms, setup 386ms, collect 1.09s, tests 237ms, environment 1ms, prepare 1.22s)
+packages/github test: Failed
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/joint-contracts/packages/github:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/github@0.22.0 test: `vitest run --passWithNoTests`
+Exit status 1
+packages/protocol test$ vitest run
+[ELIFECYCLE] Test failed. See above for more details.

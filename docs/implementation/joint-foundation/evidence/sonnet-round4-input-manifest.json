@@ -1,0 +1,7 @@
+{
+  "packages/protocol/scripts/joint-reference-vectors.py": "885a57e159cce7c8f222a88c68d5d2d7ba89c803075f2b063b522313013019c7",
+  "packages/protocol/src/joint-reference.test.ts": "496e7c88e73be298c16034531520482110a29b76f5b1bc1a0b1e5e3dd495ca58",
+  "packages/protocol/src/joint-foundation.test.ts": "e1527cae5ac0d93b5a330e2aaeb231ee70da67bd37678cc4872ac8102315fa40",
+  "packages/core/src/state/operator-recovery-spec.test.ts": "3d65c4368adf4be5f1de4a005f592f252a62ede8ee69e064d4958d1d2b46b354",
+  "packages/core/fixtures/operator-recovery/bootstrap.sql": "c0fe68c3c5ca12dcdaa02c1c145f29860cefaf99500bae841153533d5aa79147"
+}

@@ -1,0 +1,6 @@
+{
+  "cwd": "packages/core",
+  "exit_code": 1,
+  "expected_error": "UNTRACKED_STATE_SOURCE",
+  "manifest_unchanged": true
+}

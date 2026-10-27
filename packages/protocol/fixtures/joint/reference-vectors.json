@@ -62,10 +62,10 @@
         "schema_change_id": "operator-recovery-bootstrap-v1",
         "source_schema": 47,
         "target_schema": 48,
-        "ddl_digest": "c0fe68c3c5ca12dcdaa02c1c145f29860cefaf99500bae841153533d5aa79147",
+        "ddl_digest": "7002b690cacdbaabac47b69277a56d028a9879222dd7433ae43fbe8ea728f6b2",
         "fixture_digest": "595ffdf06a1f1e60c8af6344bc6e04ff4340a980148894b1a8ca86085bc3b715",
         "source_schema_digest": "7b4bb1608b12373cb3225d4c3614dc5cd1d1634b8c97e6db16a2acedb673159c",
-        "target_schema_digest": "e017d77fa93c4229ac10e2582a96214c2203c305333f345aaa623fbafd84f22c",
+        "target_schema_digest": "7d42339e7d0e14da3be37cc4b2f79df54220425f763248801f7ae9961a38459f",
         "expected_lineage_tables": [
           "agent_sessions",
           "agents",
@@ -174,7 +174,7 @@
           "tasks"
         ]
       },
-      "expected": "c0eed4e15a9ebcf7f1ed39c70a7b84d24d71c19175ad3c87a0794ff732be8fcb"
+      "expected": "85bfa681b6cfa99b57bfaa1163968d870193852358ca026510f29982ad7e0ce4"
     },
     {
       "helper": "recoveryRequestInputDigest",
