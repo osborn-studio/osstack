@@ -55,3 +55,5 @@ JP-01c/01d是regression-only验收子片，拥有明确测试文件与角色。J
 闭合子片登记现枚举`frozen_contract_artifacts`、三gate的`identity_fields`及实际入口路径。证据必须包含精确candidate、每项契约/入口源码摘要、传递导入源码集合、lockfile/编译器/runtime/config与support cell/oracle摘要；冻结契约清单只包含已存在的组件文件。J05/J07的两个未来扩展路径另列`tracked_contract_extension_paths`，不是初始组件门槛前置；创建或修改它们后须重新冻结组合契约/依赖manifest并使下游旧证据失效，避免语义上的自依赖。J01/J05/J07等写入重叠契约的工作包必须声明失效并在组合候选重评全部下游证据。规划验证器只检查规格完整性，真正证据比对仍由后续实现。
 
 `transitive-impact.json`包含冻结基线图并受摘要保护；校验器重算移除的J01继承、新增的E0继承和执行边界闭包。独立host/legacy release节点不得被J25.e0 stop阻断。只有指定值实验消费者继续受原continue/shrink规则约束。有效阶段图以gate及显式slice为准，包级依赖用于职责/冲突，不可替代阶段基线。
+
+现存joint-*与method-materials契约文件由J01明确登记维护，method-binding亦按当前main已存在处理。每个绑定同时覆盖entry源码与harness，失效声明计算工作包和子片所有写路径的并集。新增方法扩展后重评是有限批次的组合候选验证：先冻结该批变更，再按DAG重评组件及所有受影响消费者；验证只产生仓库外证据，不再修改候选，不因生成证据递归触发新候选。若代码继续变化则重新冻结，禁止沿用旧结果。

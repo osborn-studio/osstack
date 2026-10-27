@@ -90,7 +90,8 @@
         "config_digest",
         "dependency_manifest_digest",
         "support_cell_digest",
-        "oracle_digest"
+        "oracle_digest",
+        "harness_digest"
       ],
       "contract_artifacts": [
         "packages/protocol/src/engineering.ts",
@@ -105,8 +106,15 @@
         "packages/protocol/src/method-binding.ts",
         "packages/protocol/src/method-materials.ts"
       ],
-      "entry_source_paths": [],
-      "source_closure_rule": "Record all transitively imported implementation source paths and content SHA256, plus lockfile/compiler/runtime/config digests. Every frozen contract artifact must exist on the candidate. Tracked extension paths are future producer outputs, not initial gate prerequisites; adding or modifying them invalidates all dependent evidence and requires re-freezing the composed contract and dependency manifest. Any candidate or digest change invalidates all dependent evidence; no cross-candidate reuse."
+      "entry_source_paths": [
+        "packages/protocol/src/joint-json.ts",
+        "packages/protocol/src/joint-contracts.ts"
+      ],
+      "source_closure_rule": "Record all transitively imported implementation source paths and content SHA256, plus lockfile/compiler/runtime/config digests. Every frozen contract artifact must exist on the candidate. Tracked extension paths are future producer outputs, not initial gate prerequisites; adding or modifying them invalidates all dependent evidence and requires re-freezing the composed contract and dependency manifest. Any candidate or digest change invalidates all dependent evidence; no cross-candidate reuse.",
+      "harness_paths": [
+        "packages/protocol/src/joint-reference.test.ts",
+        "packages/protocol/src/joint-admission.test.ts"
+      ]
     },
     "J08.admission_boundary": {
       "identity_fields": [
@@ -116,7 +124,8 @@
         "config_digest",
         "dependency_manifest_digest",
         "support_cell_digest",
-        "oracle_digest"
+        "oracle_digest",
+        "harness_digest"
       ],
       "contract_artifacts": [
         "packages/protocol/src/engineering.ts",
@@ -134,7 +143,10 @@
       "entry_source_paths": [
         "packages/cli/src/method-host-admission.ts"
       ],
-      "source_closure_rule": "Record all transitively imported implementation source paths and content SHA256, plus lockfile/compiler/runtime/config digests. Every frozen contract artifact must exist on the candidate. Tracked extension paths are future producer outputs, not initial gate prerequisites; adding or modifying them invalidates all dependent evidence and requires re-freezing the composed contract and dependency manifest. Any candidate or digest change invalidates all dependent evidence; no cross-candidate reuse."
+      "source_closure_rule": "Record all transitively imported implementation source paths and content SHA256, plus lockfile/compiler/runtime/config digests. Every frozen contract artifact must exist on the candidate. Tracked extension paths are future producer outputs, not initial gate prerequisites; adding or modifying them invalidates all dependent evidence and requires re-freezing the composed contract and dependency manifest. Any candidate or digest change invalidates all dependent evidence; no cross-candidate reuse.",
+      "harness_paths": [
+        "packages/cli/src/method-host-admission.test.ts"
+      ]
     },
     "J01.scoped": {
       "identity_fields": [
@@ -144,7 +156,8 @@
         "config_digest",
         "dependency_manifest_digest",
         "support_cell_digest",
-        "oracle_digest"
+        "oracle_digest",
+        "harness_digest"
       ],
       "contract_artifacts": [
         "packages/protocol/src/engineering.ts",
@@ -163,7 +176,10 @@
         "packages/cli/src/method-host-admission.ts",
         "packages/cli/src/graph-verification.ts"
       ],
-      "source_closure_rule": "Record all transitively imported implementation source paths and content SHA256, plus lockfile/compiler/runtime/config digests. Every frozen contract artifact must exist on the candidate. Tracked extension paths are future producer outputs, not initial gate prerequisites; adding or modifying them invalidates all dependent evidence and requires re-freezing the composed contract and dependency manifest. Any candidate or digest change invalidates all dependent evidence; no cross-candidate reuse."
+      "source_closure_rule": "Record all transitively imported implementation source paths and content SHA256, plus lockfile/compiler/runtime/config digests. Every frozen contract artifact must exist on the candidate. Tracked extension paths are future producer outputs, not initial gate prerequisites; adding or modifying them invalidates all dependent evidence and requires re-freezing the composed contract and dependency manifest. Any candidate or digest change invalidates all dependent evidence; no cross-candidate reuse.",
+      "harness_paths": [
+        "packages/cli/src/joint-host-acceptance.test.ts"
+      ]
     }
   },
   "tracked_contract_extension_paths": [

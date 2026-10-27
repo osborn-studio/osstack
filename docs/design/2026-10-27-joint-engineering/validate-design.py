@@ -170,7 +170,7 @@ def preflight_blockers(data, work_item, stage):
 COMPONENT_GATE_OVERRIDES = {work: {'J01': 'J01.contracts'} for work in ('J02', 'J03', 'J04', 'J11')}
 PROTECTED_HOST_CASE_FIELDS = ('id', 'owner_work_item', 'title', 'given', 'when', 'then',
     'bad_variant', 'oracle', 'required_evidence', 'layer', 'capabilities', 'asserts', 'covers_negative_ids')
-PINNED_LAYER_SPEC_FILES = {'ja01-ja02-original.json': 'd7740ae67078c478c32a6d7a36f997a7f16ae649d6391b699e4ee22512bd6fbb', 'component-case-specs.json': 'e559ee91429e4908bfc6ec0278d20726c8f2b1023c2a83a5d1ec50e454cec73d', 'component-slice-specs.json': '72f22f4e49c8a39a4ada692323c565c6f57e7a4101c20a8832be2fe000ab734b', 'transitive-impact.json': '7943ffbe80046656ff3b1904550064f02f08fab21ca9eafe9b6c67bffbb810aa'}
+PINNED_LAYER_SPEC_FILES = {'ja01-ja02-original.json': 'd7740ae67078c478c32a6d7a36f997a7f16ae649d6391b699e4ee22512bd6fbb', 'component-case-specs.json': 'e559ee91429e4908bfc6ec0278d20726c8f2b1023c2a83a5d1ec50e454cec73d', 'component-slice-specs.json': 'd81b5bf43a0af7fdb7695cb8cb4b8460671cc42679e885161ea40c7ef3877ace', 'transitive-impact.json': 'fce8d782afebfb87b867620be6cbfcd157c045b056bb145661c4c46f3587d510'}
 COMPONENT_EVIDENCE_BINDING_RULE = 'Every component and host result binds the exact candidate and immutable contract/entry source and configuration digests. A regression-only host slice cannot change frozen contract artifacts; any changed byte invalidates dependent evidence and requires re-evaluation on the composed candidate. No snapshot grants a reusable runtime lease.'
 PROTECTED_HOST_CASE_DIGESTS = {
     'JA01': '93ba311087389cd57098152941ae9dded1bdf244c77af2787a6d1295eabf60ce',
@@ -265,20 +265,29 @@ def validate_gate_layers(data, root, wm, gm, cases, closure):
         for item in slices:
             require(item['requires'] == gm[item['gate']]['requires'], item['id'] + ': slice/gate prerequisite drift')
             require(item['owner_role'] == wm[wid]['owner_role'], item['id'] + ': slice owner mismatch')
+            if 'pr' in item:
+                require(item['pr']['required_base_gates'] == item['requires'], item['id'] + ': slice PR base drift')
             for other, work in wm.items():
                 if other != wid and set(item['write_paths']) & set(work['write_paths']):
                     require(other + '.scoped' in closure(item['gate']), item['id'] + ': unordered shared slice path')
     registry = specs['component-slice-specs.json']
     artifacts = set(registry['frozen_contract_artifacts']) | set(registry['tracked_contract_extension_paths'])
+    for binding in registry['gate_evidence_bindings'].values():
+        artifacts.update(binding['entry_source_paths']); artifacts.update(binding['harness_paths'])
     for gid, binding in registry['gate_evidence_bindings'].items():
         require(gm[gid].get('identity_fields') == binding['identity_fields']
                 and gm[gid].get('evidence_binding_ref') == 'evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/' + gid,
                 gid + ': component evidence identity binding drift')
     for wid, work in wm.items():
-        overlap = sorted(artifacts & set(work['write_paths']))
+        declared = set(work['write_paths']) | {p for item in work.get('component_slices', []) for p in item['write_paths']}
+        overlap = sorted(artifacts & declared)
         expected = {'paths': overlap, 'gates': ['J01.contracts', 'J08.admission_boundary', 'J01.scoped'],
                     'on': 'any_changed_byte_or_candidate', 'action': 're_evaluate_composed_candidate_and_all_dependents'} if overlap else None
         require(work.get('invalidates_component_evidence') == expected, wid + ': contract write invalidation missing or changed')
+    require(set(registry['frozen_contract_artifacts']) <= set(wm['J01']['write_paths']),
+            'frozen contract artifacts lack J01 ownership')
+    require(all(wm['J01']['path_disposition'].get(p) == 'extend_existing' for p in registry['frozen_contract_artifacts']),
+            'frozen contract baseline disposition drift')
     impact = specs['transitive-impact.json']
     base_graph = impact['baseline_requires']
     def baseline_closure(gid):
