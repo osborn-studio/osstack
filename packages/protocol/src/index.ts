@@ -125,7 +125,8 @@ export {
   EngineeringEndObservationRequest, EngineeringReconcileRequest, EngineeringRpcRequests,
 } from "./engineering.js";
 export {
-  BEHAVIOR_DOCUMENT_MAX_BYTES, BehaviorCapabilityIdV1, BehaviorQualificationLevelV1, BehaviorSourceV1, BehaviorContractV1,
+  BEHAVIOR_DOCUMENT_MAX_BYTES, BehaviorCapabilityIdV1, BehaviorQualificationLevelV1,
+  BehaviorSourceV1, BehaviorSourceManifestV1, BehaviorContractV1,
   BehaviorRegistryV1, BehaviorQualificationProfileV1, BehaviorEvidenceV1,
   BehaviorEvidenceBundleV1, BehaviorQualificationV1, BehaviorDeliveryRecordV1,
 } from "./behavior-capability.js";

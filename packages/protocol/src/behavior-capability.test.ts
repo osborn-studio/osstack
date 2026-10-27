@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BehaviorCapabilityIdV1, BehaviorContractV1, BehaviorRegistryV1,
+  BehaviorCapabilityIdV1, BehaviorSourceManifestV1, BehaviorContractV1, BehaviorRegistryV1,
   BehaviorQualificationV1, BehaviorEvidenceBundleV1, BehaviorDeliveryRecordV1,
 } from "./behavior-capability.js";
 
@@ -81,6 +81,16 @@ describe("behavior contracts v1", () => {
     const entry = { contract, contract_sha256: digest };
     expect(BehaviorRegistryV1.safeParse({ schema_version: 1, kind: "behavior_registry", registry_version: "1.0.0",
       candidate_sha: commit, target_code_sha256: digest, entries: [entry, entry] }).success).toBe(false);
+  });
+  it("defines a strict source snapshot that can contain more than one capability's references", () => {
+    const manifest = { schema_version: 1, kind: "behavior_source_manifest",
+      sources: [...contract.sources, { ...contract.sources[0], path: "README.md" }] };
+    expect(BehaviorSourceManifestV1.parse(manifest)).toEqual(manifest);
+    expect(BehaviorSourceManifestV1.safeParse({ ...manifest, schema_version: 2 }).success).toBe(false);
+    expect(BehaviorSourceManifestV1.safeParse({ ...manifest, sources: [...contract.sources, ...contract.sources] }).success).toBe(false);
+    expect(BehaviorSourceManifestV1.safeParse({ ...manifest, command: "extract" }).success).toBe(false);
+    expect(BehaviorSourceManifestV1.safeParse({ sources: ["AGENTS.md"] }).success).toBe(false);
+    expect(BehaviorSourceManifestV1.safeParse({ ...manifest, sources: [{ ...contract.sources[0], extra: "ignored" }] }).success).toBe(false);
   });
   it("rejects malformed Unicode, blank strings and unbounded declarations", () => {
     for (const trigger of ["", " ", "a\0b", "a\ud800b", "x".repeat(513), "id\n", "\u001bid", "id\u202e", "id\u200b", " id", "id ", "e\u0301"])
