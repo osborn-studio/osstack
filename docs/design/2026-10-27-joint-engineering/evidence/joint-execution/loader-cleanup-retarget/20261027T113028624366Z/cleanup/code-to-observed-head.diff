@@ -1,0 +1,870 @@
+diff --git a/.changeset/session-start-cleanup.md b/.changeset/session-start-cleanup.md
+index 538d6b90..8f2dd060 100644
+--- a/.changeset/session-start-cleanup.md
++++ b/.changeset/session-start-cleanup.md
+@@ -5,3 +5,5 @@
+ Preserve completed Session start responses when writer lease cleanup fails. Clear the settled active-run marker while keeping retained admission visible to drain in the current daemon instance. Database-driven replay of the original start request does not start another Session.
+ 
+ Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
++
++Replay is a lookup of the stored Session state. A failed initial start returns `agent_failed`; replay returns `ok: true` with `state: failed` and never repeats the adapter invocation. Callers must inspect the stored state. Terminal producer fencing remains a separate change in #279.
+diff --git a/docs/implementation/joint-session-cleanup-retarget/README.md b/docs/implementation/joint-session-cleanup-retarget/README.md
+new file mode 100644
+index 00000000..16b58a64
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/README.md
+@@ -0,0 +1,13 @@
++# Session start cleanup retarget validation
++
++PR #278 is validated against main `8fed83136611948ee068801ab5cc1fd471f90078`.
++Product code: `39c5df28cea120630f39a8267235c2f7ff5985b4`. Later documentation commits do not replace this code binding.
++
++Local full validation: **6214 passed, 5 skipped, 0 failed**, across 22 packages.
++Build, strict typecheck, lint and inventory check passed. Exact commands, times and log hashes are in the archived verification JSON.
++Claude CLI actually used `claude-sonnet-5-5`; final static verdict PASS. Raw prompts, JSON responses, earlier objections and host dispositions are retained.
++Independent subagent tests supplement the full suite. They do not replace GitHub CI, human approval, real provider qualification or runtime acceptance.
++
++The original retarget patch was byte-identical to the former stacked patch. Audit corrections are described in dispositions.md.
++Archive manifest hashes cover the stored files and original uncompressed bytes. Gzip files are preserved execution inputs/outputs, not runtime inputs.
++GitHub current-head status is observed separately in the joint execution ledger. The owner gilberthello approves and merges.
+diff --git a/docs/implementation/joint-session-cleanup-retarget/archive-manifest.json b/docs/implementation/joint-session-cleanup-retarget/archive-manifest.json
+new file mode 100644
+index 00000000..eea8ad6c
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/archive-manifest.json
+@@ -0,0 +1,178 @@
++{
++  "files": [
++    {
++      "file": "cleanup-audit-1-input.txt.gz",
++      "sha256": "4b59104bb626163aa32ea2420db73b0c18eab4b460254d5d6ac6c7d77cdd59ae",
++      "original_sha256": "038b36f1d307fa2dc7f7cbaa1646f4532907e15d2acd86027988f824b40bb9d7",
++      "original_bytes": 50376
++    },
++    {
++      "file": "cleanup-audit-1-stderr.txt.gz",
++      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
++      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++      "original_bytes": 0
++    },
++    {
++      "file": "cleanup-audit-1.json.gz",
++      "sha256": "2087defc89782407384897fe63926576e3201c6885c7e764caec29e583bc93f5",
++      "original_sha256": "5b583ad7c92c2e04b5c5ac716698e375ccee82e0b48d416ef5680625eb0d538d",
++      "original_bytes": 5548
++    },
++    {
++      "file": "cleanup-audit-1.md",
++      "sha256": "8fcd876d0d24b33126f2107b263eff1ab9cdef89cd8d4c27acd506761aa97d3b",
++      "original_sha256": "8fcd876d0d24b33126f2107b263eff1ab9cdef89cd8d4c27acd506761aa97d3b",
++      "original_bytes": 3691
++    },
++    {
++      "file": "cleanup-audit-2-input.txt.gz",
++      "sha256": "0f8627dc8bb05b984852debc5f13351086338c1852bcf6e74079a747b2c1db62",
++      "original_sha256": "602ade01a7d4cb0f4b59c210ddbeb17acd682175595507227ebfbda88a5c9366",
++      "original_bytes": 86411
++    },
++    {
++      "file": "cleanup-audit-2-stderr.txt.gz",
++      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
++      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++      "original_bytes": 0
++    },
++    {
++      "file": "cleanup-audit-2.json.gz",
++      "sha256": "e84736494d69af935cf82c542eaa9b845a81f71b490acd279646f748cd9896e8",
++      "original_sha256": "e076e6eac5d4a1d415276307a66d1cfdcc01be0f2e6e38aca64c22201085924f",
++      "original_bytes": 4631
++    },
++    {
++      "file": "cleanup-audit-2.md",
++      "sha256": "b75f46742732051d1845aae5be1a89c964540cb811ae277e338b22216b93eb49",
++      "original_sha256": "b75f46742732051d1845aae5be1a89c964540cb811ae277e338b22216b93eb49",
++      "original_bytes": 2769
++    },
++    {
++      "file": "cleanup-before.diff",
++      "sha256": "de30f88b025e95ba9f23f1d5adc4756e4481fb374ee3b96b8147df31b75f26fe",
++      "original_sha256": "de30f88b025e95ba9f23f1d5adc4756e4481fb374ee3b96b8147df31b75f26fe",
++      "original_bytes": 10424
++    },
++    {
++      "file": "cleanup-changeset.log.gz",
++      "sha256": "e4e6e3fbbe428b123e16e72401db0b5e504108cdfef9aaab585422b28b13036b",
++      "original_sha256": "f221a464d65a3b1fd02e2bf0374d9afa85b69e335cb8c7a93ed22e24cc86a1c9",
++      "original_bytes": 53
++    },
++    {
++      "file": "cleanup-counts.json.gz",
++      "sha256": "c790d03d64d2d4795d8621fb90aff5d36e9ac4915d81129269290c311d535683",
++      "original_sha256": "c8fd0f6c88533d80f8507baf7ca2ab063707f96147a57bfca4be9279a1b058da",
++      "original_bytes": 52
++    },
++    {
++      "file": "cleanup-final-frozen-build.log.gz",
++      "sha256": "1acf802de3b3c6befb95b011a004777bc88d5b4639c0de958f88f477af3b8550",
++      "original_sha256": "5956c554eb5e51f4444497a67f37a3a609e80664e689a02285c0b8554b313bd7",
++      "original_bytes": 23758
++    },
++    {
++      "file": "cleanup-final-frozen-inventory.log.gz",
++      "sha256": "956c03233d52728b0ae848bcbdc296af40e68d10679f8ed09dcdc16e4614d6db",
++      "original_sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9",
++      "original_bytes": 17
++    },
++    {
++      "file": "cleanup-final-frozen-lint.log.gz",
++      "sha256": "5bf2eb8e5e94396466a0640370c73865a119c71ad08c478871a94cdc89ea8a71",
++      "original_sha256": "8b90129e68e07538017962760339af2060bd95f634fbb7e4be2fdc7f7f968bc5",
++      "original_bytes": 26937
++    },
++    {
++      "file": "cleanup-final-frozen-tests.log.gz",
++      "sha256": "7cb6adcdfd19fd783de69fcf6b2a4f1475d7b22376bf90f142c17e893b8b3dfc",
++      "original_sha256": "6bc365dbe4bb21e0354f08fff48c44fda9c1a6cdf61ad21f8516e6d3c5cfb075",
++      "original_bytes": 274284
++    },
++    {
++      "file": "cleanup-final-frozen-typecheck.log.gz",
++      "sha256": "42890146883ca8fb4483db9bea9064df0a2e615d4ce56b58f50203aae0d27782",
++      "original_sha256": "cfad7863aeb272bb3729f8397da1a44b67fb48a9752d57b2fbc80080b39c50e5",
++      "original_bytes": 1737
++    },
++    {
++      "file": "cleanup-focused.log.gz",
++      "sha256": "ab85734c028aad4583d88db62a7ed3255b25c91b830b90329099f627383186c2",
++      "original_sha256": "87e8fbd341eab52fa32a002b0213c957f1ca1ac4e563163c0a0f01f34bbe6742",
++      "original_bytes": 1310
++    },
++    {
++      "file": "cleanup-install.log.gz",
++      "sha256": "57da9f851055793b6893fba3ad5bbd3b013aeb6073b1c36cecf7111665b34ee9",
++      "original_sha256": "071820cd28ec7c6c99f01035d3d72f3e7ee9658826f8c70039e92afa035fa993",
++      "original_bytes": 2561
++    },
++    {
++      "file": "cleanup-merge.log.gz",
++      "sha256": "fd778696f5681e9703960a3be646aa99971e7de1b345c582a47097e326cf78ff",
++      "original_sha256": "d70edad55a921bb56cbc86615964eb42a289ff7379ae21611784d2852e9f7d3c",
++      "original_bytes": 115494
++    },
++    {
++      "file": "cleanup-retarget.diff",
++      "sha256": "de30f88b025e95ba9f23f1d5adc4756e4481fb374ee3b96b8147df31b75f26fe",
++      "original_sha256": "de30f88b025e95ba9f23f1d5adc4756e4481fb374ee3b96b8147df31b75f26fe",
++      "original_bytes": 10424
++    },
++    {
++      "file": "cleanup-verification.json.gz",
++      "sha256": "f15759e773fa33d85eacd6a81e90ce9f1b8e4f47eb9ec6fb40ece31311511f80",
++      "original_sha256": "c2d2c8a06f0b8b743d59249b83af868986c21911e41d726f6991488486bdc446",
++      "original_bytes": 1555
++    },
++    {
++      "file": "cleanup-followup.txt.gz",
++      "sha256": "f2f2d734555be1776efce3a7b03a61a26dc5b015dc2ede720ce773bdc50044c8",
++      "original_sha256": "919caea5cfd80d095548eb132c1c822e71fe8c4c980c4ec9ac66aff6c0ac860a",
++      "original_bytes": 36020
++    },
++    {
++      "file": "audit.py.gz",
++      "sha256": "f11ced195b2023df80864cec3eb744e954086b4991e44f48b1dd91ef64a6cff4",
++      "original_sha256": "06822475c6b732a0c105b02612223b25be12716b5488d4f9971a90644dc06e9f",
++      "original_bytes": 3382
++    },
++    {
++      "file": "verify.py.gz",
++      "sha256": "912a026dccefec26cac2416afe7d77757f51b854d24b135c7abc9cb1deff2383",
++      "original_sha256": "68e71a2e3b20595c257ef35b512b49e6eb0a9b44bf38a6610131afd8f9c08e87",
++      "original_bytes": 1511
++    },
++    {
++      "file": "independent/extra-tests.log.gz",
++      "sha256": "ed8d243b3729aa605ce46f8f77e5aa1c09917509d8477327e436b818ed295ef2",
++      "original_sha256": "d0878fb64383d2fee1546e369e661e1b6a093a06d56f4909c17bf18958bcd302",
++      "original_bytes": 909
++    },
++    {
++      "file": "independent/extra.test.ts.gz",
++      "sha256": "0dedd1ed344ffee5b1518201ade275bbd69cfa48f42820b10c315ab5c091d6b6",
++      "original_sha256": "738dc67490ab959e6763aaf3ffd4fc86b5f7a3927532271ed4a50078b07e3479",
++      "original_bytes": 9096
++    },
++    {
++      "file": "independent/manifest.json.gz",
++      "sha256": "17c685d8953aaa92dd4f0647314bccdb9cfa8aeed5b5a454f084c2e7e5b69854",
++      "original_sha256": "2c3caf3bb63d092e3177306484a3ed6eea002e77cc645b12bb12ee4b13235d73",
++      "original_bytes": 1165
++    },
++    {
++      "file": "independent/report.md",
++      "sha256": "d79ddebf912818ac7a2bde8c490571529323bd7328e531eb37f2e7fc8b31462a",
++      "original_sha256": "d79ddebf912818ac7a2bde8c490571529323bd7328e531eb37f2e7fc8b31462a",
++      "original_bytes": 3693
++    },
++    {
++      "file": "independent/vitest.config.mts.gz",
++      "sha256": "15a44ccbca8cb6a5942525c5258f894879801bf04a7b2dd327fd9dfda9217d87",
++      "original_sha256": "e4cbb6c1c197994a161285954ffc92d1045f4cc33b35c8fa5dbb5bc96454f093",
++      "original_bytes": 604
++    }
++  ]
++}
+diff --git a/docs/implementation/joint-session-cleanup-retarget/audit-code-binding.json b/docs/implementation/joint-session-cleanup-retarget/audit-code-binding.json
+new file mode 100644
+index 00000000..878f5dfd
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/audit-code-binding.json
+@@ -0,0 +1,15 @@
++{
++  "code_sha": "39c5df28cea120630f39a8267235c2f7ff5985b4",
++  "reviewed_base": "8fed83136611948ee068801ab5cc1fd471f90078",
++  "model": "claude-sonnet-5-5",
++  "verdict": "PASS",
++  "final_audit": "cleanup-audit-2.md",
++  "scope": "static review and separate executed tests; no runtime qualification",
++  "validation": {
++    "passed": 6214,
++    "skipped": 5,
++    "failed": 0
++  },
++  "packages": 22,
++  "observed_at": "2026-10-27T10:58:03.393671+00:00"
++}
+diff --git a/docs/implementation/joint-session-cleanup-retarget/audit.py.gz b/docs/implementation/joint-session-cleanup-retarget/audit.py.gz
+new file mode 100644
+index 00000000..86400e60
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/audit.py.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-input.txt.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-input.txt.gz
+new file mode 100644
+index 00000000..028bd42b
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-input.txt.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-stderr.txt.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-stderr.txt.gz
+new file mode 100644
+index 00000000..86e43ea3
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1-stderr.txt.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.json.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.json.gz
+new file mode 100644
+index 00000000..047ddaff
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.json.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.md b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.md
+new file mode 100644
+index 00000000..38d98a96
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-1.md
+@@ -0,0 +1,47 @@
++## Verdict: REVISE
++
++The diff contains only the #278 Session start cleanup change: `daemon.ts`, `session-send-receipt.test.ts`, and one changeset. No #276 R02 evaluator, Behavior*/Joint* separation, J01/J11 or J02a files are in the supplied diff, so I could not review them. The #278 slice is mostly sound. The only defects I found are P2.
++
++### Present defects
++
++**P1: scope and claim mismatch**
++- **Location:** PR description vs. diff.
++- **Problem:** A PR described as #276 ships none of #276's code. I cannot certify anything about the evaluator's synchronous, offline behavior, the frozen R01 digest format, or the absence of implicit Behavior→Joint conversion.
++- **Fix:** Either supply the #276 diff or retitle the PR as #278-only. Do not merge claims I could not check.
++
++**P2: `requestSupervisionScan` can replace the preserved response**
++- **Location:** `daemon.ts`, inner `finally` of `handleSessionStart`, and the same pattern in the send path.
++- **Counterexample:** `ctx.supervision.requestScan` throws synchronously. Only the returned promise has `.catch`. The exception propagates out of the `finally` and replaces the already-built `singleOk` or `singleErr`, which defeats this PR's purpose of preserving the response.
++- **Fix:** Wrap the call in `try { void ctx.supervision.requestScan(reason).catch(() => {}); } catch {}`. Add a test where `requestScan` throws synchronously.
++
++**P2: the `activeRuns.get(runId) === controller` guard is untested**
++- **Location:** `daemon.ts`, inner `finally` of `handleSessionStart`.
++- **Problem:** No test fails if the guard is removed. Run IDs are derived from `request_id`, and a duplicate request returns early before `activeRuns.set`, so the guard looks unreachable for start.
++- **Fix:** Add a test that exercises the guard, or drop it.
++
++**P2: the test fixes an ambiguous replay contract**
++- **Location:** the `failed` replay assertion in the `it.each` test.
++- **Problem:** `session.start` replay of a failed start returns `ok: true` with `state: "failed"`. A client retrying after an `agent_failed` error sees success.
++- **Fix:** Confirm this is intended, or return an error for failed replays. Note it in the changeset either way.
++
++**P2: `confirmAdapterStopped` behavior is not visible**
++- **Location:** the `stop_throw` case and `confirmAdapterStopped` (not in the supplied source).
++- **Problem:** The test expects `execution_lease_holds: 1` when the verifier throws. That holds only if `confirmAdapterStopped` swallows the throw and returns false. If it rethrows, the new `catch` swallows the error and the lease is neither released nor retained.
++- **Fix:** Verify that function, or move retention into the `catch`. The `stop_throw` case should then assert retention directly.
++
++### Minor
++- The cleanup block is now duplicated between start and send. Consider extracting a shared helper.
++
++### Deferred (not defects here)
++- **#279 terminal-producer fence:** the success path (`settled` and not aborted) releases without `confirmAdapterStopped`. A producer that outlives its terminal event is therefore not fenced. The test adapter says "no external producer", and neither the code nor the changeset claims otherwise. Keep it listed as pending #279.
++- **DEBT02 / J11:** retained holds across process restart and lock recovery are unverified. The changeset states this honestly, and the tests' "same-process restart" comments are accurate. No recovery claim is made.
++
++### Claim check
++The changeset's three claims are supported by the tests:
++- completed responses are preserved;
++- the active marker is cleared;
++- replay does not start another Session.
++
++The diagnostics carry only IDs, and no prompt or native session ID is leaked.
++
++END_AUDIT
+\ No newline at end of file
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-input.txt.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-input.txt.gz
+new file mode 100644
+index 00000000..7bb50e56
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-input.txt.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-stderr.txt.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-stderr.txt.gz
+new file mode 100644
+index 00000000..86e43ea3
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2-stderr.txt.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.json.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.json.gz
+new file mode 100644
+index 00000000..2949fe8c
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.json.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.md b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.md
+new file mode 100644
+index 00000000..a525351a
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/cleanup-audit-2.md
+@@ -0,0 +1,35 @@
++# Review of #278 (Session start cleanup)
++
++**Verdict: PASS.** I found no actionable P0/P1/P2 defect in this diff. This covers #278 only. The #276 R02 evaluator is not in the diff, so I did not review it.
++
++## Checks against the code
++
++- **Response preservation:** A `return` in the `try` or `catch` survives the new `finally`, because the inner `try/catch` swallows every cleanup throw. The old code would let a `release()` rejection replace a committed `ok` response. Now only the diagnostic is emitted.
++- **Retained admission:** `retain()` sets `retained` and quarantines the repo before writing to stderr. A stderr throw is caught and the follow-up diagnostic is also swallowed. A `release()` failure sets `retained` and quarantines before rethrowing. In both cases the hold stays visible to drain, and the tests assert `execution_lease_holds: 1`.
++- **Active-run marker:** The inner `finally` always clears `activeRuns` and requests the scan.
++  - `requestSupervisionScan` cannot throw synchronously: `requestScan` rejects through a promise when stopped, and that rejection is caught.
++  - The identity guard is unreachable today. `getSession`, the transaction and `activeRuns.set` run with no `await` between them, so a second request with the same `request_id` hits the existing-session branch first. It is harmless defensive code, and the same guard is in the send path.
++- **Test coverage:** The new tests exercise four failure modes through the real RPC, SQLite and writer lock. They check that the DB row and run outcome match the response, that the diagnostic does not leak the prompt or native session id, and that replay does not re-invoke the adapter.
++
++## Claim truthfulness
++
++The changeset matches what the tests show.
++- It claims only same-daemon drain visibility.
++- It states that restart visibility and recovery are pending in DEBT02 and that no recovery API is added.
++- It documents that replay is a state lookup, not a transport replay.
++- It names #279 as separate.
++
++I found no claim that locks are automatically recovered, and nothing from J01, J11 or J02a is absorbed.
++
++## Observations, not defects
++
++- **Replay semantics:** A failed initial start returns `agent_failed`, but replay returns `ok: true, state: "failed"`. This is existing behavior and now documented. It is a caller-contract wart, but changing it is out of scope.
++- **Untested path:** There is no test for the abort-signalled path (client disconnect with `settled` true and `aborted` true) combined with a cleanup failure. It goes through the same code as `stop_unconfirmed`, so I rate it low risk.
++
++## Deferred, not part of this PR
++
++- #279 terminal-producer fence.
++- DEBT02 restart and process-death hold visibility and recovery.
++- Any change to `session.start` replay semantics.
++
++END_AUDIT
+\ No newline at end of file
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-before.diff b/docs/implementation/joint-session-cleanup-retarget/cleanup-before.diff
+new file mode 100644
+index 00000000..d8d14f62
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/cleanup-before.diff
+@@ -0,0 +1,186 @@
++diff --git a/.changeset/session-start-cleanup.md b/.changeset/session-start-cleanup.md
++new file mode 100644
++index 00000000..538d6b90
++--- /dev/null
+++++ b/.changeset/session-start-cleanup.md
++@@ -0,0 +1,7 @@
+++---
+++"@osstack/cli": patch
+++---
+++
+++Preserve completed Session start responses when writer lease cleanup fails. Clear the settled active-run marker while keeping retained admission visible to drain in the current daemon instance. Database-driven replay of the original start request does not start another Session.
+++
+++Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
++diff --git a/packages/cli/src/daemon.ts b/packages/cli/src/daemon.ts
++index e074894e..46efc1b0 100644
++--- a/packages/cli/src/daemon.ts
+++++ b/packages/cli/src/daemon.ts
++@@ -714,13 +714,18 @@ async function handleSessionStart(
++     } catch { /* preserve the original bounded failure */ }
++     return singleErr(req.id, "agent_failed", "agent failed while starting the session");
++   } finally {
++-    if (started && (!settled || controller.signal.aborted)) {
++-      controller.abort();
++-      if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
++-      else lease?.retain("session start exit unconfirmed");
++-    } else await lease?.release();
++-    ctx.activeRuns.delete(runId);
++-    requestSupervisionScan(ctx, "session.start.settled");
+++    try {
+++      if (started && (!settled || controller.signal.aborted)) {
+++        controller.abort();
+++        if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
+++        else lease?.retain("session start exit unconfirmed");
+++      } else await lease?.release();
+++    } catch {
+++      reportSessionCleanupFailure(sessionId, runId);
+++    } finally {
+++      if (ctx.activeRuns.get(runId) === controller) ctx.activeRuns.delete(runId);
+++      requestSupervisionScan(ctx, "session.start.settled");
+++    }
++   }
++ }
++ 
++diff --git a/packages/cli/src/session-send-receipt.test.ts b/packages/cli/src/session-send-receipt.test.ts
++index b34ad66d..6467bca7 100644
++--- a/packages/cli/src/session-send-receipt.test.ts
+++++ b/packages/cli/src/session-send-receipt.test.ts
++@@ -15,15 +15,25 @@ class ReceiptAdapter implements SessionCapableAdapter {
++   readonly display_name = "In-process receipt fixture";
++   readonly cost_tier = "low" as const;
++   readonly resumed: AgentSessionInput[] = [];
+++  readonly started: string[] = [];
+++  failStart = false;
++   failResume = false;
++   failStop = false;
+++  stopUnconfirmed = false;
++   capabilities() { return []; }
++   async isAvailable() { return { available: true, status: "available" as const, last_checked_at: Date.now() / 1000 }; }
++   async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
++   sessionCapabilities() { return { resume: true, snapshot: true }; }
++-  async *startSession(): AsyncIterable<AgentSessionEvent> { yield* []; throw new Error("fixture must resume"); }
+++  async *startSession(task: { prompt: string }): AsyncIterable<AgentSessionEvent> {
+++    this.started.push(task.prompt);
+++    yield { type: "native_session.started", native_session_id: "private-started-native" };
+++    if (this.failStart) throw new Error("injected lost start response");
+++    yield { type: "assistant.message", message_id: "start-reply", text: "Session started" };
+++    yield { type: "session.terminal", state: "completed" };
+++  }
++   async confirmStopped() {
++     if (this.failStop) throw new Error("injected stop verifier failure");
+++    if (this.stopUnconfirmed) return { stopped: false as const };
++     return { stopped: true as const, evidence: "fixture has no external producer" };
++   }
++   async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
++@@ -40,7 +50,7 @@ let root: string | undefined;
++ let socket: string;
++ let daemon: DaemonHandles | undefined;
++ let adapter: ReceiptAdapter;
++-let releaseFixture: (() => Promise<void>) | undefined;
+++const releaseFixtures: Array<() => Promise<void>> = [];
++ let admissionBlocked: (() => Promise<void>) | undefined;
++ let unblockAdmission: (() => void) | undefined;
++ let cleanupAttempts = 0;
++@@ -103,7 +113,7 @@ async function fixture() {
++   const acquire = autonomy.acquireRepoWriteLock;
++   vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
++     const lock = await acquire(...args);
++-    releaseFixture = () => lock.release();
+++    releaseFixtures.push(() => lock.release());
++     return { ...lock, release: async () => { cleanupAttempts++; throw new Error("injected physical cleanup failure"); } };
++   });
++ }
++@@ -124,7 +134,7 @@ afterEach(async () => {
++   unblockAdmission?.(); unblockAdmission = undefined; admissionBlocked = undefined;
++   await daemon?.close(); daemon = undefined;
++   // Test-owned lock cleanup only. This does not claim a product recovery route.
++-  await releaseFixture?.(); releaseFixture = undefined;
+++  for (const release of releaseFixtures.splice(0)) await release();
++   vi.restoreAllMocks(); vi.unstubAllEnvs();
++   if (root) rmSync(root, { recursive: true, force: true });
++   root = undefined;
++@@ -242,3 +252,84 @@ it.each(["accepted", "failed"] as const)("keeps the %s receipt uncertain when co
++   expect(persisted()).toEqual(before);
++   expect(adapter.resumed).toHaveLength(1);
++ });
+++
+++it("preserves a completed Session start and clears its active marker when cleanup fails", async () => {
+++  await fixture();
+++  const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+++  const params = { request_id: "start-once", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+++    title: "Start receipt", prompt: "Private start prompt" };
+++  const first = await rpc("session.start", params);
+++  const db = openDb({ path: daemon!.dbPath });
+++  let startedSession: { session_id: string; run_id: string; state: string; version: number };
+++  try {
+++    startedSession = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+++      .get() as typeof startedSession;
+++    expect(startedSession).toMatchObject({ state: "idle", version: 3 });
+++    expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(startedSession.run_id)).toEqual({ outcome: "completed" });
+++  } finally { db.close(); }
+++  expect(await rpc("health")).toMatchObject({ ok: true, result: { active_runs: 0 } });
+++  expect(first).toMatchObject({ ok: true, result: { session_id: startedSession.session_id, state: "idle", version: 3,
+++    assistant_text: "Session started" } });
+++  const diagnostics = stderr.mock.calls.map(([chunk]) => String(chunk))
+++    .filter(line => line.startsWith('{"event":"session_cleanup_failed"'));
+++  expect(diagnostics).toHaveLength(1);
+++  expect(JSON.parse(diagnostics[0]!)).toEqual({ event: "session_cleanup_failed",
+++    session_id: startedSession.session_id, run_id: startedSession.run_id });
+++  expect(diagnostics[0]).not.toContain(params.prompt);
+++  expect(diagnostics[0]).not.toContain("private-started-native");
+++  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+++    drained: false, active_runs: 0, execution_lease_holds: 1,
+++  } });
+++  await rpc("daemon.resume");
+++  expect(await rpc("session.start", params)).toMatchObject({ ok: true, result: {
+++    session_id: startedSession.session_id, state: "idle", version: 3,
+++  } });
+++  expect(adapter.started).toEqual([params.prompt]);
+++});
+++
+++it.each(["release_failure", "stop_unconfirmed", "stop_throw", "retain_log_throw"] as const)(
+++  "preserves the failed Session start and held admission on %s", async failure => {
+++    await fixture();
+++    adapter.failStart = true;
+++    adapter.stopUnconfirmed = failure === "stop_unconfirmed" || failure === "retain_log_throw";
+++    adapter.failStop = failure === "stop_throw";
+++    if (failure === "retain_log_throw") vi.spyOn(process.stderr, "write").mockImplementation(() => {
+++      throw new Error("injected diagnostic failure");
+++    });
+++    const params = { request_id: "failed-start-once", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+++      title: "Failed start receipt", prompt: "Private failed start prompt" };
+++    expect(await rpc("session.start", params)).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+++    expect(cleanupAttempts).toBe(failure === "release_failure" ? 1 : 0);
+++    const db = openDb({ path: daemon!.dbPath });
+++    let sessionId: string;
+++    try {
+++      const session = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+++        .get() as { session_id: string; run_id: string; state: string; version: number };
+++      sessionId = session.session_id;
+++      expect(session).toMatchObject({ state: "failed", version: 2 });
+++      expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+++      expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(sessionId)).toEqual({ count: 0 });
+++    } finally { db.close(); }
+++    expect(await rpc("health")).toMatchObject({ ok: true, result: { active_runs: 0 } });
+++    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+++      drained: false, active_runs: 0, execution_lease_holds: 1,
+++    } });
+++    await rpc("daemon.resume");
+++    // Existing start replay exposes the stored failed state; it does not rerun the adapter.
+++    expect(await rpc("session.start", params)).toMatchObject({ ok: true, result: { session_id: sessionId, state: "failed" } });
+++    expect(adapter.started).toEqual([params.prompt]);
+++  },
+++);
+++
+++it("preserves a completed Session start when cleanup and diagnostic writes both throw", async () => {
+++  await fixture();
+++  vi.spyOn(process.stderr, "write").mockImplementation(() => { throw new Error("injected diagnostic failure"); });
+++  expect(await rpc("session.start", { request_id: "start-with-broken-stderr", agent_id: adapter.id,
+++    repo_path: join(realpathSync(root!), "repo"), title: "Start receipt", prompt: "Start once" })).toMatchObject({
+++    ok: true, result: { state: "idle", version: 3, assistant_text: "Session started" },
+++  });
+++  expect(cleanupAttempts).toBe(1);
+++  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+++    drained: false, active_runs: 0, execution_lease_holds: 1,
+++  } });
+++});
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-changeset.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-changeset.log.gz
+new file mode 100644
+index 00000000..0cd6ef84
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-changeset.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-counts.json.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-counts.json.gz
+new file mode 100644
+index 00000000..69f00c4a
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-counts.json.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-build.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-build.log.gz
+new file mode 100644
+index 00000000..71c09abc
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-build.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-inventory.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-inventory.log.gz
+new file mode 100644
+index 00000000..015bc523
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-inventory.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-lint.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-lint.log.gz
+new file mode 100644
+index 00000000..89791f84
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-lint.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-tests.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-tests.log.gz
+new file mode 100644
+index 00000000..b4d835ba
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-tests.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-typecheck.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-typecheck.log.gz
+new file mode 100644
+index 00000000..87b41c46
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-final-frozen-typecheck.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-focused.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-focused.log.gz
+new file mode 100644
+index 00000000..c2d93335
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-focused.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-followup.txt.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-followup.txt.gz
+new file mode 100644
+index 00000000..08f105b4
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-followup.txt.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-install.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-install.log.gz
+new file mode 100644
+index 00000000..92e146f8
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-install.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-merge.log.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-merge.log.gz
+new file mode 100644
+index 00000000..06ed15ef
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-merge.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-retarget.diff b/docs/implementation/joint-session-cleanup-retarget/cleanup-retarget.diff
+new file mode 100644
+index 00000000..d8d14f62
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/cleanup-retarget.diff
+@@ -0,0 +1,186 @@
++diff --git a/.changeset/session-start-cleanup.md b/.changeset/session-start-cleanup.md
++new file mode 100644
++index 00000000..538d6b90
++--- /dev/null
+++++ b/.changeset/session-start-cleanup.md
++@@ -0,0 +1,7 @@
+++---
+++"@osstack/cli": patch
+++---
+++
+++Preserve completed Session start responses when writer lease cleanup fails. Clear the settled active-run marker while keeping retained admission visible to drain in the current daemon instance. Database-driven replay of the original start request does not start another Session.
+++
+++Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
++diff --git a/packages/cli/src/daemon.ts b/packages/cli/src/daemon.ts
++index e074894e..46efc1b0 100644
++--- a/packages/cli/src/daemon.ts
+++++ b/packages/cli/src/daemon.ts
++@@ -714,13 +714,18 @@ async function handleSessionStart(
++     } catch { /* preserve the original bounded failure */ }
++     return singleErr(req.id, "agent_failed", "agent failed while starting the session");
++   } finally {
++-    if (started && (!settled || controller.signal.aborted)) {
++-      controller.abort();
++-      if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
++-      else lease?.retain("session start exit unconfirmed");
++-    } else await lease?.release();
++-    ctx.activeRuns.delete(runId);
++-    requestSupervisionScan(ctx, "session.start.settled");
+++    try {
+++      if (started && (!settled || controller.signal.aborted)) {
+++        controller.abort();
+++        if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
+++        else lease?.retain("session start exit unconfirmed");
+++      } else await lease?.release();
+++    } catch {
+++      reportSessionCleanupFailure(sessionId, runId);
+++    } finally {
+++      if (ctx.activeRuns.get(runId) === controller) ctx.activeRuns.delete(runId);
+++      requestSupervisionScan(ctx, "session.start.settled");
+++    }
++   }
++ }
++ 
++diff --git a/packages/cli/src/session-send-receipt.test.ts b/packages/cli/src/session-send-receipt.test.ts
++index b34ad66d..6467bca7 100644
++--- a/packages/cli/src/session-send-receipt.test.ts
+++++ b/packages/cli/src/session-send-receipt.test.ts
++@@ -15,15 +15,25 @@ class ReceiptAdapter implements SessionCapableAdapter {
++   readonly display_name = "In-process receipt fixture";
++   readonly cost_tier = "low" as const;
++   readonly resumed: AgentSessionInput[] = [];
+++  readonly started: string[] = [];
+++  failStart = false;
++   failResume = false;
++   failStop = false;
+++  stopUnconfirmed = false;
++   capabilities() { return []; }
++   async isAvailable() { return { available: true, status: "available" as const, last_checked_at: Date.now() / 1000 }; }
++   async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
++   sessionCapabilities() { return { resume: true, snapshot: true }; }
++-  async *startSession(): AsyncIterable<AgentSessionEvent> { yield* []; throw new Error("fixture must resume"); }
+++  async *startSession(task: { prompt: string }): AsyncIterable<AgentSessionEvent> {
+++    this.started.push(task.prompt);
+++    yield { type: "native_session.started", native_session_id: "private-started-native" };
+++    if (this.failStart) throw new Error("injected lost start response");
+++    yield { type: "assistant.message", message_id: "start-reply", text: "Session started" };
+++    yield { type: "session.terminal", state: "completed" };
+++  }
++   async confirmStopped() {
++     if (this.failStop) throw new Error("injected stop verifier failure");
+++    if (this.stopUnconfirmed) return { stopped: false as const };
++     return { stopped: true as const, evidence: "fixture has no external producer" };
++   }
++   async *resumeSession(input: AgentSessionInput): AsyncIterable<AgentSessionEvent> {
++@@ -40,7 +50,7 @@ let root: string | undefined;
++ let socket: string;
++ let daemon: DaemonHandles | undefined;
++ let adapter: ReceiptAdapter;
++-let releaseFixture: (() => Promise<void>) | undefined;
+++const releaseFixtures: Array<() => Promise<void>> = [];
++ let admissionBlocked: (() => Promise<void>) | undefined;
++ let unblockAdmission: (() => void) | undefined;
++ let cleanupAttempts = 0;
++@@ -103,7 +113,7 @@ async function fixture() {
++   const acquire = autonomy.acquireRepoWriteLock;
++   vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
++     const lock = await acquire(...args);
++-    releaseFixture = () => lock.release();
+++    releaseFixtures.push(() => lock.release());
++     return { ...lock, release: async () => { cleanupAttempts++; throw new Error("injected physical cleanup failure"); } };
++   });
++ }
++@@ -124,7 +134,7 @@ afterEach(async () => {
++   unblockAdmission?.(); unblockAdmission = undefined; admissionBlocked = undefined;
++   await daemon?.close(); daemon = undefined;
++   // Test-owned lock cleanup only. This does not claim a product recovery route.
++-  await releaseFixture?.(); releaseFixture = undefined;
+++  for (const release of releaseFixtures.splice(0)) await release();
++   vi.restoreAllMocks(); vi.unstubAllEnvs();
++   if (root) rmSync(root, { recursive: true, force: true });
++   root = undefined;
++@@ -242,3 +252,84 @@ it.each(["accepted", "failed"] as const)("keeps the %s receipt uncertain when co
++   expect(persisted()).toEqual(before);
++   expect(adapter.resumed).toHaveLength(1);
++ });
+++
+++it("preserves a completed Session start and clears its active marker when cleanup fails", async () => {
+++  await fixture();
+++  const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+++  const params = { request_id: "start-once", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+++    title: "Start receipt", prompt: "Private start prompt" };
+++  const first = await rpc("session.start", params);
+++  const db = openDb({ path: daemon!.dbPath });
+++  let startedSession: { session_id: string; run_id: string; state: string; version: number };
+++  try {
+++    startedSession = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+++      .get() as typeof startedSession;
+++    expect(startedSession).toMatchObject({ state: "idle", version: 3 });
+++    expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(startedSession.run_id)).toEqual({ outcome: "completed" });
+++  } finally { db.close(); }
+++  expect(await rpc("health")).toMatchObject({ ok: true, result: { active_runs: 0 } });
+++  expect(first).toMatchObject({ ok: true, result: { session_id: startedSession.session_id, state: "idle", version: 3,
+++    assistant_text: "Session started" } });
+++  const diagnostics = stderr.mock.calls.map(([chunk]) => String(chunk))
+++    .filter(line => line.startsWith('{"event":"session_cleanup_failed"'));
+++  expect(diagnostics).toHaveLength(1);
+++  expect(JSON.parse(diagnostics[0]!)).toEqual({ event: "session_cleanup_failed",
+++    session_id: startedSession.session_id, run_id: startedSession.run_id });
+++  expect(diagnostics[0]).not.toContain(params.prompt);
+++  expect(diagnostics[0]).not.toContain("private-started-native");
+++  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+++    drained: false, active_runs: 0, execution_lease_holds: 1,
+++  } });
+++  await rpc("daemon.resume");
+++  expect(await rpc("session.start", params)).toMatchObject({ ok: true, result: {
+++    session_id: startedSession.session_id, state: "idle", version: 3,
+++  } });
+++  expect(adapter.started).toEqual([params.prompt]);
+++});
+++
+++it.each(["release_failure", "stop_unconfirmed", "stop_throw", "retain_log_throw"] as const)(
+++  "preserves the failed Session start and held admission on %s", async failure => {
+++    await fixture();
+++    adapter.failStart = true;
+++    adapter.stopUnconfirmed = failure === "stop_unconfirmed" || failure === "retain_log_throw";
+++    adapter.failStop = failure === "stop_throw";
+++    if (failure === "retain_log_throw") vi.spyOn(process.stderr, "write").mockImplementation(() => {
+++      throw new Error("injected diagnostic failure");
+++    });
+++    const params = { request_id: "failed-start-once", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+++      title: "Failed start receipt", prompt: "Private failed start prompt" };
+++    expect(await rpc("session.start", params)).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+++    expect(cleanupAttempts).toBe(failure === "release_failure" ? 1 : 0);
+++    const db = openDb({ path: daemon!.dbPath });
+++    let sessionId: string;
+++    try {
+++      const session = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+++        .get() as { session_id: string; run_id: string; state: string; version: number };
+++      sessionId = session.session_id;
+++      expect(session).toMatchObject({ state: "failed", version: 2 });
+++      expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+++      expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(sessionId)).toEqual({ count: 0 });
+++    } finally { db.close(); }
+++    expect(await rpc("health")).toMatchObject({ ok: true, result: { active_runs: 0 } });
+++    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+++      drained: false, active_runs: 0, execution_lease_holds: 1,
+++    } });
+++    await rpc("daemon.resume");
+++    // Existing start replay exposes the stored failed state; it does not rerun the adapter.
+++    expect(await rpc("session.start", params)).toMatchObject({ ok: true, result: { session_id: sessionId, state: "failed" } });
+++    expect(adapter.started).toEqual([params.prompt]);
+++  },
+++);
+++
+++it("preserves a completed Session start when cleanup and diagnostic writes both throw", async () => {
+++  await fixture();
+++  vi.spyOn(process.stderr, "write").mockImplementation(() => { throw new Error("injected diagnostic failure"); });
+++  expect(await rpc("session.start", { request_id: "start-with-broken-stderr", agent_id: adapter.id,
+++    repo_path: join(realpathSync(root!), "repo"), title: "Start receipt", prompt: "Start once" })).toMatchObject({
+++    ok: true, result: { state: "idle", version: 3, assistant_text: "Session started" },
+++  });
+++  expect(cleanupAttempts).toBe(1);
+++  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+++    drained: false, active_runs: 0, execution_lease_holds: 1,
+++  } });
+++});
+diff --git a/docs/implementation/joint-session-cleanup-retarget/cleanup-verification.json.gz b/docs/implementation/joint-session-cleanup-retarget/cleanup-verification.json.gz
+new file mode 100644
+index 00000000..8ed283b4
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/cleanup-verification.json.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/dispositions.md b/docs/implementation/joint-session-cleanup-retarget/dispositions.md
+new file mode 100644
+index 00000000..c0c01801
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/dispositions.md
+@@ -0,0 +1,13 @@
++# Audit dispositions
++
++The original Claude reports are retained verbatim. Round 1 was REVISE; round 2 was PASS with no actionable P0/P1/P2.
++
++| Observation | Host verification and disposition |
++|---|---|
++| Claimed #276 content missing | Audit prompt described both project slices. This PR is #278 only; clarified in round 2. |
++| requestScan synchronous throw | Read the concrete SupervisionService: work runs in Promise.resolve().then; stopped state returns Promise.reject. A synthetic synchronous replacement is not the current implementation. Independent test confirms rejected scan preserves the receipt. |
++| Controller identity guard lacks alternate-controller test | Defensive compare-and-delete is correct. Current start lookup/transaction path prevents that interleaving; no artificial mutation hook added. |
++| Failed replay returns ok:true | Confirmed existing lookup semantics; changeset now says clients must inspect state:failed. Replay does not repeat execution. |
++| Stop verifier behavior unavailable | Supplied adapter-lifecycle.ts and GovernedExecution. Exceptions/timeouts return false, retain marks ownership before diagnostic writes, physical release failure keeps permits. Existing and independent RPC tests cover this. |
++
++No product correction was required after retargeting. The changeset clarification is documentation only. #279 terminal fencing and DEBT02 process-death recovery remain separate obligations; J11 specification merge does not implement them.
+diff --git a/docs/implementation/joint-session-cleanup-retarget/independent/extra-tests.log.gz b/docs/implementation/joint-session-cleanup-retarget/independent/extra-tests.log.gz
+new file mode 100644
+index 00000000..df2fff8d
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/independent/extra-tests.log.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/independent/extra.test.ts.gz b/docs/implementation/joint-session-cleanup-retarget/independent/extra.test.ts.gz
+new file mode 100644
+index 00000000..4b415c17
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/independent/extra.test.ts.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/independent/manifest.json.gz b/docs/implementation/joint-session-cleanup-retarget/independent/manifest.json.gz
+new file mode 100644
+index 00000000..a154c5fa
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/independent/manifest.json.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/independent/report.md b/docs/implementation/joint-session-cleanup-retarget/independent/report.md
+new file mode 100644
+index 00000000..cab07ab3
+--- /dev/null
++++ b/docs/implementation/joint-session-cleanup-retarget/independent/report.md
+@@ -0,0 +1,35 @@
++# PR #278 independent fault regression
++
++Verdict: PASS for the scoped cleanup change; no confirmed P0/P1/P2 introduced by this patch.
++
++Candidate: `39c5df28cea120630f39a8267235c2f7ff5985b4`.
++
++## Method
++
++Read the exact daemon change, Session start persistence/replay path, `GovernedExecution`, `confirmAdapterStopped`, and `SupervisionService.requestScan`. Created only scratch test files; no product/worktree edits, Git mutations, PR writes, or additional Claude calls. The isolated Vitest fixture imports the candidate's actual source and builds on its real local socket RPC, SQLite, writer lock, and daemon implementation. Each fixture uses an explicit disposable OSSTACK_HOME through the repository scratch setup. Test-owned physical lock cleanup is not a product recovery mechanism.
++
++## Additional execution
++
++Command (cwd is this evidence directory):
++
++```sh
++PATH=/opt/homebrew/opt/node@22/bin:$PATH OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack /Users/osborn/Developer/CodeX/.worktrees/osstack/joint-cleanup-ready/node_modules/.bin/vitest run --config vitest.config.mts
++```
++
++Result: 1 file, 3 tests passed; 0 failures; exit 0; duration 4.12 seconds. Raw output is `extra-tests.log`.
++
++- Rejecting `requestScan("session.start.settled")` after physical cleanup fails preserves committed idle/version-3 RPC result, clears active marker, retains one execution lease hold, and does not reinvoke on exact request replay.
++- A permanently pending stop confirmation reaches the real one-second bound. Failed start remains agent_failed; no physical release is attempted; active marker clears and admission remains held. A fresh request ID cannot invoke an adapter in the quarantined repository; exact replay reads stored failed state.
++- `stopped: true` with blank evidence is rejected as a stop proof and produces the same fail-closed hold/fresh-start/replay behavior.
++
++## Source review conclusions
++
++The nested finally cleanup guards marker deletion by exact controller identity. `release` sets retention/quarantine before diagnostics can throw; the outer cleanup catch preserves the bounded RPC receipt, and its diagnostic writer also tolerates stderr failure. `confirmAdapterStopped` already converts throws, absent/blank proof, and timeout into false. The current concrete `requestScan` implementation returns rejected Promises on stopped state and catches scan work; a synthetic monkeypatch that synchronously throws would be a hypothetical contract change, not an evidenced current regression. This harness exercises its real rejection contract.
++
++Privacy conclusions are scoped: the new structured session_cleanup_failed diagnostic contains event/session/run IDs only, and the existing candidate regression asserts no prompt or native ID in that diagnostic. This is not a claim that every existing GovernedExecution error log is globally sanitized.
++
++## Remaining scope
++
++PR #279 adds successful terminal-event fencing. #278 still accepts a naturally exhausted start stream with a native ID and no terminal event; that is pre-existing and deliberately assigned to #279, not resolved by cleanup containment. DEBT02/J11/J12 owns durable cross-process visibility and authenticated reconciliation of retained obligations. These tests do not qualify restart across OS processes, live providers, process containment, authenticated recovery, or runtime-wide acceptance.
++
++The primary verifier was running concurrently. Its generated tracked knowledge dist outputs and a changeset update were visible at final inspection; this worker did not touch them. Product source hashes and candidate SHA are captured in manifest.json. These three tests supplement the parent's full validation, not replace it.
+diff --git a/docs/implementation/joint-session-cleanup-retarget/independent/vitest.config.mts.gz b/docs/implementation/joint-session-cleanup-retarget/independent/vitest.config.mts.gz
+new file mode 100644
+index 00000000..8d1d1b02
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/independent/vitest.config.mts.gz differ
+diff --git a/docs/implementation/joint-session-cleanup-retarget/verify.py.gz b/docs/implementation/joint-session-cleanup-retarget/verify.py.gz
+new file mode 100644
+index 00000000..872704cd
+Binary files /dev/null and b/docs/implementation/joint-session-cleanup-retarget/verify.py.gz differ

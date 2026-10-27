@@ -1,0 +1,10 @@
+{
+  "build_candidate": "f35360a15edef924d84870855a279d3275798b23",
+  "test_and_audit_candidate": "c60850c4461f42c76508ae7f63c0c3b17b951733",
+  "changed_since_build": [
+    ".changeset/session-terminal-boundary.md",
+    "packages/cli/src/session-send-receipt.test.ts"
+  ],
+  "runtime_source_identical": true,
+  "scope": "No runtime source changes between successful build and final validation candidate; test source and release wording changed and revalidated."
+}

@@ -1,0 +1,15 @@
+{
+  "code_sha": "39c5df28cea120630f39a8267235c2f7ff5985b4",
+  "reviewed_base": "8fed83136611948ee068801ab5cc1fd471f90078",
+  "model": "claude-sonnet-5-5",
+  "verdict": "PASS",
+  "final_audit": "cleanup-audit-2.md",
+  "scope": "static review and separate executed tests; no runtime qualification",
+  "validation": {
+    "passed": 6214,
+    "skipped": 5,
+    "failed": 0
+  },
+  "packages": 22,
+  "observed_at": "2026-10-27T10:58:03.393671+00:00"
+}

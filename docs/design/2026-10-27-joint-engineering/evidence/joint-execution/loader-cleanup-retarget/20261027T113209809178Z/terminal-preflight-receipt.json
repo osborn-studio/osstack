@@ -1,0 +1,7 @@
+{
+  "comment_id": 314,
+  "card_id": "card_d1a582eb",
+  "author": "joint-entry",
+  "body": "Parallel preflight completed: #279 + latest main 8fed8313 + #278 code39c5df28 combined at 4cdf36e3; build, CLI typecheck, Biome and 89 tests across6 files passed. Four extra empty-stream/no-confirmStopped tests fail when terminal fence is removed and pass restored. Test-only commit aaa4aa00379361a3f9f28880c007ffedf6652345 retained for next batch. Still Draft/blocked: await #278 merge, retarget current main, rerun final validation and Sonnet audit. No runtime qualification.",
+  "created_at": 1793098536.128
+}

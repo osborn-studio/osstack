@@ -1,0 +1,28 @@
+diff --git a/packages/cli/src/daemon.ts b/packages/cli/src/daemon.ts
+index 2ebe7135..3cf5a5ba 100644
+--- a/packages/cli/src/daemon.ts
++++ b/packages/cli/src/daemon.ts
+@@ -666,7 +666,7 @@ async function handleSessionStart(
+       }
+     }
+     // Iterator exhaustion alone does not prove completion or external exit.
+-    if (!terminalCompleted) throw new Error("adapter ended without completing the session");
++    // Preflight mutation: accept iterator exhaustion without terminal.
+     settled = true;
+     if (nativeSessionId === undefined) throw new Error("adapter did not return a native session id");
+ 
+@@ -1040,13 +1040,13 @@ async function executeReservedSessionTurn(
+           ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
+         };
+       }
++      settled = true;
+       if (!terminalCompleted) {
+         return failReservedMessage(
+           "agent_failed",
+           "agent ended without completing the instruction",
+         );
+       }
+-      settled = true;
+     } catch {
+       return failReservedMessage(
+         "agent_failed",

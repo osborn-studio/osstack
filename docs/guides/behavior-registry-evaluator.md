@@ -157,3 +157,26 @@ ID 按签发者隔离；撤销绑定完整资格文档摘要。输入批次必�
 期望的构建摘要与实际读取的摘要分别记录。
 宿主必须先完成 R05/V06 的信任验证，再使用评估结果；执行动作前仍需独立授权。
 测试通过不等于真实宿主资格通过。
+
+## Joint contract compatibility and rejected inputs
+
+R01 `Behavior*` records retain their version 1 canonical bytes, raw SHA-256 pins and signing payloads.
+J01 `Joint*` records use separate versioned codecs and digest domains. This evaluator never converts
+between them. J02a `source_inspection` output is not a `BehaviorSourceManifestV1`; R03/R04 and J02b
+must explicitly map and check provenance before publishing a behavior source manifest.
+J11 defines recovery specifications, not runtime authority. R05/J10 must supply migration vectors
+before any future codec unification changes these frozen signature inputs.
+
+The trusted `target`, `trust`, key, revocation, policy and scenario objects use exact field sets. Extra or missing
+fields reject the evaluation. A future revocation field cannot be silently ignored.
+A qualification may have an epoch below the persisted snapshot floor. The floor applies to the
+complete current revocation snapshot, not the issuance epoch. Older qualifications remain usable
+only while current, correctly bound and absent from that complete snapshot's revocation lists.
+
+Every artifact digest is read at most once per evaluation, including missing, corrupt or throwing
+reads. A shared invalid source manifest is parsed at most once. Bounded returned bytes count toward the read/copy/hash budget before digest validation.
+Failure caching does not forgive corrupted bytes or permit unlimited hashing of unique bad objects.
+
+More than 256 qualification documents rejects with `invalid_context`; a batch above 64 MiB rejects
+with `qualification_batch_oversized`. An oversized or non-byte document produces a rejection entry
+with `sha256: ""`, which means no bounded document digest was computed, not a content identifier.
