@@ -9,7 +9,7 @@ import { canonicalJointJson, MigrationSpec, RecoveryReceipt, RecoveryRequest, re
 // Executable offline storage candidate. This never imports the production DB opener.
 const root = new URL('../../fixtures/broker-recovery/', import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, root), 'utf8');
-const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const hash = (value: string | Uint8Array) => createHash('sha256').update(value).digest('hex');
 const catalog = (db: Database.Database) => db.prepare("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE substr(name,1,7)<>'sqlite_' ORDER BY type,name").all();
 function fixture(sql = read('schema.sql')): Database.Database {
   const db = new Database(':memory:');
@@ -92,6 +92,23 @@ function changedReceipt(path: string, value: unknown, stopped = true) {
 }
 
 describe('JP-17a dedicated broker storage candidate', () => {
+  it('requires SQLite 3.38+ and actual JSON capability in the TypeScript engine', () => {
+    const db=fixture();try {
+      const version=(db.prepare('SELECT sqlite_version() AS version').get() as {version:string}).version;
+      const [major=0,minor=0,patch=0]=version.split('.').map(Number);
+      expect(major*1_000_000+minor*1_000+patch).toBeGreaterThanOrEqual(3_038_000);
+      expect(db.prepare(`SELECT json_valid('{}') AS valid,json_extract('{"probe":1}','$.probe') AS probe`).get()).toEqual({valid:1,probe:1});
+    }finally{db.close();}
+  });
+  it('rejects malformed JSON without treating generic SQLITE_ERROR as a receipt', () => {
+    const db=fixture();try {
+      const parameters=args(receipt(0,true));parameters[8]='{';const before=lease(db);let error:unknown;
+      try{db.prepare(insertSql).run(...parameters);}catch(e){error=e;}
+      expect(error).toBeInstanceOf(Database.SqliteError);expect(error).toMatchObject({code:'SQLITE_ERROR'});
+      expect(lease(db)).toEqual(before);expect(decisions(db)).toEqual([]);
+    }finally{db.close();}
+  });
+
 
   it.each(['ON','OFF'])('protects existing lease identity across conflict strategies with foreign_keys=%s', foreignKeys => {
     for(const stopped of [false,true]) {
@@ -203,11 +220,12 @@ describe('JP-17a dedicated broker storage candidate', () => {
     expect(manifest.status).toBe('candidate_spec_only');
     expect(manifest.storage).toMatchObject({ deployment: 'dedicated_sqlite', namespace: 'osstack.resource-broker', allocation: 'not_reserved', deployment_qualified: false, runtime_registered: false });
     expect(manifest.base_commit).toBe('d3fa7ef681efc79a5fb2dff92172ef1be0978774');
+    expect(manifest.oracle_prefreeze.frozen_at).toBe(JSON.parse(read('oracle-freeze.json')).frozen_at);
     expect(createHash('sha256').update(readFileSync(new URL(manifest.oracle_prefreeze.path,root))).digest('hex')).toBe(manifest.oracle_prefreeze.sha256);
     const spec = MigrationSpec.parse(manifest.spec);
     expect([spec.source_schema,spec.target_schema]).toEqual([0,1]);
-    expect(spec.ddl_digest).toBe(hash(read('schema.sql')));
-    expect(spec.fixture_digest).toBe(hash(read('held-orphan.sql')));
+    expect(spec.ddl_digest).toBe(hash(readFileSync(new URL('schema.sql',root))));
+    expect(spec.fixture_digest).toBe(hash(readFileSync(new URL('held-orphan.sql',root))));
     expect(manifest.schema_spec_digest).toBe(schemaSpecDigest(spec));
     const db = fixture();
     try {

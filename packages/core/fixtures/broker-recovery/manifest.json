@@ -57,7 +57,7 @@
   "oracle_prefreeze": {
     "path": "oracle-freeze.json",
     "claim": "prospective_criteria_only_not_candidate_qualification",
-    "frozen_at": "2026-10-27T16:16:01Z",
+    "frozen_at": "2026-10-27T16:16:01.175077+00:00",
     "sha256": "51b34e498292099fa706ecb1f8fe0eccf5f505e715fcae9c880607ad77670c79",
     "identity_independence_certified": false
   },
