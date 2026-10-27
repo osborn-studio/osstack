@@ -167,14 +167,14 @@ must explicitly map and check provenance before publishing a behavior source man
 J11 defines recovery specifications, not runtime authority. R05/J10 must supply migration vectors
 before any future codec unification changes these frozen signature inputs.
 
-The trusted `target`, `trust`, key and revocation objects use exact field sets. Extra or missing
+The trusted `target`, `trust`, key, revocation, policy and scenario objects use exact field sets. Extra or missing
 fields reject the evaluation. A future revocation field cannot be silently ignored.
 A qualification may have an epoch below the persisted snapshot floor. The floor applies to the
 complete current revocation snapshot, not the issuance epoch. Older qualifications remain usable
 only while current, correctly bound and absent from that complete snapshot's revocation lists.
 
 Every artifact digest is read at most once per evaluation, including missing, corrupt or throwing
-reads. Bounded returned bytes count toward the read/copy/hash budget before digest validation.
+reads. A shared invalid source manifest is parsed at most once. Bounded returned bytes count toward the read/copy/hash budget before digest validation.
 Failure caching does not forgive corrupted bytes or permit unlimited hashing of unique bad objects.
 
 More than 256 qualification documents rejects with `invalid_context`; a batch above 64 MiB rejects

@@ -1,5 +1,5 @@
 import { createHash, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { BehaviorContractV1, BehaviorQualificationV1, BehaviorRegistryV1 } from "@osstack/protocol";
 import { evaluateBehaviorRegistry, type BehaviorRegistryInput } from "./behavior-registry.js";
 
@@ -563,4 +563,41 @@ it("accepts older issuance epochs only against a complete fresh revocation snaps
   expect(evaluateBehaviorRegistry(f.input).qualificationRejections).toContainEqual({
     sha256: hash(f.input.qualificationBytes[0]!), reason: "qualification_revoked",
   });
+});
+
+it.each(["policy", "levels", "scenario"] as const)("rejects unknown %s policy fields even when digest-pinned", field => {
+  const f = fixture();
+  const policy = f.input.policy[0]!;
+  Object.assign(field === "policy" ? policy : field === "levels" ? policy.requiredScenarios
+    : policy.requiredScenarios.contract_tested[0]!, { futureRestriction: true });
+  f.input.target.policyProfileSha256 = hash(encode({ schema_version: 1, kind: "behavior_verifier_policy", capabilities: f.input.policy }));
+  expect(evaluateBehaviorRegistry(f.input)).toMatchObject({ status: "rejected", rejection: "invalid_context" });
+});
+
+it("does not freeze malformed caller echoes or return a nonfinite evaluation time", () => {
+  const f = fixture(); const invalid = { marker: true };
+  Object.assign(f.input, { expectedRegistrySha256: invalid, nowMs: Number.NaN });
+  expect(evaluateBehaviorRegistry(f.input)).toMatchObject({ status: "rejected", rejection: "invalid_context",
+    expectedRegistrySha256: "", evaluatedAtMs: 0 });
+  expect(Object.isFrozen(invalid)).toBe(false);
+  expect(evaluateBehaviorRegistry(undefined as unknown as BehaviorRegistryInput)).toMatchObject({ status: "rejected", rejection: "invalid_context" });
+});
+
+it("parses a shared invalid source manifest only once", () => {
+  const f = fixture();
+  const malformed = Buffer.from('{"schema_version":1,"kind":"invalid_manifest","sources":[]}');
+  const digest = f.put(malformed);
+  f.registry.entries = ["FM-01", "FM-02"].map(capability => {
+    const contract = { ...f.contract, capability_id: capability, source_manifest_sha256: digest };
+    return { contract, contract_sha256: hash(encode(contract)) };
+  });
+  f.input.registryBytes = encode(f.registry); f.input.expectedRegistrySha256 = hash(f.input.registryBytes);
+  f.input.qualificationBytes = [];
+  const parse = vi.spyOn(JSON, "parse");
+  try {
+    const result = evaluateBehaviorRegistry(f.input);
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries.every(entry => entry.reasons.includes("source_manifest_invalid"))).toBe(true);
+    expect(parse.mock.calls.filter(([raw]) => raw === malformed.toString())).toHaveLength(1);
+  } finally { parse.mockRestore(); }
 });

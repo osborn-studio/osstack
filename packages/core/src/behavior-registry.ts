@@ -156,13 +156,13 @@ const token = (value: string) => typeof value === "string" && /^[A-Za-z0-9][A-Za
  * Work is bounded but synchronous; do not run it on a latency-critical RPC/dispatch event loop.
  */
 export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): BehaviorRegistrySnapshot {
-  const nowMs = input.nowMs;
-  const expectedRegistrySha256 = input.expectedRegistrySha256;
-  const expectedRegistryVersion = input.expectedRegistryVersion;
-  const readArtifact = input.readArtifact;
+  const nowMs = input?.nowMs;
+  const expectedRegistrySha256 = input?.expectedRegistrySha256;
+  const expectedRegistryVersion = input?.expectedRegistryVersion;
+  const readArtifact = input?.readArtifact;
   const snapshot: BehaviorRegistrySnapshot = { status: "rejected", authorization: "none", rejection: null,
-    expectedRegistrySha256, observedRegistrySha256: null, context: null,
-    evaluatedAtMs: nowMs, entries: [], qualificationRejections: [] };
+    expectedRegistrySha256: typeof expectedRegistrySha256 === "string" ? expectedRegistrySha256 : "", observedRegistrySha256: null, context: null,
+    evaluatedAtMs: safeInteger(nowMs) ? nowMs : 0, entries: [], qualificationRejections: [] };
   const reject = (reason: string) => freeze({ ...snapshot, rejection: reason });
   let target: BehaviorRegistryInput["target"];
   let trust: BehaviorRegistryTrust;
@@ -205,6 +205,12 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
         || !key.capabilityIds.every((id) => BehaviorCapabilityIdV1.safeParse(id).success)
         || !key.profileSha256s.every((value) => digestPattern.test(value))) return reject("invalid_context");
       publicKeys.set(key.keyId, publicKey); keyFingerprints.add(fingerprint);
+    }
+    for (const policy of input.policy) {
+      if (!exactKeys(policy, ["capabilityId", "contractVersion", "requiredScenarios"])
+        || !exactKeys(policy.requiredScenarios, levels)
+        || levels.some(level => !Array.isArray(policy.requiredScenarios[level])
+          || policy.requiredScenarios[level].some(scenario => !exactKeys(scenario, ["id", "checkerId", "checkerVersion"])))) return reject("invalid_context");
     }
     policies = new Map();
     for (const policy of structuredClone(input.policy)) {
@@ -346,9 +352,10 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
     const previous = chain(record.payload.prerequisite_record_sha256[0]!, capability, level - 1);
     return previous ? [...previous, digest] : undefined;
   };
-  const sourceManifests = new Map<string, Set<string>>();
+  const sourceManifests = new Map<string, Set<string> | null>();
   const sourceError = (contract: BehaviorContractV1): string | null => {
     let tuples = sourceManifests.get(contract.source_manifest_sha256);
+    if (tuples === null) return "source_manifest_invalid";
     if (!tuples) {
       const bytes = read(contract.source_manifest_sha256);
       if (!bytes) return "source_unavailable";
@@ -356,7 +363,7 @@ export function evaluateBehaviorRegistry(input: BehaviorRegistryInput): Behavior
         const manifest = parseArtifact(bytes, BehaviorSourceManifestV1, MAX_ARTIFACT_BYTES);
         tuples = new Set(manifest.sources.map((source) => canonical(source)));
         sourceManifests.set(contract.source_manifest_sha256, tuples);
-      } catch { return "source_manifest_invalid"; }
+      } catch { sourceManifests.set(contract.source_manifest_sha256, null); return "source_manifest_invalid"; }
     }
     if (contract.sources.some((source) => !tuples.has(canonical(source)))) return "source_manifest_mismatch";
     if (contract.sources.some((source) => !read(source.content_sha256))) return "source_unavailable";
