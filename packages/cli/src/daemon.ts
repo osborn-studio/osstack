@@ -714,13 +714,18 @@ async function handleSessionStart(
     } catch { /* preserve the original bounded failure */ }
     return singleErr(req.id, "agent_failed", "agent failed while starting the session");
   } finally {
-    if (started && (!settled || controller.signal.aborted)) {
-      controller.abort();
-      if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
-      else lease?.retain("session start exit unconfirmed");
-    } else await lease?.release();
-    ctx.activeRuns.delete(runId);
-    requestSupervisionScan(ctx, "session.start.settled");
+    try {
+      if (started && (!settled || controller.signal.aborted)) {
+        controller.abort();
+        if (await confirmAdapterStopped(adapter, runId)) await lease?.release();
+        else lease?.retain("session start exit unconfirmed");
+      } else await lease?.release();
+    } catch {
+      reportSessionCleanupFailure(sessionId, runId);
+    } finally {
+      if (ctx.activeRuns.get(runId) === controller) ctx.activeRuns.delete(runId);
+      requestSupervisionScan(ctx, "session.start.settled");
+    }
   }
 }
 
