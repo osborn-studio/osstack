@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { createScratchDirSync } from '../scratch.js';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 import { schemaSpecDigest, MigrationSpec, parseJointJson, canonicalJointJson, decodeJointContractAs, RecoveryReceipt, recoverySubjectDigest, verifyRecoveryProofEnvelopes } from '@osstack/protocol/joint';
 import { CURRENT_SCHEMA_VERSION } from './migrations.js';
 import { runMigrations } from './db.js';
@@ -299,8 +300,8 @@ function composedEnvelope(r: RecoveryReceipt) {
 function withoutField(value: unknown, path: string): unknown {
   const result: Record<string,unknown> = structuredClone(value) as Record<string,unknown>;
   const parts=path.split('.');let cursor=result;
-  for(const part of parts.slice(0,-1))cursor=cursor[part] as Record<string,unknown>;
-  delete cursor[parts.at(-1)!];return result;
+  for(const part of parts.slice(0,-1)){expect(cursor).toHaveProperty(part);cursor=cursor[part] as Record<string,unknown>;}
+  const key=parts.at(-1)!;expect(Object.hasOwn(cursor,key)).toBe(true);delete cursor[key];return result;
 }
 const omissionCases = subjectKinds.flatMap(kind => {
   const subject = receiptShape.properties!.subject!.anyOf!.find(s => s.properties!.kind!.const===kind)!;
@@ -321,13 +322,47 @@ function producerOrder(gates: Gate[]): string[] {
   };
   for(const id of graph.keys())visit(id);return order;
 }
+// Direct producer prerequisites are contract claims; insertion order alone cannot
+// prove them. Keep the home/legacy edges explicit and broker lists manifest-bound.
+const requiredProducerEdges: [string,string][] = [
+  ['J11.scoped','J01.contracts'],['J12.bootstrap_preflight','J11.scoped'],
+  ['J12.scoped','J11.scoped'],['J12.scoped','J12.bootstrap_preflight'],
+  ['J17.schema_spec','J11.scoped'],['J17.recovery','J17.schema_spec'],['J17.recovery','J12.scoped'],
+  ['legacy:C03.schema_spec','J11.scoped'],['legacy:X03.schema_spec','J17.schema_spec'],
+  ['legacy:I04.recovery_home','J12.scoped'],['legacy:I04.recovery_home','legacy:C03.schema_spec'],
+  ['legacy:I04.recovery_home','legacy:DEBT02.recovery_contract'],
+  ['legacy:I04.recovery_broker','J17.recovery'],['legacy:I04.recovery_broker','legacy:X03.schema_spec'],
+  ['legacy:I04.recovery_broker','legacy:DEBT02.recovery_contract'],
+  ['legacy:I04.compat_recovery','J12.full_recovery'],['legacy:I04.compat_recovery','legacy:I04.recovery_home'],
+  ['legacy:I04.compat_recovery','legacy:I04.recovery_broker'],
+];
 function compositionGraph(): Gate[] {
   const input=JSON.parse(readFileSync(new URL('../../../../docs/design/2026-10-27-joint-engineering/execution-gates.json',import.meta.url),'utf8'));
   const gates=(input.gates as Gate[]).map(g=>({id:g.id,requires:[...g.requires]}));
-  // Raw material producer nodes have no formal acceptance prerequisites. Material
-  // existence is checked against both real SQLite fixtures below, not J17.schema_spec.
-  gates.push({id:'fixture:home-spec',requires:[]},{id:'fixture:broker-spec',requires:[]});
+  const rawInputs: Record<string,string>={'joint recovery contracts':'artifact:joint-recovery-contracts'};
+  const material=(composedBrokerSpec.dependencies.candidate_material_requires as string[]).map(name=>{
+    const id=rawInputs[name];if(!id)throw Error('UNKNOWN_MATERIAL_INPUT: '+name);return id;
+  });
+  // Raw contracts/catalog are files, not formal J01/J17 acceptance. Home has no
+  // dependencies block; its source catalog is independently instantiated below.
+  gates.push({id:'artifact:joint-recovery-contracts',requires:[]},{id:'artifact:home47-catalog',requires:[]},
+    {id:'fixture:home-spec',requires:['artifact:joint-recovery-contracts','artifact:home47-catalog']},
+    {id:'fixture:broker-spec',requires:material});
   gates.find(g=>g.id==='J11.scoped')!.requires.push('fixture:home-spec','fixture:broker-spec');return gates;
+}
+function validateProducerGraph(gates: Gate[]): string[] {
+  const order=producerOrder(gates);const graph=new Map(gates.map(g=>[g.id,g.requires]));
+  const activation=new Set(['J13.scoped','J14.scoped','J17.scoped']);
+  const walk=(id:string,path:string[]):void=>{
+    if(activation.has(id))throw Error('RECOVERY_REQUIRES_ACTIVATION: '+[...path,id].join(' -> '));
+    for(const dep of graph.get(id)??[])walk(dep,[...path,id]);
+  };
+  for(const recovery of ['J12.bootstrap_preflight','J12.scoped','J17.schema_spec','J17.recovery'])walk(recovery,[]);
+  for(const [id,dependency] of requiredProducerEdges)if(!graph.get(id)?.includes(dependency))throw Error('MISSING_PRODUCER_EDGE: '+id+' -> '+dependency);
+  const mapping=[['J17.schema_spec','schema_qualification_requires'],['J17.recovery','recovery_qualification_requires'],['J17.scoped','runtime_storage_requires']] as const;
+  for(const [id,key] of mapping)if(canonicalJointJson(graph.get(id))!==canonicalJointJson(composedBrokerSpec.dependencies[key]))throw Error('BROKER_MANIFEST_DEPENDENCY_MISMATCH: '+id);
+  if(composedBrokerSpec.dependencies.recovery_requires_runtime_controller!==false)throw Error('BROKER_RECOVERY_REQUIRES_CONTROLLER');
+  return order;
 }
 function brokerFixture(): Database.Database {
   const db=new Database(':memory:');db.pragma('foreign_keys=ON');
@@ -357,6 +392,14 @@ function homeAttentionFacts(db: Database.Database, r: RecoveryReceipt): void {
   if(r.owner_generation!==7 || r.tenant_id!=='fixture-tenant')throw Error('SYNTHETIC_MAINTENANCE_CONTEXT_MISMATCH');
 }
 
+function insertHomeExample(db:Database.Database, r:RecoveryReceipt): void {
+  db.prepare('INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(r.operator_ref,r.request_id,'a'.repeat(64),r.subject_digest,canonicalJointJson(r.subject),r.if_revision,r.owner_generation,r.decision,r.decision==='preserve_unknown'?'unknown':'resolved_stopped',canonicalJointJson(r),r.observed_at_ms);
+}
+function persistHomeExample(db:Database.Database, r:RecoveryReceipt): void {
+  const verified=verifyRecoveryProofEnvelopes(pinnedReceipt(r,false),r.proofs.length?[composedEnvelope(r)]:[]);
+  homeAttentionFacts(db,verified);insertHomeExample(db,verified);
+}
+
 describe('JA20/JA47 home and broker composition material (unqualified)', () => {
   it('instantiates latest home47 catalog and real old hold alongside the separate broker orphan', () => {
     const home=fixture();const broker=brokerFixture();try{
@@ -369,7 +412,10 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
       expect(home.prepare("SELECT state FROM engineering_waits WHERE wait_id='wait'").get()).toEqual({state:'delivery_unknown'});
       expect(home.prepare("SELECT disposition AS resolution FROM attention_receipt_resolutions WHERE message_id='msg'").get()).toEqual({resolution:'abandoned_unknown'});
       expect(home.prepare('SELECT COUNT(*) AS n FROM engineering_completions').get()).toEqual({n:0});
-      expect(catalog(broker)).toEqual(JSON.parse(brokerRead('catalog.json')));
+      expect(catalog(broker)).toEqual(JSON.parse(brokerRead('catalog.json')));expect(broker.pragma('user_version',{simple:true})).toBe(1);
+      expect(sha(readFileSync(new URL('schema.sql',brokerPath)))).toBe(composedBrokerSpec.spec.ddl_digest);
+      expect(sha(readFileSync(new URL('held-orphan.sql',brokerPath)))).toBe(composedBrokerSpec.spec.fixture_digest);
+      expect(schemaSpecDigest(MigrationSpec.parse(composedBrokerSpec.spec))).toBe(composedBrokerSpec.schema_spec_digest);
       expect(sha(canonicalJointJson(catalog(broker)))).toBe(composedBrokerSpec.spec.target_schema_digest);
       expect(broker.prepare('SELECT lease_id,grant_generation,state,recovery_revision FROM broker_leases').all()).toEqual([{lease_id:'lease-a',grant_generation:1,state:'held_orphan',recovery_revision:0}]);
       expect(broker.prepare('SELECT owner_generation FROM broker_identity').get()).toEqual({owner_generation:2});
@@ -379,23 +425,42 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
       expect(home.pragma('foreign_key_check')).toEqual([]);expect(broker.pragma('foreign_key_check')).toEqual([]);
     }finally{home.close();broker.close();}
   });
-  it('orders the actual producer graph without qualifying raw broker material through J17.schema_spec', () => {
-    const graph=compositionGraph();const order=producerOrder(graph);
+  it('orders and binds actual home, broker and legacy producer prerequisites without qualifying raw material', () => {
+    const graph=compositionGraph();const order=validateProducerGraph(graph);
     expect(graph.find(g=>g.id==='J11.scoped')!.requires).toEqual(['J01.contracts','fixture:home-spec','fixture:broker-spec']);
-    for(const [before,after] of [['fixture:broker-spec','J11.scoped'],['J11.scoped','J17.schema_spec'],['J17.schema_spec','J17.recovery'],['J12.scoped','J17.recovery'],['J17.recovery','J17.scoped']])expect(order.indexOf(before!)).toBeLessThan(order.indexOf(after!));
+    expect(graph.find(g=>g.id==='fixture:broker-spec')!.requires).toEqual(['artifact:joint-recovery-contracts']);
+    for(const [after,before] of [...requiredProducerEdges,['J11.scoped','fixture:broker-spec'],['J11.scoped','fixture:home-spec'],['J17.scoped','J17.recovery']]){
+      expect(order.indexOf(before!)).toBeGreaterThanOrEqual(0);expect(order.indexOf(after!)).toBeGreaterThanOrEqual(0);
+      expect(order.indexOf(before!)).toBeLessThan(order.indexOf(after!));
+    }
   });
-  it.each([['J11.scoped','J17.schema_spec'],['J12.scoped','J14.scoped'],['J12.scoped','J17.scoped']])('rejects reverse dependency %s -> %s with a concrete cycle trace', (from,to) => {
+  it.each([['J11.scoped','J17.schema_spec'],['fixture:broker-spec','J17.schema_spec'],['J12.scoped','J14.scoped'],['J12.scoped','J17.scoped']])('rejects reverse dependency %s -> %s with its exact edge in the cycle trace', (from,to) => {
     const graph=compositionGraph();graph.find(g=>g.id===from)!.requires.push(to);
-    let error:unknown;try{producerOrder(graph);}catch(e){error=e;}
-    expect(error).toBeInstanceOf(Error);expect(String(error)).toContain('RECOVERY_PRODUCER_CYCLE');expect(String(error)).toContain(from);expect(String(error)).toContain(to);
+    expect(()=>validateProducerGraph(graph)).toThrow('RECOVERY_PRODUCER_CYCLE');
+    expect(()=>validateProducerGraph(graph)).toThrow(from+' -> '+to);
+  });
+  it.each(requiredProducerEdges)('rejects deletion of required producer edge %s -> %s even if traversal order stays plausible', (from,to) => {
+    const graph=compositionGraph();const gate=graph.find(g=>g.id===from)!;expect(gate.requires).toContain(to);
+    gate.requires=gate.requires.filter(dep=>dep!==to);expect(()=>producerOrder(graph)).not.toThrow();
+    expect(()=>validateProducerGraph(graph)).toThrow('MISSING_PRODUCER_EDGE: '+from+' -> '+to);
+  });
+  it('rejects an acyclic recovery dependency on start admission', () => {
+    const graph=compositionGraph();graph.find(g=>g.id==='J17.recovery')!.requires.push('J14.scoped');
+    expect(()=>producerOrder(graph)).not.toThrow();
+    expect(()=>validateProducerGraph(graph)).toThrow('RECOVERY_REQUIRES_ACTIVATION: J17.recovery -> J14.scoped');
+  });
+  it('pins the receipt required-field matrix cardinality independently of generated cases', () => {
+    expect(receiptShape.required).toHaveLength(27);expect(new Set(receiptShape.required).size).toBe(27);
+    expect(omissionCases).toHaveLength(115);
   });
   it.each(omissionCases)('rejects $kind receipt omission $path through the real protocol decoder', ({kind,path}) => {
     const r=composedReceipt(kind);expect(decodeJointContractAs('recovery_receipt',canonicalJointJson(r))).toEqual(r);
-    expect(()=>decodeJointContractAs('recovery_receipt',canonicalJointJson(withoutField(r,path)))).toThrow();
+    const mutant=withoutField(r,path);const raw=canonicalJointJson(mutant);
+    expect(()=>decodeJointContractAs('recovery_receipt',raw)).toThrow(ZodError);
   });
-  it.each(subjectKinds.flatMap(kind=>envelopeShape.required!.map(path=>({kind,path}))))('rejects $kind envelope omission $path through the real proof join', ({kind,path}) => {
+  it.each(subjectKinds.flatMap(kind=>envelopeShape.required!.map(path=>({kind,path}))))('rejects $kind envelope omission $path through the real envelope parser before proof joining', ({kind,path}) => {
     const r=composedReceipt(kind);const envelope=composedEnvelope(r);expect(verifyRecoveryProofEnvelopes(r,[envelope])).toEqual(r);
-    expect(()=>verifyRecoveryProofEnvelopes(r,[withoutField(envelope,path)])).toThrow();
+    const mutant=withoutField(envelope,path);expect(()=>verifyRecoveryProofEnvelopes(r,[mutant])).toThrow(ZodError);
   });
   it('distinguishes explicit nullable identities and empty preserve proofs from missing fields', () => {
     for(const kind of ['attention_action','broker_lease'] as const){const r=composedReceipt(kind,false);
@@ -414,8 +479,7 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
   });
   it('joins real home hold rows before the illustrative ledger insert, without changing original obligations', () => {
     const home=fixture();try{home.exec(ddl);const before=legacy(home);const r=composedReceipt('attention_action');
-      const verified=verifyRecoveryProofEnvelopes(pinnedReceipt(r,false),[composedEnvelope(r)]);homeAttentionFacts(home,verified);
-      home.prepare('INSERT INTO operator_recovery_decisions VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(r.operator_ref,r.request_id,'a'.repeat(64),r.subject_digest,canonicalJointJson(r.subject),r.if_revision,r.owner_generation,r.decision,'resolved_stopped',canonicalJointJson(r),r.observed_at_ms);
+      persistHomeExample(home,r);
       expect(legacy(home)).toEqual(before);expect(home.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:1});
     }finally{home.close();}
   });
@@ -425,11 +489,30 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
       const subject={...r.subject};if(bad==='home')subject.home_id='other';if(bad==='mission')subject.mission_id='other';if(bad==='action')subject.action_id='other';if(bad==='message')subject.message_id='other';
       r=RecoveryReceipt.parse({...r,subject,target_home_id:subject.home_id,subject_digest:recoverySubjectDigest(subject),...(bad==='scope'?{scope_id:'other'}:{}),...(bad==='phase'?{prior_phase:'reserved'}:{}),...(bad==='resolution'?{prior_resolution:'none'}:{}),...(bad==='owner'?{owner_generation:8}:{}),...(bad==='tenant'?{tenant_id:'other'}:{})});
       // Protocol consistency alone accepts this adversarial input; actual rows/context reject it.
-      expect(()=>homeAttentionFacts(home,r)).toThrow(/MISMATCH/);expect(legacy(home)).toEqual(before);
+      expect(()=>persistHomeExample(home,r)).toThrow(/MISMATCH/);expect(legacy(home)).toEqual(before);
       expect(home.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:0});
     }finally{home.close();}
   });
-  it.each(['schema_spec_digest','ddl_digest','fixture_digest','actual_target_schema','candidate_sha','recovery_build_digest'])('rejects a mutually agreeing proof/receipt with wrong pinned %s', field => {
+  it.each(['session','mission_scope','wait_state','action_message'])('rejects FK-valid live-row %s cross-wiring before the shared illustrative write', mutation => {
+    const home=fixture();try{home.exec(ddl);
+      if(mutation==='session')home.exec("INSERT INTO agent_sessions(session_id,task_id,run_id,agent_id,request_sha256,state,resume_supported,version,updated_at,repo_path) SELECT 's2',task_id,run_id,agent_id,request_sha256,state,resume_supported,version,updated_at,repo_path FROM agent_sessions WHERE session_id='s'; UPDATE engineering_missions SET session_id='s2' WHERE mission_id='mission'");
+      if(mutation==='mission_scope')home.exec("INSERT INTO attention_scopes(scope_id,task_id,repo_path,generation) VALUES('scope2','t','/fixture2',1); UPDATE engineering_missions SET scope_id='scope2' WHERE mission_id='mission'");
+      if(mutation==='wait_state')home.exec("UPDATE engineering_waits SET state='cleared' WHERE wait_id='wait'");
+      if(mutation==='action_message')home.exec("INSERT INTO session_messages SELECT 'msg2',session_id,turn_id,direction,kind,payload_json,state,created_at,applied_at FROM session_messages WHERE message_id='msg'; UPDATE attention_actions SET message_id='msg2' WHERE action_id='action'");
+      expect(home.pragma('foreign_key_check')).toEqual([]);const before=legacy(home);
+      expect(()=>persistHomeExample(home,composedReceipt('attention_action',false))).toThrow('HOME_LIVE_SUBJECT_MISMATCH');
+      expect(legacy(home)).toEqual(before);expect(home.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:0});
+    }finally{home.close();}
+  });
+  it('demonstrates raw home ledger storage alone accepts a nonexistent target that the illustrative host rejects', () => {
+    const home=fixture();try{home.exec(ddl);const original=composedReceipt('attention_action',false);
+      const subject={...original.subject,home_id:'nonexistent-home'};
+      const r=RecoveryReceipt.parse({...original,subject,target_home_id:subject.home_id,subject_digest:recoverySubjectDigest(subject)});
+      expect(()=>persistHomeExample(home,r)).toThrow('HOME_LIVE_SUBJECT_MISMATCH');
+      expect(()=>insertHomeExample(home,r)).not.toThrow();expect(home.prepare('SELECT COUNT(*) AS n FROM operator_recovery_decisions').get()).toEqual({n:1});
+    }finally{home.close();}
+  });
+  it.each(['schema_spec_digest','ddl_digest','fixture_digest','actual_target_schema','candidate_sha','recovery_build_digest'])('rejects a structurally consistent receipt/envelope with wrong pinned %s', field => {
     const r=composedReceipt('attention_action');const bad=RecoveryReceipt.parse({...r,[field]:field==='actual_target_schema'?49:field==='candidate_sha'?'f'.repeat(40):'f'.repeat(64)});
     expect(verifyRecoveryProofEnvelopes(bad,[composedEnvelope(bad)])).toEqual(bad);
     expect(()=>pinnedReceipt(bad,false)).toThrow('PINNED_RECOVERY_TUPLE_MISMATCH');
@@ -445,8 +528,8 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
         if(valid.subject.kind!=='broker_lease')throw Error('test fixture kind');
         const subject={...valid.subject};if(field==='home')subject.home_id='other';if(field==='lease')subject.lease_id='other';if(field==='broker')subject.broker_id='other';
         const bad=RecoveryReceipt.parse({...valid,subject,target_home_id:subject.home_id,subject_digest:recoverySubjectDigest(subject),...(field==='scope'?{scope_id:'other'}:{}),...(field==='tenant'?{tenant_id:'other'}:{}),...(field==='owner'?{owner_generation:1}:{})});
-        const parameters=[bad.operator_ref,bad.request_id,'a'.repeat(64),'broker-fixture','lease-a',0,bad.owner_generation,bad.decision,canonicalJointJson(bad)];
-        let error:unknown;try{broker.prepare(sql).run(...parameters);}catch(e){error=e;}expect(error).toBeInstanceOf(Database.SqliteError);expect(error).toMatchObject({code:expect.stringMatching(/^SQLITE_CONSTRAINT/)});
+        const parameters=[bad.operator_ref,bad.request_id,'a'.repeat(64),subject.broker_id,subject.lease_id,0,bad.owner_generation,bad.decision,canonicalJointJson(bad)];
+        let error:unknown;try{broker.prepare(sql).run(...parameters);}catch(e){error=e;}expect(error).toBeInstanceOf(Database.SqliteError);expect(error).toMatchObject({code:'SQLITE_CONSTRAINT_TRIGGER',message:'broker recovery request, identity, owner or revision conflict'});
         expect(broker.prepare('SELECT * FROM broker_leases').all()).toEqual(original);
       }
       expect(()=>pinnedReceipt(valid,false)).toThrow('PINNED_RECOVERY_TUPLE_MISMATCH');
