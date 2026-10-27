@@ -226,5 +226,22 @@ class RoadmapValidationTests(unittest.TestCase):
         self.assertIn('source hash mismatch',result.stderr)
 
 
+
+    def test_schema_target_cannot_reuse_other_recovery(self):
+        self.mutate('delivery-gates.json', lambda d: [x.update(schema_change_id='different-schema') for x in d['milestones'] if x['id']=='C03.budget_storage'])
+        self.refresh_snapshot()
+        self.assert_rejected('schema recovery target mismatch')
+
+    def test_host_qualification_requires_measurement(self):
+        self.mutate('delivery-gates.json', lambda d: [x.update(requires=[]) for x in d['milestones'] if x['id']=='E01.recoverable_profile'])
+        self.refresh_snapshot()
+        self.assert_rejected('host qualification lacks independent measurement')
+
+    def test_recovery_requires_legacy_hold_contract(self):
+        self.mutate('delivery-gates.json', lambda d: [x['requires'].remove('DEBT02.recovery_contract') for x in d['milestones'] if x['id']=='I04.recovery_home'])
+        self.refresh_snapshot()
+        self.assert_rejected('recovery lacks legacy hold operator contract')
+
+
 if __name__ == '__main__':
     unittest.main()

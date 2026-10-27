@@ -63,9 +63,9 @@
     {
       "id": "AT-09",
       "name": "schema_recovery",
-      "owners": ["I04"],
+      "owners": ["I04", "DEBT02"],
       "status": "planned",
-      "assertion": "Old binary rejects new schema. Recovery-capable current-schema build reads/query/cancels with authorization; disabling new dispatch retains obligations, backup restoration only before any post-migration effect and with fenced writers. Recovery build understands target schema N+1, is tested on N+1 fixtures before migration, and has dispatch disabled. Inject preflight/migration startup failure. An existing unknown hold cannot be bypassed by upgrade: use current-schema compatible recovery mode with migration disabled, offline immutable-copy diagnosis, then proof-based operator disposition; without proof remain quarantined."
+      "assertion": "Old binary rejects new schema. Recovery-capable current-schema build reads/query/cancels with authorization; disabling new dispatch retains obligations, backup restoration only before any post-migration effect and with fenced writers. Recovery build understands target schema N+1, is tested on N+1 fixtures before migration, and has dispatch disabled. Inject preflight/migration startup failure. An existing unknown hold cannot be bypassed by upgrade: use current-schema compatible recovery mode with migration disabled, offline immutable-copy diagnosis, then proof-based operator disposition; without proof remain quarantined. Test legacy attention_dispatch_holds using the future DEBT02 operator path, not a stub or claimed existing endpoint. Recovery receipt must match target schema/DDL/fixture/build digests."
     },
     {
       "id": "AT-10",

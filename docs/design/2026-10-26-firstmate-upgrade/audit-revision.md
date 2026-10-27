@@ -78,7 +78,7 @@ The revision keeps 50 work packages and separates full-package completion from s
 
 B01：任何标有 introduces_schema 的里程碑，依赖闭包必须含 I04.compat_recovery；X03 broker 与 C03 存储均受限。恢复构建明确理解目标 N+1 schema，在升级前用 N+1 夹具验证读取、对账、授权取消和派发总开关；先检查空间、版本、锁、备份和旧写者 fencing，再执行事务迁移。迁移失败保留原库/失败回执，禁止自动启动写派发；验证启动前失败与事务中断。
 
-B02：外部调用前持久化 effect_id 派生 run_id 或预建容纳域身份。E01 不允许无法按该身份查询/取消、且无宿主容纳域的 profile 自动 start。handle 回执丢失不等于身份丢失。仍无法取证的 unknown 保持仓库/资源范围内隔离，不声称停机成功。存在 hold 时不绕过 ADR-16 托管升级；预先提供与当前 schema 兼容、禁迁移禁新派发的恢复入口及离线不可变副本诊断，取得静默/无副作用证据后由现有 operator 合同处置；证据不可得则明确没有自动恢复出口。新版本开发可在隔离测试库推进，不能打开生产 home 自动迁移。
+B02：外部调用前持久化 effect_id 派生 run_id 或预建容纳域身份。E01 不允许无法按该身份查询/取消、且无宿主容纳域的 profile 自动 start。handle 回执丢失不等于身份丢失。仍无法取证的 unknown 保持仓库/资源范围内隔离，不声称停机成功。存在 hold 时不绕过 ADR-16 托管升级；预先提供与当前 schema 兼容、禁迁移禁新派发的恢复入口及离线不可变副本诊断，取得静默/无副作用证据后由待 DEBT02 交付的 operator 合同处置（当前没有受支持的放行接口）；证据不可得则明确没有自动恢复出口。新版本开发可在隔离测试库推进，不能打开生产 home 自动迁移。
 
 B03：E02 依赖 C06 resolver 和 X01 plan invalidation。V02 按 S1–S6 独立里程碑，每个执行回执还绑定精确 candidate/support cell，S1 通过不能替代 S2。默认启用必须是该切片全部 opt-in 门槛加资格/信任根门槛的超集；JSON 给出 S2 显式集合和后续累加规则。
 
@@ -89,3 +89,11 @@ B05：broker 与 home 的两阶段协议使用同一 effect_id。先持久化 ho
 B06：预算按调用数、毫秒、明确币种微单位分别存储，整数维度不隐式换算。reserved 仅在证明未提交后 CAS 为 released；committed 由权威回执 CAS 为 settled；effect_id+reservation_id 账本键防重复释放。未知子预留只能凭原回执或经资格确认的操作员证据结算，不能凭超时回收。
 
 B07–B09：当前观察记录 CI job 摘要；完整性快照覆盖规范 README、本文及看板投影。代码等价覆盖根配置并检查非忽略的未跟踪生产文件。局部 contract 不得依赖 host_qualified/default_enabled，由验证器直接检查。此目录是固定设计快照，planned 状态有意不能原地升级；未来 achieved 证据在 R05/M01 的独立交付记录中验签及关联，不把本次简易工具提升为资格系统。external_dependencies 仍只能是 unresolved/not_qualified，R03.external_contracts 是 E05/X07 完成交付的前置，FM-22/X07 显式关联新增原文。
+
+## 8. 终审精化与有效期
+
+C01/C02：C03.schema_spec 与 X03.schema_spec 先冻结目标 schema 编号、DDL 及夹具摘要，不执行 migration；I04 的 home/broker 恢复里程碑分别绑定相同 schema_change_id，并要求实际目标 schema/DDL/fixture/recovery build/candidate/support cell 回执一致。符号 change ID 不能冒充数据库版本；N+1 证据不能用于 N+2。I04 恢复还依赖待交付的 DEBT02，后者必须覆盖试点遗留 attention_dispatch_holds；AT-09 不能用桩宣称已有放行能力。
+
+C03/C04/C06：任何 host_qualified 节点除受控测量根 V03.host_measurement 外，闭包必须包含 R05.qualifier_protocol 和 V03.host_measurement；不把 wired/fake adapter 视为宿主资格。V03 缺证据时相应自动 start 组合继续禁用，影子规划可继续。R05/M01 的候选审查必须从实际 migration diff 反查 introduces_schema 与冻结规格，不能只信作者标记；每个切片发布前登记完整 opt-in 集合，缺集合拒绝启用。当前仍是规划快照，没有运行时门禁实现。
+
+C05：review-snapshot 不再使用可能滞后的 observed_at；快照内容由文件摘要及 Git 候选界定。本文与验证器仅适用于 c1cfccf 的“仅文档变更后代”；生产树或根构建配置变化后必须由 R05/M01 生成新候选绑定交付记录，不能将当前测试原封不动接成通用 CI 门禁。历史重放须指定匹配的 --osstack-repo。

@@ -74,7 +74,7 @@
       "slice": "S0",
       "depends_on_add": [],
       "current_state": "planned",
-      "acceptance_add": "持续检查新增行为、资格撤销、来源变更和当前完成证据；负责 CI verifier 和资格签发协议；V03 负责宿主测量，V06 负责独立信任根运维/撤销与发布门禁。签发者不得使用规划器自述作为证据。",
+      "acceptance_add": "持续检查新增行为、资格撤销、来源变更和当前完成证据；负责 CI verifier 和资格签发协议；V03 负责宿主测量，V06 负责独立信任根运维/撤销与发布门禁。签发者不得使用规划器自述作为证据。；含 migration 的候选 PR 必须映射到 introduces_schema 里程碑和冻结 schema 规格/fixture；每个切片发布前必须登记明确的 opt-in 前置集合，未知集合拒绝默认启用",
       "verification": "移除来源、注入循环、伪造完成记录都会失败",
       "owner_role": "契约/来源维护者"
     },
@@ -567,7 +567,7 @@
       "depends_on_add": [],
       "current_state": "planned",
       "proposed_targets": ["packages/cli/src/engineering-host.ts", "packages/core/src/state/engineering-store.ts"],
-      "acceptance_add": "受信操作者凭精确执行身份和静默证据处置 obligation；审计原因；不能以删除账本当恢复；恢复保留原 effect 身份及账本，审计 operator 权限和证据；缺静默证据只能隔离/升级，不能删除锁强行恢复。",
+      "acceptance_add": "受信操作者凭精确执行身份和静默证据处置 obligation；审计原因；不能以删除账本当恢复；恢复保留原 effect 身份及账本，审计 operator 权限和证据；缺静默证据只能隔离/升级，不能删除锁强行恢复。；须明确覆盖试点遗留 attention_dispatch_holds。该 operator 处置通道尚未交付，不得称为现有接口或用桩替代真实 hold 验收",
       "verification": "旧身份、缺静默证据、跨租户操作拒绝；恢复可重放且不重发副作用",
       "owner_role": "Session/恢复开发者",
       "canonical_card": "session-pilot-debt/card_f251dadf"

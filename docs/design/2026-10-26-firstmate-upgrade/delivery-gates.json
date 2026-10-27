@@ -36,7 +36,8 @@
       "scope": "goal_dispatch_local",
       "requires": ["I04.compat_recovery"],
       "status": "planned",
-      "introduces_schema": true
+      "introduces_schema": true,
+      "schema_change_id": "engineering-goal-storage-v1"
     },
     {
       "id": "C04.start_dispatch",
@@ -59,7 +60,7 @@
       "owner": "I04",
       "phase": "wired",
       "scope": "schema_recovery",
-      "requires": [],
+      "requires": ["I04.recovery_home", "I04.recovery_broker"],
       "status": "planned"
     },
     {
@@ -141,7 +142,8 @@
       "scope": "host_resource_broker",
       "requires": ["I04.compat_recovery"],
       "status": "planned",
-      "introduces_schema": true
+      "introduces_schema": true,
+      "schema_change_id": "host-resource-broker-v1"
     },
     {
       "id": "C06.start_resolver",
@@ -164,7 +166,7 @@
       "owner": "E01",
       "phase": "host_qualified",
       "scope": "exact_support_cell",
-      "requires": [],
+      "requires": ["R05.qualifier_protocol", "V03.host_measurement"],
       "status": "planned"
     },
     {
@@ -230,6 +232,48 @@
       "scope": "S6:exact_candidate_and_support_cell",
       "requires": [],
       "status": "planned"
+    },
+    {
+      "id": "C03.schema_spec",
+      "owner": "C03",
+      "phase": "contract",
+      "scope": "DDL_spec_and_fixture_only_no_migration",
+      "requires": [],
+      "status": "planned",
+      "schema_change_id": "engineering-goal-storage-v1",
+      "acceptance": "Before implementation freeze actual target schema number, DDL digest and fixture digest. This symbolic change ID is not a schema version or qualification."
+    },
+    {
+      "id": "X03.schema_spec",
+      "owner": "X03",
+      "phase": "contract",
+      "scope": "DDL_spec_and_fixture_only_no_migration",
+      "requires": [],
+      "status": "planned",
+      "schema_change_id": "host-resource-broker-v1",
+      "acceptance": "Before implementation freeze actual target schema number, DDL digest and fixture digest. This symbolic change ID is not a schema version or qualification."
+    },
+    {
+      "id": "I04.recovery_home",
+      "owner": "I04",
+      "phase": "wired",
+      "scope": "target_schema_recovery",
+      "requires": ["C03.schema_spec", "DEBT02.recovery_contract"],
+      "status": "planned",
+      "schema_change_id": "engineering-goal-storage-v1",
+      "receipt_binding": ["actual_target_schema", "ddl_digest", "fixture_digest", "recovery_build_digest", "candidate_sha", "support_cell"],
+      "acceptance": "A recovery receipt is valid only for the identical frozen target schema and fixture; N+1 evidence cannot qualify N+2."
+    },
+    {
+      "id": "I04.recovery_broker",
+      "owner": "I04",
+      "phase": "wired",
+      "scope": "target_schema_recovery",
+      "requires": ["X03.schema_spec", "DEBT02.recovery_contract"],
+      "status": "planned",
+      "schema_change_id": "host-resource-broker-v1",
+      "receipt_binding": ["actual_target_schema", "ddl_digest", "fixture_digest", "recovery_build_digest", "candidate_sha", "support_cell"],
+      "acceptance": "A recovery receipt is valid only for the identical frozen target schema and fixture; N+1 evidence cannot qualify N+2."
     }
   ],
   "release_requirements": {

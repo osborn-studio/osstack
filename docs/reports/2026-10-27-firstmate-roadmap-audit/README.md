@@ -71,3 +71,9 @@ The actual model was `claude-sonnet-5-5`. Round one returned REVISE_REQUIRED wit
 | B09 | 验证外部依赖 unresolved 状态；E05/X07 加 R03 前置与里程碑，FM-22/X07 关联 ADD-069/070 原文。 |
 
 这些是设计、验证器及证据修改；broker、预算、恢复构建等仍没有作为新生产实现交付。
+
+## 第三轮与收尾修订
+
+候选 `9d33811b50bb2830e274149d9450fac10488171b` 的[第三轮原文](round3.md)结论仍为 **PASS_WITH_CONCERNS，P0/P1 均为 0**；另有 2 项 P2、4 项 P3，模型说明不阻止冻结规划合入。[CLI 结果](round3.json)和[输入清单](round3-input-manifest.json)保留原样。
+
+主持者随后处置 C01–C06：新增只冻结 DDL/夹具的规格里程碑及分别绑定目标 schema 的恢复验收；将“现有 operator 合同”改为“待 DEBT02 交付”，并明确覆盖旧 attention_dispatch_holds；宿主资格必须依赖独立测量；R05 审查 migration diff 与每切片完整 opt-in 集合；删除快照滞后时间戳，并声明本验证器只适用于固定基线的仅文档后代。没有因此宣称新的 operator 接口已经实现。第四次调用只复核这六项收尾修订。

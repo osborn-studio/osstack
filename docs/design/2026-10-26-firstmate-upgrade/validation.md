@@ -38,3 +38,5 @@ OSStack 看板是 `firstmate-upgrade-roadmap`。卡片回执见 [board-receipt.m
 ## English
 
 The original frozen design is preserved. The new roadmap links all 24 capabilities to 50 work packages and checks their dependencies and pinned sources. The baseline build, type check and full local test suite pass. The board contains 38 planned packages, eight completed local-pilot packages and four packages with qualification or release blockers. No new controller, provider qualification or default activation is delivered by this design change.
+
+验证器有效期：仅对固定基线 `c1cfccf` 的仅文档变更后代成立；生产代码或根构建配置改变后，由 R05/M01 的新候选绑定记录取代。它不是可直接套用到任意未来 main 的通用 CI 门禁。

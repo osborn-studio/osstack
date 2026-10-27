@@ -1,16 +1,15 @@
 {
   "kind": "reviewed_snapshot_not_signed_authority",
-  "observed_at": "2026-10-27T00:07:44.804775+00:00",
   "file_sha256": {
-    "work-packages.json": "f8828287a5947b25fef6876dab0e3b9936afb0e141c0ad741687250e13ae7b25",
+    "work-packages.json": "c79df92eef7d5a9aba3555f61dc58cfdfe1fa09d35df238abc1944bcec8447c9",
     "capability-map.json": "c57bcd38ca77d2c77a5a81b825758d62666b753fe6fc0a72f563d0ecc6bc7414",
     "source-additions.json": "a6508d953b141a03334d792c5a53aecc933eff4e95d7d0fc876e43921e239c8b",
     "current-evidence.json": "7a167e1b9847438faebe10404e106f6dd5a3bbd6860d1d92546a827c5f7b8ca8",
-    "delivery-gates.json": "7753061282ffc1ff5081d2eb292fa7aca8c46cf173c90c597743cb97fc89c534",
-    "audit-contracts.json": "169c872d0c7bce29b429e09f749c99d07230ea5add40b43cc8510bc4dc2beb1b",
-    "README.md": "dc0526015a66a984eac7a2e3b9c8f4275bfe84f0533045cfd5897c6cc6127dda",
-    "audit-revision.md": "f1d8e5cf020e49627b07fb48ffac3124783ca056bfd8f1390b600458888666f1",
-    "board-projection.json": "746ab60f83d5022c6e4e3522aa4c0de55b9c2d8f4933bb24a290f5b5ed9e0a33"
+    "delivery-gates.json": "f99926b17e44af46574073668b7bfbc05bafe658713b1be75a25b4c54b2b15ff",
+    "audit-contracts.json": "5c17d8b655b4ac706f43d55a29c7407150450aec181a67ce799489dd0ff94810",
+    "README.md": "f9fe5bedddc488bfb0fbcc218ced364ca11f3e3362438b8f3cf6c3a3429c0ecb",
+    "audit-revision.md": "546965671a4d09448a6bf16fcb15fbe88ec4fcadf916d47a9b1f7bfa04d57de7",
+    "board-projection.json": "2ed4a1e5a4a74aa2650ea7eec0e7c0d64eb1ee4570a9c28cb7b1961eb37e8b12"
   },
   "states": {
     "R01": "planned",

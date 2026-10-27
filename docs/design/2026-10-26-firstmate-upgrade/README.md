@@ -213,3 +213,5 @@ This roadmap makes Firstmate behavior part of the OSStack engineering agent. It 
 Extract behavior from pinned instructions, scripts, hooks, skills, configuration and tests. Map each behavior to an existing OSStack owner. Add a contract, failure cases, a default user journey and candidate-bound evidence. Models may propose changes; they cannot grant authority or certify their own implementation.
 
 Ship narrow vertical slices: trusted inventory, shadow control, local delivery, engine routing, durable supervision, remote/public integrations, and managed upgrades. Keep unsupported host/provider combinations disabled. A merged PR, an npm package, a running upgraded daemon and production qualification are separate results.
+
+验证器有效期：仅对固定基线 `c1cfccf` 的仅文档变更后代成立；生产代码或根构建配置改变后，由 R05/M01 的新候选绑定记录取代。它不是可直接套用到任意未来 main 的通用 CI 门禁。

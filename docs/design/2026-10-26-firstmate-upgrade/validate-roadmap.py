@@ -131,6 +131,13 @@ def audit_checks(work, mapping, additions, items, sources, args):
     for gid, g in milestones.items():
         if g.get('introduces_schema'):
             require('I04.compat_recovery' in closure(gid) - {gid}, 'schema lacks prior recovery gate')
+            target = g.get('schema_change_id')
+            require(target and any(milestones[n].get('schema_change_id') == target and milestones[n]['scope'] == 'target_schema_recovery' for n in closure(gid)), 'schema recovery target mismatch')
+        if g['phase'] == 'host_qualified' and gid != 'V03.host_measurement':
+            require({'R05.qualifier_protocol','V03.host_measurement'} <= closure(gid), 'host qualification lacks independent measurement')
+        if g['scope'] == 'target_schema_recovery':
+            require(any(milestones[n]['phase'] == 'contract' and milestones[n].get('schema_change_id') == g['schema_change_id'] for n in closure(gid)), 'recovery lacks target schema specification')
+            require('DEBT02.recovery_contract' in closure(gid), 'recovery lacks legacy hold operator contract')
         if g['phase'] == 'contract':
             require(not any(milestones[n]['phase'] in {'host_qualified','default_enabled'} for n in closure(gid)), 'contract blocked on host qualification')
     requirements = gates['release_requirements']
