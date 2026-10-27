@@ -16,6 +16,8 @@ class ReceiptAdapter implements SessionCapableAdapter {
   readonly cost_tier = "low" as const;
   readonly resumed: AgentSessionInput[] = [];
   readonly started: string[] = [];
+  readonly stopChecks: string[] = [];
+  omitTerminal = false;
   failStart = false;
   failResume = false;
   failStop = false;
@@ -29,9 +31,10 @@ class ReceiptAdapter implements SessionCapableAdapter {
     yield { type: "native_session.started", native_session_id: "private-started-native" };
     if (this.failStart) throw new Error("injected lost start response");
     yield { type: "assistant.message", message_id: "start-reply", text: "Session started" };
-    yield { type: "session.terminal", state: "completed" };
+    if (!this.omitTerminal) yield { type: "session.terminal", state: "completed" };
   }
-  async confirmStopped() {
+  async confirmStopped(runId: string) {
+    this.stopChecks.push(runId);
     if (this.failStop) throw new Error("injected stop verifier failure");
     if (this.stopUnconfirmed) return { stopped: false as const };
     return { stopped: true as const, evidence: "fixture has no external producer" };
@@ -41,7 +44,7 @@ class ReceiptAdapter implements SessionCapableAdapter {
     yield { type: "native_session.started", native_session_id: input.native_session_id };
     if (this.failResume) throw new Error("injected lost execution response");
     yield { type: "assistant.message", message_id: "reply", text: "Instruction complete" };
-    yield { type: "session.terminal", state: "completed" };
+    if (!this.omitTerminal) yield { type: "session.terminal", state: "completed" };
   }
 }
 
@@ -81,7 +84,7 @@ async function boot() {
   } });
 }
 
-async function fixture() {
+async function fixture({ failCleanup = true } = {}) {
   root = await createScratchDir("tests", "send-receipt");
   socket = join(root, "d.sock");
   const repo = join(realpathSync(root), "repo");
@@ -108,13 +111,17 @@ async function fixture() {
     sessions.appendTurn({ turn_id: "turn", session_id: "session", ordinal: 1, state: "idle", assistant_text: "Ready",
       decision: null, created_at: 1, updated_at: 1 });
   } finally { db.close(); }
-  // Fail only the physical cleanup boundary. Admission, SQLite transactions,
+  // Inject cleanup failure only when requested. Admission, SQLite transactions,
   // framing and replay use the real implementations and the real writer lock.
   const acquire = autonomy.acquireRepoWriteLock;
   vi.spyOn(autonomy, "acquireRepoWriteLock").mockImplementation(async (...args) => {
     const lock = await acquire(...args);
     releaseFixtures.push(() => lock.release());
-    return { ...lock, release: async () => { cleanupAttempts++; throw new Error("injected physical cleanup failure"); } };
+    return { ...lock, release: async () => {
+      cleanupAttempts++;
+      if (failCleanup) throw new Error("injected physical cleanup failure");
+      await lock.release();
+    } };
   });
 }
 
@@ -332,4 +339,94 @@ it("preserves a completed Session start when cleanup and diagnostic writes both 
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
     drained: false, active_runs: 0, execution_lease_holds: 1,
   } });
+});
+
+it.each(["confirmed", "unconfirmed", "throws"] as const)(
+  "rejects a start without terminal and releases only after stop is %s", async stop => {
+    await fixture({ failCleanup: false });
+    adapter.omitTerminal = true;
+    adapter.stopUnconfirmed = stop === "unconfirmed";
+    adapter.failStop = stop === "throws";
+    const params = { request_id: "start-without-terminal", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Missing terminal", prompt: "Start once" };
+    expect(await rpc("session.start", params)).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(adapter.stopChecks).toHaveLength(1);
+    expect(cleanupAttempts).toBe(stop === "confirmed" ? 1 : 0);
+    const db = openDb({ path: daemon!.dbPath });
+    let sessionId: string;
+    try {
+      const session = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+        .get() as { session_id: string; run_id: string; state: string; version: number };
+      sessionId = session.session_id;
+      expect(session).toMatchObject({ state: "failed", version: 2 });
+      expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(session.run_id)).toEqual({ outcome: "failed" });
+      expect(db.prepare("SELECT count(*) AS count FROM session_turns WHERE session_id = ?").get(sessionId)).toEqual({ count: 0 });
+    } finally { db.close(); }
+    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+      drained: stop === "confirmed", active_runs: 0, execution_lease_holds: stop === "confirmed" ? 0 : 1,
+    } });
+    await rpc("daemon.resume");
+    const replay = { ok: true, result: { session_id: sessionId, state: "failed", version: 2 } };
+    expect(await rpc("session.start", params)).toMatchObject(replay);
+    await daemon!.close(); daemon = undefined;
+    await boot();
+    expect(await rpc("session.start", params)).toMatchObject(replay);
+    expect(adapter.started).toEqual([params.prompt]);
+    expect(adapter.stopChecks).toHaveLength(1);
+  },
+);
+
+it.each(["confirmed", "unconfirmed", "throws"] as const)(
+  "keeps a terminal-free send uncertain and releases only after stop is %s", async stop => {
+    await fixture({ failCleanup: false });
+    adapter.omitTerminal = true;
+    adapter.stopUnconfirmed = stop === "unconfirmed";
+    adapter.failStop = stop === "throws";
+    expect(await rpc("session.send", request)).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+    expect(adapter.stopChecks).toEqual(["run"]);
+    expect(cleanupAttempts).toBe(stop === "confirmed" ? 1 : 0);
+    const before = persisted();
+    expect(before.message).toMatchObject({ state: "failed", applied_at: null });
+    expect(before.snapshot).toMatchObject({ turn_id: "turn", version: 2 });
+    expect(before.turns).toBe(1);
+    expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+      drained: stop === "confirmed", active_runs: 0, execution_lease_holds: stop === "confirmed" ? 0 : 1,
+    } });
+    await rpc("daemon.resume");
+    const replay = { ok: false, error: { code: "delivery_uncertain" } };
+    expect(await rpc("session.send", request)).toMatchObject(replay);
+    await daemon!.close(); daemon = undefined;
+    await boot();
+    expect(await rpc("session.send", request)).toMatchObject(replay);
+    expect(persisted()).toEqual(before);
+    expect(adapter.resumed).toHaveLength(1);
+    expect(adapter.stopChecks).toEqual(["run"]);
+  },
+);
+
+it("retains a terminal-free accepted receipt when writing the failure state also fails", async () => {
+  await fixture({ failCleanup: false });
+  adapter.omitTerminal = true; adapter.stopUnconfirmed = true;
+  const db = openDb({ path: daemon!.dbPath });
+  try {
+    db.exec(`CREATE TRIGGER reject_failure BEFORE UPDATE OF state ON session_messages
+      WHEN NEW.state = 'failed' BEGIN SELECT RAISE(ABORT, 'injected failure receipt failure'); END;`);
+  } finally { db.close(); }
+  const uncertain = { ok: false, error: { code: "delivery_uncertain" } };
+  expect(await rpc("session.send", request)).toMatchObject(uncertain);
+  const before = persisted();
+  expect(before.message).toMatchObject({ state: "accepted", applied_at: null });
+  expect(before.turns).toBe(1);
+  expect(cleanupAttempts).toBe(0);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+  await rpc("daemon.resume");
+  expect(await rpc("session.send", request)).toMatchObject(uncertain);
+  await daemon!.close(); daemon = undefined;
+  await boot();
+  expect(await rpc("session.send", request)).toMatchObject(uncertain);
+  expect(persisted()).toEqual(before);
+  expect(adapter.resumed).toHaveLength(1);
+  expect(adapter.stopChecks).toEqual(["run"]);
 });
