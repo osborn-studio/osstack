@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-10-27T17:46:50.884675+00:00",
+  "config_sha256": "744e491d365b6061f84e5259885410b834e7b96ff1be9c34b6534e10a8c52d85",
+  "config": {
+    "version": 1,
+    "id": "osstack",
+    "kind": "heartbeat",
+    "name": "OSStack 联合开发续办",
+    "prompt": "管理本会话 Firstmate × pstack → OSStack 联合开发，用户 gilberthello 只负责审批合并，本会话唯一PR入口。先从最新Git对象读联合 execution-ledger.json、execution.md、project-operations.md，再fetch main并查GitHub和OSStack三板。primary脏且旧，不覆盖。#283/#284已合并；#284 merge/main3192b424174e5eb977d640cc0418e67c6b1461d1，tree228b2a0b9ae6708bc68bb3019921198484538320与上一批独立合成树相同。旧测试保留原SHA，合并不等于gate通过。当前joint-post284批次：loader_adversarial在codex/joint-contract-acceptance做JP01c JA59/70组件测试和Python独立oracle；terminal_preflight在codex/joint-recovery-composition做JA20/47 home+broker离线联合规格；cleanup_regression仅scratch做J02b采用闭包预冻结准备及随后独立验证。先查活跃任务，禁止重复派发。三个worker独占写边界，root独占中央账本/PR，全仓重回归单队列。scratch=/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284，root工作树~/Developer/CodeX/.worktrees/osstack/joint-post284-control。J01.contracts正式通过前不放行J02b/J03产品开工；模型名不等于受信oracle principal，预冻结/身份缺口真实记录。J03不需等J02。J11/J12/J17完整授权、文件崩溃、旧writer fencing等门槛保留；不预留迁移、不启runtime。候选完成适用测试及实际Claude CLI claude-sonnet-5-5审计，修复确认问题，保留原始意见和SHA绑定。发布最新head CI通过后通知用户审批，禁止代理批准合并发布。使用交接安装版管理实例及显式home/socket(/tmp/osstack-debt-ledger.sock)，禁止开发CLI触碰默认~/.osstack。完成后清理工作树保留提交。无变化保持安静，仅通知可审批批次、实质完成/失败或需要用户决定；配额/工具阻塞如实记录。",
+    "status": "ACTIVE",
+    "rrule": "FREQ=MINUTELY;INTERVAL=30",
+    "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+    "created_at": 1793098759153,
+    "updated_at": 1793122884206
+  },
+  "scope": "owner-observed persisted config following successful automation_update; no scheduler attestation"
+}

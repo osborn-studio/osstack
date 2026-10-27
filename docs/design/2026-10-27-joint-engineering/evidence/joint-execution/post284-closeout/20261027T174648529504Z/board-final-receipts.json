@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-27T17:46:50.884662+00:00",
+  "boards": [
+    {
+      "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/joint-firstmate-pstack.json",
+      "sha256": "42e265dc21184654df90d827141cb24f5a7d10212baa9c2f41489a38b0ccb9cf"
+    },
+    {
+      "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/firstmate-upgrade-roadmap.json",
+      "sha256": "e6e37683fab3ddbd7a2dc0129adf63addfaf93f962376bd7c210f5b29ec3cc26"
+    },
+    {
+      "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/session-pilot-debt.json",
+      "sha256": "e058b7dee5d9799b2e2d9474ca5a55ff08a41130df34ad6ea5142dfae07a588e"
+    }
+  ],
+  "scope": "post-dispatch read-only board snapshots"
+}

@@ -3,7 +3,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
-  "observed_at": "2026-10-27T17:42:07.608599+00:00",
+  "observed_at": "2026-10-27T17:46:50.854473+00:00",
   "runtime_enabled": false,
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
@@ -2376,7 +2376,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/283",
-      "observed_at": "2026-10-27T17:42:06.362551+00:00"
+      "observed_at": "2026-10-27T17:46:49.802582+00:00"
     },
     {
       "baseRefName": "main",
@@ -2455,7 +2455,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/284",
-      "observed_at": "2026-10-27T17:42:07.585073+00:00"
+      "observed_at": "2026-10-27T17:46:50.827423+00:00"
     }
   ],
   "management": {
@@ -2464,7 +2464,7 @@
     "binding": "See preserved handoff management entry; never use default home",
     "mode": "owner-driven OSStack ledger and bounded Codex collaboration subagents; no autonomous goal_dispatch",
     "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
-    "snapshot": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/joint-firstmate-pstack.json",
+    "snapshot": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/joint-firstmate-pstack.json",
     "entry_sha256": "9e2c366327a31ff71da277a21ea36571ebeca60ebce3372cee137af696eb89dc",
     "entry_identity": "installed Firstmate registry-install/bin/osstack; exact local binding is in sender handoff",
     "operations": "project-operations.md",
@@ -2478,7 +2478,7 @@
       "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
       "created_at": 1793098759153,
       "updated_at": 1793122884206,
-      "observed_at": "2026-10-27T17:42:07.635317+00:00",
+      "observed_at": "2026-10-27T17:46:50.885389+00:00",
       "config_sha256": "744e491d365b6061f84e5259885410b834e7b96ff1be9c34b6534e10a8c52d85",
       "queue": "JP01c component acceptance; JA20/47 recovery composition; J02b offline preparation",
       "authority": "automation_update succeeded, persisted config reread; owner-attested tool result, not runtime scheduler proof",
@@ -2489,45 +2489,45 @@
     "socket_observation": {
       "uid": 501,
       "mode": "0o600",
-      "observed_at": "2026-10-27T17:42:07.635312+00:00"
+      "observed_at": "2026-10-27T17:46:50.885384+00:00"
     },
     "rpc_helper": {
-      "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/ledger-rpc-helper.py",
+      "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/ledger-rpc-helper.py",
       "sha256": "b1449d7b95df5012c9889d4afb2517f42fc7dc72c125948ba1018fbc40379e1e",
       "socket": "/tmp/osstack-debt-ledger.sock",
       "scope": "pinned helper and observed socket; no development CLI/default DB"
     },
     "receipts": [
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/subagent-dispatch-receipts.json",
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/subagent-dispatch-receipts.json",
         "sha256": "1dd7df39d3d50941b21b85ebcfad9b4b2ebb503c6ee2d2099c90798b0eafadcd"
       },
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/terminal-preflight-receipt.json",
-        "sha256": "60d7d9aa930d7877e7ec9572d11b5b296dfaf42b50d78165cceff9bb585470aa"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/terminal-preflight-receipt.json",
+        "sha256": "6c6baf9868d1f46c0349cc62ee674552f73b1f53fb0939d642b662165d9f2704"
       },
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/board-final-receipts.json",
-        "sha256": "6f234552f93acbf06653851a8352ba4b5eb7df8ebcca3e204ac0fac043737437"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/board-final-receipts.json",
+        "sha256": "51c13b20bc89e6786a87aa51d88f2c329e3783bdab1fb5c2795c5e4a28e40548"
       },
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/automation-receipt.json",
-        "sha256": "2f7df09b319ff1c9929ab24862006fd3a2233c3141ea50d6ed97aff92fc00c79"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/automation-receipt.json",
+        "sha256": "e7eac60781731498166bfb140837279cb8a5851d1e1594046000d4e3bbc47247"
       }
     ],
-    "snapshot_sha256": "f42e4b93c7d368afc73fa9903225f998428f7f96206a1d1b8f09053e560ec13b",
+    "snapshot_sha256": "42e265dc21184654df90d827141cb24f5a7d10212baa9c2f41489a38b0ccb9cf",
     "board_snapshots": [
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/joint-firstmate-pstack.json",
-        "sha256": "f42e4b93c7d368afc73fa9903225f998428f7f96206a1d1b8f09053e560ec13b"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/joint-firstmate-pstack.json",
+        "sha256": "42e265dc21184654df90d827141cb24f5a7d10212baa9c2f41489a38b0ccb9cf"
       },
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/firstmate-upgrade-roadmap.json",
-        "sha256": "34f17f5428d9747b931c69aa0691b7545825bd350d336a0df57baf63ae287f7a"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/firstmate-upgrade-roadmap.json",
+        "sha256": "e6e37683fab3ddbd7a2dc0129adf63addfaf93f962376bd7c210f5b29ec3cc26"
       },
       {
-        "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/session-pilot-debt.json",
-        "sha256": "7ad79105e8aa9672cd10d09ef34e093de254c48e7325f3c59a5015bea7cb92ea"
+        "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/session-pilot-debt.json",
+        "sha256": "e058b7dee5d9799b2e2d9474ca5a55ff08a41130df34ad6ea5142dfae07a588e"
       }
     ],
     "evidence_scope": "Post-#283/#284 merge and next-batch dispatch. Historical tests remain pinned to original code/base; formal gates remain unqualified.",
@@ -2551,8 +2551,8 @@
     "O01_O02_O04_O05": "retain original stage-specific blocks"
   },
   "observation_window": {
-    "started_at": "2026-10-27T17:42:05.049407+00:00",
-    "finished_at": "2026-10-27T17:42:07.635342+00:00",
+    "started_at": "2026-10-27T17:46:48.527322+00:00",
+    "finished_at": "2026-10-27T17:46:50.885415+00:00",
     "scope": "Latest #283/#284 and boards observed sequentially; older PRs retain own timestamps; no atomic snapshot claim."
   },
   "checkpoint_history": [
@@ -2587,6 +2587,10 @@
     {
       "path": "evidence/joint-execution/post284-closeout/20261027T174205052300Z/ledger-before-1c758f416298d802d0fb90371bf45c218965c1f2ff8037210a87fd1fc252d1a5.json",
       "sha256": "1c758f416298d802d0fb90371bf45c218965c1f2ff8037210a87fd1fc252d1a5"
+    },
+    {
+      "path": "evidence/joint-execution/post284-closeout/20261027T174648529504Z/ledger-before-0fb10760057420f1dc9428d36229abf31633f81aa820b16f43469ec20a8b1be6.json",
+      "sha256": "0fb10760057420f1dc9428d36229abf31633f81aa820b16f43469ec20a8b1be6"
     }
   ],
   "checkpoint_proof_version": 2,
@@ -2626,6 +2630,6 @@
     ],
     "shared_owner": "root: central ledger, execution.md, project-operations.md and PR publishing",
     "full_regression_queue": "root single queue",
-    "qualification": "J01.contracts still specified_not_run; J02b/J03 product implementation blocked on formal gate; no runtime activation"
+    "qualification": "All formal joint gates remain specified_not_run, including J01.contracts and J11/J17; broker deployment not qualified; J02b/J03 product implementation blocked on formal gate; no runtime activation"
   }
 }
