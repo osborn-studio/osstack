@@ -1,0 +1,123 @@
+# Behavior registry evaluator / 行为注册表评估器
+
+`evaluateBehaviorRegistry` is an experimental synchronous library function in `@osstack/core`.
+It checks registry bytes against the caller's build pins, clock, policy and trust context.
+It does not authenticate those inputs. It does not grant execution authority.
+No daemon route or automatic executor uses it in this delivery.
+
+## Records and checks
+
+R01 defines separate versioned records:
+
+- `BehaviorContractV1`: a behavior declaration with source references and dependencies.
+- `BehaviorSourceManifestV1`: a pinned source snapshot. A contract may cite a subset of its entries.
+- `BehaviorRegistryV1`: declarations for one candidate and target code digest.
+- `BehaviorQualificationV1`: signed qualification evidence claims.
+- `BehaviorDeliveryRecordV1`: a progress projection. The evaluator never uses it as qualification.
+
+A source tuple contains repository URL, commit, path, content SHA-256 and license.
+Each contract tuple must match an entry in its declared source manifest exactly.
+The evaluator also retrieves and hashes each cited source object. It does not execute source text.
+A global manifest can contain additional source entries. Their presence does not qualify their content.
+R03/R04 still own extraction, provenance review and behavior mapping.
+
+The evaluator checks Ed25519 signatures, key role and scope, all three qualification levels,
+predecessor hashes, exact candidate and code identity, source membership, required scenarios,
+checker identity, evidence bundles and artifacts, validity windows and revocations.
+It rejects invalid dependencies, version mismatches and cycles.
+Only authenticated, current and correctly bound records participate in record-ID conflicts.
+An unauthenticated duplicate cannot invalidate a valid chain.
+
+The CI measurement cell may differ from the deployment cell only in OS, architecture,
+filesystem and host identity. Adapter, provider, model, executor, template, recovery mode,
+isolation profile and daemon version must match. This rule is intentionally conservative.
+
+## Required host boundary
+
+Before calling the function, a separate trusted host must:
+
+1. Obtain the expected registry pin and candidate identity from its trusted build process.
+2. Authenticate the actual host and its measurement profile.
+3. Authenticate the verifier policy, issuer keys and allowed scopes.
+4. Verify the operations-root signature on the revocation document.
+5. Persist and recover the monotonic revocation epoch floor.
+6. Supply its trusted evaluation clock and fresh revocation state.
+
+These operations belong to R05/V06 and are not implemented by this library.
+A caller that supplies its own keys and clock can produce a consistent local evaluation.
+That result does not prove a production host is qualified.
+The package export and TypeScript types are not security boundaries.
+
+`nowMs` is explicit host data. The evaluator does not compare it with `Date.now()`.
+This permits deterministic replay. A historical evaluation must never authorize present execution.
+The host must not accept the context or clock from a worker or untrusted RPC request.
+
+The host must give behavior qualification keys a dedicated protocol purpose.
+Version 1 retains the frozen draft's signature over the canonical payload.
+It does not add a new signature prefix without an explicit issuer protocol migration.
+
+## Bytes, policy and result
+
+Registry, qualification, evidence-bundle and source-manifest JSON must already use canonical bytes.
+The evaluator checks strict schemas, then requires the bytes to equal RFC 8785 serialization
+for the supported closed value set. Duplicate keys, BOMs, alternate numeric spellings,
+unknown fields and noncanonical whitespace are rejected.
+This is not a general JSON parser or a replacement for the joint engineering JSON contract.
+
+`policyProfileSha256` is the SHA-256 of canonical JSON with this exact shape:
+
+```json
+{"schema_version":1,"kind":"behavior_verifier_policy","capabilities":[]}
+```
+
+`capabilities` is the supplied policy array. Each item binds the capability, exact behavior version,
+and scenario/checker/version requirements for each level. The actual policies must have nonempty
+scenario sets. Array order is pinned. The example only shows the digest envelope shape.
+
+The output has `status: evaluated` or `rejected` and always has `authorization: none`.
+`expectedRegistrySha256` is the caller's pin. `observedRegistrySha256` is the digest actually read,
+or null when no bounded registry document was read. Rejection does not turn the expected pin into an observation.
+The context echoes candidate, code, policy, CI profile, host profile and revocation epoch.
+Those fields describe the evaluation inputs. They are not authenticated-host certificates.
+
+`selectionEligible` means the supplied requirements held at `evaluatedAtMs` under that context.
+`validUntilMs` is an upper bound, including dependencies and revocation freshness.
+It is not a lease that survives a new revocation or changed candidate.
+Re-evaluate when relevant inputs change. Apply normal host authorization before each effect.
+Nonempty free-text qualification limitations block selection until a versioned policy can enforce them.
+
+## Bounds and validation scope
+
+| Input | Hard limit |
+|---|---|
+| Registry or qualification document | 1 MiB each |
+| Qualification documents | 256 documents; 64 MiB total |
+| Fetched source/evidence object | 8 MiB each; separate 64 MiB total budget |
+| Registry entries / source manifest entries | 24 / 8,192 |
+| Issuer keys / capabilities per key / profiles per key | 100 / 24 / 128 |
+| Public key PEM | 1,024 characters; SPKI `PUBLIC KEY` only |
+| Revoked keys / records | 4,096 / 16,384 |
+| Revocation cache age | Host-selected limit, at most 24 hours |
+| Qualification lifetime | Host-selected limit, at most 31 days |
+
+Qualification parsing has an independent budget. Malformed qualification documents cannot spend
+the evidence budget. The evaluator remains synchronous. Run it outside latency-critical RPC
+and dispatch work; bounded does not mean low latency.
+
+Tests use isolated keys, source objects and evidence fixtures. They do not certify actual providers,
+adapters, physical power-loss recovery, process containment or remote hosts. No operator recovery
+or control-plane migration is part of this change.
+
+## 中文说明
+
+这是一个纯评估库。它检查输入之间是否一致，不证明调用方的身份、时钟或信任配置是真实的。
+它不验运维根签名，不保存撤销 epoch，不开启运行时功能，也不批准任何副作用。
+
+来源清单具有独立版本。每项能力只能引用清单中完全一致的来源条目。
+全局清单可以更大；未引用的条目不会因此取得资格。
+资格记录必须通过验签、范围和当前绑定检查，才会参与同 ID 冲突检测。
+
+返回结果保留候选、代码、策略、宿主组合和撤销 epoch。
+期望的构建摘要与实际读取的摘要分别记录。
+宿主必须先完成 R05/V06 的信任验证，再使用评估结果；执行动作前仍需独立授权。
+测试通过不等于真实宿主资格通过。

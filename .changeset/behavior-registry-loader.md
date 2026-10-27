@@ -2,4 +2,4 @@
 "@osstack/core": minor
 ---
 
-Add a build-pinned behavior registry evaluator with qualification signature chains, exact host and candidate binding, evidence hashes, dependency checks and current host-owned revocation state. It grants no execution authority and is not enabled in daemon routing.
+Add a bounded behavior registry evaluator for caller-supplied build pins, clock, policy and trust context. It checks source membership, qualification signatures, evidence and dependencies relative to those inputs. It does not authenticate the trust context, verify the operations-root signature, persist a revocation epoch or grant execution authority. It is not wired into daemon routing.
