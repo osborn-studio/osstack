@@ -4,7 +4,7 @@
 
 | 工作包 / PR | 结果 | 功能前置 / 额外合并顺序 | 负责人角色 | 验收 |
 |---|---|---|---|---|
-| J01 / JP-01 | 共享身份、完成与资格契约 | 无 / 无 | contract-owner | JA01, JA02, JA59 |
+| J01 / JP-01 | 共享身份、完成与资格契约 | 无 / 无 | contract-owner | JA01, JA02, JA59, JA70 |
 | J02 / JP-02 | 共用来源快照与分型注册 | J01 / 无 | source-owner | JA03, JA04 |
 | J03 / JP-03 | session-answer-receipt 驱动夹具 | J01 / 无 | verification-owner | JA05, JA06, JA44 |
 | J04 / JP-04 | 必需方法材料与 v2 调用回执 | J01, J02 / 无 | context-owner | JA07, JA08, JA09, JA46, JA53 |
