@@ -127,3 +127,6 @@ OSStack terminal fence 卡按其限定范围关闭，DEBT02 跨进程恢复仍�
 `J01.contracts` 尚未正式通过，模型名称不能代替可信 oracle principal，测试数量不能替代预冻结与身份条件。J02b/J03 产品开工保持依赖阻断；J03 不依赖 J02。J11/J12/J17 的正式授权、文件级崩溃和旧 writer fencing 义务保留；home 48、broker 0→1 均未被本次分配为生产迁移。所有新候选继续实际 Claude CLI Sonnet 5.5 审计、修复并保留原始意见；通知审批前重新查询发布 head 的 CI。
 
 当前合并观察、三看板快照和派发回执见 [执行账本](execution-ledger.json)；较早章节是各自观察时刻的历史记录，不构成当前 Ready 或 gate 状态。
+
+
+JP-01c 回归候选 `74ec436d` 已完成首轮问题修复和实际 Sonnet 5.5 复审 PASS。完整 protocol 1,012 项通过；20 个实际源码变异被捕获。初始组合 `9e292676` 的全仓 6,884 通过、5 跳过保留原绑定，后续只改测试/oracle 的修订另有完整 protocol 复验。详见 [组件回归交付](../../implementation/joint-contract-acceptance/README.md) 与 [主入口验证](../../implementation/joint-post284-control/README.md)。这是待发布/CI核验的回归候选，不是 J01.contracts 资格。J02b 草案仍在独立准备流程内，不作为已通过产品能力发布。

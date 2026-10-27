@@ -2630,6 +2630,31 @@
     ],
     "shared_owner": "root: central ledger, execution.md, project-operations.md and PR publishing",
     "full_regression_queue": "root single queue",
-    "qualification": "All formal joint gates remain specified_not_run, including J01.contracts and J11/J17; broker deployment not qualified; J02b/J03 product implementation blocked on formal gate; no runtime activation"
+    "qualification": "All formal joint gates remain specified_not_run, including J01.contracts and J11/J17; broker deployment not qualified; J02b/J03 product implementation blocked on formal gate; no runtime activation",
+    "delivery_observations": [
+      {
+        "branch": "codex/joint-post284-control",
+        "scope": "JP01c regression plus post284 management closeout",
+        "code_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+        "state": "reviewed_candidate_pending_publication_ci",
+        "observed_at": "2026-10-27T18:10:48.788882+00:00",
+        "audit": {
+          "model": "claude-sonnet-5-5",
+          "verdict": "PASS",
+          "scope": "bounded component regression only"
+        },
+        "validation": {
+          "protocol_passed": 1012,
+          "targeted_passed": 547,
+          "source_mutants_killed": 20,
+          "historical_full_sha": "9e292676336ca2e56422e467baef3bc5bc38e8d3",
+          "historical_full_passed": 6884,
+          "historical_full_skipped": 5
+        },
+        "evidence": "../../implementation/joint-contract-acceptance/README.md",
+        "management_evidence": "../../implementation/joint-post284-control/README.md",
+        "formal_gate_pass": false
+      }
+    ]
   }
 }

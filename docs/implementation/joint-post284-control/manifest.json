@@ -80,6 +80,56 @@
       "path": "documentation.log.gz",
       "sha256": "50f3f0a723b021ce5a0da2f3d852ed6ac00f988e0d000a8237e1f81a51697d26",
       "raw_sha256": "8b3af63e8d150ab135bd82e6a7acccd7ac1db7d26adafc7148ae9c139dbdc93d"
+    },
+    {
+      "path": "full-test.log.gz",
+      "sha256": "b3a4d0a31fa93d217f0ce3732b7c328a88da1512b81bd4c02f1f364402dfe1d5",
+      "raw_sha256": "dcb4126c67b09df11a88d8c36150ba069fa053f27b6215baeca2bfc1a28796ea"
+    },
+    {
+      "path": "full-verification.json.gz",
+      "sha256": "8fbdbda5b1ed0b0f2a4e71f908736ee1cfae4bc314c9394b73647e45e95f0309",
+      "raw_sha256": "9d52b1c49ffcbdee7b6cdab5d6851ce783b4ce13060e4281a54321a2c6acae5c"
+    },
+    {
+      "path": "python-closure.log.gz",
+      "sha256": "3b08488a3ca4a1f18b5a54f0ac5d3e5a393d98e2e3bd78789d8fb0974e6387f0",
+      "raw_sha256": "1ed28bf819f9b4fd7bba354c3feaabc309afb0beff797ca43c78bbe278582cbb"
+    },
+    {
+      "path": "lint.log.gz",
+      "sha256": "dccd32f837f0604d1f8cc282761223a4deca570f4d3104e1ba51d25ebf59b86b",
+      "raw_sha256": "eb8393f4a48611832b063ff96f069f8de266861c71539268ac2f6efddc381810"
+    },
+    {
+      "path": "protocol-closure.log.gz",
+      "sha256": "a11626d56211e95cf031d8ad11cd5793f04b28921568807ddaddddd7e5159ea4",
+      "raw_sha256": "7a35b6bab02edbee72836ab4d843949068c2eb18e0d8c661ed3287cd48b5aefc"
+    },
+    {
+      "path": "protocol-closure-verification.json.gz",
+      "sha256": "c47fa135cb72c8d45be7a1b0f6ce2b2a15a11b183adc324205e8f66b2d7fa3d8",
+      "raw_sha256": "7756b1670db09bd0a430778741913787189af9a81937d8b588c4d358c6bb9692"
+    },
+    {
+      "path": "protocol-typecheck.log.gz",
+      "sha256": "48a7429244207d660fd9089d8481ec3cbc9c491aac93b801256ceab700c17237",
+      "raw_sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "path": "lint-closure.log.gz",
+      "sha256": "751750deeb6872920fc1a86c32b9a94b5b574d3559597b2cb67fb4015bb79df8",
+      "raw_sha256": "4cb2da8aef2e1ae7c412651dbba772830230c9e9b3c6a7b9363a804c7fbfb3d3"
+    },
+    {
+      "path": "full-run-worktree-scope.json.gz",
+      "sha256": "3f24b5f68c5619e9a3a8af90b47d3c24d877302c839f04075e2feb2c16430dd6",
+      "raw_sha256": "d778c4e51a020be2642295c1afa62c6f369c9473d8bec92f3fe2871224cb541f"
+    },
+    {
+      "path": "archive-validation.json.gz",
+      "sha256": "79ffe8a8f3ce2db0503cb4de645bf92b1546c273f0e76be036d36a30bded96b6",
+      "raw_sha256": "d6ff0c029836bf8458bbeeb48ebda69f066bee133ab64e022d5721e6071596f5"
     }
   ]
 }
