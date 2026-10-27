@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { join } from "node:path";
-import type { AgentSessionEvent, AgentSessionInput, SessionCapableAdapter } from "@osstack/agents";
+import { CodexCliAdapter, type AgentSessionEvent, type AgentSessionInput, type SessionCapableAdapter } from "@osstack/agents";
 import * as autonomy from "@osstack/autonomy";
 import { createScratchDir, insertRun, insertTask, openDb, SessionRepository } from "@osstack/core";
 import { encodeFrame, FrameDecoder, type HermesEvent } from "@osstack/hermes-adapter";
@@ -18,6 +18,7 @@ class ReceiptAdapter implements SessionCapableAdapter {
   readonly started: string[] = [];
   readonly stopChecks: string[] = [];
   omitTerminal = false;
+  afterTerminal: "throw" | "failed" | undefined;
   failStart = false;
   failResume = false;
   failStop = false;
@@ -32,6 +33,8 @@ class ReceiptAdapter implements SessionCapableAdapter {
     if (this.failStart) throw new Error("injected lost start response");
     yield { type: "assistant.message", message_id: "start-reply", text: "Session started" };
     if (!this.omitTerminal) yield { type: "session.terminal", state: "completed" };
+    if (this.afterTerminal === "throw") throw new Error("injected post-terminal fault");
+    if (this.afterTerminal === "failed") yield { type: "session.terminal", state: "failed", error_code: "late_failure" };
   }
   async confirmStopped(runId: string) {
     this.stopChecks.push(runId);
@@ -45,6 +48,8 @@ class ReceiptAdapter implements SessionCapableAdapter {
     if (this.failResume) throw new Error("injected lost execution response");
     yield { type: "assistant.message", message_id: "reply", text: "Instruction complete" };
     if (!this.omitTerminal) yield { type: "session.terminal", state: "completed" };
+    if (this.afterTerminal === "throw") throw new Error("injected post-terminal fault");
+    if (this.afterTerminal === "failed") yield { type: "session.terminal", state: "failed", error_code: "late_failure" };
   }
 }
 
@@ -77,14 +82,14 @@ function rpc(method: string, params: unknown = {}): Promise<Response> {
   });
 }
 
-async function boot() {
-  daemon = await startDaemon({ socketPath: socket, adapters: [adapter], autonomyHealth: async () => {
+async function boot(registeredAdapter: SessionCapableAdapter = adapter) {
+  daemon = await startDaemon({ socketPath: socket, adapters: [registeredAdapter], autonomyHealth: async () => {
     await admissionBlocked?.();
     return healthyAutonomyHealth();
   } });
 }
 
-async function fixture({ failCleanup = true } = {}) {
+async function fixture({ failCleanup = true, builtInCodex = false } = {}) {
   root = await createScratchDir("tests", "send-receipt");
   socket = join(root, "d.sock");
   const repo = join(realpathSync(root), "repo");
@@ -97,15 +102,29 @@ async function fixture({ failCleanup = true } = {}) {
   vi.stubEnv("OSSTACK_ATTENTION", "0");
   vi.stubEnv("OSSTACK_ENGINEERING", "0");
   adapter = new ReceiptAdapter();
+  let registeredAdapter: SessionCapableAdapter = adapter;
+  if (builtInCodex) {
+    const bin = join(root, "codex-fixture");
+    writeFileSync(bin, `#!${process.execPath}
+if (process.argv.includes("--help")) process.exit(0);
+for (const event of [
+  {type:"thread.started",thread_id:"private-native"},
+  {type:"item.completed",item:{id:"reply",type:"agent_message",text:"Normal completion"}},
+  {type:"turn.completed"}
+]) console.log(JSON.stringify(event));
+`, { mode: 0o700 });
+    registeredAdapter = new CodexCliAdapter({ bin, cwd: repo, strictCompletion: true,
+      env: { CODEX_HOME: root } });
+  }
   cleanupAttempts = 0;
-  await boot();
+  await boot(registeredAdapter);
   const db = openDb({ path: daemon!.dbPath });
   try {
     insertTask(db, daemon!.dbPath, { task_id: "task", title: "Receipt fixture", created_at: 1 });
-    insertRun(db, daemon!.dbPath, { run_id: "run", task_id: "task", session_id: "session", agent_id: adapter.id,
+    insertRun(db, daemon!.dbPath, { run_id: "run", task_id: "task", session_id: "session", agent_id: registeredAdapter.id,
       capability_id: "code", phase: "execute", started_at: 1 });
     const sessions = new SessionRepository(db, daemon!.dbPath);
-    sessions.createSession({ session_id: "session", task_id: "task", run_id: "run", agent_id: adapter.id,
+    sessions.createSession({ session_id: "session", task_id: "task", run_id: "run", agent_id: registeredAdapter.id,
       request_sha256: "a".repeat(64), native_session_id: "private-native", repo_path: repo, state: "idle",
       resume_supported: true, version: 1, updated_at: 1 });
     sessions.appendTurn({ turn_id: "turn", session_id: "session", ordinal: 1, state: "idle", assistant_text: "Ready",
@@ -123,6 +142,7 @@ async function fixture({ failCleanup = true } = {}) {
       await lock.release();
     } };
   });
+  return registeredAdapter;
 }
 
 function persisted() {
@@ -429,4 +449,54 @@ it("retains a terminal-free accepted receipt when writing the failure state also
   expect(persisted()).toEqual(before);
   expect(adapter.resumed).toHaveLength(1);
   expect(adapter.stopChecks).toEqual(["run"]);
+});
+
+it.each(["start", "send"] as const)("releases a normally completed %s without requesting stop proof", async route => {
+  await fixture({ failCleanup: false });
+  // A regression that routes normal completion through stop verification must fail.
+  adapter.failStop = true;
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: "normal-start", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Normal completion", prompt: "Start once" })
+    : await rpc("session.send", request);
+  expect(response).toMatchObject({ ok: true, result: { state: route === "start" ? "idle" : "applied" } });
+  expect(adapter.stopChecks).toEqual([]);
+  expect(cleanupAttempts).toBe(1);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: true, active_runs: 0, execution_lease_holds: 0,
+  } });
+});
+
+it.each(["start", "send"] as const)("releases a completed built-in Codex %s with no stop verifier", async route => {
+  // Use the shipped adapter implementation and a local fake executable, never a model call.
+  const registered = await fixture({ failCleanup: false, builtInCodex: true });
+  expect(registered).toBeInstanceOf(CodexCliAdapter);
+  expect("confirmStopped" in registered).toBe(false);
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: "normal-codex-start", agent_id: registered.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Normal Codex completion", prompt: "Start once" })
+    : await rpc("session.send", { ...request, runtime_id: registered.id });
+  expect(response).toMatchObject({ ok: true, result: { state: route === "start" ? "idle" : "applied" } });
+  expect(adapter.stopChecks).toEqual([]);
+  expect(cleanupAttempts).toBe(1);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: true, active_runs: 0, execution_lease_holds: 0,
+  } });
+});
+
+it.each([
+  ["start", "throw"], ["start", "failed"], ["send", "throw"], ["send", "failed"],
+] as const)("retains %s admission when completed terminal is followed by %s", async (route, fault) => {
+  await fixture({ failCleanup: false });
+  adapter.afterTerminal = fault; adapter.stopUnconfirmed = true;
+  const response = route === "start"
+    ? await rpc("session.start", { request_id: "late-failed-start", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+      title: "Late failure", prompt: "Start once" })
+    : await rpc("session.send", request);
+  expect(response).toMatchObject({ ok: false, error: { code: "agent_failed" } });
+  expect(adapter.stopChecks).toHaveLength(1);
+  expect(cleanupAttempts).toBe(0);
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
 });
