@@ -104,6 +104,8 @@ describe("qualification and delivery are separate records", () => {
       expect(BehaviorQualificationV1.safeParse({ ...qualification, payload: { ...qualification.payload, revocation_epoch } }).success).toBe(false);
     expect(BehaviorQualificationV1.safeParse({ ...qualification, payload: { ...qualification.payload,
       expires_at: qualification.payload.issued_at } }).success).toBe(false);
+    expect(BehaviorQualificationV1.safeParse({ ...qualification, payload: { ...qualification.payload,
+      issued_at: "2026-10-26T00:00:00+00:00", expires_at: "2026-10-27T00:00:00+00:00" } }).success).toBe(false);
   });
   it("requires the correct issuer role and predecessor for each qualification level", () => {
     expect(BehaviorQualificationV1.safeParse({ ...qualification, payload: { ...qualification.payload, level: "host_verified" } }).success).toBe(false);

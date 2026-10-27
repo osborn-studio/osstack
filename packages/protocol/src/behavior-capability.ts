@@ -88,7 +88,8 @@ export const BehaviorEvidenceBundleV1 = z.object({
 export type BehaviorEvidenceBundleV1 = z.infer<typeof BehaviorEvidenceBundleV1>;
 
 /** Narrow runtime subset of qualification-contract.schema.json v1, with unchanged wire field names.
- * Exactly one preceding level is supported. Failed evidence remains representable for diagnostics;
+ * UTC-Z timestamps, safe integer epochs, canonical Ed25519 base64 and one preceding level are required.
+ * Failed evidence remains representable for diagnostics;
  * R02 rejects it. Parsing alone proves neither signature, level completion, authority nor lifetime. */
 export const BehaviorQualificationV1 = z.object({
   schema_version: z.literal(1), canonicalization: z.literal("RFC8785"),
