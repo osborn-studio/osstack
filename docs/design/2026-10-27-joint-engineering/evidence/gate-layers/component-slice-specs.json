@@ -1,0 +1,66 @@
+{
+  "kind": "closed_design_slice_registry_not_runtime_authority",
+  "component_slices": {
+    "J01": [
+      {
+        "id": "JP-01c",
+        "gate": "J01.contracts",
+        "owner_role": "contract-owner",
+        "effects": "none",
+        "requires": [],
+        "write_paths": [
+          "packages/protocol/src/joint-reference.test.ts",
+          "packages/protocol/src/joint-admission.test.ts"
+        ],
+        "write_resources": [],
+        "implementation_mode": "regression_only",
+        "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
+      },
+      {
+        "id": "JP-01d",
+        "gate": "J01.scoped",
+        "owner_role": "contract-owner",
+        "effects": "isolated_test_only",
+        "requires": [
+          "J01.contracts",
+          "J08.admission_boundary"
+        ],
+        "write_paths": [
+          "packages/cli/src/joint-host-acceptance.test.ts"
+        ],
+        "write_resources": [],
+        "implementation_mode": "regression_only",
+        "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
+      }
+    ],
+    "J08": [
+      {
+        "id": "JP-08a",
+        "gate": "J08.admission_boundary",
+        "requires": [
+          "J01.contracts",
+          "J05.scoped"
+        ],
+        "write_paths": [
+          "packages/cli/src/method-admission.ts",
+          "packages/cli/src/method-admission.test.ts"
+        ],
+        "scope": "Actual trusted host entry, strict proposal and current repository/scope authorization comparison; no permit creation, run creation, executor invocation or persistent consumption. The full trial must consume this same checked boundary.",
+        "case_producer_for": [
+          "JA02",
+          "JA71"
+        ],
+        "qualification": "No gate is passed by this plan. JA02 retains its independent real-host oracle; later trial wiring must prove no bypass.",
+        "owner_role": "qualification-owner",
+        "effects": "none",
+        "write_resources": [],
+        "case_owner_work_items": [
+          "J01",
+          "J08"
+        ],
+        "implementation_mode": "extend_existing_after_J05",
+        "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
+      }
+    ]
+  }
+}

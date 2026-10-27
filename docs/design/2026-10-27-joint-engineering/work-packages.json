@@ -67,6 +67,38 @@
         "JP-01b shared structural contracts",
         "JP-01c independent component acceptance (J01.contracts)",
         "JP-01d real host completion and admission acceptance (J01.scoped)"
+      ],
+      "component_slices": [
+        {
+          "id": "JP-01c",
+          "gate": "J01.contracts",
+          "owner_role": "contract-owner",
+          "effects": "none",
+          "requires": [],
+          "write_paths": [
+            "packages/protocol/src/joint-reference.test.ts",
+            "packages/protocol/src/joint-admission.test.ts"
+          ],
+          "write_resources": [],
+          "implementation_mode": "regression_only",
+          "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
+        },
+        {
+          "id": "JP-01d",
+          "gate": "J01.scoped",
+          "owner_role": "contract-owner",
+          "effects": "isolated_test_only",
+          "requires": [
+            "J01.contracts",
+            "J08.admission_boundary"
+          ],
+          "write_paths": [
+            "packages/cli/src/joint-host-acceptance.test.ts"
+          ],
+          "write_resources": [],
+          "implementation_mode": "regression_only",
+          "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
+        }
       ]
     },
     {
@@ -99,9 +131,12 @@
       "pr": {
         "key": "JP-02",
         "status": "planned_not_created",
-        "base": "main_after_dependencies",
+        "base": "main_after_required_base_gates",
         "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
-        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately",
+        "required_base_gates": [
+          "J01.contracts"
+        ]
       },
       "requires_further_pr_slicing": false,
       "blocked_by": [
@@ -166,9 +201,12 @@
       "pr": {
         "key": "JP-03",
         "status": "planned_not_created",
-        "base": "main_after_dependencies",
+        "base": "main_after_required_base_gates",
         "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
-        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately",
+        "required_base_gates": [
+          "J01.contracts"
+        ]
       },
       "requires_further_pr_slicing": true,
       "blocked_by": [
@@ -248,9 +286,13 @@
       "pr": {
         "key": "JP-04",
         "status": "planned_not_created",
-        "base": "main_after_dependencies",
+        "base": "main_after_required_base_gates",
         "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
-        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately",
+        "required_base_gates": [
+          "J01.contracts",
+          "J02.scoped"
+        ]
       },
       "requires_further_pr_slicing": false,
       "blocked_by": [
@@ -537,11 +579,13 @@
         "JA16",
         "JA17",
         "JA49",
-        "JA61"
+        "JA61",
+        "JA71",
+        "JA72"
       ],
       "merge_after": [],
       "path_disposition": {
-        "packages/cli/src/method-admission.ts": "proposed_new_recheck_before_implementation",
+        "packages/cli/src/method-admission.ts": "extend_after_J05_scoped_recheck_actual_registered_host_entry",
         "packages/skill-registry/src/recipe-qualification.ts": "proposed_new_recheck_before_implementation",
         "packages/core/src/state/db.ts": "extend_existing_recheck_actual_migration_registration",
         "packages/core/src/state/migrations.ts": "extend_existing_recheck_actual_migration_registration",
@@ -571,7 +615,8 @@
           "id": "JP-08a",
           "gate": "J08.admission_boundary",
           "requires": [
-            "J01.contracts"
+            "J01.contracts",
+            "J05.scoped"
           ],
           "write_paths": [
             "packages/cli/src/method-admission.ts",
@@ -579,10 +624,19 @@
           ],
           "scope": "Actual trusted host entry, strict proposal and current repository/scope authorization comparison; no permit creation, run creation, executor invocation or persistent consumption. The full trial must consume this same checked boundary.",
           "case_producer_for": [
-            "JA02"
+            "JA02",
+            "JA71"
           ],
-          "case_owner_work_item": "J01",
-          "qualification": "No gate is passed by this plan. JA02 retains its independent real-host oracle; later trial wiring must prove no bypass."
+          "qualification": "No gate is passed by this plan. JA02 retains its independent real-host oracle; later trial wiring must prove no bypass.",
+          "owner_role": "qualification-owner",
+          "effects": "none",
+          "write_resources": [],
+          "case_owner_work_items": [
+            "J01",
+            "J08"
+          ],
+          "implementation_mode": "extend_existing_after_J05",
+          "contract_artifacts": "read_only; changed bytes invalidate prior component evidence"
         }
       ]
     },
@@ -745,9 +799,12 @@
       "pr": {
         "key": "JP-11",
         "status": "planned_not_created",
-        "base": "main_after_dependencies",
+        "base": "main_after_required_base_gates",
         "rule": "共享文件串行合入；每次依赖变化重新验证组合候选",
-        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately"
+        "path_manifest_rule": "actual diff paths must be declared in the PR manifest; integration-owner reconciles shared plan separately",
+        "required_base_gates": [
+          "J01.contracts"
+        ]
       },
       "requires_further_pr_slicing": false,
       "blocked_by": [

@@ -1,0 +1,87 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "kind": "planning_graph_comparison_not_qualification",
+  "direct_component_overrides": [
+    "J02.scoped",
+    "J03.scoped",
+    "J04.scoped",
+    "J11.scoped"
+  ],
+  "no_longer_inherits_J01_scoped": [
+    "J02.scoped",
+    "J03.scoped",
+    "J04.scoped",
+    "J05.scoped",
+    "J06.scoped",
+    "J07.scoped",
+    "J11.scoped",
+    "J12.scoped",
+    "J13.scoped",
+    "J28.scoped",
+    "J31.scoped",
+    "J25.protocol",
+    "J25.e0",
+    "J17.schema_spec",
+    "J17.recovery",
+    "J12.full_recovery",
+    "J08.schema_spec",
+    "J08.recovery",
+    "J10.schema_spec",
+    "J10.recovery",
+    "J13.schema_spec",
+    "J13.recovery",
+    "J21.schema_spec",
+    "J21.recovery",
+    "J22.schema_spec",
+    "J22.recovery",
+    "J12.bootstrap_preflight",
+    "J03.diagnostics",
+    "legacy:D07.local_fixture",
+    "legacy:C03.budget_storage",
+    "legacy:I03.local_proof",
+    "legacy:I04.compat_recovery",
+    "legacy:DEBT01.safe_failure",
+    "legacy:DEBT02.recovery_contract",
+    "legacy:V03.diagnostic_retention",
+    "legacy:R03.external_contracts",
+    "legacy:C03.schema_spec",
+    "legacy:X03.schema_spec",
+    "legacy:I04.recovery_home",
+    "legacy:I04.recovery_broker",
+    "J02.legacy_full",
+    "J03.legacy_full",
+    "J04.legacy_full",
+    "J05.legacy_full",
+    "J06.legacy_full",
+    "J07.legacy_full",
+    "J11.legacy_full",
+    "J12.legacy_full",
+    "J13.legacy_full",
+    "J28.legacy_full",
+    "J31.legacy_full",
+    "local:C03.budget_storage"
+  ],
+  "execution_gate_closure": {
+    "J08.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J09.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J14.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J16.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ],
+    "J17.scoped": [
+      "J01.scoped",
+      "J08.admission_boundary"
+    ]
+  },
+  "legacy_cases_and_producers": "Original own acceptance cases, inherited producer edges and release requirements remain unchanged; incidental joint prerequisite inheritance is explicitly separated."
+}

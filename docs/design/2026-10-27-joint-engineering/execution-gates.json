@@ -129,7 +129,9 @@
         "JA16",
         "JA17",
         "JA49",
-        "JA61"
+        "JA61",
+        "JA71",
+        "JA72"
       ]
     },
     {
@@ -1848,13 +1850,16 @@
       "id": "J08.admission_boundary",
       "owner_work_item": "J08",
       "requires": [
-        "J01.contracts"
+        "J01.contracts",
+        "J05.scoped"
       ],
       "stage": "real_host_non_effecting_admission_boundary",
       "evidence_state": "specified_not_run",
       "joint_case_requirements": [
-        "JA02"
-      ]
+        "JA02",
+        "JA71"
+      ],
+      "effects": "none"
     }
   ],
   "legacy_gate_map": [
@@ -2333,5 +2338,6 @@
     "PS:A31",
     "PS:A32"
   ],
-  "joint_case_evidence_rule": "joint_case_requirements names joint acceptance cases, separately from legacy case_requirements. Each required case needs independently frozen oracle and passing exact-candidate/support-cell evidence; planned rows and component structure checks grant no runtime authority. All rows here remain specified_not_run."
+  "joint_case_evidence_rule": "joint_case_requirements names joint acceptance cases, separately from legacy case_requirements. Each required case needs independently frozen oracle and passing exact-candidate/support-cell evidence; planned rows and component structure checks grant no runtime authority. All rows here remain specified_not_run.",
+  "component_evidence_binding_rule": "Every component and host result binds the exact candidate and immutable contract/entry source and configuration digests. A regression-only host slice cannot change frozen contract artifacts; any changed byte invalidates dependent evidence and requires re-evaluation on the composed candidate. No snapshot grants a reusable runtime lease."
 }
