@@ -644,6 +644,7 @@
   },
   "newly_inherits_J25_e0": [],
   "host_gates_independent_of_E0": [
+    "J01.contracts",
     "J01.scoped",
     "J08.admission_boundary",
     "J01.legacy_full",

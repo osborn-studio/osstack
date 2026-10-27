@@ -187,6 +187,23 @@ class DesignChecks(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'contract write invalidation missing or changed'):
                 v.validate(self.data)
 
+    def test_entry_and_harness_writers_must_invalidate(self):
+        for wid, path in [('J07', 'packages/cli/src/graph-verification.ts'),
+                          ('J08', 'packages/cli/src/method-host-admission.ts'),
+                          ('J08', 'packages/cli/src/method-host-admission.test.ts'),
+                          ('J01', 'packages/protocol/src/joint-reference.test.ts')]:
+            self.data = v.load()
+            self.work(wid)['invalidates_component_evidence']['paths'].remove(path)
+            with self.assertRaisesRegex(ValueError, 'contract write invalidation missing or changed'):
+                v.validate(self.data)
+
+    def test_existing_contract_artifacts_have_explicit_owner(self):
+        self.work('J01')['write_paths'].remove('packages/protocol/src/joint-json.ts')
+        self.work('J01')['path_disposition'].pop('packages/protocol/src/joint-json.ts')
+        self.work('J01')['invalidates_component_evidence']['paths'].remove('packages/protocol/src/joint-json.ts')
+        with self.assertRaisesRegex(ValueError, 'frozen contract artifacts lack J01 ownership'):
+            v.validate(self.data)
+
     def test_impact_archive_bytes_are_verified(self):
         original = Path.read_bytes
         def changed(path):

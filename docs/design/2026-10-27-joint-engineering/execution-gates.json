@@ -24,7 +24,8 @@
         "config_digest",
         "dependency_manifest_digest",
         "support_cell_digest",
-        "oracle_digest"
+        "oracle_digest",
+        "harness_digest"
       ],
       "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J01.scoped"
     },
@@ -1862,7 +1863,8 @@
         "config_digest",
         "dependency_manifest_digest",
         "support_cell_digest",
-        "oracle_digest"
+        "oracle_digest",
+        "harness_digest"
       ],
       "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J01.contracts"
     },
@@ -1886,7 +1888,8 @@
         "config_digest",
         "dependency_manifest_digest",
         "support_cell_digest",
-        "oracle_digest"
+        "oracle_digest",
+        "harness_digest"
       ],
       "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J08.admission_boundary"
     }

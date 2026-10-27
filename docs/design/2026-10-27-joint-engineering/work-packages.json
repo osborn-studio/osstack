@@ -14,7 +14,16 @@
       "owner_role": "contract-owner",
       "write_paths": [
         "packages/protocol/src/engineering.ts",
-        "packages/protocol/src/method-binding.ts"
+        "packages/protocol/src/method-binding.ts",
+        "packages/protocol/src/joint-contracts.ts",
+        "packages/protocol/src/joint-evidence.ts",
+        "packages/protocol/src/joint-generate.ts",
+        "packages/protocol/src/joint-json.ts",
+        "packages/protocol/src/joint-lifecycle.ts",
+        "packages/protocol/src/joint-primitives.ts",
+        "packages/protocol/src/joint-recovery.ts",
+        "packages/protocol/src/joint-shapes.ts",
+        "packages/protocol/src/method-materials.ts"
       ],
       "test_scope": "对应模块邻接测试；只增必要回归，修改共享路径须遵守 owner 队列",
       "inputs": [
@@ -51,7 +60,16 @@
       "merge_after": [],
       "path_disposition": {
         "packages/protocol/src/engineering.ts": "extend_existing",
-        "packages/protocol/src/method-binding.ts": "proposed_new_recheck_before_implementation"
+        "packages/protocol/src/method-binding.ts": "extend_existing",
+        "packages/protocol/src/joint-contracts.ts": "extend_existing",
+        "packages/protocol/src/joint-evidence.ts": "extend_existing",
+        "packages/protocol/src/joint-generate.ts": "extend_existing",
+        "packages/protocol/src/joint-json.ts": "extend_existing",
+        "packages/protocol/src/joint-lifecycle.ts": "extend_existing",
+        "packages/protocol/src/joint-primitives.ts": "extend_existing",
+        "packages/protocol/src/joint-recovery.ts": "extend_existing",
+        "packages/protocol/src/joint-shapes.ts": "extend_existing",
+        "packages/protocol/src/method-materials.ts": "extend_existing"
       },
       "legacy_gate_ids": [],
       "entry_gate": "J01.scoped",
@@ -102,8 +120,20 @@
       ],
       "invalidates_component_evidence": {
         "paths": [
+          "packages/cli/src/joint-host-acceptance.test.ts",
           "packages/protocol/src/engineering.ts",
-          "packages/protocol/src/method-binding.ts"
+          "packages/protocol/src/joint-admission.test.ts",
+          "packages/protocol/src/joint-contracts.ts",
+          "packages/protocol/src/joint-evidence.ts",
+          "packages/protocol/src/joint-generate.ts",
+          "packages/protocol/src/joint-json.ts",
+          "packages/protocol/src/joint-lifecycle.ts",
+          "packages/protocol/src/joint-primitives.ts",
+          "packages/protocol/src/joint-recovery.ts",
+          "packages/protocol/src/joint-reference.test.ts",
+          "packages/protocol/src/joint-shapes.ts",
+          "packages/protocol/src/method-binding.ts",
+          "packages/protocol/src/method-materials.ts"
         ],
         "gates": [
           "J01.contracts",
@@ -553,6 +583,7 @@
       ],
       "invalidates_component_evidence": {
         "paths": [
+          "packages/cli/src/graph-verification.ts",
           "packages/protocol/src/method-artifact.ts"
         ],
         "gates": [
@@ -684,7 +715,20 @@
             ]
           }
         }
-      ]
+      ],
+      "invalidates_component_evidence": {
+        "paths": [
+          "packages/cli/src/method-host-admission.test.ts",
+          "packages/cli/src/method-host-admission.ts"
+        ],
+        "gates": [
+          "J01.contracts",
+          "J08.admission_boundary",
+          "J01.scoped"
+        ],
+        "on": "any_changed_byte_or_candidate",
+        "action": "re_evaluate_composed_candidate_and_all_dependents"
+      }
     },
     {
       "id": "J09",
