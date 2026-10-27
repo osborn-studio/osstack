@@ -485,17 +485,18 @@ it.each(["start", "send"] as const)("releases a completed built-in Codex %s with
 });
 
 it.each([
-  ["start", "throw"], ["start", "failed"], ["send", "throw"], ["send", "failed"],
-] as const)("retains %s admission when completed terminal is followed by %s", async (route, fault) => {
+  ["start", "throw", true], ["start", "failed", true], ["send", "throw", true], ["send", "failed", true],
+  ["start", "throw", false], ["start", "failed", false], ["send", "throw", false], ["send", "failed", false],
+] as const)("settles %s admission after late %s with stop unconfirmed=%s", async (route, fault, stopUnconfirmed) => {
   await fixture({ failCleanup: false });
-  adapter.afterTerminal = fault; adapter.stopUnconfirmed = true;
+  adapter.afterTerminal = fault; adapter.stopUnconfirmed = stopUnconfirmed;
   const response = route === "start"
     ? await rpc("session.start", { request_id: "late-failed-start", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
       title: "Late failure", prompt: "Start once" })
     : await rpc("session.send", request);
   expect(response).toMatchObject({ ok: false, error: { code: "agent_failed" } });
   expect(adapter.stopChecks).toHaveLength(1);
-  expect(cleanupAttempts).toBe(0);
+  expect(cleanupAttempts).toBe(stopUnconfirmed ? 0 : 1);
   if (route === "start") {
     const db = openDb({ path: daemon!.dbPath });
     try {
@@ -513,7 +514,7 @@ it.each([
     expect(state.turns).toBe(1);
   }
   expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
-    drained: false, active_runs: 0, execution_lease_holds: 1,
+    drained: !stopUnconfirmed, active_runs: 0, execution_lease_holds: stopUnconfirmed ? 1 : 0,
   } });
 });
 
