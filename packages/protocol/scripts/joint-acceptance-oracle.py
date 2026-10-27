@@ -1,4 +1,4 @@
-"""Independent standard-library wire/hash regression oracle, not a host authority.
+"""Separate standard-library wire/hash implementation; same author, no host authority.
 
 Expectations are fixed inputs, not generated from TypeScript. This program does
 not duplicate Zod semantic validation: component samples are canonicalized here;
@@ -107,6 +107,22 @@ def project(case):
 
 def check(fixture):
     require(set(fixture['domains']) == DOMAINS, 'domain registry drift')
+    limit = fixture['boundary_cases']['max_wire_bytes']
+    raw = b' ' * (limit - 2) + b'{}'
+    require(parse_wire(raw) == {}, 'wire size positive boundary')
+    try:
+        parse_wire(raw + b' ')
+    except ValueError as error:
+        require(str(error) == 'INVALID_JOINT_JSON', 'wire size error')
+    else:
+        raise ValueError('wire size limit not enforced')
+    for domain in ['osstack.joint.support-profile.v1', 'OSSTACK.joint.intent.v1', 'osstack.joint.intent.v1\n']:
+        try:
+            digest(domain, {})
+        except ValueError as error:
+            require(str(error) == 'UNKNOWN_JOINT_DIGEST_DOMAIN', 'domain error')
+        else:
+            raise ValueError('unknown domain accepted')
     wire = []
     for case in fixture['wire_cases']:
         try:
@@ -128,10 +144,13 @@ def check(fixture):
         result = prefix + digest(case['domain'], project(case))
         require(result == case['expected'], case['id'] + ': helper digest mismatch')
         helpers.append({'id': case['id'], 'digest': result})
-    return {'wire': wire, 'helpers': helpers,
-            'components': [{'kind': row['kind'], 'canonical': canonical(row['sample']),
-                            'sha256': hashlib.sha256(canonical(row['sample']).encode('utf-8')).hexdigest()}
-                           for row in fixture['component_matrix']],
+    components = []
+    for row in fixture['component_matrix']:
+        text = canonical(row['sample'])
+        result = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        require(result == row['canonical_sha256'], row['kind'] + ': frozen component mismatch')
+        components.append({'kind': row['kind'], 'canonical': text, 'sha256': result})
+    return {'wire': wire, 'helpers': helpers, 'components': components,
             'authority': 'component_regression_only'}
 
 

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { ZodError } from 'zod';
 import { MethodRecipe, methodRecipeDigest, methodProposalDigest, verifyBindingAgainst, bindingDigest, verifyMethodBinding, trialBudgetIssues, supportProfileDigest } from './method-binding.js';
 import { JointContract, decodeJointContractAs, decodeJointContractBytesAs } from './joint-contracts.js';
 import { recoverySubjectDigest, RecoveryProofEnvelope, RecoveryReceipt, verifyRecoveryProofEnvelopes } from './joint-recovery.js';
@@ -98,14 +99,14 @@ describe('joint integrity boundaries', () => {
   });
 });
 
-type ComponentRow = { kind: JointContract['kind']; sample: Record<string, unknown>; required: string[]; optional: string[] };
+type ComponentRow = { kind: JointContract['kind']; sample: Record<string, unknown>; required: string[]; optional: string[]; canonical_sha256: string; identity_applicability: string; role_applicability: string; optional_absence: Record<string, {accepted: boolean; error: string | null}> };
 const componentMatrix = (JSON.parse(readFileSync(new URL('../fixtures/joint/acceptance-oracle.json', import.meta.url), 'utf8')) as {
   component_matrix: ComponentRow[];
 }).component_matrix;
 
 const componentReference = JSON.parse(execFileSync('python3', ['-I', fileURLToPath(new URL('../scripts/joint-acceptance-oracle.py', import.meta.url))], {encoding: 'utf8', timeout: 10_000, maxBuffer: 1_048_576})) as {components: Array<{kind: string; canonical: string; sha256: string}>};
 
-describe('JA70 full kind/field matrix at the real strict decoder', () => {
+describe('JA70 all-kind top-level required-field matrix at the real strict decoder', () => {
   it('covers all kinds in the published union, including the ten material bodies', () => {
     type Schema = { properties?: {kind?: {const?: string}}; anyOf?: Schema[] };
     const schema = JSON.parse(readFileSync(new URL('../schemas/joint/joint-contract.schema.json', import.meta.url), 'utf8')) as {definitions: {JointContract: Schema}};
@@ -113,6 +114,13 @@ describe('JA70 full kind/field matrix at the real strict decoder', () => {
       ? [node.properties.kind.const] : (node.anyOf ?? []).flatMap(collect);
     expect(componentMatrix.map(row => row.kind).sort()).toEqual([...new Set(collect(schema.definitions.JointContract))].sort());
     expect(componentMatrix.filter(row => row.kind.startsWith('material:'))).toHaveLength(10);
+    expect(componentMatrix).toHaveLength(32);
+    for (const row of componentMatrix) {
+      expect(Object.keys(row.sample).every(key => [...row.required, ...row.optional].includes(key))).toBe(true);
+      expect(Object.keys(row.optional_absence).sort()).toEqual([...row.optional].sort());
+      expect(row.identity_applicability).toBe(['method_binding', 'method_proposal', 'method_recipe'].includes(row.kind) ? 'binding/proposal/recipe association covered' : 'cross-record association not covered by this slice; structural validation only');
+      expect(row.role_applicability).toBe(['method_binding', 'method_recipe'].includes(row.kind) ? 'binding/proposal/recipe role association covered' : 'cross-record role association not covered by this slice');
+    }
   });
   for (const row of componentMatrix) describe(row.kind, () => {
     const decode = (value: Record<string, unknown>) => decodeJointContractAs(row.kind, JSON.stringify(value));
@@ -123,16 +131,23 @@ describe('JA70 full kind/field matrix at the real strict decoder', () => {
       const canonical = canonicalJointJson(decodeJointContractAs(row.kind, raw));
       const reference = componentReference.components.find(item => item.kind === row.kind)!;
       expect(canonical).toBe(reference.canonical);
-      expect(createHash('sha256').update(canonical, 'utf8').digest('hex')).toBe(reference.sha256);
+      expect(createHash('sha256').update(canonical, 'utf8').digest('hex')).toBe(row.canonical_sha256);
+      expect(reference.sha256).toBe(row.canonical_sha256);
     });
     for (const field of row.required) it(`rejects missing ${field}`, () => {
       const missing = structuredClone(row.sample); delete missing[field];
-      expect(() => decode(missing)).toThrow();
+      expect(() => decode(missing)).toThrow(ZodError);
+    });
+    for (const field of row.optional) it(`checks absent optional/conditional ${field}`, () => {
+      const absent = structuredClone(row.sample); delete absent[field];
+      const rule = row.optional_absence[field]!;
+      if (rule.accepted) expect(decode(absent)).toEqual(absent);
+      else expect(() => decode(absent)).toThrow(rule.error!);
     });
     it('rejects unknown fields, invalid kind/version and duplicated raw keys', () => {
-      expect(() => decode({...row.sample, unregistered_authority: 'run'})).toThrow();
-      expect(() => decode({...row.sample, kind: 'unregistered_kind'})).toThrow();
-      expect(() => decode({...row.sample, schema_version: -1})).toThrow();
+      expect(() => decode({...row.sample, unregistered_authority: 'run'})).toThrow(ZodError);
+      expect(() => decode({...row.sample, kind: 'unregistered_kind'})).toThrow(ZodError);
+      for (const version of [-1, 0, 999, '1']) expect(() => decode({...row.sample, schema_version: version})).toThrow(ZodError);
       const duplicated = '{"kind":"ignored",' + JSON.stringify(row.sample).slice(1);
       expect(() => decodeJointContractAs(row.kind, duplicated)).toThrow('INVALID_JOINT_JSON');
       expect(() => decodeJointContractBytesAs(row.kind, Buffer.from(duplicated))).toThrow('INVALID_JOINT_JSON');
@@ -179,4 +194,32 @@ describe('JA70 identity joins remain mandatory after valid self digests', () => 
       expect(() => verifyBindingAgainst(binding, proposal, recipe)).toThrow('BINDING_RECIPE_ROLE_MISMATCH');
     });
   }
+});
+
+
+describe('JA70 conditional positives and role completeness', () => {
+  it('accepts qualified bindings without permits and rejects contradictory modes', () => {
+    const binding = sample('valid-method_binding'); binding.mode = 'qualified'; delete binding.trial_permit_id;
+    expect(decodeJointContractAs('method_binding', JSON.stringify(binding))).toEqual(binding);
+    expect(() => decodeJointContractAs('method_binding', JSON.stringify({...binding, trial_permit_id: 'unexpected'}))).toThrow('TRIAL_PERMIT_MODE_MISMATCH');
+  });
+  it('allows an intent artifact without candidate-only optional fields', () => {
+    const artifact = sample('valid-artifact');
+    Object.assign(artifact, {artifact_kind: 'intent_frame', artifact_phase: 'intent'});
+    for (const key of ['candidate', 'scenario_digest', 'environment_digest', 'check_registry_digest', 'baseline_artifact_ref', 'resource_ledger_ref']) delete artifact[key];
+    expect(decodeJointContractAs('artifact', JSON.stringify(artifact))).toEqual(artifact);
+  });
+  it('allows a legacy action receipt without an effect identity', () => {
+    const receipt = sample('legacy-recovery-null-identities');
+    expect(receipt.effect_id).toBeUndefined();
+    expect(decodeJointContractAs('recovery_receipt', JSON.stringify(receipt))).toEqual(receipt);
+  });
+  it('rejects missing, added or duplicate binding roles and mismatched recipe role digests', () => {
+    const binding = sample('valid-method_binding');
+    const roles = binding.role_materials as Array<Record<string, unknown>>;
+    for (const changed of [roles.slice(1), [...roles, roles[0]], [roles[0], roles[0], roles[2]]]) expect(() => decodeJointContractAs('method_binding', JSON.stringify({...binding, role_materials: changed}))).toThrow(ZodError);
+    const recipe = sample('valid-method_recipe');
+    (recipe.role_materials as Array<Record<string, unknown>>)[0]!.role_required_artifacts_digest = 'f'.repeat(64);
+    expect(() => decodeJointContractAs('method_recipe', JSON.stringify(recipe))).toThrow('ROLE_REQUIREMENTS_DIGEST_MISMATCH');
+  });
 });
