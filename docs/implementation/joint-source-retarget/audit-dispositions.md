@@ -31,3 +31,5 @@ Sonnet returned PASS (no P0/P1) with one P2 hardening suggestion and P3 notes. A
 ## Round 4 closeout
 
 Sonnet PASS confirms identity hardening; accepted residual P2 test weakness: removed the nonexistent-binary override from both hygiene and malformed Unicode cases, so valid fixture infrastructure cannot mask a missing identity check. A guard-removal mutation must now fail the test. Strict userinfo rejection includes ssh://git@host; callers must supply a sanitized userinfo-free identifier. Other optional P3 additions remain non-blocking and unchanged.
+
+Final lint requires character-code checks instead of literal control-character regexes. The predicate retains the same ASCII range and uses the existing path-check idiom. Full validation is restarted on the resulting committed candidate.
