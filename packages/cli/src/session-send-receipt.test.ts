@@ -15,13 +15,19 @@ class ReceiptAdapter implements SessionCapableAdapter {
   readonly display_name = "In-process receipt fixture";
   readonly cost_tier = "low" as const;
   readonly resumed: AgentSessionInput[] = [];
+  readonly started: string[] = [];
   failResume = false;
   failStop = false;
   capabilities() { return []; }
   async isAvailable() { return { available: true, status: "available" as const, last_checked_at: Date.now() / 1000 }; }
   async *invoke(): AsyncIterable<HermesEvent> { yield* []; }
   sessionCapabilities() { return { resume: true, snapshot: true }; }
-  async *startSession(): AsyncIterable<AgentSessionEvent> { yield* []; throw new Error("fixture must resume"); }
+  async *startSession(task: { prompt: string }): AsyncIterable<AgentSessionEvent> {
+    this.started.push(task.prompt);
+    yield { type: "native_session.started", native_session_id: "private-started-native" };
+    yield { type: "assistant.message", message_id: "start-reply", text: "Session started" };
+    yield { type: "session.terminal", state: "completed" };
+  }
   async confirmStopped() {
     if (this.failStop) throw new Error("injected stop verifier failure");
     return { stopped: true as const, evidence: "fixture has no external producer" };
@@ -241,4 +247,38 @@ it.each(["accepted", "failed"] as const)("keeps the %s receipt uncertain when co
   expect(await rpc("session.send", request)).toMatchObject({ ok: false, error: { code: "delivery_uncertain" } });
   expect(persisted()).toEqual(before);
   expect(adapter.resumed).toHaveLength(1);
+});
+
+it("preserves a completed Session start and clears its active marker when cleanup fails", async () => {
+  await fixture();
+  const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  const params = { request_id: "start-once", agent_id: adapter.id, repo_path: join(realpathSync(root!), "repo"),
+    title: "Start receipt", prompt: "Private start prompt" };
+  const first = await rpc("session.start", params);
+  const db = openDb({ path: daemon!.dbPath });
+  let startedSession: { session_id: string; run_id: string; state: string; version: number };
+  try {
+    startedSession = db.prepare("SELECT session_id,run_id,state,version FROM agent_sessions WHERE session_id != 'session'")
+      .get() as typeof startedSession;
+    expect(startedSession).toMatchObject({ state: "idle", version: 3 });
+    expect(db.prepare("SELECT outcome FROM runs WHERE run_id = ?").get(startedSession.run_id)).toEqual({ outcome: "completed" });
+  } finally { db.close(); }
+  expect(await rpc("health")).toMatchObject({ ok: true, result: { active_runs: 0 } });
+  expect(first).toMatchObject({ ok: true, result: { session_id: startedSession.session_id, state: "idle", version: 3,
+    assistant_text: "Session started" } });
+  const diagnostics = stderr.mock.calls.map(([chunk]) => String(chunk))
+    .filter(line => line.startsWith('{"event":"session_cleanup_failed"'));
+  expect(diagnostics).toHaveLength(1);
+  expect(JSON.parse(diagnostics[0]!)).toEqual({ event: "session_cleanup_failed",
+    session_id: startedSession.session_id, run_id: startedSession.run_id });
+  expect(diagnostics[0]).not.toContain(params.prompt);
+  expect(diagnostics[0]).not.toContain("private-started-native");
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true, result: {
+    drained: false, active_runs: 0, execution_lease_holds: 1,
+  } });
+  await rpc("daemon.resume");
+  expect(await rpc("session.start", params)).toMatchObject({ ok: true, result: {
+    session_id: startedSession.session_id, state: "idle", version: 3,
+  } });
+  expect(adapter.started).toEqual([params.prompt]);
 });
