@@ -384,7 +384,7 @@ describe('JA20/JA47 home and broker composition material (unqualified)', () => {
     expect(graph.find(g=>g.id==='J11.scoped')!.requires).toEqual(['J01.contracts','fixture:home-spec','fixture:broker-spec']);
     for(const [before,after] of [['fixture:broker-spec','J11.scoped'],['J11.scoped','J17.schema_spec'],['J17.schema_spec','J17.recovery'],['J12.scoped','J17.recovery'],['J17.recovery','J17.scoped']])expect(order.indexOf(before!)).toBeLessThan(order.indexOf(after!));
   });
-  it.each([['J11.scoped','J17.schema_spec'],['J12.scoped','J17.scoped']])('rejects reverse dependency %s -> %s with a concrete cycle trace', (from,to) => {
+  it.each([['J11.scoped','J17.schema_spec'],['J12.scoped','J14.scoped'],['J12.scoped','J17.scoped']])('rejects reverse dependency %s -> %s with a concrete cycle trace', (from,to) => {
     const graph=compositionGraph();graph.find(g=>g.id===from)!.requires.push(to);
     let error:unknown;try{producerOrder(graph);}catch(e){error=e;}
     expect(error).toBeInstanceOf(Error);expect(String(error)).toContain('RECOVERY_PRODUCER_CYCLE');expect(String(error)).toContain(from);expect(String(error)).toContain(to);

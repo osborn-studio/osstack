@@ -83,10 +83,11 @@ The composition test opens two separate in-memory databases. The home input cont
 
 ### Producer graph and cycle counterexamples
 
-The test reads the current execution-gates graph and adds two named raw-material input nodes for the existing home and broker fixtures. Those material nodes do not require a formally qualified J17 schema gate. J11.scoped still requires J01.contracts; J17.schema_spec still follows J11.scoped; J17.recovery still follows J17.schema_spec and J12.scoped; controller/storage activation follows recovery. The test records a topological order and rejects both counterexamples with a concrete cycle trace:
+The test reads the current execution-gates graph and adds two named raw-material input nodes for the existing home and broker fixtures. Those material nodes do not require a formally qualified J17 schema gate. J11.scoped still requires J01.contracts; J17.schema_spec still follows J11.scoped; J17.recovery still follows J17.schema_spec and J12.scoped; controller/storage activation follows recovery. The test records a topological order and rejects these counterexamples with a concrete cycle trace:
 
 - Making J11.scoped wait for J17.schema_spec creates the J11 → J17.schema_spec → J11 cycle.
-- Making J12.scoped depend on J17.scoped reverses the recovery/controller boundary, because J17.scoped already requires J12.scoped.
+- Making J12.scoped depend on J14.scoped reverses the recovery/start boundary: Loop/Graph single-start admission already requires J13.scoped, which requires J12.scoped.
+- Making J12.scoped depend on J17.scoped also creates a cycle because broker capacity/storage scope already requires J12.scoped.
 
 These checks describe producer order and reject the proposed bad graph. They do not assert a controller implementation, build, qualified owner or passing gate exists. The fixture nodes are test-only material labels, not additions to the central gate registry.
 
