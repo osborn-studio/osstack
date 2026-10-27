@@ -72,7 +72,7 @@
       "oracle_spec": {
         "kind": "human_or_deterministic_independent_assertion",
         "author_role": "independent-verification-owner",
-        "implementation_owner_role": "contract-owner",
+        "implementation_owner_role": "qualification-owner",
         "observation_boundary": "adapter spy + admission error",
         "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
         "pinned_digest": null,
@@ -82,7 +82,8 @@
         "custodian_principal": null,
         "reviewer_principals": [],
         "frozen_at_ms": null,
-        "candidate_created_at_ms": null
+        "candidate_created_at_ms": null,
+        "implementation_producer_work_item": "J08"
       },
       "covers_negative_ids": []
     },
@@ -3068,6 +3069,90 @@
         "author_role": "independent-verification-owner",
         "implementation_owner_role": "contract-owner",
         "observation_boundary": "独立固定输入与错误分类矩阵、TS/Python bytes/hash、边界 helper 输出；无真实主机资格声明",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA71",
+      "owner_work_item": "J08",
+      "title": "真实 admission 正控制与拒绝变异",
+      "given": "冻结的原受信host入口、有效proposal/当前授权、隔离home与独立观测；非fake host、非无条件拒绝stub",
+      "when": "分别提交完全有效同repo/scope请求及只改变授权repo/scope的请求；对移除比较的实现重复请求",
+      "then": "有效请求抵达明确的validated_no_effect状态；越权请求以scope错误拒绝；两者均不创建permit/run/持久消费或调用executor；移除比较的变异被错误分类oracle杀死",
+      "bad_variant": "入口无条件拒绝，或返回mock成功而不走实际主机入口",
+      "oracle": "原host注册入口trace、validated_no_effect和scope错误分类、permit/run/消费DB快照与adapter调用数",
+      "required_evidence": [
+        "JA71: 原host注册入口trace、validated_no_effect和scope错误分类、permit/run/消费DB快照与adapter调用数",
+        "JA71: 正控制与坏变体的原始host trace/错误类别/动作计数及证据摘要",
+        "JA71: 独立oracle早于新候选冻结，真实实现principals和精确候选/support cell"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-15",
+        "PS21"
+      ],
+      "asserts": [
+        "FM-15:observable",
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "原host注册入口trace、validated_no_effect和scope错误分类、permit/run/消费DB快照与adapter调用数",
+        "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
+        "pinned_digest": null,
+        "assignment_state": "unassigned",
+        "author_principal": null,
+        "implementation_principals": [],
+        "custodian_principal": null,
+        "reviewer_principals": [],
+        "frozen_at_ms": null,
+        "candidate_created_at_ms": null
+      },
+      "covers_negative_ids": []
+    },
+    {
+      "id": "JA72",
+      "owner_work_item": "J08",
+      "title": "完整 trial 复用同一受检 admission 入口",
+      "given": "冻结的原受信host入口、有效proposal/当前授权、隔离home与独立观测；非fake host、非无条件拒绝stub",
+      "when": "在精确组合候选执行受限trial，并注入绕过受检入口的第二路径",
+      "then": "实际trial使用JA02/JA71所测同一受信入口与相同schema/配置；绕行路径不能启动；旧候选的边界证据不能资格改变后的入口",
+      "bad_variant": "另建不做scope检查的trial入口并复用旧边界证据",
+      "oracle": "原trial调用trace、受检入口identity/source摘要、scope负例和绕行变异、精确candidate/support cell",
+      "required_evidence": [
+        "JA72: 原trial调用trace、受检入口identity/source摘要、scope负例和绕行变异、精确candidate/support cell",
+        "JA72: 正控制与坏变体的原始host trace/错误类别/动作计数及证据摘要",
+        "JA72: 独立oracle早于新候选冻结，真实实现principals和精确候选/support cell"
+      ],
+      "layer": "integration",
+      "status": "specified_not_run",
+      "executed": false,
+      "capabilities": [
+        "FM-15",
+        "PS21"
+      ],
+      "asserts": [
+        "FM-15:observable",
+        "PS21:observable"
+      ],
+      "oracle_spec": {
+        "kind": "human_or_deterministic_independent_assertion",
+        "author_role": "independent-verification-owner",
+        "implementation_owner_role": "qualification-owner",
+        "observation_boundary": "原trial调用trace、受检入口identity/source摘要、scope负例和绕行变异、精确candidate/support cell",
         "freeze_requirement": "before candidate_created_at_ms and before any evaluation result; independent principals, second reviewer for safety-critical cases",
         "pinned_digest": null,
         "assignment_state": "unassigned",

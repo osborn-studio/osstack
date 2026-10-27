@@ -941,7 +941,9 @@
         "JA49",
         "JA59",
         "JA61",
-        "JA70"
+        "JA70",
+        "JA71",
+        "JA72"
       ],
       "semantic_assertions": [
         {
@@ -2844,7 +2846,9 @@
         "JA59",
         "JA60",
         "JA61",
-        "JA70"
+        "JA70",
+        "JA71",
+        "JA72"
       ],
       "article_delta_work_packages": [],
       "full_work_packages": [

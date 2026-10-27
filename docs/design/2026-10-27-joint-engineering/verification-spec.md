@@ -11,7 +11,7 @@
 | 用户价值 | 固定预算的对照、冷使用者、完整分母 | 单次顺利演示不是收益证明 |
 | 环境资格 | 具体 host/provider/adapter/隔离版本实测 | 本地可信用户不能认证恶意同 UID 或远端 |
 
-70 个 `JA*` 场景在 acceptance-cases.json 中给出 Given/When/Then、坏变体、oracle、层级、负责人。它们都是 **specified_not_run**。这里的可执行指：实施者能确定构造什么输入、执行哪个边界、观察什么结果、什么变化应导致失败；本轮不声称已拥有这些产品测试实现。
+72 个 `JA*` 场景在 acceptance-cases.json 中给出 Given/When/Then、坏变体、oracle、层级、负责人。它们都是 **specified_not_run**。这里的可执行指：实施者能确定构造什么输入、执行哪个边界、观察什么结果、什么变化应导致失败；本轮不声称已拥有这些产品测试实现。
 
 ## 2. 测试层级和工具
 
@@ -82,10 +82,12 @@ baseline 是当前 OSStack，P 只增加本次方法与验证材料。共享驱�
 
 ## 7. 审计修订后的执行约束
 
-以 [audit-specifications.md](audit-specifications.md) §6 的 holdout、两臂共同隐藏判据、E1 可行性边界、unknown 成本规则为准；E0/E1 的阶段放行见 execution-gates.json。114 个原场景均在 legacy-case-map.json 保留，不因 JA 通过被宣布通过。oracle_spec 记录独立角色及冻结要求，当前角色未分配、digest 为空，均不得签发运行资格。新增 JA49–JA69 覆盖许可并发、相位证据、恢复矩阵/账本迁移、角色隔离、状态/简报/保全、分类器、实验与 gate 反例。
+以 [audit-specifications.md](audit-specifications.md) §6 的 holdout、两臂共同隐藏判据、E1 可行性边界、unknown 成本规则为准；E0/E1 的阶段放行见 execution-gates.json。114 个原场景均在 legacy-case-map.json 保留，不因 JA 通过被宣布通过。oracle_spec 记录独立角色及冻结要求，当前角色未分配、digest 为空，均不得签发运行资格。JA49–JA69 覆盖许可并发、相位证据、恢复矩阵/账本迁移、角色隔离、状态/简报/保全、分类器、实验与 gate 反例。
 
 修订 3：[复审精确规格](closeout-specifications.md) 明确恢复后态、Graph 消费事务、原 gate/case 消费边及 oracle 生命周期；与旧表述冲突时以此增量及同步机器文件为准。
 
 ## 组件与主机证据不可互换
 
-[分层规范](gate-layers.md) 新增 J01.contracts（JA59/JA70）和 J08.admission_boundary（真实JA02）。JA01/JA02 原语义保留，J01.scoped仍是完整主机验收，首次完整J08 trial须在它之后。所有scoped gate通过独立的 joint_case_requirements 消费原联合case；legacy case_requirements保持独立。JA70只检验组件，不授予权限；全部70个case仍specified_not_run。
+[分层规范](gate-layers.md) 新增 J01.contracts（JA59/JA70）和 J08.admission_boundary（真实JA02）。JA01/JA02 原语义保留，J01.scoped仍是完整主机验收，首次完整J08 trial须在它之后。所有scoped gate通过独立的 joint_case_requirements 消费原联合case；legacy case_requirements保持独立。JA70只检验组件，不授予权限；全部72个case仍specified_not_run。
+
+JA70为组件边界，JA71为真实admission正控制/拒绝变异，JA72为完整trial复用同一受检入口；新增场景仍未执行。

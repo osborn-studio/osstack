@@ -11,7 +11,7 @@
 | J05 / JP-05 | 检查映射与单方法纯编译 | J02, J06 / 无 | method-owner | JA10, JA11 |
 | J06 / JP-06 | 使用草图与三条功能地图 | J03 / 无 | method-owner | JA12, JA13 |
 | J07 / JP-07 | 产物消费与同候选评审 | J04, J05 / 无 | verification-owner | JA14, JA15, JA45, JA50, JA68 |
-| J08 / JP-08 | 首次受限试验准入 | J03, J07, J12 / 无 | qualification-owner | JA16, JA17, JA49, JA61 |
+| J08 / JP-08 | 首次受限试验准入 | J03, J07, J12 / 无 | qualification-owner | JA16, JA17, JA49, JA61, JA71, JA72 |
 | J09 / JP-09 | 首个本地 bug-fix 方法旅程 | J08 / 无 | integration-owner | JA18 |
 | J10 / JP-10 | 方法资格与激活漂移管理 | J09, J23, J12 / 无 | qualification-owner | JA19 |
 | J11 / JP-11 | 恢复回执目标 schema 规格 | J01 / 无 | state-owner | JA20, JA47 |
