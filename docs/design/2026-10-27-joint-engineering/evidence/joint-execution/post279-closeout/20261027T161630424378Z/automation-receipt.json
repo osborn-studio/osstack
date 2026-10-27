@@ -1,0 +1,31 @@
+{
+  "base_sha": "d3fa7ef681efc79a5fb2dff92172ef1be0978774",
+  "observed_at": "2026-10-27T16:16:43.997015+00:00",
+  "config_sha256": "49661a6c7ad58032324a8f657ad2ac269ddf8dbd800ca5600356be444104d5f0",
+  "tool_result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Updated automation in the app."
+      },
+      {
+        "type": "text",
+        "text": "{\"automationId\":\"osstack\",\"mode\":\"update\",\"status\":\"ACTIVE\"}"
+      }
+    ],
+    "isError": false
+  },
+  "config": {
+    "version": 1,
+    "id": "osstack",
+    "kind": "heartbeat",
+    "name": "OSStack 联合开发续办",
+    "prompt": "管理本会话 Firstmate × pstack → OSStack 联合开发。用户只负责审批合并 PR，本会话负责开发、测试、实际审计修复、依赖、PR 准备和账本，是唯一 PR 入口。先读联合 execution-ledger.json、execution.md、project-operations.md，再 fetch 最新 main 并查询 GitHub；主工作区旧账本已知滞后，不得覆盖已发布事实。#279 已于 2026-10-27T16:12:15Z 合入 d3fa7ef681efc79a5fb2dff92172ef1be0978774，#282 也已合并。当前下一批：loader_adversarial 独占 joint-gate-layers 的 N0/J01 组件与主机门槛分层；terminal_preflight 独占 joint-broker-spec 的 JP-17a 离线 broker DDL/held-orphan 候选；cleanup_regression 独立冻结和验证反例。根独占 joint-nextwave-control 的中央账本/交接/PR，禁止重复派发、并发改共享文件或多跑全仓测试。独立会话 01a17da2-4810-7543-b9d7-a008fe51c2e0 的 JA01/JA02 scratch 原型已接收但不代表正式验收。三个本地子代理为工具容量，用户已授权独立会话并行；按独占写边界扩展。查询 OSStack 三看板，使用已交接安装版和显式管理 home/socket，禁止开发 CLI 打开默认 ~/.osstack。原 JA01/JA02/JA20 与 legacy/release 门槛保留，新分层必须实际审计，JP-17a 的独立 DB tuple 仅离线候选、不等于已部署或运行资格。J02b/J03/J12 仅在实际依赖与范围门槛核验后推进。候选需适用测试与 Claude CLI claude-sonnet-5-5 实际审计，修复确认问题，保留原始意见和 SHA 绑定证据；最新 head CI 通过后通知用户 gilberthello 审批合并。禁止自行批准、合并、发布或启用未验收运行时。无可执行变化保持安静，仅通知可审批批次、实质完成/失败或需要用户决定的问题；配额、工具或实例不可用记录真实阻塞，不伪造审计和完成。",
+    "status": "ACTIVE",
+    "rrule": "FREQ=MINUTELY;INTERVAL=30",
+    "target_thread_id": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+    "created_at": 1793098759153,
+    "updated_at": 1793117689068
+  },
+  "scope": "owner-observed persisted config, not scheduler execution proof"
+}

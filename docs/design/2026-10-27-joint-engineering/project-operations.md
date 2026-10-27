@@ -88,3 +88,11 @@ JA01 精确请求 `task local_verified`；早期预检笔记的 `implementation_
 跨会话任务同样进入 OSStack 卡片和主入口派发记录，记录会话 ID、基线、写入路径、前置条件、当前状态及交付摘要。主入口保留 PR 发布权，用户保留审批合并权。独立会话并行能力不授予尚未验收的 OSStack 自动调度或恢复权限。
 
 中央 checkpoint 刷新脚本只由主入口单一写者执行；子代理和独立会话不得执行。Heartbeat 仅唤醒该同一主入口，不能另起并发写者。刷新前后检查 ledger 原始字节一致，并原子替换；失败的部分证据目录保持未发布，由主入口核对后再决定归档。最终提交前必须执行文档链接与账本检查。
+
+## #279 收口后的任务边界
+
+新批次基线为 `d3fa7ef681efc79a5fb2dff92172ef1be0978774`。`loader_adversarial` 在 `codex/joint-gate-layers` 独占 N0 门槛、验证器及相关规范；`terminal_preflight` 在 `codex/joint-broker-spec` 独占 broker 规格 SQL、fixture、manifest 与专属测试；`cleanup_regression` 只在独立 scratch 冻结反例并验证两类候选。根在 `codex/joint-nextwave-control` 独占中央账本、交接、PR 与全仓回归队列。禁止跨边界改动或重复派发。
+
+JP-17a 使用 dedicated SQLite broker DB 作为明确的离线候选设计，namespace 与 home 分离；候选空库 0→1 只描述实际测试材料，不保留生产版本号、不改 home migration、不注册 runtime。部署路径、实际接线与正式资格留给后续受门槛约束的切片。门槛分层须独立审计并保留真实主机验收，不能因组件可并行实施而消除原义务。
+
+每项候选保留真实 Claude CLI `claude-sonnet-5-5` 输入、原始响应、处置和 SHA 绑定。独立反例冻结时间只约束尚未读取的新候选；不会补认历史实现的 oracle 独立性，也不把多个模型当作已认证的安全主体。

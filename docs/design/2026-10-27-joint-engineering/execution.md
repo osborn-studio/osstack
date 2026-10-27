@@ -108,3 +108,11 @@ GitHub 实际合并 #282 于 `ede5aadced37ac9dc29dd21f0e307ad2c46d2976`，包含
 #279 分支已同步到该 main，正在重验；本轮结果以随本次提交归档的实际命令为准，PR 本身仍待用户审批合并。新测试扩展了 completed 后异常/failed 与停止确认的交叉分支，保留未确认时占用、确认后释放和幂等重放约束。本轮产品证据和原始 Sonnet 5.5 意见见 [独立归档](../../implementation/joint-terminal-post282/README.md)；最新状态由执行账本的观察窗口定义，最终 PR head 的 CI 必须另查。DEBT02 跨进程恢复和联合里程碑的正式验收未因此完成。
 
 用户另行授权独立会话参与并行开发测试；当前代理树 3 个子代理是工具容量限制。独立 J01 oracle 会话的交付由主入口接收，与下一批 gate 提案、#279 产品收口分别拥有写入边界，详见 [项目推进规则](project-operations.md)。
+
+## #279 合并收口与下一批候选
+
+已通过 GitHub 和 Git 对象核实 #279 于 `2026-10-27T16:12:15Z` 合并，head 为 `3a5841eb9c4673c6e2ac924520b0acaf1c749956`，merge/main 为 `d3fa7ef681efc79a5fb2dff92172ef1be0978774`。该 head 的五项必需 CI 全部成功；付费 DeepSeek smoke 跳过，不计为通过。产品 `cb76b643` 的 6293 通过、5 跳过、0 失败和实际 Sonnet 5.5 审计保持原 `ede5aadc` 基线，不改写为新 main 上重新执行过的结果。
+
+OSStack terminal fence 卡按其限定范围关闭，DEBT02 跨进程恢复仍待完成。J01/J11 不因前置合并自动通过。新批次从上述 main 启动：N0 组件契约与主机门槛分层、JP-17a broker SQL/held-orphan 离线规格候选，以及二者的独立反例验证。分层修订必须保留原 JA01/JA02 与 legacy/release 义务；broker 候选必须有真实可执行字节和明确身份，不能用模板或候选 tuple 冒充已部署资格。
+
+本地主工作区仍保留历史 checkout 和其他未提交工作，不能从其旧账本推断最新进度。本检查点从已合并 Git 对象创建隔离工作树，原账本及测试、审计绑定保留在历史证据中。执行状态以新版本化检查点、当前 GitHub 和三看板共同核对。
