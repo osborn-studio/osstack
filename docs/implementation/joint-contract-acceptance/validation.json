@@ -1,0 +1,78 @@
+{
+  "candidate_sha": "74ec436d28f3f134451d45e35536c5747a7f1cba",
+  "records": [
+    {
+      "label": "targeted",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@osstack/protocol",
+        "exec",
+        "vitest",
+        "run",
+        "src/joint-reference.test.ts",
+        "src/joint-admission.test.ts"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance",
+      "started_at": "2026-10-27T18:00:55.785177+00:00",
+      "exit_code": 0,
+      "stdout_sha256": "9466b763022817f6fb38ca83d57d8d30fa83d04547ce2cc827aa1a5a4fda4260",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "protocol-all",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@osstack/protocol",
+        "test"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance",
+      "started_at": "2026-10-27T18:00:57.050189+00:00",
+      "exit_code": 0,
+      "stdout_sha256": "e7038deccdbcb760e52d1cbf520a9e123e5c5c70df370ca4f4b570a8e539b3a8",
+      "stderr_sha256": "cb7efe2ed065b3202856f854f1645179984b659249d4ea99dde8467ed4a4b173"
+    },
+    {
+      "label": "typecheck",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@osstack/protocol",
+        "typecheck"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance",
+      "started_at": "2026-10-27T18:00:58.712237+00:00",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "label": "oracle-optimized",
+      "argv": [
+        "python3",
+        "-I",
+        "-O",
+        "packages/protocol/scripts/joint-acceptance-oracle.py"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance",
+      "started_at": "2026-10-27T18:00:59.379946+00:00",
+      "exit_code": 0,
+      "stdout_sha256": "f41c55ab5b884478d70a31ef87f919b693aab245aa010077e5f105f295775eb0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "diff-check",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-contract-acceptance",
+      "started_at": "2026-10-27T18:00:59.422247+00:00",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
