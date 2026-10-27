@@ -2,8 +2,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "4924d224ab9e6e2d7f801d68faea389fedf3751e",
-  "observed_at": "2026-10-27T08:39:05.242254+00:00",
+  "main_sha": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
+  "observed_at": "2026-10-27T10:31:53.116170+00:00",
   "runtime_enabled": false,
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
@@ -32,7 +32,7 @@
   "milestones": [
     {
       "id": "J01",
-      "state": "candidate_pr_open",
+      "state": "in_progress",
       "depends_on": [],
       "merge_after": [],
       "slices": [
@@ -44,9 +44,9 @@
         {
           "pr": 273,
           "url": "https://github.com/osborn-studio/osstack/pull/273",
-          "state": "ready",
+          "state": "merged",
           "base_branch": "main",
-          "candidate_sha": "e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db",
+          "candidate_sha": "6b3ad98d0b032a7f3fe69ddc9fa7ab501449697b",
           "candidate_history": [
             {
               "sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
@@ -73,12 +73,12 @@
       ],
       "acceptance": "not_executed_as_complete_milestone",
       "card_id": "card_6d5d3d02",
-      "board_status": "blocked",
-      "merge_blocker": "#272 merged; #273 Ready after fresh audit and final local validation. Await required GitHub CI and gilberthello approval/merge."
+      "board_status": "ready",
+      "merge_blocker": "J01 contract PRs #272/#273 merged; complete milestone acceptance is tracked separately. No runtime qualification."
     },
     {
       "id": "J02",
-      "state": "blocked",
+      "state": "candidate_pr_open",
       "depends_on": [
         "J01"
       ],
@@ -86,41 +86,47 @@
       "slices": [
         {
           "id": "J02a",
-          "state": "blocked",
-          "base_pr": 273,
-          "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+          "state": "ready",
+          "base_sha": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
           "branch": "codex/joint-source-snapshot",
           "scope": "single-source Git inspection, no adoption dependency closure",
           "remaining": "J02b typed registration / R03-R04 mapping / adopted dependency closure",
-          "head_sha": "b5eba602745c9c12e0e61a09bbad721f858448ca",
+          "head_sha": "87e97760d325c23fb936f9199c5fe792f384b50f",
           "audit": {
             "model": "claude-sonnet-5-5",
             "verdict": "PASS",
-            "scope": "static code review; no P0/P1/P2; P3s retained",
-            "status": "historical"
+            "status": "current_for_code_sha",
+            "scope": "Static review plus documented host-confirmed corrections; no runtime qualification"
           },
           "pr": 281,
           "url": "https://github.com/osborn-studio/osstack/pull/281",
-          "code_sha": "32bd1bd287a7125fcc71c7312392ec5a3af2413b",
+          "code_sha": "26e7e02d4cdc931aa6d2b852d1b83cedc74238ef",
           "validation": {
-            "passed": 6161,
-            "skipped": 5,
+            "code_sha": "26e7e02d4cdc931aa6d2b852d1b83cedc74238ef",
+            "passed": 6194,
             "failed": 0,
-            "scope": "local full monorepo at code_sha; later commits docs only",
-            "report": "evidence/joint-execution/j02a/validation.md",
-            "audit_binding": "evidence/joint-execution/j02a/audit-code-binding.json",
-            "status": "historical"
+            "skipped": 5,
+            "packages": 22,
+            "status": "passed_for_code_sha",
+            "report": "evidence/joint-execution/successors-retarget/source/README.md",
+            "audit_binding": "evidence/joint-execution/successors-retarget/source/audit-code-binding.json"
           },
-          "observed_base_sha": "e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db",
-          "base_status": "stale_requires_revalidation",
-          "revalidation_required": "After #273 merge: retarget to main, integrate predecessor changes, rerun checks and audit before Ready",
-          "evidence_status": "historical"
+          "evidence_status": "current_for_code_sha",
+          "retarget_history": [
+            {
+              "base_pr": 273,
+              "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+              "status": "historical",
+              "reason": "Retargeted after predecessor merge; historical evidence remains in Git"
+            }
+          ],
+          "base_branch": "main"
         }
       ],
       "acceptance": "not_executed_as_complete_milestone",
       "card_id": "card_a502fa36",
       "board_status": "blocked",
-      "merge_blocker": "Pinned #273 predecessor changed. Prior evidence stays historical; downstream retarget/revalidation required."
+      "merge_blocker": "Local validation and Sonnet audit passed. Ready; await required GitHub CI and gilberthello approval/merge. J02b provenance/registration/dependency closure remains pending."
     },
     {
       "id": "J03",
@@ -219,7 +225,7 @@
     },
     {
       "id": "J11",
-      "state": "blocked",
+      "state": "candidate_pr_open",
       "depends_on": [
         "J01"
       ],
@@ -228,19 +234,42 @@
         {
           "pr": 274,
           "url": "https://github.com/osborn-studio/osstack/pull/274",
-          "state": "blocked",
-          "base_pr": 273,
-          "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
-          "observed_base_sha": "e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db",
-          "base_status": "stale_requires_revalidation",
-          "revalidation_required": "After #273 merge: retarget to main, integrate predecessor changes, rerun checks and audit before Ready",
-          "evidence_status": "historical"
+          "state": "ready",
+          "base_sha": "69859eecfcc84af9d6eff755ed41243ca5f51f95",
+          "evidence_status": "current_for_code_sha",
+          "retarget_history": [
+            {
+              "base_pr": 273,
+              "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+              "status": "historical",
+              "reason": "Retargeted after predecessor merge; historical evidence remains in Git"
+            }
+          ],
+          "base_branch": "main",
+          "head_sha": "7ea45584ce0de01860571100beb5daed4ff83f31",
+          "code_sha": "7ea45584ce0de01860571100beb5daed4ff83f31",
+          "audit": {
+            "model": "claude-sonnet-5-5",
+            "verdict": "PASS",
+            "status": "current_for_code_sha",
+            "scope": "Static review plus documented host-confirmed corrections; no runtime qualification"
+          },
+          "validation": {
+            "code_sha": "7ea45584ce0de01860571100beb5daed4ff83f31",
+            "passed": 6174,
+            "failed": 0,
+            "skipped": 5,
+            "packages": 22,
+            "status": "passed_for_code_sha",
+            "report": "evidence/joint-execution/successors-retarget/recovery/README.md",
+            "audit_binding": "evidence/joint-execution/successors-retarget/recovery/audit-code-binding.json"
+          }
         }
       ],
       "acceptance": "not_executed_as_complete_milestone",
       "card_id": "card_79cdb3e7",
       "board_status": "blocked",
-      "merge_blocker": "Pinned #273 predecessor changed. Prior evidence stays historical; downstream retarget/revalidation required."
+      "merge_blocker": "Local validation and Sonnet audit passed. Ready; await required GitHub CI and gilberthello approval/merge. J11 remains a specification, J12 runtime pending."
     },
     {
       "id": "J12",
@@ -577,157 +606,159 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/272",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:41.856265+00:00"
     },
     {
       "baseRefName": "main",
       "headRefName": "codex/joint-contracts",
-      "headRefOid": "e3fd9a9ffccbe66ad0cdfee101e0864f1ca277db",
+      "headRefOid": "6b3ad98d0b032a7f3fe69ddc9fa7ab501449697b",
+      "isDraft": false,
+      "mergeCommit": {
+        "oid": "69859eecfcc84af9d6eff755ed41243ca5f51f95"
+      },
+      "mergedAt": "2026-10-27T09:49:33Z",
+      "number": 273,
+      "reviewDecision": "APPROVED",
+      "state": "MERGED",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:41:29Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091825728",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T08:41:29Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:43:31Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091824870",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:43:17Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091824538",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:45:05Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091825089",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T08:45:09Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122091824974",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T08:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T09:02:32Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40475181312/job/122092615508",
+          "name": "check",
+          "startedAt": "2026-10-27T08:43:33Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/273",
+      "observed_at": "2026-10-27T10:31:42.896804+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-recovery-spec",
+      "headRefOid": "7ea45584ce0de01860571100beb5daed4ff83f31",
       "isDraft": false,
       "mergeCommit": null,
       "mergedAt": null,
-      "number": 273,
+      "number": 274,
       "reviewDecision": "REVIEW_REQUIRED",
       "state": "OPEN",
       "statusCheckRollup": [
         {
           "__typename": "CheckRun",
-          "completedAt": "2026-10-27T08:35:56Z",
+          "completedAt": "2026-10-27T10:18:02Z",
           "conclusion": "SKIPPED",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40474006843/job/122089682794",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40487230732/job/122132456827",
           "name": "Paid DeepSeek semantic smoke",
-          "startedAt": "2026-10-27T08:35:56Z",
+          "startedAt": "2026-10-27T10:18:02Z",
           "status": "COMPLETED",
           "workflowName": "CI"
         },
         {
           "__typename": "CheckRun",
-          "completedAt": "2026-10-27T08:38:11Z",
+          "completedAt": "2026-10-27T10:20:19Z",
           "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40474006843/job/122089681025",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40487230732/job/122132455311",
           "name": "graph-macos-fixtures (22)",
-          "startedAt": "2026-10-27T08:35:59Z",
+          "startedAt": "2026-10-27T10:18:04Z",
           "status": "COMPLETED",
           "workflowName": "CI"
         },
         {
           "__typename": "CheckRun",
-          "completedAt": "2026-10-27T08:38:13Z",
+          "completedAt": "2026-10-27T10:19:55Z",
           "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40474006843/job/122089680991",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40487230732/job/122132455327",
           "name": "graph-macos-fixtures (24)",
-          "startedAt": "2026-10-27T08:35:59Z",
+          "startedAt": "2026-10-27T10:18:04Z",
           "status": "COMPLETED",
           "workflowName": "CI"
         },
         {
           "__typename": "CheckRun",
-          "completedAt": "0001-01-01T00:00:00Z",
-          "conclusion": "",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40474006843/job/122089680741",
+          "completedAt": "2026-10-27T10:21:21Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40487230732/job/122132455166",
           "name": "graph-runtime-matrix (20.6.0)",
-          "startedAt": "2026-10-27T08:35:58Z",
-          "status": "IN_PROGRESS",
+          "startedAt": "2026-10-27T10:18:04Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T10:21:40Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40487230732/job/122132455319",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T10:18:04Z",
+          "status": "COMPLETED",
           "workflowName": "CI"
         },
         {
           "__typename": "CheckRun",
           "completedAt": "0001-01-01T00:00:00Z",
           "conclusion": "",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40474006843/job/122089681265",
-          "name": "graph-runtime-matrix (22.23.1)",
-          "startedAt": "2026-10-27T08:35:58Z",
-          "status": "IN_PROGRESS",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "0001-01-01T00:00:00Z",
-          "conclusion": "",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40474006843/job/122090564574",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40487230732/job/122133425674",
           "name": "check",
-          "startedAt": "2026-10-27T08:38:16Z",
+          "startedAt": "2026-10-27T10:20:21Z",
           "status": "IN_PROGRESS",
-          "workflowName": "CI"
-        }
-      ],
-      "url": "https://github.com/osborn-studio/osstack/pull/273",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
-    },
-    {
-      "baseRefName": "codex/joint-contracts",
-      "headRefName": "codex/joint-recovery-spec",
-      "headRefOid": "2aa11e1cc6af9b7fcc78a1450a3e02c8ee81ae32",
-      "isDraft": true,
-      "mergeCommit": null,
-      "mergedAt": null,
-      "number": 274,
-      "reviewDecision": "",
-      "state": "OPEN",
-      "statusCheckRollup": [
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T06:26:38Z",
-          "conclusion": "SKIPPED",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045762476",
-          "name": "Paid DeepSeek semantic smoke",
-          "startedAt": "2026-10-27T06:26:39Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T06:28:59Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761543",
-          "name": "graph-macos-fixtures (22)",
-          "startedAt": "2026-10-27T06:26:41Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T06:28:36Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761743",
-          "name": "graph-macos-fixtures (24)",
-          "startedAt": "2026-10-27T06:26:41Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T06:30:03Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761858",
-          "name": "graph-runtime-matrix (20.6.0)",
-          "startedAt": "2026-10-27T06:26:41Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T06:30:09Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761727",
-          "name": "graph-runtime-matrix (22.23.1)",
-          "startedAt": "2026-10-27T06:26:41Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T06:46:14Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122046509011",
-          "name": "check",
-          "startedAt": "2026-10-27T06:29:01Z",
-          "status": "COMPLETED",
           "workflowName": "CI"
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/274",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:43.980397+00:00"
     },
     {
       "baseRefName": "main",
@@ -804,7 +835,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/275",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:45.696103+00:00"
     },
     {
       "baseRefName": "codex/firstmate-behavior-contract",
@@ -879,7 +910,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/276",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:46.757541+00:00"
     },
     {
       "baseRefName": "main",
@@ -956,7 +987,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/277",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:47.949958+00:00"
     },
     {
       "baseRefName": "codex/session-receipt-fix",
@@ -1031,7 +1062,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/278",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:49.078593+00:00"
     },
     {
       "baseRefName": "codex/session-start-cleanup",
@@ -1106,7 +1137,7 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/279",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:50.148428+00:00"
     },
     {
       "baseRefName": "main",
@@ -1183,82 +1214,21 @@
         }
       ],
       "url": "https://github.com/osborn-studio/osstack/pull/280",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:51.158251+00:00"
     },
     {
-      "baseRefName": "codex/joint-contracts",
+      "baseRefName": "main",
       "headRefName": "codex/joint-source-snapshot",
-      "headRefOid": "b5eba602745c9c12e0e61a09bbad721f858448ca",
-      "isDraft": true,
+      "headRefOid": "87e97760d325c23fb936f9199c5fe792f384b50f",
+      "isDraft": false,
       "mergeCommit": null,
       "mergedAt": null,
       "number": 281,
-      "reviewDecision": "",
+      "reviewDecision": "REVIEW_REQUIRED",
       "state": "OPEN",
-      "statusCheckRollup": [
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T07:30:31Z",
-          "conclusion": "SKIPPED",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467531253/job/122066461898",
-          "name": "Paid DeepSeek semantic smoke",
-          "startedAt": "2026-10-27T07:30:31Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T07:32:48Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467531253/job/122066460582",
-          "name": "graph-macos-fixtures (22)",
-          "startedAt": "2026-10-27T07:30:33Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T07:32:02Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467531253/job/122066460266",
-          "name": "graph-macos-fixtures (24)",
-          "startedAt": "2026-10-27T07:30:33Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T07:34:24Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467531253/job/122066460764",
-          "name": "graph-runtime-matrix (20.6.0)",
-          "startedAt": "2026-10-27T07:30:33Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T07:33:07Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467531253/job/122066460557",
-          "name": "graph-runtime-matrix (22.23.1)",
-          "startedAt": "2026-10-27T07:30:33Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        },
-        {
-          "__typename": "CheckRun",
-          "completedAt": "2026-10-27T07:51:44Z",
-          "conclusion": "SUCCESS",
-          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40467531253/job/122067220343",
-          "name": "check",
-          "startedAt": "2026-10-27T07:32:50Z",
-          "status": "COMPLETED",
-          "workflowName": "CI"
-        }
-      ],
+      "statusCheckRollup": [],
       "url": "https://github.com/osborn-studio/osstack/pull/281",
-      "observed_at": "2026-10-27T08:39:05.242254+00:00"
+      "observed_at": "2026-10-27T10:31:52.157923+00:00"
     }
   ],
   "management": {
@@ -1267,7 +1237,7 @@
     "binding": "See preserved handoff management entry; never use default home",
     "mode": "owner-driven RPC progress and evidence; no automatic goal_dispatch",
     "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
-    "snapshot": "evidence/joint-execution/joint-firstmate-pstack.json",
+    "snapshot": "evidence/joint-execution/successors-retarget/joint-firstmate-pstack.json",
     "entry_sha256": "9e2c366327a31ff71da277a21ea36571ebeca60ebce3372cee137af696eb89dc",
     "entry_identity": "installed Firstmate registry-install/bin/osstack; exact local binding is in sender handoff"
   },
@@ -1287,5 +1257,9 @@
       "J12_runtime": "open"
     },
     "O01_O02_O04_O05": "retain original stage-specific blocks"
+  },
+  "observation_window": {
+    "started_at": "2026-10-27T10:31:40.593865+00:00",
+    "scope": "Sequential per-PR observations; not an atomic forge snapshot. Each PR has its own observed_at."
   }
 }

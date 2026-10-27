@@ -1,13 +1,21 @@
 import importlib.util
 import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 p=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('execution',p/'validate-execution.py')
 v=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v)
 class CheckpointTests(unittest.TestCase):
-    def setUp(self): self.data=json.loads((p/'execution-ledger.json').read_text())
+    def setUp(self):
+        self.data=json.loads((p/'evidence/joint-execution/successors-retarget/ledger-before.json').read_text())
+        # Upgrade only the test fixture's legacy Ready metadata; preserved snapshot bytes stay unchanged.
+        part=next(s for n in self.data['milestones'] for s in n['slices'] if s.get('pr')==273)
+        part['state']='open'  # Old audit-binding format cannot be promoted as newly Ready.
+        part.update(base_sha=self.data['main_sha'],evidence_status='current_for_code_sha')
+        part['validation']['code_sha']=part['code_sha']
+    def test_current_checkpoint(self): self.assertEqual(v.validate(json.loads((p/'execution-ledger.json').read_text()))['status'],'checkpoint_consistent')
     def test_valid(self): self.assertEqual(v.validate(self.data)['status'],'checkpoint_consistent')
     def test_missing_scope(self):
         self.data['milestones'].pop()
@@ -85,4 +93,75 @@ class CheckpointTests(unittest.TestCase):
     def test_forged_runtime(self):
         self.data['runtime_enabled']=True
         with self.assertRaises(ValueError): v.validate(self.data)
+    def retargeted_slice(self):
+        part=self.data['milestones'][1]['slices'][0]
+        for key in ['base_pr','observed_base_sha','base_status','revalidation_required']: part.pop(key,None)
+        part.update(base_branch='main',base_sha=self.data['main_sha'],state='ready',evidence_status='current_for_code_sha')
+        part['audit']['status']='current_for_code_sha'
+        part['validation']['status']='passed_for_code_sha'
+        part['validation']['code_sha']=part['code_sha']
+        pr=next(x for x in self.data['prs'] if x['number']==part['pr']);pr['baseRefName']='main';pr['isDraft']=False
+        return part
+    def test_main_retargeted_checkpoint(self):
+        self.retargeted_slice();self.assertEqual(v.validate(self.data)['status'],'checkpoint_consistent')
+    def test_main_retarget_drift(self):
+        self.retargeted_slice()['base_sha']='1'*40
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_historical_evidence(self):
+        self.retargeted_slice()['evidence_status']='historical'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_missing_audit(self):
+        self.retargeted_slice()['audit']['verdict']='REVISE'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_pending_validation(self):
+        self.retargeted_slice()['validation']['status']='pending'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_without_base(self):
+        part=self.retargeted_slice();part.pop('base_branch');part.pop('base_sha')
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_old_audit_status(self):
+        self.retargeted_slice()['audit']['status']='historical'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_wrong_code(self):
+        self.retargeted_slice()['code_sha']='f'*40
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_wrong_audit_binding(self):
+        part=self.retargeted_slice();part['code_sha']='f'*40;part['validation']['code_sha']='f'*40
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_bad_retarget_history(self):
+        self.retargeted_slice()['retarget_history']=[{'base_pr':273,'base_sha':'a'*40,'status':'current'}]
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_design_file_is_not_evidence(self):
+        self.data['handoff']['report']='README.md'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_missing_checkpoint_time(self):
+        self.data['observed_at']='2026-10-27'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_closed_pr(self):
+        part=self.retargeted_slice();next(x for x in self.data['prs'] if x['number']==part['pr'])['state']='CLOSED'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_merged_slice_open_pr(self):
+        next(x for x in self.data['prs'] if x['number']==272)['state']='OPEN'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_stacked_after_predecessor_merge(self):
+        part=self.stale_slice();part['base_sha']=part['observed_base_sha'];part.pop('base_status');part['state']='candidate_pr_open'
+        next(x for x in self.data['prs'] if x['number']==273)['state']='MERGED'
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_missing_binding(self):
+        self.retargeted_slice()['validation'].pop('audit_binding')
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_failed_test_counts(self):
+        self.retargeted_slice()['validation']['failed']=1
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_zero_passed_tests(self):
+        self.retargeted_slice()['validation']['passed']=0
+        with self.assertRaises(ValueError):v.validate(self.data)
+    def test_ready_revise_binding(self):
+        self.retargeted_slice();original=json.loads
+        def changed(text):
+            value=original(text)
+            if isinstance(value,dict) and 'code_commit' in value:value['verdict']='REVISE'
+            return value
+        with patch.object(v.json,'loads',side_effect=changed):
+            with self.assertRaises(ValueError):v.validate(self.data)
 if __name__=='__main__': unittest.main()

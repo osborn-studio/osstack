@@ -69,6 +69,6 @@ python3 docs/design/2026-10-27-joint-engineering/test_validate_design.py
 
 完整审计与47条原始意见处理见 [Claude审计报告](claude-audit.md)；[复审精确规格](closeout-specifications.md) 是共享契约和PR执行时必须读取的规范增量。
 
-当前实现：J02a [Draft PR #281](https://github.com/osborn-studio/osstack/pull/281)，固定 Git 来源检查与证据绑定。本地全仓库 6161 通过 / 5 跳过，Sonnet 5.5 静态审计 PASS。J02b 依赖闭包、方法采用及运行恢复仍待后续批次；详见 [执行记录](execution.md) 和 [交付账本](execution-ledger.json)。
+当前实现：#273 共享契约已合并。#274（J11 恢复规格）和 #281（J02a 来源检查）已重定向 main，并分别完成最新契约适配、Sonnet 5.5 审计与全仓验证：6,174 / 6,194 项通过，各 5 项跳过、零失败。当前 PR 状态、精确候选、CI 观察与用户审批义务以 [账本](execution-ledger.json) 为准。
 
-最新共享契约：[#273](https://github.com/osborn-studio/osstack/pull/273) 已改为 main 并转 Ready，等待 gilberthello 审批。最终代码本地全仓库 6160 通过 / 5 跳过，Sonnet 5.5 复审通过；[执行说明](execution.md) 与 [账本](execution-ledger.json) 保留证据及后继重验要求。远端 CI 按当前 PR head 单独检查。
+本批 [J11 复验记录](evidence/joint-execution/successors-retarget/recovery/README.md) 和 [J02a 复验记录](evidence/joint-execution/successors-retarget/source/README.md) 保留范围、修订与完整审计入口。J02b 来源认证/闭包/分型注册、J12 真实恢复均未因此完成，也没有启用运行时能力。建议先合并 #274，再合并 #281；后继 #276 / #278 / #279 仍按各自依赖另批处理。

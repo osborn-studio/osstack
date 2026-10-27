@@ -21,7 +21,7 @@ OSStack 管理端使用已安装、固定版本。测试端使用独立 OSSTACK_
 
 ## 当前切片与后续依赖
 
-J02a 已提交 [Draft PR #281](https://github.com/osborn-studio/osstack/pull/281)：只读、离线、固定 Git 对象的来源检查器。依赖 J01 #273 固定候选，不修改方法授权、恢复入口或主控。
+J02a 初次提交 [PR #281](https://github.com/osborn-studio/osstack/pull/281)：只读、离线、固定 Git 对象的来源检查器。依赖 J01 #273 固定候选，不修改方法授权、恢复入口或主控。
 
 J02b 留给分型注册、行为/方法映射、实际采用依赖闭包和旧 manifest 接线；J02a 不提前把整个 J02 或 R03/R04 标为完成。J03 驱动夹具与 J12 真实恢复仍保留其独立验收门槛。
 
@@ -51,17 +51,17 @@ Source inspection 输出必须携带并摘要绑定 dependency_resolution=not_pe
 
 联合看板名为 joint-firstmate-pstack。每个 Jxx 对应的 card_id 已记录。依赖和验收规则仍由 work-packages.json / execution-gates.json 给出，当前看板 API 不自动执行这些门槛。不能用 kanban.move(done) 代替验收。
 
-执行账本可离线检查：python3 docs/design/2026-10-27-joint-engineering/validate-execution.py。它检查节点、依赖、PR引用、前置候选漂移、交接哈希和完成证据字段；它不会查询实时 GitHub、执行验收或恢复数据库。7个负例/正例测试验证这些局部防错规则。
+执行账本可离线检查：python3 docs/design/2026-10-27-joint-engineering/validate-execution.py。它检查节点、依赖、PR引用、前置候选漂移、交接哈希和完成证据字段；它不会查询实时 GitHub、执行验收或恢复数据库。当前 42 项正负例测试验证这些局部防错规则。
 
 管理库位于 scratch 根内，不能当作唯一持久副本。每批结束都将联合/原看板 JSON、事件回执、提交、CI观察、测试与审计绑定提交到 Git；重要证据有压缩前后哈希。若管理库被清理，先用版本化导出重建进度记录并核对当前 GitHub；不能把恢复卡片当成恢复任何执行锁、会话或生产状态。本批使用 SQLite backup 做一致性本地备份，没有复制正在写入的单独 DB 文件来假装完整备份。
 
-## 本批验收检查点
+## 历史首批验收检查点（当前重验见文末）
 
 最终产品代码 `32bd1bd287a7125fcc71c7312392ec5a3af2413b` 本地全仓库 6161 项通过、5 项跳过；构建、类型检查、lint、清单检查均成功。Sonnet 5.5 最终静态审计 PASS，无具体 P0/P1/P2，原始多轮意见及处置保留。#281 的后续提交只包含文档和证据。GitHub CI 状态单独观察，不能用本地结果代替。
 
 pstack 完整 pstack 子目录 200 个文件及 Firstmate harness-adapters 子目录 21 个文件已按固定 commit 和预期摘要实际重放。这没有验证 Firstmate 全部能力或采用依赖闭包。
 
-下批先处理共享契约链 #272 → #273，随后重定向并重验 #274 / #281。Firstmate 交接链为 #275 → #276 与 #277 → #278 → #279。J02b 在确认 J01 合同与 J02a 检查输出后，推进分型注册、R03/R04 映射及实际采用依赖闭包；保留 J03、J12 各自的依赖和验收。不得绕过尚未完成的独立评审。
+当时的下一步为处理 #272 → #273，再重定向 #274 / #281；此步骤已按下述新检查点执行。Firstmate 交接链为 #275 → #276 与 #277 → #278 → #279。J02b 在确认 J01 合同与 J02a 检查输出后，推进分型注册、R03/R04 映射及实际采用依赖闭包；保留 J03、J12 各自的依赖和验收。不得绕过尚未完成的独立评审。
 
 #280 早期 CI 揭示历史归档日志被全局 *.log 忽略、冻结输入保留源位置相对链接的问题。已显式纳入原始日志；只对 evidence/inputs/pstack-revision2-*.md 这组冻结引用适用仓库已有的归档规则，所有当前文档仍参加完整链接审计。
 
@@ -72,3 +72,15 @@ pstack 完整 pstack 子目录 200 个文件及 Firstmate harness-adapters 子�
 新审计与完整处置位于 `docs/implementation/joint-contracts-retarget/`。#274/J11 必须消费新的 RecoveryProofEnvelope 上下文与 verifyRecoveryProofEnvelopes；#281 必须在新合同上重验。两者旧证据均保留为 historical，不自动升级。
 
 账本 candidate_sha/head_sha 是各 PR observed_at 时观察到的提交，不能等于包含账本的提交自身。执行前必须重新读取 GitHub。离线检查器只验证该快照内部一致性；它不联网证明 CI、安装入口或 Git 可达性。新增检查显式识别旧基线、保持节点/卡片阻塞，并保留被替代候选与历史证据。
+
+## #274 / #281 合并共享契约后的当前检查点
+
+已确认 #273 合入 main `69859eecfcc84af9d6eff755ed41243ca5f51f95`。#274 与 #281 均改为 main，初次重定向补丁与原分支逐字节相同，之后按新审计修订，重新验证；原证据均保留为历史。
+
+J11 当前代码 `7ea45584ce0de01860571100beb5daed4ff83f31`：全仓 6,174 通过、5 跳过、0 失败，14 项恢复规格测试。新增证明/收据/MigrationSpec 关联、SQL 阶段/home 防御检查；重新冻结 DDL/catalog 和 Python 向量。J02a 当前代码 `26e7e02d4cdc931aa6d2b852d1b83cedc74238ef`：全仓 6,194 通过、5 跳过、0 失败，来源包 37 项测试；批量 Git 对象读取和来源标识防护经审计修订，固定上游摘要重放不变。两者的 build/typecheck/lint/inventory/schema/Python 检查通过，Sonnet 5.5 最终静态审计 PASS，无 P0/P1/P2。
+
+#274 维护此中央账本及 J11 证据，#281 维护来源实现及其证据。Git merge-tree 检查无冲突；不宣称组合树已获得运行资格。建议 #274 → #281，合并前使用各自当前 head 的必需 CI，由 gilberthello 独立审批。Docs-only 证据提交晚于 code_sha；账本 head 是 observed_at 的真实快照，不试图引用自身未来提交。
+
+J01 的 #272/#273 已合并，移除旧合并阻塞；整体里程碑验收仍独立记录。J11 仍为规格，J12 负责真实恢复；J02b 仍负责来源认证、接收端校验、分型注册和采用依赖闭包。Firstmate #276 / #278 / #279 留在下一批，不能把本次通过当作其已重验。
+
+检查点校验新增 main 基线、Ready 的开放 PR/当前审计/代码与通过测试绑定，以及历史叠加前置的保留。快照由逐 PR 观察构成，非跨 GitHub/本地原子事务；记录每条 observed_at，并在刷新前后 fetch 检查 main 漂移。模型意见及处置保留，离线校验不替代实时 CI、真实身份验证或运行时资格。
