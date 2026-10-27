@@ -1,0 +1,41 @@
+# J02a: immutable Git source inspection
+
+Candidate only. This slice advances the source-replay prerequisite of J09's bug-fix method journey. It does not complete J02, R03/R04 or either source project's end-to-end capabilities.
+
+## Public API and authority
+
+`@osstack/skill-registry/source-snapshot` exports `inspectGitSource`, its input/output types and `SourceInspectionError`. The existing root entry is unchanged. The host supplies absolute `gitBinary` and `repositoryPath` plus `repository`, a full lowercase 40/64-hex `commit`, `subdir`, 1–32 distinct `licensePaths`, and an optional `expectedContentSha256`.
+
+The API is synchronous and can block for up to 30 seconds. Invoke it from an isolated worker/child, never a daemon RPC event loop. The binary and local store are trusted host infrastructure. Local origin config does not authenticate the requested repository identity. A source inspection proves byte identity; it does not grant permission, legal license clearance, qualification, method activation or dependency closure.
+
+Only the `source_inspection` wrapper is returned. It has `dependency_resolution=not_performed`, `repository_identity=caller_asserted` and `expected_digest_checked`, all bound by `inspection_digest`. No detached `SourceSnapshot` is exported. J02b must resolve the adopted dependency graph and authenticate provenance before constructing an admissible snapshot. No current runtime consumes this inspection. This is an experimental opt-in library subpath; a public export does not qualify adoption or J02b registry use.
+
+## Exact source selection
+
+All paths are repository-relative, including explicit license files outside the subdir. Capture all tracked regular blobs under the exact tree plus those license files. A license inside the tree is included once with role `license`. Duplicate license declarations are rejected. Missing/empty/non-tree subdirs, or a subtree containing only declared licenses, fail. Mode must be 100644 or 100755. Reject symlinks/gitlinks inside the selected tree and unsafe selected paths (control bytes, invalid UTF-8, backslash, colon, empty/dot/dot-dot components, .git in any case, trailing dot/space). Reject NFC/case and prefix collisions. Max path: 512 UTF-8 bytes and 64 components. No path normalization is performed.
+
+Files sort by raw UTF-8 bytes. Dirty checkout files, untracked files and worktree symlinks are not read. Unselected regular entries do not enter the manifest. The full tree listing is conservatively capped; invalid UTF-8 anywhere in that listing causes failure even outside the selected subtree.
+
+## Digests and provenance
+
+New domain `osstack.joint.source-content.v1` takes exactly `{schema_version,repository,commit,subdir,files}`. Each file binds `{path,mode,blob,bytes,sha256,role}`. `pin.content_sha256` equals this domain-separated digest, with raw file hashes over exact bytes. License refs are sorted unique `sha256:<file sha256>` strings derived from the declared license files. The pin uses J01's strict SourcePin shape.
+
+New domain `osstack.joint.source-inspection.v1` takes exactly `{kind,schema_version,dependency_resolution,repository_identity,expected_digest_checked,pin,files}`. It excludes only its own digest. Both domains are explicitly registered in the protocol digest catalog. No previous digest rule changes; old design placeholders remain historical. Commit identity means a new commit produces a new content digest even when file bytes match.
+
+The contract base is #273 at `fad0dd45377255a2d3dfceb08fb28c1524b88ead`. A changed base requires revalidation. This slice does not assume the unmerged Firstmate PRs are present.
+
+## Resource and execution limits
+
+Reject, never truncate: more than 512 files, a blob above 512 KiB, aggregate content above 8 MiB, or Git tree output above 2 MiB. Commit bodies are capped at 64 KiB. Blob size is checked before content read. The whole-repository listing cap can reject a small subtree in a large repository (roughly 20,000 short paths; exact limit is bytes). Git stderr is discarded to prevent diagnostic text consuming the stdout limit. Each Git subprocess has a five-second timeout and SIGKILL on timeout; the operation has a 30-second deadline checked before subprocesses. Timeout uses retryable `SOURCE_TIMEOUT`; digest drift is `CONTENT_DRIFT`. No partial evidence returns on failure.
+
+Git >=2.48 is the initial conservative support floor; older releases are explicitly unsupported. The local measured binary is /usr/bin/git 2.54.0 (Apple Git-157); the existing Linux GitHub check log for #272 reports Git 2.55.0. These observations do not qualify all Git vendors. Resolve the host-provided absolute binary; discover the absolute git directory, reject ancestor discovery and redirected gitfiles (only the exact bare root or root/.git are accepted), then use `--git-dir`. Environment is allowlisted; inherited GIT_DIR, object-store, replacement, exec-path and configuration variables are removed. Disable system/global config, replacement objects, optional locks, hooks, fsmonitor, protocols and lazy fetch. Read effective included/worktree config with global/system config disabled. Conservatively reject any configured partial/promisor key (even promisor=false), promisor pack markers and alternate object stores. Provision a complete mirror before inspection; this module never hydrates one.
+
+Commit and blob object IDs are recomputed over Git object headers and exact bytes with the repository's SHA-1/SHA-256 format. Tree interpretation trusts the local object store and Git. This is not protection against malicious same-UID modification of the Git binary/store. No source checkout, filter, hook, install script, or upstream command is executed. This inspection profile is not a materialization policy: J02b or any future writer must separately reject platform reserved/short-name/HFS path aliases before writing files. Unexpected internal failures have code INTERNAL; filesystem/store failures have OBJECT_UNAVAILABLE.
+
+## Deferred work
+
+J02b: old manifest compatibility/subdir wiring, typed behavior/method registry, R03/R04 mappings and adopted dependencies. J03: host-driven answer-receipt fixture. J12: actual operator recovery. No DB, public CLI, watcher, scheduler, grant or activation change is in this slice.
+
+## References and audit
+
+Plumbing follows [git-cat-file](https://git-scm.com/docs/git-cat-file), [git-ls-tree](https://git-scm.com/docs/git-ls-tree) and [Git environment controls](https://git-scm.com/docs/git). Preflight input is historical; final code review and exact host test evidence live in `evidence/` and validation.md. A model review is not a production qualification or GitHub independent approval.
