@@ -1,0 +1,347 @@
+{
+  "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+  "targeted": {
+    "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+    "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+    "status": "passed",
+    "commands": [
+      {
+        "name": "build",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@osstack/core...",
+          "build"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:45.901711+00:00",
+        "ended_at": "2026-10-27T18:07:47.542542+00:00",
+        "exit_code": 0,
+        "log": "build.log",
+        "log_sha256": "880238159ccf61e3e0808a59ffba1c2e16d5ba8247e4103a64ccf3c547446074"
+      },
+      {
+        "name": "composition",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@osstack/core",
+          "exec",
+          "vitest",
+          "run",
+          "src/state/operator-recovery-spec.test.ts",
+          "src/state/broker-recovery-spec.test.ts"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:47.542918+00:00",
+        "ended_at": "2026-10-27T18:07:49.097723+00:00",
+        "exit_code": 0,
+        "log": "composition.log",
+        "log_sha256": "416bec03018f819bf20576975e1766bef50149f13d0336eeb1f1571c21a8daf4"
+      },
+      {
+        "name": "protocol",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@osstack/protocol",
+          "exec",
+          "vitest",
+          "run",
+          "src/joint-schemas.test.ts",
+          "src/joint-reference.test.ts"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:49.098135+00:00",
+        "ended_at": "2026-10-27T18:07:50.012704+00:00",
+        "exit_code": 0,
+        "log": "protocol.log",
+        "log_sha256": "3a76d9d03901823e1f8fe48211e5334524e7a880a1e8d8de17a488fddde53604"
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@osstack/core",
+          "exec",
+          "tsc",
+          "--noEmit"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:50.013103+00:00",
+        "ended_at": "2026-10-27T18:07:50.937986+00:00",
+        "exit_code": 0,
+        "log": "typecheck.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "lint",
+        "command": [
+          "pnpm",
+          "exec",
+          "biome",
+          "check",
+          "packages/core/src/state/operator-recovery-spec.test.ts"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:50.938375+00:00",
+        "ended_at": "2026-10-27T18:07:51.302958+00:00",
+        "exit_code": 0,
+        "log": "lint.log",
+        "log_sha256": "c193d36e95c3107921714ba791fd2316aa3f527ca7055c07e990b4f7baf54fef"
+      },
+      {
+        "name": "changeset",
+        "command": [
+          "node",
+          "scripts/check-changeset-coverage.mjs",
+          "--base",
+          "3192b424174e5eb977d640cc0418e67c6b1461d1"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:51.303329+00:00",
+        "ended_at": "2026-10-27T18:07:51.368933+00:00",
+        "exit_code": 0,
+        "log": "changeset.log",
+        "log_sha256": "b19c092cf1224c2cd3cfd5807214b4b82d9c8b8c06d520cc8e803a960c1d879b"
+      },
+      {
+        "name": "hygiene",
+        "command": [
+          "pnpm",
+          "--filter",
+          "@osstack/governance",
+          "exec",
+          "vitest",
+          "run",
+          "src/knowledge-hygiene/osstack-config.test.ts"
+        ],
+        "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+        "started_at": "2026-10-27T18:07:51.369271+00:00",
+        "ended_at": "2026-10-27T18:07:52.573718+00:00",
+        "exit_code": 0,
+        "log": "hygiene.log",
+        "log_sha256": "d5f9f6b0b90d50ea09e8ab853656c4b6f13436968fae701bc389014530b85789"
+      }
+    ],
+    "node": "v22.22.1",
+    "environment": {
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/recovery-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset"
+    },
+    "scope": "targeted only; full repository not run by this worker",
+    "test_counts": {
+      "composition": {
+        "passed": 315
+      },
+      "protocol": {
+        "passed": 4
+      },
+      "hygiene": {
+        "passed": 1
+      }
+    }
+  },
+  "final_core": {
+    "code_sha": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test"
+    ],
+    "exit_code": 0,
+    "raw_log": "final-core.log",
+    "sha256": "22568c066e7d39bb81e5ea4952b64bca707c1236a7b9c9290d3d71a687b64f52",
+    "test_counts": {
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0
+    },
+    "raw_start_local": "2026-10-27T11:10:35-07:00",
+    "raw_duration_seconds": 17.67,
+    "recorded_at": "2026-10-27T18:11:25.271191+00:00",
+    "environment": {
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-post284/recovery-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset"
+    },
+    "source_files": {
+      "packages/core/src/state/operator-recovery-spec.test.ts": "93fa1077cc004038b83e7381574911b024858685744f334dbca270454c472b3c",
+      "docs/design/operator-recovery-schema.md": "979335095c5dd482c455f77533bd8b401388860fcfb8c0c973097d8b2c3dc02c"
+    }
+  },
+  "full": {
+    "base_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+    "commands": [
+      {
+        "name": "full-build",
+        "command": [
+          "pnpm",
+          "build"
+        ],
+        "started_at": "2026-10-27T18:01:31.956953+00:00",
+        "ended_at": "2026-10-27T18:01:44.070590+00:00",
+        "exit_code": 0,
+        "log": "full-build.log",
+        "sha256": "d1d19b4d2834150c32600c9485ca53d49d7393493f88c98f3a9999bbf0b31413",
+        "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520"
+      },
+      {
+        "name": "knowledge-smoke",
+        "command": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "const m=await import('./packages/knowledge/dist/index.js');for(const k of ['executionContextDigest','assembleExecutionContext']){console.log(k,typeof m[k]);if(typeof m[k]!=='function')process.exitCode=1}"
+        ],
+        "started_at": "2026-10-27T18:01:44.071247+00:00",
+        "ended_at": "2026-10-27T18:01:44.123116+00:00",
+        "exit_code": 0,
+        "log": "knowledge-smoke.log",
+        "sha256": "4b7790f941f45ae346ba930d8ed8841790b6fc809ceeedf6958d84e861671415",
+        "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520"
+      },
+      {
+        "name": "test-full",
+        "command": [
+          "pnpm",
+          "test"
+        ],
+        "started_at": "2026-10-27T18:01:44.123473+00:00",
+        "ended_at": "2026-10-27T18:10:11.651311+00:00",
+        "exit_code": 0,
+        "log": "test-full.log",
+        "sha256": "402b78dc78967715b0e4bf6ce113ffe65db5e80cb0e3eeb34f453dad50ff8555",
+        "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520"
+      }
+    ],
+    "status": "passed",
+    "packages": 22,
+    "test_counts": {
+      "passed": 6588,
+      "skipped": 5,
+      "failed": 0
+    },
+    "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520",
+    "classification": "mixed-working-tree observation",
+    "working_tree_caveat": {
+      "classification": "mixed-working-tree observation, NOT fixed-SHA full snapshot",
+      "code_sha_at_start": "5a2acd0d6ddd27e8c572d85e2f7cc99d2e895520",
+      "core_completed_before_refinement": true,
+      "core_raw_summary": [
+        "packages/core test:  Test Files  62 passed (62)",
+        "packages/core test:       Tests  1295 passed (1295)",
+        "packages/core test:    Start at  11:01:50",
+        "packages/core test:    Duration  27.92s (transform 1.64s, setup 1.58s, collect 7.33s, tests 104.03s, environment 15ms, prepare 4.07s)",
+        "packages/core test: Done"
+      ],
+      "first_refinement_time_bound": {
+        "not_before_script_creation_utc": "2026-10-27T18:06:54.340724+00:00",
+        "exact_first_file_write_time_not_captured": true,
+        "not_after_document_write_utc": "2026-10-27T18:06:54.368614+00:00"
+      },
+      "final_source_mtimes_utc": {
+        "packages/core/src/state/operator-recovery-spec.test.ts": "2026-10-27T18:07:29.139862+00:00",
+        "docs/design/operator-recovery-schema.md": "2026-10-27T18:06:54.368614+00:00"
+      },
+      "final_refinement_commit": "6ea2cebc8420a1f26b7aff820f7997c0cbba61ad",
+      "instruction": "Freeze all worktree files until full command ends. Final targeted checks cover these test/doc refinements; no fixed-start-SHA full-suite claim."
+    },
+    "package_summaries": [
+      {
+        "package": "contracts",
+        "raw_summary": "15 passed (15)"
+      },
+      {
+        "package": "compliance",
+        "raw_summary": "17 passed (17)"
+      },
+      {
+        "package": "github",
+        "raw_summary": "107 passed (107)"
+      },
+      {
+        "package": "knowledge",
+        "raw_summary": "44 passed (44)"
+      },
+      {
+        "package": "neat-eval",
+        "raw_summary": "16 passed (16)"
+      },
+      {
+        "package": "runtime",
+        "raw_summary": "1 passed (1)"
+      },
+      {
+        "package": "protocol",
+        "raw_summary": "477 passed (477)"
+      },
+      {
+        "package": "governance",
+        "raw_summary": "301 passed (301)"
+      },
+      {
+        "package": "knowledge-cloud",
+        "raw_summary": "36 passed (36)"
+      },
+      {
+        "package": "graph",
+        "raw_summary": "257 passed (257)"
+      },
+      {
+        "package": "core",
+        "raw_summary": "1295 passed (1295)"
+      },
+      {
+        "package": "plugins",
+        "raw_summary": "1 passed (1)"
+      },
+      {
+        "package": "hermes-adapter",
+        "raw_summary": "22 passed (22)"
+      },
+      {
+        "package": "skills",
+        "raw_summary": "2 passed (2)"
+      },
+      {
+        "package": "autonomy",
+        "raw_summary": "201 passed (201)"
+      },
+      {
+        "package": "skill-registry",
+        "raw_summary": "37 passed (37)"
+      },
+      {
+        "package": "agents",
+        "raw_summary": "361 passed (361)"
+      },
+      {
+        "package": "config",
+        "raw_summary": "30 passed (30)"
+      },
+      {
+        "package": "loop",
+        "raw_summary": "515 passed (515)"
+      },
+      {
+        "package": "conformance",
+        "raw_summary": "9 passed (9)"
+      },
+      {
+        "package": "supervisor",
+        "raw_summary": "88 passed (88)"
+      },
+      {
+        "package": "cli",
+        "raw_summary": "2756 passed | 5 skipped (2761)"
+      }
+    ],
+    "counting_note": "Anchored package terminal summary parser replaces original broad regex whose \\s crossed newlines; raw run unchanged, no test re-execution."
+  },
+  "scope": "test/spec only; no formal gate assertion; runtime and fixtures unchanged"
+}
