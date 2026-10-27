@@ -32,3 +32,15 @@ J02a 必须验证：脏工作区不影响结果、精确 commit 重放一致、�
 设计基线的 48 个来源能力、69 项原任务、32 个工作包与 124 个阶段节点全部保留。当前修订的设计校验包含 69 个未来验收场景、100 个 schema 例子与 227 个来源锚点；文档结构校验不代表全部来源本轮重新抓取，也不代表产品验收。
 
 J01 实现采用 opt-in 的 `@osstack/protocol/joint`，当前实现合同以 #273 为准；设计中的原 schema 保留供追溯。J11 是恢复 DDL 与测试规格，J12 尚待实现。候选迁移号不构成生产编号预留。
+
+## 审计补充的交接约束
+
+若主入口会话不可用，执行状态转为 owner_unavailable，停止新派发，由用户指定接替会话。接替者必须重读账本、当前 main 和未合并 PR；不凭失联自动取消或释放未知执行。
+
+Firstmate 本批移交范围固定为 #275–#279，集成分支 codex/firstmate-batch1-integration，最终代码候选 20b4a81dfcffd80b4919643be362dcfcefad7cf5；之后 dd0f8d09687c6d77394771f61102c9685ec33b2c 只更新导出清单。准确 PR heads 由执行账本记录。交接完成须同时保留发送方报告和本会话接收记录。
+
+J02a 的合同基线固定为 #273 head fad0dd45377255a2d3dfceb08fb28c1524b88ead。源码/契约变化后，旧测试结果不能自动继承。实现者为 Codex；审计者为 Claude CLI Sonnet 5.5。模型审计不能满足 GitHub 所需的独立批准，也不构成运行资格签发。
+
+切片在未合并时只能为 candidate。只有合并提交得到对应 CI/验收证据后才记为 done；真实环境资格另行记录。J02a 推进 J09 bug-fix 方法旅程的来源可重放性，不交付整个旅程。
+
+Source inspection 输出必须携带并摘要绑定 dependency_resolution=not_performed、repository_identity=caller_asserted 及 expected_digest_checked。本切片不导出可脱离上下文的 SourceSnapshot，不将空依赖数组当作依赖闭包完成。J02b 在闭包验证后才构造可供采用的快照。

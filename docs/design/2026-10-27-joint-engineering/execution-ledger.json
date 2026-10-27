@@ -3,11 +3,25 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "ce543535be9b1ef96a8c4fb14d13ea8483444051",
-  "observed_at": "pending_final_snapshot",
+  "observed_at": "2026-10-27T07:01:44.685229+00:00",
   "runtime_enabled": false,
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
-    "state": "closing_current_batch"
+    "state": "accepted",
+    "accepted_at": "2026-10-27T06:50:10.706240+00:00",
+    "report": "evidence/joint-execution/firstmate-joint-handoff.md",
+    "report_sha256": "bd74e4b31facc398145a8c38b925f5117cf0d7bc2d07f80ca84576d22e64b3dc",
+    "code_candidate": "20b4a81dfcffd80b4919643be362dcfcefad7cf5",
+    "integration_head": "dd0f8d09687c6d77394771f61102c9685ec33b2c",
+    "prs": [
+      275,
+      276,
+      277,
+      278,
+      279
+    ],
+    "acknowledgement": "Receiving owner accepts sender COMPLETE report. Remaining CI/reviews are explicit PR obligations.",
+    "ci_scope": "PR-head CI does not cover combined candidate 20b4a81d or dd0f8d09. Local integrated tests cover 20b4a81d; dd0f8d09 differs only by documented generated export inventory. Each PR has separate CI; no combined Firstmate+joint runtime tree is verified."
   },
   "milestones": [
     {
@@ -27,17 +41,30 @@
           "state": "open"
         }
       ],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_6d5d3d02"
     },
     {
       "id": "J02",
-      "state": "planned",
+      "state": "in_progress",
       "depends_on": [
         "J01"
       ],
       "merge_after": [],
-      "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "slices": [
+        {
+          "id": "J02a",
+          "state": "implementing",
+          "base_pr": 273,
+          "base_sha": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+          "branch": "codex/joint-source-snapshot",
+          "scope": "single-source Git inspection, no adoption dependency closure",
+          "remaining": "J02b typed registration / R03-R04 mapping / adopted dependency closure",
+          "head_sha": "936aced8"
+        }
+      ],
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_a502fa36"
     },
     {
       "id": "J03",
@@ -47,7 +74,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_7d169d5f"
     },
     {
       "id": "J04",
@@ -58,7 +86,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_b5bc8c45"
     },
     {
       "id": "J05",
@@ -69,7 +98,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_2089b461"
     },
     {
       "id": "J06",
@@ -79,7 +109,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_2b7cc24a"
     },
     {
       "id": "J07",
@@ -90,7 +121,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_f4b5f065"
     },
     {
       "id": "J08",
@@ -102,7 +134,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_38f11aa6"
     },
     {
       "id": "J09",
@@ -112,7 +145,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_63ad0321"
     },
     {
       "id": "J10",
@@ -124,7 +158,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_9c16af1b"
     },
     {
       "id": "J11",
@@ -140,7 +175,8 @@
           "state": "open"
         }
       ],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_79cdb3e7"
     },
     {
       "id": "J12",
@@ -150,7 +186,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_e342e365"
     },
     {
       "id": "J13",
@@ -160,7 +197,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_537006f7"
     },
     {
       "id": "J14",
@@ -174,7 +212,8 @@
         "J04"
       ],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_22901bdf"
     },
     {
       "id": "J15",
@@ -185,7 +224,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_94c3d4a8"
     },
     {
       "id": "J16",
@@ -197,7 +237,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_ca7ce849"
     },
     {
       "id": "J17",
@@ -210,7 +251,8 @@
         "J15"
       ],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_4fb72988"
     },
     {
       "id": "J18",
@@ -222,7 +264,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_74060d09"
     },
     {
       "id": "J19",
@@ -235,7 +278,8 @@
         "J10"
       ],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_0c9a725c"
     },
     {
       "id": "J20",
@@ -245,7 +289,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_ee602a74"
     },
     {
       "id": "J21",
@@ -256,7 +301,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_d9f74fa8"
     },
     {
       "id": "J22",
@@ -267,7 +313,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_1f5230a6"
     },
     {
       "id": "J23",
@@ -278,7 +325,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_efcfb696"
     },
     {
       "id": "J24",
@@ -289,7 +337,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_64284bd4"
     },
     {
       "id": "J25",
@@ -299,7 +348,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_d4dea44d"
     },
     {
       "id": "J26",
@@ -310,7 +360,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_a47872f7"
     },
     {
       "id": "J27",
@@ -324,7 +375,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_3a44528e"
     },
     {
       "id": "J28",
@@ -334,7 +386,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_9044ea8f"
     },
     {
       "id": "J29",
@@ -344,7 +397,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_539bcf68"
     },
     {
       "id": "J30",
@@ -355,7 +409,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_f3e74cf6"
     },
     {
       "id": "J31",
@@ -366,7 +421,8 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_37b3c381"
     },
     {
       "id": "J32",
@@ -377,7 +433,603 @@
       ],
       "merge_after": [],
       "slices": [],
-      "acceptance": "not_executed_as_complete_milestone"
+      "acceptance": "not_executed_as_complete_milestone",
+      "card_id": "card_99e359ff"
     }
-  ]
+  ],
+  "prs": [
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/joint-json",
+      "headRefOid": "91147f7ade024bda411a9ebe457d3f390031b415",
+      "isDraft": false,
+      "number": 272,
+      "reviewDecision": "REVIEW_REQUIRED",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:24:06Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044915549",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:24:07Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:15Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914428",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:24:09Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:16Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914645",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:24:09Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:27:37Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914659",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:24:08Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:27:28Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122044914639",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:24:08Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:16Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460878297/job/122045644315",
+          "name": "check",
+          "startedAt": "2026-10-27T06:26:18Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/272",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "codex/joint-json",
+      "headRefName": "codex/joint-contracts",
+      "headRefOid": "fad0dd45377255a2d3dfceb08fb28c1524b88ead",
+      "isDraft": true,
+      "number": 273,
+      "reviewDecision": "",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:24:31Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460922165/job/122045055594",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:24:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:23Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460922165/job/122045054240",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:24:33Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:30Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460922165/job/122045054446",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:24:34Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:27:53Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460922165/job/122045054561",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:24:34Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:28:02Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460922165/job/122045054598",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:24:33Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:17Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40460922165/job/122045721591",
+          "name": "check",
+          "startedAt": "2026-10-27T06:26:32Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/273",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "codex/joint-contracts",
+      "headRefName": "codex/joint-recovery-spec",
+      "headRefOid": "2aa11e1cc6af9b7fcc78a1450a3e02c8ee81ae32",
+      "isDraft": true,
+      "number": 274,
+      "reviewDecision": "",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:26:38Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045762476",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:26:39Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:28:59Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761543",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:26:41Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:28:36Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761743",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:26:41Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:30:03Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761858",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:26:41Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:30:09Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122045761727",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:26:41Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:46:14Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40461014506/job/122046509011",
+          "name": "check",
+          "startedAt": "2026-10-27T06:29:01Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/274",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/firstmate-behavior-contract",
+      "headRefOid": "48d6b927d36e5c673eb80c8956daa69779614cc7",
+      "isDraft": false,
+      "number": 275,
+      "reviewDecision": "REVIEW_REQUIRED",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:36:58Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049046504",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:36:58Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:38:39Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045285",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:37:00Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:23Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045359",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:37:01Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:46Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045281",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:00Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:32Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049045151",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:00Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:53:56Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462158240/job/122049804962",
+          "name": "check",
+          "startedAt": "2026-10-27T06:39:25Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/275",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "codex/firstmate-behavior-contract",
+      "headRefName": "codex/firstmate-behavior-loader",
+      "headRefOid": "5e86a77859367a333829748908bbf986048132b9",
+      "isDraft": true,
+      "number": 276,
+      "reviewDecision": "",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:37:14Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049131722",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:37:15Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:22Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130595",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:37:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:38:51Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130625",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:37:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:57Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130632",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:17Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:14Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049130321",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:16Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:58:39Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462185479/job/122049800417",
+          "name": "check",
+          "startedAt": "2026-10-27T06:39:24Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/276",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/session-receipt-fix",
+      "headRefOid": "585ed985ac4a8513778470f6443d0ce7ce2c7893",
+      "isDraft": false,
+      "number": 277,
+      "reviewDecision": "REVIEW_REQUIRED",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:37:20Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049161093",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:37:20Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:34Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049160166",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:38:40Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:38:47Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049159918",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:37:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:18Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049160122",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:03Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122049160238",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:22Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:52:07Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462194710/job/122050172249",
+          "name": "check",
+          "startedAt": "2026-10-27T06:40:36Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/277",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "codex/session-receipt-fix",
+      "headRefName": "codex/session-start-cleanup",
+      "headRefOid": "81f01d1a91248396dfdd2dce1132b69d478556cf",
+      "isDraft": true,
+      "number": 278,
+      "reviewDecision": "",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:37:36Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462220156/job/122049243875",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:37:36Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:29Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462220156/job/122049242565",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:38:54Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:47Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462220156/job/122049242559",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:38:49Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:39:57Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462220156/job/122049242278",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:38Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:02Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462220156/job/122049242582",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:38Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:00:14Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462220156/job/122050462198",
+          "name": "check",
+          "startedAt": "2026-10-27T06:41:31Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/278",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    },
+    {
+      "baseRefName": "codex/session-start-cleanup",
+      "headRefName": "codex/session-terminal-fence",
+      "headRefOid": "cae25bc612e6e6884cf548e5bc8d3a745863a909",
+      "isDraft": true,
+      "number": 279,
+      "reviewDecision": "",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:37:52Z",
+          "conclusion": "SKIPPED",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462247605/job/122049330840",
+          "name": "Paid DeepSeek semantic smoke",
+          "startedAt": "2026-10-27T06:37:53Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:29Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462247605/job/122049329612",
+          "name": "graph-macos-fixtures (22)",
+          "startedAt": "2026-10-27T06:39:24Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:49Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462247605/job/122049330484",
+          "name": "graph-macos-fixtures (24)",
+          "startedAt": "2026-10-27T06:39:25Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:41:27Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462247605/job/122049329369",
+          "name": "graph-runtime-matrix (20.6.0)",
+          "startedAt": "2026-10-27T06:37:54Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T06:40:45Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462247605/job/122049329614",
+          "name": "graph-runtime-matrix (22.23.1)",
+          "startedAt": "2026-10-27T06:37:54Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-27T07:00:41Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40462247605/job/122050565205",
+          "name": "check",
+          "startedAt": "2026-10-27T06:41:51Z",
+          "status": "COMPLETED",
+          "workflowName": "CI"
+        }
+      ],
+      "url": "https://github.com/osborn-studio/osstack/pull/279",
+      "observed_at": "2026-10-27T07:01:44.685229+00:00"
+    }
+  ],
+  "management": {
+    "board": "joint-firstmate-pstack",
+    "installed_version": "0.22.1",
+    "binding": "See preserved handoff management entry; never use default home",
+    "mode": "owner-driven RPC progress and evidence; no automatic goal_dispatch",
+    "dependency_enforcement": "owner verifies work-packages/execution-gates; board text is informational",
+    "snapshot": "evidence/joint-execution/board.json"
+  },
+  "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification."
 }
