@@ -1,6 +1,6 @@
 ---
 name: osstack-methods
-description: Use for performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
+description: Use for task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
 ---
 
 # OSStack engineering methods
@@ -9,6 +9,7 @@ Read the requested entry below and [the common evidence rules](references/eviden
 
 | User intent | Read | Deliver |
 | --- | --- | --- |
+| Restate a goal or sharpen a prompt without expanding it | [Task framing](references/task-framing.md) | Preserved intent, constraints, open choices and a concrete evidence-based task |
 | Assess a latency, throughput or regression claim | [Performance measurement](references/performance-measurement.md) | Comparable completed work, raw samples, uncertainty and user-visible significance |
 | Find what a change can break beyond its diff | [Change impact](references/change-impact.md) | Affected consumers, challenged safety assumptions and concrete verification limits |
 | Review code or a PR for actionable defects | [Code review](references/code-review.md) | Scoped findings, reachable triggers, evidence and unresolved limits |
@@ -34,4 +35,4 @@ This directory installs nothing, edits no host configuration and introduces no n
 
 ## Named entries
 
-The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these nine methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.
+The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these ten methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.
