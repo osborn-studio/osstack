@@ -3435,7 +3435,7 @@
     "merged_at": "2026-10-28T16:24:46Z"
   },
   "next_framing_architecture_wave": {
-    "status": "validated_preparing_pr",
+    "status": "published_draft_ci_pending",
     "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
     "owners": {
       "loader_adversarial": {
@@ -3491,6 +3491,11 @@
     "archive_sha256": "370e3482c7dba8b7180a3639b78c571437fe226210b63155dfe067cfa9d2d6ca",
     "archive_members": 767,
     "final_document_tests": 241,
-    "final_hygiene_tests": 1
+    "final_hygiene_tests": 1,
+    "pr": 298,
+    "published_head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+    "ci_run": 40730300608,
+    "is_draft": true,
+    "workers": "three workers handed off; author worktrees removed; root full queue empty"
   }
 }
