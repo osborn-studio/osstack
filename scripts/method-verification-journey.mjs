@@ -121,9 +121,9 @@ export function invokeDriver(argv, env, timeoutMs, signal, graceMs = 5000) {
     };
     const stop = () => {
       if (!child?.pid || escalation || done) return;
-      record.killed = true; record.signals_sent.push('SIGTERM'); child.kill('SIGTERM');
+      if (!record.direct_child_exit_confirmed && child.kill('SIGTERM')) { record.killed = true; record.signals_sent.push('SIGTERM'); }
       escalation = setTimeout(() => {
-        if (!record.direct_child_exit_confirmed) { record.signals_sent.push('SIGKILL'); child.kill('SIGKILL'); }
+        if (!record.direct_child_exit_confirmed && child.kill('SIGKILL')) { record.killed = true; record.signals_sent.push('SIGKILL'); }
         closing = setTimeout(finish, 2000);
       }, graceMs);
     };
@@ -190,6 +190,7 @@ export async function runJourney({ output }, seams = {}) {
       const directory = join(evidenceParent, id); features[index].verification = 'failed'; features[index].evidence = directory;
       const args = [join(repository, 'scripts/smoke-skills-check.mjs'), '--case', id, '--evidence-dir', directory];
       for (const phase of ['doctor', 'drive']) {
+        controller.signal.throwIfAborted();
         const actualArgs = phase === 'doctor' ? [...args, '--doctor'] : args;
         const record = await run(actualArgs, env, phase === 'doctor' ? 30000 : 180000, controller.signal);
         const { stdout, stderr, ...metadata } = record;
@@ -217,7 +218,8 @@ export async function runJourney({ output }, seams = {}) {
         }
       }
     }
-    check(equal(result.tool_files, await toolHashes()), 'journey_tools_changed'); result.status = 'passed';
+    check(equal(result.tool_files, await toolHashes()), 'journey_tools_changed');
+    controller.signal.throwIfAborted(); result.status = 'passed';
   } catch (error) { result.status = 'failed'; result.failure = controller.signal.aborted ? 'interrupted' : error.message; }
   finally { process.off('SIGINT', interrupted); process.off('SIGTERM', interrupted); }
   result.ended_at = new Date().toISOString();

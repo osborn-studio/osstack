@@ -14,10 +14,10 @@ async function setup(t) {
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
-async function evidenceFixture(t, id = 'missing-ref') {
+async function evidenceFixture(t, id = 'missing-ref', location = ['smoke', 'skills-check-owned']) {
   const root = await setup(t); const directory = join(root, 'evidence'); await mkdir(directory);
   const scratch = join(root, 'scratch'); await mkdir(join(scratch, 'smoke'), { recursive: true });
-  const fixture = join(scratch, 'smoke', 'skills-check-owned');
+  const fixture = join(scratch, ...location);
   const expected = caseDefinition(id, pathToFileURL(join(fixture, 'origin')).href, 'a'.repeat(40), 'b'.repeat(40));
   const input = jsonBytes({ version: 1, sources: expected.sources });
   const stdout = `Checking 1 source(s) against their tracked refs...\n${id === 'healthy' ? '  ✓ healthy  up-to-date (bbbbbbbbbbbb)' : '  ✗ missing-ref  unreachable: no_matching_ref'}\n${expected.failed} source(s) failed to check.\n0 source(s) drifted from blessed_sha.\n`;
@@ -111,11 +111,11 @@ test('duplicate manifest members are rejected', async (t) => {
   await assert.rejects(verifyCaseEvidence(f.args), /manifest_path/);
 });
 test('foreign cleanup path cannot stand in for owned fixture disappearance', async (t) => {
-  const f = await evidenceFixture(t);
-  await mutate(f, 'cleanup.json', c => { c.fixture_path = '/outside/skills-check-owned'; }, true);
-  const receipt = JSON.parse(await readFile(join(f.directory, 'receipt.json'))); receipt.cleanup.fixture_path = '/outside/skills-check-owned';
-  await writeFile(join(f.directory, 'receipt.json'), jsonBytes(receipt)); await rm(join(f.directory, 'manifest.json')); await sealEvidence(f.directory, receipt.run_id);
-  await assert.rejects(verifyCaseEvidence({ ...f.args, stdout: jsonBytes(receipt) }), /cleanup_ownership|fixture_origin/);
+  // Keep origin, cwd and environment internally consistent so this reaches ownership.
+  for (const location of [['other', 'skills-check-owned'], ['smoke', 'not-owned']]) {
+    const f = await evidenceFixture(t, 'missing-ref', location);
+    await assert.rejects(verifyCaseEvidence(f.args), /^Error: cleanup_ownership$/);
+  }
 });
 test('symlink CLI entry actually executes and rejects unknown usage', async (t) => {
   const root = await setup(t); const entry = join(root, 'journey.mjs'); await symlink(new URL('./method-verification-journey.mjs', import.meta.url).pathname, entry);
@@ -147,10 +147,22 @@ test('real timeout sends TERM and confirms direct child exit without claiming de
   assert.equal(result.timed_out, true); assert.equal(result.direct_child_exit_confirmed, true); assert.equal(result.signal, 'SIGTERM');
   assert.deepEqual(result.signals_sent, ['SIGTERM']);
 });
-test('ignored TERM escalates to KILL for only the spawned child', async () => {
-  const result = await invokeDriver(['-e', "process.on('SIGTERM',()=>{}); setInterval(()=>{},1000)"], { PATH: process.env.PATH }, 250, undefined, 50);
-  assert.equal(result.timed_out, true); assert.equal(result.direct_child_exit_confirmed, true); assert.equal(result.signal, 'SIGKILL');
-  assert.deepEqual(result.signals_sent, ['SIGTERM', 'SIGKILL']);
+test('a ready child ignoring TERM escalates to KILL for only that child', async (t) => {
+  const root = await setup(t); const ready = join(root, 'ready');
+  const controller = new AbortController();
+  const pending = invokeDriver(['-e', "process.on('SIGTERM',()=>{}); require('node:fs').writeFileSync(process.argv[1], 'ready'); setInterval(()=>{},1000)", ready], { PATH: process.env.PATH }, 10000, controller.signal, 50);
+  try {
+    const limit = Date.now() + 5000;
+    while ((await readFile(ready, 'utf8').catch(() => null)) !== 'ready') {
+      assert.ok(Date.now() < limit, 'child readiness watchdog expired');
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    controller.abort();
+    const result = await pending;
+    assert.equal(result.interrupted, true); assert.equal(result.timed_out, false);
+    assert.equal(result.direct_child_exit_confirmed, true); assert.equal(result.signal, 'SIGKILL');
+    assert.deepEqual(result.signals_sent, ['SIGTERM', 'SIGKILL']);
+  } finally { controller.abort(); await pending; }
 });
 test('abort is distinguished from timeout and finalizes an owned child', async () => {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 100);
@@ -180,4 +192,14 @@ test('failed driver keeps its sealed manifest binding and labels reported produc
   const manifest = JSON.parse(await readFile(join(output, 'journey-manifest.json')));
   assert.deepEqual(manifest.case_manifests, [{ case_id: 'healthy', sha256: sha256(await readFile(join(output, 'cases/healthy/manifest.json'))), verified: false }]);
   assert.match(await readFile(join(output, 'feature-map.md'), 'utf8'), /reported:0 \(unverified\)/);
+});
+
+test('an interruption after doctor prevents the next drive from starting', async (t) => {
+  const root = await setup(t); let calls = 0;
+  const result = await runJourney({ output: join(root, 'interrupted') }, { invoke: async () => {
+    calls++; process.emit('SIGTERM');
+    return { exit_code: 0, stdout: Buffer.from('{"ready":true,"executed":false,"cases":["healthy"]}'), stderr: Buffer.alloc(0) };
+  } });
+  assert.equal(calls, 1); assert.equal(result.status, 'failed'); assert.equal(result.failure, 'interrupted');
+  assert.equal(result.features[1].verification, 'not_run');
 });
