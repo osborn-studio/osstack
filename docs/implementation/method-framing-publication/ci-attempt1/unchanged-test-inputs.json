@@ -1,0 +1,25 @@
+{
+  "objects": {
+    "packages": {
+      "711c45e75264000bde859328bd7dc131f68461d1": "4a974d7351d5d2bb305ce2a5a7759b726c926833",
+      "8ba3d98ad27f8febb172bc2392d72fe201ea3e96": "4a974d7351d5d2bb305ce2a5a7759b726c926833"
+    },
+    ".github": {
+      "711c45e75264000bde859328bd7dc131f68461d1": "d18070d8b32ffa035e44b1b9af6ab4e1c53bb54f",
+      "8ba3d98ad27f8febb172bc2392d72fe201ea3e96": "d18070d8b32ffa035e44b1b9af6ab4e1c53bb54f"
+    },
+    "package.json": {
+      "711c45e75264000bde859328bd7dc131f68461d1": "2e78ed52428d96d6b0e331fee49f35fca619383f",
+      "8ba3d98ad27f8febb172bc2392d72fe201ea3e96": "2e78ed52428d96d6b0e331fee49f35fca619383f"
+    },
+    "pnpm-lock.yaml": {
+      "711c45e75264000bde859328bd7dc131f68461d1": "4d32a38d99c18f6cf0ab726f80de26bfdfb49f98",
+      "8ba3d98ad27f8febb172bc2392d72fe201ea3e96": "4d32a38d99c18f6cf0ab726f80de26bfdfb49f98"
+    },
+    "scripts/vitest-setup-scratch.ts": {
+      "711c45e75264000bde859328bd7dc131f68461d1": "86009e1fac335bb40a399db816569855c08ff43c",
+      "8ba3d98ad27f8febb172bc2392d72fe201ea3e96": "86009e1fac335bb40a399db816569855c08ff43c"
+    }
+  },
+  "note": "Equality of source/config does not prove root cause of timing difference."
+}

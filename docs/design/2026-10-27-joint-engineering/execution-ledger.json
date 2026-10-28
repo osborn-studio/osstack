@@ -3435,7 +3435,7 @@
     "merged_at": "2026-10-28T16:24:46Z"
   },
   "next_framing_architecture_wave": {
-    "status": "published_draft_ci_pending",
+    "status": "draft_ci_failed_controlled_revalidation",
     "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
     "owners": {
       "loader_adversarial": {
@@ -3496,6 +3496,25 @@
     "published_head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
     "ci_run": 40730300608,
     "is_draft": true,
-    "workers": "three workers handed off; author worktrees removed; root full queue empty"
+    "workers": "three workers handed off; author worktrees removed; root full queue empty",
+    "ci_status": "attempt2_in_progress",
+    "ci_failure": {
+      "attempt": 1,
+      "test": "engineering-store.test.ts canonical schema46 migration",
+      "observed_ms": 5638,
+      "timeout_ms": 5000,
+      "core_passed": 1300,
+      "core_failed": 1,
+      "other_matrix_passed": 4,
+      "original_retained": true,
+      "cause": "unproven; prior297same test1094ms; Node and runner image differ"
+    },
+    "ci_revalidation": {
+      "attempt": 2,
+      "head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+      "scope": "only failed check; one controlled repeat",
+      "code_timeout_selection_changes": false,
+      "repeat_again_if_fails": false
+    }
   }
 }

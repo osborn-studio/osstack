@@ -1,0 +1,280 @@
+{
+  "at": "2026-10-28T17:27:32.970289+00:00",
+  "candidate": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+  "comparison_main": "711c45e75264000bde859328bd7dc131f68461d1",
+  "identical_git_objects": {
+    "packages": "4a974d7351d5d2bb305ce2a5a7759b726c926833",
+    ".github": "d18070d8b32ffa035e44b1b9af6ab4e1c53bb54f",
+    "pnpm-lock.yaml": "4d32a38d99c18f6cf0ab726f80de26bfdfb49f98",
+    "package.json": "2e78ed52428d96d6b0e331fee49f35fca619383f",
+    "pnpm-workspace.yaml": "a35e39b9cae202319660574f79ad66f810c26c46",
+    "scripts/vitest-setup-scratch.ts": "86009e1fac335bb40a399db816569855c08ff43c"
+  },
+  "only_changed_script": [
+    "scripts/export-osstack-methods.test.mjs"
+  ],
+  "inputs": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-impact-performance-20261028/ci297.log",
+      "bytes": 2023585,
+      "sha256": "56989cc6fa8f6ff4ca0038cff8dd8d915abb420d19fb659c3a6df4d2961dcc43"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-framing-ci298/full-attempt1.log",
+      "bytes": 820560,
+      "sha256": "1d14c1ee5e76e618557b7ee503b9b35690d95229f578cd987162c470c665a201"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-framing-ci298/failed.log",
+      "bytes": 96088,
+      "sha256": "a5c1a5b8f92a34eaa2f2d736dc9afd26a5d5f9442d0228d6dcfe04f4ac76c628"
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98a"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "c0cd58136c1926e84e167d1814f62d0dffa53ed82d5e2743acc2b8d338acdf5c",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e7"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "ce31fe4ca0847280338c9dfcb72fac8de7f1b99571e74c3ef10aaccaeb7d8655",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:packages"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "fdd5efacd4ec31e11d6b6776e92c705da9a77bd48b5a5e9059f30da0b6c5af7b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e75264000bde859328bd7dc131f68461d1:packages"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "fdd5efacd4ec31e11d6b6776e92c705da9a77bd48b5a5e9059f30da0b6c5af7b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:.github"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "0f285d1aef700948fd8f7735b83b9a56ac078255e06f1dd6c67fb5eb395ce1c9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e75264000bde859328bd7dc131f68461d1:.github"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "0f285d1aef700948fd8f7735b83b9a56ac078255e06f1dd6c67fb5eb395ce1c9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:pnpm-lock.yaml"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "66575640b8fe5be8db7996daef66483d6d88970a4f2ee967a8d98031ffad5384",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e75264000bde859328bd7dc131f68461d1:pnpm-lock.yaml"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "66575640b8fe5be8db7996daef66483d6d88970a4f2ee967a8d98031ffad5384",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:package.json"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "80e92e89f13eb4e6fe8210b2e2f4b4a21154397c178deda667384df88d253fbd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e75264000bde859328bd7dc131f68461d1:package.json"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "80e92e89f13eb4e6fe8210b2e2f4b4a21154397c178deda667384df88d253fbd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:pnpm-workspace.yaml"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "27446a03126420ca1adc8275c4c31552b99219d314fd03e05e2ca57f4a403ae5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e75264000bde859328bd7dc131f68461d1:pnpm-workspace.yaml"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "27446a03126420ca1adc8275c4c31552b99219d314fd03e05e2ca57f4a403ae5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:scripts/vitest-setup-scratch.ts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "e71cd38d0b9980284217e38be3015b1e5fc49cd75c970d3af7381b678a04981e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "rev-parse",
+        "711c45e75264000bde859328bd7dc131f68461d1:scripts/vitest-setup-scratch.ts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "e71cd38d0b9980284217e38be3015b1e5fc49cd75c970d3af7381b678a04981e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "diff",
+        "--name-only",
+        "711c45e75264000bde859328bd7dc131f68461d1",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+        "--",
+        "scripts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "713f482fc6c8c6543af0813150b60c53bdc85028fae34cf4ad929b603735a24a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:packages/core/src/state/engineering-store.test.ts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "15f4cd7bfdb63088a9130e7875ea8eff62f9398a1d3e9d368b1bba177353b11b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:packages/core/src/state/db.ts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "bda761c2999f90292d546b6b871ad83567b851cc605767d6d6cc12417f183fee",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:packages/core/vitest.config.ts"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "a6396a52dba5dac3a02dc498e9abdcc925a3cd691b63e931c12112f0f6cd8379",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "8ba3d98ad27f8febb172bc2392d72fe201ea3e96:.github/workflows/ci.yml"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout_sha256": "577d7819a9fbf2611b4be340a31e7f04ae277c0a7ffac1c50831aec7883c4b90",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "observations": {
+    "297": {
+      "case_status": "passed",
+      "case_ms": 1094,
+      "file_ms": 7429,
+      "node": "22.23.4",
+      "runner_image": "ubuntu-24.04 20261025.353.1",
+      "runner_version": "2.338.0"
+    },
+    "298_attempt1": {
+      "case_status": "timeout",
+      "case_ms_reported": 5638,
+      "timeout_ms": 5000,
+      "file_ms": 17183,
+      "core_passed": 1300,
+      "core_failed": 1,
+      "node": "22.23.3",
+      "runner_image": "ubuntu-24.04 20261012.334.1",
+      "runner_version": "2.338.0"
+    }
+  },
+  "source_assessment": "Synchronous test at line162 creates owned file DB, executes all migration SQL<=46 and user_version pragmas without explicit encompassing transaction, closes it, opens via openDb, asserts version47 and receipt preservation/no legacy dispatch, finally closes. Default test budget is 5000ms; file config supplies scratch setup only. Timing includes fixture construction and upgrade/assertions, with no phase telemetry. openDb busy_timeout=5000 is distinct from Vitest timeout and is not proof that a lock wait occurred.",
+  "causality_limits": [
+    "No SQL/assertion failure in this case is logged; observed failure is timeout.",
+    "Logs do not locate time among migration fixture creation, upgrade, assertions, hooks/scheduling or storage.",
+    "Node and runner image differ: previous success is not a same-environment control.",
+    "No CPU/disk/lock trace proves load, Node regression or any specific cause.",
+    "Identical package/workflow/lock objects rule out direct PR changes to the failed test/production dependencies; this does not prove absence of latent defects.",
+    "Changed export test is a later CI step (131-132), after package Test (128-129); it did not execute before this failure."
+  ],
+  "recommendation": "One same-head rerun of only the failed check is reasonable controlled re-observation: retain attempt1 and exact environment, do not change code/timeouts/skip/selection. A pass does not establish cause. A repeated failure requires phase-level investigation, not unlimited retries. Parent has already requested this single rerun; this agent did not trigger CI.",
+  "scope": "Read-only Git/log inspection; no tests, models, product/DB/management calls or repository changes."
+}
