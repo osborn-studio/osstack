@@ -3,7 +3,14 @@
   "document_tests": 241,
   "hygiene_tests": 1,
   "logs": {
-    "final-hygiene.log": "2e9474bb56cf677b24b365ffc2b4088a8ec106ca0f93fe98fa1c72488ef0a6ba",
-    "final-document-tests.log": "be3c2d6de019c041ea49a6f8812df7e11c1cb8f5e3d192ff40ba06fd1a279145"
-  }
+    "final-hygiene.log.gz": {
+      "uncompressed_sha256": "2e9474bb56cf677b24b365ffc2b4088a8ec106ca0f93fe98fa1c72488ef0a6ba",
+      "compressed_sha256": "79d5de7c73532c7d588f083c65d1130c8d609c289bc4fd79a42243f071316304"
+    },
+    "final-document-tests.log.gz": {
+      "uncompressed_sha256": "be3c2d6de019c041ea49a6f8812df7e11c1cb8f5e3d192ff40ba06fd1a279145",
+      "compressed_sha256": "fbc87a41774c16efbef3026888a2b0ff411edae741eddf74ec3c682d988e2296"
+    }
+  },
+  "storage": "Original log bytes retained losslessly in gzip; avoids treating raw trailing blank lines as source whitespace changes."
 }
