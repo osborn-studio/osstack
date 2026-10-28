@@ -1,0 +1,9 @@
+{
+  "archive": "raw-verification.tar.gz",
+  "sha256": "1b9d20a3a70db7f0fd3fd8aafe42b97cac51a71e513e5007d3e730653a5845d5",
+  "bytes": 2203639,
+  "members": 1151,
+  "payload_bytes": 7643942,
+  "verification": "all regular member names, bytes, SHA256 and modes verified after archive write; no extraction required",
+  "includes_original_failures": true
+}

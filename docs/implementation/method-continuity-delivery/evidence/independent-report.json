@@ -1,0 +1,331 @@
+{
+  "at": "2026-10-28T22:42:55.970280+00:00",
+  "result": "PASS_scoped_archive_integrity_lineage_and_report_claim_check",
+  "archive_sha256": "1b9d20a3a70db7f0fd3fd8aafe42b97cac51a71e513e5007d3e730653a5845d5",
+  "archive_bytes": 2203639,
+  "members": 1151,
+  "payload_bytes": 7643942,
+  "member_sha256_size_mode": "all_match",
+  "path_safety": "unique canonical relative regular files; no links/special files/absolute or parent traversal; archive not extracted",
+  "author": "98b6cbad02ba29cb4fa78447b1117c763c2a1866",
+  "root": "adfb03def56ed183e151977a94642933dceff895",
+  "all_eleven_author_paths_equal_root_and_current_files": [
+    {
+      "path": "docs/implementation/method-session-continuity/README.md",
+      "bytes": 6417,
+      "sha256": "20812d409e8a8c160414919023735942725ac14281366c14466dadf700f93522"
+    },
+    {
+      "path": "osstack-methods-skill/EXPORT.md",
+      "bytes": 5699,
+      "sha256": "7cac257e44036a6c6533f85068dd5f645eb7260521f0d7508fcee72688e0a1f9"
+    },
+    {
+      "path": "osstack-methods-skill/SKILL.md",
+      "bytes": 4688,
+      "sha256": "542dd22fa5a7365b90406f4f5509d15066f612496c663f802148697a60c05333"
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 4519,
+      "sha256": "6da9606f9fe1cc908339f3b81b747bd64da636ea19a0bd7c099b80f60812a031"
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 4348,
+      "sha256": "5d9e9102098fe951b51cc4a781fc43b14cd8f3344de3daf1c5dcf992cb41eecd"
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 5145,
+      "sha256": "77250f8008d9e23dc4b54be22998c34d0308e6ed301ae08757c18cf95b0cd512"
+    },
+    {
+      "path": "osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3510,
+      "sha256": "5225c353c50aa0d45c3d867d732f43b8eb88b0542edce37619c99f530bc3eefb"
+    },
+    {
+      "path": "osstack-methods-skill/references/host-usage.md",
+      "bytes": 3531,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "osstack-methods-skill/references/session-continuity.md",
+      "bytes": 7170,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "osstack-methods-skill/references/sources.md",
+      "bytes": 14088,
+      "sha256": "74e88dca8bfcf9ff7c99a262e90fc83d7f53412249de9b57e29bfc1c3918abd0"
+    },
+    {
+      "path": "scripts/export-osstack-methods.test.mjs",
+      "bytes": 37662,
+      "sha256": "5c1d1b156e2d84ff76b93b5eafdefe4e05e7bb171cb1ed8f97ae165c10c46857"
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/git",
+        "diff",
+        "--name-only",
+        "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "0002c4807f18e5e613b819d1a24c159bf2191fae0e5ad61c5d91376d968f318b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:docs/implementation/method-session-continuity/README.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "20812d409e8a8c160414919023735942725ac14281366c14466dadf700f93522",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:docs/implementation/method-session-continuity/README.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "20812d409e8a8c160414919023735942725ac14281366c14466dadf700f93522",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/EXPORT.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "7cac257e44036a6c6533f85068dd5f645eb7260521f0d7508fcee72688e0a1f9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/EXPORT.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "7cac257e44036a6c6533f85068dd5f645eb7260521f0d7508fcee72688e0a1f9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "542dd22fa5a7365b90406f4f5509d15066f612496c663f802148697a60c05333",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "542dd22fa5a7365b90406f4f5509d15066f612496c663f802148697a60c05333",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/entries/osstack-agent/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "6da9606f9fe1cc908339f3b81b747bd64da636ea19a0bd7c099b80f60812a031",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/entries/osstack-agent/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "6da9606f9fe1cc908339f3b81b747bd64da636ea19a0bd7c099b80f60812a031",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/entries/osstack-help/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "5d9e9102098fe951b51cc4a781fc43b14cd8f3344de3daf1c5dcf992cb41eecd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/entries/osstack-help/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "5d9e9102098fe951b51cc4a781fc43b14cd8f3344de3daf1c5dcf992cb41eecd",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/entries/osstack-mode/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "77250f8008d9e23dc4b54be22998c34d0308e6ed301ae08757c18cf95b0cd512",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/entries/osstack-mode/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "77250f8008d9e23dc4b54be22998c34d0308e6ed301ae08757c18cf95b0cd512",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/entries/setup-osstack/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "5225c353c50aa0d45c3d867d732f43b8eb88b0542edce37619c99f530bc3eefb",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/entries/setup-osstack/SKILL.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "5225c353c50aa0d45c3d867d732f43b8eb88b0542edce37619c99f530bc3eefb",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/references/host-usage.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/references/host-usage.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/references/session-continuity.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/references/session-continuity.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:osstack-methods-skill/references/sources.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "74e88dca8bfcf9ff7c99a262e90fc83d7f53412249de9b57e29bfc1c3918abd0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:osstack-methods-skill/references/sources.md"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "74e88dca8bfcf9ff7c99a262e90fc83d7f53412249de9b57e29bfc1c3918abd0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "98b6cbad02ba29cb4fa78447b1117c763c2a1866:scripts/export-osstack-methods.test.mjs"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "5c1d1b156e2d84ff76b93b5eafdefe4e05e7bb171cb1ed8f97ae165c10c46857",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/usr/bin/git",
+        "show",
+        "adfb03def56ed183e151977a94642933dceff895:scripts/export-osstack-methods.test.mjs"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+      "exit_code": 0,
+      "stdout_sha256": "5c1d1b156e2d84ff76b93b5eafdefe4e05e7bb171cb1ed8f97ae165c10c46857",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "host_report_sha256": "4b7f24616ddd99bfa4f0ef4d4fc2fdd2f6893b1bcd7d3109e33ac80d0e35aff6",
+  "graded_results_sha256": "c02633a2e359fe9abc0faa1665449cd36b42601249238faa86530790442eb891",
+  "semantic_check": "Both LIMITED conclusions retained. Codex explicit-cat/native-availability and unresolved-model/final-channel limits retained. Claude wrong same-built-artifacts comparison, narrowed proposal deliverable and local-evidence wording limits retained. Task-framing source a9 remains distinct from new continuity candidate. Inventory equality is parsed maps, not raw bytes. Cleanup claim is scoped historical analysis only.",
+  "limits": "Archive integrity is not credential absence proof, runtime qualification, formal principal independence or reexecution of model/tests. No original files changed.",
+  "revision_resolution": "I initially parsed compressed adfb11paths as a revision. Root clarified adfb plus eleven paths; actual object adfb03def56ed183e151977a94642933dceff895 is independently verified."
+}

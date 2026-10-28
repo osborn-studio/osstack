@@ -1,0 +1,258 @@
+{
+  "at": "2026-10-28T22:42:27.774761+00:00",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control/docs/implementation/method-continuity-delivery/evidence/raw-verification.tar.gz",
+  "archive_sha256": "1b9d20a3a70db7f0fd3fd8aafe42b97cac51a71e513e5007d3e730653a5845d5",
+  "scope": "only two owned workspace directories; no process-descendant/global/credential cleanup assertion",
+  "workspaces": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-continuity-20261029/host-framing/runs/codex-framing/workspace",
+      "verified_regular_files": [
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/SKILL.md",
+          "bytes": 4836,
+          "sha256": "01db024a44c58e2d1e2021a0da0bbd4693bdf9838e7f0052069a4b994a4e211f"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/architecture-design.md",
+          "bytes": 10992,
+          "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/bug-fix.md",
+          "bytes": 2168,
+          "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/change-impact.md",
+          "bytes": 6238,
+          "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/code-review.md",
+          "bytes": 7250,
+          "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/create-verification.md",
+          "bytes": 2603,
+          "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/engineering-decision.md",
+          "bytes": 4326,
+          "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/evidence.md",
+          "bytes": 4554,
+          "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/feature-map-template.md",
+          "bytes": 2242,
+          "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/feature.md",
+          "bytes": 3934,
+          "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/host-usage.md",
+          "bytes": 3171,
+          "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/investigation.md",
+          "bytes": 1752,
+          "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/maintain-verification.md",
+          "bytes": 3124,
+          "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/performance-measurement.md",
+          "bytes": 9893,
+          "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/refactoring.md",
+          "bytes": 4154,
+          "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/skills-check-journey.md",
+          "bytes": 7447,
+          "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/sources.md",
+          "bytes": 11195,
+          "sha256": "2e7c291ea22ac3b974cb7ba8438e764322a3e6140bb1c8aac49f2bf26e71ab72"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/.agents/skills/osstack-mode/references/task-framing.md",
+          "bytes": 5623,
+          "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/inputs/index.json",
+          "bytes": 1613,
+          "sha256": "e29e87ef4cc31589c0cc6cfc785719df5e8f23c59960b6a2a9e697fa8862ae94"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/inputs/originals/package.json",
+          "bytes": 6698,
+          "sha256": "effaac00f719dfbcc7eac7e9630ed566e335d846fd6acbee6d58b57dc0ad76e3"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/inputs/originals/packages/cli/src/cli-entry.ts",
+          "bytes": 2024,
+          "sha256": "d3434f41f3e8f3b31b9e014440e6ae6fa63f3095190c1b9a23fd6a2da8ba587e"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/inputs/originals/scripts/bench-cli-startup.mjs",
+          "bytes": 3170,
+          "sha256": "890e4cbdf2c3746055e0b6d7f31d2b2ae19aa4c5a8a940dab6406e80292783d0"
+        },
+        {
+          "path": "host-framing/runs/codex-framing/workspace/inputs/request.txt",
+          "bytes": 903,
+          "sha256": "b316b88091d2c23ae3d0b6032f1ff1fae3707cc3fe1f7fb52232116677d5ef37"
+        }
+      ],
+      "archive_bytes_exact": true,
+      "removed": true,
+      "evidence_preserved": true,
+      "state_preserved": true,
+      "private_home_already_absent": true
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-continuity-20261029/host-framing/runs/claude-framing/workspace",
+      "verified_regular_files": [
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/SKILL.md",
+          "bytes": 4836,
+          "sha256": "01db024a44c58e2d1e2021a0da0bbd4693bdf9838e7f0052069a4b994a4e211f"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/architecture-design.md",
+          "bytes": 10992,
+          "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/bug-fix.md",
+          "bytes": 2168,
+          "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/change-impact.md",
+          "bytes": 6238,
+          "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/code-review.md",
+          "bytes": 7250,
+          "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/create-verification.md",
+          "bytes": 2603,
+          "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/engineering-decision.md",
+          "bytes": 4326,
+          "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/evidence.md",
+          "bytes": 4554,
+          "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/feature-map-template.md",
+          "bytes": 2242,
+          "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/feature.md",
+          "bytes": 3934,
+          "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/host-usage.md",
+          "bytes": 3171,
+          "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/investigation.md",
+          "bytes": 1752,
+          "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/maintain-verification.md",
+          "bytes": 3124,
+          "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/performance-measurement.md",
+          "bytes": 9893,
+          "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/refactoring.md",
+          "bytes": 4154,
+          "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/skills-check-journey.md",
+          "bytes": 7447,
+          "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/sources.md",
+          "bytes": 11195,
+          "sha256": "2e7c291ea22ac3b974cb7ba8438e764322a3e6140bb1c8aac49f2bf26e71ab72"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/.claude/skills/osstack-mode/references/task-framing.md",
+          "bytes": 5623,
+          "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/inputs/index.json",
+          "bytes": 1613,
+          "sha256": "2ddd428b57dfb5c07e5b82b1188a3882b45024c76a49c9529f784fb06aced5ae"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/inputs/originals/package.json",
+          "bytes": 6698,
+          "sha256": "effaac00f719dfbcc7eac7e9630ed566e335d846fd6acbee6d58b57dc0ad76e3"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/inputs/originals/packages/cli/src/cli-entry.ts",
+          "bytes": 2024,
+          "sha256": "d3434f41f3e8f3b31b9e014440e6ae6fa63f3095190c1b9a23fd6a2da8ba587e"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/inputs/originals/scripts/bench-cli-startup.mjs",
+          "bytes": 3170,
+          "sha256": "890e4cbdf2c3746055e0b6d7f31d2b2ae19aa4c5a8a940dab6406e80292783d0"
+        },
+        {
+          "path": "host-framing/runs/claude-framing/workspace/inputs/request.txt",
+          "bytes": 903,
+          "sha256": "b316b88091d2c23ae3d0b6032f1ff1fae3707cc3fe1f7fb52232116677d5ef37"
+        }
+      ],
+      "archive_bytes_exact": true,
+      "removed": true,
+      "evidence_preserved": true,
+      "state_preserved": true,
+      "private_home_already_absent": true
+    }
+  ]
+}
