@@ -1,0 +1,77 @@
+[
+  {
+    "comment_id": 511,
+    "card_id": "card_00455914",
+    "author": "joint-entry",
+    "body": "PR300 published Draft head0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7, base codex/method-continuity-delivery / PR299. CI40789146519 in_progress. Actual Sonnet method closurePASS plus final91exports/241docs/1hygiene. Human approval only after CI and parent/main reconciliation.",
+    "created_at": 1793230961.447
+  },
+  {
+    "card_id": "card_00455914",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a PR readiness method: prepared next slice",
+    "body": "Original pstack99b609a babysit/opening-a-pr/bugbot-triage read; scheduling plan and9future vectors prepared. No implementation, no model calls, no freeze. Recheck latestmain/PR299 and owners before dispatch. Scope10files method material/export contracts; no watcher/runtime/automerge. Usergilberthello merges. Protocol in docs/implementation/method-continuity-publication/next-pr-readiness.",
+    "status": "running",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793227545.778,
+    "updated_at": 1793230961.448,
+    "started_at": 1793229160.772,
+    "completed_at": null
+  },
+  {
+    "comment_id": 512,
+    "card_id": "card_b6355d9e",
+    "author": "joint-entry",
+    "body": "Independent bounded task complete: candidate exports/criteria/host grades/archive all verified.1383members14146812bytes hash30582ba5. PR299 latestCI22packages7142/7/0. This done status is evidence-check task only, not formal gate or host PASS.",
+    "created_at": 1793230961.448
+  },
+  {
+    "card_id": "card_b6355d9e",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PR readiness independent acceptance and verification",
+    "body": "Input maina9e480d3, provisional299head38f13cff. Exclusive scratch method-pr-readiness-20261029. No central/product writes, no model userturn before fresh freeze/root dispatch, no full-suite/PR/merge actions.",
+    "status": "done",
+    "priority": 0,
+    "assignee": "cleanup_regression",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793229160.773,
+    "updated_at": 1793230961.449,
+    "started_at": 1793229160.773,
+    "completed_at": 1793230961.449
+  },
+  {
+    "comment_id": 513,
+    "card_id": "card_d520a214",
+    "author": "joint-entry",
+    "body": "Bounded host task closed: two one-turn synthetic probes; CodexLIMITED,ClaudeFAILED578>500; both B candidate-binding plan gaps retained. Original REVISE/reportclosurePASS preserved. Four owned26file workspaces archive-verified then removed; no all-descendant/auth isolation claim. No retries.",
+    "created_at": 1793230961.449
+  },
+  {
+    "card_id": "card_d520a214",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PR299 CI diagnosis and PR readiness host preparation",
+    "body": "Input maina9e480d3, provisional299head38f13cff. Exclusive scratch method-pr-readiness-20261029. No central/product writes, no model userturn before fresh freeze/root dispatch, no full-suite/PR/merge actions.",
+    "status": "done",
+    "priority": 0,
+    "assignee": "terminal_preflight",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793229160.774,
+    "updated_at": 1793230961.449,
+    "started_at": 1793229160.774,
+    "completed_at": 1793230961.449
+  }
+]

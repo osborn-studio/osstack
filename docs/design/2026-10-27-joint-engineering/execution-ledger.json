@@ -3673,7 +3673,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "audited_candidate_host_probe_closed_publication_pending",
+    "status": "draft_ci_running",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3723,6 +3723,14 @@
       "limited_report_accuracy_closure_PASS"
     ],
     "owned_host_workspaces_archived_then_removed": 4,
-    "archive_independently_verified": true
+    "archive_independently_verified": true,
+    "pr": 300,
+    "published_head": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
+    "base_branch": "codex/method-continuity-delivery",
+    "ci_run": 40789146519,
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1,
+    "publication_evidence": "docs/implementation/method-pr-readiness-publication",
+    "user_approval_required": true
   }
 }
