@@ -3140,8 +3140,10 @@
       "independent_card": "card_c49a2a2c",
       "branch": "codex/method-evidence-projection",
       "base": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
-      "status": "waiting_prefrozen_criteria_then_implementation",
-      "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation"
+      "status": "criteria_prefrozen_author_implementation_authorized",
+      "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation",
+      "criteria_sha256": "dea3d5b26124a97cf0dfba60cbe852a4fd167293231472b24790498354c3361e",
+      "independent_vectors": 15
     }
   }
 }
