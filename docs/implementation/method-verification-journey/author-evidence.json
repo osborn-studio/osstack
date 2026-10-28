@@ -1,0 +1,35 @@
+{
+  "archive": "author-evidence.tar.gz",
+  "sha256": "044f184a2814ced38aaeb28cea1f2d326178975b03c631749fc174b39c8611e3",
+  "bytes": 711364,
+  "manifest_sha256": "9846d161d947620955e3e63d69a71b1226739ffca71f830179b84e2a43c36d33",
+  "files": 169,
+  "code_sha": "4ad0832207ab8d42629a42bd7f7ae9e5e52587d4",
+  "historical_code_sha": "bfa4b432a9af52596d0133e46e9fe961a7c91ed2",
+  "scope": "Author validation only. Model audits and independent adversarial review are archived separately by project root.",
+  "checks": {
+    "focused": {
+      "passed": 24,
+      "failed": 0
+    },
+    "default_scratch": {
+      "passed": 24,
+      "failed": 0,
+      "timing": "same source before commit"
+    },
+    "actual_journey": {
+      "healthy_product_exit": 0,
+      "missing_ref_product_exit": 1,
+      "driver_exits": [
+        0,
+        0
+      ],
+      "retained_members_per_case": [
+        29,
+        29
+      ]
+    },
+    "full_suite": "not_run_by_worker"
+  },
+  "privacy": "No auth or private-home material included; logs contain local checkout/scratch paths. Author-owned fixtures and logs only; no symlink members."
+}
