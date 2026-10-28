@@ -1,3 +1,10 @@
+# Preserved audit text
+
+This text block retains the original audit verbatim. Example links are quoted audit data, not navigation in this document.
+
+Original SHA-256: `e6760583f00a5f620e4c3c6e5afc1039f65c3add6a89977eebb4d561de6d4381`. Original byte length: 7649.
+
+````````text
 # Verdict: REVISE
 
 Candidate `4b0f2267…`. This is a read-only review with no execution, so every counterexample below comes from reading the code and should be reproduced by the author. I marked the one finding where I'm unsure of the complexity class.
@@ -73,3 +80,4 @@ Nothing I found breaks the core no-overwrite property. That includes the `lstat`
 
 - The Codex (`.agents/skills`) and Claude (`.claude/skills`) layouts, the YAML front matter, and the stated limits are consistent with a D2a material export. The limits are no discovery, no runtime, and no qualification.
 - I raised nothing about installation, native discovery or principal qualification.
+````````

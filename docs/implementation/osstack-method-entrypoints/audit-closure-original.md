@@ -1,3 +1,10 @@
+# Preserved audit text
+
+This text block retains the original audit verbatim. Example links are quoted audit data, not navigation in this document.
+
+Original SHA-256: `fcc193aa073daa7c610d12d5bcb74477096c6cfe3a0e2ba6787988219310524d`. Original byte length: 5389.
+
+````````text
 # Verdict: REVISE (narrow)
 
 B4 is closed, and the three named B1 triggers and three confirmed B3 cases are closed by my reading. B2 and the full B1/B3 intent are not yet closed.
@@ -55,3 +62,4 @@ This was a read-only review of the embedded source. I executed nothing and could
 - **HTML scan:** an attribute value containing `>` before `href` (`<a title="a>b" href=…>`) defeats the angle-region scan. This is exotic and low priority.
 
 Fixing R1–R4 with the listed tests should be enough for a PASS on a re-check.
+````````

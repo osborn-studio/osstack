@@ -1,3 +1,10 @@
+# Preserved audit text
+
+This text block retains the original audit verbatim. Example links are quoted audit data, not navigation in this document.
+
+Original SHA-256: `879ecc235386cc592161c6da02c41ed613bf52c5c86845937bce0f8b59a3111d`. Original byte length: 5678.
+
+````````text
 # Verdict: REVISE (narrow, one blocker)
 
 R1, R2, R3 and R4 are closed on their stated scope. One new blocker comes from the R2 repair: an unbounded prefix regex makes a hostile line quadratic.
@@ -37,3 +44,4 @@ This is a read-only review of the embedded text. I executed nothing and did not 
 - **Setup-confirmation deferral:** per your note, I accept the existing authorization and do not reopen it.
 
 After the Blocker 1 fix and its timing test pass, I would give PASS for the stated scope.
+````````

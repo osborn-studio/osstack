@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "original_commit": "7ca741f7a1e3b58c91c47201d5b18c47cbdb0dd6",
+  "audits": [
+    {
+      "path": "audit-closure-original.md",
+      "original_payload_equal_git_bytes": true,
+      "original_sha256": "fcc193aa073daa7c610d12d5bcb74477096c6cfe3a0e2ba6787988219310524d",
+      "presentation_sha256": "806c62262cd2142bbfc34d924e1952a6bbb7d55d6aaae3ee70ccb3f9bb1db210"
+    },
+    {
+      "path": "audit-final-original.md",
+      "original_payload_equal_git_bytes": true,
+      "original_sha256": "879ecc235386cc592161c6da02c41ed613bf52c5c86845937bce0f8b59a3111d",
+      "presentation_sha256": "16d9013c57cdf8022850799f9b7a7664e40080c39b0c5da0e4157af3cefb63c9"
+    },
+    {
+      "path": "audit-original.md",
+      "original_payload_equal_git_bytes": true,
+      "original_sha256": "e6760583f00a5f620e4c3c6e5afc1039f65c3add6a89977eebb4d561de6d4381",
+      "presentation_sha256": "ed60b1867e0e55f03c1713b5dd8855863b0fc3e21466137a0e879fa7ad396a3b"
+    },
+    {
+      "path": "audit-prefix-closure-original.md",
+      "original_payload_equal_git_bytes": true,
+      "original_sha256": "dd51a94766a05283125d48b28499dcbcb9ea67a25701bca426f0180f0e535eb2",
+      "presentation_sha256": "ebc12785bc232855e5b6e13a2a6dcb625f68b1d7784b714ee456611a27689ac5"
+    }
+  ],
+  "historical_archive_and_manifest_unchanged": true
+}

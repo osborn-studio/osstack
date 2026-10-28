@@ -1,3 +1,10 @@
+# Preserved audit text
+
+This text block retains the original audit verbatim. Example links are quoted audit data, not navigation in this document.
+
+Original SHA-256: `dd51a94766a05283125d48b28499dcbcb9ea67a25701bca426f0180f0e535eb2`. Original byte length: 3794.
+
+````````text
 # Verdict: PASS
 
 This is a read-only review of the embedded text and diff. I executed nothing and did not verify the commit hash. The claims about the 880001-byte input (a 4 s timeout before, about 220 ms now) are the author's, not reproduced by me.
@@ -39,3 +46,4 @@ The test count is 62 + 1 = 63, which matches.
 - **Prior optional items:** scheme autolinks after an unmatched `<`, the HTML attribute blocklist, and the documentation notes stay as optional and are not regressions.
 
 No directly introduced regression found. Closure of the single remaining blocker is confirmed on the stated scope.
+````````
