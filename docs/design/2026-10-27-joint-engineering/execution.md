@@ -181,3 +181,15 @@ Claude v2 已按原标准完成独立评分：无包负例及有包命名发现/
 ## Next methods and real verification journey
 
 The user explicitly requested parallel implementation through OSStack. Three distinct running cards now cover feature/refactoring method materials (`card_766d64bc`), a bounded reusable healthy/missing-ref verification journey (`card_e0b5babf`), and independent prefrozen behavior/fault checks (`card_3247e7bd`). The two writers start from actual main `ca95aba1` in separate worktrees; the independent reviewer writes only scratch evidence. Root alone owns the central ledger, PRs, actual Sonnet audits and full-regression queue. These D2a tasks proceed while the native-discovery documentation candidate closes audit/CI. Existing formal gates and the original four-call experiment remain unchanged.
+
+### Parallel method delivery checkpoint, 2026-10-28
+
+Root reconciled merged #291/#292 with main `ca95aba1`. The three-worker wave produced Draft #293 (feature/refactoring materials and earlier native evidence) and Draft #294 (fixed real verification journey). #293 passed all five applicable current-head checks and is Ready; #294 remains Draft pending current-head CI. User approval order is #293 then #294, with actual-main verification between merges. The exact source composition passed the targeted integration checks. SHA-specific counts and audit scope are recorded in `next_method_development_wave`; historical full results were not rebound to later standalone changes.
+
+The new host-assisted experiment is separate: Codex phase1 chose the correct route within the response limit and its authorized coordinator ran the two real fixtures. Claude phase1 exceeded the frozen response limit and stopped without retry. Neither result qualifies autonomous native execution, all method capabilities, an independent principal, or J01/J11. Root retains the PR/ledger boundary; independent review and composition checks ran concurrently with code work, while full regressions used one queue.
+
+
+PR294 `5929180d` subsequently completed run40688548373 with all five applicable checks successful and paid smoke skipped. Current-head Linux package regression reports 7142 passed / 7 skipped / 0 failed; the new 25 journey tests and actual two-case journey passed in CI. Root marked #294 Ready after confirming main remains `ca95aba1` and both published heads remain unchanged. User merge order remains #293 then #294; actual-main integration must be checked after #293 merges. This updates readiness, not any formal gate or historical test SHA.
+
+
+PR293 and PR294 were verified merged at `38eb42c0` and `42dbdb0a`. Actual main tree `64168acca` equals the prior exact published-head composition `a072c817`; no historical test is relabelled a new main run. The next two isolated D2a slices are closed model evidence projection and exported method journey references. Root owns the central ledger, actual Sonnet review and PR publication; independent mutation checks retain their prefreeze. No new host experiment or runtime gate is implied.

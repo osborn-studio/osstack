@@ -1,0 +1,13 @@
+{
+  "code_sha": "6512cde7b634689dd29af14292b9f4de5a471afa",
+  "checks": {
+    "docs-final": {
+      "passed": 241,
+      "sha256": "f102b4f1717d8ef5d7eddaf5d6fa5c7c71837e360d69bd1ae52500daac39840e"
+    },
+    "hygiene-final": {
+      "passed": 1,
+      "sha256": "7eeafc1de8828c1284fa43c16b617c17fee93c975c7e11f72639001df38d3410"
+    }
+  }
+}

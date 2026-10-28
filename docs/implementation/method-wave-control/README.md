@@ -1,0 +1,7 @@
+# Method wave delivery control
+
+This checkpoint composes published #293 and #294 without opening a third product PR. The parent source composition was actually built and tested; later review/evidence additions are described separately. The central execution ledger records exact candidates and pending CI. User gilberthello approves and merges.
+
+The new host journey used three actual model calls and one fixed coordinator execution. Claude phase1 stopped at its frozen word limit. Codex interpreted the actual two-case evidence correctly, but the literal environmental-reading constraint was not met when it read provided command records containing non-secret environment fields. The protocol requested raw evidence while forbidding environmental inspection; this tension is retained as an experiment limitation, not a credential leak or product defect. No live environment access was observed. The original criteria remain unchanged, with no retry or overall PASS. Full original evidence and independent grading are retained separately from earlier help/native experiments.
+
+Next work should resolve the evidence-input boundary before another independently frozen experiment, preserve complete machine-readable raw artifacts, and provide the model a declared, hash-bound projection. A future projection cannot repair this experiment retroactively. Formal J01/J11 and autonomous runtime qualification remain unpassed.

@@ -1,0 +1,13 @@
+# Independent projection verification — 1cfbf3ad
+
+Candidate: 1cfbf3ade5d9b6de1c2c42cd92788c1c552e235e. Three projection files equal integrated delivery 309fb645 byte for byte (delivery-source-comparison.json). Original 1038/0e evidence remains unchanged.
+
+Original frozen scope: all 33 command-level observations matched their expectations. See results.json, challenge.py and their original per-command logs. The original two unexpected accepts remain rejected.
+
+Post-audit scope: 24 additional real CLI calls matched expectations, independently modifying copies of retained real 66ad pair evidence and re-signing manifests. These are explicitly later additions, not retroactive additions to the original dea3 criteria. See post-audit.py and post-audit/results.json. They cover failed-cleanup promotion, not-created reported claims/bindings, passed reported exit, upper-verifier failure with driver pass, run status/unchanged/final binding contradictions, receipt failure/behavior, three independent identity changes, input and command/detail conflicts, cross-case consistency, missing run, bounded directory inventory, safe fixed errors and filesystem-path redaction.
+
+The failed driver-pass/verifier-fail record projects and portable-checks without promoting product/cleanup claims. The overall-passed cross-case digest mismatch rejects specifically with cross_case_bindings. A second control preserves both individually passed observations and differing digests when the overall journey is failed; this reflects the real wrapper ordering and does not erase failure history. Missing run/input/detail/id mutations fail for their intended reasons. A 140-extra-file directory rejects with directory_entry_limit before acquiring output. This is an observed inventory bound, not a measured heap/OS containment proof.
+
+Source input hashes and worktree status remained unchanged. Successful CLI output states input_opened_read_only rather than falsely claiming measured immutability; the independent harness separately measured original hashes. All commands, timestamps, stdout/stderr, source mutations and output packets are retained. No confirmed new defect in this bounded run.
+
+Limits: resealed records are synthetic mutations of previously retained evidence, not new product executions. Hash/schema consistency does not establish historical authenticity, compiler provenance, live fixture state, model behavior, native host discovery or J01 independent-principal qualification. No full suite, product driver, model, management instance or default home was run. Intentional test symlinks exist in the original replay scratch: manifest records links without following them; archive them safely.

@@ -1,0 +1,39 @@
+{
+  "head": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
+  "ci_run": 40688548373,
+  "log_sha256": "ed462387563936f5281a2c1bf7d669ca02f7b27fbb31c98a19a206d5987ca67f",
+  "full_counts": {
+    "passed": 7142,
+    "skipped": 7,
+    "failed": 0
+  },
+  "rows": [
+    "check\tTest\t2026-10-28T12:35:25.3435239Z packages/contracts test:       Tests  15 passed (15)",
+    "check\tTest\t2026-10-28T12:35:25.3785248Z packages/compliance test:       Tests  17 passed (17)",
+    "check\tTest\t2026-10-28T12:35:27.1594579Z packages/github test:       Tests  107 passed (107)",
+    "check\tTest\t2026-10-28T12:35:29.0830760Z packages/knowledge test:       Tests  44 passed (44)",
+    "check\tTest\t2026-10-28T12:35:30.8534907Z packages/neat-eval test:       Tests  16 passed (16)",
+    "check\tTest\t2026-10-28T12:35:31.6615333Z packages/runtime test:       Tests  1 passed (1)",
+    "check\tTest\t2026-10-28T12:35:37.1564480Z packages/protocol test:       Tests  1012 passed (1012)",
+    "check\tTest\t2026-10-28T12:35:38.2627402Z packages/governance test:       Tests  301 passed (301)",
+    "check\tTest\t2026-10-28T12:35:40.2904206Z packages/knowledge-cloud test:       Tests  36 passed (36)",
+    "check\tTest\t2026-10-28T12:35:50.1734749Z packages/graph test:       Tests  257 passed (257)",
+    "check\tTest\t2026-10-28T12:36:40.8242645Z packages/core test:       Tests  1301 passed (1301)",
+    "check\tTest\t2026-10-28T12:36:42.6369529Z packages/plugins test:       Tests  1 passed (1)",
+    "check\tTest\t2026-10-28T12:36:42.7095425Z packages/hermes-adapter test:       Tests  22 passed (22)",
+    "check\tTest\t2026-10-28T12:36:44.1542214Z packages/skills test:       Tests  2 passed (2)",
+    "check\tTest\t2026-10-28T12:36:50.3814683Z packages/autonomy test:       Tests  201 passed (201)",
+    "check\tTest\t2026-10-28T12:36:53.7713878Z packages/skill-registry test:       Tests  43 passed (43)",
+    "check\tTest\t2026-10-28T12:37:06.6290914Z packages/agents test:       Tests  361 passed (361)",
+    "check\tTest\t2026-10-28T12:37:09.8898254Z packages/config test:       Tests  30 passed (30)",
+    "check\tTest\t2026-10-28T12:37:29.3720008Z packages/loop test:       Tests  514 passed | 1 skipped (515)",
+    "check\tTest\t2026-10-28T12:37:35.3009060Z packages/conformance test:       Tests  9 passed (9)",
+    "check\tTest\t2026-10-28T12:37:36.4914585Z packages/supervisor test:       Tests  88 passed (88)",
+    "check\tTest\t2026-10-28T12:46:16.3584794Z packages/cli test:       Tests  2764 passed | 6 skipped (2770)"
+  ],
+  "journey_test_lines": [
+    "check\tMethod verification journey contracts\t2026-10-28T12:46:47.2799914Z # tests 25",
+    "check\tMethod verification journey contracts\t2026-10-28T12:46:47.2800396Z # pass 25",
+    "check\tMethod verification journey contracts\t2026-10-28T12:46:47.2800650Z # fail 0"
+  ]
+}

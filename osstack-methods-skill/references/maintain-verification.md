@@ -16,3 +16,5 @@ Report one outcome with its coverage:
 - **blocked**: a prerequisite, ambiguous failure, unsafe ownership or incomplete required coverage prevents completion. Retain findings and a specific next step.
 
 For partial work, report “blocked, with verified corrections” rather than suggesting the whole map is current. A product regression remains in the evidence even if a separate harness defect was fixed. No recurring automation is created by this method.
+
+The [skills-check journey](skills-check-journey.md) is a concrete two-row target. Maintain both `healthy` and `missing-ref`; the expected negative remains a source failure. Its map excludes drift, mixed and empty cases. A complete pass over those two rows is not full skills-check coverage. Follow the wrapper interface in that reference rather than transferring options from its underlying driver.

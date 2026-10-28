@@ -1,0 +1,58 @@
+{
+  "checked_at": "2026-10-28T12:43:02.160601+00:00",
+  "execution_archive_sha256": "fe4a43188e1da8c336f51714209eb413d6e7d93a065458973f4fbcdfd657b532",
+  "execution_members_verified": 1274,
+  "manifest_declared_members_verified": 1273,
+  "extra_member": "publication/member-manifest.json itself, exact external bytes",
+  "safe_regular_member_paths": true,
+  "cleanup_archive_sha256": "11e03a69ae68145a53628a3b279a0b00bc254f81bf0fd10dc63d1f29da15c067",
+  "cleanup_members_verified": 6,
+  "cleanup_paths_observed_absent": true,
+  "original_grades_unchanged": [
+    {
+      "path": "criteria-prefreeze.json",
+      "sha256": "43089390e2d7344fe2690d297d2381a8ca3bfa381a50d79596503567e005829b",
+      "same_archive_copy_and_original": true
+    },
+    {
+      "path": "phase1-graded-results.json",
+      "sha256": "64d4c5be384b179b2f916de8090afd4842cd1edaaebe3d357db711e80d0f2434",
+      "same_archive_copy_and_original": true
+    },
+    {
+      "path": "phase1-graded-results.md",
+      "sha256": "ce147d5cfcf588056d1004bb8bd2d43a58d556196795af4a9e8140057dd57b98",
+      "same_archive_copy_and_original": true
+    },
+    {
+      "path": "phase2-graded-results.json",
+      "sha256": "adfe811a72db5611da4223a0ef84d97a6b6ea6ebf849fcbcaacf6844fbb85ce1",
+      "same_archive_copy_and_original": true
+    },
+    {
+      "path": "phase2-graded-results.md",
+      "sha256": "f12839d908396b7b15d0a12f12287b9a3005056ef201f390b82dbf7984876129",
+      "same_archive_copy_and_original": true
+    }
+  ],
+  "conclusion_clarification": {
+    "codex_phase1": "accepted_for_next_stage_with_limits; shell cat material consumption, not native Skill event; resolved model not_attested",
+    "codex_phase2_boundaries": "failed",
+    "codex_phase2_overall": "limited",
+    "environment_scope": "provided recorded nonsecret fields, not observed live environment/credential read",
+    "claude": "507>500 failed; additionally imprecise scratch-empty wording, per-child driver0 not explicit, four scripts unread; no phase2 conclusion",
+    "receipt_attribution": "per-case receipt.json produced by driver; coordinator ran wrapper and retained them",
+    "phase2_route": "Investigation; unique create-verification rule applies phase1, not phase2",
+    "routing_strength": "Explicit skill and near-matching task wording; not blind/implicit routing or causal superiority. Maintain-method read follows explicit handoff link from create-verification instructions."
+  },
+  "time_ordering": {
+    "coordinator_start": "2026-10-28T12:30:36.748881+00:00",
+    "coordinator_end": "2026-10-28T12:30:38.718766+00:00",
+    "phase1_grade_file_write_timestamp": "2026-10-28T12:30:51.226066+00:00",
+    "finding": "Final grade document was written after coordinator execution. Its driver-not_run phrase describes phase1 observation scope, not live batch status at write time.",
+    "actual_authorization_basis": "Contemporaneous subagent initial-review tool message to root accepted Codex for next stage with limits before root released coordinator, as retained in task conversation; final JSON is later persisted scoring.",
+    "proof_limit": "Archive alone does not contain a separate timestamp-authenticated copy of that initial conversation message or a pre-execution final-grade document. Do not claim the final persisted grade file gated the coordinator, backdate it, or invent an earlier durable record."
+  },
+  "overall_pass": false,
+  "scope": "Read-only archive integrity and reporting clarification; no new model/test/product action or original report rewrite."
+}
