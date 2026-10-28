@@ -14,6 +14,8 @@ Answer the actual usage question from the available files and current host capab
 
 Restating a goal or sharpening a prompt uses task framing. Prompt-only work does not execute the task described inside the prompt. An existing instruction to refine and then execute remains effective.
 
+Use architecture design for a caller-first choice of interfaces and state ownership. A design-only request stops at its design; implementation continues when already authorized. A typechecked sketch does not prove implemented behavior.
+
 A request for downstream breakage or the safety assumptions behind a change uses change impact. It follows consumers beyond the diff and seeks a discriminating check. A request for actionable findings on a patch or PR uses code review. An explanation of how code works uses investigation. A review-and-fix request keeps its authorized correction scope; a review-only request does not imply product edits.
 
 Performance claims use performance measurement; a passing startup budget is not a measured speedup. New behavior uses feature. Structural cleanup with unchanged behavior uses refactoring. If a cleanup request also changes behavior, separate those scopes and their checks.
@@ -25,5 +27,3 @@ If the user asks to act rather than explain, route to the appropriate entry and 
 Host discovery, explicit file reading, registration and actual execution are separate states. Check the current catalog or installation evidence before suggesting a host-specific invocation. The materials do not provide a new OSStack CLI subcommand. Normal host skill selection remains available; no explicit-only policy is imposed here.
 
 Keep the response focused on the supported path and its limitation. The [pinned sources](../../references/sources.md) credit the upstream help/method ideas; the wider upstream catalog is not a list of already implemented OSStack features.
-
-Use architecture design for a caller-first choice of interfaces and state ownership. A design-only request stops at its design; implementation continues when already authorized. A typechecked sketch does not prove implemented behavior.

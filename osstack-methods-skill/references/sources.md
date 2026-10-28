@@ -54,3 +54,12 @@ The caller-first architecture method adapts these pinned original sources:
 - [Migrate callers](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md).
 
 OSStack retains real caller traces, structurally distinct designs, state ownership and lifecycle reasoning, deep interfaces, migration and evidence-bound checks. It does not import fixed models, mandatory arena/delegation, arbitrary file-count limits or permission to delete working code. Design-only and already-authorized implementation keep their distinct boundaries; sketches and synthetic comparisons are not implemented APIs or actual execution proof. Static internal types do not replace validation at external database, RPC or IPC boundaries.
+
+Additional architecture sources at the same pin:
+
+- [Idempotent operations](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-make-operations-idempotent/SKILL.md).
+- [Distinct design alternatives](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-exhaust-the-design-space/SKILL.md).
+- [Encode lessons in structure](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-encode-lessons-in-structure/SKILL.md).
+- [Redesign from first principles](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-redesign-from-first-principles/SKILL.md).
+
+Upstream restatement, sharpening and architect entries disable automatic model invocation. OSStack adapts them into shared mode selection instead of copying that host-specific setting. Task framing remains for a requested restatement/refinement; architecture follows the requested design or implementation scope. Selection does not itself authorize execution.

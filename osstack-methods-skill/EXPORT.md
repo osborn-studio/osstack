@@ -15,7 +15,7 @@ Open the generated project in the intended host and check the actual skill catal
 
 ## Host discovery checks
 
-The observations below are bound to the earlier four-method materials at `ca95aba1`; they do not validate later feature/refactoring/code-review/change-impact/performance-measurement/task-framing additions. Their new export checks and any later host experiments have separate candidate bindings.
+The observations below are bound to the earlier four-method materials at `ca95aba1`; they do not validate later feature/refactoring/code-review/change-impact/performance-measurement/task-framing/architecture-design additions. Their new export checks and any later host experiments have separate candidate bindings.
 
 A successful export and a model saying it used a skill are separate observations. For Codex, a native `skills/list` catalog probe can establish which project entries are available; if execution uses a separate process, retain that distinction and inspect its actual material-read results. In the CLI 0.160.1 experiment, all four entries appeared in the separate catalog, then the execution read the exported help and maintenance material via shell `cat`. No native skill-invocation event is attested for that execution. The overall result remains `inconclusive_observability`: the original workspace snapshot omitted Git metadata, resolved model identity was not exposed, and catalog process timing/PID and the vendor executable fingerprint were not captured. See the [experiment limits](../docs/implementation/method-native-discovery/README.md). This does not qualify Codex App or consumption of every entry.
 

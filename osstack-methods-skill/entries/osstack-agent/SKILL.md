@@ -1,6 +1,6 @@
 ---
 name: osstack-agent
-description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's task framing, performance measurement review, change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
+description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's caller-first architecture design, task framing, performance measurement review, change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
 ---
 
 # OSStack delegated method
