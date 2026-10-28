@@ -1,0 +1,208 @@
+{
+  "observed_at": "2026-10-28T14:36:11.939118+00:00",
+  "case": "claude-packet-v2",
+  "overall": "failed_answer_word_limit",
+  "criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
+  "supplement_sha256": "31b9827634f076ad1a82a6b5652ab91875ac8dcb9d37f96578a029b87c488a38",
+  "guard_sha256": "3e66b89bc3ff1b6dcfb69a76b284bb91d7e9f0871ac43562ddcdd2584c085e89",
+  "frozen_files_verified": 79,
+  "word_count": 515,
+  "word_limit": 500,
+  "final_event_index": 20,
+  "result_event_index": 21,
+  "final_sha256": "bd300168063e80bc6e5414d43169ae36ee7cfd7373e8220b0e98f7a19f15831b",
+  "actual_reads": [
+    {
+      "tool_event": 7,
+      "result_event": 8,
+      "path": "inputs/index.json",
+      "bytes": 1010,
+      "sha256": "40e0dc6fae4cb62f8f188476c32e1094be6e6d181473d08a8fe76d4f5858bb9e",
+      "complete_numbered_content_equal": true
+    },
+    {
+      "tool_event": 12,
+      "result_event": 13,
+      "path": ".claude/skills/osstack-mode/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "complete_numbered_content_equal": true
+    },
+    {
+      "tool_event": 14,
+      "result_event": 15,
+      "path": ".claude/skills/osstack-mode/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "complete_numbered_content_equal": true
+    },
+    {
+      "tool_event": 16,
+      "result_event": 17,
+      "path": "inputs/packet/packet.json",
+      "bytes": 6008,
+      "sha256": "42b903f7f3393923134a51826308a8a088ab7943b51336a9ac1aee22f6f91896",
+      "complete_numbered_content_equal": true
+    },
+    {
+      "tool_event": 18,
+      "result_event": 19,
+      "path": "inputs/packet/manifest.json",
+      "bytes": 189,
+      "sha256": "20dd86e84bc3bd6e586575e8020509c2e1c8e74e7cd6983859acdf5703306c1f",
+      "complete_numbered_content_equal": true
+    }
+  ],
+  "native_skill_body": {
+    "event": 6,
+    "source_sha256": "ca3d7fd17097f291f9307720b1bd131634140da72ffb814dd4b8ed7b178130e5",
+    "expanded_text_sha256": "659039f98911be1cfdf1bd048dc5ffb83a341a425d494e03d53c3acfa93ed3f1",
+    "exact_body_equal": true
+  },
+  "axes": [
+    {
+      "id": "C01",
+      "status": "pass_scoped",
+      "basis": "Frozen guard dependencies match; new v2 supplement precedes this call. Original blocked case unchanged."
+    },
+    {
+      "id": "C02",
+      "status": "failed",
+      "basis": "Entire final response has 515 Python str.split words; limit is 500. Assistant event20 and result21 contain the same final."
+    },
+    {
+      "id": "C03",
+      "status": "pass_scoped",
+      "basis": "Read packet and manifest bytes match frozen files; workspace contains no original machine archive. Integrity does not authenticate producer."
+    },
+    {
+      "id": "C04",
+      "status": "pass_scoped",
+      "basis": "Two rows correctly separate product0/1 and driver0/0, expected negative and recorded verification."
+    },
+    {
+      "id": "C05",
+      "status": "not_tested_beyond_supplied_packet",
+      "basis": "Answer preserves omitted cases and descendant not_attested; this passed packet does not test arbitrary failed/unknown examples."
+    },
+    {
+      "id": "C06",
+      "status": "pass_scoped_manual_review",
+      "basis": "Scoped explanation matches provided claims and limits; structural checks alone do not prove understanding. The parenthetical each stream has5 omitted bytes follows selected stdout lines; both stdout streams do, and the answer separately identifies empty stderr. No additional substantive contradiction confirmed."
+    },
+    {
+      "id": "C07",
+      "status": "pass_native_skill_and_explicit_reads",
+      "basis": "Skill event4/result5/body6 is native invocation and full body expansion. Read events7,12,14,16,18 match index, investigation, evidence, packet and manifest bytes. Glob event9 lists only the two packet files."
+    },
+    {
+      "id": "C08",
+      "status": "pass_observed_trace",
+      "basis": "All7 tool uses have matched nonerror results;22 raw events retained. One rate_limit_event is metadata, not an observed retry. SDK num_turns9 is not nine user submissions."
+    },
+    {
+      "id": "C09",
+      "status": "pass_observed_compliance_only",
+      "basis": "Observed tools only Skill/Read/Glob within workspace. No live environment, credentials, original archive, product execution or write observed. CLI inherited authentication is not isolated; no OS or whole-process I/O guarantee."
+    },
+    {
+      "id": "C10",
+      "status": "pass_host_reported_model_only",
+      "basis": "System init event2, assistant and result21 modelUsage report claude-sonnet-5-5. This is host reported model identity, not independent principal or provider-internal attestation."
+    },
+    {
+      "id": "C11",
+      "status": "pass_scoped",
+      "basis": "One user turn, naturalexit0, no retry, approximately26.855s within180s. No new driver invocation."
+    },
+    {
+      "id": "C12",
+      "status": "pass_scoped",
+      "basis": "All68 root-inclusive inventory entries match before, after and reviewer observation;55 files. No .git or symlinks existed in this workspace."
+    },
+    {
+      "id": "C13",
+      "status": "pass_temporary_cleanup_workspace_pending",
+      "basis": "Owned temporary private-home absent. Workspace retained until archive/owner cleanup; credential home and descendants not certified. Packet fixture cleanup is a historical driver claim."
+    },
+    {
+      "id": "C14",
+      "status": "pass_actor_separation",
+      "basis": "Read-only interpretation of historical CI coordinator evidence. No fresh journey; investigation route appropriate for this protocol."
+    },
+    {
+      "id": "C15",
+      "status": "failed_overall",
+      "basis": "Word-limit failure prevents overallPASS. Prior Claude0turn blocked and Codex limited grades remain immutable; no retry or threshold change."
+    }
+  ],
+  "raw_bindings": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/catalog-preflight-after.json",
+      "bytes": 12467,
+      "sha256": "e61c35fa42f8b102bae9d8dbfbfde562d6acfb3798a979a07509611c46ff0532"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/catalog-preflight-before.json",
+      "bytes": 12466,
+      "sha256": "a7ce4f3fec8ee748a6e975c389bf95392d1078c0c758f6f78896513c12df5269"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/catalog-preflight-initialize-input.json",
+      "bytes": 262,
+      "sha256": "40c91c8fbd45e2774694cd8ca84c18b37d71806e85e43b50fd338f80579ed74d"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/catalog-preflight-result.json",
+      "bytes": 2553,
+      "sha256": "9f81833df47b1f3a54e3eee634ab519c6b188313cd9e3818162a5a74299e0f5e"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/catalog-preflight.jsonl",
+      "bytes": 22870,
+      "sha256": "c55862cb788f8f854634b0d5f84d5bd8ca559c36ae1e6db739204e3c71f55f0a"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/catalog-preflight.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/run-after.json",
+      "bytes": 12467,
+      "sha256": "e61c35fa42f8b102bae9d8dbfbfde562d6acfb3798a979a07509611c46ff0532"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/run-before.json",
+      "bytes": 12466,
+      "sha256": "a7ce4f3fec8ee748a6e975c389bf95392d1078c0c758f6f78896513c12df5269"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/run-initialize-input.json",
+      "bytes": 262,
+      "sha256": "40c91c8fbd45e2774694cd8ca84c18b37d71806e85e43b50fd338f80579ed74d"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/run-result.json",
+      "bytes": 2599,
+      "sha256": "99395330afb134a17479f2dd440050603581f5a9f0443153c4d368d1050a7ec5"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/run.jsonl",
+      "bytes": 82864,
+      "sha256": "31e00906139c42baeb791db655296f50567c391c0f5511d410b8dda99aa65bf9"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet-v2/evidence/user-input.json",
+      "bytes": 1738,
+      "sha256": "dfd6993d05a5558b3519141ff26ad05a057122c8cfbda4b1c861486857773bfd"
+    }
+  ],
+  "reviewer_model_or_driver_calls": 0,
+  "prior_grade_sha256": "9fcadda3d3d7f0e749e3c1ea372e522ff958ab1382431bbc48c2d29abe7cb8de"
+}

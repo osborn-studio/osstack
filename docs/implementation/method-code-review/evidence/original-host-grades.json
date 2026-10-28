@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "graded_at": "2026-10-28T14:25:53.247194+00:00",
+  "criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
+  "dispatch_supplement_sha256": "3c313056fd7323f9223719d90221340199870a71c0ab023dcc224890073fbd2f",
+  "observation_file": "grading-v2/observations.json",
+  "observation_sha256": "79086a137d332935c771727bf25301dd44cc3f15f35b72b0e7cbd3c79e42869a",
+  "role": "independent agent grading, not formal independent-principal qualification",
+  "results": [
+    {
+      "host": "codex",
+      "overall": "limited_native_invocation_and_resolved_model_not_attested",
+      "scoped_result": "packet consumption and answer fidelity observed; read-only trace compliance observed",
+      "machine_vs_semantic": "hashes/inventory/wordcounts mechanically checked; interpretation and final disambiguation independently reviewed",
+      "axes": [
+        {
+          "criterion": "C01",
+          "status": "pass",
+          "basis": "Approved guard and all frozen files matched; identical packet/material/prompt source binding, no workspace delta."
+        },
+        {
+          "criterion": "C02",
+          "status": "pass",
+          "basis": "Event10 is the sole full answer after tool completion and before turn.completed; events2/7 are progress notices. Exactfinal345words; even all3agent messages total410. Selection is contextual independent judgment, not native final-channel attestation."
+        },
+        {
+          "criterion": "C03",
+          "status": "pass",
+          "basis": "Pinned pre-dispatch checker validated exactpacket+manifest; event6 concatenated output equals exactmethod+packet+manifest bytes. Model correctly says reading hash listing is not independent verification."
+        },
+        {
+          "criterion": "C04",
+          "status": "pass",
+          "basis": "Final two rows correctly state product0/1 and driver0/0; missing-ref remains failed and expectednegative, not recovered. Logical IDs and omitted drift/mixed/empty are accurate."
+        },
+        {
+          "criterion": "C05",
+          "status": "pass",
+          "basis": "For this supplied overallpassed packet, observed feature/cleanup states preserved. Failed/notrun/report-only shapes were NOT supplied to this model call, so understanding those broader cases is untested."
+        },
+        {
+          "criterion": "C06",
+          "status": "pass",
+          "basis": "Exactlytwo rows and field values manually crosschecked; causal explanation correctly distinguishes expected productfailure from driverpass. This manual assessment is separate from schema/wordcount, not proof of general semantic understanding."
+        },
+        {
+          "criterion": "C07",
+          "status": "unknown",
+          "basis": "Explicitcat of mode, investigation and common evidence fully observed. No nativeSkill event or execution toolcatalog attested. Answer honestly describes fallback; its claim native tool not exposed is not independently established as a global capability absence."
+        },
+        {
+          "criterion": "C08",
+          "status": "pass",
+          "basis": "12events include start/turnstart, three paired commandstart/completions, three agentmessages and turncompletion. Returnedcat bytes fully match; no observedtruncation. Host-internal I/O outside stream not attested."
+        },
+        {
+          "criterion": "C09",
+          "status": "pass",
+          "basis": "All three observed commands are fixed workspace cat reads. No liveenv/credentials/rawarchive/network/write/install/agent use observed. This is observed-compliance, not OS containment or host-global no-read/no-write proof."
+        },
+        {
+          "criterion": "C10",
+          "status": "unknown",
+          "basis": "Requestedgpt-6.1-sol is guard-bound; resolvedexecutionmodel is not exposed in rawstream. Answer does not invent model/principal/gate identity. Metadata model/list does not resolve executionidentity."
+        },
+        {
+          "criterion": "C11",
+          "status": "pass",
+          "basis": "One user/model invocation; elapsed about43.38seconds; no timeout or automaticretry. Three internal agentmessages are not three usercalls."
+        },
+        {
+          "criterion": "C12",
+          "status": "pass",
+          "basis": "All68lstat entries before/after/current equal, full inventory with type/mode/length/hash; this workspace contains no.git and no symlinks. No workspace delta permitted or observed."
+        },
+        {
+          "criterion": "C13",
+          "status": "pass",
+          "basis": "Owned temporaryprivate-home absent; actual credentialhome not isolated/removed. Answer attributes fixturecleanup to packet claims, not personal live observation, and makes no descendant-termination claim. Workspace retained pending owner cleanup."
+        },
+        {
+          "criterion": "C14",
+          "status": "pass",
+          "basis": "HistoricalCI coordinator consumption only, explicitly no product execution/repair/reprojection; no native-shell or mediated-execution claim. No new driver ran in this host experiment."
+        },
+        {
+          "criterion": "C15",
+          "status": "pass",
+          "basis": "Scoped positives retained alongside unknownnative/resolvedmodel and Claude0turnblock; no update to prior507word or recordedenvironment failures."
+        }
+      ]
+    },
+    {
+      "host": "claude",
+      "overall": "blocked_before_model_task_due_catalog_mismatch",
+      "model_calls": 0,
+      "fault_attribution": "harness preflight context not matching final catalog, not product/model interpretation failure",
+      "axes": [
+        {
+          "criterion": "C01",
+          "status": "pass",
+          "basis": "Frozen guard verified, but exactnativecatalog runtimegate failed beforeuserturn; preservedstop."
+        },
+        {
+          "criterion": "C02",
+          "status": "unknown",
+          "basis": "No model final exists because no userturn was sent; no zero-wordPASS."
+        },
+        {
+          "criterion": "C03",
+          "status": "pass",
+          "basis": "Preparedexactpacket and inventory checked; modelconsumption notrun."
+        },
+        {
+          "criterion": "C04",
+          "status": "unknown",
+          "basis": "No modelinterpretation."
+        },
+        {
+          "criterion": "C05",
+          "status": "unknown",
+          "basis": "No modelinterpretation."
+        },
+        {
+          "criterion": "C06",
+          "status": "unknown",
+          "basis": "No response to score."
+        },
+        {
+          "criterion": "C07",
+          "status": "unknown",
+          "basis": "Initializecatalog included allfourtarget names plus two unexpectedbuiltin names. Catalog only, noSkill/materialread."
+        },
+        {
+          "criterion": "C08",
+          "status": "pass",
+          "basis": "Exactlysystem.session_title_changed then control_response; no userinput artifact/modelassistant event. Normalprocess exit0 aftergate rejection; not modelsuccess."
+        },
+        {
+          "criterion": "C09",
+          "status": "unknown",
+          "basis": "No userturn/tool behavior tested. Prepared native restrictions and unchangedworkspace remain observations only."
+        },
+        {
+          "criterion": "C10",
+          "status": "unknown",
+          "basis": "RequestedSonnet5.5; no modelcall/resolvedidentity. Authstatus is not modelresult."
+        },
+        {
+          "criterion": "C11",
+          "status": "pass",
+          "basis": "Zero user/modelturns, one initializeattempt, no retry; about2.38seconds."
+        },
+        {
+          "criterion": "C12",
+          "status": "pass",
+          "basis": "Full68entry inventories before/after/current identical; no.git/symlinks."
+        },
+        {
+          "criterion": "C13",
+          "status": "pass",
+          "basis": "Ownedtemporarydirectory absent; no claim defaultauthhome cleanup or all descendants."
+        },
+        {
+          "criterion": "C14",
+          "status": "unknown",
+          "basis": "No modelconsumption/executionchain; historicalpacket onlyprepared."
+        },
+        {
+          "criterion": "C15",
+          "status": "pass",
+          "basis": "Recordedblockedpreflight, not failedmodelanswer or successfulnegative. Originalattempt remainsimmutable if separatelyauthorizednewpreparationfollows."
+        }
+      ]
+    }
+  ],
+  "raw_bindings": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/run.jsonl",
+      "bytes": 22550,
+      "sha256": "1b19c87d02e8339f0cdd05387bc0533fe3e46a95a9ebc788f2460e02bbcf1703"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/run-result.json",
+      "bytes": 1775,
+      "sha256": "8813db23f10b66d363836658d12a10d57255221a9cb13ae0285cefc5b46a9e7b"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/run-before.json",
+      "bytes": 12466,
+      "sha256": "df3a19dd38e055f8b6dabd2d7b4fb1e0d2f8ee17cf8b63e52c88b629310973d8"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/run-after.json",
+      "bytes": 12467,
+      "sha256": "ed7eba3f8cb5ae20597581dc9cc65c1f78010c00bb58d7cfd87167019da2e686"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/final-response.txt",
+      "bytes": 2611,
+      "sha256": "902d74d138087c65f22ee48724c4c7e190edcb1b6ecefb314ce041fca8ac8c42"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/agent-messages.json",
+      "bytes": 3565,
+      "sha256": "cce26f2e169f688c8c10ed48008b6e3eaf13bcd4c264ce55ee75e6a565d232de"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/codex-packet/evidence/started.json",
+      "bytes": 1301,
+      "sha256": "c67200523d2a40310870dd26232cc456efdb554185836afe3ef884568eb0cb7f"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet/evidence/run.jsonl",
+      "bytes": 22870,
+      "sha256": "f214453dd207d185bd104856d67402f01cd46709e13ac05cd112147249f569a2"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet/evidence/run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet/evidence/run-result.json",
+      "bytes": 2456,
+      "sha256": "7ff16b99fe263f413f609ad4a8076ac8701f45062116b8a4c8ba15e4c97b059f"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet/evidence/run-before.json",
+      "bytes": 12466,
+      "sha256": "a7ce4f3fec8ee748a6e975c389bf95392d1078c0c758f6f78896513c12df5269"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet/evidence/run-after.json",
+      "bytes": 12467,
+      "sha256": "e61c35fa42f8b102bae9d8dbfbfde562d6acfb3798a979a07509611c46ff0532"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/host-preflight/runs/claude-packet/evidence/run-initialize-input.json",
+      "bytes": 262,
+      "sha256": "40c91c8fbd45e2774694cd8ca84c18b37d71806e85e43b50fd338f80579ed74d"
+    }
+  ],
+  "counts": {
+    "codex_model_calls": 1,
+    "claude_model_calls": 0,
+    "new_driver_calls": 0,
+    "reviewer_model_calls": 0
+  },
+  "cleanup": "Both current workspaces retained and verified; owner may archive then remove only owned workspaces. Futurecleanup separate supplement.",
+  "reviewer_harness_note": "First pure observation helper wrongly expected onlycontrol_response forClaude; system.session_title_changed is normalinitializationmetadata. Originalhelper andfailure retained; revisedhelper accepts actualeventtype without changingcriterion or rerunninghost.",
+  "formal_gate_pass": false
+}

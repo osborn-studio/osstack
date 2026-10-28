@@ -1,0 +1,33 @@
+{
+  "passed": 7144,
+  "skipped": 5,
+  "failed": 0,
+  "source_head": "b576aa46",
+  "node": "22.22.1",
+  "exit_code": 0,
+  "package_summaries": [
+    "packages/contracts test:       Tests  15 passed (15)",
+    "packages/compliance test:       Tests  17 passed (17)",
+    "packages/github test:       Tests  107 passed (107)",
+    "packages/knowledge test:       Tests  44 passed (44)",
+    "packages/runtime test:       Tests  1 passed (1)",
+    "packages/neat-eval test:       Tests  16 passed (16)",
+    "packages/protocol test:       Tests  1012 passed (1012)",
+    "packages/governance test:       Tests  301 passed (301)",
+    "packages/knowledge-cloud test:       Tests  36 passed (36)",
+    "packages/graph test:       Tests  257 passed (257)",
+    "packages/core test:       Tests  1301 passed (1301)",
+    "packages/plugins test:       Tests  1 passed (1)",
+    "packages/hermes-adapter test:       Tests  22 passed (22)",
+    "packages/skills test:       Tests  2 passed (2)",
+    "packages/autonomy test:       Tests  201 passed (201)",
+    "packages/skill-registry test:       Tests  43 passed (43)",
+    "packages/agents test:       Tests  361 passed (361)",
+    "packages/config test:       Tests  30 passed (30)",
+    "packages/loop test:       Tests  515 passed (515)",
+    "packages/conformance test:       Tests  9 passed (9)",
+    "packages/supervisor test:       Tests  88 passed (88)",
+    "packages/cli test:       Tests  2765 passed | 5 skipped (2770)"
+  ],
+  "sha256": "7134d3dac963f42d979ab919d58bf380d8454c8d71628688b35cc6bc4333b277"
+}

@@ -26,7 +26,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
-  "observed_at": "2026-10-27T17:46:50.854473+00:00",
+  "observed_at": "2026-10-28T14:43:16.043664+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -3210,7 +3210,7 @@
     }
   },
   "next_method_host_wave": {
-    "status": "review_method_implementation_and_host_preparation",
+    "status": "audited_tested_preparing_pr",
     "baseline": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
     "provisional_dependency": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
     "authorization": "user explicitly requests OSStack multiple agents continued implementation",
@@ -3229,16 +3229,69 @@
         "scope": "independent <=15 criteria freeze and offline validation"
       }
     },
-    "model_calls_performed": 0,
+    "model_calls_performed": 2,
     "driver_runs_performed": 0,
     "host_plan": "native skill consumption where observed, existing coordinator-generated packet only; no claim host executed driver or OS filesystem sandbox",
     "maximum_proposed_calls": 2,
     "retries": 0,
     "formal_gates_passed": false,
-    "updated_at": "2026-10-28T14:00:48.808103+00:00",
+    "updated_at": "2026-10-28T14:43:16.043664+00:00",
     "host_criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
     "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d",
     "actual_main": "70924ee44a478f5ef345307b885bda6b936e6662",
-    "dependency_merged": true
+    "dependency_merged": true,
+    "code_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+    "method": {
+      "name": "code-review",
+      "author_initial": "1d00ac4fd92d7f29c7650332fea61b2f409ea4f2",
+      "author_revision": "ac9d8e60422318fe66c23b08cfd148fe9c2963ff",
+      "focused_tests": 77,
+      "exports_per_host_files": 56,
+      "independent_criteria": 7,
+      "audit": "actual claude-sonnet-5-5 REVISE then limited B1/N1-N9 closure PASS on73d446b4; root verified supplied-file bytes",
+      "native_method_use": "not_tested",
+      "full": {
+        "sha": "b576aa46222d43dcdc14b2cbe7c96dd3e58cfd26",
+        "node": "22.22.1",
+        "passed": 7144,
+        "skipped": 5,
+        "failed": 0,
+        "later_revision": "four method/document/test files targeted77, not final whole-tree full"
+      },
+      "node26_failure": "unchanged TypeScript transform mutation test; original retained, debt card_502e84bf"
+    },
+    "host_results": {
+      "materials_sha": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+      "packet_sha256": "42b903f7f3393923134a51826308a8a088ab7943b51336a9ac1aee22f6f91896",
+      "codex": {
+        "words": 345,
+        "result": "limited",
+        "native_skill": "not_attested_explicit_file_reads",
+        "execution_model": "not_attested",
+        "workspace_unchanged": true
+      },
+      "claude_initial": {
+        "user_turns": 0,
+        "result": "blocked_exact_catalog_mismatch_57_vs59",
+        "original_preserved": true
+      },
+      "claude_v2": {
+        "user_turns": 1,
+        "words": 515,
+        "word_limit": 500,
+        "result": "failed_answer_word_limit",
+        "native_skill": "osstack-mode",
+        "model": "host_reported_claude-sonnet-5-5",
+        "workspace_unchanged": true,
+        "retry": false
+      },
+      "credential_isolation": false,
+      "os_read_boundary_attested": false,
+      "workspaces_removed_after_archive": true,
+      "formal_gates_passed": false
+    },
+    "evidence": "docs/implementation/method-code-review/evidence/manifest.json",
+    "archive_sha256": "b28b3b75511ec9acc3391e7a8c442c587757617472a177c2df241075fcc4057a",
+    "next": "Fresh bounded code-review behavior protocol on pinned positive/negative source changes; no retry or relabelling of current host experiments."
   }
 }
