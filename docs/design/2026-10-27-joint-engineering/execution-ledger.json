@@ -2697,8 +2697,8 @@
     "ci_rule": "Ready only after latest published head applicable checks pass; dynamic status in GitHub and OSStack",
     "next_candidate": "skills check unreachable exit 0 reproduced using local Git; fix not included",
     "ci_followup": {
-      "observed_at": "2026-10-28T07:59:17.896453+00:00",
-      "main_sha": "4d31c3f540672c81a6c5d65b3a2b090dc32da027",
+      "observed_at": "2026-10-28T08:05:36.463191+00:00",
+      "main_sha": "64b203c32d245d5ad9a76914253ca18cbb54a073",
       "pr288": {
         "head": "10629495aafe7b3aca0de4c920bcaec40b083d7b",
         "status": "MERGED by gilberthello",
@@ -2712,7 +2712,7 @@
       "pr289": {
         "published_head": "48f5a9f1a6bfc5c4a82645dfd8bcc96a3125c69e",
         "candidate": "4dddf67ab6e293161aab8f59b57392d1c693a298",
-        "status": "Ready; awaiting gilberthello approval/merge",
+        "status": "MERGED by gilberthello",
         "audit": "actual Sonnet5.5 candidate A PASS",
         "focused_tests": 37,
         "ci_root_cause": "not established; revised candidate passes fresh CI, reported durations include preparation",
@@ -2727,7 +2727,9 @@
           21249,
           21112,
           21513
-        ]
+        ],
+        "merge_commit": "64b203c32d245d5ad9a76914253ca18cbb54a073",
+        "merged_at": "2026-10-28T07:59:34Z"
       },
       "host_reading": {
         "branch": "codex/joint-host-effects",
@@ -2743,6 +2745,13 @@
         "matches_actual_main_plus_pr289": true,
         "validation": "fresh install/build,27 focused,real CLI smoke PASS; not full combination regression",
         "delivery": "../../implementation/joint-host-effects/composition.md"
+      },
+      "next_dispatch": {
+        "card_id": "card_25794a87",
+        "branch": "codex/skills-check-verification",
+        "base_sha": "64b203c32d245d5ad9a76914253ca18cbb54a073",
+        "scope": "D2a fixed real skills-check verification driver; no product runtime qualification",
+        "state": "implementation running; author and independent/host-use scopes separate"
       }
     }
   }
