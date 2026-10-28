@@ -176,3 +176,8 @@ Codex 两次真实调用已取得独立目录 0/4 个目标技能、help 与相�
 
 
 Claude v2 已按原标准完成独立评分：无包负例及有包命名发现/读取均在限定范围通过，原生 `Skill(osstack-help)` 展开和两份引用逐字核对；全工作区清单及自有资源清理通过。总实验调用 4 次、无重试。Codex v1 的证据缺口仍保持，不因另一宿主通过而补认。新文档/证据候选继续接受实际 Sonnet 5.5 审计与最终发布 head CI。
+
+
+## Next methods and real verification journey
+
+The user explicitly requested parallel implementation through OSStack. Three distinct running cards now cover feature/refactoring method materials (`card_766d64bc`), a bounded reusable healthy/missing-ref verification journey (`card_e0b5babf`), and independent prefrozen behavior/fault checks (`card_3247e7bd`). The two writers start from actual main `ca95aba1` in separate worktrees; the independent reviewer writes only scratch evidence. Root alone owns the central ledger, PRs, actual Sonnet audits and full-regression queue. These D2a tasks proceed while the native-discovery documentation candidate closes audit/CI. Existing formal gates and the original four-call experiment remain unchanged.

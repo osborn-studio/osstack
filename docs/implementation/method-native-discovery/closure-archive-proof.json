@@ -1,0 +1,16 @@
+{
+  "evidence.tar.gz": {
+    "sha256": "7756090685a6cd41de33a063675e586a34af906f1a2a388a49fb593d5671ab5c",
+    "bytes": 815370,
+    "worktree_equal": true
+  },
+  "manifest.json": {
+    "sha256": "6169173854bc2f3f228e9c0738389cf84232d5af30492f672dd503b529a0f6dc",
+    "bytes": 143824,
+    "worktree_equal": true
+  },
+  "settings_history_members": [
+    "runs/claude-v2-absent/state/settings-before-builtin-deny.json",
+    "runs/claude-v2-present/state/settings-before-builtin-deny.json"
+  ]
+}

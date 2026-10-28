@@ -2947,7 +2947,7 @@
     },
     "max_model_invocations": 4,
     "automatic_model_retries": 0,
-    "status": "independent_verification_complete_pending_sonnet_review",
+    "status": "limited_sonnet_closure_pass_pending_publication",
     "gates": [
       "isolated existing authentication",
       "current app-server schema",
@@ -3029,6 +3029,45 @@
     },
     "model_invocations_actual": 4,
     "model_retries_actual": 0,
-    "owned_cleanup": "confirmed_workspace_and_private_home_removed; not whole-descendant-tree attestation"
+    "owned_cleanup": "confirmed_workspace_and_private_home_removed; not whole-descendant-tree attestation",
+    "audit": {
+      "first_candidate": "7f3d7a0e5310db61c61e4494110d736d7de0b57f",
+      "first_verdict": "REVISE",
+      "closure_candidate": "0ebaceb28e5e250cc513c1a368cb75117921bd4c",
+      "closure_verdict": "PASS",
+      "scope": "six publication findings only; supplied-record review, no model execution tools",
+      "model": "claude-sonnet-5-5",
+      "evidence": "docs/implementation/method-native-discovery/audit.md"
+    }
+  },
+  "next_method_development_wave": {
+    "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+    "authorization": "user explicitly requested OSStack parallel subagent implementation",
+    "status": "running",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_766d64bc",
+        "branch": "codex/method-feature-refactoring",
+        "scope": "feature/refactoring method materials and routing/export tests; excludes EXPORT.md"
+      },
+      "terminal_preflight": {
+        "card": "card_e0b5babf",
+        "branch": "codex/method-verification-journey",
+        "scope": "new bounded healthy/missing-ref journey scripts/tests; existing driver unchanged"
+      },
+      "cleanup_regression": {
+        "card": "card_3247e7bd",
+        "scope": "independent prefrozen behavior/fault checks; scratch only"
+      },
+      "root": {
+        "scope": "central ledger/PR/Sonnet audit/full regression queue"
+      }
+    },
+    "gates_unchanged": [
+      "No J01/J11/runtime qualification",
+      "No agent approval/merge",
+      "No new model calls before independent protocol freeze",
+      "No duplicate full regression"
+    ]
   }
 }
