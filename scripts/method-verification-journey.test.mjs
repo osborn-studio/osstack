@@ -1,14 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, rm, readdir, symlink } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm, readdir, symlink, realpath } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import test from 'node:test';
 import { createScratchDir } from './lib/scratch.mjs';
-import { jsonBytes, sha256, sealEvidence, caseDefinition } from './lib/skills-check-verification.mjs';
-import { verifyCaseEvidence, parseOptions, runJourney } from './method-verification-journey.mjs';
+import { jsonBytes, sha256, sealEvidence, caseDefinition, fixtureEnvironment } from './lib/skills-check-verification.mjs';
+import { verifyCaseEvidence, parseOptions, runJourney, invokeDriver } from './method-verification-journey.mjs';
 
 async function setup(t) {
-  const root = await createScratchDir('tests', 'method-journey');
+  const root = await realpath(await createScratchDir('tests', 'method-journey'));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
@@ -16,21 +18,36 @@ async function evidenceFixture(t, id = 'missing-ref') {
   const root = await setup(t); const directory = join(root, 'evidence'); await mkdir(directory);
   const scratch = join(root, 'scratch'); await mkdir(join(scratch, 'smoke'), { recursive: true });
   const fixture = join(scratch, 'smoke', 'skills-check-owned');
-  const expected = caseDefinition(id, 'file:///owned-origin', 'a'.repeat(40), 'b'.repeat(40));
+  const expected = caseDefinition(id, pathToFileURL(join(fixture, 'origin')).href, 'a'.repeat(40), 'b'.repeat(40));
   const input = jsonBytes({ version: 1, sources: expected.sources });
   const stdout = `Checking 1 source(s) against their tracked refs...\n${id === 'healthy' ? '  ✓ healthy  up-to-date (bbbbbbbbbbbb)' : '  ✗ missing-ref  unreachable: no_matching_ref'}\n${expected.failed} source(s) failed to check.\n0 source(s) drifted from blessed_sha.\n`;
-  const command = { executable: process.execPath, argv: ['/target/packages/cli/dist/bin.js', 'skills', 'check'], cwd: fixture, environment: { OSSTACK_HOME: join(fixture, `home-${id}`) },
+  const environment = fixtureEnvironment(fixture, scratch, process.env.PATH, join(fixture, 'setup-home'));
+  const command = { executable: process.execPath, argv: ['/target/packages/cli/dist/bin.js', 'skills', 'check'], cwd: fixture, environment: { ...environment, OSSTACK_HOME: join(fixture, `home-${id}`) },
     exit_code: expected.expected_exit, signal: null, direct_child_exit_confirmed: true, timed_out: false, output_limited: false, interrupted: false, spawn_error: null,
     stdout_path: `${id}.stdout`, stderr_path: `${id}.stderr`, stdout_sha256: sha256(Buffer.from(stdout)), stderr_sha256: sha256(Buffer.alloc(0)) };
   const observed = { case_id: id, verification_status: 'passed', actual_exit: expected.expected_exit, expected_exit: expected.expected_exit,
     source_check_status: id === 'healthy' ? 'healthy' : 'failed', input_unchanged: true, errors: [] };
   const cleanup = { status: 'passed', fixture_path: fixture, fixture_removed: true, descendant_termination: 'not_attested' };
-  const receipt = { run_id: 'fixture-run', status: 'passed', driver_exit: 0, selected_cases: [id], cases: [observed], behavior: 'passed', cleanup,
-    failure: null, provider_qualified: false, evidence: { directory, manifest: 'manifest.json', bindings: 'bindings.json' }, binding_digests: { source_digest: sha256(Buffer.from('[]')), build_digest: sha256(Buffer.from('[]')) } };
+  const bindings = {};
+  for (const [kind, paths] of Object.entries({ source: ['scripts/smoke-skills-check.mjs', 'scripts/lib/skills-check-verification.mjs', 'packages/cli/src/skills-command.ts'], build: ['packages/cli/dist/bin.js', 'packages/core/dist/index.js', 'packages/skill-registry/dist/index.js'] })) {
+    const files = paths.map(path => ({ path, bytes: 1, sha256: '0'.repeat(64) })); bindings[kind] = { files, digest: sha256(Buffer.from(JSON.stringify(files))) };
+  }
+  const receipt = { run_id: randomUUID(), status: 'passed', driver_exit: 0, selected_cases: [id], cases: [observed], behavior: 'passed', cleanup,
+    failure: null, provider_qualified: false, evidence: { directory, manifest: 'manifest.json', bindings: 'bindings.json' }, binding_digests: { source_digest: bindings.source.digest, build_digest: bindings.build.digest } };
   const files = { 'receipt.json': receipt, 'cleanup.json': cleanup, 'run.json': { run_id: receipt.run_id, status: 'passed', selected_cases: [id], bindings_unchanged: true,
-    bindings: receipt.binding_digests, final_bindings: receipt.binding_digests }, 'bindings.json': { source: { digest: sha256(Buffer.from('[]')), files: [] }, build: { digest: sha256(Buffer.from('[]')), files: [] } },
+    bindings: receipt.binding_digests, final_bindings: receipt.binding_digests }, 'bindings.json': bindings, 'environment.json': environment,
     'expectations.json': { definitions: [expected] }, [`${id}.command.json`]: command,
     [`${id}.json`]: { ...command, ...observed, manifest_before_sha256: sha256(input), manifest_after_sha256: sha256(input), input_path: `${id}.input.json` } };
+  const labels = ['git-00', 'git-01', 'git-02', 'git-03', 'git-04', 'git-05', id];
+  files['run.json'].commands = labels.map(label => ({ label, record: `${label}.command.json`, exit_code: label === id ? expected.expected_exit : 0 }));
+  files['run.json'].git_head = 'c'.repeat(40);
+  for (const label of labels.slice(0, -1)) {
+    const value = label === 'git-00' ? 'c'.repeat(40) : label === 'git-03' ? 'a'.repeat(40) : label === 'git-05' ? 'b'.repeat(40) : 'fixture command';
+    const out = Buffer.from(value + '\n');
+    files[`${label}.command.json`] = { ...command, executable: '/usr/bin/git', argv: ['rev-parse', 'HEAD'], cwd: label === 'git-00' ? '/target' : join(fixture, 'origin'), environment, exit_code: 0,
+      stdout_path: `${label}.stdout`, stderr_path: `${label}.stderr`, stdout_sha256: sha256(out), stderr_sha256: sha256(Buffer.alloc(0)) };
+    await writeFile(join(directory, `${label}.stdout`), out); await writeFile(join(directory, `${label}.stderr`), '');
+  }
   for (const [name, data] of Object.entries(files)) await writeFile(join(directory, name), jsonBytes(data));
   await writeFile(join(directory, `${id}.input.json`), input);
   await writeFile(join(directory, `${id}.stdout`), stdout); await writeFile(join(directory, `${id}.stderr`), '');
@@ -86,6 +103,7 @@ test('failed doctor preserves raw failure and marks second feature not run', asy
   assert.equal(calls, 1); assert.equal(result.status, 'failed'); assert.equal(result.features[0].verification, 'failed');
   assert.equal(result.features[1].verification, 'not_run'); assert.match(await readFile(join(output, 'healthy-doctor.stderr'), 'utf8'), /missing build/);
   assert.equal(result.host_execution, 'not_run'); assert.match(await readFile(join(output, 'feature-map.md'), 'utf8'), /not_run/);
+  assert.doesNotMatch(await readFile(join(output, 'feature-map.md'), 'utf8'), /cases\/healthy\/manifest.json/);
 });
 
 test('duplicate manifest members are rejected', async (t) => {
@@ -97,9 +115,69 @@ test('foreign cleanup path cannot stand in for owned fixture disappearance', asy
   await mutate(f, 'cleanup.json', c => { c.fixture_path = '/outside/skills-check-owned'; }, true);
   const receipt = JSON.parse(await readFile(join(f.directory, 'receipt.json'))); receipt.cleanup.fixture_path = '/outside/skills-check-owned';
   await writeFile(join(f.directory, 'receipt.json'), jsonBytes(receipt)); await rm(join(f.directory, 'manifest.json')); await sealEvidence(f.directory, receipt.run_id);
-  await assert.rejects(verifyCaseEvidence({ ...f.args, stdout: jsonBytes(receipt) }), /cleanup_ownership/);
+  await assert.rejects(verifyCaseEvidence({ ...f.args, stdout: jsonBytes(receipt) }), /cleanup_ownership|fixture_origin/);
 });
 test('symlink CLI entry actually executes and rejects unknown usage', async (t) => {
   const root = await setup(t); const entry = join(root, 'journey.mjs'); await symlink(new URL('./method-verification-journey.mjs', import.meta.url).pathname, entry);
   assert.throws(() => execFileSync(process.execPath, [entry, '--unknown'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }), error => error.status === 2 && error.stderr.includes('usage:'));
+});
+
+for (const file of ['git-00.command.json', 'git-00.stdout']) test(`resealing missing ${file} cannot drop a run command`, async (t) => {
+  const f = await evidenceFixture(t); await rm(join(f.directory, file)); await rm(join(f.directory, 'manifest.json')); await sealEvidence(f.directory, f.receipt.run_id);
+  await assert.rejects(verifyCaseEvidence(f.args), /command_record_required|command_raw_required/);
+});
+test('external origin is rejected even with matching input hashes and resealed evidence', async (t) => {
+  const f = await evidenceFixture(t); const expected = JSON.parse(await readFile(join(f.directory, 'expectations.json'))); expected.definitions[0].sources[0].origin = 'https://example.invalid';
+  const bytes = jsonBytes({ version: 1, sources: expected.definitions[0].sources }); await writeFile(join(f.directory, 'expectations.json'), jsonBytes(expected)); await writeFile(join(f.directory, `${f.id}.input.json`), bytes);
+  await mutate(f, `${f.id}.json`, d => { d.manifest_before_sha256 = sha256(bytes); d.manifest_after_sha256 = sha256(bytes); }, true);
+  await assert.rejects(verifyCaseEvidence(f.args), /fixture_origin/);
+});
+test('all missing run IDs cannot agree into success', async (t) => {
+  const f = await evidenceFixture(t);
+  for (const name of ['receipt.json', 'run.json']) await mutate(f, name, d => { delete d.run_id; });
+  await rm(join(f.directory, 'manifest.json')); await sealEvidence(f.directory, undefined);
+  await assert.rejects(verifyCaseEvidence({ ...f.args, stdout: await readFile(join(f.directory, 'receipt.json')) }), /run_id_required/);
+});
+test('an extra scratch directory fails cleanup despite claimed fixture absence', async (t) => {
+  const f = await evidenceFixture(t); await mkdir(join(f.scratch, 'unexpected'));
+  await assert.rejects(verifyCaseEvidence(f.args), /scratch_residue/);
+});
+test('real timeout sends TERM and confirms direct child exit without claiming descendants', async () => {
+  const result = await invokeDriver(['-e', 'setInterval(()=>{}, 1000)'], { PATH: process.env.PATH }, 100, undefined, 100);
+  assert.equal(result.timed_out, true); assert.equal(result.direct_child_exit_confirmed, true); assert.equal(result.signal, 'SIGTERM');
+  assert.deepEqual(result.signals_sent, ['SIGTERM']);
+});
+test('ignored TERM escalates to KILL for only the spawned child', async () => {
+  const result = await invokeDriver(['-e', "process.on('SIGTERM',()=>{}); setInterval(()=>{},1000)"], { PATH: process.env.PATH }, 250, undefined, 50);
+  assert.equal(result.timed_out, true); assert.equal(result.direct_child_exit_confirmed, true); assert.equal(result.signal, 'SIGKILL');
+  assert.deepEqual(result.signals_sent, ['SIGTERM', 'SIGKILL']);
+});
+test('abort is distinguished from timeout and finalizes an owned child', async () => {
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 100);
+  const result = await invokeDriver(['-e', 'setInterval(()=>{},1000)'], { PATH: process.env.PATH }, 2000, controller.signal, 100); clearTimeout(timer);
+  assert.equal(result.interrupted, true); assert.equal(result.timed_out, false); assert.equal(result.direct_child_exit_confirmed, true);
+});
+
+test('empty source/build inventories remain invalid after consistent digest resealing', async (t) => {
+  const f = await evidenceFixture(t); const digest = sha256(Buffer.from('[]'));
+  await mutate(f, 'bindings.json', b => { for (const kind of ['source', 'build']) b[kind] = { files: [], digest }; });
+  await mutate(f, 'run.json', r => { r.bindings = r.final_bindings = { source_digest: digest, build_digest: digest }; });
+  await mutate(f, 'receipt.json', r => { r.binding_digests = { source_digest: digest, build_digest: digest }; }, true);
+  await assert.rejects(verifyCaseEvidence({ ...f.args, stdout: await readFile(join(f.directory, 'receipt.json')) }), /binding_anchors/);
+});
+test('failed driver keeps its sealed manifest binding and labels reported product result unverified', async (t) => {
+  const root = await setup(t); const output = join(root, 'journey'); let calls = 0;
+  const result = await runJourney({ output }, { invoke: async (argv) => {
+    calls++;
+    if (argv.includes('--doctor')) return { exit_code: 0, stdout: Buffer.from('{"ready":true,"executed":false,"cases":["healthy"]}'), stderr: Buffer.alloc(0) };
+    const directory = argv[argv.indexOf('--evidence-dir') + 1]; await mkdir(directory);
+    await writeFile(join(directory, 'receipt.json'), '{"cases":[{"actual_exit":0}],"cleanup":{"status":"failed"}}');
+    await sealEvidence(directory, randomUUID());
+    return { exit_code: 1, stdout: await readFile(join(directory, 'receipt.json')), stderr: Buffer.from('cleanup failed') };
+  } });
+  assert.equal(calls, 2); assert.equal(result.status, 'failed'); assert.equal(result.features[0].reported_product_exit, 0);
+  assert.equal(result.features[0].evidence_state, 'sealed'); assert.equal(result.features[1].verification, 'not_run');
+  const manifest = JSON.parse(await readFile(join(output, 'journey-manifest.json')));
+  assert.deepEqual(manifest.case_manifests, [{ case_id: 'healthy', sha256: sha256(await readFile(join(output, 'cases/healthy/manifest.json'))), verified: false }]);
+  assert.match(await readFile(join(output, 'feature-map.md'), 'utf8'), /reported:0 \(unverified\)/);
 });
