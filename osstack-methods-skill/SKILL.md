@@ -1,6 +1,6 @@
 ---
 name: osstack-methods
-description: Use for evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Shares one method set across Codex and Claude through explicit file reading.
+description: Use for evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
 ---
 
 # OSStack engineering methods

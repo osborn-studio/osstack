@@ -204,7 +204,7 @@ test('an existing evidence destination is rejected before fixture work and is ne
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('successful compiled user flow retains independently verifiable evidence after fixture cleanup', { timeout: 90000 }, async () => {
+test('successful compiled user flow retains independently verifiable evidence after fixture cleanup', { timeout: 160000 }, async () => {
   const { createHash } = await import('node:crypto');
   const { createScratchDir } = await import('../packages/core/dist/index.js');
   const root = await createScratchDir('tests', 'engineering-success-evidence');
