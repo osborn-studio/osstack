@@ -3373,7 +3373,7 @@
     "evidence": "docs/implementation/method-review-behavior/README.md"
   },
   "next_impact_performance_wave": {
-    "status": "ready_awaiting_user_merge",
+    "status": "merged",
     "baseline": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
     "owners": {
       "loader_adversarial": {
@@ -3430,6 +3430,34 @@
       "passed": 7142,
       "skipped": 7,
       "failed": 0
-    }
+    },
+    "merge_commit": "711c45e75264000bde859328bd7dc131f68461d1",
+    "merged_at": "2026-10-28T16:24:46Z"
+  },
+  "next_framing_architecture_wave": {
+    "status": "preparing_after_297_merge",
+    "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_f9c9aa23",
+        "branch": "codex/method-task-framing",
+        "scope": "task-framing and ten-method shared intermediate"
+      },
+      "terminal_preflight": {
+        "card": "card_a2ccebb6",
+        "branch": "codex/method-architecture-design",
+        "scope": "architecture-design new reference/ownREADME only"
+      },
+      "cleanup_regression": {
+        "card": "card_75178665",
+        "scope": "prefrozen criteria and independent verification scratch"
+      },
+      "root": {
+        "scope": "eleventh-method integration after handoff; audit/full/PR/ledger"
+      }
+    },
+    "model_calls_authorized_to_workers": false,
+    "formal_gates_passed": false,
+    "full_regression_owner": "root_single_queue"
   }
 }

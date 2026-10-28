@@ -215,3 +215,6 @@ PR296 is now verified merged as main92088fe5 after five applicable CI successes 
 ## Change-impact and performance methods after PR296
 
 Actual main is `92088fe55a2f985ca743fa1fabee0c081a6f672d`, with PR296 merged by the user. Three separately owned tasks produced two methods and an independent prefrozen assessment. Root integrated nine-method routing at `687811a6`; final two-host export checks cover64files/201links per host and81 automated export tests. Actual Sonnet5.5 source review and limited follow-up both passed; adopted suggestions distinguish rate gain from duration reduction and qualify queue/contention assumptions. Full regression and publication readiness are recorded in the [delivery evidence](../../implementation/method-impact-performance/README.md). Earlier host experiments keep their LIMITED outcomes; no new host efficacy claim is made for these methods.
+
+
+PR297 is merged as main711c45e7, whose tree07aa7fc4 equals the published0862bc38 tree. Prior tests retain their original SHA. OSStack marks the two method cards done. The next user-authorized batch separates task framing, caller-first architecture and independent prefrozen assessment; root integrates shared files only after author handoff and owns audit, full regression and PR.
