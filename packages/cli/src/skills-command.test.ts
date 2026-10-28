@@ -120,4 +120,55 @@ describe("skills command module", () => {
     }));
     expect(writeManifest).toHaveBeenCalledWith(next, "/repo/skills.config.yaml");
   });
+
+  it.each([
+    { name: "missing ref", states: ["failed"], reason: "no_matching_ref", exit: 1, failed: 1, drifted: 0 },
+    { name: "timeout", states: ["failed"], reason: "timeout", exit: 1, failed: 1, drifted: 0 },
+    { name: "Git spawn failure", states: ["failed"], reason: "spawn_failed: missing git", exit: 1, failed: 1, drifted: 0 },
+    { name: "failure before drift and healthy source", states: ["failed", "drift", "current"], reason: "no_matching_ref", exit: 1, failed: 1, drifted: 1 },
+    { name: "failure after drift", states: ["drift", "failed"], reason: "timeout", exit: 1, failed: 1, drifted: 1 },
+    { name: "multiple failures", states: ["failed", "failed"], reason: "no_matching_ref", exit: 1, failed: 2, drifted: 0 },
+    { name: "only drift and healthy sources", states: ["drift", "current"], reason: "", exit: 2, failed: 0, drifted: 1 },
+    { name: "all sources healthy", states: ["current", "current"], reason: "", exit: 0, failed: 0, drifted: 0 },
+    { name: "empty manifest", states: [], reason: "", exit: 0, failed: 0, drifted: 0 },
+  ])("reports separate failure and drift counts for $name", async (scenario) => {
+    const entries = scenario.states.map((state, index) => ({
+      source: {
+        id: `source-${index}`,
+        name: "",
+        origin: "https://example.invalid/fixture.git",
+        ref: "main",
+        blessed_sha: "a".repeat(40),
+        last_checked: null,
+        auto_minor: false,
+        notes: "",
+      },
+      ok: state !== "failed",
+      drifted: state === "drift",
+      ...(state === "failed"
+        ? { reason: scenario.reason }
+        : { current_sha: (state === "drift" ? "b" : "a").repeat(40) }),
+    }));
+    const stdout = vi.fn<(line: string) => void>();
+    const writeManifest = vi.fn();
+    const exitCode = await handleSkillsCommand(["check"], {
+      manifestPath: () => "/fixture/skills.config.yaml",
+      readManifest: () => ({ version: 1, sources: entries.map(entry => entry.source) }),
+      checkAll: async () => ({ generated_at: "2026-10-28T00:00:00.000Z", entries }),
+      writeManifest,
+      stdout,
+      stderr: vi.fn(),
+    });
+
+    expect(exitCode).toBe(scenario.exit);
+    const output = stdout.mock.calls.map(([line]) => line).join("\n");
+    expect(output).toContain(`${scenario.failed} source(s) failed to check.`);
+    expect(output).toContain(`${scenario.drifted} source(s) drifted from blessed_sha.`);
+    for (const [index, state] of scenario.states.entries()) {
+      expect(output).toContain(state === "failed"
+        ? `source-${index}  unreachable: ${scenario.reason}`
+        : state === "drift" ? `source-${index}  drift` : `source-${index}  up-to-date`);
+    }
+    expect(writeManifest).not.toHaveBeenCalled();
+  });
 });
