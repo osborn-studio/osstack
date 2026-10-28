@@ -1,10 +1,219 @@
 {
-  "created_at": "2026-10-28T11:22:52.463504+00:00",
+  "created_at": "2026-10-28T11:33:31.901914+00:00",
   "source_main": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
-  "archive_sha256": "576c9a7a8e4aa29a6bcee248ffc3b1caf851ad1bec67bd09377dc56dda51f3f7",
-  "archive_bytes": 810004,
+  "archive_sha256": "7756090685a6cd41de33a063675e586a34af906f1a2a388a49fb593d5671ab5c",
+  "archive_bytes": 815370,
   "excluded": "private homes, credentials, runtime state, workspaces and git directories, broad board snapshots, vendor source excerpts, Python caches",
   "full_test_log": "public derived copy; raw hash bound and original retained locally",
+  "excluded_or_superseded_evidence": {
+    "schema_version": 1,
+    "at": "2026-10-28T11:31:37.444352+00:00",
+    "scope": "artifact disposition and provenance only; no original evidence modified",
+    "audit_correction": "The two earlier settings files are present locally and exactly match prepared hashes. Their absence from the public archive does not mean they were destroyed. Prepared settings are historical, final settings are authoritative for v2 calls.",
+    "settings": [
+      {
+        "case": "claude-v2-absent",
+        "prepared_settings_sha256": "2a2815a3fd86adc76f595af1794875c27a9ebe62aa4c20c6aff2ec1498e74938",
+        "prepared_artifact": {
+          "path": "harness/claude-v2-prepared.json",
+          "exists": true,
+          "bytes": 2328,
+          "sha256": "016291ca0515d23a0f5e775144847600d379190c892c4773ffee9fcc4ac103bf"
+        },
+        "original_prepared_settings": {
+          "path": "runs/claude-v2-absent/state/settings-before-builtin-deny.json",
+          "exists": true,
+          "bytes": 2306,
+          "sha256": "2a2815a3fd86adc76f595af1794875c27a9ebe62aa4c20c6aff2ec1498e74938"
+        },
+        "prepared_hash_matches_retained_original": true,
+        "final_settings": {
+          "path": "runs/claude-v2-absent/state/settings.json",
+          "exists": true,
+          "bytes": 3705,
+          "sha256": "84314f44d515211687c589883076c59e02a65d6be3bf09aaa5ad76dd4bcb7da0"
+        },
+        "final_hash_matches_dispatch": true,
+        "non_deny_settings_equal": true,
+        "added_deny_count": 53,
+        "added_denies": [
+          "Skill(__remote-workflow)",
+          "Skill(advisor)",
+          "Skill(agents)",
+          "Skill(auto-mode-setup)",
+          "Skill(autocompact)",
+          "Skill(batch)",
+          "Skill(claude-api)",
+          "Skill(clear)",
+          "Skill(code-review)",
+          "Skill(color)",
+          "Skill(compact)",
+          "Skill(config)",
+          "Skill(context)",
+          "Skill(dataviz)",
+          "Skill(debug)",
+          "Skill(deep-research)",
+          "Skill(design)",
+          "Skill(design-consent)",
+          "Skill(design-revoke)",
+          "Skill(design-sync)",
+          "Skill(doctor)",
+          "Skill(effort)",
+          "Skill(fast)",
+          "Skill(fewer-permission-prompts)",
+          "Skill(focus)",
+          "Skill(goal)",
+          "Skill(heapdump)",
+          "Skill(import)",
+          "Skill(init)",
+          "Skill(insights)",
+          "Skill(list-agents)",
+          "Skill(loop)",
+          "Skill(mcp)",
+          "Skill(model)",
+          "Skill(output-style)",
+          "Skill(plugin-authoring)",
+          "Skill(recap)",
+          "Skill(reload-plugins)",
+          "Skill(reload-skills)",
+          "Skill(rename)",
+          "Skill(run)",
+          "Skill(run-skill-generator)",
+          "Skill(schedule)",
+          "Skill(security-review)",
+          "Skill(simplify)",
+          "Skill(skill-doctor)",
+          "Skill(team-onboarding)",
+          "Skill(ultrareview)",
+          "Skill(update-config)",
+          "Skill(usage)",
+          "Skill(verify)",
+          "Skill(workflow-authoring)",
+          "Skill(workflow-launch-exec)"
+        ],
+        "removed_denies": [],
+        "supersession": "prepared records initialization before builtin-deny refinement; final state/settings.json is the independently frozen and dispatched runtime input; original is retained, not lost",
+        "publication_recommendation": "include original retained settings file and this mapping; do not rewrite prepared record"
+      },
+      {
+        "case": "claude-v2-present",
+        "prepared_settings_sha256": "77297e966fe1df7638f3e9c86aa3ed01b6889be90b128bd053601ccf50ea1ccf",
+        "prepared_artifact": {
+          "path": "harness/claude-v2-prepared.json",
+          "exists": true,
+          "bytes": 2328,
+          "sha256": "016291ca0515d23a0f5e775144847600d379190c892c4773ffee9fcc4ac103bf"
+        },
+        "original_prepared_settings": {
+          "path": "runs/claude-v2-present/state/settings-before-builtin-deny.json",
+          "exists": true,
+          "bytes": 2318,
+          "sha256": "77297e966fe1df7638f3e9c86aa3ed01b6889be90b128bd053601ccf50ea1ccf"
+        },
+        "prepared_hash_matches_retained_original": true,
+        "final_settings": {
+          "path": "runs/claude-v2-present/state/settings.json",
+          "exists": true,
+          "bytes": 3717,
+          "sha256": "9c492842d620b5b2bed83350b715f9b608e564ada65625488b14282a722f2184"
+        },
+        "final_hash_matches_dispatch": true,
+        "non_deny_settings_equal": true,
+        "added_deny_count": 53,
+        "added_denies": [
+          "Skill(__remote-workflow)",
+          "Skill(advisor)",
+          "Skill(agents)",
+          "Skill(auto-mode-setup)",
+          "Skill(autocompact)",
+          "Skill(batch)",
+          "Skill(claude-api)",
+          "Skill(clear)",
+          "Skill(code-review)",
+          "Skill(color)",
+          "Skill(compact)",
+          "Skill(config)",
+          "Skill(context)",
+          "Skill(dataviz)",
+          "Skill(debug)",
+          "Skill(deep-research)",
+          "Skill(design)",
+          "Skill(design-consent)",
+          "Skill(design-revoke)",
+          "Skill(design-sync)",
+          "Skill(doctor)",
+          "Skill(effort)",
+          "Skill(fast)",
+          "Skill(fewer-permission-prompts)",
+          "Skill(focus)",
+          "Skill(goal)",
+          "Skill(heapdump)",
+          "Skill(import)",
+          "Skill(init)",
+          "Skill(insights)",
+          "Skill(list-agents)",
+          "Skill(loop)",
+          "Skill(mcp)",
+          "Skill(model)",
+          "Skill(output-style)",
+          "Skill(plugin-authoring)",
+          "Skill(recap)",
+          "Skill(reload-plugins)",
+          "Skill(reload-skills)",
+          "Skill(rename)",
+          "Skill(run)",
+          "Skill(run-skill-generator)",
+          "Skill(schedule)",
+          "Skill(security-review)",
+          "Skill(simplify)",
+          "Skill(skill-doctor)",
+          "Skill(team-onboarding)",
+          "Skill(ultrareview)",
+          "Skill(update-config)",
+          "Skill(usage)",
+          "Skill(verify)",
+          "Skill(workflow-authoring)",
+          "Skill(workflow-launch-exec)"
+        ],
+        "removed_denies": [],
+        "supersession": "prepared records initialization before builtin-deny refinement; final state/settings.json is the independently frozen and dispatched runtime input; original is retained, not lost",
+        "publication_recommendation": "include original retained settings file and this mapping; do not rewrite prepared record"
+      }
+    ],
+    "excluded_vendor_artifacts": [
+      {
+        "path": "harness/catalog-semantics.json",
+        "exists": true,
+        "bytes": 7403,
+        "sha256": "140e9efd8e6b3dc9307d422292b6fc012617d76b87b4655174a55bfc12b6e9b2",
+        "disposition": "intentionally excluded from public evidence package; original retained locally unchanged",
+        "reason": "Contains excerpts of locally installed proprietary vendor binary/SDK implementation. Retain for local audit reproducibility, publish hashes and paraphrased findings instead of redistributing embedded implementation excerpts.",
+        "dispatch_binding_sha256": null,
+        "publication_recommendation": "include this disposition record; do not imply the excluded source artifact is present or its dependent checker is fully runnable from public archive alone"
+      },
+      {
+        "path": "harness/claude-v2-permission-source.json",
+        "exists": true,
+        "bytes": 7911,
+        "sha256": "225f68a89bbdd837283c8dd3401601fc78d065d042dc74b73dc6bfddf62be109",
+        "disposition": "intentionally excluded from public evidence package; original retained locally unchanged",
+        "reason": "Contains excerpts of locally installed proprietary vendor binary/SDK implementation. Retain for local audit reproducibility, publish hashes and paraphrased findings instead of redistributing embedded implementation excerpts.",
+        "dispatch_binding_sha256": "225f68a89bbdd837283c8dd3401601fc78d065d042dc74b73dc6bfddf62be109",
+        "publication_recommendation": "include this disposition record; do not imply the excluded source artifact is present or its dependent checker is fully runnable from public archive alone"
+      },
+      {
+        "path": "harness/claude-v2-permission-followup.json",
+        "exists": true,
+        "bytes": 4383,
+        "sha256": "d3c233adae22ad37ac8bd16c1f65e965991ad7cd0bf950ef49002cc8c9f8a0c8",
+        "disposition": "intentionally excluded from public evidence package; original retained locally unchanged",
+        "reason": "Contains excerpts of locally installed proprietary vendor binary/SDK implementation. Retain for local audit reproducibility, publish hashes and paraphrased findings instead of redistributing embedded implementation excerpts.",
+        "dispatch_binding_sha256": "d3c233adae22ad37ac8bd16c1f65e965991ad7cd0bf950ef49002cc8c9f8a0c8",
+        "publication_recommendation": "include this disposition record; do not imply the excluded source artifact is present or its dependent checker is fully runnable from public archive alone"
+      }
+    ],
+    "public_archive_replay_limit": "The public package is an observation/evidence archive; local vendor excerpts excluded from it mean the original v2-check-prefreeze.py is not necessarily runnable using public members alone. Do not relabel it as a standalone complete reproduction bundle."
+  },
   "entries": [
     {
       "path": "acceptance-review/archive-safety.json",
@@ -30,6 +239,11 @@
       "path": "control/build.log",
       "bytes": 23762,
       "sha256": "418ff1dc15499e395ae654961fd7dc42e140ab7fb3fa24f075f028e7ad83aa13"
+    },
+    {
+      "path": "control/candidate-source-proof.json",
+      "bytes": 4528,
+      "sha256": "d712831475627d2484819ae9626d7f3b89a6bf2b73aea2e5c65056a7a12559b3"
     },
     {
       "path": "control/full-test-head.txt",
@@ -60,6 +274,11 @@
       "path": "control/merge-observation.json",
       "bytes": 563,
       "sha256": "783fb264b9525ac3d7f87d057e97064d0ac72875543bf05070de67f831216a21"
+    },
+    {
+      "path": "control/prove-candidate.py",
+      "bytes": 3091,
+      "sha256": "96125e64f6a4c10d6bd671137829277d03338863db94e63a39c06b16825777c9"
     },
     {
       "path": "harness/binary-identities.json",
@@ -2907,6 +3126,21 @@
       "sha256": "9f3e641a45d5494a66d936b9b3833aaf77d945b8a8bf0fea68a16c4694e7e921"
     },
     {
+      "path": "publication-audit-fixes/artifact-dispositions.json",
+      "bytes": 9090,
+      "sha256": "93e4e587e89181be6c17f02f730f6873f878a45584d31f6eba3e33ebb65b8acd"
+    },
+    {
+      "path": "publication-audit-fixes/artifact-dispositions.md",
+      "bytes": 2791,
+      "sha256": "445d802906664d33e84e8a5ac2264085b4cb19f4300f54c74c0d0baf38b139eb"
+    },
+    {
+      "path": "publication-audit-fixes/public-help-evidence.json",
+      "bytes": 2369,
+      "sha256": "26da053799339fdba661cea4c548cae1294ab539d6147be3f30e46492b8dca5a"
+    },
+    {
       "path": "runs/claude-absent/evidence/auth-precheck.json",
       "bytes": 307,
       "sha256": "6db0daeab76e40cdbbcedceb43eb9a4e7eabaec887be0289245eb126f11913f1"
@@ -3197,6 +3431,11 @@
       "sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02"
     },
     {
+      "path": "runs/claude-v2-absent/state/settings-before-builtin-deny.json",
+      "bytes": 2306,
+      "sha256": "2a2815a3fd86adc76f595af1794875c27a9ebe62aa4c20c6aff2ec1498e74938"
+    },
+    {
       "path": "runs/claude-v2-absent/state/settings.json",
       "bytes": 3705,
       "sha256": "84314f44d515211687c589883076c59e02a65d6be3bf09aaa5ad76dd4bcb7da0"
@@ -3320,6 +3559,11 @@
       "path": "runs/claude-v2-present/state/empty-mcp.json",
       "bytes": 23,
       "sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02"
+    },
+    {
+      "path": "runs/claude-v2-present/state/settings-before-builtin-deny.json",
+      "bytes": 2318,
+      "sha256": "77297e966fe1df7638f3e9c86aa3ed01b6889be90b128bd053601ccf50ea1ccf"
     },
     {
       "path": "runs/claude-v2-present/state/settings.json",

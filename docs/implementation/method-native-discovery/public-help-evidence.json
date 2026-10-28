@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "at": "2026-10-28T11:30:24.647901+00:00",
+  "source_kind": "actual installed CLI help text, not a behavior experiment",
+  "version": "2.1.291 (Claude Code)",
+  "commands": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/claude",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "550db4f88ae1d97bf7244ca96dc89554aabd3978241ceb69f79001e816c35f09",
+      "stdout_bytes": 22116,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/claude",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "d75ceb4934bd37bdf8a10af2200bcf750356fa72749f4625e7ef6dd20001bb20",
+      "stdout_bytes": 22,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "raw_help": {
+    "path": "publication-audit-fixes/claude-help.stdout.txt",
+    "exists": true,
+    "bytes": 22116,
+    "sha256": "550db4f88ae1d97bf7244ca96dc89554aabd3978241ceb69f79001e816c35f09"
+  },
+  "raw_help_disposition": "full original help retained locally; public evidence below quotes only 13 whitespace words",
+  "relevant_flags": [
+    {
+      "flag": "--restricted",
+      "help_line_range": [
+        194,
+        211
+      ],
+      "verbatim_fragments": [
+        "ignores user, project and local settings files"
+      ],
+      "paraphrase": "The installed CLI documents ignoring user, project and local settings under restricted mode. Managed settings and explicit --settings remain applicable. Combined with the separate initialize-only comparison, this supports a configuration-specific explanation for missing project skills; no universal host-support claim."
+    },
+    {
+      "flag": "--safe-mode",
+      "help_line_range": [
+        212,
+        222
+      ],
+      "verbatim_fragments": [
+        "Start with all customizations",
+        "skills",
+        "disabled"
+      ],
+      "paraphrase": "The installed CLI documents turning off customizations including skills in safe mode. Authentication, model selection, built-in tools/plugins and permissions still operate. This statement derives from help text; safe-mode skill behavior was not tested by a model call in this experiment."
+    }
+  ],
+  "quoted_whitespace_word_count": 13,
+  "model_calls": 0,
+  "private_help_home_removed": true
+}

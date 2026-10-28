@@ -11,7 +11,7 @@
 | Codex 模型 | 隔离认证 `model/list` 唯一默认 `gpt-6.1-sol` 被明确请求 | exec 流没有实际解析模型标识，记为 `not_attested` |
 | Claude CLI 2.1.291 初始预检 | 隔离认证成功；SDK initialize 控制响应两组均列出 53 个内建 commands、0 个目标技能；未发用户回合 | 仅本次预检阻塞，不能推出 Claude 不支持项目技能；SDK commands 不是冻结标准所要求的 system/init 技能观测 |
 | 工作区不变性 | 已保留的普通文件内容哈希一致 | 原 harness 漏记 `.git`、文件类型和长度，缺少完整 before；不能补造历史证据或把 posthoc 清单当 before |
-| 合并后全仓回归 | fresh install/build 后 `pnpm test`：7144 通过、5 跳过、0 失败，退出 0 | 实际测试 HEAD `4d6bb58d446da32a3044d5375baa7f2f935eddf2`，产品源码与上述 main 相同；不重标旧组合测试 |
+| 合并后全仓回归 | fresh install/build 后 `pnpm test`：7144 通过、5 跳过、0 失败，退出 0 | 实际测试 HEAD `4d6bb58d446da32a3044d5375baa7f2f935eddf2`；该全仓测试不覆盖之后的文档改动，产品路径相等另由 Git 差异核对；最终文档/导出检查及发布 CI 单独记录，不重标旧测试 |
 
 独立标准在任何新模型响应前冻结。Codex 的原生目录、选择和材料读取可单独成立，但不变性和模型观测仍须逐项保留判定；本批不签发完整宿主资格。初始失败和证据缺口保留，不通过事后降低标准取得 PASS。
 
@@ -43,3 +43,17 @@ Claude v2 的同进程 `system/init.skills` 分别记录 0/4 个目标技能。�
 
 
 独立最终判定：Claude v2 无包组 `passed_negative_control`，有包组 `passed_named_discovery_and_read`，均限当前 CLI、配置与显式 help 请求。参见 [v2 评分](v2-graded-results.md) 和 [v1 有限结论](v1-graded-results.md)。原标准及 v1 原始证据没有被后续结果改写。
+
+
+## 发布时的证据解释
+
+Codex v1 整体仍为 `inconclusive_observability`。除完整前态遗漏外，catalog helper 的 PID/起止时间没有捕获，指纹仅覆盖 Node launcher、未单独绑定 vendor 可执行文件，实际解析模型未暴露；已观察到的执行是 shell `cat` 读取导出路径，并非被原始流证实的原生 Skill 调用。
+
+Claude initialize 的 `control_response` 为账号身份脱敏后重新序列化的记录；模型、工具事件原始行保留，不能把整个 JSONL 文件笼统称为逐字原始 wire。材料和评分文件是原归档的命名副本，逐字摘要与存在性另在发布核对中验证。归档清单由 Git 提交绑定，不自包含自己的摘要。
+
+凭据隔离指使用私有配置目录与临时认证副本/进程内 token，仍复用操作者已有认证；没有证明独立账号、默认 Keychain 全写入审计或 refresh-token 未轮换。扫描只报告已检查文件未发现所用模式或已知值，不证明不存在任意秘密。公开原始事件保留环境路径、用户名和宿主限额元数据；测试日志的 HOME 替换不是全面匿名化。
+
+原 source acceptance review 只复核当时的来源及范围，未声称审过最终 README。最终文案由本轮 Sonnet 审计和限定修订复审单独绑定。
+
+
+[候选源/导出核对](candidate-source-proof.json)明确 whole-tree 与产品路径的区别；[工件保留与替代说明](artifact-dispositions.md)列出初始/最终配置及公开排除项；[CLI 帮助依据](public-help-evidence.json)不是行为测试；[Sonnet 审计及处置](audit.md)保留初审原文。

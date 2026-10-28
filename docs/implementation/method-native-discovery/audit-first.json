@@ -1,0 +1,9 @@
+{
+  "reviewed_head": "7f3d7a0e5310db61c61e4494110d736d7de0b57f",
+  "model": "claude-sonnet-5-5",
+  "verdict": "REVISE",
+  "raw_response_sha256": "894353e639d075bb9be7b6c556fa38c1b567f453351d1c3035130aaa8c1c6814",
+  "archive_sha256": "882967b4084f66b9e437e06c7a561cd6fd54bd6915eaa098bc227b882a9fec85",
+  "prompt_sha256": "bd6ad5ece0a891fe21975bd999741daa06208dfba21aec2d64d066ed03920067",
+  "prompt_disposition": "Original prompt retained locally in method-native-discovery-20261028/audit/audit-input.txt; public archive omits prompt containing local vendor implementation excerpts. Raw opinion and input-member hash inventory retained."
+}
