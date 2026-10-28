@@ -333,3 +333,15 @@ test('angle Markdown destinations and HTTP autolinks remain usable without enabl
   const actual = await readFile(join(f.output, '.agents/skills/osstack-mode/SKILL.md'), 'utf8');
   assert.ok(actual.includes('[p](<references/evidence.md>)')); assert.ok(actual.includes('<https://example.invalid/path?a=b>'));
 });
+
+test('long noncontainer prefix with many colon labels is scanned only once per line', async t => {
+  const f = await fixture(t);
+  await writeFile(join(f.sourceRoot, 'references/dense-prefix.md'), '- '.repeat(200000) + 'x' + '[a]:'.repeat(120000));
+  const helper = new URL('./lib/osstack-method-export.mjs', import.meta.url).href;
+  const source = `import { exportMethods } from ${JSON.stringify(helper)}; console.log(JSON.stringify(await exportMethods(${JSON.stringify({ ...f, host: 'codex', dryRun: true })})));`;
+  const start = performance.now();
+  try {
+    const result = await run(process.execPath, ['--input-type=module', '-e', source], { timeout: 4000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 });
+    assert.equal(JSON.parse(result.stdout).status, 'planned'); assert.equal(existsSync(f.output), false);
+  } finally { t.diagnostic(`dense-prefix child wall milliseconds: ${performance.now() - start}`); }
+});

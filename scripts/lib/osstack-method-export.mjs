@@ -144,9 +144,9 @@ function destinations(text, sourcePath) {
     spans.push({ target: prose.slice(begin, end), start: begin, end });
     return inline ? i : i - 1;
   }
-  let lineStart = 0;
+  let lineStart = 0; let containerPrefixEnd = null;
   for (let i = 0; i < prose.length; i++) {
-    if (prose[i] === '\n') { lineStart = i + 1; }
+    if (prose[i] === '\n') { lineStart = i + 1; containerPrefixEnd = null; }
     else if (prose[i] === '[') { if (labels.length) labels[labels.length - 1].nested = true; labels.push({ start: i, nested: false }); }
     else if (prose[i] === ']') {
       const label = labels.pop();
@@ -155,9 +155,13 @@ function destinations(text, sourcePath) {
         i = targetAt(i + 2, true);
       } else if (prose[i + 1] === ':' && label) {
         if (label.start < lineStart) unsupported();
-        const prefix = prose.slice(lineStart, label.start);
-        if (!/^ {0,3}$/.test(prefix) && /^[ \t>+*\-\d.)]+$/.test(prefix)) unsupported();
-        if (/^ {0,3}$/.test(prefix)) {
+        const simplePrefix = label.start - lineStart <= 3 && /^ {0,3}$/.test(prose.slice(lineStart, label.start));
+        if (containerPrefixEnd === null) {
+          containerPrefixEnd = lineStart;
+          while (containerPrefixEnd < prose.length && /[ \t>+*\-\d.)]/.test(prose[containerPrefixEnd])) containerPrefixEnd++;
+        }
+        if (!simplePrefix && label.start > lineStart && label.start <= containerPrefixEnd) unsupported();
+        if (simplePrefix) {
           if (label.nested || prose[label.start + 1] === '^' || prose.slice(label.start, i).includes('\n')) unsupported();
           i = targetAt(i + 2, false);
         }
