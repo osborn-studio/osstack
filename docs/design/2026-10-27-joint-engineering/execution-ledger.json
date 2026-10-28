@@ -3043,7 +3043,7 @@
   "next_method_development_wave": {
     "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
     "authorization": "user explicitly requested OSStack parallel subagent implementation",
-    "status": "295_ready_waiting_user_merge",
+    "status": "295_merged_next_wave_active",
     "owners": {
       "loader_adversarial": {
         "card": "card_766d64bc",
@@ -3150,7 +3150,7 @@
       "independent_card": "card_c49a2a2c",
       "branch": "codex/method-evidence-projection",
       "base": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
-      "status": "ready_waiting_user_merge",
+      "status": "merged",
       "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation",
       "criteria_sha256": "dea3d5b26124a97cf0dfba60cbe852a4fd167293231472b24790498354c3361e",
       "independent_vectors": 15,
@@ -3172,7 +3172,7 @@
       "card": "card_0596e0e4",
       "branch": "codex/method-journey-reference",
       "base": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
-      "status": "ready_waiting_user_merge",
+      "status": "merged",
       "scope": "exported fixed journey reference, 3existingreferences and export tests, own docs only",
       "author_sha": "c29a3aa2c1c179255dabb0a7fca3f1fea817e0e7",
       "focused_tests": 74,
@@ -3203,7 +3203,10 @@
         "skipped": 7,
         "failed": 0
       },
-      "ready_evidence": "docs/implementation/method-projection-publication/ready/summary.json"
+      "ready_evidence": "docs/implementation/method-projection-publication/ready/summary.json",
+      "merge_commit": "70924ee44a478f5ef345307b885bda6b936e6662",
+      "merged_at": "2026-10-28T14:10:23Z",
+      "actual_main_tree_equals_published_head": true
     }
   },
   "next_method_host_wave": {
@@ -3234,6 +3237,8 @@
     "formal_gates_passed": false,
     "updated_at": "2026-10-28T14:00:48.808103+00:00",
     "host_criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
-    "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d"
+    "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d",
+    "actual_main": "70924ee44a478f5ef345307b885bda6b936e6662",
+    "dependency_merged": true
   }
 }
