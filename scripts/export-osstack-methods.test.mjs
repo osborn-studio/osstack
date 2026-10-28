@@ -452,6 +452,7 @@ for (const input of ['unexported absolute', 'unset', 'relative']) {
     const runtime = join(chosen, 'runtime'); const entries = await readdir(runtime);
     assert.equal(entries.length, 2); const stdout = entries.find(name => name.endsWith('.stdout'));
     assert.ok(stdout); assert.ok(entries.includes(stdout.replace(/\.stdout$/, '.stderr')));
+    for (const name of entries) assert.equal((await lstat(join(runtime, name))).mode & 0o077, 0, 'shell logs must be private');
     const record = JSON.parse(await readFile(join(runtime, stdout), 'utf8'));
     assert.equal(record.scratch, chosen); assert.equal(record.output, join(runtime, stdout.slice(0, -7)));
     assert.equal(existsSync(record.output), false, 'logs must not precreate the output directory');

@@ -8,13 +8,14 @@ Work from the root of the actual OSStack target checkout. Read `scripts/method-v
 
 Use the target's supported Node and pnpm versions, local Git, installed dependencies and current compiled artifacts. In a fresh checkout, run the repository's `pnpm install --frozen-lockfile` and `pnpm build` before the journey. Retain their logs separately. A successful build is a prerequisite, not proof of either CLI outcome. If tracked generated files were restored after a build, rebuild them explicitly; incremental cache state alone does not establish current output bytes.
 
-Choose an absolute, owned scratch path and assign it to the shell variable `OSSTACK_SCRATCH_ROOT` before this recipe. Do not use a project directory, a volume root or a serving home. The preamble below rejects an unset, empty or relative value, exports the selected path for Node, and creates the scratch root and its `runtime` parent directory. The journey output itself must be new. Existing output, including a symlink, is refused. This recipe requires an explicit root; it does not use the wrapper's default temporary path.
+Choose an absolute, owned scratch path with no leading or trailing whitespace. Assign it to the shell variable `OSSTACK_SCRATCH_ROOT` in the script before the block below, or export it from the calling shell. Do not use a project directory, a volume root or a serving home. The preamble below rejects an unset, empty or relative value, exports the selected path for Node, and creates the scratch root and its `runtime` parent directory. The journey output itself must be new. Existing output, including a symlink, is refused. This recipe requires an explicit root; it does not use the wrapper's default temporary path.
 
 ## Drive and doctor
 
-From the target checkout root, with the prerequisites above satisfied:
+Run the following block as a shell script from the target checkout root, with the prerequisites above satisfied. Do not paste its `exit` guards into an interactive shell that you want to keep open:
 
 ```sh
+umask 077
 export OSSTACK_SCRATCH_ROOT="${OSSTACK_SCRATCH_ROOT:?Set an absolute owned scratch path first}"
 case "$OSSTACK_SCRATCH_ROOT" in
   /*) ;;
@@ -25,7 +26,7 @@ journey_output="${OSSTACK_SCRATCH_ROOT:?}/runtime/skills-check-journey-$(date -u
 node scripts/method-verification-journey.mjs --output "$journey_output" > "$journey_output.stdout" 2> "$journey_output.stderr"
 ```
 
-The shell retains invocation stdout/stderr as sibling files ending in `.stdout` and `.stderr`; it does not precreate the journey output directory. Read those logs and the command exit status before interpreting the report. Keep the build log separately.
+The script sets `umask 077` before creating directories and logs. The shell retains invocation stdout/stderr as sibling files ending in `.stdout` and `.stderr`; it does not precreate the journey output directory. Read those logs and the command exit status before interpreting the report. Keep the build log separately.
 
 This wrapper accepts only `--output`. Do not add `--doctor`, `--dry-run`, `--case` or `--evidence-dir` to it. It calls the existing skills-check driver's read-only doctor before each case, then drives that case. A failed doctor stops the journey. Doctor does not create a passing behavior observation.
 
@@ -50,7 +51,7 @@ Successful cleanup removes each owned fixture and requires `scratch/` to contain
 
 ## Failure and maintenance
 
-Keep the failed attempt. A missing build is a prerequisite blocker; an unexpected CLI result needs diagnosis. Do not rewrite the expected negative or delete a failed row to obtain success. A failed case can have a retained manifest marked unverified, an unsealed directory, or no created evidence. Refusal before the wrapper acquires its output directory creates no run artifacts. Report that distinction.
+Keep the failed attempt. A missing build is a prerequisite blocker; an unexpected CLI result needs diagnosis. Do not rewrite the expected negative or delete a failed row to obtain success. A failed case can have a retained manifest marked unverified, an unsealed directory, or no created evidence. Refusal before the wrapper acquires its output directory creates no wrapper-owned output tree. The shell-created parent and sibling logs can still exist; inspect those logs for the refusal reason. Report that distinction.
 
 Timeout or interruption attempts bounded termination of the wrapper's own direct child. It does not authorize killing similarly named processes or deleting unrelated homes. If cleanup is unknown, preserve the owned residue and report it. Use a new output directory for an authorized rerun after fixing the cause.
 
