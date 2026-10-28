@@ -1,0 +1,35 @@
+[
+  {
+    "code_sha": "c04f7ed298090f027921990a43681bcb60634095",
+    "name": "projection",
+    "argv": [
+      "pnpm",
+      "test:method-projection"
+    ],
+    "started_at": "2026-10-28T13:18:32.051711+00:00",
+    "exit_code": 0,
+    "sha256": "447da936ef171230f99147dd32ceaa07a60c2d1cd3a25c5dbbc8cf366e8cf25b"
+  },
+  {
+    "code_sha": "c04f7ed298090f027921990a43681bcb60634095",
+    "name": "exports",
+    "argv": [
+      "pnpm",
+      "test:method-export"
+    ],
+    "started_at": "2026-10-28T13:18:32.872387+00:00",
+    "exit_code": 0,
+    "sha256": "b1495c4ef8d54a10d114682a123d0de922514896ed2f54797a9c1f68942452e6"
+  },
+  {
+    "code_sha": "c04f7ed298090f027921990a43681bcb60634095",
+    "name": "full",
+    "argv": [
+      "pnpm",
+      "test"
+    ],
+    "started_at": "2026-10-28T13:18:34.894927+00:00",
+    "exit_code": 0,
+    "sha256": "62beef30b2b5714ff898f356ba7d068ef401ca3fcd310e0463373dbec1d0ceb7"
+  }
+]

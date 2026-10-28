@@ -190,3 +190,6 @@ The new host-assisted experiment is separate: Codex phase1 chose the correct rou
 
 
 PR294 `5929180d` subsequently completed run40688548373 with all five applicable checks successful and paid smoke skipped. Current-head Linux package regression reports 7142 passed / 7 skipped / 0 failed; the new 25 journey tests and actual two-case journey passed in CI. Root marked #294 Ready after confirming main remains `ca95aba1` and both published heads remain unchanged. User merge order remains #293 then #294; actual-main integration must be checked after #293 merges. This updates readiness, not any formal gate or historical test SHA.
+
+
+PR293 and PR294 were verified merged at `38eb42c0` and `42dbdb0a`. Actual main tree `64168acca` equals the prior exact published-head composition `a072c817`; no historical test is relabelled a new main run. The next two isolated D2a slices are closed model evidence projection and exported method journey references. Root owns the central ledger, actual Sonnet review and PR publication; independent mutation checks retain their prefreeze. No new host experiment or runtime gate is implied.

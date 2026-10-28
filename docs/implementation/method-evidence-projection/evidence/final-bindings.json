@@ -1,0 +1,47 @@
+{
+  "root_sha": "6512cde7b634689dd29af14292b9f4de5a471afa",
+  "files": [
+    {
+      "author_sha": "1cfbf3ade5d9b6de1c2c42cd92788c1c552e235e",
+      "path": "scripts/project-method-journey-evidence.mjs",
+      "sha256": "325a3c6450af9748eb0a64f0507701c63198d7306987301b50b9ebc5060b7ebc",
+      "identical": true
+    },
+    {
+      "author_sha": "1cfbf3ade5d9b6de1c2c42cd92788c1c552e235e",
+      "path": "scripts/project-method-journey-evidence.test.mjs",
+      "sha256": "95b3bc6c2968868b8a70b46e511580bf7174124fa261827c918bec6ba9b6af26",
+      "identical": true
+    },
+    {
+      "author_sha": "c29a3aa2c1c179255dabb0a7fca3f1fea817e0e7",
+      "path": "osstack-methods-skill/references/skills-check-journey.md",
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282",
+      "identical": true
+    },
+    {
+      "author_sha": "c29a3aa2c1c179255dabb0a7fca3f1fea817e0e7",
+      "path": "scripts/export-osstack-methods.test.mjs",
+      "sha256": "b148ec518d54d459f81151d5e33ea825249f1bdead726ae76f89839dcce535b0",
+      "identical": true
+    },
+    {
+      "author_sha": "56ac12ee0cc1a5675008812964efd3d4e3945d79",
+      "path": "osstack-methods-skill/references/create-verification.md",
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0",
+      "identical": true
+    },
+    {
+      "author_sha": "56ac12ee0cc1a5675008812964efd3d4e3945d79",
+      "path": "osstack-methods-skill/references/maintain-verification.md",
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7",
+      "identical": true
+    },
+    {
+      "author_sha": "56ac12ee0cc1a5675008812964efd3d4e3945d79",
+      "path": "osstack-methods-skill/references/feature-map-template.md",
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86",
+      "identical": true
+    }
+  ]
+}
