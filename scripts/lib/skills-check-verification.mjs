@@ -2,8 +2,8 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access, lstat, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { delimiter, dirname, join, resolve } from 'node:path';
+import { access, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
+import { basename, delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 
 export const CASE_IDS = ['healthy', 'missing-ref', 'drift', 'mixed', 'empty'];
@@ -12,6 +12,23 @@ export const jsonBytes = value => JSON.stringify(value, null, 2) + '\n';
 export const writeJson = (path, value) => writeFile(path, jsonBytes(value), { mode: 0o600 });
 const exists = async path => { try { await lstat(path); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } };
 export const scratchRoot = () => process.env.OSSTACK_SCRATCH_ROOT?.trim() ? resolve(process.env.OSSTACK_SCRATCH_ROOT) : join(tmpdir(), 'osstack');
+export function failureReason(error) {
+  return error?.name === 'AbortError' ? 'interrupted' : String(error?.code ?? error?.message ?? 'verification_failed');
+}
+export async function assertOwnedFixture(fixture, scratch, evidence) {
+  const info = await lstat(fixture);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw Error('fixture_ownership_unconfirmed');
+  const actual = await realpath(fixture);
+  const base = await realpath(scratch);
+  const smoke = await realpath(join(scratch, 'smoke'));
+  const retained = await realpath(evidence);
+  const relation = relative(actual, retained);
+  const containsEvidence = relation === '' || (!isAbsolute(relation) && relation !== '..' && !relation.startsWith(`..${sep}`));
+  if (dirname(smoke) !== base || dirname(actual) !== smoke || !/^skills-check-[A-Za-z0-9_-]+$/.test(basename(actual)) || containsEvidence) {
+    throw Error('fixture_ownership_unconfirmed');
+  }
+  return actual;
+}
 const usage = () => Object.assign(Error('usage: node scripts/smoke-skills-check.mjs [--doctor | --dry-run] [--case all|healthy|missing-ref|drift|mixed|empty] [--evidence-dir NEW_DIRECTORY]'), { exitCode: 2 });
 export function parseOptions(args) {
   let mode = 'run'; let caseName = 'all'; let evidenceDir; let seenCase = false;

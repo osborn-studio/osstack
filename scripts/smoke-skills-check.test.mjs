@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
-  CASE_IDS, caseDefinition, evaluateCase, fixtureEnvironment, parseOptions, preflight,
+  CASE_IDS, assertOwnedFixture, caseDefinition, evaluateCase, failureReason, fixtureEnvironment, parseOptions, preflight,
   reserveEvidence, runCommand, sourceBindings,
 } from './lib/skills-check-verification.mjs';
 import { runVerification } from './smoke-skills-check.mjs';
@@ -116,6 +116,60 @@ test('drift verifies the actual head/ref rather than accepting any warning with 
   const observed = { exit_code: 2, stdout: output, stderr: '', direct_child_exit_confirmed: true };
   assert.equal(evaluateCase(expected, observed, true).verification_status, 'passed');
   assert.equal(evaluateCase(expected, { ...observed, stdout: output.replace('bbbbbbbbbbbb', 'cccccccccccc') }, true).source_check_status, 'unknown');
+});
+
+test('symlink CLI entry executes verification and retains a nonempty receipt and hashed evidence', { timeout: 30000 }, async () => {
+  const root = await temporary('symlink-entry');
+  try {
+    const entry = join(root, 'entry.mjs'); const evidenceDir = join(root, 'evidence');
+    await symlink(join(repository, 'scripts/smoke-skills-check.mjs'), entry);
+    const invocation = await runCommand(process.execPath, [entry, '--case', 'empty', '--evidence-dir', evidenceDir], {
+      cwd: repository, env: { PATH: process.env.PATH, OSSTACK_HOME: join(root, 'outer-home'), OSSTACK_SCRATCH_ROOT: process.env.OSSTACK_SCRATCH_ROOT },
+    });
+    assert.equal(invocation.exit_code, 0); assert.notEqual(invocation.stdout.trim(), '');
+    const receipt = JSON.parse(invocation.stdout);
+    assert.equal(receipt.status, 'passed'); assert.deepEqual(receipt.selected_cases, ['empty']);
+    assert.equal(receipt.cleanup.fixture_removed, true); assert.equal(existsSync(receipt.cleanup.fixture_path), false);
+    assert.deepEqual(JSON.parse(await readFile(join(evidenceDir, 'receipt.json'), 'utf8')), receipt);
+    const manifest = JSON.parse(await readFile(join(evidenceDir, 'manifest.json'), 'utf8'));
+    for (const file of manifest.files) assert.equal(createHash('sha256').update(await readFile(join(evidenceDir, file.path))).digest('hex'), file.sha256);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('cleanup ownership rejects scratch roots, evidence ancestors, outside directories and final symlinks', async () => {
+  const root = await temporary('ownership');
+  try {
+    const smoke = join(root, 'smoke'); const owned = join(smoke, 'skills-check-owned'); const evidence = join(root, 'evidence');
+    await mkdir(owned, { recursive: true }); await mkdir(evidence);
+    const outside = join(root, 'skills-check-outside'); await mkdir(outside);
+    const nested = join(owned, 'evidence'); await mkdir(nested);
+    const linked = join(smoke, 'skills-check-link'); await symlink(owned, linked);
+    await writeFile(join(evidence, 'sentinel'), 'preserve');
+    assert.equal(typeof await assertOwnedFixture(owned, root, evidence), 'string');
+    for (const candidate of [root, smoke, evidence, outside, linked]) await assert.rejects(assertOwnedFixture(candidate, root, evidence), /fixture_ownership_unconfirmed/);
+    await assert.rejects(assertOwnedFixture(owned, root, nested), /fixture_ownership_unconfirmed/);
+    await assert.rejects(assertOwnedFixture(owned, root, owned), /fixture_ownership_unconfirmed/);
+    assert.equal(await readFile(join(evidence, 'sentinel'), 'utf8'), 'preserve');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('allocation remains recorded and safely cleaned when subsequent canonicalization fails', { timeout: 30000 }, async () => {
+  const root = await temporary('allocation'); let allocated;
+  try {
+    const result = await runVerification({ caseName: 'empty', evidenceDir: join(root, 'evidence') }, {
+      canonicalizeFixture: async path => { allocated = path; throw Object.assign(Error('canonicalization failed'), { code: 'REALPATH_TEST_FAILURE' }); },
+    });
+    assert.equal(result.status, 'failed'); assert.equal(result.failure, 'REALPATH_TEST_FAILURE');
+    assert.equal(result.cleanup.fixture_path, allocated); assert.equal(result.cleanup.status, 'passed');
+    assert.equal(result.cleanup.fixture_removed, true); assert.equal(existsSync(allocated), false);
+  } finally { if (allocated) await rm(allocated, { recursive: true, force: true }); await rm(root, { recursive: true, force: true }); }
+});
+
+test('interrupt and unusual error codes always produce explicit string failure reasons', () => {
+  const controller = new AbortController(); controller.abort();
+  let caught; try { controller.signal.throwIfAborted(); } catch (error) { caught = error; }
+  assert.equal(caught.code, 20); assert.equal(failureReason(caught), 'interrupted');
+  assert.equal(failureReason({ code: 99 }), '99'); assert.equal(failureReason(null), 'verification_failed');
 });
 
 test('single missing-ref case succeeds as verification and usage rejects unknown CLI flags', { timeout: 30000 }, async () => {

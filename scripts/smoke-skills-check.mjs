@@ -4,13 +4,13 @@ import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:f
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  CASE_IDS, caseDefinition, evaluateCase, fixtureEnvironment, jsonBytes, parseOptions,
+  CASE_IDS, assertOwnedFixture, caseDefinition, evaluateCase, failureReason, fixtureEnvironment, jsonBytes, parseOptions,
   preflight, reserveEvidence, runCommand, scratchRoot, sealEvidence, sha256, sourceBindings, writeJson,
 } from './lib/skills-check-verification.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-// The second argument is a test seam for owned-fixture cleanup, never a CLI option.
-export async function runVerification({ caseName = 'all', evidenceDir } = {}, { removeFixture = rm } = {}) {
+// Test seams for allocation canonicalization/cleanup, never CLI options.
+export async function runVerification({ caseName = 'all', evidenceDir } = {}, { removeFixture = rm, canonicalizeFixture = realpath } = {}) {
   if (!['all', ...CASE_IDS].includes(caseName)) throw Object.assign(Error('invalid_case'), { exitCode: 2 });
   const checked = await preflight({ repository, evidenceDir, caseName });
   if (!checked.ready) throw Object.assign(Error('preflight_failed'), { preflight: checked });
@@ -51,7 +51,10 @@ export async function runVerification({ caseName = 'all', evidenceDir } = {}, { 
     bindings = await sourceBindings(repository); await writeJson(join(evidence.directory, 'bindings.json'), bindings);
     run.bindings = { source_digest: bindings.source.digest, build_digest: bindings.build.digest };
     const { createScratchDir } = await import(pathToFileURL(join(repository, 'packages/core/dist/index.js')).href);
-    fixture = await realpath(await createScratchDir('smoke', 'skills-check'));
+    fixture = await createScratchDir('smoke', 'skills-check');
+    cleanup.fixture_path = fixture;
+    fixture = await canonicalizeFixture(fixture);
+    fixture = await assertOwnedFixture(fixture, scratchRoot(), evidence.directory);
     cleanup.fixture_path = fixture;
     // Evidence was exclusively created before this fresh random fixture; it is
     // never put under the disposable fixture root.
@@ -88,7 +91,7 @@ export async function runVerification({ caseName = 'all', evidenceDir } = {}, { 
       if (!commandsSafeToClean) throw Error('command_termination_incomplete');
     }
     if (cases.some(value => value.verification_status !== 'passed')) failure = 'case_expectation_failed';
-  } catch (error) { failure = error.code ?? error.message ?? 'verification_failed'; }
+  } catch (error) { failure = failureReason(error); }
   finally {
     if (bindings) {
       try {
@@ -101,12 +104,13 @@ export async function runVerification({ caseName = 'all', evidenceDir } = {}, { 
     if (controller.signal.aborted) failure ??= 'interrupted';
     if (fixture && commandsSafeToClean) {
       try {
+        await assertOwnedFixture(fixture, scratchRoot(), evidence.directory);
         await removeFixture(fixture, { recursive: true, force: true });
         try { await lstat(fixture); throw Object.assign(Error('fixture_still_exists'), { code: 'FIXTURE_STILL_EXISTS' }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
         cleanup.status = 'passed'; cleanup.fixture_removed = true;
       }
-      catch (error) { cleanup.status = 'failed'; cleanup.reason = error.code ?? 'remove_failed'; failure ??= 'fixture_cleanup_failed'; }
+      catch (error) { cleanup.status = 'failed'; cleanup.reason = failureReason(error); failure ??= 'fixture_cleanup_failed'; }
     } else if (fixture) {
       cleanup.status = 'failed'; cleanup.reason = 'uncertain_command_descendants_fixture_retained'; failure ??= 'fixture_cleanup_unconfirmed';
     } else { cleanup.status = 'not_required'; cleanup.reason = 'fixture_not_allocated'; }
@@ -130,7 +134,12 @@ export async function runVerification({ caseName = 'all', evidenceDir } = {}, { 
   return receipt;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+let directEntry = false;
+if (process.argv[1]) {
+  try { directEntry = await realpath(resolve(process.argv[1])) === await realpath(fileURLToPath(import.meta.url)); }
+  catch { /* An unrelated/non-file host argv is not this module's CLI entry. */ }
+}
+if (directEntry) {
   try {
     const options = parseOptions(process.argv.slice(2));
     if (options.mode !== 'run') {
