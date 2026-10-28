@@ -1,0 +1,72 @@
+{
+  "code_sha": "f7236a159d266dd43c79729e14f19c1ac273d623",
+  "base_sha": "6df338e8a7d232e6f44f8848e06c99b3f7a9d018",
+  "recorded_at": "2026-10-28T10:07:42.207810+00:00",
+  "source_sha256": {
+    ".github/workflows/ci.yml": "4c5c413b197203676b7cf8c591d5ab58825f122560de05d0307105b0909cd21c",
+    "scripts/prepare-node-headers.mjs": "43787b9a7c531dc8e35674d10d45c563c4d6eaf4ae1cf3106ab36a6399586f74",
+    "scripts/prepare-node-headers.test.mjs": "43c354bdaa14a4956ba43e167fcf0dbab22d44ea4d8c17f06383e96069998391",
+    "scripts/lib/scratch.mjs": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af"
+  },
+  "runtime": {
+    "node": "22.22.1",
+    "abi": "127",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "final_tests": {
+    "command": "OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack PATH=/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin node --test scripts/prepare-node-headers.test.mjs",
+    "exit_code": 0,
+    "passed": 14,
+    "failed": 0,
+    "raw_log": "green-final-14-fixed.log.gz",
+    "scope": "same final source bytes; run immediately before code commit"
+  },
+  "official_download": {
+    "command": "node scripts/prepare-node-headers.mjs --output <scratch>/official-native",
+    "exit_code": 0,
+    "raw_stdout": "official-native.stdout.gz",
+    "raw_stderr": "official-native.stderr.gz",
+    "scope": "actual local runtime22.22.1 officialHTTPS; not remote matrix verification"
+  },
+  "historical_runs": [
+    {
+      "log": "red.log.gz",
+      "outcome": "expected missing implementation failure"
+    },
+    {
+      "log": "green-1.log.gz",
+      "outcome": "fetch implementation hung, manually terminated; no success claim"
+    },
+    {
+      "log": "green-2.log.gz",
+      "outcome": "fetch implementation still hung after server cleanup change, manually terminated"
+    },
+    {
+      "log": "debug.log.gz",
+      "outcome": "diagnostic fetch compound stall, manually terminated"
+    },
+    {
+      "log": "green-3.log.gz",
+      "outcome": "10 passed using intermediate Promise.race fetch, superseded"
+    },
+    {
+      "log": "green-4-native.log.gz",
+      "outcome": "10 passed native request"
+    },
+    {
+      "log": "green-final.log.gz",
+      "outcome": "13 passed native request before scratch helper"
+    },
+    {
+      "log": "green-final-14.log.gz",
+      "outcome": "13 passed,1 failed due accidental relative import in child test harness; preserved and fixed"
+    }
+  ],
+  "not_run": [
+    "whole-repository test",
+    "CI Linux20.6.0/22.23.1 runtime matrix",
+    "native better-sqlite3 rebuild locally"
+  ],
+  "qualification": "CI network download repair only; no product gate or provider qualification"
+}
