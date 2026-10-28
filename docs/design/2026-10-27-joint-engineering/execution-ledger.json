@@ -2947,7 +2947,7 @@
     },
     "max_model_invocations": 4,
     "automatic_model_retries": 0,
-    "status": "preflight_in_progress",
+    "status": "independent_verification_complete_pending_sonnet_review",
     "gates": [
       "isolated existing authentication",
       "current app-server schema",
@@ -2959,6 +2959,76 @@
       "no Grok setup",
       "no J01/J11/runtime promotion",
       "no product verification execution in this experiment"
-    ]
+    ],
+    "full_regression": {
+      "head": "4d6bb58d446da32a3044d5375baa7f2f935eddf2",
+      "command": "pnpm test",
+      "fresh_install_build": true,
+      "exit_code": 0,
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "codex_observed": {
+      "calls": 2,
+      "native_catalog_target_counts": [
+        0,
+        4
+      ],
+      "final_word_counts": [
+        193,
+        286
+      ],
+      "selection_and_relevant_reads": "observed_with_separate_catalog_process",
+      "requested_model": "gpt-6.1-sol",
+      "actual_model": "not_attested",
+      "overall": "inconclusive_observability",
+      "reason": "before/after inventory omitted .git, file types and lengths; no full original workspace proof"
+    },
+    "claude_initial_preflight": {
+      "version": "2.1.291",
+      "auth": "passed_isolated",
+      "sdk_initialize_target_counts": [
+        0,
+        0
+      ],
+      "user_turns": 0,
+      "status": "blocked_this_preflight_only",
+      "diagnosis": "commands is not equivalent to frozen system/init skills observation; restricted/project settings interaction under read-only investigation"
+    },
+    "evidence": "docs/implementation/method-native-discovery/README.md",
+    "claude_v2_observed": {
+      "protocol": "fresh_cases_and_pre_response_freeze",
+      "calls": 2,
+      "native_same_process_catalog_target_counts": [
+        0,
+        4
+      ],
+      "actual_model": "claude-sonnet-5-5",
+      "exit_codes": [
+        0,
+        0
+      ],
+      "final_word_counts": [
+        329,
+        345
+      ],
+      "native_skill": "osstack-help",
+      "observed_reads": [
+        "help body via Skill expansion",
+        "evidence.md",
+        "maintain-verification.md"
+      ],
+      "complete_workspace_including_git_unchanged": true,
+      "independent_final_grading": {
+        "absent": "passed_negative_control",
+        "present": "passed_named_discovery_and_read",
+        "scope": "this CLI version, exact configuration and explicit help request; no runtime qualification"
+      },
+      "runtime_qualification": false
+    },
+    "model_invocations_actual": 4,
+    "model_retries_actual": 0,
+    "owned_cleanup": "confirmed_workspace_and_private_home_removed; not whole-descendant-tree attestation"
   }
 }

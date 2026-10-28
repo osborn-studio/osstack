@@ -1,0 +1,437 @@
+{
+  "schema_version": 2,
+  "graded_at": "2026-10-28T11:21:54.809685+00:00",
+  "reviewer": "Same root task independent engineering reviewer; not separately authenticated trusted principal",
+  "prefreeze_sha256": "f456d86c05cde248b9be463162ab2b400ed0bdef211411956f906e27f80b0e62",
+  "original_criteria_sha256": "6ba7fd3cd626d3b96ab6a4a4c451e9d607abb216b4c3092490b49c5e1cc730fa",
+  "prompt_supplement_sha256": "79e83b5d4df35e447e5e39ceb1fcbacff565c74218cacd928720f5dd27de0842",
+  "observations_sha256": "d3926a28179df3856b937d92bf044faaec940b0d488f438bda80a1d686e95311",
+  "cleanup_supplement_sha256": "13d78f0d42975b30f4fcd582aa534cc57c35886ff614e67d8a039981a866f11a",
+  "candidate": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "tree": "9efad98d9560076ec33611ae75841c7ac85e0fc2",
+  "criteria_changed_after_responses": false,
+  "v1_grade_unchanged": true,
+  "model_invocations": {
+    "codex_v1": 2,
+    "claude_v1": 0,
+    "claude_v2": 2,
+    "total": 4,
+    "retries": 0
+  },
+  "cases": {
+    "claude-v2-absent": {
+      "overall": "passed_negative_control",
+      "full_prefrozen_pass": true,
+      "input_user_turns": 1,
+      "sdk_internal_num_turns": 3,
+      "raw_sha256": "51c156b9d4f4c20af28f8603d4f97a1440ad095e03bafa9bbd36cd20f730ea0c",
+      "dimensions": {
+        "PREFLIGHT": {
+          "status": "passed_bounded_native_configuration",
+          "evidence": [
+            "independent/v2-prefreeze.json",
+            "harness/claude-v2-dispatch.json"
+          ],
+          "limits": "Exact native read fence and observed-catalog Skill denies, not OS sandbox or universal hidden Skill containment. Child environment keys/overrides derived from frozen env function, not whole-process audit."
+        },
+        "CATALOG": {
+          "status": "passed_runtime_native_catalog",
+          "evidence": "runs/claude-v2-absent/evidence/run.jsonl:3",
+          "skills_targets": [],
+          "slash_commands_targets": [],
+          "origin": "present project-local origin inferred from isolated export root plus actual expanded base path; no duplicate target entries",
+          "control_commands_relation": "Same-process control commands checked before user input, separately from actual system/init skills+slash_commands after input. Neither field is relabeled as the other."
+        },
+        "PROCESS_BINDING": {
+          "status": "passed_same_process",
+          "pid": 21124,
+          "started_at": "2026-10-28T11:15:57.587274+00:00",
+          "ended_at": "2026-10-28T11:16:09.577171+00:00",
+          "exit_code": 0,
+          "binary_sha256": "9a1d2ed6bb4421e8fc80c892c0413f293be3ee50ae3d7dda1a7622197a056690",
+          "evidence": [
+            "runs/claude-v2-absent/evidence/run-result.json",
+            "runs/claude-v2-absent/evidence/run.jsonl"
+          ]
+        },
+        "SELECTION": {
+          "status": "passed_no_target_selection",
+          "evidence": "runs/claude-v2-absent/evidence/run.jsonl:7-11",
+          "scope": "Only osstack-help actually invoked in positive case; other three entries only catalog observation."
+        },
+        "READS": {
+          "status": "passed_no_package_body_read",
+          "skill_expansion": null,
+          "complete_reference_reads": [],
+          "other_read_observation": "two workspace Globs returned no files",
+          "limits": "Mode SKILL body not read; positive answer correctly discloses that. No consumption claim for setup/agent."
+        },
+        "ABSENT": {
+          "status": "passed_negative_control_behavior",
+          "evidence": "runs/claude-v2-absent/evidence/run.jsonl:12",
+          "basis": "No invented skill usage, installation or search outside workspace; no auth/timeout failure counted as pass."
+        },
+        "ANSWER": {
+          "status": "passed_no_fabrication_generic_advice",
+          "evidence": "runs/claude-v2-absent/evidence/run.jsonl:12",
+          "basis": "Positive distinguishes observed reads/proposed maintenance; requires candidate/build/raw evidence, coverage, cleanup, failure classification, preserved failures and no weakened predicates. Negative explicitly states no selected skill and gives generic future advice.",
+          "limits": "I ran nothing is interpreted in context as no product verification execution, not denial that disclosed Read/Glob tools ran. No driver performance/correctness is measured."
+        },
+        "LENGTH": {
+          "status": "passed",
+          "counting": "re.findall(r\"\\S+\", final assistant text); duplicate result text not counted twice",
+          "words": 329,
+          "limit_exclusive": 350,
+          "final_sha256": "f2d9aa3355310967867036239850da9dd8304ac3fdb5e76b99e55179ec629aad",
+          "other_visible_text_messages": []
+        },
+        "MODEL": {
+          "status": "passed_requested_and_runtime_identity_match",
+          "requested": "claude-sonnet-5-5",
+          "system_init": "claude-sonnet-5-5",
+          "assistant_models": [
+            "claude-sonnet-5-5"
+          ],
+          "modelUsage": {
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 802,
+              "cacheReadInputTokens": 12063,
+              "cacheCreationInputTokens": 5067,
+              "webSearchRequests": 0,
+              "costUSD": 0.030708599999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 89,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "source_lines": [
+            3,
+            13
+          ],
+          "limits": "Runtime identity is host-reported; not independent principal authentication or external provider attestation."
+        },
+        "BOUNDARIES": {
+          "status": "passed_observed_tool_scope",
+          "calls": [
+            {
+              "line": 7,
+              "id": "toolu_01SFDfcEykAWdFvFerkXADSt",
+              "name": "Glob",
+              "input": {
+                "pattern": "**/*osstack*"
+              },
+              "result_line": 8
+            },
+            {
+              "line": 9,
+              "id": "toolu_012QofMH98KdpW2SAvfBA8jV",
+              "name": "Glob",
+              "input": {
+                "pattern": "**/SKILL.md"
+              },
+              "result_line": 11
+            }
+          ],
+          "permission_denials": [],
+          "sdk_spawned_subagents": 0,
+          "sdk_web_tool_requests": 0,
+          "runtime_tools": [
+            "Glob",
+            "Grep",
+            "Read",
+            "Skill"
+          ],
+          "builtin_plugins_reported": [
+            {
+              "name": "cc-plugin-agents-md",
+              "path": "builtin",
+              "source": "cc-plugin-agents-md@builtin"
+            },
+            {
+              "name": "cc-plugin-telemetry",
+              "path": "builtin",
+              "source": "cc-plugin-telemetry@builtin"
+            },
+            {
+              "name": "cc-plugin-plugin-authoring",
+              "path": "builtin",
+              "source": "cc-plugin-plugin-authoring@builtin"
+            }
+          ],
+          "limits": "Built-in host plugins are reported, not claimed absent; hooks disabled and no external MCP/custom configuration. No observed non-target Skill, mutation, shell, web or agent call. Whole-process I/O not instrumented."
+        },
+        "IMMUTABILITY": {
+          "status": "passed_complete_workspace_inventory",
+          "entries": 10,
+          "includes_git": true,
+          "fields": [
+            "type",
+            "length",
+            "mode",
+            "sha256_for_file",
+            "symlink_target_if_any"
+          ],
+          "before_after_and_independent_current_equal": true,
+          "evidence": [
+            "runs/claude-v2-absent/evidence/run-before.json",
+            "runs/claude-v2-absent/evidence/run-after.json"
+          ],
+          "limits": "Only declared complete workspace, not entire machine. State/private-home writes are separate."
+        },
+        "CLEANUP": {
+          "status": "confirmed_owned_scope",
+          "process_exit": 0,
+          "private_home_absent": true,
+          "workspace_absent": true,
+          "reported_socket_absent": "/tmp/cc-socks/21124.sock",
+          "retained_exports": 0,
+          "evidence": [
+            "harness/v2-workspace-cleanup.json",
+            "independent/v2-cleanup-supplement.json"
+          ],
+          "limits": "No all-descendants claim; original run-result retained with separate cleanup receipt."
+        }
+      }
+    },
+    "claude-v2-present": {
+      "overall": "passed_named_discovery_and_read",
+      "full_prefrozen_pass": true,
+      "input_user_turns": 1,
+      "sdk_internal_num_turns": 6,
+      "raw_sha256": "2d5a251142d2447b3f6798d113dd5a07c611c8282cc61d8337cd1bbb9033d233",
+      "dimensions": {
+        "PREFLIGHT": {
+          "status": "passed_bounded_native_configuration",
+          "evidence": [
+            "independent/v2-prefreeze.json",
+            "harness/claude-v2-dispatch.json"
+          ],
+          "limits": "Exact native read fence and observed-catalog Skill denies, not OS sandbox or universal hidden Skill containment. Child environment keys/overrides derived from frozen env function, not whole-process audit."
+        },
+        "CATALOG": {
+          "status": "passed_runtime_native_catalog",
+          "evidence": "runs/claude-v2-present/evidence/run.jsonl:3",
+          "skills_targets": [
+            "osstack-agent",
+            "osstack-help",
+            "osstack-mode",
+            "setup-osstack"
+          ],
+          "slash_commands_targets": [
+            "osstack-agent",
+            "osstack-help",
+            "osstack-mode",
+            "setup-osstack"
+          ],
+          "origin": "present project-local origin inferred from isolated export root plus actual expanded base path; no duplicate target entries",
+          "control_commands_relation": "Same-process control commands checked before user input, separately from actual system/init skills+slash_commands after input. Neither field is relabeled as the other."
+        },
+        "PROCESS_BINDING": {
+          "status": "passed_same_process",
+          "pid": 21381,
+          "started_at": "2026-10-28T11:16:09.620674+00:00",
+          "ended_at": "2026-10-28T11:16:45.889520+00:00",
+          "exit_code": 0,
+          "binary_sha256": "9a1d2ed6bb4421e8fc80c892c0413f293be3ee50ae3d7dda1a7622197a056690",
+          "evidence": [
+            "runs/claude-v2-present/evidence/run-result.json",
+            "runs/claude-v2-present/evidence/run.jsonl"
+          ]
+        },
+        "SELECTION": {
+          "status": "passed_skill_invocation_and_expansion",
+          "evidence": "runs/claude-v2-present/evidence/run.jsonl:4-6",
+          "scope": "Only osstack-help actually invoked in positive case; other three entries only catalog observation."
+        },
+        "READS": {
+          "status": "passed_complete_help_and_references",
+          "skill_expansion": {
+            "line": 6,
+            "source": ".claude/skills/osstack-help/SKILL.md",
+            "export_file_sha256": "44b169e2e10d2b888772b055aa78e9572fda50ba273cad08030ffd41d393802d",
+            "body_sha256": "c4fc8198bf1b3fd6070fd71fb3c5059db2bbc254f0aa7f7745b45d6664620044",
+            "body_bytes": 2205,
+            "complete": true,
+            "normalization": "Only host base-directory prefix added and YAML frontmatter removed; body byte-exact"
+          },
+          "complete_reference_reads": [
+            {
+              "path": ".claude/skills/osstack-help/references/evidence.md",
+              "call_line": 8,
+              "result_line": 9,
+              "bytes": 4554,
+              "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+              "complete": true,
+              "comparison": "structured raw tool content equals complete exported file bytes"
+            },
+            {
+              "path": ".claude/skills/osstack-mode/references/maintain-verification.md",
+              "call_line": 12,
+              "result_line": 13,
+              "bytes": 2724,
+              "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+              "complete": true,
+              "comparison": "structured raw tool content equals complete exported file bytes"
+            }
+          ],
+          "other_read_observation": "one workspace Glob enumerated mode material",
+          "limits": "Mode SKILL body not read; positive answer correctly discloses that. No consumption claim for setup/agent."
+        },
+        "ABSENT": {
+          "status": "not_applicable_positive_case",
+          "evidence": "runs/claude-v2-present/evidence/run.jsonl:14",
+          "basis": "No invented skill usage, installation or search outside workspace; no auth/timeout failure counted as pass."
+        },
+        "ANSWER": {
+          "status": "passed_scoped_maintenance_advice",
+          "evidence": "runs/claude-v2-present/evidence/run.jsonl:14",
+          "basis": "Positive distinguishes observed reads/proposed maintenance; requires candidate/build/raw evidence, coverage, cleanup, failure classification, preserved failures and no weakened predicates. Negative explicitly states no selected skill and gives generic future advice.",
+          "limits": "I ran nothing is interpreted in context as no product verification execution, not denial that disclosed Read/Glob tools ran. No driver performance/correctness is measured."
+        },
+        "LENGTH": {
+          "status": "passed",
+          "counting": "re.findall(r\"\\S+\", final assistant text); duplicate result text not counted twice",
+          "words": 345,
+          "limit_exclusive": 350,
+          "final_sha256": "1ae8fbf0431dee7bdeae55a46195c5fdd81026f5c6de78212d78df8d25e37c0f",
+          "other_visible_text_messages": []
+        },
+        "MODEL": {
+          "status": "passed_requested_and_runtime_identity_match",
+          "requested": "claude-sonnet-5-5",
+          "system_init": "claude-sonnet-5-5",
+          "assistant_models": [
+            "claude-sonnet-5-5"
+          ],
+          "modelUsage": {
+            "claude-sonnet-5-5": {
+              "inputTokens": 10,
+              "outputTokens": 1168,
+              "cacheReadInputTokens": 33516,
+              "cacheCreationInputTokens": 8943,
+              "webSearchRequests": 0,
+              "costUSD": 0.05417520000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "source_lines": [
+            3,
+            15
+          ],
+          "limits": "Runtime identity is host-reported; not independent principal authentication or external provider attestation."
+        },
+        "BOUNDARIES": {
+          "status": "passed_observed_tool_scope",
+          "calls": [
+            {
+              "line": 4,
+              "id": "toolu_01UK8NGLbSVDbH2Kh72S3vcg",
+              "name": "Skill",
+              "input": {
+                "skill": "osstack-help"
+              },
+              "result_line": 5
+            },
+            {
+              "line": 8,
+              "id": "toolu_01Rb9pNA6NfP2c4pmSWqYdAH",
+              "name": "Read",
+              "input": {
+                "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-discovery-20261028/runs/claude-v2-present/workspace/.claude/skills/osstack-help/references/evidence.md"
+              },
+              "result_line": 9
+            },
+            {
+              "line": 10,
+              "id": "toolu_0166xiazFvpcGs7pYBCHpd7f",
+              "name": "Glob",
+              "input": {
+                "pattern": ".claude/skills/osstack-mode/**"
+              },
+              "result_line": 11
+            },
+            {
+              "line": 12,
+              "id": "toolu_01HheLnhSYGn1B9PUbbSpW11",
+              "name": "Read",
+              "input": {
+                "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-discovery-20261028/runs/claude-v2-present/workspace/.claude/skills/osstack-mode/references/maintain-verification.md"
+              },
+              "result_line": 13
+            }
+          ],
+          "permission_denials": [],
+          "sdk_spawned_subagents": 0,
+          "sdk_web_tool_requests": 0,
+          "runtime_tools": [
+            "Glob",
+            "Grep",
+            "Read",
+            "Skill"
+          ],
+          "builtin_plugins_reported": [
+            {
+              "name": "cc-plugin-agents-md",
+              "path": "builtin",
+              "source": "cc-plugin-agents-md@builtin"
+            },
+            {
+              "name": "cc-plugin-telemetry",
+              "path": "builtin",
+              "source": "cc-plugin-telemetry@builtin"
+            },
+            {
+              "name": "cc-plugin-plugin-authoring",
+              "path": "builtin",
+              "source": "cc-plugin-plugin-authoring@builtin"
+            }
+          ],
+          "limits": "Built-in host plugins are reported, not claimed absent; hooks disabled and no external MCP/custom configuration. No observed non-target Skill, mutation, shell, web or agent call. Whole-process I/O not instrumented."
+        },
+        "IMMUTABILITY": {
+          "status": "passed_complete_workspace_inventory",
+          "entries": 60,
+          "includes_git": true,
+          "fields": [
+            "type",
+            "length",
+            "mode",
+            "sha256_for_file",
+            "symlink_target_if_any"
+          ],
+          "before_after_and_independent_current_equal": true,
+          "evidence": [
+            "runs/claude-v2-present/evidence/run-before.json",
+            "runs/claude-v2-present/evidence/run-after.json"
+          ],
+          "limits": "Only declared complete workspace, not entire machine. State/private-home writes are separate."
+        },
+        "CLEANUP": {
+          "status": "confirmed_owned_scope",
+          "process_exit": 0,
+          "private_home_absent": true,
+          "workspace_absent": true,
+          "reported_socket_absent": "/tmp/cc-socks/21381.sock",
+          "retained_exports": 40,
+          "evidence": [
+            "harness/v2-workspace-cleanup.json",
+            "independent/v2-cleanup-supplement.json"
+          ],
+          "limits": "No all-descendants claim; original run-result retained with separate cleanup receipt."
+        }
+      }
+    }
+  },
+  "overall": "passed_claude_v2_scoped_pair",
+  "formal_gate_issued": false,
+  "interpretation": "Native help discovery and read-only maintenance advice observed under this exact CLI/config/prompt/export. No driver/product execution, general setup/agent consumption, causal benefit, cross-host equivalence or runtime qualification."
+}
