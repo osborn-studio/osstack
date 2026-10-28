@@ -1,0 +1,79 @@
+{
+  "full": {
+    "source_sha": "85d34eb1f8681fb26a8328431fb69f3509596f6b",
+    "exit_code": 0,
+    "node": "22.22.1",
+    "totals": {
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "package_summaries": [
+      "packages/contracts test:       Tests  15 passed (15)",
+      "packages/compliance test:       Tests  17 passed (17)",
+      "packages/github test:       Tests  107 passed (107)",
+      "packages/knowledge test:       Tests  44 passed (44)",
+      "packages/runtime test:       Tests  1 passed (1)",
+      "packages/neat-eval test:       Tests  16 passed (16)",
+      "packages/protocol test:       Tests  1012 passed (1012)",
+      "packages/governance test:       Tests  301 passed (301)",
+      "packages/knowledge-cloud test:       Tests  36 passed (36)",
+      "packages/graph test:       Tests  257 passed (257)",
+      "packages/core test:       Tests  1301 passed (1301)",
+      "packages/plugins test:       Tests  1 passed (1)",
+      "packages/hermes-adapter test:       Tests  22 passed (22)",
+      "packages/skills test:       Tests  2 passed (2)",
+      "packages/autonomy test:       Tests  201 passed (201)",
+      "packages/skill-registry test:       Tests  43 passed (43)",
+      "packages/agents test:       Tests  361 passed (361)",
+      "packages/config test:       Tests  30 passed (30)",
+      "packages/loop test:       Tests  515 passed (515)",
+      "packages/conformance test:       Tests  9 passed (9)",
+      "packages/supervisor test:       Tests  88 passed (88)",
+      "packages/cli test:       Tests  2765 passed | 5 skipped (2770)"
+    ],
+    "scope": "Package regression on85d34 code, generated4knowledge dist outputs and untracked deliveryREADME separately disclosed; not final whole-tree run."
+  },
+  "final_code_sha": "035285cf26c6fe26a751cbbb93020b2f8cd5c1d8",
+  "post_full_change": "seven documentation/method files only; package/test source unchanged",
+  "docs": {
+    "passed": 241,
+    "exit_code": 0
+  },
+  "hygiene": {
+    "passed": 1,
+    "exit_code": 0
+  },
+  "final_exports": {
+    "source_sha": "035285cf26c6fe26a751cbbb93020b2f8cd5c1d8",
+    "passed": 85,
+    "failed": 0,
+    "skipped": 0
+  },
+  "audit": {
+    "model": "claude-sonnet-5-5",
+    "initial": "REVISE at85d34",
+    "closure": "PASS limited B1-B4 at035285cf",
+    "source_bindings_verified": 42,
+    "note": "B2 optional reclassification with rationale correction; original reports preserved"
+  },
+  "independent_final": {
+    "source_sha": "035285cf26c6fe26a751cbbb93020b2f8cd5c1d8",
+    "files_per_host": 72,
+    "local_links_per_host": 247,
+    "methods": 11,
+    "manifest_sha256": "b352f27946e6411cbc4c802f760e74a370eb2deb6677b9584cd9d57b629b69d9"
+  },
+  "final_logs": {
+    "final-docs.log": {
+      "archive": "final-docs.log.gz",
+      "uncompressed_sha256": "e0c230847315e8868d6fada7be8087163e7fe21553351587fffa7fe4613f3466",
+      "bytes": 341
+    },
+    "final-hygiene.log": {
+      "archive": "final-hygiene.log.gz",
+      "uncompressed_sha256": "a15c33031e76730831c9bcbc955bf781eb0898a842a34d827c7471cabe4f7538",
+      "bytes": 362
+    }
+  }
+}

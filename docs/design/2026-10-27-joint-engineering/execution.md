@@ -218,3 +218,6 @@ Actual main is `92088fe55a2f985ca743fa1fabee0c081a6f672d`, with PR296 merged by 
 
 
 PR297 is merged as main711c45e7, whose tree07aa7fc4 equals the published0862bc38 tree. Prior tests retain their original SHA. OSStack marks the two method cards done. The next user-authorized batch separates task framing, caller-first architecture and independent prefrozen assessment; root integrates shared files only after author handoff and owns audit, full regression and PR.
+
+
+The framing/architecture batch integrates eleven shared methods at035285cf. Final85export tests, independent72files/247local links per host,241document checks and1hygiene check passed. Actual Sonnet first requested revision, then passed limited B1–B4 closure after confirmed repairs and evidence-based reclassification of optional direct-link tests. The package suite7144/5/0 remains bound to85d34 with its disclosed working-tree scope, not relabelled as a final whole-tree run. [Delivery and original opinions](../../implementation/method-framing-architecture/README.md) retain all evidence. Next host-probe protocol is preparation only, with zero calls and no borrowed experiment budget.
