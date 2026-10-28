@@ -41,9 +41,9 @@ async function fixture(t, { doctorFailure = false } = {}) {
     const cleanup = { status: 'passed', fixture_removed: true, fixture_path: '/private/secret-canary', descendant_termination: 'not_attested' };
     const bindingFiles = [{ path: 'private/source', bytes: 1, sha256: 'b'.repeat(64) }]; const digest = sha256(Buffer.from(JSON.stringify(bindingFiles)));
     const bindings = { source: { files: bindingFiles, digest }, build: { files: bindingFiles, digest } };
-    const receipt = { run_id: '00000000-0000-4000-8000-000000000000', status: 'passed', driver_exit: 0, selected_cases: [id], cases: [observed], cleanup, binding_digests: { source_digest: digest, build_digest: digest }, provider_qualified: false };
+    const receipt = { run_id: '00000000-0000-4000-8000-000000000000', status: 'passed', behavior: 'passed', failure: null, driver_exit: 0, selected_cases: [id], cases: [observed], cleanup, binding_digests: { source_digest: digest, build_digest: digest }, provider_qualified: false };
     const rawInput = jsonBytes({ version: 1, sources: expected.sources });
-    for (const [name, value] of Object.entries({ 'receipt.json': receipt, 'cleanup.json': cleanup, 'bindings.json': bindings, 'expectations.json': { definitions: [expected] }, [`${id}.command.json`]: command, [`${id}.json`]: { ...observed, manifest_before_sha256: sha256(Buffer.from(rawInput)), manifest_after_sha256: sha256(Buffer.from(rawInput)) } })) await put(join(dir, name), value);
+    for (const [name, value] of Object.entries({ 'receipt.json': receipt, 'run.json': { run_id: receipt.run_id, status: 'passed', selected_cases: [id], bindings_unchanged: true, bindings: receipt.binding_digests, final_bindings: receipt.binding_digests }, 'cleanup.json': cleanup, 'bindings.json': bindings, 'expectations.json': { definitions: [expected] }, [`${id}.command.json`]: command, [`${id}.json`]: { ...command, ...observed, manifest_before_sha256: sha256(Buffer.from(rawInput)), manifest_after_sha256: sha256(Buffer.from(rawInput)) } })) await put(join(dir, name), value);
     await writeFile(join(dir, `${id}.input.json`), rawInput); await writeFile(join(dir, `${id}.stdout`), stdout); await writeFile(join(dir, `${id}.stderr`), '');
     await sealEvidence(dir, receipt.run_id);
     journey.features.push({ case_id: id, verification: 'passed', product_exit: exit, product_status: id === 'healthy' ? 'healthy' : 'failed', driver_exit: 0, bindings: receipt.binding_digests, cleanup, evidence: dir, evidence_state: 'sealed', journey_status: 'passed' });
@@ -102,7 +102,8 @@ for (const mutation of ['hash', 'missing-receipt', 'extra-file', 'traversal', 's
 });
 test('resealed contradictory raw behavior cannot retain a passed verification', async t => {
   const f = await fixture(t); const dir = join(f.input, 'cases/missing-ref'); await writeFile(join(dir, 'missing-ref.stdout'), 'all healthy');
-  await edit(join(dir, 'missing-ref.command.json'), c => { c.stdout_sha256 = sha256(Buffer.from('all healthy')); }); await resealCase(f, 'missing-ref');
+  await edit(join(dir, 'missing-ref.command.json'), c => { c.stdout_sha256 = sha256(Buffer.from('all healthy')); });
+  await edit(join(dir, 'missing-ref.json'), c => { c.stdout_sha256 = sha256(Buffer.from('all healthy')); }); await resealCase(f, 'missing-ref');
   await assert.rejects(projectJourney(f), /behavior/);
 });
 test('existing output and output inside source never overwrite or modify inputs', async t => {
@@ -175,4 +176,70 @@ test('passed missing-ref stream cannot claim healthy or zero failed checks', asy
     });
     await resealPacket(f.output); await assert.rejects(checkPacket(f.output), /^Error: passed_snippet_conflict$/);
   }
+});
+for (const mutation of ['passed-cleanup-on-failed', 'bindings-without-evidence', 'consistency-without-evidence', 'reported-exit-without-evidence', 'reported-cleanup-without-evidence']) test(`unverified packet cannot manufacture ${mutation}`, async t => {
+  const f = await fixture(t, { doctorFailure: true }); await projectJourney(f);
+  await edit(join(f.output, 'packet.json'), p => {
+    const x = p.features[0];
+    if (mutation === 'passed-cleanup-on-failed') x.cleanup = { status: 'passed', fixture_removed: true, descendant_termination: 'not_attested' };
+    if (mutation === 'bindings-without-evidence') x.bindings.source_digest = 'b'.repeat(64);
+    if (mutation === 'consistency-without-evidence') x.receipt_cleanup_consistent = true;
+    if (mutation === 'reported-exit-without-evidence') x.reported_product_exit = 1;
+    if (mutation === 'reported-cleanup-without-evidence') x.reported_cleanup = { status: 'unknown', fixture_removed: null, descendant_termination: 'not_attested' };
+  }); await resealPacket(f.output); await assert.rejects(checkPacket(f.output), /unverified_cleanup_claim|not_created_claim/);
+});
+test('passed verification cannot also expose an unverified reported product exit', async t => {
+  const f = await fixture(t); await projectJourney(f); await edit(join(f.output, 'packet.json'), p => { p.features[0].reported_product_exit = 1; });
+  await resealPacket(f.output); await assert.rejects(checkPacket(f.output), /packet_passed_claim/);
+});
+test('source driver-pass followed by verifier-fail preserves failed, unknown and reported claims', async t => {
+  const f = await fixture(t);
+  await edit(join(f.input, 'journey.json'), j => { j.status = 'failed'; j.failure = 'scratch_residue'; Object.assign(j.features[0], { verification: 'failed', product_exit: null, product_status: 'unknown', reported_product_exit: 0, cleanup: { status: 'unknown', descendant_termination: 'not_attested' } }); for (const x of j.features) x.journey_status = 'failed'; }); await sealRoot(f.input);
+  await projectJourney(f); const x = (await readPacket(f)).features[0];
+  assert.equal(x.verification, 'failed'); assert.equal(x.product_exit, null); assert.equal(x.reported_product_exit, 0); assert.equal(x.cleanup.status, 'unknown'); assert.equal(x.reported_cleanup.status, 'passed');
+});
+for (const mutation of ['missing-run', 'run-status', 'run-bindings', 'run-id', 'receipt-failure', 'receipt-behavior', 'input-identity', 'detail-conflict']) test(`passed input rejects retained ${mutation} contradiction after resealing`, async t => {
+  const f = await fixture(t); const dir = join(f.input, 'cases/healthy');
+  if (mutation === 'missing-run') await rm(join(dir, 'run.json'));
+  if (mutation === 'run-status') await edit(join(dir, 'run.json'), r => { r.status = 'failed'; });
+  if (mutation === 'run-bindings') await edit(join(dir, 'run.json'), r => { r.bindings_unchanged = false; });
+  if (mutation === 'run-id') await edit(join(dir, 'run.json'), r => { r.run_id = '11111111-1111-4111-8111-111111111111'; });
+  if (mutation === 'receipt-failure') await edit(join(dir, 'receipt.json'), r => { r.failure = 'error'; });
+  if (mutation === 'receipt-behavior') await edit(join(dir, 'receipt.json'), r => { r.behavior = 'failed'; });
+  if (mutation === 'input-identity') { const changed = jsonBytes({ version: 1, sources: [] }); await writeFile(join(dir, 'healthy.input.json'), changed); await edit(join(dir, 'healthy.json'), r => { r.manifest_before_sha256 = sha256(Buffer.from(changed)); r.manifest_after_sha256 = sha256(Buffer.from(changed)); }); }
+  if (mutation === 'detail-conflict') await edit(join(dir, 'healthy.json'), r => { r.exit_code = 1; });
+  await resealCase(f, 'healthy'); await assert.rejects(projectJourney(f), /required_evidence|run_identity|run_state|run_bindings|receipt_result|input_identity|command_detail_conflict/);
+});
+async function changeBindings(f) {
+  const dir = join(f.input, 'cases/missing-ref'); let digest;
+  await edit(join(dir, 'bindings.json'), b => { b.source.files[0].sha256 = 'c'.repeat(64); digest = b.source.digest = sha256(Buffer.from(JSON.stringify(b.source.files))); });
+  await edit(join(dir, 'receipt.json'), r => { r.binding_digests.source_digest = digest; });
+  await edit(join(dir, 'run.json'), r => { r.bindings.source_digest = digest; r.final_bindings.source_digest = digest; });
+  await edit(join(f.input, 'journey.json'), j => { j.features[1].bindings.source_digest = digest; }); await resealCase(f, 'missing-ref');
+}
+test('successful journey cannot hide differing cross-case binding digests', async t => {
+  const f = await fixture(t); await changeBindings(f); await assert.rejects(projectJourney(f), /cross_case_bindings/);
+});
+test('late cross-case binding failure retains both individual rows and the failed journey', async t => {
+  const f = await fixture(t); await changeBindings(f); await edit(join(f.input, 'journey.json'), j => { j.status = 'failed'; j.failure = 'cross_case_bindings_changed'; for (const x of j.features) x.journey_status = 'failed'; }); await sealRoot(f.input);
+  await projectJourney(f); const p = await readPacket(f); assert.equal(p.journey_status, 'failed'); assert.ok(p.features.every(x => x.verification === 'passed')); assert.notEqual(p.features[0].bindings.source_digest, p.features[1].bindings.source_digest);
+});
+test('created input cannot smuggle a verified cleanup into a failed row', async t => {
+  const f = await fixture(t); await edit(join(f.input, 'journey.json'), j => { j.status = 'failed'; Object.assign(j.features[0], { verification: 'failed', product_exit: null, product_status: 'unknown' }); for (const x of j.features) x.journey_status = 'failed'; }); await sealRoot(f.input);
+  await assert.rejects(projectJourney(f), /unverified_cleanup_claim/);
+});
+for (const key of ['bindings', 'reported_cleanup', 'reported_product_exit']) test(`not-created source cannot contain ${key} evidence claims`, async t => {
+  const f = await fixture(t, { doctorFailure: true });
+  await edit(join(f.input, 'journey.json'), j => { j.features[0][key] = key === 'bindings' ? { source_digest: 'b'.repeat(64), build_digest: 'b'.repeat(64) } : key === 'reported_cleanup' ? { status: 'passed', fixture_removed: true, descendant_termination: 'not_attested' } : 0; }); await sealRoot(f.input);
+  await assert.rejects(projectJourney(f), /not_created_claim/);
+});
+test('directory enumeration rejects a source that exceeds the fixed member budget', async t => {
+  const f = await fixture(t, { doctorFailure: true });
+  for (let i = 0; i < 133; i++) await writeFile(join(f.input, `extra-${i}`), '');
+  await assert.rejects(projectJourney(f), /directory_entry_limit/);
+});
+test('CLI error code is fixed and path-free for rejected packet inventory', async t => {
+  const f = await fixture(t); await projectJourney(f); await writeFile(join(f.output, 'extra-secret-canary'), '{}');
+  const entry = new URL('./project-method-journey-evidence.mjs', import.meta.url).pathname;
+  assert.throws(() => execFileSync(process.execPath, [entry, '--check', f.output], { stdio: 'pipe' }), e => e.status === 1 && JSON.parse(e.stderr).error === 'directory_entry_limit' && !e.stderr.includes('secret-canary'));
 });

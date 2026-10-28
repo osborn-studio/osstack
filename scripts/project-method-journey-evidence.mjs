@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fixed historical evidence projection. No driver/model execution or generic redaction.
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, open, opendir, realpath, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scratchRoot } from './lib/scratch.mjs';
@@ -26,13 +26,18 @@ function keys(value, names) {
 const safeLine = text => typeof text === 'string' && /^(?:Checking 1 source\(s\) against their tracked refs\.\.\.|[01] source\(s\) failed to check\.|0 source\(s\) drifted from blessed_sha\.|  ✓ healthy  up-to-date \([a-f0-9]{12}\)|  ✗ missing-ref  unreachable: no_matching_ref)$/.test(text);
 async function directory(path) { const st = await lstat(path); check(st.isDirectory() && !st.isSymbolicLink(), 'directory_required'); }
 async function exists(path) { try { await lstat(path); return true; } catch (e) { if (e.code === 'ENOENT') return false; throw e; } }
+async function names(path, max) {
+  const entries = [];
+  for await (const entry of await opendir(path)) { entries.push(entry.name); check(entries.length <= max, 'directory_entry_limit'); }
+  return entries;
+}
 async function bounded(path, max = MAX_FILE) {
   const fd = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
-    check((await fd.stat()).isFile(), 'regular_file_required');
-    const bytes = Buffer.alloc(max + 1); let size = 0;
+    const info = await fd.stat(); check(info.isFile(), 'regular_file_required'); check(info.size <= max, 'file_size_limit');
+    const bytes = Buffer.alloc(info.size + 1); let size = 0;
     while (size < bytes.length) { const r = await fd.read(bytes, size, bytes.length - size, size); if (!r.bytesRead) break; size += r.bytesRead; }
-    check(size <= max, 'file_size_limit'); return bytes.subarray(0, size);
+    check(size <= info.size, 'file_grew_during_read'); return Buffer.from(bytes.subarray(0, size));
   } finally { await fd.close(); }
 }
 export function parseOptions(argv) {
@@ -52,7 +57,7 @@ async function sealed(dir, manifestName, allowedDirectories = []) {
     const bytes = await bounded(join(dir, entry.path)); total += bytes.length; check(total <= 32 * 1024 * 1024, 'manifest_total_limit');
     check(bytes.length === entry.bytes && sha256(bytes) === entry.sha256, 'manifest_hash'); files.set(entry.path, bytes);
   }
-  for (const name of await readdir(dir)) {
+  for (const name of await names(dir, 129 + allowedDirectories.length)) {
     if (allowedDirectories.includes(name)) await directory(join(dir, name));
     else check(name === manifestName || files.has(name), 'manifest_inventory');
   }
@@ -86,16 +91,23 @@ function bindingDigests(files) {
   }
   return out;
 }
-function verifyPassed(files, id, feature, receipt) {
+function verifyPassed(files, id, feature, receipt, manifest) {
+  const run = parse(files, 'run.json');
+  check(typeof receipt.run_id === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(receipt.run_id) && manifest.run_id === receipt.run_id && run.run_id === receipt.run_id, 'run_identity');
+  check(run.status === 'passed' && equal(run.selected_cases, [id]), 'run_state');
+  check(run.bindings_unchanged === true && equal(run.bindings, run.final_bindings) && equal(run.bindings, receipt.binding_digests), 'run_bindings');
+  check(receipt.behavior === 'passed' && receipt.failure === null, 'receipt_result');
   const expected = parse(files, 'expectations.json').definitions;
   check(expected?.length === 1 && expected[0].case_id === id, 'fixed_case');
   const e = expected[0]; const code = id === 'healthy' ? 0 : 1;
   check(e.expected_exit === code && e.failed === code && e.drifted === 0 && e.sources?.length === 1 && e.sources[0].id === id && /^[a-f0-9]{40}$/.test(e.sources[0].blessed_sha), 'fixed_expectation');
   const command = parse(files, `${id}.command.json`); const detail = parse(files, `${id}.json`);
   const stdout = required(files, `${id}.stdout`); const stderr = required(files, `${id}.stderr`); const input = required(files, `${id}.input.json`);
+  check(equal(JSON.parse(input), { version: 1, sources: e.sources }), 'input_identity');
+  check(Object.entries(command).every(([key, value]) => equal(detail[key], value)), 'command_detail_conflict');
   check(command.stdout_sha256 === sha256(stdout) && command.stderr_sha256 === sha256(stderr), 'raw_hash');
   const observed = evaluateCase(e, { ...command, stdout: stdout.toString('utf8'), stderr: stderr.toString('utf8') }, detail.manifest_before_sha256 === sha256(input) && detail.manifest_after_sha256 === sha256(input));
-  check(observed.verification_status === 'passed' && equal(receipt.cases, [observed]), 'behavior_mismatch');
+  check(observed.verification_status === 'passed' && equal(receipt.cases, [observed]) && Object.entries(observed).every(([key, value]) => equal(detail[key], value)), 'behavior_mismatch');
   check(feature.product_exit === observed.actual_exit && feature.product_status === observed.source_check_status && feature.driver_exit === 0 && receipt.status === 'passed' && receipt.driver_exit === 0, 'passed_claim');
 }
 async function buildProjection(input) {
@@ -106,7 +118,7 @@ async function buildProjection(input) {
   const packet = { schema_version: 1, kind: 'osstack_method_journey_projection', journey_status: j.status, failure_recorded: j.failure !== undefined && j.failure !== null,
     features: [], streams: [], references: [], scope: SCOPE };
   ref(packet.references, 'journey.manifest', root.manifestBytes); ref(packet.references, 'journey.receipt', required(root.files, 'journey.json'));
-  if (await exists(join(input, 'cases'))) { await directory(join(input, 'cases')); check((await readdir(join(input, 'cases'))).every(id => IDS.includes(id)), 'case_directory_set'); }
+  if (await exists(join(input, 'cases'))) { await directory(join(input, 'cases')); check((await names(join(input, 'cases'), 2)).every(id => IDS.includes(id)), 'case_directory_set'); }
   const manifests = root.manifest.case_manifests;
   check(Array.isArray(manifests) && manifests.length <= 2 && new Set(manifests.map(m => m.case_id)).size === manifests.length && manifests.every(m => IDS.includes(m.case_id) && HASH.test(m.sha256) && typeof m.verified === 'boolean'), 'case_manifest_index');
   for (const f of j.features) {
@@ -115,7 +127,10 @@ async function buildProjection(input) {
     const out = { case_id: f.case_id, verification: f.verification, product_exit: f.product_exit ?? null, reported_product_exit: f.reported_product_exit ?? null,
       driver_exit: f.driver_exit ?? null, product_status: f.product_status ?? 'unknown', evidence_state: f.evidence_state, cleanup: cleanup(f.cleanup), reported_cleanup: null, receipt_cleanup_consistent: null, bindings: { source_digest: null, build_digest: null } };
     const dir = join(input, 'cases', f.case_id); const existsCase = await exists(dir); const retained = manifests.find(m => m.case_id === f.case_id);
-    if (!existsCase) { check(f.evidence_state === 'not_created' && f.verification !== 'passed' && !retained, 'missing_case_evidence'); }
+    if (!existsCase) {
+      check(f.evidence_state === 'not_created' && f.verification !== 'passed' && !retained, 'missing_case_evidence');
+      check(f.reported_cleanup == null && f.reported_product_exit == null && (f.bindings == null || (f.bindings.source_digest == null && f.bindings.build_digest == null)), 'not_created_claim');
+    }
     else {
       check(f.evidence_state === 'sealed' && retained, 'unsealed_case');
       const data = await sealed(dir, 'manifest.json'); check(sha256(data.manifestBytes) === retained.sha256 && retained.verified === (f.verification === 'passed'), 'case_manifest_binding');
@@ -123,8 +138,8 @@ async function buildProjection(input) {
       check(equal(receipt.selected_cases, [f.case_id]) && receipt.driver_exit === out.driver_exit && receipt.provider_qualified === false, 'receipt_case');
       out.receipt_cleanup_consistent = equal(cleanup(cleaned), cleanup(receipt.cleanup));
       if (f.verification !== 'passed') out.reported_cleanup = cleanup(receipt.cleanup);
-      if (f.verification === 'passed') { check(out.receipt_cleanup_consistent, 'receipt_cleanup'); verifyPassed(data.files, f.case_id, f, receipt); check(equal(out.cleanup, cleanup(cleaned)), 'feature_cleanup'); }
-      else check(receipt.status !== 'passed', 'failed_receipt_conflict');
+      if (f.verification === 'passed') { check(out.receipt_cleanup_consistent, 'receipt_cleanup'); verifyPassed(data.files, f.case_id, f, receipt, data.manifest); check(equal(out.cleanup, cleanup(cleaned)), 'feature_cleanup'); }
+      // A driver may report passed before the enclosing verifier fails. Keep its claims unverified.
       out.bindings = bindingDigests(data.files);
       if (f.verification === 'passed') check(equal(out.bindings, f.bindings) && equal(out.bindings, receipt.binding_digests), 'feature_bindings');
       ref(packet.references, `${f.case_id}.manifest`, data.manifestBytes);
@@ -152,11 +167,18 @@ export function validatePacket(p) {
     check(f.receipt_cleanup_consistent === null || typeof f.receipt_cleanup_consistent === 'boolean', 'cleanup_consistency');
     if (f.reported_cleanup !== null) { keys(f.reported_cleanup, ['status', 'fixture_removed', 'descendant_termination']); cleanup(f.reported_cleanup); }
     keys(f.bindings, ['source_digest', 'build_digest']); check(Object.values(f.bindings).every(v => v === null || (typeof v === 'string' && HASH.test(v))), 'packet_bindings');
-    if (f.verification === 'passed') check(f.product_exit === (f.case_id === 'healthy' ? 0 : 1) && f.product_status === (f.case_id === 'healthy' ? 'healthy' : 'failed') && f.driver_exit === 0 && f.evidence_state === 'sealed' && f.cleanup.status === 'passed' && f.cleanup.fixture_removed === true && f.reported_cleanup === null && f.receipt_cleanup_consistent === true && Object.values(f.bindings).every(v => v !== null), 'packet_passed_claim');
-    else check(f.product_exit === null && f.product_status === 'unknown', 'unverified_product_claim');
+    if (f.verification === 'passed') check(f.product_exit === (f.case_id === 'healthy' ? 0 : 1) && f.product_status === (f.case_id === 'healthy' ? 'healthy' : 'failed') && f.driver_exit === 0 && f.reported_product_exit === null && f.evidence_state === 'sealed' && f.cleanup.status === 'passed' && f.cleanup.fixture_removed === true && f.reported_cleanup === null && f.receipt_cleanup_consistent === true && Object.values(f.bindings).every(v => v !== null), 'packet_passed_claim');
+    else {
+      check(f.product_exit === null && f.product_status === 'unknown', 'unverified_product_claim');
+      check(['unknown', 'not_started'].includes(f.cleanup.status) && f.cleanup.fixture_removed === null, 'unverified_cleanup_claim');
+    }
+    if (f.evidence_state === 'not_created') check(f.reported_cleanup === null && f.receipt_cleanup_consistent === null && f.reported_product_exit === null && Object.values(f.bindings).every(v => v === null), 'not_created_claim');
     if (f.verification === 'not_run') check(f.driver_exit === null && f.reported_product_exit === null && f.evidence_state === 'not_created' && f.cleanup.status === 'not_started' && f.reported_cleanup === null && f.receipt_cleanup_consistent === null, 'not_run_claim');
   }
-  if (p.journey_status === 'passed') check(p.features.every(f => f.verification === 'passed') && !p.failure_recorded, 'journey_pass_claim');
+  if (p.journey_status === 'passed') {
+    check(p.features.every(f => f.verification === 'passed') && !p.failure_recorded, 'journey_pass_claim');
+    check(equal(p.features[0].bindings, p.features[1].bindings), 'cross_case_bindings');
+  }
   check(Array.isArray(p.references) && p.references.length <= REF_IDS.size, 'reference_count'); const refs = new Map();
   for (const r of p.references) { keys(r, ['id', 'bytes', 'sha256']); check(REF_IDS.has(r.id) && !refs.has(r.id) && integer(r.bytes) && r.bytes <= MAX_FILE && typeof r.sha256 === 'string' && HASH.test(r.sha256), 'reference_shape'); refs.set(r.id, r); }
   check(refs.has('journey.manifest') && refs.has('journey.receipt'), 'journey_references');
@@ -183,7 +205,7 @@ export function validatePacket(p) {
   check(Buffer.byteLength(jsonBytes(p)) <= MAX_PACKET, 'packet_size_limit'); return p;
 }
 export async function checkPacket(path) {
-  await directory(path); check(equal((await readdir(path)).sort(), ['manifest.json', 'packet.json']), 'packet_inventory');
+  await directory(path); check(equal((await names(path, 2)).sort(), ['manifest.json', 'packet.json']), 'packet_inventory');
   const manifestBytes = await bounded(join(path, 'manifest.json'), 4096); const manifest = JSON.parse(manifestBytes);
   check(manifestBytes.equals(Buffer.from(jsonBytes(manifest))), 'packet_manifest_canonical'); keys(manifest, ['schema_version', 'files']);
   check(manifest.schema_version === 1 && Array.isArray(manifest.files) && manifest.files.length === 1, 'packet_manifest');
@@ -205,9 +227,9 @@ export async function projectJourney({ input, output }) {
   await writeFile(join(output, 'packet.json'), bytes, { flag: 'wx', mode: 0o600 });
   await writeFile(join(output, 'manifest.json'), jsonBytes({ schema_version: 1, files: [{ path: 'packet.json', bytes: bytes.length, sha256: sha256(bytes) }] }), { flag: 'wx', mode: 0o600 });
   await checkPacket(output);
-  return { status: 'projected', packet_sha256: sha256(bytes), original_evidence_modified: false, formal_gate_pass: false };
+  return { status: 'projected', packet_sha256: sha256(bytes), input_opened_read_only: true, formal_gate_pass: false };
 }
 if (process.argv[1] && await realpath(process.argv[1]).catch(() => null) === await realpath(fileURLToPath(import.meta.url))) {
   try { const options = parseOptions(process.argv.slice(2)); console.log(JSON.stringify(options.check ? await checkPacket(options.check) : await projectJourney(options))); }
-  catch (error) { const usage = error.message.startsWith('usage:'); console.error(JSON.stringify({ status: 'rejected', error: usage ? error.message : 'projection_or_packet_validation_failed' })); process.exitCode = usage ? 2 : 1; }
+  catch (error) { const usage = error.message.startsWith('usage:'); console.error(JSON.stringify({ status: 'rejected', error: usage || /^[a-z_]+$/.test(error.message) ? error.message : 'projection_or_packet_validation_failed' })); process.exitCode = usage ? 2 : 1; }
 }
