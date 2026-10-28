@@ -48,7 +48,17 @@
         "scope": "not finalwhole-tree; laterstandalone/doc repairs"
       }
     },
-    "evidence": "../../implementation/osstack-method-entrypoints/README.md"
+    "evidence": "../../implementation/osstack-method-entrypoints/README.md",
+    "presentation_repair": {
+      "candidate": "c1a7f5d1a20d4538005a4543f5ac3032cc5a6f57",
+      "ci_failure_run": 40666085535,
+      "cause": "historical audit example links rendered as active Markdown",
+      "raw_audit_bytes": "unchanged, offset/hash verified",
+      "tests": "6 hygiene/reference passed on repair; root final hygiene1 passed",
+      "sonnet": "actual claude-sonnet-5-5 limited supplied-diff PASS; unsupported claim of denied inspection explicitly rejected",
+      "status": "new published-head CI required",
+      "pr291": "6df338e8 product check PASS; Node20 prerequisite header TLS abort in attempt2; independent CI repair in progress"
+    }
   },
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",

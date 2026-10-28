@@ -1,0 +1,22 @@
+[
+  {
+    "path": "audit-closure-original.md",
+    "maximum_leading_backtick_run": 0,
+    "wrapper_boundary_verified": true
+  },
+  {
+    "path": "audit-final-original.md",
+    "maximum_leading_backtick_run": 0,
+    "wrapper_boundary_verified": true
+  },
+  {
+    "path": "audit-original.md",
+    "maximum_leading_backtick_run": 0,
+    "wrapper_boundary_verified": true
+  },
+  {
+    "path": "audit-prefix-closure-original.md",
+    "maximum_leading_backtick_run": 0,
+    "wrapper_boundary_verified": true
+  }
+]
