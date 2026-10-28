@@ -3435,7 +3435,7 @@
     "merged_at": "2026-10-28T16:24:46Z"
   },
   "next_framing_architecture_wave": {
-    "status": "ready_awaiting_user_merge",
+    "status": "merged_bounded_delivery",
     "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
     "owners": {
       "loader_adversarial": {
@@ -3531,6 +3531,34 @@
       "mergeable": true,
       "user_approval_required": true,
       "evidence": "docs/implementation/method-framing-publication/ci-attempt2"
-    }
+    },
+    "merge_sha": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+    "merged_by": "gilberthello",
+    "merged_at": "2026-10-28T22:20:15Z",
+    "actual_main_tree_equals_published_head": true
+  },
+  "next_continuity_wave": {
+    "status": "parallel_development",
+    "baseline": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_30da6fc0",
+        "scope": "session continuity method and export contracts"
+      },
+      "terminal_preflight": {
+        "card": "card_e90a4adb",
+        "scope": "fresh framing host preparation; user turns require independent freeze and root dispatch"
+      },
+      "cleanup_regression": {
+        "card": "card_46471cf0",
+        "scope": "prefrozen criteria and independent verification"
+      },
+      "root": {
+        "scope": "central ledger/integration/full/audit/PR"
+      }
+    },
+    "formal_gates_passed": false,
+    "model_user_turns_dispatched": 0,
+    "runtime_enabled": false
   }
 }
