@@ -3435,7 +3435,7 @@
     "merged_at": "2026-10-28T16:24:46Z"
   },
   "next_framing_architecture_wave": {
-    "status": "draft_ci_failed_controlled_revalidation",
+    "status": "ready_awaiting_user_merge",
     "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
     "owners": {
       "loader_adversarial": {
@@ -3495,9 +3495,9 @@
     "pr": 298,
     "published_head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
     "ci_run": 40730300608,
-    "is_draft": true,
+    "is_draft": false,
     "workers": "three workers handed off; author worktrees removed; root full queue empty",
-    "ci_status": "attempt2_in_progress",
+    "ci_status": "attempt2_success",
     "ci_failure": {
       "attempt": 1,
       "test": "engineering-store.test.ts canonical schema46 migration",
@@ -3514,7 +3514,23 @@
       "head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
       "scope": "only failed check; one controlled repeat",
       "code_timeout_selection_changes": false,
-      "repeat_again_if_fails": false
+      "repeat_again_if_fails": false,
+      "result": "success; original failure retained; cause unproven",
+      "migration_case_ms": 1590,
+      "package_passed": 7142,
+      "package_skipped": 7,
+      "package_failed": 0,
+      "package_count": 22,
+      "independent_report_sha256": "84a58e228c43603e503e74e968d9d5e594daa094210b85d882ece58c7d8e3caf"
+    },
+    "readiness": {
+      "main_sha": "711c45e75264000bde859328bd7dc131f68461d1",
+      "head_sha": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+      "applicable_checks_success": 5,
+      "paid_smoke": "skipped",
+      "mergeable": true,
+      "user_approval_required": true,
+      "evidence": "docs/implementation/method-framing-publication/ci-attempt2"
     }
   }
 }
