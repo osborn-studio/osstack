@@ -1,0 +1,19 @@
+# Actual Claude audit and disposition
+
+Initial actual Claude CLI `claude-sonnet-5-5` review of `4b0f2267b7a64519ed296eff9713e055daaf6e06` returned REVISE. Full raw prompt, JSON response, modelUsage and code-file hash binding are retained. It identified concrete unchecked complex Markdown destinations, pathological parsing cost, a source-root trailing-slash symlink gap and confusing exported usage instructions.
+
+The repair owner reproduced complex link and symlink failures, and bounded subprocesses timed out on 200k `[` and `<` inputs. The original 20k-backtick input passed; that part was not called a reproduced defect. The parser now supports an explicit Markdown subset, rejects unsupported navigation and uses bounded traversal. Root rewrote usage instructions to distinguish the source checkout, exported bundle and actual product checkout. All four entry directories must be kept together.
+
+The first limited closure review of `4611fd6de998868e09fef042dc142bb52efaa6dd` returned REVISE with further fence/CRLF, container definition and dense rewriting findings. The owner retained new RED/GREEN tests. A single near-1MiB dense entry did not exceed four seconds; four such entries did, and are the actual reproduced timing failure. The repair joins rewrite slices once. A prefixed mixed-backtick input also passed before repair; no nonexistent regression is claimed.
+
+One audit premise was false: `osstack-methods-skill/SKILL.md` already exists in the original candidate. Its Git-object contents and the router/reference existence test provide direct evidence. The exported usage ambiguity still warranted correction, but the missing source-router assertion is not adopted. An audit verdict is not ground truth and is not a runtime gate.
+
+Optional advice to impose a new per-write confirmation ritual was not adopted: setup already requires resolved host/scope and authorized settings, while the user's existing authorization persists. Unknown configuration mechanisms remain proposals. Native discovery, case-insensitive platform coverage, concurrent hostile tree mutation and fragment-anchor qualification remain outside the claims. Later closure outcome and exact code binding are appended after actual completion.
+
+The next review of `a1cb1779` closed R1–R4 and explicitly withdrew the missing-router assertion, but found one repair-introduced quadratic container-prefix scan. The exact 880,001-byte input timed out at four seconds before correction and completed around 220ms after leading-prefix caching. Candidate `8e0c0634` adds that regression test; all 63 focused tests passed without skips on this local host. The remaining audit is limited to this one blocker and its direct regressions. Original reviewers were not asked to certify native discovery or runtime qualification.
+
+Actual `claude-sonnet-5-5` final limited closure on `8e0c06348d664999c4539a754041651fa52c143f` returned **PASS** for the last container-prefix blocker and direct regressions. This follows the prior review closing R1–R4; it is not a new blanket audit of unrelated product code. The pass/skip counts are actual local test observations. Optional multiline cache-reset coverage, broader HTML/autolink formats and case-insensitive platform behavior remain explicit follow-up limits.
+
+## Audit presentation preservation
+
+The four original review files retain their names and now quote the complete original text inside long text fences. Their example links describe audited inputs; they are not navigation relative to this archive directory. No review wording or verdict changed. [Byte-preservation proof](audit-presentation.json) records the original commit/blob, original SHA-256, exact payload offset and length, and presented-file SHA-256. Historical raw files inside the existing evidence archive and its manifest remain unchanged.

@@ -15,6 +15,8 @@
     "typecheck": "pnpm build && pnpm typecheck:check",
     "typecheck:check": "pnpm -r typecheck",
     "lint": "biome check .",
+    "test:method-export": "node --test scripts/export-osstack-methods.test.mjs",
+    "export:methods": "node scripts/export-osstack-methods.mjs",
     "dev": "pnpm --filter @osstack/cli dev",
     "coverage:loop": "pnpm --filter @osstack/loop test:coverage",
     "build:single-binary": "node scripts/build-single-binary.mjs",
