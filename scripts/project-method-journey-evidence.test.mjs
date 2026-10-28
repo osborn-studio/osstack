@@ -153,3 +153,26 @@ test('failed receipt conflict stays visible as unverified reported cleanup, not 
   await projectJourney(f); const x = (await readPacket(f)).features[0];
   assert.equal(x.cleanup.status, 'unknown'); assert.equal(x.reported_cleanup.status, 'failed'); assert.equal(x.receipt_cleanup_consistent, false); assert.equal(x.product_exit, null);
 });
+test('not-run cleanup cannot claim fixture removal even after packet resealing', async t => {
+  const f = await fixture(t, { doctorFailure: true }); await projectJourney(f);
+  await edit(join(f.output, 'packet.json'), p => { p.features[1].cleanup.fixture_removed = true; });
+  await resealPacket(f.output); await assert.rejects(checkPacket(f.output), /^Error: not_started_removed$/);
+});
+test('passed healthy stream cannot carry a failure-count contradiction after resealing', async t => {
+  const f = await fixture(t); await projectJourney(f);
+  await edit(join(f.output, 'packet.json'), p => {
+    const s = p.streams.find(x => x.id === 'healthy.product.stdout'); s.selected_lines = ['1 source(s) failed to check.'];
+    s.omitted_bytes = p.references.find(x => x.id === s.id).bytes - Buffer.byteLength(s.selected_lines[0]);
+  });
+  await resealPacket(f.output); await assert.rejects(checkPacket(f.output), /^Error: passed_snippet_conflict$/);
+});
+test('passed missing-ref stream cannot claim healthy or zero failed checks', async t => {
+  for (const line of ['0 source(s) failed to check.', '  ✓ healthy  up-to-date (aaaaaaaaaaaa)']) {
+    const f = await fixture(t); await projectJourney(f);
+    await edit(join(f.output, 'packet.json'), p => {
+      const s = p.streams.find(x => x.id === 'missing-ref.product.stdout'); s.selected_lines = [line];
+      s.omitted_bytes = p.references.find(x => x.id === s.id).bytes - Buffer.byteLength(line);
+    });
+    await resealPacket(f.output); await assert.rejects(checkPacket(f.output), /^Error: passed_snippet_conflict$/);
+  }
+});

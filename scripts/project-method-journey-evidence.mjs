@@ -66,6 +66,7 @@ function cleanup(value) {
   member(value.status, ['passed', 'failed', 'unknown', 'not_started'], 'cleanup_status');
   check(value.descendant_termination === 'not_attested', 'descendant_claim');
   const removed = value.fixture_removed ?? null; check(removed === null || typeof removed === 'boolean', 'cleanup_removed');
+  check(value.status !== 'not_started' || removed === null, 'not_started_removed');
   return { status: value.status, fixture_removed: removed, descendant_termination: 'not_attested' };
 }
 function stream(streams, references, caseId, channel, bytes) {
@@ -169,6 +170,12 @@ export function validatePacket(p) {
     keys(s, ['id', 'selected_lines', 'omitted_bytes']); check(IDS.some(id => s.id === `${id}.product.stdout` || s.id === `${id}.product.stderr`) && refs.has(s.id) && !streams.has(s.id), 'stream_id'); streams.add(s.id);
     check(Array.isArray(s.selected_lines) && s.selected_lines.length <= 8 && s.selected_lines.every(safeLine), 'snippet_allowlist');
     if (s.id.endsWith('.stderr')) check(s.selected_lines.length === 0, 'stderr_not_projected');
+    const feature = p.features.find(f => s.id.startsWith(f.case_id + '.'));
+    if (feature.verification === 'passed') {
+      const id = feature.case_id; const failed = id === 'healthy' ? 0 : 1;
+      const summaries = ['Checking 1 source(s) against their tracked refs...', `${failed} source(s) failed to check.`, '0 source(s) drifted from blessed_sha.'];
+      check(s.selected_lines.every(line => summaries.includes(line) || (id === 'healthy' ? /^  ✓ healthy  up-to-date \([a-f0-9]{12}\)$/.test(line) : line === '  ✗ missing-ref  unreachable: no_matching_ref')), 'passed_snippet_conflict');
+    }
     const bytes = s.selected_lines.reduce((n, line) => n + Buffer.byteLength(line), 0);
     check(bytes <= 1024 && integer(s.omitted_bytes) && s.omitted_bytes + bytes === refs.get(s.id).bytes, 'snippet_bytes');
   }
