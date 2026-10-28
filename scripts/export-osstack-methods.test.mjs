@@ -314,9 +314,9 @@ for (const [label, content] of [
   });
 }
 
-test('document-named source router, four entries and nine method references actually exist', async () => {
+test('document-named source router, four entries and eleven method references actually exist', async () => {
   const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
-  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement'].map(name => `references/${name}.md`)]) {
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design'].map(name => `references/${name}.md`)]) {
     assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
     assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
   }
@@ -370,7 +370,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
           queue.push(resolve(dirname(path), target.split('#')[0]));
         }
       }
-      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement']) {
+      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design']) {
         // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
         const outputPath = join(entryRoot, 'references', `${method}.md`);
         const sourcePath = `references/${method}.md`;
@@ -386,7 +386,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
   });
 }
 
-for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement']) {
+for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design']) {
   test(`D2a a missing advertised ${method} reference fails before reserving output`, async t => {
     const f = await fixture(t);
     await rm(f.sourceRoot, { recursive: true });
@@ -511,5 +511,31 @@ test('change impact source attribution retains the pinned upstream identity', as
   const links = [...source.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(([, target]) => target);
   assert.ok(links.includes('https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/blast-radius/SKILL.md'));
   const method = await readFile(join(root, 'change-impact.md'), 'utf8');
+  assert.ok([...method.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].some(([, target]) => target === 'sources.md'));
+});
+
+// Navigation only; wording tests cannot establish whether a host preserves task intent.
+test('task framing navigation reaches its own method from the source, mode, help and delegate entries', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill');
+  for (const [entry, target] of [
+    ['SKILL.md', 'references/task-framing.md'],
+    ['entries/osstack-mode/SKILL.md', '../../references/task-framing.md'],
+    ['entries/osstack-help/SKILL.md', '../../references/task-framing.md'],
+    ['entries/osstack-agent/SKILL.md', '../../references/task-framing.md'],
+  ]) {
+    const text = await readFile(join(root, entry), 'utf8');
+    const links = [...text.matchAll(/\[([^\]\n]+)\]\(([^)\s]+)\)/g)].filter(([, label]) => label.toLowerCase() === 'task framing');
+    assert.equal(links.length, 1, `${entry} must offer one task framing link`);
+    assert.equal(links[0][2], target);
+    assert.ok((await readFile(resolve(root, dirname(entry), target), 'utf8')).trim().length > 0);
+  }
+});
+
+test('task framing source links retain both original skills at the fixed upstream revision', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill/references');
+  const source = await readFile(join(root, 'sources.md'), 'utf8');
+  const links = [...source.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(([, target]) => target);
+  for (const name of ['in-your-own-words', 'sharpen']) assert.ok(links.includes(`https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/${name}/SKILL.md`));
+  const method = await readFile(join(root, 'task-framing.md'), 'utf8');
   assert.ok([...method.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].some(([, target]) => target === 'sources.md'));
 });

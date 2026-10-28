@@ -1,6 +1,6 @@
 ---
 name: osstack-agent
-description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's performance measurement review, change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
+description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's caller-first architecture design, task framing, performance measurement review, change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
 ---
 
 # OSStack delegated method
@@ -11,6 +11,8 @@ Apply the coordinator's agreed design and acceptance checks to your assigned sli
 
 Choose the relevant shared method:
 
+- [Architecture design](../../references/architecture-design.md) for caller-first types, ownership and lifecycle design; respect a design-only brief and continue implementation only within its existing authority.
+- [Task framing](../../references/task-framing.md) for a requested restatement or refined prompt; executing the framed task requires authority already present in the brief.
 - [Performance measurement](../../references/performance-measurement.md) for comparable work, trustworthy timing and bounded performance conclusions within the delegated task.
 - [Change impact](../../references/change-impact.md) for affected consumers, hidden contracts and tests of critical safety assumptions within the assigned boundary.
 - [Code review](../../references/code-review.md) for a bounded review with concrete findings and evidence; apply fixes only within the delegated authorization.

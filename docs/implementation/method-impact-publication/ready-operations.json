@@ -1,0 +1,119 @@
+{
+  "at": "2026-10-28T16:16:00.765925+00:00",
+  "receipts": [
+    {
+      "comment_id": 480,
+      "card_id": "card_575bf2b9",
+      "author": "joint-entry",
+      "body": "PR297 head0862bc38 five applicable CI SUCCESS run40718517835; paid smoke skipped. Main92088 unchanged. Root marked Ready; awaiting gilberthello approval/merge. Static method validation does not qualify native effects/runtime.",
+      "created_at": 1793204160.758
+    },
+    {
+      "card_id": "card_575bf2b9",
+      "board": "joint-firstmate-pstack",
+      "task_id": null,
+      "title": "D2a change-impact method",
+      "body": "Source pin99b blast-radius. Own new change-impact.md plus root/four-entry routing/source/EXPORT/export tests and ownREADME. Base main92088fe5. Preserve verified assumptions/real boundary checks and authorization; no runtime gates. Other method performance material owned separately; shared files only this author until handoff.",
+      "status": "blocked",
+      "priority": 1,
+      "assignee": "joint-entry",
+      "blocked_reason": "Awaiting user gilberthello approval and merge of Ready PR297.",
+      "tenant_id": null,
+      "card_type": "implementation",
+      "meta": null,
+      "created_at": 1793200482.722,
+      "updated_at": 1793204160.76,
+      "started_at": 1793200482.722,
+      "completed_at": null
+    },
+    {
+      "comment_id": 481,
+      "card_id": "card_b64a5211",
+      "author": "joint-entry",
+      "body": "PR297 head0862bc38 five applicable CI SUCCESS run40718517835; paid smoke skipped. Main92088 unchanged. Root marked Ready; awaiting gilberthello approval/merge. Static method validation does not qualify native effects/runtime.",
+      "created_at": 1793204160.76
+    },
+    {
+      "card_id": "card_b64a5211",
+      "board": "joint-firstmate-pstack",
+      "task_id": null,
+      "title": "D2a performance measurement review method",
+      "body": "Source pin99b benchmark-checklist and explain-number. Own only new performance-measurement.md and ownREADME/evidence; root integrates routing/source/export tests after both authors handoff. Real baseline/workload/error/noise/end-to-end meaning, worked numerical positive/negative examples without speedup claims. No package/CLI/runtime changes or model calls.",
+      "status": "blocked",
+      "priority": 1,
+      "assignee": "joint-entry",
+      "blocked_reason": "Awaiting user gilberthello approval and merge of Ready PR297.",
+      "tenant_id": null,
+      "card_type": "implementation",
+      "meta": null,
+      "created_at": 1793200482.723,
+      "updated_at": 1793204160.76,
+      "started_at": 1793200482.723,
+      "completed_at": null
+    }
+  ],
+  "boards": {
+    "joint-firstmate-pstack": {
+      "stats": {
+        "total": 55,
+        "by_status": {
+          "done": 21,
+          "blocked": 2,
+          "running": 2,
+          "ready": 1,
+          "todo": 29
+        },
+        "by_assignee": {
+          "joint-entry": 43,
+          "loader_adversarial": 4,
+          "terminal_preflight": 5,
+          "cleanup_regression": 3
+        }
+      },
+      "latest_event_id": 844
+    },
+    "firstmate-upgrade-roadmap": {
+      "stats": {
+        "total": 50,
+        "by_status": {
+          "blocked": 6,
+          "done": 9,
+          "todo": 35
+        },
+        "by_assignee": {
+          "契约/来源维护者": 5,
+          "Session/决定开发者": 8,
+          "主控/存储开发者": 7,
+          "执行器开发者": 6,
+          "集成负责人": 12,
+          "独立验证/发布负责人": 7,
+          "看板维护者": 2,
+          "Session/恢复开发者": 3
+        }
+      },
+      "latest_event_id": 640
+    },
+    "session-pilot-debt": {
+      "stats": {
+        "total": 13,
+        "by_status": {
+          "todo": 3,
+          "blocked": 2,
+          "done": 8
+        },
+        "by_assignee": {
+          "future-runtime": 3,
+          "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13": 1,
+          "thread-b": 1,
+          "root": 3,
+          "pilot_completion": 1,
+          "pilot_runtime_cleanup": 1,
+          "pilot_smoke": 1,
+          "external-environment": 1,
+          "joint-entry": 1
+        }
+      },
+      "latest_event_id": 816
+    }
+  }
+}

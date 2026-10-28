@@ -1,6 +1,6 @@
 ---
 name: osstack-mode
-description: Route an OSStack engineering task into performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, bug fixing, investigation, or creation and maintenance of verification instructions. Use when a task needs this shared method, rather than help choosing it or configuring model roles.
+description: Route an OSStack engineering task into caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, bug fixing, investigation, or creation and maintenance of verification instructions. Use when a task needs this shared method, rather than help choosing it or configuring model roles.
 ---
 
 # OSStack mode
@@ -9,6 +9,8 @@ Identify the requested outcome and existing authorization, then choose the match
 
 | Requested result | Method |
 | --- | --- |
+| Choose types, interfaces or ownership before coding | [Architecture design](../../references/architecture-design.md): ground real callers, compare structures and specify lifecycle checks |
+| Restate the goal or improve a task prompt | [Task framing](../../references/task-framing.md): preserve intent and constraints, name original inputs and concrete checks, then return the requested framing |
 | Assess a performance number or compare latency/throughput | [Performance measurement](../../references/performance-measurement.md): verify equivalent work, timing boundaries, noise and end-to-end relevance |
 | Find downstream breakage or test the assumption that makes a change safe | [Change impact](../../references/change-impact.md): trace consumers and hidden contracts, then exercise the key safety fact |
 | Review a patch or PR for actionable defects | [Code review](../../references/code-review.md): pin the candidate, trace reachable failures and report evidence-backed findings |
@@ -19,11 +21,15 @@ Identify the requested outcome and existing authorization, then choose the match
 | Establish repeatable real-surface verification | [Create verification](../../references/create-verification.md): launch, doctor, drive, observe, isolate, cleanup and feature map |
 | Check and repair existing verification instructions | [Maintain verification](../../references/maintain-verification.md): source and live coverage; distinguish documentation drift, harness gaps and product defects |
 
+A prompt-only request ends with the requested restatement or rewrite. If the user already authorized refinement followed by execution, continue within that authority without a new approval step.
+
+A design-only request stops at the design and its verification plan. If implementation was already authorized, choosing a design does not add another approval checkpoint.
+
 A review-only request does not authorize product fixes. If the user requests review and fixes, retain that authorization and use bug fix for confirmed in-scope defects.
 
 For a mixed task, retain the original outcome and sequence the relevant methods. Diagnosis inside an authorized bug fix does not require a fresh permission exchange. A request for explanation alone does not authorize a fix. State meaningful blockers and continue work that does not depend on them.
 
-Other engineering work can use the host's normal available tools and appropriate skills. Do not relabel it as an implemented OSStack playbook or imply that the upstream skill catalog has been ported. No bundled formal-verification, autonomous-shipping or model-panel workflow is provided by these nine methods.
+Other engineering work can use the host's normal available tools and appropriate skills. Do not relabel it as an implemented OSStack playbook or imply that the upstream skill catalog has been ported. No bundled formal-verification, autonomous-shipping or model-panel workflow is provided by these eleven methods.
 
 When authorized delegation helps, give each delegate its outcome, evidence pointers and exclusive write boundary; [osstack-agent](../osstack-agent/SKILL.md) supplies the method wrapper. The coordinator retains integration ownership. Use actual host delegation tools, not an invented native agent type.
 

@@ -1,0 +1,69 @@
+{
+  "baseRefOid": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
+  "headRefOid": "0862bc382a61126124bdeff717aff95b051a7d5b",
+  "isDraft": false,
+  "mergeStateStatus": "BLOCKED",
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:41:33Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922697074",
+      "name": "Paid DeepSeek semantic smoke",
+      "startedAt": "2026-10-28T15:41:33Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:43:59Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922695234",
+      "name": "graph-macos-fixtures (22)",
+      "startedAt": "2026-10-28T15:41:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:43:58Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922695040",
+      "name": "graph-macos-fixtures (24)",
+      "startedAt": "2026-10-28T15:41:43Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:45:52Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922695112",
+      "name": "graph-runtime-matrix (20.6.0)",
+      "startedAt": "2026-10-28T15:41:35Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:45:10Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922694659",
+      "name": "graph-runtime-matrix (22.23.1)",
+      "startedAt": "2026-10-28T15:41:35Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:59:13Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122924146686",
+      "name": "check",
+      "startedAt": "2026-10-28T15:44:01Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    }
+  ]
+}

@@ -3373,7 +3373,7 @@
     "evidence": "docs/implementation/method-review-behavior/README.md"
   },
   "next_impact_performance_wave": {
-    "status": "validated_preparing_pr",
+    "status": "merged",
     "baseline": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
     "owners": {
       "loader_adversarial": {
@@ -3418,6 +3418,78 @@
     },
     "archive_sha256": "78fe18e9116c9337ae8f059d913724fae2515fd6cef0dbbea2ddbabbace96b79",
     "archive_members": 672,
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1,
+    "pr": 297,
+    "published_head": "0862bc382a61126124bdeff717aff95b051a7d5b",
+    "ci_run": 40718517835,
+    "is_draft": false,
+    "workers": "all three handed off; authors cleaned worktrees; full queue empty",
+    "ci_status": "success",
+    "current_head_ci_full": {
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0
+    },
+    "merge_commit": "711c45e75264000bde859328bd7dc131f68461d1",
+    "merged_at": "2026-10-28T16:24:46Z"
+  },
+  "next_framing_architecture_wave": {
+    "status": "validated_preparing_pr",
+    "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_f9c9aa23",
+        "branch": "codex/method-task-framing",
+        "scope": "task-framing and ten-method shared intermediate"
+      },
+      "terminal_preflight": {
+        "card": "card_a2ccebb6",
+        "branch": "codex/method-architecture-design",
+        "scope": "architecture-design new reference/ownREADME only"
+      },
+      "cleanup_regression": {
+        "card": "card_75178665",
+        "scope": "prefrozen criteria and independent verification scratch"
+      },
+      "root": {
+        "scope": "eleventh-method integration after handoff; audit/full/PR/ledger"
+      }
+    },
+    "model_calls_authorized_to_workers": false,
+    "formal_gates_passed": false,
+    "full_regression_owner": "root_single_queue",
+    "criteria_sha256": "637590cc7b487b039e5c4f85469b494fe671aadaef236bbc25886a1a44b2a101",
+    "independent_criteria": 12,
+    "code_sha": "035285cf26c6fe26a751cbbb93020b2f8cd5c1d8",
+    "integration_sha": "85d34eb1f8681fb26a8328431fb69f3509596f6b",
+    "methods": 11,
+    "export_tests": 85,
+    "full": {
+      "sha": "85d34eb1f8681fb26a8328431fb69f3509596f6b",
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0,
+      "scope": "package suite with generated dist and untracked evidence draft; final seven method/docs changes targeted, not final whole-tree"
+    },
+    "next_host_probe": {
+      "card": "card_f7dc5113",
+      "status": "preparation_only",
+      "protocol_sha256": "7ef3dc0d34558d923ac098d954e249860fa580810ac6bee127f6b112f98118b7",
+      "model_calls": 0,
+      "requires": "fresh independent freeze and final-context/resource checks before root dispatch"
+    },
+    "evidence": "docs/implementation/method-framing-architecture/README.md",
+    "audit": "actualSonnet5.5 REVISE85 then limited B1-B4 closure PASS035; B2 optional after independent contract review;42source bindings verified",
+    "independent_final": {
+      "source_sha": "035285cf26c6fe26a751cbbb93020b2f8cd5c1d8",
+      "files_per_host": 72,
+      "local_links_per_host": 247,
+      "methods": 11,
+      "manifest_sha256": "b352f27946e6411cbc4c802f760e74a370eb2deb6677b9584cd9d57b629b69d9"
+    },
+    "archive_sha256": "370e3482c7dba8b7180a3639b78c571437fe226210b63155dfe067cfa9d2d6ca",
+    "archive_members": 767,
     "final_document_tests": 241,
     "final_hygiene_tests": 1
   }

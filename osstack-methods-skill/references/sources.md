@@ -37,3 +37,29 @@ For feature/refactoring, delegation follows actual authorization and host availa
 For code review, OSStack preserves concrete path analysis and reasoned dispositions. It does not import fixed model defaults, mandatory multi-model spawning, reviewer votes as proof, a file-length blocker or automatic PR publication/readiness rules. Review-only work stays read-only; an existing review-and-fix authorization remains effective. The review method is shared text, not a native review service or a qualification mechanism.
 
 The performance-measurement method draws on the pinned [benchmark checklist](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/benchmark-checklist/SKILL.md) and [number-explanation principle](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-explain-the-number/SKILL.md). It retains comparable tuning/work, correctness and errors, timing scope, alternating samples, limiter diagnosis and end-to-end significance. Host-available diagnostics replace assumed platform commands. Five samples are a diagnostic start, not a statistical guarantee; a single-run ballpark cannot select an option. Synthetic worked examples are teaching data, not OSStack performance results. No automatic optimization, benchmark service or runtime permission is imported.
+
+The task-framing method combines the pinned [restatement skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/in-your-own-words/SKILL.md) and [sharpening skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/sharpen/SKILL.md). It preserves the goal, asks what a skilled practitioner would examine, identifies original material and specific methods/tools, and defines evidence beyond agreement. User-owned choices stay open. A prompt-only request does not execute the rewritten task; existing refine-and-execute authority does not need repeated approval. The inspected [MIT license](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/LICENSE) names Copyright (c) 2026 Lauren Tan. The new material is independently worded and does not import slash commands, expert identities or tool/model availability claims.
+
+The caller-first architecture method adapts these pinned original sources:
+
+- [Architect](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/SKILL.md).
+- [Architect runner guidance](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/references/runner-prompt.md).
+- [Design red flags](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/references/design-red-flags.md).
+- [Rationale template](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/architect/references/rationale-template.md).
+- [Foundational thinking](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-foundational-thinking/SKILL.md).
+- [Domain modeling](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-model-the-domain/SKILL.md).
+- [Boundary discipline](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-boundary-discipline/SKILL.md).
+- [Type discipline](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-type-system-discipline/SKILL.md).
+- [Separate shared state](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md).
+- [Migrate callers](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md).
+
+OSStack retains real caller traces, structurally distinct designs, state ownership and lifecycle reasoning, deep interfaces, migration and evidence-bound checks. It does not import fixed models, mandatory arena/delegation, arbitrary file-count limits or permission to delete working code. Design-only and already-authorized implementation keep their distinct boundaries; sketches and synthetic comparisons are not implemented APIs or actual execution proof. Static internal types do not replace validation at external database, RPC or IPC boundaries.
+
+Additional architecture sources at the same pin:
+
+- [Idempotent operations](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-make-operations-idempotent/SKILL.md).
+- [Distinct design alternatives](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-exhaust-the-design-space/SKILL.md).
+- [Encode lessons in structure](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-encode-lessons-in-structure/SKILL.md).
+- [Redesign from first principles](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-redesign-from-first-principles/SKILL.md).
+
+Upstream restatement, sharpening and architect entries disable automatic model invocation. OSStack adapts them into shared mode selection instead of copying that host-specific setting. Task framing remains for a requested restatement/refinement; architecture follows the requested design or implementation scope. Selection does not itself authorize execution.
