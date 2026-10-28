@@ -3043,7 +3043,7 @@
   "next_method_development_wave": {
     "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
     "authorization": "user explicitly requested OSStack parallel subagent implementation",
-    "status": "running",
+    "status": "both_prs_ready_waiting_user_merge",
     "owners": {
       "loader_adversarial": {
         "card": "card_766d64bc",
@@ -3071,7 +3071,7 @@
     ],
     "methods_candidate": {
       "code_sha": "f5e8d234a604ba39d78dfed21ae072d6ef2e3cca",
-      "status": "verified_pending_publication",
+      "status": "ready_current_head_ci_passed",
       "export_tests": 68,
       "full_tests": {
         "passed": 7144,
@@ -3081,15 +3081,77 @@
       },
       "sonnet": "claude-sonnet-5-5 firstREVISE/c099 then limitedclosurePASS/f5e8",
       "independent": "A-f5e8d234 dual-host actual48files/116links perhost; static guidance not modelbehavior",
-      "evidence": "docs/implementation/method-feature-refactoring/README.md"
+      "evidence": "docs/implementation/method-feature-refactoring/README.md",
+      "pr": 293,
+      "published_head": "1372cb3fc065fb663b22c22cc21a3c01aee95a01",
+      "ci_run": 40686771753
     },
     "host_journey": {
       "card": "card_c165fc78",
       "owner": "loader_adversarial",
       "max_calls": 4,
-      "calls_performed_at_snapshot": 0,
+      "calls_performed_at_snapshot": 3,
       "criteria_sha256": "43089390e2d7344fe2690d297d2381a8ca3bfa381a50d79596503567e005829b",
-      "scope": "native mode selection then coordinator real driver and model receipt interpretation; not autonomous host command execution"
+      "scope": "native mode selection then coordinator real driver and model receipt interpretation; not autonomous host command execution",
+      "codex_phase1": "accepted_for_next_stage_with_limits; shell cat not native Skill; explicit cued route; actual model not_attested",
+      "claude_phase1": "507 words exceeds frozen 500; stopped without retry or driver/phase2",
+      "coordinator_runs": 1,
+      "coordinator_host": "codex",
+      "phase2": "boundaries FAILED, overall LIMITED; accurate two-case interpretation with receipt attribution imprecision; provided non-secret env fields read, no liveenv/credentials observed",
+      "overall_pass": false,
+      "evidence": "docs/implementation/method-wave-control/host-results.md",
+      "archive_sha256": "fe4a43188e1da8c336f51714209eb413d6e7d93a065458973f4fbcdfd657b532",
+      "cleanup_sha256": "11e03a69ae68145a53628a3b279a0b00bc254f81bf0fd10dc63d1f29da15c067",
+      "workspaces_cleaned": true
+    },
+    "snapshot_at": "2026-10-28T12:52:20.939751+00:00",
+    "journey_candidate": {
+      "pr": 294,
+      "published_head": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
+      "code_sha": "66ad1daa229101e4501392bbe1d6b4d86b7ca16b",
+      "status": "ready_current_head_ci_passed",
+      "ci_run": 40688548373,
+      "final_focused": 25,
+      "actual_cases": [
+        "healthy",
+        "missing-ref"
+      ],
+      "full_sha": "17c5c827211ff8334f66e8393667685e728e7aad",
+      "full_counts": {
+        "passed": 7144,
+        "skipped": 5,
+        "failed": 0
+      },
+      "sonnet": "two REVISE; final limited B1-B3/N1-N2 closure PASS",
+      "evidence": "docs/implementation/method-verification-journey/README.md",
+      "published_head_ci_counts": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "ci_journey_tests": 25,
+      "ci_actual_pair": "healthy product0/driver0; missing-ref product1/driver0; expected-negative remains broken source",
+      "ready_evidence": "docs/implementation/method-wave-control/pr294-ready/ci-summary.json"
+    },
+    "composition": {
+      "tested_commit": "23232f9bad9ae8fb4a475a32c9750398ae9b7175",
+      "tested_tree": "e76fd7ee1242d02f98b50a3a6f4a4e793bf1c154",
+      "published_composition": "a072c817f753754981ee0654172416ea037d507c",
+      "published_tree": "64168acca72d293709ed4bae9fda2db0bbe7d61f",
+      "qualification": "66ad+1372 exact tree tested build/68exports/25journey/realpair/241docs/1hygiene, no full; published B adds evidence only",
+      "archive_sha256": "d98bc27992ebf7d72efc1146d619161703b981580f0bbd4629eb99cae37ecc38"
+    },
+    "next_projection_slice": {
+      "author": "loader_adversarial",
+      "card": "card_437276ee",
+      "independent": "cleanup_regression",
+      "independent_card": "card_c49a2a2c",
+      "branch": "codex/method-evidence-projection",
+      "base": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
+      "status": "criteria_prefrozen_author_implementation_authorized",
+      "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation",
+      "criteria_sha256": "dea3d5b26124a97cf0dfba60cbe852a4fd167293231472b24790498354c3361e",
+      "independent_vectors": 15
     }
   }
 }
