@@ -2695,6 +2695,33 @@
       "documentation": 241
     },
     "ci_rule": "Ready only after latest published head applicable checks pass; dynamic status in GitHub and OSStack",
-    "next_candidate": "skills check unreachable exit 0 reproduced using local Git; fix not included"
+    "next_candidate": "skills check unreachable exit 0 reproduced using local Git; fix not included",
+    "ci_followup": {
+      "observed_at": "2026-10-28T07:31:46.196281+00:00",
+      "main_sha": "fd9cac8127dbfa5660d9c45e58a42da5ed642073",
+      "pr288": {
+        "head": "10629495aafe7b3aca0de4c920bcaec40b083d7b",
+        "status": "Ready; awaiting gilberthello approval/merge",
+        "ci_run": 40644289352,
+        "attempt": 2,
+        "applicable_checks": "5 SUCCESS; paid smoke SKIPPED",
+        "original_failure": "Node20 headers download TLS aborted; retained, one failed-job-only retry succeeded"
+      },
+      "pr289": {
+        "published_head": "a567bd9f1e7c196fbe2dea1661f6da450c42b68c",
+        "candidate": "4dddf67a",
+        "status": "Draft; original two native-upgrade timeout failures retained; scoped setup/test budget change undergoing full regression",
+        "audit": "actual Sonnet5.5 candidate A PASS",
+        "focused_tests": 37,
+        "ci_root_cause": "not established"
+      },
+      "host_reading": {
+        "branch": "codex/joint-host-effects",
+        "card_id": "card_0a3cbbe6",
+        "delivery": "../../implementation/joint-host-effects/README.md",
+        "scope": "actual CLI reading/interpretation only; reports and limitations retained",
+        "formal_gate_pass": false
+      }
+    }
   }
 }

@@ -12,12 +12,12 @@ Manual assembly means choosing the task entry and supplying the shared files. Th
 
 | Consumption cell | Current claim |
 | --- | --- |
-| Codex explicit file reading | One recorded read-only investigation; see the experiment record below |
-| Claude explicit file reading | One recorded read-only investigation; see the experiment record below |
+| Codex explicit file reading | One recorded read-only report from an `inputs/` copy of PR288 materials: investigation entry |
+| Claude explicit file reading | One recorded read-only report from an `inputs/` copy of PR288 materials: investigation plus bug-fix entries |
 | Automatic discovery / installation | Not provided or tested |
 | MethodBinding / mandatory adapter injection | Not wired by this package |
 | Live provider equivalence / formal qualification | Not established |
 
-A recorded host run can establish that particular host/version read and used particular material bytes for a task. It does not establish behavioral equivalence across providers, authenticated oracle independence, or automatic qualification of future tasks. Preserve raw output and limitations for each cell separately.
+A recorded host run can establish that particular host/version read particular material bytes and produced a report for a task. It does not establish behavioral equivalence across providers, authenticated oracle independence, or automatic qualification of future tasks. Preserve raw output and limitations for each cell separately.
 
-[The two host experiments](../../docs/implementation/joint-host-effects/README.md) preserve the actual material versions, commands, outputs and limits. They observed read-only investigation, not product driving, cross-host equivalence or a causal improvement from the materials. Follow [the evidence reading rules](evidence.md): use targeted reads before large raw dumps, and distinguish unavailable evidence from supplied evidence that was not read or verified.
+[The two host experiments](../../docs/implementation/joint-host-effects/README.md) preserve the actual material versions, commands, outputs and limits. Both read the pre-change evidence guidance at `10629495aafe7b3aca0de4c920bcaec40b083d7b`; neither tested this checkout request template or the new evidence-reading guidance. The records show material reading and reports about supplied historical outcomes, not product driving, cross-host equivalence or a causal improvement from the materials. Follow [the evidence reading rules](evidence.md): use targeted reads before large raw dumps, and distinguish unavailable evidence from supplied evidence that was not read or verified.

@@ -39,6 +39,7 @@ Execution / behavior / harness / cleanup / coverage:
 Action trace and resulting state:
 Baseline evidence / candidate evidence / difference:
 Evidence paths and hashes / redactions:
+Input evidence inventory / explicit paths / read status / verified predicates:
 Owned resource identifiers / stop observation / retained resources:
 Missing prerequisites / unverified cells / next bounded step:
 ```
