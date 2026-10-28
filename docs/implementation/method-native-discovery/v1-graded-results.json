@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "graded_at": "2026-10-28T11:00:30.284466+00:00",
+  "reviewer": "/root/cleanup_regression same-task independent engineering review, not trusted independent principal",
+  "criteria_sha256": "6ba7fd3cd626d3b96ab6a4a4c451e9d607abb216b4c3092490b49c5e1cc730fa",
+  "prompt_supplement_sha256": "79e83b5d4df35e447e5e39ceb1fcbacff565c74218cacd928720f5dd27de0842",
+  "observations_sha256": "6cb40da140ea54d7830ac4478cc08edc8e79b2a6bdc737f5c9bc703da7c5ad6d",
+  "criteria_changed_after_responses": false,
+  "candidate": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "cases": {
+    "codex-absent": {
+      "overall": "inconclusive_observability",
+      "full_prefrozen_pass": false,
+      "execution": "ran",
+      "scope_summary": "Uncontaminated separate native catalog and no fabricated package use observed; not a full negative-control PASS because full immutability evidence is missing",
+      "dimensions": {
+        "catalog": {
+          "status": "passed_for_separate_app_server_probe",
+          "target_count": 0,
+          "evidence": "runs/codex-absent/evidence/catalog.jsonl:3",
+          "target_source_paths_bound": false,
+          "limits": "Not the exec process own native inventory."
+        },
+        "selection": {
+          "status": "no_target_selection_observed",
+          "evidence": "runs/codex-absent/evidence/response.jsonl:5,7,8",
+          "limits": "No Claude-style Skill tool invocation is claimed. Codex observation follows the prefrozen catalog-plus-actual-read route."
+        },
+        "reads": {
+          "status": "no_skill_body_read_observed",
+          "evidence": "runs/codex-absent/evidence/response.jsonl:5,7",
+          "exact_output_byte_checks": 0,
+          "additional_mode_body_read": false,
+          "scope": "Present reads include help, mode, evidence, maintain. They do not qualify setup or delegated-agent consumption."
+        },
+        "answer": {
+          "status": "passed_no_fabricated_usage",
+          "evidence": "runs/codex-absent/evidence/response.jsonl:8",
+          "words": 193,
+          "under350": true,
+          "final_answer_sha256": "acf72e9ed3d7955bc8a96251f548cc974bbd305be56e8ad4870f53a145608878",
+          "driver_execution": "not_run",
+          "limits": "Advice is simulated future verification, not a task-result or causal-quality measurement."
+        },
+        "model": {
+          "status": "requested_identity_bound_actual_not_attested",
+          "requested": "gpt-6.1-sol",
+          "actual": "not_attested_by_exec_stream",
+          "version": "codex-cli 0.160.1",
+          "usage": {
+            "input_tokens": 45265,
+            "cached_input_tokens": 38912,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 470,
+            "reasoning_output_tokens": 0
+          },
+          "evidence": [
+            "runs/codex-absent/evidence/models.json",
+            "runs/codex-absent/evidence/invocation.json",
+            "runs/codex-absent/evidence/response.jsonl"
+          ],
+          "limits": "Launcher fingerprint supplied; no separate vendor executable fingerprint, model names are not principals."
+        },
+        "boundary": {
+          "status": "no_prohibited_action_observed_in_tool_trace",
+          "observed_commands": [
+            {
+              "line": 5,
+              "id": "item_1",
+              "command": "/bin/zsh -lc \"rg --files -g '*SKILL*' -g '*skill*' -g 'AGENTS.md' -g '*verification*' -g '*driver*' -g '*osstack*' -g '*.md'\"",
+              "exit_code": 1,
+              "status": "failed"
+            },
+            {
+              "line": 7,
+              "id": "item_2",
+              "command": "/bin/zsh -lc 'ls -la .'",
+              "exit_code": 0,
+              "status": "completed"
+            }
+          ],
+          "limits": "Only explicit command traces checked. Shell startup/native internal file accesses and entire-machine effects are not instrumented."
+        },
+        "immutability": {
+          "status": "inconclusive_full_workspace",
+          "material_bytes_status": "passed_recorded_regular_files",
+          "before_after_material_hashes_equal": true,
+          "current_material_matches": true,
+          "missing": [
+            "before/after .git contents",
+            "before file types/symlink targets",
+            "before file byte lengths"
+          ],
+          "evidence": [
+            "runs/codex-absent/evidence/workspace-before.json",
+            "runs/codex-absent/evidence/workspace-after.json",
+            "harness/run_codex.py:6-7"
+          ],
+          "limits": "Posthoc full inventory cannot establish a missing before state. Frozen criterion is unchanged; no product defect inferred."
+        },
+        "process_binding": {
+          "status": "limited_catalog_vs_exec_metadata",
+          "separate_processes": true,
+          "exec_owned_pid": 8351,
+          "exec_started_at": "2026-10-28T10:53:08.461781+00:00",
+          "exec_ended_at": "2026-10-28T10:53:38.698593+00:00",
+          "catalog_argv_and_cwd_recorded": true,
+          "catalog_pid_and_start_end_not_recorded": true,
+          "catalog_model_turns": 0,
+          "evidence": [
+            "runs/codex-absent/evidence/catalog-process.json",
+            "runs/codex-absent/evidence/invocation.json"
+          ],
+          "limits": "Do not merge helper catalog and exec into a same-process discovery claim."
+        },
+        "cleanup": {
+          "status": "private_home_removed_workspace_retained_for_authorized_diagnostic",
+          "private_home_removed_observed": true,
+          "credential_copy_removal": "executor receipt and reviewed cleanup code; no credential contents inspected",
+          "owned_exec_exit_confirmed": true,
+          "evidence": "runs/codex-absent/evidence/cleanup.json",
+          "limits": "Executor has root authorization to retain owned workspaces temporarily for initialize-only diagnosis. No later diagnostic result or cleanup is included in this frozen grading; supplemental receipt required.",
+          "workspace_cleanup_complete": false
+        }
+      }
+    },
+    "codex-present": {
+      "overall": "inconclusive_observability",
+      "full_prefrozen_pass": false,
+      "execution": "ran",
+      "scope_summary": "Four native catalog targets plus exact help and relevant reference reads observed",
+      "dimensions": {
+        "catalog": {
+          "status": "passed_for_separate_app_server_probe",
+          "target_count": 4,
+          "evidence": "runs/codex-present/evidence/catalog.jsonl:3",
+          "target_source_paths_bound": true,
+          "limits": "Not the exec process own native inventory."
+        },
+        "selection": {
+          "status": "observed_named_selection_with_separate_native_catalog",
+          "evidence": "runs/codex-present/evidence/response.jsonl:5,12",
+          "limits": "No Claude-style Skill tool invocation is claimed. Codex observation follows the prefrozen catalog-plus-actual-read route."
+        },
+        "reads": {
+          "status": "passed_help_and_relevant_refs",
+          "evidence": "runs/codex-present/evidence/response.jsonl:5,8,9,11",
+          "exact_output_byte_checks": 4,
+          "additional_mode_body_read": true,
+          "scope": "Present reads include help, mode, evidence, maintain. They do not qualify setup or delegated-agent consumption."
+        },
+        "answer": {
+          "status": "passed_scoped_advice",
+          "evidence": "runs/codex-present/evidence/response.jsonl:12",
+          "words": 286,
+          "under350": true,
+          "final_answer_sha256": "aae00c0ec079be9d7ca2bad7cc9b49f95db6f0a1c62cd190b48b61750c56810c",
+          "driver_execution": "not_run",
+          "limits": "Advice is simulated future verification, not a task-result or causal-quality measurement."
+        },
+        "model": {
+          "status": "requested_identity_bound_actual_not_attested",
+          "requested": "gpt-6.1-sol",
+          "actual": "not_attested_by_exec_stream",
+          "version": "codex-cli 0.160.1",
+          "usage": {
+            "input_tokens": 65200,
+            "cached_input_tokens": 58880,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 613,
+            "reasoning_output_tokens": 0
+          },
+          "evidence": [
+            "runs/codex-present/evidence/models.json",
+            "runs/codex-present/evidence/invocation.json",
+            "runs/codex-present/evidence/response.jsonl"
+          ],
+          "limits": "Launcher fingerprint supplied; no separate vendor executable fingerprint, model names are not principals."
+        },
+        "boundary": {
+          "status": "no_prohibited_action_observed_in_tool_trace",
+          "observed_commands": [
+            {
+              "line": 5,
+              "id": "item_1",
+              "command": "/bin/zsh -lc 'cat .agents/skills/osstack-help/SKILL.md'",
+              "exit_code": 0,
+              "status": "completed"
+            },
+            {
+              "line": 8,
+              "id": "item_3",
+              "command": "/bin/zsh -lc 'cat .agents/skills/osstack-mode/SKILL.md'",
+              "exit_code": 0,
+              "status": "completed"
+            },
+            {
+              "line": 9,
+              "id": "item_2",
+              "command": "/bin/zsh -lc 'cat .agents/skills/osstack-help/references/evidence.md'",
+              "exit_code": 0,
+              "status": "completed"
+            },
+            {
+              "line": 11,
+              "id": "item_4",
+              "command": "/bin/zsh -lc 'cat .agents/skills/osstack-mode/references/maintain-verification.md .agents/skills/osstack-mode/references/evidence.md'",
+              "exit_code": 0,
+              "status": "completed"
+            }
+          ],
+          "limits": "Only explicit command traces checked. Shell startup/native internal file accesses and entire-machine effects are not instrumented."
+        },
+        "immutability": {
+          "status": "inconclusive_full_workspace",
+          "material_bytes_status": "passed_recorded_regular_files",
+          "before_after_material_hashes_equal": true,
+          "current_material_matches": true,
+          "missing": [
+            "before/after .git contents",
+            "before file types/symlink targets",
+            "before file byte lengths"
+          ],
+          "evidence": [
+            "runs/codex-present/evidence/workspace-before.json",
+            "runs/codex-present/evidence/workspace-after.json",
+            "harness/run_codex.py:6-7"
+          ],
+          "limits": "Posthoc full inventory cannot establish a missing before state. Frozen criterion is unchanged; no product defect inferred."
+        },
+        "process_binding": {
+          "status": "limited_catalog_vs_exec_metadata",
+          "separate_processes": true,
+          "exec_owned_pid": 47223,
+          "exec_started_at": "2026-10-28T10:53:38.805058+00:00",
+          "exec_ended_at": "2026-10-28T10:54:06.908997+00:00",
+          "catalog_argv_and_cwd_recorded": true,
+          "catalog_pid_and_start_end_not_recorded": true,
+          "catalog_model_turns": 0,
+          "evidence": [
+            "runs/codex-present/evidence/catalog-process.json",
+            "runs/codex-present/evidence/invocation.json"
+          ],
+          "limits": "Do not merge helper catalog and exec into a same-process discovery claim."
+        },
+        "cleanup": {
+          "status": "private_home_removed_workspace_retained_for_authorized_diagnostic",
+          "private_home_removed_observed": true,
+          "credential_copy_removal": "executor receipt and reviewed cleanup code; no credential contents inspected",
+          "owned_exec_exit_confirmed": true,
+          "evidence": "runs/codex-present/evidence/cleanup.json",
+          "limits": "Executor has root authorization to retain owned workspaces temporarily for initialize-only diagnosis. No later diagnostic result or cleanup is included in this frozen grading; supplemental receipt required.",
+          "workspace_cleanup_complete": false
+        }
+      }
+    },
+    "claude-absent": {
+      "overall": "blocked_preflight",
+      "full_prefrozen_pass": false,
+      "negative_control_pass": false,
+      "execution": "not_run",
+      "model_invocations": 0,
+      "user_messages_sent": 0,
+      "catalog_observation": {
+        "kind": "SDK initialize control_response.commands",
+        "count": 53,
+        "target_names": [],
+        "evidence": "runs/claude-absent/evidence/catalog-control.jsonl:2",
+        "status": "preflight_observation_not_verified_system_init_skill_catalog",
+        "limits": "Protocol requested system/init skills/slash_commands; this observed commands projection is not proven equivalent/exhaustive. This is not evidence that Claude native skills are unsupported. Serialized/redacted transcript, not original wire bytes."
+      },
+      "selection": "not_observed",
+      "body_reads": "not_run",
+      "answer": "not_run",
+      "model": {
+        "requested_for_catalog_only": "claude-sonnet-5-5",
+        "actual_runtime_model": "not_run"
+      },
+      "cleanup": {
+        "status": "private_home_removed_workspace_retained_for_authorized_diagnostic",
+        "evidence": "runs/claude-absent/evidence/cleanup.json",
+        "workspace_cleanup_complete": false,
+        "limits": "Executor has root authorization to retain owned workspaces temporarily for initialize-only diagnosis. No later diagnostic result or cleanup is included in this frozen grading; supplemental receipt required."
+      }
+    },
+    "claude-present": {
+      "overall": "blocked_preflight",
+      "full_prefrozen_pass": false,
+      "negative_control_pass": false,
+      "execution": "not_run",
+      "model_invocations": 0,
+      "user_messages_sent": 0,
+      "catalog_observation": {
+        "kind": "SDK initialize control_response.commands",
+        "count": 53,
+        "target_names": [],
+        "evidence": "runs/claude-present/evidence/catalog-control.jsonl:2",
+        "status": "preflight_observation_not_verified_system_init_skill_catalog",
+        "limits": "Protocol requested system/init skills/slash_commands; this observed commands projection is not proven equivalent/exhaustive. This is not evidence that Claude native skills are unsupported. Serialized/redacted transcript, not original wire bytes."
+      },
+      "selection": "not_observed",
+      "body_reads": "not_run",
+      "answer": "not_run",
+      "model": {
+        "requested_for_catalog_only": "claude-sonnet-5-5",
+        "actual_runtime_model": "not_run"
+      },
+      "cleanup": {
+        "status": "private_home_removed_workspace_retained_for_authorized_diagnostic",
+        "evidence": "runs/claude-present/evidence/cleanup.json",
+        "workspace_cleanup_complete": false,
+        "limits": "Executor has root authorization to retain owned workspaces temporarily for initialize-only diagnosis. No later diagnostic result or cleanup is included in this frozen grading; supplemental receipt required."
+      }
+    }
+  },
+  "confirmed_harness_findings": [
+    {
+      "id": "H1",
+      "severity": "evidence_scope_gap",
+      "summary": "Before/after inventory silently omits .git and lacks type/length/symlink data required by prefrozen IMMUTABILITY",
+      "source": "harness/run_codex.py:6-7",
+      "impact": "Recorded material regular-file hashes unchanged is supported; full workspace unchanged and overall prefrozen PASS are not. No posthoc reconstruction permitted.",
+      "correction_scope": "Future experiments can record complete typed inventories before first host call; current run remains limited."
+    },
+    {
+      "id": "H2",
+      "severity": "observation_metadata_gap",
+      "summary": "Catalog subprocess lacks PID/start/end binding; Codex fingerprint identifies Node launcher rather than separately resolving vendor executable",
+      "impact": "Separate process native catalog plus exec material reads are supported; not a single-process native-discovery attestation."
+    }
+  ],
+  "overall": "limited_observations_no_full_pair_pass",
+  "model_calls_observed": 2,
+  "claude_model_calls": 0,
+  "formal_gate_issued": false,
+  "read_source_checks_passed": true,
+  "next_step": "Preserve this limited grading unchanged; executor must record final owned-workspace cleanup separately after authorized initialize-only diagnosis. No paid rerun or criterion weakening is authorized by this report.",
+  "finalized_at": "2026-10-28T11:04:47.604746+00:00"
+}

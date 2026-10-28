@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { chmod, lstat, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, cp, lstat, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { promisify } from 'node:util';
@@ -314,9 +314,9 @@ for (const [label, content] of [
   });
 }
 
-test('document-named source router, four entries and four method references actually exist', async () => {
+test('document-named source router, four entries and six method references actually exist', async () => {
   const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
-  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['bug-fix', 'investigation', 'create-verification', 'maintain-verification'].map(name => `references/${name}.md`)]) {
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification'].map(name => `references/${name}.md`)]) {
     assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
     assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
   }
@@ -344,4 +344,72 @@ test('long noncontainer prefix with many colon labels is scanned only once per l
     const result = await run(process.execPath, ['--input-type=module', '-e', source], { timeout: 4000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 });
     assert.equal(JSON.parse(result.stdout).status, 'planned'); assert.equal(existsSync(f.output), false);
   } finally { t.diagnostic(`dense-prefix child wall milliseconds: ${performance.now() - start}`); }
+});
+
+// D2a exercises the shipped material graph through the real CLI, not fixture-only wording.
+for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claude/skills']]) {
+  test(`D2a ${host} CLI exports feature and refactoring methods reachable through the bundle from every entry`, async t => {
+    const f = await fixture(t);
+    const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
+    const before = await tree(sourceRoot);
+    const { stdout } = await run(process.execPath, [script, '--host', host, '--output', f.output], { timeout: 10000 });
+    const receipt = JSON.parse(stdout);
+    assert.equal(receipt.exported, true);
+    assert.equal(receipt.host_discovery_verified, false);
+    const manifest = JSON.parse(await readFile(join(f.output, 'manifest.json'), 'utf8'));
+    for (const name of names) {
+      const entryRoot = join(f.output, namespace, name);
+      const seen = new Set(); const queue = [join(entryRoot, 'SKILL.md')];
+      while (queue.length) {
+        const path = queue.shift();
+        if (seen.has(path)) continue;
+        seen.add(path);
+        const text = await readFile(path, 'utf8');
+        for (const [, target] of text.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)) {
+          if (/^(https?:|mailto:|#)/.test(target)) continue;
+          queue.push(resolve(dirname(path), target.split('#')[0]));
+        }
+      }
+      for (const method of ['feature', 'refactoring']) {
+        // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
+        const outputPath = join(entryRoot, 'references', `${method}.md`);
+        const sourcePath = `references/${method}.md`;
+        assert.deepEqual(await readFile(outputPath), await readFile(join(sourceRoot, sourcePath)));
+        assert.ok([...seen].some(path => path.endsWith(`/references/${method}.md`)), `${name} cannot reach ${method} through the bundle`);
+        const row = manifest.files.find(file => file.path === `${namespace}/${name}/references/${method}.md`);
+        assert.ok(row, `${name} ${method} missing from manifest`);
+        assert.equal(row.sha256, hash(await readFile(outputPath)));
+        assert.equal(row.source_sha256, hash(await readFile(join(sourceRoot, sourcePath))));
+      }
+    }
+    assert.deepEqual(await tree(sourceRoot), before);
+  });
+}
+
+for (const method of ['feature', 'refactoring']) {
+  test(`D2a a missing advertised ${method} reference fails before reserving output`, async t => {
+    const f = await fixture(t);
+    await rm(f.sourceRoot, { recursive: true });
+    await cp(resolve(dirname(script), '../osstack-methods-skill'), f.sourceRoot, { recursive: true });
+    await rm(join(f.sourceRoot, 'references', `${method}.md`));
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), error => {
+      assert.match(error.message, /link_missing_or_escape/);
+      assert.ok(error.message.endsWith(`/references/${method}.md`) || error.message.endsWith(`-> ${method}.md`), error.message);
+      return true;
+    });
+    assert.equal(existsSync(f.output), false);
+  });
+}
+
+// This is a declared material-routing contract, not a claim about model routing.
+test('source and mode routers map each new named intent to its matching method', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill');
+  for (const [router, prefix] of [['SKILL.md', 'references'], ['entries/osstack-mode/SKILL.md', '../../references']]) {
+    const text = await readFile(join(root, router), 'utf8');
+    for (const method of ['feature', 'refactoring']) {
+      const links = [...text.matchAll(/\[([^\]\n]+)\]\(([^)\s]+)\)/g)].filter(([, label]) => label.toLowerCase() === method);
+      assert.equal(links.length, 1, `${router} must advertise ${method} once`);
+      assert.equal(links[0][2], `${prefix}/${method}.md`);
+    }
+  }
 });

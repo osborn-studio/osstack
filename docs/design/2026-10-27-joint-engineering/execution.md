@@ -152,3 +152,32 @@ PR289 was then verified merged by the user at `64b203c32d245d5ad9a76914253ca18cb
 ## Named OSStack method entries — 2026-10-28
 
 PR290 merged at `f92914e0a98bd3e5f82765fddc5a275a93637f30`. PR291 initial CI found a mixed-case mismatch. Its repaired head `6df338e8` includes that main, a confirmed Git output-drain fix, 7,144 passing package tests and actual Sonnet audit PASS; new-head CI remains separately observed. The next D2a slice implements `osstack-mode`, `osstack-help`, `setup-osstack`, and `osstack-agent`, with self-contained project exports for both hosts. The slice does not port the entire upstream catalog or activate runtime gates. Root retains central ledger/PR ownership; materials, export implementation and independent forward review have separate owners. See [batch records](../../implementation/osstack-method-entrypoints/README.md).
+
+
+## PR291 repair and PR292 final CI observation (2026-10-28 UTC)
+
+PR291 `2b8ef9b7` and PR292 `fe9079a1` are Ready after five applicable CI checks each succeeded; paid smoke was skipped. PR291's latest Linux full test step reports 7142 passed / 7 skipped / 0 failed; PR292 reports 7136 / 7 / 0. Earlier local counts remain bound to their original candidates. PR291's actual Sonnet 5.5 audit covers both the Git stream-drain correction and the later bounded, checksum-verified headers preparation. Original failures are retained. Final actual verifier artifact 12808791882 has 49 hash-verified payloads and all five expected outcomes.
+
+The exact combined tree passed fresh build and targeted verification, without a combined full suite. See [final composition and CI observation](../../implementation/joint-final-ci-composition/README.md). OSStack cards are blocked only awaiting gilberthello approval/merge; merge PR291 first, then verify actual main against the recorded composition before PR292. No agent approval/merge or formal runtime qualification occurred. Native skill discovery is only a preserved, unexecuted next-batch proposal.
+
+
+## PR291/292 merged: native discovery slice
+
+GitHub confirms PR291 merged at `9debb0f9` and PR292 at `ca95aba1`. Latest main tree `9efad98d` exactly equals the earlier tested composition `d31dc0b6`; this does not relabel old tests as new runs. OSStack marks both implementation cards done.
+
+The next bounded D2a slice (`card_6198adaf`) verifies native catalog visibility and actual `osstack-help` selection/material reads in isolated Codex and Claude workspaces, with package-absent controls. It does not inject SKILL bodies into prompts or execute product verification. Four invocations maximum, no automatic model retries; authentication/schema/catalog and independent criteria must be checked first. Any gate failure is retained as blocked/inconclusive, not counted as a passing negative. Root owns the central ledger and PR; harness, independent assessment and acceptance review have separate writers.
+
+
+### 合并后主机实测与真实回归（2026-10-28 UTC）
+
+本轮在 `4d6bb58d446da32a3044d5375baa7f2f935eddf2` 执行 fresh install/build 与全仓 `pnpm test`，7144 通过、5 跳过、0 失败，退出 0。该候选已吸收 main `ca95aba1` 与旧组合证据，产品源码未变。它是新执行，旧组合及 CI 证据仍保留原 SHA。
+
+Codex 两次真实调用已取得独立目录 0/4 个目标技能、help 与相关材料真实读取的证据；原实验缺少完整 `.git`/类型/长度前态，整体不认定完整通过。Claude 初始化-only、空工具配置对照确认本机 restricted 开关导致目标目录 0/4 的差异，实际回合需使用独立、事先审查的只读协议。当前交付范围与限制见 [原生发现实测](../../implementation/method-native-discovery/README.md)。本轮不签发 J01/J11、宿主等价或完整 runtime 资格。
+
+
+Claude v2 已按原标准完成独立评分：无包负例及有包命名发现/读取均在限定范围通过，原生 `Skill(osstack-help)` 展开和两份引用逐字核对；全工作区清单及自有资源清理通过。总实验调用 4 次、无重试。Codex v1 的证据缺口仍保持，不因另一宿主通过而补认。新文档/证据候选继续接受实际 Sonnet 5.5 审计与最终发布 head CI。
+
+
+## Next methods and real verification journey
+
+The user explicitly requested parallel implementation through OSStack. Three distinct running cards now cover feature/refactoring method materials (`card_766d64bc`), a bounded reusable healthy/missing-ref verification journey (`card_e0b5babf`), and independent prefrozen behavior/fault checks (`card_3247e7bd`). The two writers start from actual main `ca95aba1` in separate worktrees; the independent reviewer writes only scratch evidence. Root alone owns the central ledger, PRs, actual Sonnet audits and full-regression queue. These D2a tasks proceed while the native-discovery documentation candidate closes audit/CI. Existing formal gates and the original four-call experiment remain unchanged.

@@ -1,0 +1,48 @@
+[
+  {
+    "head": "f5e8d234a604ba39d78dfed21ae072d6ef2e3cca",
+    "label": "force-knowledge-build",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/knowledge",
+      "exec",
+      "tsc",
+      "-b",
+      "--force"
+    ],
+    "exit_code": 0,
+    "started_at": "2026-10-28T12:02:06.757322+00:00",
+    "finished_at": "2026-10-28T12:02:07.580944+00:00",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "head": "f5e8d234a604ba39d78dfed21ae072d6ef2e3cca",
+    "label": "forced-source-repro",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "exec",
+      "vitest",
+      "run",
+      "src/source-context.test.ts"
+    ],
+    "exit_code": 0,
+    "started_at": "2026-10-28T12:02:07.581292+00:00",
+    "finished_at": "2026-10-28T12:02:09.735811+00:00",
+    "log_sha256": "e93f45dfa28cf864deb24507249867a2dd759261954c082bd2bc0e3035b34af7"
+  },
+  {
+    "head": "f5e8d234a604ba39d78dfed21ae072d6ef2e3cca",
+    "label": "forced-full",
+    "argv": [
+      "pnpm",
+      "test"
+    ],
+    "exit_code": 0,
+    "started_at": "2026-10-28T12:02:09.736110+00:00",
+    "finished_at": "2026-10-28T12:10:21.402710+00:00",
+    "log_sha256": "e7e644fa64888c398552dab985c2685d483bd41a9ceee0f2b319ee2665ba12ec"
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "status": "proposal_not_executed",
+  "product_pr": false,
+  "model_calls": 0,
+  "purpose": "future isolated native catalog and osstack-help loading experiment; no qualification/causal claims",
+  "archive_sha256": "f3abb02d4f12976ae1df314bbe474c3916633e9e461ab14e4401c0cfc81300c5",
+  "members": [
+    {
+      "path": "plan.md",
+      "sha256": "8f1a661c4e08b1dcac1462609a74788e0a7e49fabd0cf766e1bded0614c308cc"
+    },
+    {
+      "path": "protocol.json",
+      "sha256": "db5f10ef0350754b39eb147689bc838ea2eb7b9ec7f1b532aef12ed5ed34434c"
+    }
+  ]
+}

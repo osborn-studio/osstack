@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-28T10:56:32.226272+00:00",
+  "candidate": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "tree": "9efad98d9560076ec33611ae75841c7ac85e0fc2",
+  "card": "card_6198adaf",
+  "model_invocations": 2,
+  "model_invocations_by_host": {
+    "codex": 2,
+    "claude": 0
+  },
+  "retries": 0,
+  "codex": {
+    "absent": {
+      "status": "completed_pending_independent_evaluation",
+      "exit_code": 0,
+      "timed_out": false,
+      "final_whitespace_words": 193,
+      "tool_event_count": 2,
+      "workspace_unchanged": true,
+      "default_auth_unchanged": true
+    },
+    "present": {
+      "status": "completed_pending_independent_evaluation",
+      "exit_code": 0,
+      "timed_out": false,
+      "final_whitespace_words": 286,
+      "tool_event_count": 4,
+      "workspace_unchanged": true,
+      "default_auth_unchanged": true
+    },
+    "model_requested": "gpt-6.1-sol",
+    "model_source": "unique isDefault in isolated authenticated model/list",
+    "resolved_runtime_model": "not_attested_by_exec_stream",
+    "runtime": "0.160.1"
+  },
+  "claude": {
+    "status": "blocked_catalog_preflight",
+    "auth": "isolated existing OAuth passed",
+    "absent_target_count": 0,
+    "present_target_count": 0,
+    "present_total_commands": 53,
+    "user_messages_sent": 0,
+    "model_turns_started": 0,
+    "runtime": "2.1.291",
+    "requested_model_for_catalog_only": "claude-sonnet-5-5",
+    "catalog_note": "SDKinitialize control response; no userturn. Storedresponse reserialized, account identity replaced by redaction marker; not byteidenticalraw."
+  },
+  "limits": [
+    "No native verification driver executed",
+    "No fourentry fullconsumption claim",
+    "Codex catalogprobe and exec differentprocesses",
+    "No implicitrouting/causal/identityqualification claim",
+    "Native catalog auth/modelavailability are preflight; independentsemantic evaluation separate"
+  ],
+  "cleanup": {
+    "all_private_homes_removed": true,
+    "credential_copies_destroyed": true,
+    "workspace_retained_until_independent_review": true,
+    "default_Codex_auth_file_hash_unchanged": true,
+    "whole_default_home_or_keychain_write_audit": false
+  }
+}

@@ -8,7 +8,7 @@ Keep all four entry directories together. In a Codex bundle the mode entry is `.
 
 > Read `<actual-skill-directory>/SKILL.md` and its selected method and evidence references. Apply them to `<requested task>` within the existing authorization. Report the material paths used, actual observations and unresolved limits.
 
-References in a bundle live under each entry's `references/`. `create-verification`, `maintain-verification`, `bug-fix`, and `investigation` are reference methods selected by `osstack-mode`, not additional exported entry names. Use `osstack-help` for routing questions, `setup-osstack` for scoped model and budget preferences, or `osstack-agent` for an already delegated task.
+References in a bundle live under each entry's `references/`. `feature`, `refactoring`, `create-verification`, `maintain-verification`, `bug-fix`, and `investigation` are reference methods selected by `osstack-mode`, not additional exported entry names. Use `osstack-help` for routing questions, `setup-osstack` for scoped model and budget preferences, or `osstack-agent` for an already delegated task.
 
 If the host catalog actually lists these skills, use its supported selection mechanism. Otherwise explicit file reading remains possible. Do not claim a slash command exists merely because a folder was generated. Host trust, version and settings can affect discovery; no global installation or configuration edit is needed for explicit reading.
 

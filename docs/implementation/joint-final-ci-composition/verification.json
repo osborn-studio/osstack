@@ -1,0 +1,155 @@
+{
+  "head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+  "tree": "9efad98d9560076ec33611ae75841c7ac85e0fc2",
+  "parents": [
+    "2b8ef9b707b672ffd89c389d9abbc368e8e6b9ca",
+    "fe9079a1c2f2ea7f9d61030a88bbd58b276ce56b"
+  ],
+  "commands": [
+    {
+      "key": "build",
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:13.209955+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:27.573691+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "bc0f09d2ba732c967326045b2a6b330eec9fc8ba624b59400b31216a69c0797b"
+    },
+    {
+      "key": "docs",
+      "argv": [
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "docs/design/2026-10-27-joint-engineering",
+        "-p",
+        "test_validate_*.py"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:46.604209+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:54.708303+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "96708cf3f1dde458819ede17663981d9fa9fd59016e5702deb17b2d050020343"
+    },
+    {
+      "key": "headers",
+      "argv": [
+        "node",
+        "--test",
+        "scripts/prepare-node-headers.test.mjs"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:38.340456+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:39.537607+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "8ad00c1c7460e7841211a4a1b0e014f1c05b10f48b3b36fa729331675d8e0a53"
+    },
+    {
+      "key": "hygiene",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@osstack/governance",
+        "exec",
+        "vitest",
+        "run",
+        "src/knowledge-hygiene/osstack-config.test.ts"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:44.464828+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:46.572224+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "03086098983bd4690c909a59697dee7a4bc859ea2534a9652cb5189f24293d89"
+    },
+    {
+      "key": "install",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:03.759139+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:05.310430+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "7651e80798827c0cce30cc71c0114e481f3aa991265849112c8b08b3fc34d218"
+    },
+    {
+      "key": "method-export",
+      "argv": [
+        "pnpm",
+        "test:method-export"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:39.567844+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:41.377007+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "bf4657aef3bc22ffef0f9a486829f32d9b807915befc0b616aaf9c3ee33f98f4"
+    },
+    {
+      "key": "skills-check",
+      "argv": [
+        "pnpm",
+        "smoke:skills-check"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/joint-final-ci-composition",
+      "started_at": "2026-10-28T10:12:41.403776+00:00",
+      "git_head": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+      "PATH": "/opt/homebrew/opt/node@22/bin:/opt/homebrew/bin:/usr/bin:/bin",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/osstack-method-entrypoints-20261028/final-network-composition/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack",
+      "OSSTACK_SOCKET": "unset",
+      "ended_at": "2026-10-28T10:12:48.510968+00:00",
+      "exit_code": 0,
+      "raw_log_sha256": "d00dd6c5bbbf379575e0cac0a49904babe6d7d8e83ea0a2a4598cd2bfffe2961"
+    }
+  ],
+  "passed": {
+    "headers": 14,
+    "export": 63,
+    "driver": 25,
+    "actual_cases": 5,
+    "hygiene": 1,
+    "joint_docs": 241
+  },
+  "skills_manifest_members_verified": 49,
+  "fixture_absent": true,
+  "descendant_termination": "not_attested",
+  "full_suite": "not_run; independent PR CI is separate",
+  "recorded_at": "2026-10-28T10:13:24.831907+00:00"
+}

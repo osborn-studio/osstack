@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-28T11:32:08.014537+00:00",
+  "source_base": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "full_regression_head": "4d6bb58d446da32a3044d5375baa7f2f935eddf2",
+  "reviewed_candidate": "7f3d7a0e5310db61c61e4494110d736d7de0b57f",
+  "trees": {
+    "ca95aba1c186d9c3a9e70a45143b7a277db84404": "9efad98d9560076ec33611ae75841c7ac85e0fc2",
+    "4d6bb58d446da32a3044d5375baa7f2f935eddf2": "e87a60e341b26376840d50bb9856cc8d5b7df663",
+    "7f3d7a0e5310db61c61e4494110d736d7de0b57f": "9a0b0af27c5d646dfe4ae46becf127233c037f30"
+  },
+  "changed_files_base_to_test": [
+    "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+    "docs/design/2026-10-27-joint-engineering/execution.md",
+    "docs/implementation/joint-final-ci-composition/README.md",
+    "docs/implementation/joint-final-ci-composition/composition-evidence.tar.gz",
+    "docs/implementation/joint-final-ci-composition/handoff.md",
+    "docs/implementation/joint-final-ci-composition/manifest.json",
+    "docs/implementation/joint-final-ci-composition/native-discovery-preflight.json",
+    "docs/implementation/joint-final-ci-composition/native-discovery-preflight.tar.gz",
+    "docs/implementation/joint-final-ci-composition/ready-ci-evidence.tar.gz",
+    "docs/implementation/joint-final-ci-composition/ready-ci-manifest.json",
+    "docs/implementation/joint-final-ci-composition/ready-observation.json",
+    "docs/implementation/joint-final-ci-composition/verification.json"
+  ],
+  "changed_files_base_to_candidate": [
+    "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+    "docs/design/2026-10-27-joint-engineering/execution.md",
+    "docs/implementation/joint-final-ci-composition/README.md",
+    "docs/implementation/joint-final-ci-composition/composition-evidence.tar.gz",
+    "docs/implementation/joint-final-ci-composition/handoff.md",
+    "docs/implementation/joint-final-ci-composition/manifest.json",
+    "docs/implementation/joint-final-ci-composition/native-discovery-preflight.json",
+    "docs/implementation/joint-final-ci-composition/native-discovery-preflight.tar.gz",
+    "docs/implementation/joint-final-ci-composition/ready-ci-evidence.tar.gz",
+    "docs/implementation/joint-final-ci-composition/ready-ci-manifest.json",
+    "docs/implementation/joint-final-ci-composition/ready-observation.json",
+    "docs/implementation/joint-final-ci-composition/verification.json",
+    "docs/implementation/method-native-discovery/README.md",
+    "docs/implementation/method-native-discovery/evidence.tar.gz",
+    "docs/implementation/method-native-discovery/full-test-summary.json",
+    "docs/implementation/method-native-discovery/manifest.json",
+    "docs/implementation/method-native-discovery/v1-execution-summary.json",
+    "docs/implementation/method-native-discovery/v1-graded-results.json",
+    "docs/implementation/method-native-discovery/v1-graded-results.md",
+    "docs/implementation/method-native-discovery/v2-graded-results.json",
+    "docs/implementation/method-native-discovery/v2-graded-results.md",
+    "osstack-methods-skill/EXPORT.md"
+  ],
+  "current_uncommitted_files": [
+    "docs/implementation/method-native-discovery/README.md",
+    "osstack-methods-skill/EXPORT.md"
+  ],
+  "rule": "Full pnpm test binds 4d6bb58d and excludes later documentation edits. Product-source equality uses complete diff scope, not equal whole trees. Final docs/export checks and publication CI separately required.",
+  "runtime_product_diff_empty": true,
+  "exports": [
+    {
+      "host": "codex",
+      "exit_code": 0,
+      "files_checked": 40,
+      "same_file_hashes_as_frozen_experiment": true,
+      "source_digest": "8245381e0ca0ab3b67fa078a6c2341c1d19eafa271db126b4f046a7512068ac8",
+      "host_discovery_verified": false
+    },
+    {
+      "host": "claude",
+      "exit_code": 0,
+      "files_checked": 40,
+      "same_file_hashes_as_frozen_experiment": true,
+      "source_digest": "8245381e0ca0ab3b67fa078a6c2341c1d19eafa271db126b4f046a7512068ac8",
+      "host_discovery_verified": false
+    }
+  ],
+  "grade_copies": [
+    {
+      "repo_path": "docs/implementation/method-native-discovery/v1-graded-results.md",
+      "archive_path": "independent/graded-results.md",
+      "sha256": "1fc19e5a57275261d7238455c2939ebc5d8ea991b1a5ec75d31432a2a37476b0"
+    },
+    {
+      "repo_path": "docs/implementation/method-native-discovery/v2-graded-results.md",
+      "archive_path": "independent/v2-graded-results.md",
+      "sha256": "62c47cdb080f58cc21f5655f4c8e6ca9d7d709603399353f800c10ab9977b4e9"
+    }
+  ]
+}

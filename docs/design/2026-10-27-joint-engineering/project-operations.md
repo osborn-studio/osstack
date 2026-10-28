@@ -107,3 +107,10 @@ JP-17a 使用 dedicated SQLite broker DB 作为明确的离线候选设计，nam
 `J01.contracts` 尚未正式通过，模型名称不能代替可信 oracle principal，测试数量不能替代预冻结与身份条件。J02b/J03 产品开工保持依赖阻断；J03 不依赖 J02。J11/J12/J17 的正式授权、文件级崩溃和旧 writer fencing 义务保留；home 48、broker 0→1 均未被本次分配为生产迁移。所有新候选继续实际 Claude CLI Sonnet 5.5 审计、修复并保留原始意见；通知审批前重新查询发布 head 的 CI。
 
 当前合并观察、三看板快照和派发回执见 [执行账本](execution-ledger.json)；较早章节是各自观察时刻的历史记录，不构成当前 Ready 或 gate 状态。
+
+
+## 2026-10-28：方法与真实验证旅程并行实施
+
+用户再次明确授权多子代理推进。当前三个在制项是：`card_766d64bc` 由 loader_adversarial 实现 feature/refactoring 方法与路由；`card_e0b5babf` 由 terminal_preflight 实现复用既有 healthy/missing-ref 的有限验证旅程；`card_3247e7bd` 由 cleanup_regression 先冻结行为与故障判据，再独立验证候选。两作者从 main `ca95aba1` 启动独占工作树，独立检验者仅写 scratch。原生发现实验的四次模型调用已经结束，不借本批重写旧结果或突破旧预算；新的真实宿主旅程需独立冻结后启动。
+
+主入口接收这三个任务，集中实际 Sonnet 5.5 审计、必要全仓回归与 CI。原生发现文档收口可与方法材料增量合为一个 PR，实际验证旅程另列 PR，从而减少单纯证据提交的审批次数。历史宿主观察始终绑定原材料 SHA；新增方法须自行验证，不能继承旧发现实验为通过。

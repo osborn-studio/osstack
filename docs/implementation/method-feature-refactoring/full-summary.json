@@ -1,0 +1,143 @@
+{
+  "candidate": "f5e8d234a604ba39d78dfed21ae072d6ef2e3cca",
+  "counts": {
+    "passed": 7144,
+    "skipped": 5,
+    "failed": 0
+  },
+  "package_summaries": [
+    {
+      "line": "packages/contracts test:       Tests  15 passed (15)",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/compliance test:       Tests  17 passed (17)",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/github test:       Tests  107 passed (107)",
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/knowledge test:       Tests  44 passed (44)",
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/governance test:       Tests  301 passed (301)",
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/neat-eval test:       Tests  16 passed (16)",
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/runtime test:       Tests  1 passed (1)",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/protocol test:       Tests  1012 passed (1012)",
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/knowledge-cloud test:       Tests  36 passed (36)",
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/graph test:       Tests  257 passed (257)",
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/core test:       Tests  1301 passed (1301)",
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/hermes-adapter test:       Tests  22 passed (22)",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/plugins test:       Tests  1 passed (1)",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/skills test:       Tests  2 passed (2)",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/autonomy test:       Tests  201 passed (201)",
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/skill-registry test:       Tests  43 passed (43)",
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/agents test:       Tests  361 passed (361)",
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/config test:       Tests  30 passed (30)",
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/loop test:       Tests  515 passed (515)",
+      "passed": 515,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/conformance test:       Tests  9 passed (9)",
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/supervisor test:       Tests  88 passed (88)",
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "packages/cli test:       Tests  2765 passed | 5 skipped (2770)",
+      "passed": 2765,
+      "skipped": 5,
+      "failed": 0
+    }
+  ],
+  "exit_code": 0
+}

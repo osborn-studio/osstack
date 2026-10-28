@@ -1,14 +1,18 @@
 ---
 name: osstack-agent
-description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
+description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
 ---
 
 # OSStack delegated method
 
 Read the parent brief, relevant user constraints and [common evidence rules](../../references/evidence.md). Confirm the actual base revision or input identity, required outcome, allowed files/resources, and checks. Resolve ordinary choices within the delegated scope; do not repeatedly seek approval already supplied. Report a missing ownership boundary before touching shared state, while continuing independent read-only work.
 
+Apply the coordinator's agreed design and acceptance checks to your assigned slice. Planning or delegation guidance inside a method does not expand your write boundary or permit spawning more workers; report cross-slice needs to the coordinator.
+
 Choose the relevant shared method:
 
+- [Feature](../../references/feature.md) for an owned implementation slice with observable acceptance checks.
+- [Refactoring](../../references/refactoring.md) for structural changes under a pinned behavior contract.
 - [Investigation](../../references/investigation.md) for a cited explanation or assessment.
 - [Bug fix](../../references/bug-fix.md) for an authorized correction and same-surface recheck.
 - [Create verification](../../references/create-verification.md) for a repeatable driver/feature-map procedure.
