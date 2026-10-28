@@ -17,3 +17,8 @@ After the user merged PR288, main commit `4d31c3f540672c81a6c5d65b3a2b090dc32da0
 ## Scope and records
 
 This is applicable combined-candidate revalidation: fresh build, the27 regression cases and one real local deterministic smoke. It is not a combined full repository suite, a live-provider test, formal runtime/principal qualification, approval or a release gate. Commands, exact cwd, minimal PATH, explicit scratch home, original outputs, Git object bindings and local runtime version are retained. OSSTACK_SOCKET was unset for execution, and no default OSStack home or management instance was used. The script's isolated fixture credentials are sanitized in its evidence.
+
+
+## Later published-head CI observation
+
+PR289 head `48f5a9f1a6bfc5c4a82645dfd8bcc96a3125c69e` completed run40651082036 with five applicable SUCCESS checks and the conditional paid smoke SKIPPED. The three native recovery cases passed (reported totals21,249/21,112/21,513ms, including hooks). This does not establish the original failure's cause or prove a performance gain. The PR is Ready pending user approval/merge. [CI/board receipt archive](pr289-ready.tar.gz) is indexed by [its manifest](pr289-ready-manifest.json); earlier observations remain historical.

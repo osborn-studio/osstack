@@ -2697,7 +2697,7 @@
     "ci_rule": "Ready only after latest published head applicable checks pass; dynamic status in GitHub and OSStack",
     "next_candidate": "skills check unreachable exit 0 reproduced using local Git; fix not included",
     "ci_followup": {
-      "observed_at": "2026-10-28T07:42:06.737986+00:00",
+      "observed_at": "2026-10-28T07:59:17.896453+00:00",
       "main_sha": "4d31c3f540672c81a6c5d65b3a2b090dc32da027",
       "pr288": {
         "head": "10629495aafe7b3aca0de4c920bcaec40b083d7b",
@@ -2712,15 +2712,22 @@
       "pr289": {
         "published_head": "48f5a9f1a6bfc5c4a82645dfd8bcc96a3125c69e",
         "candidate": "4dddf67ab6e293161aab8f59b57392d1c693a298",
-        "status": "Draft; fresh CI run40651082036 running",
+        "status": "Ready; awaiting gilberthello approval/merge",
         "audit": "actual Sonnet5.5 candidate A PASS",
         "focused_tests": 37,
-        "ci_root_cause": "not established",
+        "ci_root_cause": "not established; revised candidate passes fresh CI, reported durations include preparation",
         "full_tests": {
           "passed": 7138,
           "skipped": 5,
           "failed": 0
-        }
+        },
+        "ci_run": 40651082036,
+        "applicable_checks": "5 SUCCESS; paid smoke SKIPPED",
+        "native_cases_ms": [
+          21249,
+          21112,
+          21513
+        ]
       },
       "host_reading": {
         "branch": "codex/joint-host-effects",
