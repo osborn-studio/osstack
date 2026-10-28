@@ -25,7 +25,7 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
+  "main_sha": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
   "observed_at": "2026-10-28T14:43:16.043664+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
@@ -3210,7 +3210,7 @@
     }
   },
   "next_method_host_wave": {
-    "status": "audited_tested_preparing_pr",
+    "status": "merged",
     "baseline": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
     "provisional_dependency": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
     "authorization": "user explicitly requests OSStack multiple agents continued implementation",
@@ -3235,7 +3235,7 @@
     "maximum_proposed_calls": 2,
     "retries": 0,
     "formal_gates_passed": false,
-    "updated_at": "2026-10-28T14:43:16.043664+00:00",
+    "updated_at": "2026-10-28T14:46:53.013859+00:00",
     "host_criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
     "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d",
     "actual_main": "70924ee44a478f5ef345307b885bda6b936e6662",
@@ -3292,6 +3292,133 @@
     },
     "evidence": "docs/implementation/method-code-review/evidence/manifest.json",
     "archive_sha256": "b28b3b75511ec9acc3391e7a8c442c587757617472a177c2df241075fcc4057a",
-    "next": "Fresh bounded code-review behavior protocol on pinned positive/negative source changes; no retry or relabelling of current host experiments."
+    "next": "Fresh bounded code-review behavior protocol on pinned positive/negative source changes; no retry or relabelling of current host experiments.",
+    "pr": 296,
+    "published_head": "4833bd97e52c42dcb4e39d6d8200a9d66c3ee852",
+    "ci_run": 40709107782,
+    "ci_status": "success",
+    "is_draft": false,
+    "workers": "all prior workers handed off; next impact/performance batch separately assigned",
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1,
+    "current_head_ci_full": {
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0
+    },
+    "merge_commit": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
+    "merged_at": "2026-10-28T15:12:10Z"
+  },
+  "next_code_review_behavior": {
+    "status": "completed_scoped_limited",
+    "card": "card_6b61f146",
+    "method_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+    "provisional_pr": 296,
+    "published_head": "4833bd97e52c42dcb4e39d6d8200a9d66c3ee852",
+    "protocol_draft_sha256": "3018bb0f8969beea1b031ccaa69b005794537ff12030e64461509a03ed675380",
+    "owners": {
+      "terminal_preflight": "new snapshots/exported materials/readonly harness/zero-user-turn metadata preparation",
+      "cleanup_regression": "independent new criteria/oracle/protocol freeze",
+      "root": "exact dispatch after freeze, central ledger/CI/PR"
+    },
+    "scope": "two small actual Git-derived synthetic candidates, defect detection/style false-positive/source attribution; no broad review-quality or causal benefit claim",
+    "calls_performed": 2,
+    "maximum_calls": 2,
+    "maximum_per_host": 1,
+    "retries": 0,
+    "deadline_seconds": 180,
+    "hard_word_limit": 500,
+    "prospective_response_target_words": [
+      250,
+      350
+    ],
+    "prior_experiments_unchanged": true,
+    "source_tests_executed_by_models": false,
+    "formal_gates_passed": false,
+    "updated_at": "2026-10-28T15:16:22.316287+00:00",
+    "criteria_sha256": "8bbd2817e7c6181a8f2c9dd0ee81bcf8cbec53d79532e80dc73718833713fb5e",
+    "independent_criteria": 12,
+    "source_oracle_verification": "actual Git parents/tree/blob/diff and four methodanchors match; original coordinator0/1/0 logs retained, no new execution",
+    "preparation_sha256": "875dde2a1f50c0d400771cbfdefb2c5d8096e94e73da0eb8352e0a38bce6acbc",
+    "dispatch_supplement_sha256": "5aa4807bec991ed82c68a4837f53487e13e791a59bfd965156e7eb700ea33a3a",
+    "grade_sha256": "04ea1c39646c57557f21064a018f387111ab64ee3723ff55b3b2f51a53fc9af3",
+    "codex": {
+      "words": 263,
+      "all_assistant_words": 285,
+      "primary_recognition": "scoped_pass_A_defect_B_no_false_positive",
+      "overall": "limited",
+      "native_invocation": "not_attested_explicit_cat15",
+      "native_self_report": "no_fallback_claim_not_supported_by_trace",
+      "execution_model": "not_attested",
+      "inventory_entries": 83,
+      "workspace_unchanged": true
+    },
+    "claude": {
+      "words": 365,
+      "primary_recognition": "scoped_pass_A_defect_B_no_false_positive",
+      "overall": "limited",
+      "native_invocation": "actual_Skill_osstack_mode",
+      "exact_reads": 10,
+      "missing_requested_reads": 4,
+      "additional_claim_error": "overbroad nonnumeric equivalence; NaN/false static counterexamples and contradictory null aside",
+      "model": "host_reported_claude-sonnet-5-5",
+      "inventory_entries": 83,
+      "workspace_unchanged": true
+    },
+    "fixture_tests_new": 0,
+    "report_audit": "actual Sonnet5.5 REVISE/REVISE then limited R1/spacing closure PASS; source provenance independently verified by root",
+    "archive_sha256": "b139f26c796a49775a9987f3b2de178294770a746b078a1eba5a26cf6e3e4042",
+    "archive_members_verified": 352,
+    "owned_workspaces_removed_after_archive": true,
+    "evidence": "docs/implementation/method-review-behavior/README.md"
+  },
+  "next_impact_performance_wave": {
+    "status": "validated_preparing_pr",
+    "baseline": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_575bf2b9",
+        "scope": "change-impact reference and shared routing/export files only; eight-method intermediate",
+        "branch": "codex/method-change-impact"
+      },
+      "terminal_preflight": {
+        "card": "card_b64a5211",
+        "scope": "new performance-measurement reference and ownREADME only; root later integrates ninth method",
+        "branch": "codex/method-performance-measurement"
+      },
+      "cleanup_regression": {
+        "card": "card_a9783847",
+        "scope": "scratch prefrozen<=12 criteria and independent examples/export verification"
+      },
+      "root": {
+        "scope": "ninth-method shared integration after handoff, central ledger/actualSonnet/full queue/PR"
+      }
+    },
+    "model_calls_authorized_to_workers": false,
+    "full_regression_owner": "root_single_queue",
+    "formal_gates_passed": false,
+    "criteria_sha256": "ebec2ebce5de0cc5c5d1ea6f933ca0e5b5b069c1bfaab2ca1d858627395a9436",
+    "code_sha": "687811a69c564b5812200c65f02e8aba35f002a3",
+    "methods": 9,
+    "export_tests": 81,
+    "independent_final": {
+      "files_per_host": 64,
+      "links_per_host": 201,
+      "manifest_sha256": "3cdcc78bbb596d04745a7f7002c462bf92438cafbdb83b365c078969bc78c461"
+    },
+    "audit": "actual claude-sonnet-5-5 PASS at4483 plus limited adopted-suggestions closure PASS at6878;22 source bindings independently verified",
+    "host_effects": "not_run_for_new_methods",
+    "evidence": "docs/implementation/method-impact-performance/README.md",
+    "full": {
+      "sha": "687811a69c564b5812200c65f02e8aba35f002a3",
+      "node": "22.22.1",
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "archive_sha256": "78fe18e9116c9337ae8f059d913724fae2515fd6cef0dbbea2ddbabbace96b79",
+    "archive_members": 672,
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1
   }
 }

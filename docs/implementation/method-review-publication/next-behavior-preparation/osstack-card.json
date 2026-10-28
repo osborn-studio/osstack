@@ -1,0 +1,18 @@
+{
+  "card_id": "card_6b61f146",
+  "board": "joint-firstmate-pstack",
+  "task_id": null,
+  "title": "D2a code-review actual host behavior: pinned bug/style pair",
+  "body": "Prepared only. Scratch method-review-behavior-preflight-20261028 protocol SHA3018bb0f8969beea1b031ccaa69b005794537ff12030e64461509a03ed675380. Method73d446b4, real Git-derived synthetic bug/style pair; two hosts one call each180s<=500words0retry. Root+C new freeze, snapshot/export inventory, same-final-context zero-turn auth/catalog checks and root exact dispatch before calls. No host productfixture execution; native vs explicit consumption distinct; no broad quality/causal benefit. Old515-word failure unchanged. PR296 material scope does not depend on this future experiment.",
+  "status": "todo",
+  "priority": 1,
+  "assignee": "joint-entry",
+  "blocked_reason": null,
+  "tenant_id": null,
+  "card_type": "implementation",
+  "meta": null,
+  "created_at": 1793198942.57,
+  "updated_at": 1793198942.57,
+  "started_at": null,
+  "completed_at": null
+}

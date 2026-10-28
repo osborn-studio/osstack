@@ -1,0 +1,15 @@
+{
+  "archive_sha256": "b139f26c796a49775a9987f3b2de178294770a746b078a1eba5a26cf6e3e4042",
+  "workspaces": [
+    {
+      "host": "codex",
+      "owned_workspace_removed": true
+    },
+    {
+      "host": "claude",
+      "owned_workspace_removed": true
+    }
+  ],
+  "global_host_state": "not_attested",
+  "descendant_termination": "not_attested"
+}

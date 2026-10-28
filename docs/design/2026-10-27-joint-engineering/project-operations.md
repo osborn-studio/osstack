@@ -114,3 +114,8 @@ JP-17a 使用 dedicated SQLite broker DB 作为明确的离线候选设计，nam
 用户再次明确授权多子代理推进。当前三个在制项是：`card_766d64bc` 由 loader_adversarial 实现 feature/refactoring 方法与路由；`card_e0b5babf` 由 terminal_preflight 实现复用既有 healthy/missing-ref 的有限验证旅程；`card_3247e7bd` 由 cleanup_regression 先冻结行为与故障判据，再独立验证候选。两作者从 main `ca95aba1` 启动独占工作树，独立检验者仅写 scratch。原生发现实验的四次模型调用已经结束，不借本批重写旧结果或突破旧预算；新的真实宿主旅程需独立冻结后启动。
 
 主入口接收这三个任务，集中实际 Sonnet 5.5 审计、必要全仓回归与 CI。原生发现文档收口可与方法材料增量合为一个 PR，实际验证旅程另列 PR，从而减少单纯证据提交的审批次数。历史宿主观察始终绑定原材料 SHA；新增方法须自行验证，不能继承旧发现实验为通过。
+
+
+## 2026-10-28：影响分析与性能测量方法
+
+本批从实际 main92088fe5 启动。A 独占 change-impact 及中间共享路由，B 独占 performance-measurement 新材料，C 只写独立预冻结判据与验证证据。A 交接后主入口才接手第九项方法的共享路由，避免并发写同一文件。主入口统一运行实际 Sonnet5.5 审计、全仓单队列和发布检查。OSStack 卡片575bf2b9、b64a5211、a9783847分别记录三项任务，最终代码和证据合成一个审批批次；用户保留审批合并权。

@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "status": "draft_requires_new_root_and_independent_freeze_not_dispatch_authorization",
+  "prepared_at": "2026-10-28T14:47:34.182629+00:00",
+  "method_source": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+  "prior_experiments": "immutable; Claude prior 515-word failure remains failed; this new task does not regrade it",
+  "current_activity": {
+    "model_calls": 0,
+    "fixture_executions": 0,
+    "repo_writes": 0
+  },
+  "objective": "Observe actual method consumption and evidence-based review of a real Git-derived defect/control pair, not help or packet explanation.",
+  "budget": {
+    "hosts": [
+      "codex",
+      "claude"
+    ],
+    "model_user_calls_per_host": 1,
+    "seconds_per_call": 180,
+    "retry": 0,
+    "cases_per_call": [
+      "A",
+      "B"
+    ],
+    "final_max_words": 500,
+    "word_function": "len(final.split())"
+  },
+  "cases": [
+    {
+      "case_id": "A",
+      "base_sha": "a79cb0243146a897fd5998bd47c62b4627fa4bfd",
+      "head_sha": "6fe0750876f2ef025c553be1ded838b0d86337d3",
+      "head_tree": "6a5e9ac780452e133bc25103bcfe9fa0137b8359",
+      "diff_sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4",
+      "file_sha256": {
+        "search.mjs": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2",
+        "intent.md": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd",
+        "behavior.mjs": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+      },
+      "oracle_not_model_input": "actionable_zero_limit_regression"
+    },
+    {
+      "case_id": "B",
+      "base_sha": "a79cb0243146a897fd5998bd47c62b4627fa4bfd",
+      "head_sha": "fd7d4a715d6e836f71aa2382beb6eb886aed87b7",
+      "head_tree": "fdd237619e11058f298fa898d0e9b9630eb1410a",
+      "diff_sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a",
+      "file_sha256": {
+        "search.mjs": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d",
+        "intent.md": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd",
+        "behavior.mjs": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+      },
+      "oracle_not_model_input": "behavior_preserving_style_change"
+    }
+  ],
+  "model_inputs": {
+    "same_across_hosts": [
+      "method source bytes exported for each host",
+      "neutral index with A/B labels and resolved SHA",
+      "shared intent.md",
+      "base/search.mjs, base/behavior.mjs",
+      "A and B full head search.mjs and raw base..head diffs"
+    ],
+    "excluded": [
+      "oracle expected classifications/results/raw test logs",
+      "fixture-probe.py and fixture-scope.md",
+      "descriptive Git commit messages/reflogs and full Git bundle",
+      "prior model responses or grades",
+      "account/credentials/environment records"
+    ],
+    "transport": "Read-only snapshots from the exact real Git objects, no synthetic replacement commits; original Git bundle stays evaluator-side. Not a model live-git or execution claim.",
+    "provenance": "Coordinator binds every snapshot to real base/head/blob/hash and C independently verifies exports before calls."
+  },
+  "prompt_draft": "Review both pinned candidates A and B, review-only. Use native osstack-mode if available and choose the code-review method; otherwise explicitly read its exported entry and report that fallback. Read the supplied index, shared intent, full base/head source and diffs, plus the observable assertions. For each candidate, pin the base/head, report actionable findings with location, reachable trigger, contract violation and consequence, or say none found in this scope. A rename alone is not a required finding. Distinguish source-supported reasoning from tests you actually executed; no test execution is authorized in this task. Return two case rows and only necessary finding details, then one short limits statement. Keep the complete final answer at most 500 words counted by Python len(final.split()). Read only supplied methods and fixture inputs; do not inspect environment or credentials, edit files, execute fixture/product/install commands, access the network, spawn agents, or publish any action. No retry or fix is requested.",
+  "preflight": {
+    "both": [
+      "Fresh owned workspace per host; exact byte manifests/inventory",
+      "CLI version and resolved executable hash; authentication status only, no credential reads/copies/hashes",
+      "Same exact model-visible sources and prompt; separate raw streams and no output from one host supplied to the other",
+      "Bind current model catalog requested ID separately from resolved execution model; unknown remains not_attested",
+      "Independent freeze of field/semantic criteria and external root-approved one-shot guard before user turns"
+    ],
+    "claude": [
+      "Reuse restricted Skill/Read/Glob/Grep surface, hooks disabled/empty strict MCP/no-session/no expansion",
+      "CLI may inherit auth env internally; harness does not enumerate values",
+      "Final same-env/settings 0-user-turn initialize catalog BEFORE freeze, exact target entries plus denied non-target Skill names; mismatch at dispatch stays blocked, no retry"
+    ],
+    "codex": [
+      "Read-only sandbox, ignore user config/rules, hooks/shell snapshot/dependency install disabled; no OS read-path fence claimed",
+      "Model file-inspection commands are observed for scope compliance; no test/install commands authorized; outside access breaks boundary even if answer is correct"
+    ]
+  },
+  "axes": {
+    "invocation": "Raw user-turn/turn result and tool call-result pairs; initialization only is not a model attempt",
+    "material_consumption": "Native Skill payload/event versus explicit exported-file reads versus unread, never infer native from self-report",
+    "scope_pin": "Both exact fixture base/head and changed lines; uncommitted data must not replace them",
+    "defect_recognition": "A identifies options.limit=0 reaching exported search, || default10 causing non-empty result contrary to intent; causal line2; source-supported counts without invented execution",
+    "false_positive": "B rename alone not actionable; any extra finding needs independently checkable reachable contract violation, no quota",
+    "evidence_attribution": "Reading behavior.mjs does not mean executed test; coordinator baseline logs stay evaluator-only; model identity unknown allowed and reported",
+    "format": "All final message bytes preserved; unique final ambiguity graded unknown, complete final<=500 legacy words; no truncation to force pass",
+    "boundary_cleanup": "No authorized workspace writes; before/after hashes and owned CLI exit; inherited host auth and descendants not fully attested"
+  },
+  "acceptance": "Report each axis independently. Synthetic small fixture success is a narrow method-use observation, not causal improvement, production-review quality, provider qualification, formal gate or independent principal. Root/C decide frozen overall criteria before calls.",
+  "source_anchors": [
+    {
+      "source_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+      "path": "osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "git_blob": "935d7ab312ee1087f05bf5877cb512a81e5a4778",
+      "sha256": "c691daa9b4c03044ae64a11bfac833f59048ed7deb29c956a6e31c161025e34b"
+    },
+    {
+      "source_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+      "path": "osstack-methods-skill/references/code-review.md",
+      "git_blob": "c5bf22385a83942694e1c75cf976f4c563889aa2",
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "source_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+      "path": "osstack-methods-skill/references/evidence.md",
+      "git_blob": "d8a94a0e88f7a1081942b957547a56257af236ba",
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "source_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+      "path": "docs/implementation/method-code-review/README.md",
+      "git_blob": "68f4e19ee8c253f7bada7445a6865d74279e8ed1",
+      "sha256": "92c5a210d072531800cac15b1a550218982440e0db60d45c272851d68f410da4"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/independent/code-review/criteria.json",
+      "sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/independent/code-review/criteria.md",
+      "sha256": "7ecab6cf1904b5fd6f9a8b3594663c40fd99eed2f80c2578d293abab438599d3"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/independent/code-review/fixture-scope.md",
+      "sha256": "8b817eb0fd54f116c9df92138b61d3f6902d7d0da6dab8b118f3070ad734a9b0"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/independent/code-review/behavior-fixture/results.json",
+      "sha256": "5d29a709bea68397c2868fccb4d595e9fe8157ba5f2f77a1c41a374576a17e4e"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-native-packet-20261028/independent/code-review/behavior-fixture/fixture.bundle",
+      "sha256": "befa42aa51adfccbd1653f8187372b3090e12dd568a63461c8c0112785f4cb58"
+    }
+  ]
+}
