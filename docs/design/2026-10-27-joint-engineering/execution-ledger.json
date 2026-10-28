@@ -3373,7 +3373,7 @@
     "evidence": "docs/implementation/method-review-behavior/README.md"
   },
   "next_impact_performance_wave": {
-    "status": "authors_implementing_after_prefreeze",
+    "status": "validated_preparing_pr",
     "baseline": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
     "owners": {
       "loader_adversarial": {
@@ -3397,6 +3397,28 @@
     "model_calls_authorized_to_workers": false,
     "full_regression_owner": "root_single_queue",
     "formal_gates_passed": false,
-    "criteria_sha256": "ebec2ebce5de0cc5c5d1ea6f933ca0e5b5b069c1bfaab2ca1d858627395a9436"
+    "criteria_sha256": "ebec2ebce5de0cc5c5d1ea6f933ca0e5b5b069c1bfaab2ca1d858627395a9436",
+    "code_sha": "687811a69c564b5812200c65f02e8aba35f002a3",
+    "methods": 9,
+    "export_tests": 81,
+    "independent_final": {
+      "files_per_host": 64,
+      "links_per_host": 201,
+      "manifest_sha256": "3cdcc78bbb596d04745a7f7002c462bf92438cafbdb83b365c078969bc78c461"
+    },
+    "audit": "actual claude-sonnet-5-5 PASS at4483 plus limited adopted-suggestions closure PASS at6878;22 source bindings independently verified",
+    "host_effects": "not_run_for_new_methods",
+    "evidence": "docs/implementation/method-impact-performance/README.md",
+    "full": {
+      "sha": "687811a69c564b5812200c65f02e8aba35f002a3",
+      "node": "22.22.1",
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "archive_sha256": "78fe18e9116c9337ae8f059d913724fae2515fd6cef0dbbea2ddbabbace96b79",
+    "archive_members": 672,
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1
   }
 }
