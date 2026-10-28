@@ -1,23 +1,25 @@
-# Explicit Codex and Claude use
+# Using OSStack methods in Codex and Claude
 
-Both hosts can be asked to read the same repository files. This package contains no host installer or automatic discovery registration. Do not assume a slash command or skill picker entry exists.
+Choose the material path that actually exists in your context. Source checkout, exported project and installed host catalog are different locations; export alone does not establish native discovery.
 
-Use this request in either host, substituting the actual absolute checkout path and task:
+## Exported project
 
-> Read `<checkout>/osstack-methods-skill/SKILL.md`, its common evidence rules, and the entry for `create-verification`. Apply them to `<requested task>` within the existing authorization. Report the material paths used, actual commands and observations, and any blocked or unverified steps. Do not treat the materials as permission to publish or as a gate receipt.
+Keep all four entry directories together. In a Codex bundle the mode entry is `.agents/skills/osstack-mode/SKILL.md`; in a Claude bundle it is `.claude/skills/osstack-mode/SKILL.md`. Replace the example below with the absolute path of the exported entry that you can read:
 
-For bug fixes, investigation or maintenance, change the entry name. Keep the complete directory so relative reference links resolve. If a host cannot access the checkout, explicitly supply the same files; record any omitted content instead of calling a partial copy equivalent. No model or provider selection is prescribed.
+> Read `<actual-skill-directory>/SKILL.md` and its selected method and evidence references. Apply them to `<requested task>` within the existing authorization. Report the material paths used, actual observations and unresolved limits.
 
-Manual assembly means choosing the task entry and supplying the shared files. This document does not instruct edits to `AGENTS.md`, `CLAUDE.md`, global home directories or host configuration. If a later task requests installation, verify that host/version's actual installation mechanism separately and avoid overwriting existing content.
+References in a bundle live under each entry's `references/`. `create-verification`, `maintain-verification`, `bug-fix`, and `investigation` are reference methods selected by `osstack-mode`, not additional exported entry names. Use `osstack-help` for routing questions, `setup-osstack` for scoped model and budget preferences, or `osstack-agent` for an already delegated task.
 
-| Consumption cell | Current claim |
-| --- | --- |
-| Codex explicit file reading | One recorded read-only report from an `inputs/` copy of PR288 materials: investigation entry |
-| Claude explicit file reading | One recorded read-only report from an `inputs/` copy of PR288 materials: investigation plus bug-fix entries |
-| Automatic discovery / installation | Not provided or tested |
-| MethodBinding / mandatory adapter injection | Not wired by this package |
-| Live provider equivalence / formal qualification | Not established |
+If the host catalog actually lists these skills, use its supported selection mechanism. Otherwise explicit file reading remains possible. Do not claim a slash command exists merely because a folder was generated. Host trust, version and settings can affect discovery; no global installation or configuration edit is needed for explicit reading.
 
-A recorded host run can establish that particular host/version read particular material bytes and produced a report for a task. It does not establish behavioral equivalence across providers, authenticated oracle independence, or automatic qualification of future tasks. Preserve raw output and limitations for each cell separately.
+## Original source checkout
 
-[The two host experiments](https://github.com/osborn-studio/osstack/blob/bf381f22b4833d781e9ec3d803d402f309e470a4/docs/implementation/joint-host-effects/README.md) preserve the actual material versions, commands, outputs and limits. Both read the pre-change evidence guidance at `10629495aafe7b3aca0de4c920bcaec40b083d7b`; neither tested this checkout request template or the new evidence-reading guidance. The records show material reading and reports about supplied historical outcomes, not product driving, cross-host equivalence or a causal improvement from the materials. Follow [the evidence reading rules](evidence.md): use targeted reads before large raw dumps, and distinguish unavailable evidence from supplied evidence that was not read or verified.
+The source router is `osstack-methods-skill/SKILL.md`. Its four named entries are under `osstack-methods-skill/entries/`; its shared methods are under `osstack-methods-skill/references/`. The original source layout and the exported layout intentionally differ. When sharing files explicitly, state which files were supplied and which were omitted.
+
+## Execution and historical evidence
+
+Exported materials contain instructions, not the OSStack product or its verification scripts. To execute an OSStack example, obtain an actual target checkout, its revision and built artifacts, and inspect the supported command there. A missing checkout or unavailable driver is a limitation to report, not permission to invent observations. A referenced script path is relative to that target repository, not to the exported skill directory.
+
+A host run establishes only the material bytes, task, host/version and observed actions in that run. It does not establish cross-provider equivalence, independent identity, automatic recovery or future task qualification.
+
+[The historical two-host experiments](https://github.com/osborn-studio/osstack/blob/bf381f22b4833d781e9ec3d803d402f309e470a4/docs/implementation/joint-host-effects/README.md) preserve their commands and raw outputs. Both read pre-change material at `10629495aafe7b3aca0de4c920bcaec40b083d7b`; neither tested the template above or native discovery. Those results show explicit reading and reports about historical observations, not product driving or a measured causal improvement. Follow [the evidence rules](evidence.md) and retain that distinction in new runs.

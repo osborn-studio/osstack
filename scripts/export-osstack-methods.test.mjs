@@ -184,3 +184,90 @@ test('a real post-reservation write failure retains only the owned incomplete ro
   assert.equal(existsSync(join(f.output, 'manifest.json')), false);
   assert.deepEqual(await tree(f.sourceRoot), before);
 });
+
+// Audit regressions: unsupported navigation must not be exported unchecked.
+for (const content of [
+  'See [the common\nevidence rules](../../references/evidence.md).',
+  '[the [draft] plan](../../references/evidence.md)',
+  '[![b](https://example.invalid/b.svg)](../../references/missing.md)',
+]) {
+  test(`unsupported complex Markdown rejects before reservation: ${JSON.stringify(content)}`, async t => {
+    const f = await fixture(t);
+    await writeFile(join(f.sourceRoot, 'entries/osstack-mode/SKILL.md'), content);
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_unsupported/);
+    assert.equal(existsSync(f.output), false);
+  });
+}
+
+test('source-root trailing slash cannot bypass symlink refusal', async t => {
+  const f = await fixture(t); const alias = join(f.root, 'source-alias'); await symlink(f.sourceRoot, alias);
+  await assert.rejects(exportMethods({ ...f, sourceRoot: `${alias}/`, host: 'codex' }), /source_symlink/);
+  assert.equal(existsSync(f.output), false);
+});
+
+for (const [label, content] of [['brackets', '['.repeat(200000)], ['angles', '<'.repeat(200000)], ['backticks', '`'.repeat(20000)]]) {
+  test(`bounded subprocess handles hostile ${label} within source byte cap`, async t => {
+    const f = await fixture(t); await writeFile(join(f.sourceRoot, 'references/hostile.md'), content);
+    const helper = new URL('./lib/osstack-method-export.mjs', import.meta.url).href;
+    const source = `import { exportMethods } from ${JSON.stringify(helper)}; console.log(JSON.stringify(await exportMethods(${JSON.stringify({ ...f, host: 'codex', dryRun: true })})));`;
+    const result = await run(process.execPath, ['--input-type=module', '-e', source], { timeout: 4000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 });
+    assert.equal(JSON.parse(result.stdout).status, 'planned'); assert.equal(existsSync(f.output), false);
+  });
+}
+
+for (const name of ['.DS_Store', 'unchecked.MD', 'unchecked.markdown', 'opaque.bin']) {
+  test(`refuses unsupported reference material ${name} instead of unchecked copying`, async t => {
+    const f = await fixture(t); await writeFile(join(f.sourceRoot, 'references', name), '[p](../../outside.md)');
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /source_format/); assert.equal(existsSync(f.output), false);
+  });
+}
+
+for (const variable of ['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'OSSTACK_HOME']) {
+  test(`protects explicitly configured ${variable} without reading its contents`, async t => {
+    const f = await fixture(t); const configured = join(f.root, 'configured-home'); await mkdir(configured);
+    const helper = new URL('./lib/osstack-method-export.mjs', import.meta.url).href;
+    const source = `import { exportMethods } from ${JSON.stringify(helper)}; try { await exportMethods(${JSON.stringify({ ...f, output: join(configured, 'new'), host: 'codex', dryRun: true })}); process.exitCode=9; } catch(e) { if (!/output_protected_home/.test(e.message)) throw e; console.log('protected'); }`;
+    const result = await run(process.execPath, ['--input-type=module', '-e', source], { env: { ...process.env, [variable]: configured }, timeout: 4000 });
+    assert.equal(result.stdout.trim(), 'protected'); assert.deepEqual(await readdir(configured), []);
+  });
+}
+
+test('actual canonical tree exports both host layouts and reproducible source digest', async t => {
+  const f = await fixture(t); const sourceRoot = resolve(dirname(script), '../osstack-methods-skill'); const before = await tree(sourceRoot);
+  for (const host of ['codex', 'claude']) {
+    const output = join(f.root, host); const result = await exportMethods({ sourceRoot, output, host });
+    assert.equal(result.status, 'exported');
+    const manifest = JSON.parse(await readFile(join(output, 'manifest.json'), 'utf8'));
+    const rows = manifest.source_files.map(row => ({ path: row.path, bytes: row.bytes, sha256: row.sha256 })).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+    assert.equal(manifest.source_digest, hash(JSON.stringify(rows)));
+    for (const file of manifest.files) assert.equal(hash(await readFile(join(output, file.path))), file.sha256);
+  }
+  assert.deepEqual(await tree(sourceRoot), before);
+});
+
+test('unclosed angle prose cannot hide a later escaping Markdown link', async t => {
+  const f = await fixture(t); await writeFile(join(f.sourceRoot, 'references/detail.md'), '< unclosed prose [escape](../../outside.md)');
+  await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_missing_or_escape/); assert.equal(existsSync(f.output), false);
+});
+
+test('code masking preserves examples while plain navigation and Unicode destinations remain checked', async t => {
+  const f = await fixture(t);
+  await writeFile(join(f.sourceRoot, 'entries/osstack-mode/SKILL.md'), '# 🌱\n`[not a link](../../../outside.md)`\n```md\n[also code](../../../outside.md)\n````\n[🌱 proof](../../references/evidence.md)\n');
+  await exportMethods({ ...f, host: 'codex' });
+  const text = await readFile(join(f.output, '.agents/skills/osstack-mode/SKILL.md'), 'utf8');
+  assert.ok(text.includes('[🌱 proof](references/evidence.md)')); assert.ok(text.includes('`[not a link](../../../outside.md)`'));
+});
+
+for (const content of ['[x](../../references/evidence.md "title")', '<img srcset="outside.png">', '[x](\n../../references/evidence.md)']) {
+  test(`unsupported navigation is rejected: ${JSON.stringify(content)}`, async t => {
+    const f = await fixture(t); await writeFile(join(f.sourceRoot, 'entries/osstack-mode/SKILL.md'), content);
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_unsupported/); assert.equal(existsSync(f.output), false);
+  });
+}
+
+for (const content of ['[long\nlabel]: ../../outside.md', '<file:///etc/passwd>']) {
+  test(`other unsupported Markdown navigation fails closed: ${JSON.stringify(content)}`, async t => {
+    const f = await fixture(t); await writeFile(join(f.sourceRoot, 'references/detail.md'), content);
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_unsupported/); assert.equal(existsSync(f.output), false);
+  });
+}

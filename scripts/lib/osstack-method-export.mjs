@@ -1,7 +1,7 @@
 // Project-local material export only: no subprocess, network, host registration or DB access.
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, open, opendir, realpath, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 
@@ -53,7 +53,7 @@ async function boundedRead(path, budget) {
     if (length > limits.file_bytes || (budget.bytes += length) > limits.source_bytes) throw Error(`source_limit: bytes ${path}`);
     const after = await handle.stat();
     if (length !== current.size || after.size !== current.size || after.mtimeMs !== current.mtimeMs) throw Error(`source_changed: ${path}`);
-    return buffer.subarray(0, length);
+    return Buffer.from(buffer.subarray(0, length));
   } finally { await handle.close(); }
 }
 async function collectSources(sourceRoot) {
@@ -67,13 +67,18 @@ async function collectSources(sourceRoot) {
   async function walk(rel, depth) {
     if (depth > limits.reference_depth) throw Error('source_limit: reference depth');
     await sourceDirectory(join(sourceRoot, rel));
-    for (const name of (await readdir(join(sourceRoot, rel))).sort()) {
-      count();
+    const entries = [];
+    for await (const entry of await opendir(join(sourceRoot, rel))) { count(); entries.push(entry.name); }
+    for (const name of entries.sort()) {
       if (!/^[a-zA-Z0-9_.-]+$/.test(name) || name === '.' || name === '..') throw Error(`source_name: ${name}`);
+      if (name.startsWith('.')) throw Error(`source_format: ${rel}/${name}`);
       const path = `${rel}/${name}`; const info = await lstat(join(sourceRoot, path));
       if (info.isSymbolicLink()) throw Error(`source_symlink: ${path}`);
       if (info.isDirectory()) await walk(path, depth + 1);
-      else files.set(path, await boundedRead(join(sourceRoot, path), budget));
+      else {
+        if (!name.endsWith('.md')) throw Error(`source_format: ${path}`);
+        files.set(path, await boundedRead(join(sourceRoot, path), budget));
+      }
     }
   }
   await walk('references', 0);
@@ -81,20 +86,86 @@ async function collectSources(sourceRoot) {
   for (const path of files.keys()) { const key = path.toLowerCase(); if (folded.has(key)) throw Error(`source_case_collision: ${path}`); folded.add(key); }
   return files;
 }
-// The canonical materials use ordinary inline Markdown links and reference definitions.
-// Rewrite destination spans only, never prose, fenced examples or arbitrary path substrings.
-function destinations(text) {
-  const spans = [];
-  // Mask code without moving offsets. Links in examples are not navigation targets.
-  const prose = text.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$/gm, value => value.replace(/[^\n]/g, ' ')).replace(/(`+)[^\n]*?\1/g, value => ' '.repeat(value.length));
-  const patterns = [ /!?\[[^\]\r\n]*\]\(\s*(?:<([^>\r\n]*)>|([^\s)]+))/g, /^[ \t]{0,3}\[[^\]\r\n]+\]:[ \t]*(?:<([^>\r\n]*)>|([^\s]+))/gm ];
-  for (const pattern of patterns) for (const match of prose.matchAll(pattern)) {
-    const target = match[1] ?? match[2]; const offset = match[0].lastIndexOf(target);
-    spans.push({ target, start: match.index + offset, end: match.index + offset + target.length });
+// A deliberately small Markdown subset: single-line, unnested labels; simple
+// destinations; no titles or HTML navigation. Unsupported navigation fails closed.
+// Code masking and delimiter scans are linear in the bounded source size.
+function maskCode(text) {
+  let fence = null;
+  return text.split('\n').map(line => {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
+      return ' '.repeat(line.length);
+    }
+    if (marker) { fence = { char: marker[1][0], length: marker[1].length }; return ' '.repeat(line.length); }
+    const runs = [];
+    for (let i = 0; i < line.length;) {
+      if (line[i] !== '`') { i++; continue; }
+      const start = i; while (line[i] === '`') i++;
+      runs.push({ start, end: i, next: null });
+    }
+    const next = new Map();
+    for (let i = runs.length - 1; i >= 0; i--) {
+      const run = runs[i]; const length = run.end - run.start;
+      run.next = next.get(length) ?? null; next.set(length, i);
+    }
+    // Use code-unit offsets, including when a label contains non-BMP Unicode.
+    const masked = line.split('');
+    for (let i = 0; i < runs.length; i++) {
+      const run = runs[i]; if (run.next === null) continue;
+      const close = runs[run.next]; masked.fill(' ', run.start, close.end); i = run.next;
+    }
+    return masked.join('');
+  }).join('\n');
+}
+function destinations(text, sourcePath) {
+  const spans = []; const prose = maskCode(text); const labels = [];
+  const unsupported = () => { throw Error(`link_unsupported: ${sourcePath}`); };
+  function targetAt(start, inline) {
+    let i = start;
+    while (prose[i] === ' ' || prose[i] === '\t') i++;
+    const angle = prose[i] === '<'; if (angle) i++;
+    const begin = i;
+    while (i < prose.length && !/[\s]/.test(prose[i]) && prose[i] !== (angle ? '>' : ')')) {
+      if (prose[i] === '(' || (!angle && prose[i] === '<')) unsupported();
+      i++;
+    }
+    if (i === begin || (angle && prose[i] !== '>')) unsupported();
+    const end = i; if (angle) i++;
+    while (prose[i] === ' ' || prose[i] === '\t') i++;
+    if (inline ? prose[i] !== ')' : i < prose.length && prose[i] !== '\n' && prose[i] !== '\r') unsupported();
+    spans.push({ target: prose.slice(begin, end), start: begin, end });
+    return inline ? i : i - 1;
   }
-  // HTML navigation is outside this small canonical format, rather than silently unchecked.
-  if (/<[^>]+\b(?:href|src)\s*=/i.test(prose)) throw Error('link_unsupported: HTML navigation');
-  return spans.sort((a, b) => a.start - b.start);
+  let lineStart = 0;
+  for (let i = 0; i < prose.length; i++) {
+    if (prose[i] === '\n') { lineStart = i + 1; }
+    else if (prose[i] === '[') { if (labels.length) labels[labels.length - 1].nested = true; labels.push({ start: i, nested: false }); }
+    else if (prose[i] === ']') {
+      const label = labels.pop();
+      if (prose[i + 1] === '(') {
+        if (!label || label.nested || prose.slice(label.start, i).includes('\n')) unsupported();
+        i = targetAt(i + 2, true);
+      } else if (prose[i + 1] === ':' && label) {
+        if (label.start < lineStart) unsupported();
+        const prefix = prose.slice(lineStart, label.start);
+        if (/^ {0,3}$/.test(prefix)) {
+          if (label.nested || prose[label.start + 1] === '^' || prose.slice(label.start, i).includes('\n')) unsupported();
+          i = targetAt(i + 2, false);
+        }
+      }
+    }
+  }
+  // Scan angle regions separately: unmatched '<' must not hide later Markdown.
+  for (let i = 0; i < prose.length;) {
+    const begin = prose.indexOf('<', i); if (begin === -1) break;
+    const end = prose.indexOf('>', begin + 1); if (end === -1) break;
+    const angle = prose.slice(begin + 1, end);
+    if (/\b(?:href|src|srcset)\s*=/i.test(angle)) unsupported();
+    if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(angle) && !/^(?:https?:\/\/|mailto:)/i.test(angle)) unsupported();
+    i = end + 1;
+  }
+  return spans;
 }
 function localTarget(from, target) {
   if (/^https?:\/\//i.test(target) || /^mailto:/i.test(target) || target.startsWith('#')) return null;
@@ -105,7 +176,7 @@ function transform(sourcePath, bytes, sources) {
   if (!sourcePath.endsWith('.md')) return bytes;
   let text;
   try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch { throw Error(`source_utf8: ${sourcePath}`); }
-  const spans = destinations(text);
+  const spans = destinations(text, sourcePath);
   for (const span of spans) {
     const local = localTarget(sourcePath, span.target);
     if (local !== null && !sources.has(local)) throw Error(`link_missing_or_escape: ${sourcePath} -> ${span.target}`);
@@ -117,6 +188,7 @@ function transform(sourcePath, bytes, sources) {
 }
 async function plan({ sourceRoot, host, output, dryRun = false }) {
   validateOptions({ host, output, dryRun });
+  sourceRoot = resolve(sourceRoot); // Strip trailing separators before lstat: never follow a final-component symlink.
   const requested = resolve(output);
   if (await present(requested)) throw Error(`output_exists: ${requested}`);
   let parent;
@@ -124,8 +196,9 @@ async function plan({ sourceRoot, host, output, dryRun = false }) {
   catch { throw Error(`output_parent: ${dirname(requested)}`); }
   const destination = join(parent, basename(requested));
   if (await present(destination)) throw Error(`output_exists: ${destination}`);
-  for (const name of ['.agents', '.claude', '.codex', '.osstack']) {
-    const forbidden = resolve(homedir(), name);
+  const protectedHomes = ['.agents', '.claude', '.codex', '.osstack'].map(name => resolve(homedir(), name));
+  for (const key of ['CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'OSSTACK_HOME']) if (process.env[key]) protectedHomes.push(resolve(process.env[key]));
+  for (const forbidden of protectedHomes) {
     let actual = forbidden; try { actual = await realpath(forbidden); } catch { /* Lexical boundary still applies when absent. */ }
     if (inside(forbidden, requested) || inside(actual, destination)) throw Error('output_protected_home');
   }
@@ -137,15 +210,15 @@ async function plan({ sourceRoot, host, output, dryRun = false }) {
     outputs.push({ path: `${namespace}/${name}/SKILL.md`, sourcePath, bytes: transform(sourcePath, sources.get(sourcePath), sources) });
     for (const [path, bytes] of sources) if (path.startsWith('references/')) outputs.push({ path: `${namespace}/${name}/${path}`, sourcePath: path, bytes: transform(path, bytes, sources) });
   }
-  outputs.sort((a, b) => a.path.localeCompare(b.path, 'en'));
+  outputs.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const outputPaths = new Set(outputs.map(file => file.path));
-  for (const file of outputs) if (file.path.endsWith('.md')) for (const { target } of destinations(file.bytes.toString('utf8'))) {
+  for (const file of outputs) if (file.path.endsWith('.md')) for (const { target } of destinations(file.bytes.toString('utf8'), file.path)) {
     const local = localTarget(file.path, target);
     if (local !== null && (!local.startsWith(`${namespace}/`) || !outputPaths.has(local))) throw Error(`link_export_missing_or_escape: ${file.path} -> ${target}`);
   }
-  const sourceFiles = [...sources].map(([path, bytes]) => ({ path, bytes: bytes.length, sha256: digest(bytes) })).sort((a, b) => a.path.localeCompare(b.path, 'en'));
+  const sourceFiles = [...sources].map(([path, bytes]) => ({ path, bytes: bytes.length, sha256: digest(bytes) })).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const files = outputs.map(file => ({ path: file.path, bytes: file.bytes.length, sha256: digest(file.bytes), source_path: file.sourcePath, source_sha256: digest(sources.get(file.sourcePath)) }));
-  return { destination, outputs, manifest: { schema_version: 1, host, namespace, layout: 'project-local skills with private reference copies', exported: true, installed: false, global_registration: false, host_discovery_verified: false, source_digest: digest(JSON.stringify(sourceFiles)), source_files: sourceFiles, files, limits, link_scope: 'inline Markdown and reference-definition destinations; file existence checked, fragment anchors not qualified', limitations: ['material export is not host discovery or execution', 'no provider, runtime or formal gate qualification', 'source and output trees must not be concurrently mutated during export'] } };
+  return { destination, outputs, manifest: { schema_version: 1, host, namespace, layout: 'project-local skills with private reference copies', exported: true, installed: false, global_registration: false, host_discovery_verified: false, source_digest: digest(JSON.stringify(sourceFiles)), source_files: sourceFiles, files, limits, link_scope: 'simple single-line unnested Markdown labels and reference definitions, without titles; unsupported navigation rejected; file existence checked, fragment anchors not qualified', limitations: ['material export is not host discovery or execution', 'no provider, runtime or formal gate qualification', 'source and output trees must not be concurrently mutated during export'] } };
 }
 export async function exportMethods(options) {
   const prepared = await plan(options);
