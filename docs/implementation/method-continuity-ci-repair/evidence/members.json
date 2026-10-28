@@ -1,0 +1,344 @@
+[
+  {
+    "path": "ci299/failed-clean.txt",
+    "bytes": 540292,
+    "mode": 420,
+    "sha256": "98a5b85facc6b30e446d3e544aa3d00c4dc2f5a1cc78a982a76163a58a4bd2cf"
+  },
+  {
+    "path": "ci299/failed.log",
+    "bytes": 540292,
+    "mode": 420,
+    "sha256": "98a5b85facc6b30e446d3e544aa3d00c4dc2f5a1cc78a982a76163a58a4bd2cf"
+  },
+  {
+    "path": "ci299/full.log",
+    "bytes": 1263147,
+    "mode": 420,
+    "sha256": "a50e16be30edee2e5656c9ba2fcac5606f8724ecc0ef75e8ba433aa91e66c741"
+  },
+  {
+    "path": "ci299/run.json",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/.github__workflows__ci.yml",
+    "bytes": 14040,
+    "mode": 420,
+    "sha256": "577d7819a9fbf2611b4be340a31e7f04ae277c0a7ffac1c50831aec7883c4b90"
+  },
+  {
+    "path": "ci299-independent/.github__workflows__ci.yml.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/diagnosis.md",
+    "bytes": 6936,
+    "mode": 420,
+    "sha256": "1192ba1e41c9c4cab48c42753e9887828dd2191449a2296b869e49d3b64ac515"
+  },
+  {
+    "path": "ci299-independent/full-attempt1.log",
+    "bytes": 1263147,
+    "mode": 420,
+    "sha256": "a50e16be30edee2e5656c9ba2fcac5606f8724ecc0ef75e8ba433aa91e66c741"
+  },
+  {
+    "path": "ci299-independent/full-attempt1.log.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/jobs.json",
+    "bytes": 22886,
+    "mode": 420,
+    "sha256": "736a90a15957f319edb06d0eb5acba443818f6d2d8e62082535d1eed9f86847c"
+  },
+  {
+    "path": "ci299-independent/jobs.json.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/local-package-full-summary.json",
+    "bytes": 1496,
+    "mode": 420,
+    "sha256": "81b6d2d38cc761c8a6922bcaf8f8933ef90b5a84576781cf7d0a1460388d146a"
+  },
+  {
+    "path": "ci299-independent/local-package-full.json",
+    "bytes": 942,
+    "mode": 420,
+    "sha256": "7bf5b36f88b07e0bfa7398ac0d88ff5a220dda6b8ca15a1e9c144f00c12a0d52"
+  },
+  {
+    "path": "ci299-independent/local-passing-excerpt.log",
+    "bytes": 2718,
+    "mode": 420,
+    "sha256": "608c8efd9143f49dde3c3cba19aa65c3447f12c08d19647f230b4d2c6e4f5e96"
+  },
+  {
+    "path": "ci299-independent/manifest.json",
+    "bytes": 3933,
+    "mode": 420,
+    "sha256": "6339f345e08c3e840f1620ce9375261b9cca89d1399ff994e7c66d0a785cb18f"
+  },
+  {
+    "path": "ci299-independent/packages__cli__src__upgrade-native.test.ts",
+    "bytes": 31692,
+    "mode": 420,
+    "sha256": "8c16c18d81d1886a4045bfbe56e5d4d6526b4ce2e08d19f66f8d3e681e60c21b"
+  },
+  {
+    "path": "ci299-independent/packages__cli__src__upgrade-native.test.ts.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/packages__cli__vitest.config.ts",
+    "bytes": 862,
+    "mode": 420,
+    "sha256": "315c2e1b0773b508a316cb20b966ff2a34d664664fa2e6fc26f880c8b0b7c618"
+  },
+  {
+    "path": "ci299-independent/packages__cli__vitest.config.ts.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/prior-passing-check.log",
+    "bytes": 1495693,
+    "mode": 420,
+    "sha256": "c07f1a1c1bcd495c3fb8b30c201b6c32925f6e828b912eefbcc39b48f22addcd"
+  },
+  {
+    "path": "ci299-independent/prior-passing-check.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/repair.diff",
+    "bytes": 6293,
+    "mode": 420,
+    "sha256": "f2c8d344833f41f3a63a5cd854b5939c77fb04ca82da4b3b2d8cf4fe7bf5f47d"
+  },
+  {
+    "path": "ci299-independent/run.json",
+    "bytes": 12965,
+    "mode": 420,
+    "sha256": "586dc21b9415d32d1f855ba8dec2bd5a95d939d79e17dddbc7a3370960700f98"
+  },
+  {
+    "path": "ci299-independent/run.json.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "ci299-independent/source-comparison.json",
+    "bytes": 8611,
+    "mode": 420,
+    "sha256": "8b3724ebe19636c4fa87b1c226c7fc50888b2bce04cee957448b11af7025c45d"
+  },
+  {
+    "path": "ci299-independent/static-repair-check.json",
+    "bytes": 330,
+    "mode": 420,
+    "sha256": "c14ca4024a62631a9ad43843b63fcdbb9b65043c1e930a631012e77f5fb422c6"
+  },
+  {
+    "path": "ci299-independent/upgrade-native.before.ts",
+    "bytes": 31692,
+    "mode": 420,
+    "sha256": "8c16c18d81d1886a4045bfbe56e5d4d6526b4ce2e08d19f66f8d3e681e60c21b"
+  },
+  {
+    "path": "ci299-independent/upgrade-native.candidate.ts",
+    "bytes": 32502,
+    "mode": 420,
+    "sha256": "8e956f8d5c64b72be2c194f3ecb6ad874b84602293e8bebba1fa32912e0dd10a"
+  },
+  {
+    "path": "ci299-independent/upgrade-native.instrumented.ts",
+    "bytes": 33312,
+    "mode": 420,
+    "sha256": "f2c00037ab9798c1ab8f83d365ba0f44337f3e63da9f8f6e753afd95c6f925de"
+  },
+  {
+    "path": "ci299-audit/audit-input.txt",
+    "bytes": 40737,
+    "mode": 420,
+    "sha256": "a41ab004659b945a0207592e6442ead681318c5461a3078a4fd4c6107a382304"
+  },
+  {
+    "path": "ci299-audit/binding.json",
+    "bytes": 773,
+    "mode": 420,
+    "sha256": "4a9954112600c416e79fd0ed9be0473603279aa43c60d09324280e8c9ccd066a"
+  },
+  {
+    "path": "ci299-audit/empty-mcp.json",
+    "bytes": 18,
+    "mode": 420,
+    "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+  },
+  {
+    "path": "ci299-audit/launcher.log",
+    "bytes": 3638,
+    "mode": 420,
+    "sha256": "bd7a659437f32e23fe44b707eb25b4b8c1ab55ac869a0748e5e03e005a37dcc6"
+  },
+  {
+    "path": "ci299-audit/report.md",
+    "bytes": 3630,
+    "mode": 420,
+    "sha256": "c3d3e8459389aea14c46b713c01e2f22f2b95126a0367dc067007e60ad3e0c18"
+  },
+  {
+    "path": "ci299-audit/response.json",
+    "bytes": 5489,
+    "mode": 420,
+    "sha256": "f0bf3ad44308e0bc0945ee98790d468316b1de04db96163bc6882f118fc6890b"
+  },
+  {
+    "path": "ci299-audit/run.py",
+    "bytes": 1448,
+    "mode": 420,
+    "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+  },
+  {
+    "path": "ci299-audit/settings.json",
+    "bytes": 3,
+    "mode": 420,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  {
+    "path": "ci299-audit/source-binding.json",
+    "bytes": 375,
+    "mode": 420,
+    "sha256": "703e286e4efb8d2518297c34087814d99ebc4747a29092c9e7f778fca8a7c18f"
+  },
+  {
+    "path": "ci299-audit/stderr.txt",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/after.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/after.stdout",
+    "bytes": 32502,
+    "mode": 420,
+    "sha256": "8e956f8d5c64b72be2c194f3ecb6ad874b84602293e8bebba1fa32912e0dd10a"
+  },
+  {
+    "path": "independent/ci299-repair/base-sha.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/base-sha.stdout",
+    "bytes": 41,
+    "mode": 420,
+    "sha256": "877a009089fab505bd179599090cb99d5060e710d02e1d9e3a94665cacd20e2d"
+  },
+  {
+    "path": "independent/ci299-repair/before.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/before.stdout",
+    "bytes": 31692,
+    "mode": 420,
+    "sha256": "8c16c18d81d1886a4045bfbe56e5d4d6526b4ce2e08d19f66f8d3e681e60c21b"
+  },
+  {
+    "path": "independent/ci299-repair/changed-paths.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/changed-paths.stdout",
+    "bytes": 40,
+    "mode": 420,
+    "sha256": "b849da9c53e845c0a5123322e9c18b9b868cd16c4dfca8c5b64661b83efab219"
+  },
+  {
+    "path": "independent/ci299-repair/diff.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/diff.stdout",
+    "bytes": 6293,
+    "mode": 420,
+    "sha256": "f2c8d344833f41f3a63a5cd854b5939c77fb04ca82da4b3b2d8cf4fe7bf5f47d"
+  },
+  {
+    "path": "independent/ci299-repair/head-sha.stderr",
+    "bytes": 0,
+    "mode": 420,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "independent/ci299-repair/head-sha.stdout",
+    "bytes": 41,
+    "mode": 420,
+    "sha256": "35fe22569dc2a7840f0d591943269940efa1696a6798427aaffb09540227d5bb"
+  },
+  {
+    "path": "independent/ci299-repair/manifest.json",
+    "bytes": 2223,
+    "mode": 420,
+    "sha256": "7afa6fb8d65b0c8a60fe817e7f7076326e25d5e7ec6c4fc1c100f244823f6a89"
+  },
+  {
+    "path": "independent/ci299-repair/report.json",
+    "bytes": 6017,
+    "mode": 420,
+    "sha256": "6daef0dbb91941e4bd018f8aa7fc3064d1b1c3e15284d3143f2a7364957645d9"
+  },
+  {
+    "path": "independent/ci299-repair/report.md",
+    "bytes": 902,
+    "mode": 420,
+    "sha256": "244e7d803d4bdd1b5537a04f2ea654363802419d378b95fc949535cd61a65a4b"
+  },
+  {
+    "path": "independent/ci299-repair/review.py",
+    "bytes": 6508,
+    "mode": 420,
+    "sha256": "e1a8ea6e39f50a819fc6ff73497c2f32a672fea93551106307687c2a98732f63"
+  },
+  {
+    "path": "ci299-targeted.log",
+    "bytes": 2431,
+    "mode": 420,
+    "sha256": "d5caa89d35aeaaf7f5dd164dd881763f7996955da04dd8b60ba7933375f3cd8c"
+  },
+  {
+    "path": "ci299-targeted.json",
+    "bytes": 1289,
+    "mode": 420,
+    "sha256": "25e92dfd69160eba08184524d8f6ee34ffd67152021909e7e95e3d0b1dff0901"
+  }
+]
