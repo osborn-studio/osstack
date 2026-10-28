@@ -128,6 +128,9 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Method export contracts
+        run: pnpm test:method-export
+
       - name: Session adoption decision smoke (local fixture)
         run: pnpm smoke:engineering-decision
 

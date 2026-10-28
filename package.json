@@ -42,6 +42,8 @@
     "demo:loop": "pnpm build && node scripts/demo-loop.mjs",
     "demo:loop:daemon": "pnpm build && node scripts/demo-loop-daemon.mjs",
     "smoke:loop": "pnpm build && node scripts/smoke-loop.mjs",
+    "test:method-export": "node --test scripts/export-osstack-methods.test.mjs",
+    "export:methods": "node scripts/export-osstack-methods.mjs",
     "smoke:engineering-decision": "node --test scripts/smoke-engineering-decision.test.mjs && node scripts/smoke-engineering-decision.mjs",
     "smoke:deliver-proof": "node scripts/smoke-deliver-proof.mjs",
     "smoke:guarded-git": "pnpm --filter @osstack/cli... build && node scripts/smoke-guarded-git.mjs",

@@ -26,3 +26,7 @@ Supporting references:
 - [Pinned sources and adaptation](references/sources.md)
 
 This directory installs nothing, edits no host configuration and introduces no new CLI command, scheduler, MethodBinding or gate. A host can read it directly; availability in a skill picker and actual host execution remain separate facts.
+
+## Named entries
+
+The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these four methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.
