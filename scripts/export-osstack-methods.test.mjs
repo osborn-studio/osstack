@@ -314,9 +314,9 @@ for (const [label, content] of [
   });
 }
 
-test('document-named source router, four entries and ten method references actually exist', async () => {
+test('document-named source router, four entries and eleven method references actually exist', async () => {
   const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
-  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing'].map(name => `references/${name}.md`)]) {
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design'].map(name => `references/${name}.md`)]) {
     assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
     assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
   }
@@ -370,7 +370,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
           queue.push(resolve(dirname(path), target.split('#')[0]));
         }
       }
-      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing']) {
+      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design']) {
         // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
         const outputPath = join(entryRoot, 'references', `${method}.md`);
         const sourcePath = `references/${method}.md`;
@@ -386,7 +386,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
   });
 }
 
-for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing']) {
+for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design']) {
   test(`D2a a missing advertised ${method} reference fails before reserving output`, async t => {
     const f = await fixture(t);
     await rm(f.sourceRoot, { recursive: true });

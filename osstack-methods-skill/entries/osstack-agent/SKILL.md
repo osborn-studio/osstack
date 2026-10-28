@@ -11,6 +11,7 @@ Apply the coordinator's agreed design and acceptance checks to your assigned sli
 
 Choose the relevant shared method:
 
+- [Architecture design](../../references/architecture-design.md) for caller-first types, ownership and lifecycle design; respect a design-only brief and continue implementation only within its existing authority.
 - [Task framing](../../references/task-framing.md) for a requested restatement or refined prompt; executing the framed task requires authority already present in the brief.
 - [Performance measurement](../../references/performance-measurement.md) for comparable work, trustworthy timing and bounded performance conclusions within the delegated task.
 - [Change impact](../../references/change-impact.md) for affected consumers, hidden contracts and tests of critical safety assumptions within the assigned boundary.
