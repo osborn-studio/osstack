@@ -1,4 +1,6 @@
-# Original Sonnet5.5 audit
+# Sonnet5.5 audit rendering
+
+The raw audit in the archive retains exact bytes; this rendering removes trailing whitespace only.
 
 ````text
 **Verdict: PASS.** I found no blockers. This is a read-through audit of the diff and file text only. I ran nothing, so it is not test proof.
@@ -26,6 +28,6 @@
 4. **Unverified Vitest behavior.** I am relying on two Vitest behaviors, which I could not confirm here:
    - A failing `beforeEach` still runs `afterEach`.
    - Hook and test timeouts are independent.
-   
+
    Both are documented behavior and the sibling describes already rely on them, so CI for this commit should confirm it.
 ````
