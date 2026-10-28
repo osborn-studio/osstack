@@ -130,3 +130,7 @@ OSStack terminal fence 卡按其限定范围关闭，DEBT02 跨进程恢复仍�
 
 
 JP-01c 回归候选 `74ec436d` 已完成首轮问题修复和实际 Sonnet 5.5 复审 PASS。完整 protocol 1,012 项通过；20 个实际源码变异被捕获。初始组合 `9e292676` 的全仓 6,884 通过、5 跳过保留原绑定，后续只改测试/oracle 的修订另有完整 protocol 复验。详见 [组件回归交付](../../implementation/joint-contract-acceptance/README.md) 与 [主入口验证](../../implementation/joint-post284-control/README.md)。这是待发布/CI核验的回归候选，不是 J01.contracts 资格。J02b 草案仍在独立准备流程内，不作为已通过产品能力发布。
+
+## 2026-10-28：按 verification 价值优先恢复开发
+
+用户已明确要求推进附件所列能力，恢复本批开发。当前执行入口是 [verification kit](../../implementation/verification-kit/README.md)，对应看板 `card_f2a2453a`、分支 `codex/verification-kit`。先交付真实本地验证、持久证据与四条跨宿主共用方法材料；这属于 D2a 工程工具增量，不产生 J01/J11/J03/J09 资格。身份 issue #287 继续待确认，但不是该工具增量的依赖。旧 C30/bootstrap 工件没有随本批恢复。审计和测试结论以精确候选交付证据为准，只有用户 gilberthello 审批合并。

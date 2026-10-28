@@ -4,11 +4,15 @@
 import assert from "node:assert/strict";
 import { execFile, fork } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
 import { mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+
+import {
+  appendEngineeringObservation, engineeringBindings, engineeringPreflight, parseEngineeringOptions,
+  reserveEngineeringEvidence, sanitizeEvidence, sealEngineeringEvidence, writeEngineeringEvidence,
+} from './lib/engineering-verification-evidence.mjs';
 
 const execFileAsync = promisify(execFile);
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -108,19 +112,24 @@ export function sanitizedDiagnostic(text, secrets = []) {
 }
 
 export async function runJsonCommand(command, args, options = {}) {
-  let stdout;
+  const { observe, ...childOptions } = options;
+  const startedAt = new Date().toISOString();
+  const invocation = { executable: command, argv: [...args], cwd: resolve(childOptions.cwd ?? process.cwd()) };
+  let stdout; let stderr;
   try {
-    ({ stdout } = await execFileAsync(command, args, {
-      ...options, encoding: "utf8", timeout: options.timeout ?? 10000,
+    ({ stdout, stderr } = await execFileAsync(command, args, {
+      ...childOptions, encoding: "utf8", timeout: options.timeout ?? 10000,
       killSignal: "SIGKILL", maxBuffer: 1024 * 1024,
     }));
   } catch (cause) {
-    // Never include subprocess output, arguments, credentials or observations
-    // in a failure receipt. The failing stage is reported separately.
+    await observe?.({ ...invocation, started_at: startedAt, ended_at: new Date().toISOString(), exit_code: typeof cause.code === 'number' ? cause.code : null,
+      spawn_error: typeof cause.code === 'string' ? cause.code : null, signal: cause.signal ?? null, killed: cause.killed === true,
+      stdout: String(cause.stdout ?? ''), stderr: String(cause.stderr ?? '') });
     const error = new Error("command_failed");
     Object.defineProperty(error, "stderr", { value: String(cause.stderr ?? "").slice(-8192) });
     throw error;
   }
+  await observe?.({ ...invocation, started_at: startedAt, ended_at: new Date().toISOString(), exit_code: 0, signal: null, stdout, stderr });
   try { return JSON.parse(stdout); } catch { throw new Error("command_invalid_json"); }
 }
 
@@ -143,16 +152,45 @@ console.log(JSON.stringify(response));`;
   return runJsonCommand(process.execPath, ["--input-type=module", "-e", source, JSON.stringify({ id: 1, method, params })], { ...options, timeout: Math.min(options.timeout, 5000) });
 }
 
-export async function runSmoke() {
-  if (!existsSync(cliPath)) throw new Error("missing_build: run pnpm build before this smoke");
+export async function removeFixtureRoot(root, remove = rm) {
+  try { await remove(root, { recursive: true, force: true }); return { scratch_removed: true }; }
+  catch (error) { return { scratch_removed: false, error_code: error.code ?? 'fixture_remove_failed' }; }
+}
+export function engineeringWorkflowObservation(receipt, actionObservation) {
+  return receipt || actionObservation ? { ...actionObservation, ...receipt, status: 'observed', provider_qualified: false } : null;
+}
+
+export async function runSmoke({ evidenceDir } = {}) {
+  const preflight = await engineeringPreflight({ repository, evidenceDir });
+  if (!preflight.ready) {
+    const error = new Error('preflight_failed:' + preflight.checks.filter(check => !check.ok).map(check => check.id).join(','));
+    error.preflight = preflight; throw error;
+  }
+  const bindings = await engineeringBindings(repository);
   const { createScratchDir, scratchRoot } = await import(pathToFileURL(join(repository, "packages/core/dist/index.js")).href);
-  const root = await realpath(await createScratchDir("smoke", "engineering-decision"));
+  const evidence = await reserveEngineeringEvidence(evidenceDir, scratchRoot());
+  let root;
+  try { root = await realpath(await createScratchDir("smoke", "engineering-decision")); }
+  catch (cause) {
+    const error = new Error('engineering_smoke_failed:create_fixture:' + (cause.code ?? 'unavailable'));
+    error.evidence = evidence;
+    const cleanup = { process_exit_confirmed: false, process_started: false, scratch_removed: false, reason: 'fixture_not_created' };
+    await writeEngineeringEvidence(evidence, 'run.json', { schema_version: 1, status: 'incomplete', provider_qualified: false, bindings, reason: error.message });
+    await writeEngineeringEvidence(evidence, 'cleanup.json', cleanup);
+    await writeEngineeringEvidence(evidence, 'receipt.json', { schema_version: 1, status: 'failed', provider_qualified: false, reason: error.message, cleanup, evidence });
+    await sealEngineeringEvidence(evidence); throw error;
+  }
   const credential = `fixture-only-${randomUUID()}`;
   const env = fixtureEnvironment(root, scratchRoot(), credential);
+  const runInfo = { schema_version: 1, run_id: evidence.run_id, started_at: new Date().toISOString(), fixture_root: root,
+    status: 'running', provider_qualified: false, bindings, environment: { node: process.version, platform: process.platform, arch: process.arch,
+      fixture_home: env.OSSTACK_HOME, socket: env.OSSTACK_SOCKET, provider_credentials_inherited: false,
+      inherited_keys: Object.keys(env).filter(key => !key.includes('CREDENTIAL')).sort() } };
   const trace = [];
   let fixture;
   let stage = "prepare";
   let receipt;
+  let actionObservation;
   let failure;
   let interrupted = false;
   let fixtureStderr = "";
@@ -167,8 +205,9 @@ export async function runSmoke() {
   const onSignal = () => { interrupted = true; fixture?.kill("SIGTERM"); };
   process.once("SIGINT", onSignal);
   process.once("SIGTERM", onSignal);
+  const record = command => observation => appendEngineeringObservation(evidence, { stage, command, ...observation }, [credential]);
   const cli = async (family, ...args) => {
-    const result = await runJsonCommand(process.execPath, [cliPath, family, ...args, "--json"], { cwd: root, env, timeout: remaining() });
+    const result = await runJsonCommand(process.execPath, [cliPath, family, ...args, "--json"], { cwd: root, env, timeout: remaining(), observe: record(`${family} ${args[0]}`) });
     trace.push({ command: `${family} ${args[0]}`, state: result.mission?.state ?? result.state ?? null, replay: result.replay ?? null });
     return result;
   };
@@ -181,6 +220,7 @@ export async function runSmoke() {
     await writeFile(env.OSSTACK_ENGINEERING_AUTH_FILE, JSON.stringify({ version: 1, principals }), { mode: 0o600 });
   };
   try {
+    await writeEngineeringEvidence(evidence, 'run.json', runInfo, [credential]);
     await mkdir(env.HOME, { recursive: true, mode: 0o700 });
     await mkdir(env.TMPDIR, { recursive: true, mode: 0o700 });
     await symlink(join(repository, "packages/cli/node_modules"), join(root, "node_modules"), "dir");
@@ -192,6 +232,7 @@ export async function runSmoke() {
       bundle: true, platform: "node", format: "esm", packages: "external",
       outfile: join(root, "host.mjs"), logLevel: "silent",
     });
+    runInfo.fixture_bundle_sha256 = createHash('sha256').update(await readFile(join(root, 'host.mjs'))).digest('hex');
     stage = "start_fixture";
     if (interrupted) throw new Error("interrupted");
     fixture = fork(join(root, "host.mjs"), [root, "complete"], {
@@ -237,13 +278,15 @@ export async function runSmoke() {
     stage = "reconcile";
     const actionReceipt = await cli("engineering", "reconcile", "--kind", "query_action", "--mission", mission, "--action", action);
     assert.equal(actionReceipt.state, "applied");
+    actionObservation = { action_receipt: 'applied', completion_level: view.observation_proof.kind,
+      same_key_replay: replay.replay, observed_at: new Date().toISOString(), provider_qualified: false };
     const invocations = (await readFile(join(root, "invocations.log"), "utf8")).trim().split("\n").filter(Boolean);
     assert.equal(invocations.length, 1);
     stage = "drain";
     const drainDeadline = Date.now() + 5000;
     let drain;
     do {
-      drain = await fixtureRpc("daemon.drain", { timeout_ms: 0 }, { cwd: root, env, timeout: remaining() });
+      drain = await fixtureRpc("daemon.drain", { timeout_ms: 0 }, { cwd: root, env, timeout: remaining(), observe: record("daemon.drain") });
       if (drain.drained === true) break;
       if (Date.now() >= drainDeadline) throw new Error("drain_timeout");
       await new Promise(resolveDelay => setTimeout(resolveDelay, 100));
@@ -252,7 +295,7 @@ export async function runSmoke() {
     assert.equal(drain.active_runs, 0);
     assert.equal(drain.graph_holds, 0);
     assert.equal(drain.attention_dispatch_holds, 0);
-    const health = await fixtureRpc("health", {}, { cwd: root, env, timeout: remaining() });
+    const health = await fixtureRpc("health", {}, { cwd: root, env, timeout: remaining(), observe: record("health") });
     assert.equal(health.execution_lease_holds, 0);
     assert.equal(health.active_runs, 0);
     receipt = {
@@ -265,7 +308,7 @@ export async function runSmoke() {
     };
   } catch (error) {
     commandStderr = error.stderr ?? "";
-    failure = new Error(`engineering_smoke_failed:${stage}:${error.code ?? error.message}`);
+    failure = new Error(sanitizeEvidence(`engineering_smoke_failed:${stage}:${error.code ?? error.message}`, [credential]));
   } finally {
     // Do not remove a live process's home if shutdown cannot be confirmed.
     try {
@@ -277,18 +320,48 @@ export async function runSmoke() {
         failure ??= new Error(`engineering_smoke_failed:cleanup:${error.message}`);
       }
       if (interrupted && !failure) failure = new Error("engineering_smoke_failed:interrupted");
-      if (failure) {
-        await rm(env.OSSTACK_ENGINEERING_AUTH_FILE, { force: true });
-        await rm(join(root, "observation.json"), { force: true });
-        const diagnostics = { stage, reason: failure.message, commands: trace, shutdown: shutdown ?? null,
-          fixture_stderr: sanitizedDiagnostic(fixtureStderr, [credential]), command_stderr: sanitizedDiagnostic(commandStderr, [credential]) };
-        failure.diagnostics_path = join(root, "failure.json");
-        failure.diagnostics = diagnostics;
-        await writeFile(failure.diagnostics_path, JSON.stringify(diagnostics, null, 2), { mode: 0o600 });
-      } else {
-        await rm(root, { recursive: true, force: true });
-        receipt.cleanup = { process_exit_confirmed: true, exit_code: shutdown.exit_code, forced: shutdown.forced, scratch_removed: true };
+      try {
+        const after = await engineeringBindings(repository);
+        runInfo.final_bindings = { source_digest: after.source.digest, build_digest: after.build.digest, git_head: after.git_head };
+        runInfo.bindings_unchanged = after.source.digest === bindings.source.digest && after.build.digest === bindings.build.digest;
+        if (!runInfo.bindings_unchanged) failure ??= new Error('engineering_smoke_failed:bindings_changed_during_run');
+      } catch { failure ??= new Error('engineering_smoke_failed:binding_recheck_failed'); }
+      let cleanup = { process_exit_confirmed: shutdown !== undefined && (shutdown.exit_code !== null || shutdown.signal !== null),
+        exit_code: shutdown?.exit_code ?? null, signal: shutdown?.signal ?? null, forced: shutdown?.forced ?? null, scratch_removed: false };
+      let diagnostics;
+      if (!failure) {
+        const removal = await removeFixtureRoot(root);
+        cleanup = { ...cleanup, ...removal };
+        if (!removal.scratch_removed) failure = new Error('engineering_smoke_failed:cleanup:' + removal.error_code);
+        else receipt.cleanup = cleanup;
       }
+      if (failure) {
+        diagnostics = { stage, reason: failure.message, commands: trace, shutdown: shutdown ?? null,
+          fixture_stderr: sanitizedDiagnostic(fixtureStderr, [credential]), command_stderr: sanitizedDiagnostic(commandStderr, [credential]) };
+        // Cleanup can partially remove the root. Independent evidence still closes
+        // out even when the original diagnostic can no longer be written there.
+        try {
+          await rm(env.OSSTACK_ENGINEERING_AUTH_FILE, { force: true });
+          await rm(join(root, "observation.json"), { force: true });
+          failure.diagnostics_path = join(root, "failure.json");
+          await writeFile(failure.diagnostics_path, JSON.stringify(diagnostics, null, 2), { mode: 0o600 });
+        } catch (error) { diagnostics.fixture_cleanup_error = error.code ?? 'unavailable'; delete failure.diagnostics_path; }
+        failure.diagnostics = diagnostics;
+      }
+      await appendEngineeringObservation(evidence, { stage: 'fixture_exit', command: 'fixture daemon',
+        exit_code: shutdown?.exit_code ?? null, signal: shutdown?.signal ?? null, stderr: fixtureStderr, stderr_retention: 'last 8192 characters' }, [credential]);
+      runInfo.ended_at = new Date().toISOString(); runInfo.status = failure ? 'failed' : 'passed';
+      const finalReceipt = failure ? { schema_version: 1, status: 'failed', provider_qualified: false, reason: failure.message,
+        workflow_observation: engineeringWorkflowObservation(receipt, actionObservation), cleanup, evidence } : { ...receipt, evidence };
+      await writeEngineeringEvidence(evidence, 'run.json', runInfo, [credential]);
+      await writeEngineeringEvidence(evidence, 'cleanup.json', cleanup, [credential]);
+      await writeEngineeringEvidence(evidence, 'receipt.json', finalReceipt, [credential]);
+      if (diagnostics) await writeEngineeringEvidence(evidence, 'diagnostics.json', diagnostics, [credential]);
+      await sealEngineeringEvidence(evidence);
+      if (failure) failure.evidence = evidence; else receipt = finalReceipt;
+    } catch (error) {
+      failure ??= new Error('engineering_smoke_failed:evidence_or_cleanup:' + (error.code ?? error.message));
+      failure.evidence = evidence;
     } finally {
       process.off("SIGINT", onSignal);
       process.off("SIGTERM", onSignal);
@@ -300,10 +373,14 @@ export async function runSmoke() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
-    if (process.argv.length > 2) throw new Error("usage: node scripts/smoke-engineering-decision.mjs");
-    console.log(JSON.stringify(await runSmoke(), null, 2));
+    const options = parseEngineeringOptions(process.argv.slice(2));
+    if (options.mode !== 'run') {
+      const report = await engineeringPreflight({ repository, evidenceDir: options.evidenceDir, mode: options.mode });
+      console.log(JSON.stringify(report, null, 2)); if (!report.ready) process.exitCode = 1;
+    } else console.log(JSON.stringify(await runSmoke(options), null, 2));
   } catch (error) {
     console.error(JSON.stringify({ schema_version: 1, status: "failed", provider_qualified: false, reason: error.message,
+      ...(error.preflight ? { preflight: error.preflight } : {}), ...(error.evidence ? { evidence: error.evidence } : {}),
       ...(error.diagnostics_path ? { diagnostics_path: error.diagnostics_path, diagnostics: error.diagnostics } : {}) }));
     process.exitCode = 1;
   }

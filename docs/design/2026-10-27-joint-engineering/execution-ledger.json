@@ -2656,5 +2656,35 @@
         "formal_gate_pass": false
       }
     ]
+  },
+  "priority_resume": {
+    "observed_at": "2026-10-28T06:04:26.012613+00:00",
+    "authorization": "User explicitly requested accelerated implementation of the attached pstack capabilities; supersedes design-only pause for this scope.",
+    "base_sha": "fd9cac8127dbfa5660d9c45e58a42da5ed642073",
+    "branch": "codex/verification-kit",
+    "card_id": "card_f2a2453a",
+    "status": "implementing",
+    "scope": "D2a engineering tooling: durable fixture evidence, read-only preflight, one feature map, four explicitly consumed method entries",
+    "delivery": "../../implementation/verification-kit/README.md",
+    "gate_effect": "none; J01/J11 and product method gates remain unqualified",
+    "runtime_enabled": false,
+    "prior_unpublished_specs": "C30/bootstrap scratch remain isolated; not resumed by this dispatch",
+    "approval_owner": "gilberthello",
+    "audit": "pending actual claude-sonnet-5-5 review",
+    "workers": {
+      "terminal_preflight": [
+        "scripts/smoke-engineering-decision.mjs",
+        "scripts/smoke-engineering-decision.test.mjs",
+        "scripts/lib/engineering-verification-evidence.mjs"
+      ],
+      "loader_adversarial": [
+        "osstack-methods-skill/"
+      ],
+      "joint-entry": [
+        "docs/",
+        "integration",
+        "PR"
+      ]
+    }
   }
 }

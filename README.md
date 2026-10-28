@@ -536,6 +536,25 @@ changed-file findings that were not present in that baseline. The changed set
 includes working-tree, staged, untracked, and commits created since the run
 started, including isolated-worktree merges.
 
+### Engineering verification methods
+
+The repository includes [shared engineering methods](osstack-methods-skill/SKILL.md)
+for explicit use in Codex or Claude: investigation, bug-fix, creating verification
+instructions, and maintaining them. Ask the host to read the selected entry and
+its common evidence rules; no host installation or runtime authorization is implied.
+
+After `pnpm install` and `pnpm build`, start with the local decision journey:
+
+```sh
+node scripts/smoke-engineering-decision.mjs --doctor
+node scripts/smoke-engineering-decision.mjs --dry-run
+node scripts/smoke-engineering-decision.mjs
+```
+
+The real run drives the compiled CLI and an isolated deterministic daemon, then
+retains an evidence directory separately from cleaned fixture state. It does not
+qualify live providers. See the [feature map and evidence instructions](docs/implementation/verification-kit/feature-map.md).
+
 ### Knowledge Hygiene
 
 Use neat at task completion to check references, instruction surfaces, knowledge contracts and context budgets. `osstack neat` aliases read-only `neat check`; it does not automatically summarize all code changes, rewrite README, format source, commit or publish to GitHub.
