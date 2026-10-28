@@ -79,7 +79,7 @@
       "raw_audit_bytes": "unchanged, offset/hash verified",
       "tests": "6 hygiene/reference passed on repair; root final hygiene1 passed",
       "sonnet": "actual claude-sonnet-5-5 limited supplied-diff PASS; unsupported claim of denied inspection explicitly rejected",
-      "status": "new published-head CI required",
+      "status": "ready_awaiting_user_merge",
       "pr291": "6df338e8 product check PASS; Node20 prerequisite header TLS abort in attempt2; independent CI repair in progress"
     }
   },
@@ -2876,7 +2876,50 @@
       "audit": "actual claude-sonnet-5-5 PASS no blockers on exact code",
       "full_regression": "existing ff6bfeb6 7144/5/0 historical; new published-head CI pending",
       "root_archive_sha256": "7b6bf6e163e55cd0b97ef0cb5a08bb4bdb7217a10d1f7fe727ce4c4e0808c1eb",
-      "status": "draft_pending_ci"
+      "status": "ready_awaiting_user_merge"
     }
+  },
+  "final_ci_observation_20261028": {
+    "main": "f92914e0a98bd3e5f82765fddc5a275a93637f30",
+    "prs": {
+      "291": {
+        "head": "2b8ef9b707b672ffd89c389d9abbc368e8e6b9ca",
+        "run": 40669983085,
+        "applicable_success": 5,
+        "paid_smoke": "skipped",
+        "ready": true,
+        "full_test_passed": 7142,
+        "full_test_skipped": 7,
+        "full_test_failed": 0
+      },
+      "292": {
+        "head": "fe9079a1c2f2ea7f9d61030a88bbd58b276ce56b",
+        "run": 40668055368,
+        "applicable_success": 5,
+        "paid_smoke": "skipped",
+        "ready": true,
+        "full_test_passed": 7136,
+        "full_test_skipped": 7,
+        "full_test_failed": 0
+      }
+    },
+    "merge_order": [
+      291,
+      292
+    ],
+    "approver_merger": "gilberthello",
+    "agent_merged": false,
+    "composition": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+    "composition_tree": "9efad98d9560076ec33611ae75841c7ac85e0fc2",
+    "combined_full_suite": false,
+    "ready_ci_archive_sha256": "c217766b2bde403466f3b628c38f029f9875edcea9feb50f3809771a031da663",
+    "source_artifact": {
+      "id": 12808791882,
+      "verified_members": 49,
+      "five_cases_passed": true,
+      "descendant_termination": "not_attested"
+    },
+    "qualification": "no J01/J11/runtime promotion",
+    "next_preflight": "native discovery proposal archived, no model calls/execution"
   }
 }
