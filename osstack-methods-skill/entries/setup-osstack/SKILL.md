@@ -23,4 +23,4 @@ Before writing, check whether the destination exists and preserve its unrelated 
 
 After an authorized application, re-read the actual settings and use supported read-only validation. Report what changed, the effective scope, whether a new session is required according to that host, and anything not validated. Configuration acceptance does not prove task execution, a measured cost reduction or runtime qualification.
 
-For the next task, [osstack-mode](../osstack-mode/SKILL.md) routes the eight implemented shared methods. This entry adapts setup principles from the fixed upstream revision `99b609a72323b70204eab407c622f436e858e112`; [source attribution](../../references/sources.md) remains intact. It carries no upstream default models or unconditional file-overwrite behavior.
+For the next task, [osstack-mode](../osstack-mode/SKILL.md) routes the nine implemented shared methods. This entry adapts setup principles from the fixed upstream revision `99b609a72323b70204eab407c622f436e858e112`; [source attribution](../../references/sources.md) remains intact. It carries no upstream default models or unconditional file-overwrite behavior.
