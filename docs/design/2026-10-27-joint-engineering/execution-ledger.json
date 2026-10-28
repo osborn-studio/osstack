@@ -3538,7 +3538,7 @@
     "actual_main_tree_equals_published_head": true
   },
   "next_continuity_wave": {
-    "status": "draft_pr_ci_running",
+    "status": "draft_ci_failed_diagnosis",
     "baseline": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "owners": {
       "loader_adversarial": {
@@ -3614,15 +3614,34 @@
     "published_head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
     "ci_run": 40782209081,
     "publication_evidence": "docs/implementation/method-continuity-publication",
-    "user_approval_required": true
+    "user_approval_required": true,
+    "ci_failure": {
+      "run": 40782209081,
+      "attempt": 1,
+      "head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
+      "failed": "2 upgrade-native cleanup tests exceeded combined30s setup+body",
+      "runtime_matrix": "4_SUCCESS",
+      "cause": "Phase timing absent; product cause not proven. Separate prerequisite fullupgrade setup from cleanup budget, following existing samefile cases; actual target assertions/deadline unchanged."
+    }
   },
   "next_pr_readiness_preflight": {
-    "status": "scheduling_input_only",
+    "status": "independent_freeze_and_author_setup",
     "card": "card_00455914",
     "protocol_sha256": "f7fe30caa27ec4ae29f242b656dc0c0bcca6a2e17d6c769a222c1f13979de99b",
     "path": "docs/implementation/method-continuity-publication/next-pr-readiness",
     "implementation_started": false,
     "model_calls": 0,
-    "requires_fresh_dispatch_and_freeze": true
+    "requires_fresh_dispatch_and_freeze": true,
+    "owners": {
+      "author": "loader_adversarial",
+      "independent": "cleanup_regression",
+      "ci_diagnosis": "terminal_preflight",
+      "root": "ledger/PR/audit/full/integration"
+    },
+    "cards": [
+      "card_00455914",
+      "card_b6355d9e",
+      "card_d520a214"
+    ]
   }
 }
