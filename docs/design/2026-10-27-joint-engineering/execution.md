@@ -221,3 +221,5 @@ PR297 is merged as main711c45e7, whose tree07aa7fc4 equals the published0862bc38
 
 
 The framing/architecture batch integrates eleven shared methods at035285cf. Final85export tests, independent72files/247local links per host,241document checks and1hygiene check passed. Actual Sonnet first requested revision, then passed limited B1–B4 closure after confirmed repairs and evidence-based reclassification of optional direct-link tests. The package suite7144/5/0 remains bound to85d34 with its disclosed working-tree scope, not relabelled as a final whole-tree run. [Delivery and original opinions](../../implementation/method-framing-architecture/README.md) retain all evidence. Next host-probe protocol is preparation only, with zero calls and no borrowed experiment budget.
+
+PR298 head8ba3d98a is Ready after run40730300608 attempt2 passed all five applicable checks (paid smoke skipped). Main711c45e7 is unchanged. The original schema46 timeout remains preserved; one unchanged-head failed-check rerun passed without proving the cause. Two method cards now await only user approval/merge. Formal gates and native-host efficacy remain unproven.

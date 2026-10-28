@@ -1,0 +1,260 @@
+{
+  "observed_at": "2026-10-28T17:57:09.289553+00:00",
+  "pr": 298,
+  "head_sha": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+  "run_id": 40730300608,
+  "run_attempt": 2,
+  "conclusion": "success",
+  "pr_is_draft": false,
+  "checks": [
+    {
+      "name": "Paid DeepSeek semantic smoke",
+      "status": "COMPLETED",
+      "conclusion": "SKIPPED",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40730300608/job/122983836153"
+    },
+    {
+      "name": "graph-macos-fixtures (22)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40730300608/job/122983913564"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40730300608/job/122983835275"
+    },
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40730300608/job/122983891829"
+    },
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40730300608/job/122983908633"
+    },
+    {
+      "name": "check",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40730300608/job/122983833700"
+    }
+  ],
+  "package_totals": {
+    "passed": 7142,
+    "skipped": 7,
+    "failed": 0
+  },
+  "package_summary_count": 22,
+  "counting_rule": "Only exact check/Test step package Tests summary lines; one per package, assert unique and totals sum. Excludes test-file summaries, matrix runs, repeated smoke suites and later contract steps.",
+  "package_summaries": {
+    "packages/contracts": {
+      "line": 1493,
+      "raw": "check\tTest\t2026-10-28T17:28:34.9874551Z packages/contracts test: ^[[2m      Tests ^[[22m ^[[1m^[[32m15 passed^[[39m^[[22m^[[90m (15)^[[39m",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "total": 15
+    },
+    "packages/compliance": {
+      "line": 1498,
+      "raw": "check\tTest\t2026-10-28T17:28:35.0483835Z packages/compliance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m17 passed^[[39m^[[22m^[[90m (17)^[[39m",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0,
+      "total": 17
+    },
+    "packages/github": {
+      "line": 1522,
+      "raw": "check\tTest\t2026-10-28T17:28:37.4877594Z packages/github test: ^[[2m      Tests ^[[22m ^[[1m^[[32m107 passed^[[39m^[[22m^[[90m (107)^[[39m",
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0,
+      "total": 107
+    },
+    "packages/knowledge": {
+      "line": 1533,
+      "raw": "check\tTest\t2026-10-28T17:28:38.3097375Z packages/knowledge test: ^[[2m      Tests ^[[22m ^[[1m^[[32m44 passed^[[39m^[[22m^[[90m (44)^[[39m",
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0,
+      "total": 44
+    },
+    "packages/neat-eval": {
+      "line": 1552,
+      "raw": "check\tTest\t2026-10-28T17:28:39.9871969Z packages/neat-eval test: ^[[2m      Tests ^[[22m ^[[1m^[[32m16 passed^[[39m^[[22m^[[90m (16)^[[39m",
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0,
+      "total": 16
+    },
+    "packages/runtime": {
+      "line": 1559,
+      "raw": "check\tTest\t2026-10-28T17:28:40.7822232Z packages/runtime test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1
+    },
+    "packages/protocol": {
+      "line": 1617,
+      "raw": "check\tTest\t2026-10-28T17:28:47.4492069Z packages/protocol test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1012 passed^[[39m^[[22m^[[90m (1012)^[[39m",
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1012
+    },
+    "packages/governance": {
+      "line": 1630,
+      "raw": "check\tTest\t2026-10-28T17:28:48.7024425Z packages/governance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m301 passed^[[39m^[[22m^[[90m (301)^[[39m",
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0,
+      "total": 301
+    },
+    "packages/knowledge-cloud": {
+      "line": 1643,
+      "raw": "check\tTest\t2026-10-28T17:28:50.6712442Z packages/knowledge-cloud test: ^[[2m      Tests ^[[22m ^[[1m^[[32m36 passed^[[39m^[[22m^[[90m (36)^[[39m",
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0,
+      "total": 36
+    },
+    "packages/graph": {
+      "line": 1684,
+      "raw": "check\tTest\t2026-10-28T17:29:02.0707179Z packages/graph test: ^[[2m      Tests ^[[22m ^[[1m^[[32m257 passed^[[39m^[[22m^[[90m (257)^[[39m",
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0,
+      "total": 257
+    },
+    "packages/core": {
+      "line": 1821,
+      "raw": "check\tTest\t2026-10-28T17:29:45.1702870Z packages/core test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1301 passed^[[39m^[[22m^[[90m (1301)^[[39m",
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1301
+    },
+    "packages/plugins": {
+      "line": 1835,
+      "raw": "check\tTest\t2026-10-28T17:29:46.8523549Z packages/plugins test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1
+    },
+    "packages/hermes-adapter": {
+      "line": 1844,
+      "raw": "check\tTest\t2026-10-28T17:29:47.2661286Z packages/hermes-adapter test: ^[[2m      Tests ^[[22m ^[[1m^[[32m22 passed^[[39m^[[22m^[[90m (22)^[[39m",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0,
+      "total": 22
+    },
+    "packages/skills": {
+      "line": 1853,
+      "raw": "check\tTest\t2026-10-28T17:29:48.6303081Z packages/skills test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "total": 2
+    },
+    "packages/autonomy": {
+      "line": 1980,
+      "raw": "check\tTest\t2026-10-28T17:29:54.6378268Z packages/autonomy test: ^[[2m      Tests ^[[22m ^[[1m^[[32m201 passed^[[39m^[[22m^[[90m (201)^[[39m",
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0,
+      "total": 201
+    },
+    "packages/skill-registry": {
+      "line": 1990,
+      "raw": "check\tTest\t2026-10-28T17:29:57.5553799Z packages/skill-registry test: ^[[2m      Tests ^[[22m ^[[1m^[[32m43 passed^[[39m^[[22m^[[90m (43)^[[39m",
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0,
+      "total": 43
+    },
+    "packages/agents": {
+      "line": 2053,
+      "raw": "check\tTest\t2026-10-28T17:30:11.7898847Z packages/agents test: ^[[2m      Tests ^[[22m ^[[1m^[[32m361 passed^[[39m^[[22m^[[90m (361)^[[39m",
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0,
+      "total": 361
+    },
+    "packages/config": {
+      "line": 2065,
+      "raw": "check\tTest\t2026-10-28T17:30:15.2586166Z packages/config test: ^[[2m      Tests ^[[22m ^[[1m^[[32m30 passed^[[39m^[[22m^[[90m (30)^[[39m",
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0,
+      "total": 30
+    },
+    "packages/loop": {
+      "line": 2507,
+      "raw": "check\tTest\t2026-10-28T17:30:33.9855389Z packages/loop test: ^[[2m      Tests ^[[22m ^[[1m^[[32m514 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m1 skipped^[[39m^[[90m (515)^[[39m",
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0,
+      "total": 515
+    },
+    "packages/conformance": {
+      "line": 2535,
+      "raw": "check\tTest\t2026-10-28T17:30:40.2467104Z packages/conformance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m9 passed^[[39m^[[22m^[[90m (9)^[[39m",
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0,
+      "total": 9
+    },
+    "packages/supervisor": {
+      "line": 2548,
+      "raw": "check\tTest\t2026-10-28T17:30:41.5711968Z packages/supervisor test: ^[[2m      Tests ^[[22m ^[[1m^[[32m88 passed^[[39m^[[22m^[[90m (88)^[[39m",
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0,
+      "total": 88
+    },
+    "packages/cli": {
+      "line": 5024,
+      "raw": "check\tTest\t2026-10-28T17:39:34.2912062Z packages/cli test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2764 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m6 skipped^[[39m^[[90m (2770)^[[39m",
+      "passed": 2764,
+      "skipped": 6,
+      "failed": 0,
+      "total": 2770
+    }
+  },
+  "original_timeout_case": {
+    "line": 1689,
+    "raw": "check\tTest\t2026-10-28T17:29:02.2171910Z packages/core test:    ^[[33m^[[2m\u2713^[[22m^[[39m upgrades canonical schema46 without changing existing receipts or granting legacy dispatch ^[[33m 1590^[[2mms^[[22m^[[39m",
+    "clean": "check\tTest\t2026-10-28T17:29:02.2171910Z packages/core test:    \u2713 upgrades canonical schema46 without changing existing receipts or granting legacy dispatch  1590ms"
+  },
+  "source_unchanged_from_attempt1_diagnosis": {
+    "test_source_sha256": "15f4cd7bfdb63088a9130e7875ea8eff62f9398a1d3e9d368b1bba177353b11b",
+    "workflow_sha256": "577d7819a9fbf2611b4be340a31e7f04ae277c0a7ffac1c50831aec7883c4b90",
+    "same_head": true,
+    "test_budget_ms": 5000,
+    "selection": "pnpm -r test unchanged"
+  },
+  "environment": {
+    "attempt1": {
+      "node": "22.23.3",
+      "image": "20261012.334.1"
+    },
+    "attempt2": {
+      "node": "22.23.4",
+      "image": "20261025.353.1"
+    }
+  },
+  "limits": [
+    "Successful rerun does not prove original timeout cause.",
+    "No timeout increase, test skip or selection change was introduced; source and workflow bytes match original diagnosis.",
+    "This agent performed read-only GitHub/Git/log inspection, not test execution or CI retry.",
+    "Five current applicable checks succeeded; paid semantic smoke skipped is a job outcome, separate from seven package-test skips."
+  ]
+}

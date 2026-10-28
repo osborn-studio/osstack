@@ -1,0 +1,52 @@
+[
+  {
+    "comment_id": 494,
+    "card_id": "card_f9c9aa23",
+    "author": "joint-entry",
+    "body": "PR298 head8ba3d98ad27f8febb172bc2392d72fe201ea3e96 Ready after run40730300608 attempt2 SUCCESS; five applicable checks SUCCESS, paid smoke SKIPPED. Main711c45e7 unchanged. One same-SHA failed-check rerun; no source/timeout/selection change; original migration timeout retained, cause unproven. Actual Sonnet5.5 limited closure PASS035 remains original binding. Await gilberthello approval/merge; no native-host efficacy or formal gate claim.",
+    "created_at": 1793210149.537
+  },
+  {
+    "card_id": "card_f9c9aa23",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a task framing and prompt sharpening",
+    "body": "",
+    "status": "blocked",
+    "priority": 80,
+    "assignee": "loader_adversarial",
+    "blocked_reason": "PR298 Ready; awaiting gilberthello approval and merge",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793204823.846,
+    "updated_at": 1793210149.538,
+    "started_at": 1793204823.846,
+    "completed_at": null
+  },
+  {
+    "comment_id": 495,
+    "card_id": "card_a2ccebb6",
+    "author": "joint-entry",
+    "body": "PR298 head8ba3d98ad27f8febb172bc2392d72fe201ea3e96 Ready after run40730300608 attempt2 SUCCESS; five applicable checks SUCCESS, paid smoke SKIPPED. Main711c45e7 unchanged. One same-SHA failed-check rerun; no source/timeout/selection change; original migration timeout retained, cause unproven. Actual Sonnet5.5 limited closure PASS035 remains original binding. Await gilberthello approval/merge; no native-host efficacy or formal gate claim.",
+    "created_at": 1793210149.539
+  },
+  {
+    "card_id": "card_a2ccebb6",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a caller-first architecture method",
+    "body": "",
+    "status": "blocked",
+    "priority": 80,
+    "assignee": "terminal_preflight",
+    "blocked_reason": "PR298 Ready; awaiting gilberthello approval and merge",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793204823.846,
+    "updated_at": 1793210149.539,
+    "started_at": 1793204823.846,
+    "completed_at": null
+  }
+]
