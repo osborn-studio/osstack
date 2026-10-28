@@ -134,3 +134,17 @@ JP-01c 回归候选 `74ec436d` 已完成首轮问题修复和实际 Sonnet 5.5 �
 ## 2026-10-28：按 verification 价值优先恢复开发
 
 用户已明确要求推进附件所列能力，恢复本批开发。当前执行入口是 [verification kit](../../implementation/verification-kit/README.md)，对应看板 `card_f2a2453a`、分支 `codex/verification-kit`。先交付真实本地验证、持久证据与四条跨宿主共用方法材料；这属于 D2a 工程工具增量，不产生 J01/J11/J03/J09 资格。身份 issue #287 继续待确认，但不是该工具增量的依赖。旧 C30/bootstrap 工件没有随本批恢复。审计和测试结论以精确候选交付证据为准，只有用户 gilberthello 审批合并。
+
+
+## 2026-10-28 PR288/289 CI and host-reading follow-up
+
+PR288 published head `10629495` is Ready after five applicable checks succeeded; the first Node20 header-download failure remains preserved, and one failed-job-only retry succeeded. User `gilberthello` approves and merges. PR289 remains Draft: inherited upgrade tests exceeded the shared 30-second budget. Candidate `4dddf67a` separates 60-second real preparation from 30-second cleanup verification, preserves all operations/assertions, and has 37 focused tests plus actual Sonnet5.5 audit PASS; full regression and new CI remain required at this snapshot. The CI slow point is not established.
+
+[Two actual host-reading experiments](../../implementation/joint-host-effects/README.md) preserve Codex and Claude outputs, errors, input bindings and limitations. They did not execute product tests or qualify runtime/provider behavior. Documentation revisions follow the observations; their effects are not yet tested. Root retains PR/ledger ownership and the single full-regression queue.
+
+
+PR288 was subsequently verified merged at `4d31c3f540672c81a6c5d65b3a2b090dc32da027` (2026-10-28T07:38:44Z). Its tree equals published `10629495`. Latest main plus PR289 `48f5a9f1` yields exactly the independently tested composition tree `827495237d56c84a49f7785eda373c1771ff0eca`: fresh install/build, 27 focused cases and real retained-evidence smoke passed. This is tree equivalence to the tested composition, not a newly executed full regression. PR289 candidate `4dddf67a` separately passed 7,138 full tests / 5 skipped; new head CI run40651082036 remains pending at this snapshot.
+
+PR289 subsequently completed run40651082036 with five applicable CI successes (paid smoke skipped) at published head `48f5a9f1`; all three native cases passed. Root marked it Ready after exact-head/main-composition verification and updated OSStack to await `gilberthello` approval/merge. This supersedes the earlier pending snapshot without erasing the original failure.
+
+PR289 was then verified merged by the user at `64b203c32d245d5ad9a76914253ca18cbb54a073` (2026-10-28T07:59:34Z). Its actual main tree equals the previously tested composition. OSStack marks the CLI fix slice done. Next authorized D2a task `card_25794a87` / `codex/skills-check-verification` prepares a reusable fixed skills-check driver, with separate author, black-box validation and bounded host-assisted usage tasks; all are based on that latest main.

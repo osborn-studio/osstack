@@ -1,0 +1,21 @@
+{
+  "archive_sha256": "f141819fd781d2881800d7e855a8569982aad98049ebce7d22548f7a473986f7",
+  "files": [
+    {
+      "path": "pr289-ready.json",
+      "sha256": "2adc75c0bae7e4510c01d9c32affa432633358b51382f7ff7bc74b4ef49cd38d"
+    },
+    {
+      "path": "pr289-ready-board.json",
+      "sha256": "c1bcb9b80b17dcdbe01fb9af5e1e45cbad994cfe3920fa573ab7ffb3df3e373f"
+    },
+    {
+      "path": "pr289-ci-success.log",
+      "sha256": "cd3d42e9798ccd5082471b1eb4f3b9b903cb8f4543298195ec69aee3a108cfb4"
+    },
+    {
+      "path": "post288-composition-proof.json",
+      "sha256": "7a4caf43e0b364fdf105a9cab13be5dda6beee352380318a87b4ac04750ffff5"
+    }
+  ]
+}
