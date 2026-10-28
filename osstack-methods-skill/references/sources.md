@@ -9,6 +9,8 @@ These instructions are independently worded OSStack adaptations of engineering p
 - [Create verification skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/SKILL.md): launch/drive/observe/isolate/cleanup, feature map, actual end-to-end proof.
 - [Maintain verification skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md): source and live coverage, failure classification, evidence surviving teardown.
 
+The [blast-radius skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/blast-radius/SKILL.md) supplies the change-impact method: identify the key safety assumption, trace consumers beyond symbol search, inspect pinned dependencies and patches, and challenge the assumption with actual code. OSStack distinguishes source reasoning, executable checks and application observations; unproved assumptions remain unproved. Real execution stays within existing isolation and authority. No mandatory arena, model panel or unrestricted run is imported.
+
 The code-review method also draws on these fixed sources:
 
 - [Adversarial review workflow](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/SKILL.md): intent, bounded review input and synthesis of findings.

@@ -1,6 +1,6 @@
 ---
 name: osstack-agent
-description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
+description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
 ---
 
 # OSStack delegated method
@@ -11,6 +11,7 @@ Apply the coordinator's agreed design and acceptance checks to your assigned sli
 
 Choose the relevant shared method:
 
+- [Change impact](../../references/change-impact.md) for affected consumers, hidden contracts and tests of critical safety assumptions within the assigned boundary.
 - [Code review](../../references/code-review.md) for a bounded review with concrete findings and evidence; apply fixes only within the delegated authorization.
 - [Feature](../../references/feature.md) for an owned implementation slice with observable acceptance checks.
 - [Refactoring](../../references/refactoring.md) for structural changes under a pinned behavior contract.
