@@ -7,10 +7,12 @@ description: Explain which implemented OSStack method or entry fits a task, how 
 
 Answer the actual usage question from the available files and current host capabilities. Read the relevant linked material before describing its behavior. Give a concrete next step or a short task prompt, without promising a command or installation that has not been verified.
 
-- To perform an engineering task, use [osstack-mode](../osstack-mode/SKILL.md). Its implemented methods are [feature](../../references/feature.md), [refactoring](../../references/refactoring.md), bug fix, investigation, create verification and maintain verification.
+- To perform an engineering task, use [osstack-mode](../osstack-mode/SKILL.md). Its implemented methods are [Code review](../../references/code-review.md), [feature](../../references/feature.md), [refactoring](../../references/refactoring.md), bug fix, investigation, create verification and maintain verification.
 - To choose role/model/effort and resource limits, use [setup-osstack](../setup-osstack/SKILL.md). It starts with a reviewable proposal, not an assumed global configuration write.
 - To apply the shared method to a delegated work item, use [osstack-agent](../osstack-agent/SKILL.md). This is skill material, not native agent registration.
 - For evidence interpretation, read [evidence](../../references/evidence.md). For a reusable map, read [the feature-map template](../../references/feature-map-template.md).
+
+A request for actionable findings on a patch or PR uses code review. An explanation of how code works uses investigation. A review-and-fix request keeps its authorized correction scope; a review-only request does not imply product edits.
 
 New behavior uses feature. Structural cleanup with unchanged behavior uses refactoring. If a cleanup request also changes behavior, separate those scopes and their checks.
 

@@ -1,0 +1,15 @@
+{
+  "root_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+  "author_revision": "ac9d8e60422318fe66c23b08cfd148fe9c2963ff",
+  "author_revision_four_files_equal": true,
+  "audit_final_files_verified": {
+    "docs/implementation/method-code-review/README.md": "92c5a210d072531800cac15b1a550218982440e0db60d45c272851d68f410da4",
+    "osstack-methods-skill/references/code-review.md": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188",
+    "osstack-methods-skill/references/sources.md": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba",
+    "scripts/export-osstack-methods.test.mjs": "7c7c05e36b8ba1ef5cc2142c33f747363aef5f37359f885c394d4f6dd7e047f7",
+    "osstack-methods-skill/EXPORT.md": "78ff0bc302a6cd723f3b438e78daec169abfe2577a870dd693d71ae12b35311f",
+    "osstack-methods-skill/references/evidence.md": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+    "osstack-methods-skill/references/bug-fix.md": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+    "osstack-methods-skill/references/refactoring.md": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "after_archive_sha256": "b28b3b75511ec9acc3391e7a8c442c587757617472a177c2df241075fcc4057a",
+  "owned_workspaces": [
+    {
+      "case": "codex-packet",
+      "workspace_removed": true,
+      "archived_members": 55
+    },
+    {
+      "case": "claude-packet",
+      "workspace_removed": true,
+      "archived_members": 55
+    },
+    {
+      "case": "claude-packet-v2",
+      "workspace_removed": true,
+      "archived_members": 55
+    }
+  ],
+  "scope": "Only task-owned workspace deletion. Does not attest global host state or descendant termination."
+}

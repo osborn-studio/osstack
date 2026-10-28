@@ -1,0 +1,11 @@
+{
+  "checked_at": "2026-10-28T14:44:43.425858+00:00",
+  "source_head": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+  "scope": "Final method and newly staged evidence/ledger working tree; before adding this observation record",
+  "document_tests": 241,
+  "hygiene_tests": 1,
+  "logs": {
+    "final-document-tests.log": "4162fd2a2ffb498bc8d5eb9b53c04d493f99d4c5fa710dfe2532a41bd3ea2076",
+    "final-hygiene.log": "32836a5d46f3d33213917cc6c46904b52ce699059fa4cd7c35025040dd1e49a2"
+  }
+}

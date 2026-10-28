@@ -1,0 +1,16 @@
+{
+  "control_sha": "4e4751be84a32e72c3c7d358aa10484520174e6c",
+  "first_attempt": "system Python lacks jsonschema; no source failure inferred",
+  "rerun_interpreter": "existing joint-handoff-20261027 venv",
+  "rerun_passed": 241,
+  "logs": {
+    "control-docs.log": {
+      "sha256": "40eedb65c7529308868d12049cddb3da8117f97f182392692670a81dbfd5e742",
+      "bytes": 1483
+    },
+    "control-docs-venv.log": {
+      "sha256": "aefea7a3b106068477fe0df5513e618969fa0f34ad3383cef7295f654164c90d",
+      "bytes": 341
+    }
+  }
+}

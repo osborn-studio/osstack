@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "kind": "osstack_method_journey_projection",
+  "journey_status": "passed",
+  "failure_recorded": false,
+  "features": [
+    {
+      "case_id": "healthy",
+      "verification": "passed",
+      "product_exit": 0,
+      "reported_product_exit": null,
+      "driver_exit": 0,
+      "product_status": "healthy",
+      "evidence_state": "sealed",
+      "cleanup": {
+        "status": "passed",
+        "fixture_removed": true,
+        "descendant_termination": "not_attested"
+      },
+      "reported_cleanup": null,
+      "receipt_cleanup_consistent": true,
+      "bindings": {
+        "source_digest": "e7d0162667028a3a3b14a4b938d30369a4831080363eef614d043ef0d2971065",
+        "build_digest": "0eed6e34ea30896b5a1c582cfc4036d03a96c6c431f3a7e35199a4ddc5df7eb8"
+      }
+    },
+    {
+      "case_id": "missing-ref",
+      "verification": "passed",
+      "product_exit": 1,
+      "reported_product_exit": null,
+      "driver_exit": 0,
+      "product_status": "failed",
+      "evidence_state": "sealed",
+      "cleanup": {
+        "status": "passed",
+        "fixture_removed": true,
+        "descendant_termination": "not_attested"
+      },
+      "reported_cleanup": null,
+      "receipt_cleanup_consistent": true,
+      "bindings": {
+        "source_digest": "e7d0162667028a3a3b14a4b938d30369a4831080363eef614d043ef0d2971065",
+        "build_digest": "0eed6e34ea30896b5a1c582cfc4036d03a96c6c431f3a7e35199a4ddc5df7eb8"
+      }
+    }
+  ],
+  "streams": [
+    {
+      "id": "healthy.product.stdout",
+      "selected_lines": [
+        "Checking 1 source(s) against their tracked refs...",
+        "  ✓ healthy  up-to-date (3819653a47c5)",
+        "0 source(s) failed to check.",
+        "0 source(s) drifted from blessed_sha."
+      ],
+      "omitted_bytes": 5
+    },
+    {
+      "id": "healthy.product.stderr",
+      "selected_lines": [],
+      "omitted_bytes": 0
+    },
+    {
+      "id": "missing-ref.product.stdout",
+      "selected_lines": [
+        "Checking 1 source(s) against their tracked refs...",
+        "  ✗ missing-ref  unreachable: no_matching_ref",
+        "1 source(s) failed to check.",
+        "0 source(s) drifted from blessed_sha."
+      ],
+      "omitted_bytes": 5
+    },
+    {
+      "id": "missing-ref.product.stderr",
+      "selected_lines": [],
+      "omitted_bytes": 0
+    }
+  ],
+  "references": [
+    {
+      "id": "journey.manifest",
+      "bytes": 2917,
+      "sha256": "54400932d811a70ab4dae4a09539ce79063ca8d0c696c44a3608860fda194d32"
+    },
+    {
+      "id": "journey.receipt",
+      "bytes": 4017,
+      "sha256": "407e9e8d8267ed7dfe572fef392d53c5fd501d3a57beb8f0e2f2dd19e6e38f47"
+    },
+    {
+      "id": "healthy.manifest",
+      "bytes": 4402,
+      "sha256": "478dcacafc3d49e155dc5f1e899a92edb1440c60f2d34ac3913eeea9825e6ba8"
+    },
+    {
+      "id": "healthy.receipt",
+      "bytes": 1347,
+      "sha256": "726cfb44917186f2e9fa7f6228810ad742d78336f5c703901ac3c1a5943a7abd"
+    },
+    {
+      "id": "healthy.cleanup",
+      "bytes": 218,
+      "sha256": "76423a09e37b46617b365e98015de0c7dfc3d7a09a49c36ce2f2fc0ad3f8d712"
+    },
+    {
+      "id": "healthy.bindings",
+      "bytes": 647317,
+      "sha256": "f2166bb2aa5ee396acf11e992fa5ee120b5f68eb4239adb25155a5ef77745731"
+    },
+    {
+      "id": "healthy.expectations",
+      "bytes": 709,
+      "sha256": "cd68445ab2e2776b4ac5aab319b1571b67838bba00885b9d040a20427c6fe52b"
+    },
+    {
+      "id": "healthy.product.command",
+      "bytes": 3200,
+      "sha256": "374d19b7914a5c38f1c85a49cf4012998a6bc619060401e43beb51b05673fd54"
+    },
+    {
+      "id": "healthy.product.detail",
+      "bytes": 3764,
+      "sha256": "3c9448be1e2ab94ea13f319865ec8662151052eb736a47a6549ed55e08741e36"
+    },
+    {
+      "id": "healthy.product.input",
+      "bytes": 331,
+      "sha256": "228d88498e2422d98f982b1201e81500f415a9b7b4844c4408fee02e6d8045e1"
+    },
+    {
+      "id": "healthy.product.stdout",
+      "bytes": 160,
+      "sha256": "c31a23ba5caa6c8a5000040dad7583ef7a734803ad5d237c068482d0f34026ae"
+    },
+    {
+      "id": "healthy.product.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "missing-ref.manifest",
+      "bytes": 4422,
+      "sha256": "77e361bceff7a2311949cd04c3ab20b5d37a019ad3422d9235b435d389d7c8e0"
+    },
+    {
+      "id": "missing-ref.receipt",
+      "bytes": 1358,
+      "sha256": "e22709446503c58b6c3d3f9737769fa72f3acb40c1e512439b3ca4c1e9fe02ac"
+    },
+    {
+      "id": "missing-ref.cleanup",
+      "bytes": 218,
+      "sha256": "2c173e10438d3407fd9448615d7ffd9b693be7c5cf4474da6f9dfd44d9fd5dd6"
+    },
+    {
+      "id": "missing-ref.bindings",
+      "bytes": 647317,
+      "sha256": "f2166bb2aa5ee396acf11e992fa5ee120b5f68eb4239adb25155a5ef77745731"
+    },
+    {
+      "id": "missing-ref.expectations",
+      "bytes": 724,
+      "sha256": "5af404799555dc354edb37c47b2ccbc6b9b649ceff971677c3ed2df58453f567"
+    },
+    {
+      "id": "missing-ref.product.command",
+      "bytes": 3212,
+      "sha256": "1fc1dfc78bcdaba9e797ada13f49ebe32d3851fea2af000ba8f51d97c51198f0"
+    },
+    {
+      "id": "missing-ref.product.detail",
+      "bytes": 3787,
+      "sha256": "869347bebc857c4fc64d595878a2ce7b68e90751979b0110bf8c3940ef95bfad"
+    },
+    {
+      "id": "missing-ref.product.input",
+      "bytes": 342,
+      "sha256": "c3489ffa75370f3b4000263a09f41eddbb54d2ab56061f4270c571503ccf6c0f"
+    },
+    {
+      "id": "missing-ref.product.stdout",
+      "bytes": 167,
+      "sha256": "461238bbc7d14ba1123e66fa1aea254f72f5ca19dd433c313cf9c771defc9ef3"
+    },
+    {
+      "id": "missing-ref.product.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": {
+    "cases": [
+      "healthy",
+      "missing-ref"
+    ],
+    "omitted": [
+      "drift",
+      "mixed",
+      "empty"
+    ],
+    "basis": "retained_bytes_and_recorded_claims",
+    "live_revalidation": false,
+    "model_execution": false,
+    "formal_gate_pass": false
+  }
+}

@@ -26,7 +26,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
-  "observed_at": "2026-10-27T17:46:50.854473+00:00",
+  "observed_at": "2026-10-28T14:43:16.043664+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -3043,7 +3043,7 @@
   "next_method_development_wave": {
     "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
     "authorization": "user explicitly requested OSStack parallel subagent implementation",
-    "status": "293_294_merged_next_projection_and_references_running",
+    "status": "295_merged_next_wave_active",
     "owners": {
       "loader_adversarial": {
         "card": "card_766d64bc",
@@ -3105,7 +3105,7 @@
       "cleanup_sha256": "11e03a69ae68145a53628a3b279a0b00bc254f81bf0fd10dc63d1f29da15c067",
       "workspaces_cleaned": true
     },
-    "snapshot_at": "2026-10-28T13:34:49.043689+00:00",
+    "snapshot_at": "2026-10-28T13:43:44.989363+00:00",
     "journey_candidate": {
       "pr": 294,
       "published_head": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
@@ -3150,7 +3150,7 @@
       "independent_card": "card_c49a2a2c",
       "branch": "codex/method-evidence-projection",
       "base": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
-      "status": "verified_pending_draft_publication",
+      "status": "merged",
       "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation",
       "criteria_sha256": "dea3d5b26124a97cf0dfba60cbe852a4fd167293231472b24790498354c3361e",
       "independent_vectors": 15,
@@ -3172,7 +3172,7 @@
       "card": "card_0596e0e4",
       "branch": "codex/method-journey-reference",
       "base": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
-      "status": "verified_pending_joint_publication",
+      "status": "merged",
       "scope": "exported fixed journey reference, 3existingreferences and export tests, own docs only",
       "author_sha": "c29a3aa2c1c179255dabb0a7fca3f1fea817e0e7",
       "focused_tests": 74,
@@ -3189,8 +3189,109 @@
         "failed": 0
       },
       "final_tests": "49projection and74exports, real existing journey projected and checked; source unchanged; full oldSHA not relabelled",
-      "new_pr": "not_yet_created",
-      "formal_gates_passed": false
+      "new_pr": 295,
+      "formal_gates_passed": false,
+      "published_head": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+      "ci_run": 40698994343,
+      "ci_status": "success",
+      "is_draft": false,
+      "archive_sha256": "29d6a9ccfd0a81f850bd781324a21166aefb1ba4ac8904818b99441361cc86e2",
+      "final_document_tests": 241,
+      "final_hygiene_tests": 1,
+      "current_head_ci_full": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "ready_evidence": "docs/implementation/method-projection-publication/ready/summary.json",
+      "merge_commit": "70924ee44a478f5ef345307b885bda6b936e6662",
+      "merged_at": "2026-10-28T14:10:23Z",
+      "actual_main_tree_equals_published_head": true
     }
+  },
+  "next_method_host_wave": {
+    "status": "audited_tested_preparing_pr",
+    "baseline": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
+    "provisional_dependency": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+    "authorization": "user explicitly requests OSStack multiple agents continued implementation",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_3bfd2963",
+        "scope": "<=9 files code-review method adaptation/router/source/export tests; isolated author worktree",
+        "branch": "codex/method-code-review"
+      },
+      "terminal_preflight": {
+        "card": "card_6a06bc2e",
+        "scope": "read-only two-host packet consumption protocol/harness preparation, no calls before root dispatch"
+      },
+      "cleanup_regression": {
+        "card": "card_00430585",
+        "scope": "independent <=15 criteria freeze and offline validation"
+      }
+    },
+    "model_calls_performed": 2,
+    "driver_runs_performed": 0,
+    "host_plan": "native skill consumption where observed, existing coordinator-generated packet only; no claim host executed driver or OS filesystem sandbox",
+    "maximum_proposed_calls": 2,
+    "retries": 0,
+    "formal_gates_passed": false,
+    "updated_at": "2026-10-28T14:43:16.043664+00:00",
+    "host_criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
+    "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d",
+    "actual_main": "70924ee44a478f5ef345307b885bda6b936e6662",
+    "dependency_merged": true,
+    "code_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+    "method": {
+      "name": "code-review",
+      "author_initial": "1d00ac4fd92d7f29c7650332fea61b2f409ea4f2",
+      "author_revision": "ac9d8e60422318fe66c23b08cfd148fe9c2963ff",
+      "focused_tests": 77,
+      "exports_per_host_files": 56,
+      "independent_criteria": 7,
+      "audit": "actual claude-sonnet-5-5 REVISE then limited B1/N1-N9 closure PASS on73d446b4; root verified supplied-file bytes",
+      "native_method_use": "not_tested",
+      "full": {
+        "sha": "b576aa46222d43dcdc14b2cbe7c96dd3e58cfd26",
+        "node": "22.22.1",
+        "passed": 7144,
+        "skipped": 5,
+        "failed": 0,
+        "later_revision": "four method/document/test files targeted77, not final whole-tree full"
+      },
+      "node26_failure": "unchanged TypeScript transform mutation test; original retained, debt card_502e84bf"
+    },
+    "host_results": {
+      "materials_sha": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+      "packet_sha256": "42b903f7f3393923134a51826308a8a088ab7943b51336a9ac1aee22f6f91896",
+      "codex": {
+        "words": 345,
+        "result": "limited",
+        "native_skill": "not_attested_explicit_file_reads",
+        "execution_model": "not_attested",
+        "workspace_unchanged": true
+      },
+      "claude_initial": {
+        "user_turns": 0,
+        "result": "blocked_exact_catalog_mismatch_57_vs59",
+        "original_preserved": true
+      },
+      "claude_v2": {
+        "user_turns": 1,
+        "words": 515,
+        "word_limit": 500,
+        "result": "failed_answer_word_limit",
+        "native_skill": "osstack-mode",
+        "model": "host_reported_claude-sonnet-5-5",
+        "workspace_unchanged": true,
+        "retry": false
+      },
+      "credential_isolation": false,
+      "os_read_boundary_attested": false,
+      "workspaces_removed_after_archive": true,
+      "formal_gates_passed": false
+    },
+    "evidence": "docs/implementation/method-code-review/evidence/manifest.json",
+    "archive_sha256": "b28b3b75511ec9acc3391e7a8c442c587757617472a177c2df241075fcc4057a",
+    "next": "Fresh bounded code-review behavior protocol on pinned positive/negative source changes; no retry or relabelling of current host experiments."
   }
 }
