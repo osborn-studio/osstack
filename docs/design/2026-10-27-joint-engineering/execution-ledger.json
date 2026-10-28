@@ -2812,6 +2812,16 @@
     "ci": "new published head pending",
     "card_id": "card_25794a87",
     "delivery": "../../implementation/skills-check-verification/ci-followup/README.md",
-    "runtime_enabled": false
+    "runtime_enabled": false,
+    "network_repair": {
+      "code_sha": "f7236a159d266dd43c79729e14f19c1ac273d623",
+      "failed_run": 40663668798,
+      "attempt2_failure": "Node20.6 headers TLS body abort before SQLite compilation",
+      "tests": "14 focused passed; root independently repeated; actual official22.22.1 headers/ABI127 verified",
+      "audit": "actual claude-sonnet-5-5 PASS no blockers on exact code",
+      "full_regression": "existing ff6bfeb6 7144/5/0 historical; new published-head CI pending",
+      "root_archive_sha256": "7b6bf6e163e55cd0b97ef0cb5a08bb4bdb7217a10d1f7fe727ce4c4e0808c1eb",
+      "status": "draft_pending_ci"
+    }
   }
 }
