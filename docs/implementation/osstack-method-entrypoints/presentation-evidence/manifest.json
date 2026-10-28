@@ -1,0 +1,86 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1571,
+      "sha256": "35e32e9f2315d3be5887b677181be56e1f65cb64b943cb7a0166bd7e83136f3d"
+    },
+    {
+      "path": "byte-preservation.json",
+      "bytes": 1330,
+      "sha256": "92a649544de3169dd240f442fb5936f665bb642056de32e3b035eb78ab043ab9"
+    },
+    {
+      "path": "commands.json",
+      "bytes": 5877,
+      "sha256": "f4beb34e10745eb0a5c340de4248df3d265466579b07883da03f13b96deef889"
+    },
+    {
+      "path": "raw-logs.tar.gz",
+      "bytes": 7662,
+      "sha256": "5bd08a66db089bfbd58a051cca3c3dcbc43c1d770edb3f913e1b3eb2cac46571"
+    },
+    {
+      "path": "verify-preservation.py",
+      "bytes": 1662,
+      "sha256": "a36950e88f810c215c61b37d325b5a8e9b453381c82f98ae5920e18ae6d0df49"
+    }
+  ],
+  "raw_log_archive_members": [
+    {
+      "path": "raw-logs/document-checks.stderr",
+      "bytes": 341,
+      "sha256": "7dbdd7a645bbe7583ed9b0684d8acf9306c91e2876e9981fe70261ea06632a3d"
+    },
+    {
+      "path": "raw-logs/document-checks.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw-logs/final-hygiene.stderr",
+      "bytes": 127,
+      "sha256": "af01947b776f2d1e91833056401f4adfbd6a4d4b156a7eaed713c3a21b8dad08"
+    },
+    {
+      "path": "raw-logs/final-hygiene.stdout",
+      "bytes": 437,
+      "sha256": "a83508bd7cd25e806364098278b546a9fe574acffea7511b8329f725b3068ef9"
+    },
+    {
+      "path": "raw-logs/green.stderr",
+      "bytes": 127,
+      "sha256": "af01947b776f2d1e91833056401f4adfbd6a4d4b156a7eaed713c3a21b8dad08"
+    },
+    {
+      "path": "raw-logs/green.stdout",
+      "bytes": 437,
+      "sha256": "6ab3b29907781ba403929f78e63995612b8463caa09e08ce1207c52e0ec5a222"
+    },
+    {
+      "path": "raw-logs/install.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "raw-logs/install.stdout",
+      "bytes": 2645,
+      "sha256": "c6145c67af9ed5ded4c4e5f889898925bd70c36b008b32bc92419e88ec645fde"
+    },
+    {
+      "path": "raw-logs/original-ci-failure.log",
+      "bytes": 38853,
+      "sha256": "0086975528dbb956724f3ab8e5b6fa32cd84bfaf2f16b9d9379b0fdcb91ea111"
+    },
+    {
+      "path": "raw-logs/red.stderr",
+      "bytes": 2918,
+      "sha256": "a3f6e679b9114da4ca6610bbe66be5051d999c0784ab9122b970af9b831372a7"
+    },
+    {
+      "path": "raw-logs/red.stdout",
+      "bytes": 805,
+      "sha256": "d5ea8728255df72e8342dbc61cfbd4c510dbfdc63bbd18dda8b50e275a0052be"
+    }
+  ]
+}

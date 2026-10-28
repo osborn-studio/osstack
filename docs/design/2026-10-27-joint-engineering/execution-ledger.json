@@ -28,6 +28,61 @@
   "main_sha": "3192b424174e5eb977d640cc0418e67c6b1461d1",
   "observed_at": "2026-10-27T17:46:50.854473+00:00",
   "runtime_enabled": false,
+  "named_method_entries_update": {
+    "observed_at": "2026-10-28T09:25:23.349005+00:00",
+    "main_sha": "f92914e0a98bd3e5f82765fddc5a275a93637f30",
+    "pr290": {
+      "state": "merged",
+      "head_sha": "bf381f22b4833d781e9ec3d803d402f309e470a4",
+      "merge_sha": "f92914e0a98bd3e5f82765fddc5a275a93637f30",
+      "card_id": "card_0a3cbbe6"
+    },
+    "pr291": {
+      "state": "draft_repaired_new_ci_running",
+      "head_sha": "6df338e8a7d232e6f44f8848e06c99b3f7a9d018",
+      "code_sha": "ff6bfeb69973a7d700e4e2288a9a8e5859efb2d7",
+      "ci_run": 40663668798,
+      "original_failure_run": 40658708716,
+      "historical_ci_trigger_proven": false,
+      "correction": "wait for Git stdio close; retain deadline",
+      "validation": "full7144passed/5skipped/0failed;25driver+5real+49manifest;241docs;actualSonnet5.5PASS",
+      "old_composition_sha": "c85de1a96109c0efccdf9e1e1d5fc52a2a927e92",
+      "old_composition_scope": "Original7228 plus main only; historical, does not include watcher fix."
+    },
+    "next_slice": {
+      "card_id": "card_7ed42c18",
+      "branch": "codex/osstack-method-entrypoints",
+      "scope": "D2a four named method skills and project-local Codex/Claude exports",
+      "state": "audited_tested_candidate_publication_ci_pending",
+      "host_discovery_verified": false,
+      "runtime_enabled": false,
+      "formal_gate_pass": false,
+      "code_candidate": "8e0c06348d664999c4539a754041651fa52c143f",
+      "focused_tests": 63,
+      "audit": "ActualSonnet5.5 REVISE rounds then limited last-blocker closurePASS; all originals retained",
+      "composition_code_candidate": "6493ee56f837d60e7e038ac8344338810003ead4",
+      "composition_scope": "d327freshbuild/62exports/25skills+5real/27engineering+real/241docs; later8e0c63exports only; no combinedfull",
+      "host_use": "2actualCLI calls on4b0 explicitmaterial, simulated6cases, partialcriteria notfullacceptance; modelCodexnot_attested/ClaudeSonnet5.5",
+      "full_package_tests": {
+        "candidate": "4b0f2267b7a64519ed296eff9713e055daaf6e06",
+        "passed": 7138,
+        "skipped": 5,
+        "failed": 0,
+        "scope": "not finalwhole-tree; laterstandalone/doc repairs"
+      }
+    },
+    "evidence": "../../implementation/osstack-method-entrypoints/README.md",
+    "presentation_repair": {
+      "candidate": "c1a7f5d1a20d4538005a4543f5ac3032cc5a6f57",
+      "ci_failure_run": 40666085535,
+      "cause": "historical audit example links rendered as active Markdown",
+      "raw_audit_bytes": "unchanged, offset/hash verified",
+      "tests": "6 hygiene/reference passed on repair; root final hygiene1 passed",
+      "sonnet": "actual claude-sonnet-5-5 limited supplied-diff PASS; unsupported claim of denied inspection explicitly rejected",
+      "status": "new published-head CI required",
+      "pr291": "6df338e8 product check PASS; Node20 prerequisite header TLS abort in attempt2; independent CI repair in progress"
+    }
+  },
   "handoff": {
     "thread": "01a1693a-3d49-7b92-b1b4-5344ff4ad2e7",
     "state": "accepted",

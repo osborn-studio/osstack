@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "original_commit": "7ca741f7a1e3b58c91c47201d5b18c47cbdb0dd6",
+  "purpose": "Presentation-only audit quoting; original raw audit bytes and archived historical manifests remain unchanged. Original payload is recoverable by byte offset/length.",
+  "audits": [
+    {
+      "path": "audit-closure-original.md",
+      "original_sha256": "fcc193aa073daa7c610d12d5bcb74477096c6cfe3a0e2ba6787988219310524d",
+      "original_bytes": 5389,
+      "original_git_blob": "b3c6673687374a392e1d8f9d36644b9cb789f272",
+      "presentation_sha256": "806c62262cd2142bbfc34d924e1952a6bbb7d55d6aaae3ee70ccb3f9bb1db210",
+      "presentation_bytes": 5675,
+      "original_payload_offset_bytes": 276,
+      "fence_character": "`",
+      "fence_length": 8,
+      "payload_byte_exact_verified": true
+    },
+    {
+      "path": "audit-final-original.md",
+      "original_sha256": "879ecc235386cc592161c6da02c41ed613bf52c5c86845937bce0f8b59a3111d",
+      "original_bytes": 5678,
+      "original_git_blob": "6693a65c579d3d616f608ee208a5264ddbb40577",
+      "presentation_sha256": "16d9013c57cdf8022850799f9b7a7664e40080c39b0c5da0e4157af3cefb63c9",
+      "presentation_bytes": 5964,
+      "original_payload_offset_bytes": 276,
+      "fence_character": "`",
+      "fence_length": 8,
+      "payload_byte_exact_verified": true
+    },
+    {
+      "path": "audit-original.md",
+      "original_sha256": "e6760583f00a5f620e4c3c6e5afc1039f65c3add6a89977eebb4d561de6d4381",
+      "original_bytes": 7649,
+      "original_git_blob": "e7b79507abd61aaf09b91895a7dc0e38d63a1e44",
+      "presentation_sha256": "ed60b1867e0e55f03c1713b5dd8855863b0fc3e21466137a0e879fa7ad396a3b",
+      "presentation_bytes": 7935,
+      "original_payload_offset_bytes": 276,
+      "fence_character": "`",
+      "fence_length": 8,
+      "payload_byte_exact_verified": true
+    },
+    {
+      "path": "audit-prefix-closure-original.md",
+      "original_sha256": "dd51a94766a05283125d48b28499dcbcb9ea67a25701bca426f0180f0e535eb2",
+      "original_bytes": 3794,
+      "original_git_blob": "2086732001f1537070e20f8664f21b9b0f12c67f",
+      "presentation_sha256": "ebc12785bc232855e5b6e13a2a6dcb625f68b1d7784b714ee456611a27689ac5",
+      "presentation_bytes": 4080,
+      "original_payload_offset_bytes": 276,
+      "fence_character": "`",
+      "fence_length": 8,
+      "payload_byte_exact_verified": true
+    }
+  ]
+}
