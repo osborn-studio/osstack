@@ -1,0 +1,59 @@
+[
+  {
+    "comment_id": 502,
+    "card_id": "card_30da6fc0",
+    "author": "joint-entry",
+    "body": "Published Draft PR299 head38f13cff5c4e161835eaa5c75c3976b5a8e95046, CI40782209081 running. All5applicablechecks required beforeReady; usergilberthello merges. Final cleanhead241docs/1hygiene pass. Packagefull remains bound to848e4a2e, final88exports atadfb. No runtimequalification.",
+    "created_at": 1793227471.009
+  },
+  {
+    "comment_id": 503,
+    "card_id": "card_e90a4adb",
+    "author": "joint-entry",
+    "body": "Bounded host experiment and report complete; bothLIMITED. Originaldrafts/REVISEs/raw preserved. ActualSonnet limitedwordingclosurePASS does not change experiment grades. Ownedworkspacebytes archivedbeforecleanup.",
+    "created_at": 1793227471.01
+  },
+  {
+    "card_id": "card_e90a4adb",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "Task framing actual Codex Claude probe",
+    "body": "Base a9e480d3. Fresh final-context preparation from existing draft; two hosts one user turn each180s0retry max500words ONLY after independent freeze and root dispatch. Scratch only; no credentials/env inspection, product execution, ledger/PR changes.",
+    "status": "done",
+    "priority": 2,
+    "assignee": "terminal_preflight",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793226151.853,
+    "updated_at": 1793227471.011,
+    "started_at": 1793226151.853,
+    "completed_at": 1793227471.011
+  },
+  {
+    "comment_id": 504,
+    "card_id": "card_46471cf0",
+    "author": "joint-entry",
+    "body": "Bounded independent verification complete:final98b6/adfb11sourcepaths exact; all1151archive members SHA/bytes/mode verified, bothhostLIMITED retained. Original review miss preserved. No formalJ01/J11qualification.",
+    "created_at": 1793227471.011
+  },
+  {
+    "card_id": "card_46471cf0",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "Continuity and framing independent verification",
+    "body": "Freeze acceptance before candidate, independent actual exports and boundary scenarios; host guard/grades independent before root dispatch. Scratch only. No model calls/full regression/PR/central ledger.",
+    "status": "done",
+    "priority": 2,
+    "assignee": "cleanup_regression",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793226151.853,
+    "updated_at": 1793227471.012,
+    "started_at": 1793226151.853,
+    "completed_at": 1793227471.012
+  }
+]

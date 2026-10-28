@@ -1,0 +1,21 @@
+{
+  "command": [
+    "pnpm",
+    "--filter",
+    "@osstack/governance",
+    "exec",
+    "vitest",
+    "run",
+    "src/knowledge-hygiene/osstack-config.test.ts"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+  "head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
+  "started_at": "2026-10-28T22:43:32.704848+00:00",
+  "status_before": "",
+  "diff_before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exit_code": 0,
+  "finished_at": "2026-10-28T22:43:34.113522+00:00",
+  "status_after": "",
+  "diff_after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "log_sha256": "c86ca7c98af7d3cd7be84fb72025164ffe69093636813a4838a7582acbae39ba"
+}

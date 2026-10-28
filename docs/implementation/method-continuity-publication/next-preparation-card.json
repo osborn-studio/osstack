@@ -1,0 +1,18 @@
+{
+  "card_id": "card_00455914",
+  "board": "joint-firstmate-pstack",
+  "task_id": null,
+  "title": "D2a PR readiness method: prepared next slice",
+  "body": "Original pstack99b609a babysit/opening-a-pr/bugbot-triage read; scheduling plan and9future vectors prepared. No implementation, no model calls, no freeze. Recheck latestmain/PR299 and owners before dispatch. Scope10files method material/export contracts; no watcher/runtime/automerge. Usergilberthello merges. Protocol in docs/implementation/method-continuity-publication/next-pr-readiness.",
+  "status": "todo",
+  "priority": 0,
+  "assignee": "joint-entry",
+  "blocked_reason": null,
+  "tenant_id": null,
+  "card_type": "implementation",
+  "meta": null,
+  "created_at": 1793227545.778,
+  "updated_at": 1793227545.778,
+  "started_at": null,
+  "completed_at": null
+}

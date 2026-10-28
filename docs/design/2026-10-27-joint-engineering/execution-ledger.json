@@ -3538,7 +3538,7 @@
     "actual_main_tree_equals_published_head": true
   },
   "next_continuity_wave": {
-    "status": "verified_prepublication",
+    "status": "draft_pr_ci_running",
     "baseline": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "owners": {
       "loader_adversarial": {
@@ -3609,6 +3609,20 @@
     "final_document_tests": 241,
     "final_hygiene_tests": 1,
     "host_report_wording_closure": "PASS_limited_no_host_grade_upgrade",
-    "archive_independently_verified": true
+    "archive_independently_verified": true,
+    "pr": 299,
+    "published_head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
+    "ci_run": 40782209081,
+    "publication_evidence": "docs/implementation/method-continuity-publication",
+    "user_approval_required": true
+  },
+  "next_pr_readiness_preflight": {
+    "status": "scheduling_input_only",
+    "card": "card_00455914",
+    "protocol_sha256": "f7fe30caa27ec4ae29f242b656dc0c0bcca6a2e17d6c769a222c1f13979de99b",
+    "path": "docs/implementation/method-continuity-publication/next-pr-readiness",
+    "implementation_started": false,
+    "model_calls": 0,
+    "requires_fresh_dispatch_and_freeze": true
   }
 }
