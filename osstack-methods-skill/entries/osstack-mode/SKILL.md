@@ -1,6 +1,6 @@
 ---
 name: osstack-mode
-description: Route an OSStack engineering task into caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, bug fixing, investigation, or creation and maintenance of verification instructions. Use when a task needs this shared method, rather than help choosing it or configuring model roles.
+description: Route an OSStack engineering task into session continuity, caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, bug fixing, investigation, or creation and maintenance of verification instructions. Use when a task needs this shared method, rather than help choosing it or configuring model roles.
 ---
 
 # OSStack mode
@@ -9,6 +9,7 @@ Identify the requested outcome and existing authorization, then choose the match
 
 | Requested result | Method |
 | --- | --- |
+| Recall, resume, hand off or explicitly pause existing work | [Session continuity](../../references/session-continuity.md): reconcile current state and ownership, preserve unknown actions and prior authority |
 | Choose types, interfaces or ownership before coding | [Architecture design](../../references/architecture-design.md): ground real callers, compare structures and specify lifecycle checks |
 | Restate the goal or improve a task prompt | [Task framing](../../references/task-framing.md): preserve intent and constraints, name original inputs and concrete checks, then return the requested framing |
 | Assess a performance number or compare latency/throughput | [Performance measurement](../../references/performance-measurement.md): verify equivalent work, timing boundaries, noise and end-to-end relevance |
@@ -29,7 +30,7 @@ A review-only request does not authorize product fixes. If the user requests rev
 
 For a mixed task, retain the original outcome and sequence the relevant methods. Diagnosis inside an authorized bug fix does not require a fresh permission exchange. A request for explanation alone does not authorize a fix. State meaningful blockers and continue work that does not depend on them.
 
-Other engineering work can use the host's normal available tools and appropriate skills. Do not relabel it as an implemented OSStack playbook or imply that the upstream skill catalog has been ported. No bundled formal-verification, autonomous-shipping or model-panel workflow is provided by these eleven methods.
+Other engineering work can use the host's normal available tools and appropriate skills. Do not relabel it as an implemented OSStack playbook or imply that the upstream skill catalog has been ported. No bundled formal-verification, autonomous-shipping or model-panel workflow is provided by these twelve methods.
 
 When authorized delegation helps, give each delegate its outcome, evidence pointers and exclusive write boundary; [osstack-agent](../osstack-agent/SKILL.md) supplies the method wrapper. The coordinator retains integration ownership. Use actual host delegation tools, not an invented native agent type.
 

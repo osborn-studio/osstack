@@ -8,7 +8,7 @@ Keep all four entry directories together. In a Codex bundle the mode entry is `.
 
 > Read `<actual-skill-directory>/SKILL.md` and its selected method and evidence references. Apply them to `<requested task>` within the existing authorization. Report the material paths used, actual observations and unresolved limits.
 
-References in a bundle live under each entry's `references/`. `feature`, `refactoring`, `create-verification`, `maintain-verification`, `bug-fix`, and `investigation` are reference methods selected by `osstack-mode`, not additional exported entry names. Use `osstack-help` for routing questions, `setup-osstack` for scoped model and budget preferences, or `osstack-agent` for an already delegated task.
+References in a bundle live under each entry's `references/`. `session-continuity`, `feature`, `refactoring`, `create-verification`, `maintain-verification`, `bug-fix`, and `investigation` are reference methods selected by `osstack-mode`, not additional exported entry names. Use `osstack-help` for routing questions, `setup-osstack` for scoped model and budget preferences, or `osstack-agent` for an already delegated task.
 
 If the host catalog actually lists these skills, use its supported selection mechanism. Otherwise explicit file reading remains possible. Do not claim a slash command exists merely because a folder was generated. Host trust, version and settings can affect discovery; no global installation or configuration edit is needed for explicit reading.
 
@@ -23,3 +23,5 @@ Exported materials contain instructions, not the OSStack product or its verifica
 A host run establishes only the material bytes, task, host/version and observed actions in that run. It does not establish cross-provider equivalence, independent identity, automatic recovery or future task qualification.
 
 [The historical two-host experiments](https://github.com/osborn-studio/osstack/blob/bf381f22b4833d781e9ec3d803d402f309e470a4/docs/implementation/joint-host-effects/README.md) preserve their commands and raw outputs. Both read pre-change material at `10629495aafe7b3aca0de4c920bcaec40b083d7b`; neither tested the template above or native discovery. Those results show explicit reading and reports about historical observations, not product driving or a measured causal improvement. Follow [the evidence rules](evidence.md) and retain that distinction in new runs.
+
+Session continuity is shared guidance for recall, continuation, handoff and requested pause. It does not install history connectors, a background supervisor or a process fence. Historical host experiments above do not validate this later method; actual state/owner observations and unconfirmed cleanup must be recorded in each new task.
