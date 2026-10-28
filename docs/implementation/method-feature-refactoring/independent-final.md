@@ -1,0 +1,9 @@
+# Independent bounded material revision check
+
+Candidate `f5e8d234a604ba39d78dfed21ae072d6ef2e3cca`, against original frozen criteria `4017c621…`: no confirmed substantive gap in the reviewed delta.
+
+Read the Git-object delta against `10281aba` directly. Feature now identifies the existing promise, records preserved behavior and consumers before the change, and routes prerequisite structure changes through a behavior pin. Refactoring names dynamic/generated/external references and temporary compatibility ownership/removal conditions. Delegated-agent instructions explicitly preserve the assigned boundary and prohibit method guidance from expanding worker-spawn authority. Both methods preserve user-reserved approval/merge. EXPORT clearly limits earlier host observations to old four-method bytes at ca95aba1.
+
+Executed both real export CLI invocations from an exact Git snapshot in owned scratch (no root worktree edits): each host produced 48 files, all hashes/lengths matched, 116 local link edges existed, and all four entries could reach both methods through the bundle. This is graph reachability, not a claim that every entry directly links or that a model chose the method. Deleted-reference falsifiers in both scratch exports were detected and bytes restored. Six focused existing tests passed, including exact named-router destinations. Six prior method/evidence/template files and exporter production remain byte-identical to baseline.
+
+The first local harness invocation failed before exports because two git-show operations still used the intentionally non-Git snapshot cwd. The saved original harness and correction record retain this harness error; corrected invocation succeeded. No product failure or native model behavior is inferred. No full suite, model call, runtime qualification or independent-principal gate was performed.

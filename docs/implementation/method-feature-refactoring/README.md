@@ -27,3 +27,12 @@ These are packaging, link-reachability and structural checks. They do not prove 
 ## Revision evidence
 
 The initial 67 tests and 48-file host manifests above are bound to author candidate `10281aba06fb845188917ec32dd41488844d50c2`; they are not relabelled as tests of later audit fixes. The original source map is retained at `evidence/initial-source-map.json`; the current map records revised method bytes. Root separately records the actual Sonnet findings, confirmed fixes and new candidate checks. Bundle reachability can traverse the mode entry; it does not promise that every copied reference is directly linked from its own entry.
+
+
+## Reviewed candidate and actual checks
+
+Candidate `f5e8d234a604ba39d78dfed21ae072d6ef2e3cca` passed 68 export tests, independent dual-host export/graph checks, and the actual Sonnet 5.5 [limited closure](sonnet-closure.md) after the retained [first REVISE](sonnet-first.md). Confirmed changes clarify old-host-observation byte bindings, exact router links, missing-reference discrimination, baseline/compatibility obligations and delegate scope. [Original records and member hashes](review-manifest.json) accompany [the archive](review-verification.tar.gz). Full model prompts remain locally retained and hash-bound in the raw audit bindings; the archive does not reproduce their upstream source excerpts.
+
+The fresh candidate package regression passed **7144 / 5 skipped / 0 failed**, exit 0; see [exact command binding](root-checks.json) and [package totals](full-summary.json). The original failed run at `c09912d8` and the failed ordinary-rebuild reproduction remain in the archive. Restoring tracked knowledge dist while retaining incremental build metadata left stale exports; ordinary `pnpm build` did not re-emit them. `tsc -b --force` restored the export without a product source edit, the same 30-test reproduction passed, and then the full suite passed. This is a verification setup correction, not a product fix or a reason to erase failure. [Diagnosis](build-diagnosis.json) retains the observations.
+
+These tests cover package behavior and exported material structure. New feature/refactoring model task performance is not established. Earlier native help observations stay bound to their earlier materials; the separate next native verification journey has its own frozen protocol and is not claimed here. Final publication metadata and CI bind separately to the published head.

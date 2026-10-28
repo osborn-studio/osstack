@@ -1,0 +1,24 @@
+{
+  "started_at": "2026-10-28T11:51:54.898623+00:00",
+  "finished_at": "2026-10-28T11:53:50.052424+00:00",
+  "exit_code": 0,
+  "modelUsage": {
+    "claude-sonnet-5-5": {
+      "inputTokens": 2,
+      "outputTokens": 14689,
+      "cacheReadInputTokens": 1444,
+      "cacheCreationInputTokens": 18764,
+      "webSearchRequests": 0,
+      "costUSD": 0.22223880000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 11024,
+      "canonicalModel": "claude-sonnet-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "is_error": false,
+  "prompt_sha256": "21d5074c06e01cb4ddb624e61c0e59533186e9d83b0b5930475e4b48be03e10d",
+  "response_sha256": "aeb7781770f747c2d64a04f369f888520b530e9ea1ed64dd2f6be3e6092312cb"
+}

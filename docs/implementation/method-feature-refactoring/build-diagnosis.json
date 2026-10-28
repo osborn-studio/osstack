@@ -1,0 +1,25 @@
+{
+  "failed_full_head": "c09912d8d60a69ad19a8c138e8646c1698c5021c",
+  "failure_log_sha256": "df1b14b7c75dff0dfee9ea9d6d9d10dc40def8fabdf8da0f96ce9f9944dcbcd8",
+  "observed": "CLI88 failures include executionContextDigest missing function; no rebuild occurred between restoring tracked build outputs and this test run",
+  "cause_scope": "Root verification setup reused restored checked-in dist rather than freshly built artifacts. Rebuild and same failure reproduction are required; not assumed to explain every failure until verified.",
+  "git_object_exports": {
+    "packages/knowledge/src/index.ts": {
+      "sha256": "6988b87ec82069365e29145859c8cd2ca0bdd69eb152b8f647adf61751d4f9ca",
+      "executionContextDigest_present": true
+    },
+    "packages/knowledge/dist/index.js": {
+      "sha256": "caa1eaeee5d83bd67527c2ef6c9ff8314e30c31792f0fbab60a2652bd442298e",
+      "executionContextDigest_present": false
+    }
+  },
+  "rebuild_exit": 0,
+  "rebuild_repro": "9 of30 source-context failed after ordinary pnpm build; tsc composite/incremental cache retained despite restored tracked dist",
+  "next_action": "force knowledge emit using tsc -b --force, rerun exact failing source-context, then full only if passed",
+  "forced_emit": {
+    "sha256": "6287a976aa1d03d112e1dd290f043e119fafc60c0f6879e49163a6d18f4ab3d9",
+    "executionContextDigest_present": true,
+    "same_source_repro": "30 passed /0 failed after tsc -b --force",
+    "no_product_source_edit": true
+  }
+}

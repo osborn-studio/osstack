@@ -3068,6 +3068,28 @@
       "No agent approval/merge",
       "No new model calls before independent protocol freeze",
       "No duplicate full regression"
-    ]
+    ],
+    "methods_candidate": {
+      "code_sha": "f5e8d234a604ba39d78dfed21ae072d6ef2e3cca",
+      "status": "verified_pending_publication",
+      "export_tests": 68,
+      "full_tests": {
+        "passed": 7144,
+        "skipped": 5,
+        "failed": 0,
+        "exit_code": 0
+      },
+      "sonnet": "claude-sonnet-5-5 firstREVISE/c099 then limitedclosurePASS/f5e8",
+      "independent": "A-f5e8d234 dual-host actual48files/116links perhost; static guidance not modelbehavior",
+      "evidence": "docs/implementation/method-feature-refactoring/README.md"
+    },
+    "host_journey": {
+      "card": "card_c165fc78",
+      "owner": "loader_adversarial",
+      "max_calls": 4,
+      "calls_performed_at_snapshot": 0,
+      "criteria_sha256": "43089390e2d7344fe2690d297d2381a8ca3bfa381a50d79596503567e005829b",
+      "scope": "native mode selection then coordinator real driver and model receipt interpretation; not autonomous host command execution"
+    }
   }
 }
