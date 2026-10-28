@@ -3373,7 +3373,7 @@
     "evidence": "docs/implementation/method-review-behavior/README.md"
   },
   "next_impact_performance_wave": {
-    "status": "published_draft_ci_pending",
+    "status": "ready_awaiting_user_merge",
     "baseline": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
     "owners": {
       "loader_adversarial": {
@@ -3423,7 +3423,13 @@
     "pr": 297,
     "published_head": "0862bc382a61126124bdeff717aff95b051a7d5b",
     "ci_run": 40718517835,
-    "is_draft": true,
-    "workers": "all three handed off; authors cleaned worktrees; full queue empty"
+    "is_draft": false,
+    "workers": "all three handed off; authors cleaned worktrees; full queue empty",
+    "ci_status": "success",
+    "current_head_ci_full": {
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0
+    }
   }
 }
