@@ -2921,5 +2921,44 @@
     },
     "qualification": "no J01/J11/runtime promotion",
     "next_preflight": "native discovery proposal archived, no model calls/execution"
+  },
+  "post_291_292_native_discovery": {
+    "base_main": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+    "main_tree": "9efad98d9560076ec33611ae75841c7ac85e0fc2",
+    "equal_verified_composition": "d31dc0b60c91883590f1f63ce69c1acb238679f3",
+    "merges": {
+      "291": {
+        "commit": "9debb0f91c4dcd0e842305475aaf36f59690475d",
+        "at": "2026-10-28T10:43:27Z"
+      },
+      "292": {
+        "commit": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+        "at": "2026-10-28T10:43:58Z"
+      }
+    },
+    "prior_evidence_rule": "tree equivalence is not a newly executed full suite; original SHA bindings retained",
+    "card": "card_6198adaf",
+    "scope": "D2a native catalog and osstack-help selection/read, package-present/absent controls perhost; no implicit-routing or all-entry execution claim",
+    "owners": {
+      "root": "ledger/PR/candidate/audit",
+      "loader_adversarial": "isolated harness/auth/catalog/model calls in scratch",
+      "cleanup_regression": "pre-frozen independent criteria and scoring",
+      "terminal_preflight": "read-only acceptance and source claim review"
+    },
+    "max_model_invocations": 4,
+    "automatic_model_retries": 0,
+    "status": "preflight_in_progress",
+    "gates": [
+      "isolated existing authentication",
+      "current app-server schema",
+      "real native skill catalog",
+      "criteria frozen before responses"
+    ],
+    "limits": [
+      "no default-home mutation",
+      "no Grok setup",
+      "no J01/J11/runtime promotion",
+      "no product verification execution in this experiment"
+    ]
   }
 }
