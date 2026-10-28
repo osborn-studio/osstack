@@ -25,3 +25,7 @@ This verifies local file-backed Git sources with isolated configuration. It does
 When CLI output, source semantics or supported runtime changes, the maintainer should rerun the affected fixed cases, compare original raw failures, update the explicit expectation only when intended product semantics changed, and re-audit the driver. No scheduled execution is enabled by this file.
 
 See [the bounded specification](spec.md) for the interface and evidence contract. Original failure, actual model audit and validation records are retained with exact candidate bindings. See [validation](validation.md).
+
+## CI follow-up
+
+The first published-head CI found a real mixed-case mismatch. [Follow-up](ci-followup/README.md) preserves the failure, confirmed output-drain defect, correction, new-main checks and actual Sonnet audit. Earlier evidence above remains bound to its original candidate.

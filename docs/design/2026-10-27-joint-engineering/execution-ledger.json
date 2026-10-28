@@ -2777,5 +2777,41 @@
         "state": "implementation running; author and independent/host-use scopes separate"
       }
     }
+  },
+  "verification_driver_ci_followup": {
+    "observed_at": "2026-10-28T09:20:06.547323+00:00",
+    "main_sha": "f92914e0a98bd3e5f82765fddc5a275a93637f30",
+    "pr": 291,
+    "original_published_head": "7228af775ea13f2c0d8ebb2790c669dc07cfb89c",
+    "original_ci_run": 40658708716,
+    "original_ci_result": "failed_actual_mixed_case",
+    "historical_trigger_proven": false,
+    "product_correction": "bcc4c732a99e5bf36d7aa3210b06784cc9c81765",
+    "candidate_sha": "ff6bfeb69973a7d700e4e2288a9a8e5859efb2d7",
+    "state": "audited_and_revalidated_waiting_published_head_ci",
+    "audit": "actual claude-sonnet-5-5 PASS; no blockers",
+    "merged_candidate_verification": {
+      "script_tests": 25,
+      "actual_cases": 5,
+      "manifest_records_verified": 49,
+      "fixture_removed": true
+    },
+    "full_tests": {
+      "candidate_sha": "ff6bfeb69973a7d700e4e2288a9a8e5859efb2d7",
+      "command": "pnpm test",
+      "exit_code": 0,
+      "counts": {
+        "passed": 7144,
+        "failed": 0,
+        "skipped": 5
+      },
+      "package_reports": 32,
+      "log_sha256": "15049b1e741e57f90078d7748110e2725b799640af160a5ad408a24cd5935d9f",
+      "source_scope": "No product changes during this run; only follow-up documentation added."
+    },
+    "ci": "new published head pending",
+    "card_id": "card_25794a87",
+    "delivery": "../../implementation/skills-check-verification/ci-followup/README.md",
+    "runtime_enabled": false
   }
 }
