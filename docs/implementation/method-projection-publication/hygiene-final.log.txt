@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-projection-delivery/packages/governance
+
+ ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 272ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  06:34:57
+   Duration  649ms (transform 97ms, setup 20ms, collect 130ms, tests 272ms, environment 0ms, prepare 46ms)
+

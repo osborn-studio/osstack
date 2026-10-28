@@ -193,3 +193,5 @@ PR294 `5929180d` subsequently completed run40688548373 with all five applicable 
 
 
 PR293 and PR294 were verified merged at `38eb42c0` and `42dbdb0a`. Actual main tree `64168acca` equals the prior exact published-head composition `a072c817`; no historical test is relabelled a new main run. The next two isolated D2a slices are closed model evidence projection and exported method journey references. Root owns the central ledger, actual Sonnet review and PR publication; independent mutation checks retain their prefreeze. No new host experiment or runtime gate is implied.
+
+PR295 publishes both slices at `d63dbdce` as Draft. Run40698994343 is in progress; no Ready claim until latest-head applicable CI passes. Original Sonnet REVISE reports and limited closure PASS, 33 original plus 24 post-audit independent calls, final 49/74 focused checks, 241 document checks and 1 hygiene check are retained. Full 7144/5/0 remains bound to c04f7ed2.

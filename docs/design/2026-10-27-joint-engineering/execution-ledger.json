@@ -3043,7 +3043,7 @@
   "next_method_development_wave": {
     "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
     "authorization": "user explicitly requested OSStack parallel subagent implementation",
-    "status": "293_294_merged_next_projection_and_references_running",
+    "status": "293_294_merged_295_draft_ci_running",
     "owners": {
       "loader_adversarial": {
         "card": "card_766d64bc",
@@ -3105,7 +3105,7 @@
       "cleanup_sha256": "11e03a69ae68145a53628a3b279a0b00bc254f81bf0fd10dc63d1f29da15c067",
       "workspaces_cleaned": true
     },
-    "snapshot_at": "2026-10-28T13:34:49.043689+00:00",
+    "snapshot_at": "2026-10-28T13:43:44.989363+00:00",
     "journey_candidate": {
       "pr": 294,
       "published_head": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
@@ -3150,7 +3150,7 @@
       "independent_card": "card_c49a2a2c",
       "branch": "codex/method-evidence-projection",
       "base": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
-      "status": "verified_pending_draft_publication",
+      "status": "published_draft_ci_running",
       "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation",
       "criteria_sha256": "dea3d5b26124a97cf0dfba60cbe852a4fd167293231472b24790498354c3361e",
       "independent_vectors": 15,
@@ -3172,7 +3172,7 @@
       "card": "card_0596e0e4",
       "branch": "codex/method-journey-reference",
       "base": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
-      "status": "verified_pending_joint_publication",
+      "status": "published_draft_ci_running",
       "scope": "exported fixed journey reference, 3existingreferences and export tests, own docs only",
       "author_sha": "c29a3aa2c1c179255dabb0a7fca3f1fea817e0e7",
       "focused_tests": 74,
@@ -3189,8 +3189,15 @@
         "failed": 0
       },
       "final_tests": "49projection and74exports, real existing journey projected and checked; source unchanged; full oldSHA not relabelled",
-      "new_pr": "not_yet_created",
-      "formal_gates_passed": false
+      "new_pr": 295,
+      "formal_gates_passed": false,
+      "published_head": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+      "ci_run": 40698994343,
+      "ci_status": "in_progress",
+      "is_draft": true,
+      "archive_sha256": "29d6a9ccfd0a81f850bd781324a21166aefb1ba4ac8904818b99441361cc86e2",
+      "final_document_tests": 241,
+      "final_hygiene_tests": 1
     }
   }
 }
