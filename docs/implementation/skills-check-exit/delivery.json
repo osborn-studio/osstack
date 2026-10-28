@@ -29,5 +29,22 @@
   "ci_rule": "Only latest published head passing applicable checks can become Ready; GitHub and OSStack carry live status",
   "approval_owner": "gilberthello",
   "first_batch_relation": "independent of PR288; no overlapping code or ledger writes",
-  "evidence": "evidence.tar.gz and evidence-manifest.json"
+  "evidence": "evidence.tar.gz and evidence-manifest.json",
+  "ci_followup": {
+    "candidate_sha": "4dddf67ab6e293161aab8f59b57392d1c693a298",
+    "original_failed_head": "a567bd9f1e7c196fbe2dea1661f6da450c42b68c",
+    "original_failed_run": 40645757136,
+    "scope": "test setup/recovery budget separation; production unchanged",
+    "full_tests": {
+      "passed": 7138,
+      "skipped": 5,
+      "failed": 0,
+      "exit_code": 0
+    },
+    "focused_tests": 37,
+    "typecheck": "passed",
+    "sonnet": "actual claude-sonnet-5-5 candidate A PASS",
+    "evidence": "ci-followup/README.md",
+    "ci_root_cause": "not established; new head CI required before Ready"
+  }
 }

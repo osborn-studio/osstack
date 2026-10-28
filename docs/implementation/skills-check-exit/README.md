@@ -21,3 +21,8 @@
 实际 Sonnet 5.5 对代码与测试给出 PASS；审计未执行命令，因此真实运行由独立保存的 argv/cwd/stdout/stderr/退出码/输入摘要提供。已检查CLI dispatcher直接传播返回码，未发现仓内按旧汇总全文解析的调用者；外部脚本应区分退出1与2。watcher 的 exit/close 尾部输出问题是既有非阻塞后续项，本PR不修改watcher。
 
 这次修复不安装技能、不改变授权、数据库或J门槛。OSStack卡片 `card_02dd7ae1`；用户 gilberthello 审批合并。
+
+
+## CI follow-up
+
+The published head encountered two inherited native-upgrade test timeouts. [The follow-up](ci-followup/README.md) preserves the failure and separates real upgrade preparation from cleanup verification without removing assertions or changing production code. Candidate `4dddf67a` passed 37 focused and 7,138 workspace tests (5 skipped), CLI TypeScript and actual Sonnet 5.5 audit. Fresh published-head CI remains required.
