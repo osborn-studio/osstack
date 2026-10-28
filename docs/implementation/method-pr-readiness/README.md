@@ -41,3 +41,11 @@ Node `22.22.1`, with `OSSTACK_SCRATCH_ROOT` explicitly set:
 The task-owned `method-pr-readiness-20261029/author` evidence records exact commands/exits, original RED/GREEN outputs, source/license hashes, export receipts/manifests and candidate file bindings. A compact archive is handed to root; duplicate export trees remain in scratch. Root owns actual Sonnet review, independent checks, full-suite scheduling and publication.
 
 No live PR/forge mutation, model invocation, default control-plane home, actual blocker correction or runtime gate was exercised in this material slice. The proposed future host-use experiment is not an executed acceptance test. Earlier host experiments do not qualify this new method.
+
+## Audit revision
+
+The actual Sonnet review of author `04840eda89650f3c41c9605c9b9648bfc482182f` requested three corrections. The revised method re-reads approval/change requests, unresolved threads and mergeability after an authorized push. CI records the evaluated base or merge commit where exposed, keeps unavailable bindings unknown, and checks applicable policy when the base moves. Final readiness is dated to freshly observed head/base; it is not a timeless claim.
+
+Risk-sensitive dismissals now require concrete disproof against current code, including the affected principal and guard-before-effect ordering for a claimed later fix. Missing proof remains unresolved rather than silently dismissed. This does not import the upstream blanket ask policy or delay fixes already authorized. The revision also clarifies status-only execution limits, publication/rerun scope, comment-as-data handling and follow-up work after a merged owner.
+
+The revision separately reran all 91 exporter tests and two fresh exports of 80 files each. Every member size/hash and the unchanged canonical source inventory were checked again. Original candidate results and the raw REVISE report remain preserved with item-by-item dispositions; these changes were not retroactively applied to the original evidence. Root owns final audit closure and any later host experiment.
