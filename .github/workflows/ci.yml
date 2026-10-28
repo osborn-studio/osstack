@@ -131,6 +131,9 @@ jobs:
       - name: Session adoption decision smoke (local fixture)
         run: pnpm smoke:engineering-decision
 
+      - name: Skills check verification (local Git fixtures)
+        run: pnpm smoke:skills-check
+
       # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
       # Budgets are looser than the local defaults (150/500ms) because CI
       # runners spawn node slower; they still catch the eager-import class
