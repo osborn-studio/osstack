@@ -4,7 +4,7 @@ Use when the task asks what a change could break outside its diff, which consume
 
 ## Find the important safety assumption
 
-Record the intended change, comparison base and candidate commit, affected symbols and observable behavior. Include changed defaults, deleted paths and side effects that the diff does not spell out. If relevant work is uncommitted, retain its patch or file hashes separately. Resolve unclear intent from the task, PR, commits and code; state remaining assumptions. Do not silently analyze a different base or discard someone else's work.
+Record the intended change, comparison base and candidate commit, affected symbols and observable behavior. Include changed defaults, deleted paths and side effects that the diff does not spell out. If relevant work is uncommitted, retain its patch or file hashes separately. Resolve unclear intent from the task, PR, commits and code; state remaining assumptions. Do not silently analyze a different base or discard someone else's work. If the candidate or task scope changes, retain the old map and results, pin the new boundary, and recheck the affected assumptions, consumers and probes before applying the old conclusion.
 
 Name the one or two facts that remove the largest plausible risks if true. Make each fact falsifiable. For example, “eviction touches only expired entries” is a predicate to check, whereas “the cache change is small” is not. If several independent boundaries matter, name them instead of inventing one universal safety claim. Look for a counterexample before treating the claim as established.
 
