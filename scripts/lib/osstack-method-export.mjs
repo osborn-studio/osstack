@@ -89,20 +89,21 @@ async function collectSources(sourceRoot) {
 // A deliberately small Markdown subset: single-line, unnested labels; simple
 // destinations; no titles or HTML navigation. Unsupported navigation fails closed.
 // Code masking and delimiter scans are linear in the bounded source size.
-function maskCode(text) {
+function maskCode(text, sourcePath) {
   let fence = null;
   return text.split('\n').map(line => {
-    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line.endsWith('\r') ? line.slice(0, -1) : line);
     if (fence) {
       if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
       return ' '.repeat(line.length);
     }
-    if (marker) { fence = { char: marker[1][0], length: marker[1].length }; return ' '.repeat(line.length); }
+    if (marker && (marker[1][0] !== '`' || !marker[2].includes('`'))) { fence = { char: marker[1][0], length: marker[1].length }; return ' '.repeat(line.length); }
     const runs = [];
     for (let i = 0; i < line.length;) {
       if (line[i] !== '`') { i++; continue; }
       const start = i; while (line[i] === '`') i++;
-      runs.push({ start, end: i, next: null });
+      let slashes = 0; for (let j = start - 1; j >= 0 && line[j] === '\\'; j--) slashes++;
+      runs.push({ start, end: i, next: null, escaped: slashes % 2 === 1 });
     }
     const next = new Map();
     for (let i = runs.length - 1; i >= 0; i--) {
@@ -112,14 +113,20 @@ function maskCode(text) {
     // Use code-unit offsets, including when a label contains non-BMP Unicode.
     const masked = line.split('');
     for (let i = 0; i < runs.length; i++) {
-      const run = runs[i]; if (run.next === null) continue;
+      const run = runs[i];
+      // Escapes apply to an opener, not a closing delimiter already inside code.
+      if (run.escaped) {
+        if (run.end - run.start > 1) throw Error(`link_unsupported: escaped backtick run in ${sourcePath}`);
+        continue;
+      }
+      if (run.next === null) continue;
       const close = runs[run.next]; masked.fill(' ', run.start, close.end); i = run.next;
     }
     return masked.join('');
   }).join('\n');
 }
 function destinations(text, sourcePath) {
-  const spans = []; const prose = maskCode(text); const labels = [];
+  const spans = []; const prose = maskCode(text, sourcePath); const labels = [];
   const unsupported = () => { throw Error(`link_unsupported: ${sourcePath}`); };
   function targetAt(start, inline) {
     let i = start;
@@ -149,6 +156,7 @@ function destinations(text, sourcePath) {
       } else if (prose[i + 1] === ':' && label) {
         if (label.start < lineStart) unsupported();
         const prefix = prose.slice(lineStart, label.start);
+        if (!/^ {0,3}$/.test(prefix) && /^[ \t>+*\-\d.)]+$/.test(prefix)) unsupported();
         if (/^ {0,3}$/.test(prefix)) {
           if (label.nested || prose[label.start + 1] === '^' || prose.slice(label.start, i).includes('\n')) unsupported();
           i = targetAt(i + 2, false);
@@ -159,7 +167,14 @@ function destinations(text, sourcePath) {
   // Scan angle regions separately: unmatched '<' must not hide later Markdown.
   for (let i = 0; i < prose.length;) {
     const begin = prose.indexOf('<', i); if (begin === -1) break;
-    const end = prose.indexOf('>', begin + 1); if (end === -1) break;
+    let end = begin + 1; let quote = null;
+    // Attribute quotes may contain '>'; consume each angle region only once.
+    for (; end < prose.length; end++) {
+      const char = prose[end];
+      if (quote) { if (char === quote) quote = null; }
+      else if (char === '"' || char === "'") quote = char;
+      else if (char === '>') break;
+    }
     const angle = prose.slice(begin + 1, end);
     if (/\b(?:href|src|srcset)\s*=/i.test(angle)) unsupported();
     if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(angle) && !/^(?:https?:\/\/|mailto:)/i.test(angle)) unsupported();
@@ -181,8 +196,12 @@ function transform(sourcePath, bytes, sources) {
     const local = localTarget(sourcePath, span.target);
     if (local !== null && !sources.has(local)) throw Error(`link_missing_or_escape: ${sourcePath} -> ${span.target}`);
   }
-  if (sourcePath.startsWith('entries/')) for (const span of [...spans].reverse()) {
-    if (span.target.startsWith('../../references/')) text = text.slice(0, span.start) + span.target.slice(6) + text.slice(span.end);
+  if (sourcePath.startsWith('entries/')) {
+    const pieces = []; let cursor = 0;
+    for (const span of spans) if (span.target.startsWith('../../references/')) {
+      pieces.push(text.slice(cursor, span.start), span.target.slice(6)); cursor = span.end;
+    }
+    if (pieces.length) { pieces.push(text.slice(cursor)); text = pieces.join(''); }
   }
   return Buffer.from(text);
 }

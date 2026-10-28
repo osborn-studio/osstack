@@ -271,3 +271,65 @@ for (const content of ['[long\nlabel]: ../../outside.md', '<file:///etc/passwd>'
     await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_unsupported/); assert.equal(existsSync(f.output), false);
   });
 }
+
+for (const [label, content] of [
+  ['inline-like fence info', '```npm i``` is the command\n[x](../../references/missing.md)\n'],
+  ['LF opener CRLF closer', '```md\nexample\n```\r\n[x](../../references/missing.md)\n'],
+  ['escaped inline backticks', '\\` [x](../../references/missing.md) \\`\n'],
+]) {
+  test(`code masking cannot hide real navigation: ${label}`, async t => {
+    const f = await fixture(t); await writeFile(join(f.sourceRoot, 'entries/osstack-mode/SKILL.md'), content);
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_/); assert.equal(existsSync(f.output), false);
+  });
+}
+
+test('all-CRLF fenced examples are code and retain bytes', async t => {
+  const f = await fixture(t); const content = '```md\r\n[x](../../outside.md)\r\n```\r\n';
+  await writeFile(join(f.sourceRoot, 'references/detail.md'), content);
+  await exportMethods({ ...f, host: 'codex' });
+  assert.equal(await readFile(join(f.output, '.agents/skills/osstack-mode/references/detail.md'), 'utf8'), content);
+});
+
+for (const prefix of ['- ', '> ', '  1. ', '> - ']) {
+  test(`container-prefixed reference definition fails closed: ${JSON.stringify(prefix)}`, async t => {
+    const f = await fixture(t); await writeFile(join(f.sourceRoot, 'references/detail.md'), `${prefix}[x]: ../../outside.md\n`);
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_unsupported/); assert.equal(existsSync(f.output), false);
+  });
+}
+
+for (const [label, content] of [
+  ['dense-entry-links', '[a](../../references/evidence.md)\n'.repeat(30000)],
+  ['prefixed-mixed-inline-backticks', 'prefix ' + ('`x``y```z````q ').repeat(12000)],
+]) {
+  test(`bounded subprocess export scanning and rewriting: ${label}`, async t => {
+    const f = await fixture(t);
+    for (const name of label === 'dense-entry-links' ? names : ['osstack-mode']) await writeFile(join(f.sourceRoot, 'entries', name, 'SKILL.md'), content);
+    const helper = new URL('./lib/osstack-method-export.mjs', import.meta.url).href;
+    const source = `import { exportMethods } from ${JSON.stringify(helper)}; console.log(JSON.stringify(await exportMethods(${JSON.stringify({ ...f, host: 'codex', dryRun: true })})));`;
+    const start = performance.now();
+    try {
+      const result = await run(process.execPath, ['--input-type=module', '-e', source], { timeout: 4000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 });
+      assert.equal(JSON.parse(result.stdout).status, 'planned'); assert.equal(existsSync(f.output), false);
+    } finally { t.diagnostic(`${label} child wall milliseconds: ${performance.now() - start}`); }
+  });
+}
+
+test('document-named source router, four entries and four method references actually exist', async () => {
+  const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['bug-fix', 'investigation', 'create-verification', 'maintain-verification'].map(name => `references/${name}.md`)]) {
+    assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
+    assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
+  }
+});
+
+test('quoted angle in an HTML attribute cannot hide navigation', async t => {
+  const f = await fixture(t); await writeFile(join(f.sourceRoot, 'references/detail.md'), '<a title="a>b" href="../../outside.md">x</a>');
+  await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_unsupported/); assert.equal(existsSync(f.output), false);
+});
+
+test('angle Markdown destinations and HTTP autolinks remain usable without enabling HTML', async t => {
+  const f = await fixture(t); await writeFile(join(f.sourceRoot, 'entries/osstack-mode/SKILL.md'), '[p](<../../references/evidence.md>)\n<https://example.invalid/path?a=b>\n<mailto:test@example.invalid>\n');
+  await exportMethods({ ...f, host: 'codex' });
+  const actual = await readFile(join(f.output, '.agents/skills/osstack-mode/SKILL.md'), 'utf8');
+  assert.ok(actual.includes('[p](<references/evidence.md>)')); assert.ok(actual.includes('<https://example.invalid/path?a=b>'));
+});
