@@ -1,0 +1,37 @@
+{
+  "full_candidate": "17c5c827211ff8334f66e8393667685e728e7aad",
+  "full_counts": {
+    "passed": 7144,
+    "skipped": 5,
+    "failed": 0
+  },
+  "full_exit_code": 0,
+  "final_candidate": "66ad1daa229101e4501392bbe1d6b4d86b7ca16b",
+  "final_checks": [
+    {
+      "head": "66ad1daa229101e4501392bbe1d6b4d86b7ca16b",
+      "name": "final-focused",
+      "argv": [
+        "pnpm",
+        "test:method-journey"
+      ],
+      "started_at": "2026-10-28T12:27:04.287491+00:00",
+      "exit_code": 0,
+      "sha256": "e1855d2f7fe3a0c46dc8087c2b7b50ba8cb2c846ba0cad690746c1190dfac756"
+    },
+    {
+      "head": "66ad1daa229101e4501392bbe1d6b4d86b7ca16b",
+      "name": "final-actual",
+      "argv": [
+        "pnpm",
+        "smoke:method-journey",
+        "--output",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-next-wave-20261028/final-root-journey"
+      ],
+      "started_at": "2026-10-28T12:27:05.371647+00:00",
+      "exit_code": 0,
+      "sha256": "8c3c566d9bf6fa6f82ce652f9d546b0cec8f56a77c40c21adcc13ddc678e194a"
+    }
+  ],
+  "final_whole_tree_full": "not_run; final standalone scripts differ; published-head CI pending"
+}
