@@ -314,9 +314,9 @@ for (const [label, content] of [
   });
 }
 
-test('document-named source router, four entries and six method references actually exist', async () => {
+test('document-named source router, four entries and seven method references actually exist', async () => {
   const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
-  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification'].map(name => `references/${name}.md`)]) {
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review'].map(name => `references/${name}.md`)]) {
     assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
     assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
   }

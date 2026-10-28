@@ -17,6 +17,8 @@ The code-review method also draws on these fixed sources:
 - [Code-quality lens](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/interrogate/references/code-quality-review.md): concrete structural costs and simplification using the existing architecture.
 - [Behavior-test principle](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-test-behavior-not-implementation/SKILL.md): detect broken observable behavior while tolerating equivalent internal changes.
 
+The pinned [opening-a-PR playbook](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/opening-a-pr.md) was inspected for context. Its reset, publication and automatic readiness rules are not imported into the review method.
+
 The four named entry adaptations also consulted these pinned upstream entrypoints:
 
 - [Mode router](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/SKILL.md).
