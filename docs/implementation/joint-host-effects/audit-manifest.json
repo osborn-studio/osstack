@@ -1,0 +1,81 @@
+{
+  "archive_sha256": "88e725cc014445c2409d6df98275f49f7d4807fd3fb5100c4ac13d8a69579eaa",
+  "files": [
+    {
+      "path": "audit/audit-input.txt",
+      "sha256": "c915fa67d973b8085eb68e0ffb5f934b6467f8bc9b5de4739e43e6d50cb15ef6"
+    },
+    {
+      "path": "audit/binding.json",
+      "sha256": "b47ae2720ee7ee7824067c59f5abde648b9cc3c194ba3c0150002bcc76d7098b"
+    },
+    {
+      "path": "audit/console.txt",
+      "sha256": "3c59823e6c98b60d25dbec31dda7d06788d1927c423b89d2a1b24fdf8c4a6507"
+    },
+    {
+      "path": "audit/empty-mcp.json",
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    {
+      "path": "audit/input-binding.json",
+      "sha256": "5cd06be7a8844208e56f4f567d908ceccc74c5a2dc2893a26923cbdfa1bfcf7e"
+    },
+    {
+      "path": "audit/report.md",
+      "sha256": "9bb7ae7a1605518b5d1c1fd19c640ab5eaa0c805dfa6acdd2168b9fcea20c3cf"
+    },
+    {
+      "path": "audit/response.json",
+      "sha256": "7fa97bc503229fdcd0a2b106ccfdbbba81beb47298a4a061994f689d92f8aabb"
+    },
+    {
+      "path": "audit/run.py",
+      "sha256": "eeef65e792fa0fcab966d4f6cf0fa8a7a0a7e39e1b6324c770ba2fa0ea1cf40d"
+    },
+    {
+      "path": "audit/settings.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "audit/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "audit-closure/audit-input.txt",
+      "sha256": "f2f985e1ba3ad824f89e1befff36d9962186dbb152f5f3e279004c954e1051de"
+    },
+    {
+      "path": "audit-closure/binding.json",
+      "sha256": "a11ddea3902754e4a3ea5831e499f391aef57bee1bdb67c42ba688730d1fc420"
+    },
+    {
+      "path": "audit-closure/console.txt",
+      "sha256": "87e3d0220ceca9f2fb4d4b4f196a38b9931790674d88d692978ddadece689757"
+    },
+    {
+      "path": "audit-closure/empty-mcp.json",
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    {
+      "path": "audit-closure/report.md",
+      "sha256": "11f3f9a7b424cf21c3d577c217ac5f0f3c9cf859367069160635d634edb85645"
+    },
+    {
+      "path": "audit-closure/response.json",
+      "sha256": "29ab9c836e67921d8317d70995acb105d8bc2162509deacede68c7bcd300e0db"
+    },
+    {
+      "path": "audit-closure/run.py",
+      "sha256": "eeef65e792fa0fcab966d4f6cf0fa8a7a0a7e39e1b6324c770ba2fa0ea1cf40d"
+    },
+    {
+      "path": "audit-closure/settings.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "audit-closure/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

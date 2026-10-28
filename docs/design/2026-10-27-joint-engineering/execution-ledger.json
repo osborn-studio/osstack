@@ -2533,7 +2533,7 @@
     "evidence_scope": "Post-#283/#284 merge and next-batch dispatch. Historical tests remain pinned to original code/base; formal gates remain unqualified.",
     "metadata_scope": "Code/head diff allows docs and changesets, including executable offline checkpoint checks; these have separate Python validation and management audit, not runtime pnpm qualification."
   },
-  "observation_rule": "PR snapshots carry their own observation time; handoff acceptance does not imply green CI, merged code or runtime qualification.",
+  "observation_rule": "PR snapshots carry their own observation time. Legacy top-level main/PR snapshots remain historical; latest resumed delivery observations are in priority_resume.ci_followup. Neither handoff nor merged PR implies runtime qualification.",
   "design_pr": 280,
   "unknowns_at_takeover": {
     "O06": {
@@ -2697,30 +2697,45 @@
     "ci_rule": "Ready only after latest published head applicable checks pass; dynamic status in GitHub and OSStack",
     "next_candidate": "skills check unreachable exit 0 reproduced using local Git; fix not included",
     "ci_followup": {
-      "observed_at": "2026-10-28T07:31:46.196281+00:00",
-      "main_sha": "fd9cac8127dbfa5660d9c45e58a42da5ed642073",
+      "observed_at": "2026-10-28T07:42:06.737986+00:00",
+      "main_sha": "4d31c3f540672c81a6c5d65b3a2b090dc32da027",
       "pr288": {
         "head": "10629495aafe7b3aca0de4c920bcaec40b083d7b",
-        "status": "Ready; awaiting gilberthello approval/merge",
+        "status": "MERGED by gilberthello",
         "ci_run": 40644289352,
         "attempt": 2,
         "applicable_checks": "5 SUCCESS; paid smoke SKIPPED",
-        "original_failure": "Node20 headers download TLS aborted; retained, one failed-job-only retry succeeded"
+        "original_failure": "Node20 headers download TLS aborted; retained, one failed-job-only retry succeeded",
+        "merge_commit": "4d31c3f540672c81a6c5d65b3a2b090dc32da027",
+        "merged_at": "2026-10-28T07:38:44Z"
       },
       "pr289": {
-        "published_head": "a567bd9f1e7c196fbe2dea1661f6da450c42b68c",
-        "candidate": "4dddf67a",
-        "status": "Draft; original two native-upgrade timeout failures retained; scoped setup/test budget change undergoing full regression",
+        "published_head": "48f5a9f1a6bfc5c4a82645dfd8bcc96a3125c69e",
+        "candidate": "4dddf67ab6e293161aab8f59b57392d1c693a298",
+        "status": "Draft; fresh CI run40651082036 running",
         "audit": "actual Sonnet5.5 candidate A PASS",
         "focused_tests": 37,
-        "ci_root_cause": "not established"
+        "ci_root_cause": "not established",
+        "full_tests": {
+          "passed": 7138,
+          "skipped": 5,
+          "failed": 0
+        }
       },
       "host_reading": {
         "branch": "codex/joint-host-effects",
         "card_id": "card_0a3cbbe6",
         "delivery": "../../implementation/joint-host-effects/README.md",
         "scope": "actual CLI reading/interpretation only; reports and limitations retained",
-        "formal_gate_pass": false
+        "formal_gate_pass": false,
+        "audit": "actual Sonnet5.5 B REVISE then limited closure PASS at99096018"
+      },
+      "composition": {
+        "commit": "d461b059c5cb475f11ac11acd35134be3a771938",
+        "tree": "827495237d56c84a49f7785eda373c1771ff0eca",
+        "matches_actual_main_plus_pr289": true,
+        "validation": "fresh install/build,27 focused,real CLI smoke PASS; not full combination regression",
+        "delivery": "../../implementation/joint-host-effects/composition.md"
       }
     }
   }

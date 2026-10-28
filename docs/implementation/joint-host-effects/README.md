@@ -34,3 +34,7 @@ Both consumed the **pre-change** evidence guidance, copied into inputs rather th
 The common instructions now require index/manifest/summary-first reading, targeted fields with original file pointers/hashes, and explicit not-provided / supplied-but-unread / read-but-unverified / verified-for-a-predicate status. A projection does not verify omitted data. These changes have not yet been tested in another host call; no causal improvement is claimed.
 
 The next experiment is **only a queued outline, not an executable or validated specification**. A future dispatch would first freeze its exact inputs, common prompt/action scope, isolation and scoring. To test this wording change, possible controls are old/new guidance and genuinely absent versus supplied-but-unread artifacts; a no-material control would also be needed for claims about the method itself. Model identity, repetitions and token budgets would need explicit decisions before any comparative claim. No such run or benchmark is scheduled by this document.
+
+## Review and integration evidence
+
+[Actual Sonnet review and closure](audit.md) retain the initial REVISE and subsequent limited PASS. [The separate PR288/PR289 composition check](composition.md) records fresh installation/build, 27 targeted tests and a real retained-evidence CLI smoke. [Post-merge tree proof](post288-composition-proof.json) verifies that the tested composition equals actual main `4d31c3f5` plus PR289 `48f5a9f1`; it does not re-label that run or claim a full combined regression.
