@@ -370,7 +370,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
           queue.push(resolve(dirname(path), target.split('#')[0]));
         }
       }
-      for (const method of ['feature', 'refactoring', 'skills-check-journey']) {
+      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review']) {
         // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
         const outputPath = join(entryRoot, 'references', `${method}.md`);
         const sourcePath = `references/${method}.md`;
@@ -386,7 +386,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
   });
 }
 
-for (const method of ['feature', 'refactoring', 'skills-check-journey']) {
+for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review']) {
   test(`D2a a missing advertised ${method} reference fails before reserving output`, async t => {
     const f = await fixture(t);
     await rm(f.sourceRoot, { recursive: true });
@@ -458,3 +458,32 @@ for (const input of ['unexported absolute', 'unset', 'relative']) {
     assert.equal(existsSync(record.output), false, 'logs must not precreate the output directory');
   });
 }
+
+// Navigation guarantees only: this does not evaluate a model's review judgment.
+test('code review is reachable from source, mode, help and delegate entry navigation', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill');
+  for (const [entry, target] of [
+    ['SKILL.md', 'references/code-review.md'],
+    ['entries/osstack-mode/SKILL.md', '../../references/code-review.md'],
+    ['entries/osstack-help/SKILL.md', '../../references/code-review.md'],
+    ['entries/osstack-agent/SKILL.md', '../../references/code-review.md'],
+  ]) {
+    const text = await readFile(join(root, entry), 'utf8');
+    const links = [...text.matchAll(/\[([^\]\n]+)\]\(([^)\s]+)\)/g)].filter(([, label]) => label.toLowerCase() === 'code review');
+    assert.equal(links.length, 1, `${entry} must offer one unambiguous code review link`);
+    assert.equal(links[0][2], target);
+    await readFile(resolve(root, dirname(entry), links[0][2]));
+  }
+});
+
+test('code review source attribution resolves to the pinned review and behavior-test sources', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill/references');
+  const method = await readFile(join(root, 'code-review.md'), 'utf8');
+  const localLinks = [...method.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(([, target]) => target);
+  for (const target of ['evidence.md', 'sources.md', 'bug-fix.md', 'refactoring.md']) assert.ok(localLinks.includes(target), target);
+  const sources = await readFile(join(root, 'sources.md'), 'utf8');
+  const upstream = [...sources.matchAll(/\[[^\]\n]+\]\((https:[^)\s]+)\)/g)].map(([, target]) => target);
+  for (const path of ['interrogate/SKILL.md', 'interrogate/references/rubric.md', 'interrogate/references/lead-judgment.md', 'interrogate/references/code-quality-review.md', 'principle-test-behavior-not-implementation/SKILL.md']) {
+    assert.ok(upstream.includes(`https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/${path}`), path);
+  }
+});

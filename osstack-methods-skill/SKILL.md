@@ -1,6 +1,6 @@
 ---
 name: osstack-methods
-description: Use for feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
+description: Use for code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
 ---
 
 # OSStack engineering methods
@@ -9,6 +9,7 @@ Read the requested entry below and [the common evidence rules](references/eviden
 
 | User intent | Read | Deliver |
 | --- | --- | --- |
+| Review code or a PR for actionable defects | [Code review](references/code-review.md) | Scoped findings, reachable triggers, evidence and unresolved limits |
 | Add or deliberately change observable behavior | [feature](references/feature.md) | Scoped implementation, design choice and actual surface checks |
 | Improve structure while preserving behavior | [refactoring](references/refactoring.md) | Pinned contract, migrated callers and baseline/candidate comparison |
 | Fix a reproducible defect | [bug-fix](references/bug-fix.md) | Small justified change, original failing observation and candidate recheck |
@@ -31,4 +32,4 @@ This directory installs nothing, edits no host configuration and introduces no n
 
 ## Named entries
 
-The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these six methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.
+The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these seven methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.
