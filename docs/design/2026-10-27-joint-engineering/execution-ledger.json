@@ -1,4 +1,27 @@
 {
+  "verification_driver_update": {
+    "observed_at": "2026-10-28T08:35:24.367627+00:00",
+    "main_sha": "64b203c32d245d5ad9a76914253ca18cbb54a073",
+    "merged_prs": [
+      288,
+      289
+    ],
+    "pr290": {
+      "head": "bf381f22b4833d781e9ec3d803d402f309e470a4",
+      "state": "Ready; awaiting gilberthello",
+      "ci_run": 40654394446,
+      "checks": "5 SUCCESS; paid smoke SKIPPED"
+    },
+    "card_id": "card_25794a87",
+    "candidate": "4f6c3c8fd21778798bdf22c12c0f4adfda28807a",
+    "state": "reviewed and tested candidate; publication CI pending",
+    "audit": "actual claude-sonnet-5-5 REVISE then R1-R3 closure PASS",
+    "delivery": "../../implementation/skills-check-verification/README.md",
+    "naming": "entry-point-naming.md",
+    "formal_gate_pass": false,
+    "runtime_enabled": false,
+    "host_use": "4 real root-owned cases passed; both models interpreted limits; Claude response-length criterion unmet; v2 hidden format constraint repaired transparently in v3"
+  },
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
@@ -2753,6 +2776,52 @@
         "scope": "D2a fixed real skills-check verification driver; no product runtime qualification",
         "state": "implementation running; author and independent/host-use scopes separate"
       }
+    }
+  },
+  "verification_driver_ci_followup": {
+    "observed_at": "2026-10-28T09:20:06.547323+00:00",
+    "main_sha": "f92914e0a98bd3e5f82765fddc5a275a93637f30",
+    "pr": 291,
+    "original_published_head": "7228af775ea13f2c0d8ebb2790c669dc07cfb89c",
+    "original_ci_run": 40658708716,
+    "original_ci_result": "failed_actual_mixed_case",
+    "historical_trigger_proven": false,
+    "product_correction": "bcc4c732a99e5bf36d7aa3210b06784cc9c81765",
+    "candidate_sha": "ff6bfeb69973a7d700e4e2288a9a8e5859efb2d7",
+    "state": "audited_and_revalidated_waiting_published_head_ci",
+    "audit": "actual claude-sonnet-5-5 PASS; no blockers",
+    "merged_candidate_verification": {
+      "script_tests": 25,
+      "actual_cases": 5,
+      "manifest_records_verified": 49,
+      "fixture_removed": true
+    },
+    "full_tests": {
+      "candidate_sha": "ff6bfeb69973a7d700e4e2288a9a8e5859efb2d7",
+      "command": "pnpm test",
+      "exit_code": 0,
+      "counts": {
+        "passed": 7144,
+        "failed": 0,
+        "skipped": 5
+      },
+      "package_reports": 32,
+      "log_sha256": "15049b1e741e57f90078d7748110e2725b799640af160a5ad408a24cd5935d9f",
+      "source_scope": "No product changes during this run; only follow-up documentation added."
+    },
+    "ci": "new published head pending",
+    "card_id": "card_25794a87",
+    "delivery": "../../implementation/skills-check-verification/ci-followup/README.md",
+    "runtime_enabled": false,
+    "network_repair": {
+      "code_sha": "f7236a159d266dd43c79729e14f19c1ac273d623",
+      "failed_run": 40663668798,
+      "attempt2_failure": "Node20.6 headers TLS body abort before SQLite compilation",
+      "tests": "14 focused passed; root independently repeated; actual official22.22.1 headers/ABI127 verified",
+      "audit": "actual claude-sonnet-5-5 PASS no blockers on exact code",
+      "full_regression": "existing ff6bfeb6 7144/5/0 historical; new published-head CI pending",
+      "root_archive_sha256": "7b6bf6e163e55cd0b97ef0cb5a08bb4bdb7217a10d1f7fe727ce4c4e0808c1eb",
+      "status": "draft_pending_ci"
     }
   }
 }

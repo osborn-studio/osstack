@@ -1,0 +1,291 @@
+{
+  "candidate": "f7236a159d266dd43c79729e14f19c1ac273d623",
+  "archive_sha256": "7b6bf6e163e55cd0b97ef0cb5a08bb4bdb7217a10d1f7fe727ce4c4e0808c1eb",
+  "files": [
+    {
+      "path": "audit/audit-input.txt",
+      "sha256": "549439aace431b8b85282cc24099fa1c1b8c6e338e0fba401d2bf3937c214318",
+      "bytes": 23139
+    },
+    {
+      "path": "audit/binding.json",
+      "sha256": "cd7e9ffe43d9096f1708169032258b3e3c48cd139109dc28517808fac51f588c",
+      "bytes": 775
+    },
+    {
+      "path": "audit/candidate.json",
+      "sha256": "e22b5f81691bd0771ed8e5f6fb69838b043efbdfe9aa67e2874dfc5228b60193",
+      "bytes": 280
+    },
+    {
+      "path": "audit/empty-mcp.json",
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5",
+      "bytes": 17
+    },
+    {
+      "path": "audit/launch.log",
+      "sha256": "a9af24b7a7e0fecb4beb52a121a14cf890d64e537dd350097ec7d3a061264090",
+      "bytes": 4345
+    },
+    {
+      "path": "audit/report.md",
+      "sha256": "84ffef356bc1216ebc4476aa07daa8b39c4be6f15b1d0e8a41c738e54dbfe2e7",
+      "bytes": 4337
+    },
+    {
+      "path": "audit/response.json",
+      "sha256": "497493a67ca4201daeb792cdef31869a3f4d135c6dd25d96c0ae406942353312",
+      "bytes": 6208
+    },
+    {
+      "path": "audit/run.py",
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3",
+      "bytes": 1448
+    },
+    {
+      "path": "audit/settings.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2
+    },
+    {
+      "path": "audit/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent/baseline-ci.yml",
+      "sha256": "f63303114747512723c1b8e6ef84eec73d183cf1f4498fecd7dfd803ba5ee458",
+      "bytes": 11587
+    },
+    {
+      "path": "independent/body-dribble-deadline/SHASUMS256.txt",
+      "sha256": "47df92e62cc9306f620e7030a7e43949384344d9e5d10ab1c98604a71b7f15b8",
+      "bytes": 95
+    },
+    {
+      "path": "independent/candidate-ci.yml",
+      "sha256": "0c08032a8dea4e8d10fd8cfd52338a8c3e9c60baf43ec8e481bcc6830498a435",
+      "bytes": 11952
+    },
+    {
+      "path": "independent/candidate.mjs",
+      "sha256": "ab505f1c2621924aaa0046ebb7bd44c7e23eb7f1338b5950d28dedec88644f3d",
+      "bytes": 6695
+    },
+    {
+      "path": "independent/checksum-before-tar/SHASUMS256.txt",
+      "sha256": "e90b228b9fa2be0734f3b6cb1dd6376212fbbd6c96b413519dc4b62d7254e48d",
+      "bytes": 95
+    },
+    {
+      "path": "independent/checksum-before-tar/node-v22.22.1-headers.tar.gz",
+      "sha256": "9455eb85362bd8430089a34ecb6616119e57cdc8cf76450a2bb2026bbb31d725",
+      "bytes": 717
+    },
+    {
+      "path": "independent/fixture.tar.gz",
+      "sha256": "9455eb85362bd8430089a34ecb6616119e57cdc8cf76450a2bb2026bbb31d725",
+      "bytes": 717
+    },
+    {
+      "path": "independent/fixture/node-v22.22.1/include/node/config.gypi",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2
+    },
+    {
+      "path": "independent/fixture/node-v22.22.1/include/node/node_version.h",
+      "sha256": "f91c526ffc075c1bdcca0342fed5e83201c60c24e9dd050d76cefad0064e4eeb",
+      "bytes": 121
+    },
+    {
+      "path": "independent/independent-probe.mjs",
+      "sha256": "07ed7670bff50d2eda01b0882bdf0d8003616c7a607a2bf0473a0e9d6898eccd",
+      "bytes": 3429
+    },
+    {
+      "path": "independent/manifest.json",
+      "sha256": "d1960c60bb7082c1f981ee3b0120570d88cf76588dfe43196f6a9c1b65ce700d",
+      "bytes": 7813
+    },
+    {
+      "path": "independent/native-request-replay/body-dribble-deadline/SHASUMS256.txt",
+      "sha256": "a679d7c25871cd4c5b0c67152501c0ad035ac6478500b28211e8f3e24df0a33b",
+      "bytes": 95
+    },
+    {
+      "path": "independent/native-request-replay/candidate-ci.yml",
+      "sha256": "4c5c413b197203676b7cf8c591d5ab58825f122560de05d0307105b0909cd21c",
+      "bytes": 12046
+    },
+    {
+      "path": "independent/native-request-replay/candidate.mjs",
+      "sha256": "43787b9a7c531dc8e35674d10d45c563c4d6eaf4ae1cf3106ab36a6399586f74",
+      "bytes": 7545
+    },
+    {
+      "path": "independent/native-request-replay/checksum-before-tar/SHASUMS256.txt",
+      "sha256": "e90b228b9fa2be0734f3b6cb1dd6376212fbbd6c96b413519dc4b62d7254e48d",
+      "bytes": 95
+    },
+    {
+      "path": "independent/native-request-replay/checksum-before-tar/node-v22.22.1-headers.tar.gz",
+      "sha256": "fd38dd05a61e1545fad30fe93a156933456ab81362d257daeaa977ac0aeb9cd1",
+      "bytes": 718
+    },
+    {
+      "path": "independent/native-request-replay/fixture.tar.gz",
+      "sha256": "fd38dd05a61e1545fad30fe93a156933456ab81362d257daeaa977ac0aeb9cd1",
+      "bytes": 718
+    },
+    {
+      "path": "independent/native-request-replay/fixture/node-v22.22.1/include/node/config.gypi",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2
+    },
+    {
+      "path": "independent/native-request-replay/fixture/node-v22.22.1/include/node/node_version.h",
+      "sha256": "f91c526ffc075c1bdcca0342fed5e83201c60c24e9dd050d76cefad0064e4eeb",
+      "bytes": 121
+    },
+    {
+      "path": "independent/native-request-replay/independent-probe.mjs",
+      "sha256": "07ed7670bff50d2eda01b0882bdf0d8003616c7a607a2bf0473a0e9d6898eccd",
+      "bytes": 3429
+    },
+    {
+      "path": "independent/native-request-replay/probe-result.json",
+      "sha256": "9c8ddaecbf2172caa7eb3b4f24eec40b8722e3bc9ed61b991272e05e5937524d",
+      "bytes": 3827
+    },
+    {
+      "path": "independent/native-request-replay/probe.command.json",
+      "sha256": "bc3b1a9654e5f9eb4a3b94067d7bc5c6c10eabb037afb06173c8d27fea09a051",
+      "bytes": 604
+    },
+    {
+      "path": "independent/native-request-replay/probe.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent/native-request-replay/probe.stdout",
+      "sha256": "4203eac24844cc4c4d9658f69f5041871e1ac34adebf298d53691e5240e8c4f9",
+      "bytes": 32
+    },
+    {
+      "path": "independent/native-request-replay/sums-abort-then-valid/SHASUMS256.txt",
+      "sha256": "a679d7c25871cd4c5b0c67152501c0ad035ac6478500b28211e8f3e24df0a33b",
+      "bytes": 95
+    },
+    {
+      "path": "independent/native-request-replay/sums-abort-then-valid/node-v22.22.1-headers.tar.gz",
+      "sha256": "fd38dd05a61e1545fad30fe93a156933456ab81362d257daeaa977ac0aeb9cd1",
+      "bytes": 718
+    },
+    {
+      "path": "independent/native-request-replay/sums-abort-then-valid/node-v22.22.1/include/node/config.gypi",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2
+    },
+    {
+      "path": "independent/native-request-replay/sums-abort-then-valid/node-v22.22.1/include/node/node_version.h",
+      "sha256": "f91c526ffc075c1bdcca0342fed5e83201c60c24e9dd050d76cefad0064e4eeb",
+      "bytes": 121
+    },
+    {
+      "path": "independent/native-request-replay/sums-abort-then-valid/receipt.json",
+      "sha256": "aee671690c4ebd62f347b33fcfcc3636637d0a573cac3f25f163e432644b9900",
+      "bytes": 676
+    },
+    {
+      "path": "independent/native-request-replay/workflow.diff",
+      "sha256": "e123dbed84bb9371a44a4c06bcb5f19b4e67317c13583e604de41e8009d85475",
+      "bytes": 1309
+    },
+    {
+      "path": "independent/probe-result.json",
+      "sha256": "9645a4be9773c985b0d05d1b5e0baff20e2b5bd997d8b9b71ef995d38033903d",
+      "bytes": 3682
+    },
+    {
+      "path": "independent/probe.command.json",
+      "sha256": "a8c1ecd4efd76d148ed5f412fa1d423f96debdd1fc67a7dc39ab7263ac3e6daf",
+      "bytes": 714
+    },
+    {
+      "path": "independent/probe.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent/probe.stdout",
+      "sha256": "4203eac24844cc4c4d9658f69f5041871e1ac34adebf298d53691e5240e8c4f9",
+      "bytes": 32
+    },
+    {
+      "path": "independent/review-final.md",
+      "sha256": "27bc26bb2140633c8af08624266cb42c95cf696108e491ae03d7e8feaf29fcdb",
+      "bytes": 2519
+    },
+    {
+      "path": "independent/review-plan.json",
+      "sha256": "61de3aa5a2b020c6ea12d25161d1549d10c87d0dba7935201bc88d89d56930d2",
+      "bytes": 759
+    },
+    {
+      "path": "independent/review.md",
+      "sha256": "79efaab68ccac456f02a40ec56e8d1d6dbfea8df219ab951e771da59539df013",
+      "bytes": 3046
+    },
+    {
+      "path": "independent/snapshot.json",
+      "sha256": "95e35ab02cac5eb49efea2d6db60b9ce48cf471414c874b6729731f2b247ab10",
+      "bytes": 361
+    },
+    {
+      "path": "independent/sums-abort-then-valid/SHASUMS256.txt",
+      "sha256": "47df92e62cc9306f620e7030a7e43949384344d9e5d10ab1c98604a71b7f15b8",
+      "bytes": 95
+    },
+    {
+      "path": "independent/sums-abort-then-valid/node-v22.22.1-headers.tar.gz",
+      "sha256": "9455eb85362bd8430089a34ecb6616119e57cdc8cf76450a2bb2026bbb31d725",
+      "bytes": 717
+    },
+    {
+      "path": "independent/sums-abort-then-valid/node-v22.22.1/include/node/config.gypi",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2
+    },
+    {
+      "path": "independent/sums-abort-then-valid/node-v22.22.1/include/node/node_version.h",
+      "sha256": "f91c526ffc075c1bdcca0342fed5e83201c60c24e9dd050d76cefad0064e4eeb",
+      "bytes": 121
+    },
+    {
+      "path": "independent/sums-abort-then-valid/receipt.json",
+      "sha256": "0750a58c84e6d83b9672ccb125e18c3b74b6acc89195a1e36f51dab327b47586",
+      "bytes": 654
+    },
+    {
+      "path": "independent/workflow.diff",
+      "sha256": "b32010d8280d3e35af96c601ae2b860ff15eb96e195e3a8ee07293500dce7ed6",
+      "bytes": 1213
+    },
+    {
+      "path": "root/network-root-tests.log",
+      "sha256": "ffb2a39e105eac3ae8c15f78c8a0fe1ff12814025e89bfe98f43883eea55cbd7",
+      "bytes": 2782
+    },
+    {
+      "path": "root/pr291-node20-diagnosis.json",
+      "sha256": "56e80f4c642417f58b47f092ea683e76f1b39db52c9a6c63f39b53837fa61f91",
+      "bytes": 616
+    },
+    {
+      "path": "root/pr291-pre-cancel.json",
+      "sha256": "f75cd8a652c5c8df944b21abfe894ba2b4fc908fab8c327801e7a25201e9112b",
+      "bytes": 16728
+    }
+  ]
+}
