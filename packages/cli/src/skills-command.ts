@@ -54,8 +54,10 @@ export async function handleSkillsCommand(
     stdout(`Checking ${manifest.sources.length} source(s) against their tracked refs...`);
     const result = await checkSources(manifest);
     let drifted = 0;
+    let failed = 0;
     for (const entry of result.entries) {
       if (!entry.ok) {
+        failed += 1;
         stdout(`  ✗ ${entry.source.id}  unreachable: ${entry.reason}`);
         continue;
       }
@@ -68,7 +70,9 @@ export async function handleSkillsCommand(
         stdout(`  ✓ ${entry.source.id}  up-to-date (${entry.current_sha?.slice(0, 12)})`);
       }
     }
-    stdout(`\n${drifted} source(s) drifted from blessed_sha.`);
+    stdout(`\n${failed} source(s) failed to check.`);
+    stdout(`${drifted} source(s) drifted from blessed_sha.`);
+    if (failed > 0) return 1;
     return drifted > 0 ? 2 : 0;
   }
 
