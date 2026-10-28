@@ -3210,7 +3210,7 @@
     }
   },
   "next_method_host_wave": {
-    "status": "audited_tested_preparing_pr",
+    "status": "pr296_draft_ci_running",
     "baseline": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
     "provisional_dependency": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
     "authorization": "user explicitly requests OSStack multiple agents continued implementation",
@@ -3235,7 +3235,7 @@
     "maximum_proposed_calls": 2,
     "retries": 0,
     "formal_gates_passed": false,
-    "updated_at": "2026-10-28T14:43:16.043664+00:00",
+    "updated_at": "2026-10-28T14:46:53.013859+00:00",
     "host_criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
     "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d",
     "actual_main": "70924ee44a478f5ef345307b885bda6b936e6662",
@@ -3292,6 +3292,14 @@
     },
     "evidence": "docs/implementation/method-code-review/evidence/manifest.json",
     "archive_sha256": "b28b3b75511ec9acc3391e7a8c442c587757617472a177c2df241075fcc4057a",
-    "next": "Fresh bounded code-review behavior protocol on pinned positive/negative source changes; no retry or relabelling of current host experiments."
+    "next": "Fresh bounded code-review behavior protocol on pinned positive/negative source changes; no retry or relabelling of current host experiments.",
+    "pr": 296,
+    "published_head": "4833bd97e52c42dcb4e39d6d8200a9d66c3ee852",
+    "ci_run": 40709107782,
+    "ci_status": "in_progress",
+    "is_draft": true,
+    "workers": "A/C handed off; B preparing new read-only review behavior protocol, no new model calls",
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1
   }
 }
