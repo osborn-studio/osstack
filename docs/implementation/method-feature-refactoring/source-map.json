@@ -9,7 +9,7 @@
       "upstream_sha256": "af8ce700b99953741cb547e34308fde0cf6b98ce67e1652c800d0deedf53aba1",
       "upstream_bytes": 2870,
       "adapted_path": "osstack-methods-skill/references/feature.md",
-      "adapted_sha256": "7446b4a84461a8b011ae91c0ac79f93114113d434d9d06f39da14909d3e2c4f4",
+      "adapted_sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f",
       "source_url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/feature.md"
     },
     {
@@ -19,7 +19,7 @@
       "upstream_sha256": "0f5dd38113379ea8cf61e2182eca0a7478eea9a869eb40c2dddab3335aeca197",
       "upstream_bytes": 3315,
       "adapted_path": "osstack-methods-skill/references/refactoring.md",
-      "adapted_sha256": "e9c3202d6228fa8d4ea8862f1a3c9b4a13187801ff216ec8a5a014b716fff96f",
+      "adapted_sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743",
       "source_url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/refactoring.md"
     }
   ],
@@ -28,5 +28,7 @@
     "No fixed upstream model, mandatory nested delegation or unavailable arena.",
     "Respect existing compatibility contracts; remove old APIs only after scoped consumer migration.",
     "Existing authorization, publication scope and runtime/gate boundaries remain in force."
-  ]
+  ],
+  "initial_evidence_candidate": "10281aba06fb845188917ec32dd41488844d50c2",
+  "initial_evidence_note": "Original RED/GREEN and host manifests are retained at their initial candidate; revised material checks are separate."
 }

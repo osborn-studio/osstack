@@ -348,7 +348,7 @@ test('long noncontainer prefix with many colon labels is scanned only once per l
 
 // D2a exercises the shipped material graph through the real CLI, not fixture-only wording.
 for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claude/skills']]) {
-  test(`D2a ${host} CLI exports reachable feature and refactoring methods for every entry`, async t => {
+  test(`D2a ${host} CLI exports feature and refactoring methods reachable through the bundle from every entry`, async t => {
     const f = await fixture(t);
     const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
     const before = await tree(sourceRoot);
@@ -371,11 +371,11 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
         }
       }
       for (const method of ['feature', 'refactoring']) {
-        // All entries copy the canonical method. Delegation/help/setup must also reach it.
+        // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
         const outputPath = join(entryRoot, 'references', `${method}.md`);
         const sourcePath = `references/${method}.md`;
         assert.deepEqual(await readFile(outputPath), await readFile(join(sourceRoot, sourcePath)));
-        assert.ok([...seen].some(path => path.endsWith(`/references/${method}.md`)), `${name} cannot reach ${method}`);
+        assert.ok([...seen].some(path => path.endsWith(`/references/${method}.md`)), `${name} cannot reach ${method} through the bundle`);
         const row = manifest.files.find(file => file.path === `${namespace}/${name}/references/${method}.md`);
         assert.ok(row, `${name} ${method} missing from manifest`);
         assert.equal(row.sha256, hash(await readFile(outputPath)));
@@ -392,7 +392,24 @@ for (const method of ['feature', 'refactoring']) {
     await rm(f.sourceRoot, { recursive: true });
     await cp(resolve(dirname(script), '../osstack-methods-skill'), f.sourceRoot, { recursive: true });
     await rm(join(f.sourceRoot, 'references', `${method}.md`));
-    await assert.rejects(exportMethods({ ...f, host: 'codex' }), /link_missing_or_escape/);
+    await assert.rejects(exportMethods({ ...f, host: 'codex' }), error => {
+      assert.match(error.message, /link_missing_or_escape/);
+      assert.ok(error.message.endsWith(`/references/${method}.md`) || error.message.endsWith(`-> ${method}.md`), error.message);
+      return true;
+    });
     assert.equal(existsSync(f.output), false);
   });
 }
+
+// This is a declared material-routing contract, not a claim about model routing.
+test('source and mode routers map each new named intent to its matching method', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill');
+  for (const [router, prefix] of [['SKILL.md', 'references'], ['entries/osstack-mode/SKILL.md', '../../references']]) {
+    const text = await readFile(join(root, router), 'utf8');
+    for (const method of ['feature', 'refactoring']) {
+      const links = [...text.matchAll(/\[([^\]\n]+)\]\(([^)\s]+)\)/g)].filter(([, label]) => label.toLowerCase() === method);
+      assert.equal(links.length, 1, `${router} must advertise ${method} once`);
+      assert.equal(links[0][2], `${prefix}/${method}.md`);
+    }
+  }
+});

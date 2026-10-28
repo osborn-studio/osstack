@@ -22,3 +22,8 @@ The new tests invoke the real export CLI for both hosts, walk the exported local
 The first targeted run preserved the capability gap: both real CLI export cases lacked the new method file. The two negative-case setups also failed because those new source files did not yet exist; these are not claimed as successful negative checks. After implementation, the complete exporter suite passed **67/67**, with no skips. Five source/entry frontmatters passed the skill validator. Fresh actual exports each contain **48 files**, and their full manifests are retained under `evidence/`. [Validation](evidence/validation.json) links the scope and limits; raw RED/GREEN outputs are retained.
 
 These are packaging, link-reachability and structural checks. They do not prove a model will choose the right method or produce an effective implementation. Independent material review and the parent-owned audit cover the new instructions separately. Prior native-discovery runs used older method bytes; their results are not relabeled as acceptance of feature/refactoring. Full-repository tests and model audit are owned by the integration thread and are not claimed here.
+
+
+## Revision evidence
+
+The initial 67 tests and 48-file host manifests above are bound to author candidate `10281aba06fb845188917ec32dd41488844d50c2`; they are not relabelled as tests of later audit fixes. The original source map is retained at `evidence/initial-source-map.json`; the current map records revised method bytes. Root separately records the actual Sonnet findings, confirmed fixes and new candidate checks. Bundle reachability can traverse the mode entry; it does not promise that every copied reference is directly linked from its own entry.
