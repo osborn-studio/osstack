@@ -1,0 +1,2129 @@
+{
+  "at": "2026-10-28T15:12:17.362377+00:00",
+  "method_sha": "73d446b46e444ff5b8ef9a39c5fab962793967fd",
+  "published_head": "4833bd97e52c42dcb4e39d6d8200a9d66c3ee852",
+  "archive_sha256": "b139f26c796a49775a9987f3b2de178294770a746b078a1eba5a26cf6e3e4042",
+  "bytes": 693824,
+  "members_verified": 352,
+  "regular_bytes": 3953068,
+  "exclusions": [
+    ".git",
+    "node_modules",
+    "__pycache__"
+  ],
+  "privacy_check": "High-confidence token/private-key forms absent; not a comprehensive privacy certification. Credentials not collected.",
+  "members": [
+    {
+      "path": "preparation/RUN.md",
+      "type": "file",
+      "bytes": 1446,
+      "sha256": "30a68cac624547c9c7cfd90b56466922c9c04e12f05dcf41ce86766c86faaafd"
+    },
+    {
+      "path": "preparation/codex-model-metadata/requests.json",
+      "type": "file",
+      "bytes": 412,
+      "sha256": "0fbc61a983703d92001548b83c4cd54f3d4c1c9df7855e90ac490271314e6ec3"
+    },
+    {
+      "path": "preparation/codex-model-metadata/responses.jsonl",
+      "type": "file",
+      "bytes": 9062,
+      "sha256": "e1d5f296a77c8a5b6c198497103309e730ba0383f64600f3cb3ec29162d3f74d"
+    },
+    {
+      "path": "preparation/codex-model-metadata/result.json",
+      "type": "file",
+      "bytes": 2186,
+      "sha256": "b4d1afb5a903d3c937f3a82c617be8a6db4fd64920d44399839d85b6d67877dc"
+    },
+    {
+      "path": "preparation/dispatch-claude-review.template.json",
+      "type": "file",
+      "bytes": 41749,
+      "sha256": "f91ab70a9eeae7afa46a3cc48008d2b6804443b57de19811f646a92b017f7149"
+    },
+    {
+      "path": "preparation/dispatch-codex-review.template.json",
+      "type": "file",
+      "bytes": 39936,
+      "sha256": "e255929a24a22df49be5d169b47041556d363c8c2cef39b2469b5fba6f67ff79"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/EXPORT.md",
+      "type": "file",
+      "bytes": 5459,
+      "sha256": "78ff0bc302a6cd723f3b438e78daec169abfe2577a870dd693d71ae12b35311f"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/SKILL.md",
+      "type": "file",
+      "bytes": 3471,
+      "sha256": "16ac28cc897af56d8e50a9f74df956a42382221be26a0f10f32630254cf6526e"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "type": "file",
+      "bytes": 3448,
+      "sha256": "7751b3ec9e3a7da61f499b1c7f09037c1200b8ab700e458614b835a66998e16b"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "type": "file",
+      "bytes": 3035,
+      "sha256": "ddbcc2e64d7e74f3c95478d58401531db57b81723064abbe285801f9888ac800"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "type": "file",
+      "bytes": 3604,
+      "sha256": "c691daa9b4c03044ae64a11bfac833f59048ed7deb29c956a6e31c161025e34b"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "type": "file",
+      "bytes": 3509,
+      "sha256": "2142a792d142e7edef8d86f2af1801683230a2cae1b4bf9c01960da0ddff074a"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/frozen-source/osstack-methods-skill/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/frozen-source/scripts/export-osstack-methods.mjs",
+      "type": "file",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821"
+    },
+    {
+      "path": "preparation/frozen-source/scripts/lib/osstack-method-export.mjs",
+      "type": "file",
+      "bytes": 16660,
+      "sha256": "7ac7278d1d0e5672bda5965b2bb4ae584b3f3bd6bc3fa928e36a4ea31fb3f805"
+    },
+    {
+      "path": "preparation/frozen-source/scripts/lib/scratch.mjs",
+      "type": "file",
+      "bytes": 878,
+      "sha256": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af"
+    },
+    {
+      "path": "preparation/harness/claude-builtin-catalog.json",
+      "type": "file",
+      "bytes": 855,
+      "sha256": "e7167ac211a4e1567b101ad7ab78bf0103aaf60885267972994acaf0a087e116"
+    },
+    {
+      "path": "preparation/harness/common.py",
+      "type": "file",
+      "bytes": 1809,
+      "sha256": "f1e8295cf0cb5420de9eee699b8d2fffe37c2247638ff3e751fd0c03ff863920"
+    },
+    {
+      "path": "preparation/harness/dispatch-claude-review.json",
+      "type": "file",
+      "bytes": 42373,
+      "sha256": "fa55ec177aca8474aa9c83a04ab73be7aa9a1637210247e3b234dd9313a7788c"
+    },
+    {
+      "path": "preparation/harness/dispatch-codex-review.json",
+      "type": "file",
+      "bytes": 40560,
+      "sha256": "921f7792ba0516adddeab6927a1ca265e46a8c17475e27b433ef918d5d97b884"
+    },
+    {
+      "path": "preparation/harness/inventory.py",
+      "type": "file",
+      "bytes": 218,
+      "sha256": "68a9ead045aaf35bd8fab215e0cfabff36c517992b20f386b1e23ec748a3b5d4"
+    },
+    {
+      "path": "preparation/harness/review-prompt.txt",
+      "type": "file",
+      "bytes": 1237,
+      "sha256": "c425abfef14d059fac6171abf750d264976c8dec7ae4089fb35f7974d6dad288"
+    },
+    {
+      "path": "preparation/harness/run_claude.py",
+      "type": "file",
+      "bytes": 8022,
+      "sha256": "6bf94331dcdd74b5313a3d11fd463a28307d2accbdd2b8f0a358856ba35c89bf"
+    },
+    {
+      "path": "preparation/harness/run_codex.py",
+      "type": "file",
+      "bytes": 4075,
+      "sha256": "68da449bcf5ad43669587570f61b5731a85aabba9444d62ae2cdfb110dfd6ef3"
+    },
+    {
+      "path": "preparation/host-binaries.json",
+      "type": "file",
+      "bytes": 1177,
+      "sha256": "f73d44b91212dec344836b68c09bec6c5bc7fd67507a71b9c37463be08bee7a4"
+    },
+    {
+      "path": "preparation/model-list-metadata.py",
+      "type": "file",
+      "bytes": 2996,
+      "sha256": "5919ba8f69bbe71b523abbe10eeedd3a826b9d50c4832f743e5dcfcbcfe71ac0"
+    },
+    {
+      "path": "preparation/prepared-manifest.json",
+      "type": "file",
+      "bytes": 39116,
+      "sha256": "4e7ac6dba9b163cb0be4dfbbe94c050d0c72d8b8806063b489fda7180010f0c6"
+    },
+    {
+      "path": "preparation/run-protocol.json",
+      "type": "file",
+      "bytes": 4337,
+      "sha256": "875dde2a1f50c0d400771cbfdefb2c5d8096e94e73da0eb8352e0a38bce6acbc"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/catalog-preflight-after.json",
+      "type": "file",
+      "bytes": 14965,
+      "sha256": "20461013336a86aa9ea5b34645bbd8dad4e15f481835cf2ff2e9c529dda02246"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/catalog-preflight-before.json",
+      "type": "file",
+      "bytes": 14964,
+      "sha256": "957144f0c43f4b4dad77595007577b1b9321483dcbc248f4274a96b0c2f478e5"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/catalog-preflight-initialize-input.json",
+      "type": "file",
+      "bytes": 240,
+      "sha256": "915aa33c95164e8be08e393045acd7c6f10b2d11c1c65f27403a05aa4e538825"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/catalog-preflight-result.json",
+      "type": "file",
+      "bytes": 2542,
+      "sha256": "94cb0c925d11f2a7d1cbfab5f62d7d7a072efbea203e3838541064827a12486b"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/catalog-preflight.jsonl",
+      "type": "file",
+      "bytes": 22874,
+      "sha256": "44f464607bc71e0b4330d76aa127a5143b16a72cca48650e385f320921fcb774"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/catalog-preflight.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/run-after.json",
+      "type": "file",
+      "bytes": 14965,
+      "sha256": "20461013336a86aa9ea5b34645bbd8dad4e15f481835cf2ff2e9c529dda02246"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/run-before.json",
+      "type": "file",
+      "bytes": 14964,
+      "sha256": "957144f0c43f4b4dad77595007577b1b9321483dcbc248f4274a96b0c2f478e5"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/run-initialize-input.json",
+      "type": "file",
+      "bytes": 240,
+      "sha256": "915aa33c95164e8be08e393045acd7c6f10b2d11c1c65f27403a05aa4e538825"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/run-result.json",
+      "type": "file",
+      "bytes": 2598,
+      "sha256": "f14ddf0bb1b77bca5c4251d2487db68550270a256f21eb60e599fff0840330ee"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/run.jsonl",
+      "type": "file",
+      "bytes": 98632,
+      "sha256": "4af1fec5245df92050ac506d99c7d0fd278132c59182ce857ab85187db688ec2"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/run.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preparation/runs/claude-review/evidence/user-input.json",
+      "type": "file",
+      "bytes": 1321,
+      "sha256": "c07315ce52398227fbbb7f67880c94c72e87b5503709e1045bba3ed4df6194ca"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/empty-mcp.json",
+      "type": "file",
+      "bytes": 18,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/export-manifest.json",
+      "type": "file",
+      "bytes": 22337,
+      "sha256": "1c134120663360759d568a43b399513d2bb2602de47d5933399b14170f1d9700"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/export.command.json",
+      "type": "file",
+      "bytes": 385,
+      "sha256": "3a21df7095acaae9ef507b033ef5222239b7883488104fb165e6aeb6eaf5cfcf"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/export.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/export.stdout",
+      "type": "file",
+      "bytes": 427,
+      "sha256": "a5dc7f6c8d5c37d62b76be7dbfa9aaf15d56c4e6b61e98f6ea7d6c27d1c54468"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/settings.json",
+      "type": "file",
+      "bytes": 3859,
+      "sha256": "224bacd559a4dc4bbf4075d7546f8bde61e755115ca19d940f5602f0212686a5"
+    },
+    {
+      "path": "preparation/runs/claude-review/state/workspace-inventory.json",
+      "type": "file",
+      "bytes": 14965,
+      "sha256": "2fbe56e5ebf3ff5e4f46297d5d0e87277bf6811fc396a2d5ae19c8667a973025"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/SKILL.md",
+      "type": "file",
+      "bytes": 3394,
+      "sha256": "843dde74bde1635c580e657f70e48af75caac12871adc77f9d3c46bb77d66f89"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-agent/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/SKILL.md",
+      "type": "file",
+      "bytes": 2999,
+      "sha256": "640b9524ccb900df6d74f26a0dd3e44b17aa5f99de5c12bd19d8c4af7410e0d4"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-help/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/SKILL.md",
+      "type": "file",
+      "bytes": 3550,
+      "sha256": "c92ca6fd82f5d254d3adbc7ccc8ba61927a9e25689d3e219a252a96c6b16d73e"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/osstack-mode/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/SKILL.md",
+      "type": "file",
+      "bytes": 3503,
+      "sha256": "a61c14456d9b33aab1294dc13247c2bb69f02f281e897eacf05f1af753a2059b"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/.claude/skills/setup-osstack/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/A/behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/A/change.diff",
+      "type": "file",
+      "bytes": 276,
+      "sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/A/intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/A/search.mjs",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/B/behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/B/change.diff",
+      "type": "file",
+      "bytes": 327,
+      "sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/B/intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/B/search.mjs",
+      "type": "file",
+      "bytes": 135,
+      "sha256": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/base/behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/base/intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/base/search.mjs",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "17b1885c3534cea6048adaf5e353ae9f2abc45cb630bb7dc5713dd45fc5fdbc0"
+    },
+    {
+      "path": "preparation/runs/claude-review/workspace/inputs/index.json",
+      "type": "file",
+      "bytes": 3898,
+      "sha256": "e86d1391f75fe2555a0c5ba2c8c3561070e03a84533c1f0887b6b108dd0599ea"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/agent-messages.json",
+      "type": "file",
+      "bytes": 2650,
+      "sha256": "b0b8dfc6f5910c487ec532cee742a86a5bfdac40be823d958841845087b222dd"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/final-response.txt",
+      "type": "file",
+      "bytes": 2107,
+      "sha256": "18c78b2898ec9f58335bff4358a1f34a8cb7f4168813eae2af7cb54eb12a8ded"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/run-after.json",
+      "type": "file",
+      "bytes": 14965,
+      "sha256": "a5e4ba45f1f4ec9be2695f63117fa309cfb0b22697b4ac5d079f57f01570b57d"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/run-before.json",
+      "type": "file",
+      "bytes": 14964,
+      "sha256": "96d8770e9ef4d0ea9b9fe442d5f5075f06c5ec2e4936a73b2dd033c29b074719"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/run-result.json",
+      "type": "file",
+      "bytes": 1746,
+      "sha256": "25fe714ba41daff228e0b94c2b2082d4326ab8eecfeb5465e7068a4907f4ec98"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/run.jsonl",
+      "type": "file",
+      "bytes": 31963,
+      "sha256": "3ecaa2c2591f1eb16909dab53e26d4c0acd687d40d2d8f6b148973de4583bf48"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/run.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preparation/runs/codex-review/evidence/started.json",
+      "type": "file",
+      "bytes": 1279,
+      "sha256": "43e4fec1392e844ae80cb6a14506b62c45e8c40b5d6b6f1997aab1582e7bd713"
+    },
+    {
+      "path": "preparation/runs/codex-review/state/empty-mcp.json",
+      "type": "file",
+      "bytes": 18,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "preparation/runs/codex-review/state/export-manifest.json",
+      "type": "file",
+      "bytes": 22336,
+      "sha256": "78f5ddcb12aaa59c48e31fffe8d76047fff101c12dbf17cb1584957652c7209b"
+    },
+    {
+      "path": "preparation/runs/codex-review/state/export.command.json",
+      "type": "file",
+      "bytes": 383,
+      "sha256": "4b5e084e0e5dbbecf59c7342e8f7105179dd57718077629060520601c67b242a"
+    },
+    {
+      "path": "preparation/runs/codex-review/state/export.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preparation/runs/codex-review/state/export.stdout",
+      "type": "file",
+      "bytes": 425,
+      "sha256": "2d7b6a7f9096b616c7008bfb427843ff3c0096ca5aba6798c26672536c37b38c"
+    },
+    {
+      "path": "preparation/runs/codex-review/state/workspace-inventory.json",
+      "type": "file",
+      "bytes": 14965,
+      "sha256": "a5e4ba45f1f4ec9be2695f63117fa309cfb0b22697b4ac5d079f57f01570b57d"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/SKILL.md",
+      "type": "file",
+      "bytes": 3394,
+      "sha256": "843dde74bde1635c580e657f70e48af75caac12871adc77f9d3c46bb77d66f89"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-agent/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/SKILL.md",
+      "type": "file",
+      "bytes": 2999,
+      "sha256": "640b9524ccb900df6d74f26a0dd3e44b17aa5f99de5c12bd19d8c4af7410e0d4"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-help/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/SKILL.md",
+      "type": "file",
+      "bytes": 3550,
+      "sha256": "c92ca6fd82f5d254d3adbc7ccc8ba61927a9e25689d3e219a252a96c6b16d73e"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/osstack-mode/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/SKILL.md",
+      "type": "file",
+      "bytes": 3503,
+      "sha256": "a61c14456d9b33aab1294dc13247c2bb69f02f281e897eacf05f1af753a2059b"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/host-usage.md",
+      "type": "file",
+      "bytes": 3171,
+      "sha256": "17437c07fdd02ddb86cb22020a7c44c931906ea843b92c2e483292261732fab8"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/.agents/skills/setup-osstack/references/sources.md",
+      "type": "file",
+      "bytes": 5476,
+      "sha256": "42b40c34373f79e3c5e491c98d40c1ec6599307b8ad957ffae746f30949fe6ba"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/A/behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/A/change.diff",
+      "type": "file",
+      "bytes": 276,
+      "sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/A/intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/A/search.mjs",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/B/behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/B/change.diff",
+      "type": "file",
+      "bytes": 327,
+      "sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/B/intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/B/search.mjs",
+      "type": "file",
+      "bytes": 135,
+      "sha256": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/base/behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/base/intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/base/search.mjs",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "17b1885c3534cea6048adaf5e353ae9f2abc45cb630bb7dc5713dd45fc5fdbc0"
+    },
+    {
+      "path": "preparation/runs/codex-review/workspace/inputs/index.json",
+      "type": "file",
+      "bytes": 3898,
+      "sha256": "735798edfb946990e26261dd1ba579770256d45da892dfd34b88018c138a6511"
+    },
+    {
+      "path": "preparation/source-manifest.json",
+      "type": "file",
+      "bytes": 3591,
+      "sha256": "be9b45670e1b21a0df78143ba2663ae691d49f2029e684924b6bf2d79f037bb9"
+    },
+    {
+      "path": "independent/commands/00.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/00.stdout",
+      "type": "file",
+      "bytes": 3604,
+      "sha256": "c691daa9b4c03044ae64a11bfac833f59048ed7deb29c956a6e31c161025e34b"
+    },
+    {
+      "path": "independent/commands/01.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/01.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "7b75e12fa1fcb48f96d13e89f643b5475bf203cbb147fec442669390e60259bb"
+    },
+    {
+      "path": "independent/commands/02.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/02.stdout",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "independent/commands/03.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/03.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "05284b2fcfee38c685b9cfa805f5e267e5bfffef13277a4dbc6a73c1f5983f53"
+    },
+    {
+      "path": "independent/commands/04.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/04.stdout",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "independent/commands/05.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/05.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "16a81286e5dbf56c23486ecb50ca70cf58b1533374dd0215f8a77c20d4fc6a0b"
+    },
+    {
+      "path": "independent/commands/06.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/06.stdout",
+      "type": "file",
+      "bytes": 5683,
+      "sha256": "92c5a210d072531800cac15b1a550218982440e0db60d45c272851d68f410da4"
+    },
+    {
+      "path": "independent/commands/07.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/07.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "d61d7f31edc9b20214bd7215a82e7b7514a49b6608e75159c707cf3e617563e6"
+    },
+    {
+      "path": "independent/commands/08.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/08.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "51ec818eb844034166a6e22120498d1a6518fd4b763a9f0a9297c7b90a979e4d"
+    },
+    {
+      "path": "independent/commands/09.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/09.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "ca9d4edb461b31f9bc831ff1fbecbd2c15787e38eb1390bde5728a97b8331376"
+    },
+    {
+      "path": "independent/commands/10.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/10.stdout",
+      "type": "file",
+      "bytes": 276,
+      "sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4"
+    },
+    {
+      "path": "independent/commands/11.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/11.stdout",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2"
+    },
+    {
+      "path": "independent/commands/12.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/12.stdout",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "independent/commands/13.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/13.stdout",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "independent/commands/14.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/14.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "e1260725999a339753e426b1b8aaa38fe09a97541a7e30e7e8a0929367d16b01"
+    },
+    {
+      "path": "independent/commands/15.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/15.stdout",
+      "type": "file",
+      "bytes": 41,
+      "sha256": "ca9d4edb461b31f9bc831ff1fbecbd2c15787e38eb1390bde5728a97b8331376"
+    },
+    {
+      "path": "independent/commands/16.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/16.stdout",
+      "type": "file",
+      "bytes": 327,
+      "sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a"
+    },
+    {
+      "path": "independent/commands/17.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/17.stdout",
+      "type": "file",
+      "bytes": 135,
+      "sha256": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d"
+    },
+    {
+      "path": "independent/commands/18.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/18.stdout",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "independent/commands/19.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/19.stdout",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "independent/commands/20.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/20.stdout",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "17b1885c3534cea6048adaf5e353ae9f2abc45cb630bb7dc5713dd45fc5fdbc0"
+    },
+    {
+      "path": "independent/commands/21.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/21.stdout",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "independent/commands/22.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/commands/22.stdout",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "independent/criteria.json",
+      "type": "file",
+      "bytes": 9426,
+      "sha256": "8bbd2817e7c6181a8f2c9dd0ee81bcf8cbec53d79532e80dc73718833713fb5e"
+    },
+    {
+      "path": "independent/criteria.md",
+      "type": "file",
+      "bytes": 7956,
+      "sha256": "b04533546cad5d315d44919753a1415461c4253ce40c1aea2ec18fe28f395900"
+    },
+    {
+      "path": "independent/final-manifest.json",
+      "type": "file",
+      "bytes": 13417,
+      "sha256": "fe952f33ccd285f6ded8f8ac84b802514ca4e3d572160a7e069708f8ce132913"
+    },
+    {
+      "path": "independent/final-preparation/check.py",
+      "type": "file",
+      "bytes": 6046,
+      "sha256": "e5cb3604bf441828d4fa58e4689ae318c40f16485a5184dbce9cd53d1ff6e726"
+    },
+    {
+      "path": "independent/final-preparation/checks.json",
+      "type": "file",
+      "bytes": 122316,
+      "sha256": "6d6eb677b2eea939068c881785523f531d73aad52d801a2e53da4100153fce23"
+    },
+    {
+      "path": "independent/final-preparation/supplement.json",
+      "type": "file",
+      "bytes": 3794,
+      "sha256": "5aa4807bec991ed82c68a4837f53487e13e791a59bfd965156e7eb700ea33a3a"
+    },
+    {
+      "path": "independent/final-preparation/supplement.md",
+      "type": "file",
+      "bytes": 1377,
+      "sha256": "78259f3ee82a61c6091186a5181b5775d82f96e8f77753b3d019f387c0c0346c"
+    },
+    {
+      "path": "independent/freeze.py",
+      "type": "file",
+      "bytes": 3587,
+      "sha256": "c61e44a6fc529b5e25923155b0a74d5a6e4c862b29b71a66fc06cd6edb763779"
+    },
+    {
+      "path": "independent/graded/check.py",
+      "type": "file",
+      "bytes": 5875,
+      "sha256": "faab8b2597dea8c9311109b963682b3f930641a378b2a320b2964fbe3484fb4e"
+    },
+    {
+      "path": "independent/graded/graded-results.json",
+      "type": "file",
+      "bytes": 17750,
+      "sha256": "04ea1c39646c57557f21064a018f387111ab64ee3723ff55b3b2f51a53fc9af3"
+    },
+    {
+      "path": "independent/graded/graded-results.md",
+      "type": "file",
+      "bytes": 7074,
+      "sha256": "6fc43f783a1512fae55efdfe8632fddfa6e75120226c7b2cb728db004d2b8050"
+    },
+    {
+      "path": "independent/graded/observations.json",
+      "type": "file",
+      "bytes": 14505,
+      "sha256": "daf398915292867107a4691f3c6e8e20ba5c024727fa3cc06844bc3ce9c7383c"
+    },
+    {
+      "path": "independent/graded/write-grade.py",
+      "type": "file",
+      "bytes": 7398,
+      "sha256": "e8458dc0df8a5b980285866041fcc531fe1be49421792dc600a777f29d9cba27"
+    },
+    {
+      "path": "independent/manifest.json",
+      "type": "file",
+      "bytes": 11724,
+      "sha256": "05cc5b0f2bc9d39b37ce7148b95062b28375a85ef322ca5c46599576bfbced55"
+    },
+    {
+      "path": "independent/source-check.json",
+      "type": "file",
+      "bytes": 16493,
+      "sha256": "897e3cd4908a5a9c1171ef6281cc6f7ae0b4216c4f6a5ad280ca40a882f0c2a4"
+    },
+    {
+      "path": "independent/sources/A-behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "independent/sources/A-intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "independent/sources/A-search.mjs",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2"
+    },
+    {
+      "path": "independent/sources/A.diff",
+      "type": "file",
+      "bytes": 276,
+      "sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4"
+    },
+    {
+      "path": "independent/sources/B-behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "independent/sources/B-intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "independent/sources/B-search.mjs",
+      "type": "file",
+      "bytes": 135,
+      "sha256": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d"
+    },
+    {
+      "path": "independent/sources/B.diff",
+      "type": "file",
+      "bytes": 327,
+      "sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a"
+    },
+    {
+      "path": "independent/sources/base-behavior.mjs",
+      "type": "file",
+      "bytes": 297,
+      "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b"
+    },
+    {
+      "path": "independent/sources/base-intent.md",
+      "type": "file",
+      "bytes": 226,
+      "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd"
+    },
+    {
+      "path": "independent/sources/base-search.mjs",
+      "type": "file",
+      "bytes": 117,
+      "sha256": "17b1885c3534cea6048adaf5e353ae9f2abc45cb630bb7dc5713dd45fc5fdbc0"
+    },
+    {
+      "path": "independent/sources/draft-handoff.json",
+      "type": "file",
+      "bytes": 1039,
+      "sha256": "843ecd2107d4fd757adb3338d8f2ae17ef9433451d6eda61f3a3e7d064bafa84"
+    },
+    {
+      "path": "independent/sources/draft-plan.md",
+      "type": "file",
+      "bytes": 3619,
+      "sha256": "6f2a4317697e060ed18654f10e1e4761e7d10a110ed3defbcbebcc769f9ce39c"
+    },
+    {
+      "path": "independent/sources/draft-protocol.json",
+      "type": "file",
+      "bytes": 9344,
+      "sha256": "3018bb0f8969beea1b031ccaa69b005794537ff12030e64461509a03ed675380"
+    },
+    {
+      "path": "independent/sources/method-README.md",
+      "type": "file",
+      "bytes": 5683,
+      "sha256": "92c5a210d072531800cac15b1a550218982440e0db60d45c272851d68f410da4"
+    },
+    {
+      "path": "independent/sources/method-SKILL.md",
+      "type": "file",
+      "bytes": 3604,
+      "sha256": "c691daa9b4c03044ae64a11bfac833f59048ed7deb29c956a6e31c161025e34b"
+    },
+    {
+      "path": "independent/sources/method-code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "independent/sources/method-evidence.md",
+      "type": "file",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e"
+    },
+    {
+      "path": "independent/sources/prior-04.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/sources/prior-04.stdout",
+      "type": "file",
+      "bytes": 44,
+      "sha256": "4e62508955972b57ab91e78c82635ec10cf06190c4456eb2b2be0cb24842c728"
+    },
+    {
+      "path": "independent/sources/prior-08.stderr",
+      "type": "file",
+      "bytes": 752,
+      "sha256": "68162dde5e9f47ffe8f24a7dbfbb41c53cce80c10a11c99fdfa9a0d2a3e8c85c"
+    },
+    {
+      "path": "independent/sources/prior-08.stdout",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/sources/prior-13.stderr",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "independent/sources/prior-13.stdout",
+      "type": "file",
+      "bytes": 44,
+      "sha256": "4e62508955972b57ab91e78c82635ec10cf06190c4456eb2b2be0cb24842c728"
+    },
+    {
+      "path": "independent/sources/prior-results.json",
+      "type": "file",
+      "bytes": 11887,
+      "sha256": "5d29a709bea68397c2868fccb4d595e9fe8157ba5f2f77a1c41a374576a17e4e"
+    },
+    {
+      "path": "independent/write-criteria.py",
+      "type": "file",
+      "bytes": 9249,
+      "sha256": "d29309d461b4b113dc049f0deffd333c1c3bd267e07550ad6e55f4766af792cd"
+    },
+    {
+      "path": "control/actual-guard-supplement-binding.json",
+      "type": "file",
+      "bytes": 1580,
+      "sha256": "64605203f27f7515f0d42cf70165f23ba428b12f58bcb481f600f498e7ba83e2"
+    },
+    {
+      "path": "control/ci296-summary.json",
+      "type": "file",
+      "bytes": 3728,
+      "sha256": "fd82c102067b1f61237d2dfbc0d121f9d4cb206d5de3e38f6b137a9f19cabff9"
+    },
+    {
+      "path": "control/ci296.json",
+      "type": "file",
+      "bytes": 18863,
+      "sha256": "f660414929e00bf60c2b640501832c863eb565381ef11fac22c1bb97cfdff730"
+    },
+    {
+      "path": "control/ci296.log",
+      "type": "file",
+      "bytes": 2031439,
+      "sha256": "e98ddf44b41deb95fe9a8a8085919900c2f03f067cf33ce370cd96a50aadfffc"
+    },
+    {
+      "path": "control/claude-dispatch.log",
+      "type": "file",
+      "bytes": 2598,
+      "sha256": "f14ddf0bb1b77bca5c4251d2487db68550270a256f21eb60e599fff0840330ee"
+    },
+    {
+      "path": "control/codex-dispatch.log",
+      "type": "file",
+      "bytes": 1746,
+      "sha256": "25fe714ba41daff228e0b94c2b2082d4326ab8eecfeb5465e7068a4907f4ec98"
+    },
+    {
+      "path": "control/dispatch.json",
+      "type": "file",
+      "bytes": 521,
+      "sha256": "dbef726c83b3b124d54e75bff0149c5845219fad694c3b84b838dfd421a5a9fd"
+    },
+    {
+      "path": "control/document-tests.log",
+      "type": "file",
+      "bytes": 341,
+      "sha256": "784bd896430bd768a16536d7db81c78a7a6ca9c703d2129659d62bc262351789"
+    },
+    {
+      "path": "control/firstmate-upgrade-roadmap.json",
+      "type": "file",
+      "bytes": 101861,
+      "sha256": "70a2c312186cb2f2a4015e1fbc9ec714aa5de32b91c55abe3e4429cfd0a25512"
+    },
+    {
+      "path": "control/governance-build.log",
+      "type": "file",
+      "bytes": 11,
+      "sha256": "859f05647a92fcb79f6a57008bd6478a9bea618f6933c12cb2bb76a0a7f2bb7f"
+    },
+    {
+      "path": "control/install.log",
+      "type": "file",
+      "bytes": 2609,
+      "sha256": "7debfcd4a392c8883e949612158f4eeb98a9452a0f90f9113307909376f5eb6f"
+    },
+    {
+      "path": "control/joint-firstmate-pstack.json",
+      "type": "file",
+      "bytes": 61883,
+      "sha256": "7ce0304c8b5d38b96bf278ce5e51c2ae278b5a695ed18cff27346ec357100e14"
+    },
+    {
+      "path": "control/method-publication-binding.json",
+      "type": "file",
+      "bytes": 425,
+      "sha256": "47c22fb2e7861b6fab5bc01b556065b5a1adc3b9b53a5a8b1ba7df2d39121e31"
+    },
+    {
+      "path": "control/pr296-before-ready.json",
+      "type": "file",
+      "bytes": 1917,
+      "sha256": "24987ec222638b1c01ff81f86519d8b818915a9ace8eb4ec4047dcf8d20ba0ae"
+    },
+    {
+      "path": "control/pr296-ready.json",
+      "type": "file",
+      "bytes": 1897,
+      "sha256": "e051177f476ee8bde2cadb59f38e80e748099ad0163cd1da16fcf910290e485a"
+    },
+    {
+      "path": "control/report-audit-disposition.json",
+      "type": "file",
+      "bytes": 722,
+      "sha256": "4fa7da2260163b07bf6111686a2d83cf872ab04f4ba2b34599b66b6debd07647"
+    },
+    {
+      "path": "control/report-final-before-cleanup.md",
+      "type": "file",
+      "bytes": 3968,
+      "sha256": "98d7ad47984f6da188103c7ed5688fc39cdb21713c7d0201ce0a05fc275d5ff5"
+    },
+    {
+      "path": "control/report-proposed.md",
+      "type": "file",
+      "bytes": 3810,
+      "sha256": "eee25413e9783a1f089ffb99e7df607d975760517f950e2598d09e83d5849ea3"
+    },
+    {
+      "path": "control/report-revised-v2.md",
+      "type": "file",
+      "bytes": 4409,
+      "sha256": "f8c0d40458344ecd9f2569d11cbc32d2471eeb6019f48e521046d67bbb686604"
+    },
+    {
+      "path": "control/report-revised.md",
+      "type": "file",
+      "bytes": 4404,
+      "sha256": "0522753889353520a0fb2bc24a9a7cd307316f8914f0ae73aba283a368e217bb"
+    },
+    {
+      "path": "control/root-ordering-verification.json",
+      "type": "file",
+      "bytes": 666,
+      "sha256": "9f3647657d1e2b9aa2e896887913180f305003ea16226bf01c501d6cd8543cf9"
+    },
+    {
+      "path": "control/session-pilot-debt.json",
+      "type": "file",
+      "bytes": 14360,
+      "sha256": "c36744dae182b0ffd551988da8881e1af228c0a2ffd4f141c121b6fc9afc18a9"
+    },
+    {
+      "path": "control/superseded-audit-tail-interpretation.json",
+      "type": "file",
+      "bytes": 527,
+      "sha256": "d9b338d4671c3ccd9924e2996ff43e81ac3d5bdbe7fa835f1948eb89cd8b0bff"
+    },
+    {
+      "path": "control/upstream-pstack-LICENSE",
+      "type": "file",
+      "bytes": 1067,
+      "sha256": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e"
+    },
+    {
+      "path": "audit/audit-input.txt",
+      "type": "file",
+      "bytes": 45486,
+      "sha256": "dbd1323e990ca59e9efa5c29a99c4458b43cca709b8a94892c238acc114d9c14"
+    },
+    {
+      "path": "audit/binding.json",
+      "type": "file",
+      "bytes": 763,
+      "sha256": "45e9cdc702908192fda1a62096c224b1855b593370b679dfe9b2b783586910dd"
+    },
+    {
+      "path": "audit/empty-mcp.json",
+      "type": "file",
+      "bytes": 17,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    {
+      "path": "audit/launch.log",
+      "type": "file",
+      "bytes": 3299,
+      "sha256": "9d34f7d8fa880443b915276a2b5132a35fa0089fc6abdea8366674cfe4c6dac5"
+    },
+    {
+      "path": "audit/report.md",
+      "type": "file",
+      "bytes": 3291,
+      "sha256": "9d402098514172ca8ce3ea865db1ff49993e3e53a7cd451f640381a1a6f2dfda"
+    },
+    {
+      "path": "audit/response.json",
+      "type": "file",
+      "bytes": 5165,
+      "sha256": "d79e3d78576ab94986f1ecd723cb093b1a31728657fa092456e4b0b6c3fee7a5"
+    },
+    {
+      "path": "audit/run.py",
+      "type": "file",
+      "bytes": 1448,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+    },
+    {
+      "path": "audit/settings.json",
+      "type": "file",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "audit/stderr.txt",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "audit/supplied-bindings.json",
+      "type": "file",
+      "bytes": 1103,
+      "sha256": "c3f5698cc3634aee4cb33552c3114444f72a803f8380591352041f541401f2e9"
+    },
+    {
+      "path": "audit-closure/audit-input.txt",
+      "type": "file",
+      "bytes": 42463,
+      "sha256": "2af14e681dfe8cbedeae7b2350990fd03aa4870204d7a47a18316f758c7bc362"
+    },
+    {
+      "path": "audit-closure/binding.json",
+      "type": "file",
+      "bytes": 763,
+      "sha256": "a039fdd52681be57be88c081bf7bd36fd071ad8c801770f568227a1da7badc16"
+    },
+    {
+      "path": "audit-closure/empty-mcp.json",
+      "type": "file",
+      "bytes": 17,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    {
+      "path": "audit-closure/launch.log",
+      "type": "file",
+      "bytes": 3106,
+      "sha256": "a15cd62d977a704896735406494d6254184705d92f1d0b60d222adf92d8d562b"
+    },
+    {
+      "path": "audit-closure/report.md",
+      "type": "file",
+      "bytes": 3098,
+      "sha256": "fcc8a385e5a752865403c2fc1aab7d81c6569272458711c03be1ee7557d54b0c"
+    },
+    {
+      "path": "audit-closure/response.json",
+      "type": "file",
+      "bytes": 4965,
+      "sha256": "cd99104d99c684402c932315814a4cc2d8a40ea77b6bd47e25fa75ea4ce7e498"
+    },
+    {
+      "path": "audit-closure/run.py",
+      "type": "file",
+      "bytes": 1448,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+    },
+    {
+      "path": "audit-closure/settings.json",
+      "type": "file",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "audit-closure/stderr.txt",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "audit-closure/supplied-bindings.json",
+      "type": "file",
+      "bytes": 960,
+      "sha256": "d681feb3664efcff7269ee2492758fefbec5a47e6890774a9647873d71761afe"
+    },
+    {
+      "path": "audit-final-closure/audit-input.txt",
+      "type": "file",
+      "bytes": 92739,
+      "sha256": "5cb2ee840f86b1c784d5163776082b6e7179e30f644f63bafec2f289fa37ba88"
+    },
+    {
+      "path": "audit-final-closure/binding.json",
+      "type": "file",
+      "bytes": 772,
+      "sha256": "42178274bd30d31afc686ca32ce5d18320e532332d7c13ddb9b84f8e5be16198"
+    },
+    {
+      "path": "audit-final-closure/empty-mcp.json",
+      "type": "file",
+      "bytes": 17,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    {
+      "path": "audit-final-closure/launch.log",
+      "type": "file",
+      "bytes": 2244,
+      "sha256": "2037bf91421b8994c840fb4f639a91900e0a6b909eb6b8f3170f19a698324cfd"
+    },
+    {
+      "path": "audit-final-closure/report.md",
+      "type": "file",
+      "bytes": 2236,
+      "sha256": "9effbfd6f8b9d115854d42f26ddb6808eda956c0f6189e7779de2b09d88ca12c"
+    },
+    {
+      "path": "audit-final-closure/response.json",
+      "type": "file",
+      "bytes": 4101,
+      "sha256": "a7724e2e41a49464aebae0a2b41d8e01d4b53197cf373c980b9b01be69ccc4b6"
+    },
+    {
+      "path": "audit-final-closure/run.py",
+      "type": "file",
+      "bytes": 1448,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+    },
+    {
+      "path": "audit-final-closure/settings.json",
+      "type": "file",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "audit-final-closure/stderr.txt",
+      "type": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "audit-final-closure/supplied-bindings.json",
+      "type": "file",
+      "bytes": 509,
+      "sha256": "38500c0e087e4656aba0ea7014ad7354afc75d202c450da3a3e908d7ff9ea60b"
+    }
+  ]
+}

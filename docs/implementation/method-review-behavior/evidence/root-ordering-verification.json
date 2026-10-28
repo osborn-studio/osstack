@@ -1,0 +1,16 @@
+{
+  "codex": {
+    "guard_at": "2026-10-28T14:59:22.944463+00:00",
+    "run_at": "2026-10-28T14:59:30.643742+00:00",
+    "guard_sha256": "921f7792ba0516adddeab6927a1ca265e46a8c17475e27b433ef918d5d97b884",
+    "result_sha256": "25fe714ba41daff228e0b94c2b2082d4326ab8eecfeb5465e7068a4907f4ec98",
+    "guard_precedes_runner": true
+  },
+  "claude": {
+    "guard_at": "2026-10-28T14:59:23.182935+00:00",
+    "run_at": "2026-10-28T14:59:30.447007+00:00",
+    "guard_sha256": "fa55ec177aca8474aa9c83a04ab73be7aa9a1637210247e3b234dd9313a7788c",
+    "result_sha256": "f14ddf0bb1b77bca5c4251d2487db68550270a256f21eb60e599fff0840330ee",
+    "guard_precedes_runner": true
+  }
+}

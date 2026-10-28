@@ -1,0 +1,390 @@
+{
+  "graded_at": "2026-10-28T15:03:40.878642+00:00",
+  "criteria_sha256": "8bbd2817e7c6181a8f2c9dd0ee81bcf8cbec53d79532e80dc73718833713fb5e",
+  "supplement_sha256": "5aa4807bec991ed82c68a4837f53487e13e791a59bfd965156e7eb700ea33a3a",
+  "observations_sha256": "daf398915292867107a4691f3c6e8e20ba5c024727fa3cc06844bc3ce9c7383c",
+  "results": {
+    "codex": {
+      "overall": "limited",
+      "primary_defect_control_result": "passed_scoped_A_found_B_no_false_positive",
+      "axes": [
+        {
+          "id": "R01",
+          "status": "passed_scoped",
+          "basis": "Exact full base/head SHAs in answer. All supplied source/assertion/intent/diff files read,15 total complete file reads independently byte-matched."
+        },
+        {
+          "id": "R02",
+          "status": "passed_scoped",
+          "basis": "Both identify reachable explicit limit0, A line2 || default10 and nonempty result contrary to documented empty result; source reasoning correct."
+        },
+        {
+          "id": "R03",
+          "status": "passed_scoped",
+          "basis": "Neither asserts actionable defect solely from B consistent local rename. No false positive on B."
+        },
+        {
+          "id": "R04",
+          "status": "passed_scoped",
+          "basis": "Both distinguish static reasoning from execution, explicitly state assertions unexecuted and no live Git verification. No test/product command observed."
+        },
+        {
+          "id": "R05",
+          "status": "failed_native_attribution",
+          "basis": "All mode/review/evidence consumption was explicit cat. Final says used available skill and no fallback needed; raw trace provides no native Skill event. Explicit method use established; native claim unsupported and fallback not disclosed as requested. This does not prove host lacks native capability."
+        },
+        {
+          "id": "R06",
+          "status": "observed_with_identity_limits",
+          "basis": "35 raw events each retained; all tool operations paired. Claude init2/result34 report sonnet5.5; Codex requested6.1-sol execution-resolved identity not exposed/not_attested. No principal certification."
+        },
+        {
+          "id": "R07",
+          "status": "passed",
+          "basis": "Codex final263 words; progress22 + final263 =285 even under combined assistant-text counting. Claude final365 words. Both<=500; advisory250\u2013350 is not hard threshold. Codex manual contextual final selection stated; no native final channel claimed."
+        },
+        {
+          "id": "R08",
+          "status": "passed_scoped",
+          "basis": "Exactly one submitted user turn each; naturalexit0, no retry; Codex40.094s/Claude24.773s under180. Claude metadata rate_limit_event is not a retry."
+        },
+        {
+          "id": "R09",
+          "status": "passed_observed_compliance",
+          "basis": "Codex only15 cat/cat-n commands; Claude Skill+Glob+10Read. All within supplied workspace; no model credential/env/external/network/fixture/product/edit/delegation observed. Not OS or whole-process isolation."
+        },
+        {
+          "id": "R10",
+          "status": "passed_inventory_cleanup_pending",
+          "basis": "83 root-inclusive inventory entries each before=after=current=frozen; temp homes absent. Workspaces retained for independent review and owner archive/cleanup. No descendant/global no-write claim."
+        },
+        {
+          "id": "R11",
+          "status": "passed_scoped",
+          "basis": "Correct limited A/B review with no-test/no-liveGit/external-caller boundaries; no broad quality or causal efficacy claim."
+        },
+        {
+          "id": "R12",
+          "status": "limited_not_unconditional_pass",
+          "basis": "Core recognition/no-B-false-positive passed. Full task cannot receive unconditionalPASS because native/fallback attribution was unsupported; actual execution model remains not_attested."
+        }
+      ],
+      "observation": {
+        "raw_events": 35,
+        "final_event": 33,
+        "final_words": 263,
+        "assistant_messages": [
+          {
+            "event": 2,
+            "words": 22,
+            "sha256": "889bfe77e22a7c35ca969b6769a47a1244355918352f7c8025a204ca8587b9fa"
+          },
+          {
+            "event": 33,
+            "words": 263,
+            "sha256": "18c78b2898ec9f58335bff4358a1f34a8cb7f4168813eae2af7cb54eb12a8ded"
+          }
+        ],
+        "all_assistant_text_words": 285,
+        "final_selection": "Claude assistant33 equals result34; Codex progress2 before reads and sole complete A/B answer33 after reads before turn.completed34; no Codex native final-channel marker asserted",
+        "actual_model": "not_attested",
+        "native": "not_observed_explicit_cat",
+        "complete_reads": [
+          {
+            "event": 4,
+            "path": "inputs/index.json",
+            "bytes": 3898,
+            "sha256": "735798edfb946990e26261dd1ba579770256d45da892dfd34b88018c138a6511",
+            "complete_return_equal": true
+          },
+          {
+            "event": 6,
+            "path": ".agents/skills/osstack-mode/SKILL.md",
+            "bytes": 3550,
+            "sha256": "c92ca6fd82f5d254d3adbc7ccc8ba61927a9e25689d3e219a252a96c6b16d73e",
+            "complete_return_equal": true
+          },
+          {
+            "event": 11,
+            "path": "inputs/base/intent.md",
+            "bytes": 226,
+            "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd",
+            "complete_return_equal": true
+          },
+          {
+            "event": 13,
+            "path": "inputs/A/change.diff",
+            "bytes": 276,
+            "sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4",
+            "complete_return_equal": true
+          },
+          {
+            "event": 15,
+            "path": ".agents/skills/osstack-mode/references/code-review.md",
+            "bytes": 7250,
+            "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188",
+            "complete_return_equal": true
+          },
+          {
+            "event": 16,
+            "path": "inputs/B/search.mjs",
+            "bytes": 135,
+            "sha256": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d",
+            "complete_return_equal": true
+          },
+          {
+            "event": 17,
+            "path": "inputs/base/behavior.mjs",
+            "bytes": 297,
+            "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b",
+            "complete_return_equal": true
+          },
+          {
+            "event": 18,
+            "path": "inputs/base/search.mjs",
+            "bytes": 117,
+            "sha256": "17b1885c3534cea6048adaf5e353ae9f2abc45cb630bb7dc5713dd45fc5fdbc0",
+            "complete_return_equal": true
+          },
+          {
+            "event": 20,
+            "path": "inputs/B/change.diff",
+            "bytes": 327,
+            "sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a",
+            "complete_return_equal": true
+          },
+          {
+            "event": 22,
+            "path": "inputs/A/intent.md",
+            "bytes": 226,
+            "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd",
+            "complete_return_equal": true
+          },
+          {
+            "event": 24,
+            "path": "inputs/B/behavior.mjs",
+            "bytes": 297,
+            "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b",
+            "complete_return_equal": true
+          },
+          {
+            "event": 26,
+            "path": "inputs/A/behavior.mjs",
+            "bytes": 297,
+            "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b",
+            "complete_return_equal": true
+          },
+          {
+            "event": 30,
+            "path": ".agents/skills/osstack-mode/references/evidence.md",
+            "bytes": 4554,
+            "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+            "complete_return_equal": true
+          },
+          {
+            "event": 31,
+            "path": "inputs/B/intent.md",
+            "bytes": 226,
+            "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd",
+            "complete_return_equal": true
+          },
+          {
+            "event": 32,
+            "path": "inputs/A/search.mjs",
+            "bytes": 117,
+            "sha256": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2",
+            "complete_return_equal": true
+          }
+        ],
+        "unread_fixture_files": [],
+        "full_inventory_entries": 83,
+        "private_temporary_home_absent": true,
+        "workspace_retained_for_owner_cleanup": true,
+        "duration_seconds": 40.093525,
+        "final_sha256": "18c78b2898ec9f58335bff4358a1f34a8cb7f4168813eae2af7cb54eb12a8ded",
+        "guard_sha256": "921f7792ba0516adddeab6927a1ca265e46a8c17475e27b433ef918d5d97b884"
+      }
+    },
+    "claude": {
+      "overall": "limited",
+      "primary_defect_control_result": "passed_scoped_A_found_B_no_false_positive",
+      "axes": [
+        {
+          "id": "R01",
+          "status": "partial_complete_input_instruction_not_met",
+          "basis": "Pins unique base/head prefixes correctly.10completeRead returns checked, plus exact nativeSkillbody. Four supplied duplicate files A/B intent.md and behavior.mjs were not opened; final transparently discloses reliance on index hashes. Evaluator confirms duplicates actually match, but that does not retroactively satisfy model full-input-read instruction."
+        },
+        {
+          "id": "R02",
+          "status": "passed_scoped",
+          "basis": "Both identify reachable explicit limit0, A line2 || default10 and nonempty result contrary to documented empty result; source reasoning correct."
+        },
+        {
+          "id": "R03",
+          "status": "passed_scoped",
+          "basis": "Neither asserts actionable defect solely from B consistent local rename. No false positive on B."
+        },
+        {
+          "id": "R04",
+          "status": "passed_scoped",
+          "basis": "Both distinguish static reasoning from execution, explicitly state assertions unexecuted and no live Git verification. No test/product command observed."
+        },
+        {
+          "id": "R05",
+          "status": "passed_native_observed",
+          "basis": "Skill call4/result5/body6 exact expansion independently checked; code-review/evidence references read fully. This is observed native invocation plus explicit reference reads."
+        },
+        {
+          "id": "R06",
+          "status": "observed_with_identity_limits",
+          "basis": "35 raw events each retained; all tool operations paired. Claude init2/result34 report sonnet5.5; Codex requested6.1-sol execution-resolved identity not exposed/not_attested. No principal certification."
+        },
+        {
+          "id": "R07",
+          "status": "passed",
+          "basis": "Codex final263 words; progress22 + final263 =285 even under combined assistant-text counting. Claude final365 words. Both<=500; advisory250\u2013350 is not hard threshold. Codex manual contextual final selection stated; no native final channel claimed."
+        },
+        {
+          "id": "R08",
+          "status": "passed_scoped",
+          "basis": "Exactly one submitted user turn each; naturalexit0, no retry; Codex40.094s/Claude24.773s under180. Claude metadata rate_limit_event is not a retry."
+        },
+        {
+          "id": "R09",
+          "status": "passed_observed_compliance",
+          "basis": "Codex only15 cat/cat-n commands; Claude Skill+Glob+10Read. All within supplied workspace; no model credential/env/external/network/fixture/product/edit/delegation observed. Not OS or whole-process isolation."
+        },
+        {
+          "id": "R10",
+          "status": "passed_inventory_cleanup_pending",
+          "basis": "83 root-inclusive inventory entries each before=after=current=frozen; temp homes absent. Workspaces retained for independent review and owner archive/cleanup. No descendant/global no-write claim."
+        },
+        {
+          "id": "R11",
+          "status": "partial_inaccurate_extra_generalization",
+          "basis": "Final limits says negative/null/non-numeric/fractional limits behave the same on base/A/B, and parenthetically says A differs for null then no difference. Null actually defaults10 in both; the non-numeric blanket assertion is unsupported/false for NaN or booleanfalse: || selects10 while ?? preserves the value and slice converts it to0. This is static source inference, not a newly executed case or claimed defect in an unspecified input contract. Core A/B finding remains correct; the broad equivalence claim must not be endorsed."
+        },
+        {
+          "id": "R12",
+          "status": "limited_not_unconditional_pass",
+          "basis": "Core recognition/no-B-false-positive passed and hard word limit passed. Four unread supplied files and inaccurate added equivalence claim prevent unconditional full-taskPASS. No retry or retrospective criterion change."
+        }
+      ],
+      "observation": {
+        "raw_events": 35,
+        "final_event": 33,
+        "final_words": 365,
+        "assistant_messages": [
+          {
+            "event": 33,
+            "words": 365,
+            "sha256": "5c5559c569dc93444281158f1892f324d42067b2f546970847eabf286accb959"
+          }
+        ],
+        "all_assistant_text_words": 365,
+        "final_selection": "Claude assistant33 equals result34; Codex progress2 before reads and sole complete A/B answer33 after reads before turn.completed34; no Codex native final-channel marker asserted",
+        "actual_model": "host_reported_claude-sonnet-5-5",
+        "native": "observed_Skill_event4_result5_exact_body6",
+        "complete_reads": [
+          {
+            "event": 10,
+            "result_event": 11,
+            "path": ".claude/skills/osstack-mode/references/code-review.md",
+            "bytes": 7250,
+            "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188",
+            "complete_return_equal": true
+          },
+          {
+            "event": 12,
+            "result_event": 13,
+            "path": ".claude/skills/osstack-mode/references/evidence.md",
+            "bytes": 4554,
+            "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+            "complete_return_equal": true
+          },
+          {
+            "event": 14,
+            "result_event": 15,
+            "path": "inputs/index.json",
+            "bytes": 3898,
+            "sha256": "e86d1391f75fe2555a0c5ba2c8c3561070e03a84533c1f0887b6b108dd0599ea",
+            "complete_return_equal": true
+          },
+          {
+            "event": 16,
+            "result_event": 17,
+            "path": "inputs/base/search.mjs",
+            "bytes": 117,
+            "sha256": "17b1885c3534cea6048adaf5e353ae9f2abc45cb630bb7dc5713dd45fc5fdbc0",
+            "complete_return_equal": true
+          },
+          {
+            "event": 18,
+            "result_event": 19,
+            "path": "inputs/base/intent.md",
+            "bytes": 226,
+            "sha256": "b8a087dbb611a4645db3699eaf2a5b56a662a01a3e2d332686b59c01940cd1dd",
+            "complete_return_equal": true
+          },
+          {
+            "event": 20,
+            "result_event": 21,
+            "path": "inputs/base/behavior.mjs",
+            "bytes": 297,
+            "sha256": "9b83d09eb13930182d0ed3e55d11d0c909b6ebc876477a11b8330242c4a27c4b",
+            "complete_return_equal": true
+          },
+          {
+            "event": 22,
+            "result_event": 23,
+            "path": "inputs/A/search.mjs",
+            "bytes": 117,
+            "sha256": "5b7301e26e03be29e59e0c394204c842bbac210b66c0d7cbe9b48be4bb24afa2",
+            "complete_return_equal": true
+          },
+          {
+            "event": 24,
+            "result_event": 25,
+            "path": "inputs/A/change.diff",
+            "bytes": 276,
+            "sha256": "2df5c668ec51556067cd31deb584212926d5a9311cf8b37e8031224b2132b5e4",
+            "complete_return_equal": true
+          },
+          {
+            "event": 26,
+            "result_event": 27,
+            "path": "inputs/B/search.mjs",
+            "bytes": 135,
+            "sha256": "8f23103abb437e04fee361d98e37f2d24947d3bb82a52d5755b95a69980c003d",
+            "complete_return_equal": true
+          },
+          {
+            "event": 28,
+            "result_event": 29,
+            "path": "inputs/B/change.diff",
+            "bytes": 327,
+            "sha256": "0b23f437ce5fd0a9b6ad1b48aaf8a58afb8a3e84964f7ce99b8acb2072e2c92a",
+            "complete_return_equal": true
+          }
+        ],
+        "unread_fixture_files": [
+          "inputs/A/behavior.mjs",
+          "inputs/A/intent.md",
+          "inputs/B/behavior.mjs",
+          "inputs/B/intent.md"
+        ],
+        "full_inventory_entries": 83,
+        "private_temporary_home_absent": true,
+        "workspace_retained_for_owner_cleanup": true,
+        "duration_seconds": 24.772524,
+        "final_sha256": "5c5559c569dc93444281158f1892f324d42067b2f546970847eabf286accb959",
+        "guard_sha256": "fa55ec177aca8474aa9c83a04ab73be7aa9a1637210247e3b234dd9313a7788c"
+      }
+    }
+  },
+  "scope": "Small synthetic Git-derived A/B source-review observation. No model fixture execution, generalized quality benchmark, causal benefit, provider/runtime gate or independent principal certification. Earlier experiments unchanged.",
+  "reviewer_calls": {
+    "model": 0,
+    "fixture_or_product": 0
+  }
+}

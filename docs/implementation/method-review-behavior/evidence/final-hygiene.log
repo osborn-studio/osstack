@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-review-heartbeat/packages/governance
+
+ ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 241ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  08:16:25
+   Duration  600ms (transform 89ms, setup 17ms, collect 128ms, tests 241ms, environment 0ms, prepare 44ms)
+

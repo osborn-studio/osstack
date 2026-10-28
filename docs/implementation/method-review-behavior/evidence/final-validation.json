@@ -1,0 +1,9 @@
+{
+  "scope": "Final staged reporting, merged-state ledger and next-wave dispatch before this validation record; no productsource changed",
+  "document_tests": 241,
+  "hygiene_tests": 1,
+  "logs": {
+    "final-hygiene.log": "2e9474bb56cf677b24b365ffc2b4088a8ec106ca0f93fe98fa1c72488ef0a6ba",
+    "final-document-tests.log": "be3c2d6de019c041ea49a6f8812df7e11c1cb8f5e3d192ff40ba06fd1a279145"
+  }
+}

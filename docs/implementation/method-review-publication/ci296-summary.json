@@ -1,0 +1,37 @@
+{
+  "head": "4833bd97e52c42dcb4e39d6d8200a9d66c3ee852",
+  "main": "70924ee44a478f5ef345307b885bda6b936e6662",
+  "run": 40709107782,
+  "applicable_success": 5,
+  "paid_smoke": "skipped",
+  "full_package_summary_lines": [
+    "check\tTest\t2026-10-28T14:49:51.8765813Z packages/contracts test: ^[[2m      Tests ^[[22m ^[[1m^[[32m15 passed^[[39m^[[22m^[[90m (15)^[[39m",
+    "check\tTest\t2026-10-28T14:49:51.9571780Z packages/compliance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m17 passed^[[39m^[[22m^[[90m (17)^[[39m",
+    "check\tTest\t2026-10-28T14:49:54.3508423Z packages/github test: ^[[2m      Tests ^[[22m ^[[1m^[[32m107 passed^[[39m^[[22m^[[90m (107)^[[39m",
+    "check\tTest\t2026-10-28T14:49:56.1745386Z packages/knowledge test: ^[[2m      Tests ^[[22m ^[[1m^[[32m44 passed^[[39m^[[22m^[[90m (44)^[[39m",
+    "check\tTest\t2026-10-28T14:49:59.8545407Z packages/runtime test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m",
+    "check\tTest\t2026-10-28T14:50:00.0305293Z packages/neat-eval test: ^[[2m      Tests ^[[22m ^[[1m^[[32m16 passed^[[39m^[[22m^[[90m (16)^[[39m",
+    "check\tTest\t2026-10-28T14:50:08.6926105Z packages/protocol test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1012 passed^[[39m^[[22m^[[90m (1012)^[[39m",
+    "check\tTest\t2026-10-28T14:50:10.5383070Z packages/governance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m301 passed^[[39m^[[22m^[[90m (301)^[[39m",
+    "check\tTest\t2026-10-28T14:50:13.3248971Z packages/knowledge-cloud test: ^[[2m      Tests ^[[22m ^[[1m^[[32m36 passed^[[39m^[[22m^[[90m (36)^[[39m",
+    "check\tTest\t2026-10-28T14:50:32.7385097Z packages/graph test: ^[[2m      Tests ^[[22m ^[[1m^[[32m257 passed^[[39m^[[22m^[[90m (257)^[[39m",
+    "check\tTest\t2026-10-28T14:51:14.9506860Z packages/core test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1301 passed^[[39m^[[22m^[[90m (1301)^[[39m",
+    "check\tTest\t2026-10-28T14:51:17.2988649Z packages/plugins test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m",
+    "check\tTest\t2026-10-28T14:51:17.6674293Z packages/hermes-adapter test: ^[[2m      Tests ^[[22m ^[[1m^[[32m22 passed^[[39m^[[22m^[[90m (22)^[[39m",
+    "check\tTest\t2026-10-28T14:51:19.4654923Z packages/skills test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m",
+    "check\tTest\t2026-10-28T14:51:27.0057764Z packages/autonomy test: ^[[2m      Tests ^[[22m ^[[1m^[[32m201 passed^[[39m^[[22m^[[90m (201)^[[39m",
+    "check\tTest\t2026-10-28T14:51:30.3715314Z packages/skill-registry test: ^[[2m      Tests ^[[22m ^[[1m^[[32m43 passed^[[39m^[[22m^[[90m (43)^[[39m",
+    "check\tTest\t2026-10-28T14:51:46.9126215Z packages/agents test: ^[[2m      Tests ^[[22m ^[[1m^[[32m361 passed^[[39m^[[22m^[[90m (361)^[[39m",
+    "check\tTest\t2026-10-28T14:51:51.5097600Z packages/config test: ^[[2m      Tests ^[[22m ^[[1m^[[32m30 passed^[[39m^[[22m^[[90m (30)^[[39m",
+    "check\tTest\t2026-10-28T14:52:16.1896255Z packages/loop test: ^[[2m      Tests ^[[22m ^[[1m^[[32m514 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m1 skipped^[[39m^[[90m (515)^[[39m",
+    "check\tTest\t2026-10-28T14:52:24.2725642Z packages/conformance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m9 passed^[[39m^[[22m^[[90m (9)^[[39m",
+    "check\tTest\t2026-10-28T14:52:25.9734351Z packages/supervisor test: ^[[2m      Tests ^[[22m ^[[1m^[[32m88 passed^[[39m^[[22m^[[90m (88)^[[39m",
+    "check\tTest\t2026-10-28T15:03:06.5728439Z packages/cli test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2764 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m6 skipped^[[39m^[[90m (2770)^[[39m"
+  ],
+  "counts": {
+    "passed": 7142,
+    "skipped": 7,
+    "failed": 0
+  },
+  "qualification": "Current published-head CI, separate from historical localfull and host experiments"
+}
