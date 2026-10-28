@@ -1,0 +1,33 @@
+{
+  "candidate_sha": "9a063b97a06dfb46fdb20f77a6e984b4206518e6",
+  "base_sha": "fd9cac8127dbfa5660d9c45e58a42da5ed642073",
+  "state": "locally_verified_awaiting_latest_head_CI",
+  "runtime_enabled": false,
+  "card_id": "card_02dd7ae1",
+  "validation": {
+    "focused_tests": 12,
+    "full_suite_passed": 7138,
+    "full_suite_skipped": 5,
+    "full_suite_exit_code": 0,
+    "biome": "PASS, two changed files",
+    "cli_typecheck": "PASS",
+    "real_cases": [
+      "same missing ref: baseline0 -> candidate1",
+      "same healthy blessed ref:0 -> 0",
+      "real moved Git head:2",
+      "mixed drift and unreachable:1 with both counts",
+      "empty sources:0"
+    ],
+    "source_and_build": "real-candidate-final/results.json binds all package dist files; unchanged before/after"
+  },
+  "audit": {
+    "model": "claude-sonnet-5-5",
+    "result": "PASS for code/tests",
+    "candidate_sha": "9a063b97a06dfb46fdb20f77a6e984b4206518e6",
+    "limit": "model did not execute; real CLI results separately archived"
+  },
+  "ci_rule": "Only latest published head passing applicable checks can become Ready; GitHub and OSStack carry live status",
+  "approval_owner": "gilberthello",
+  "first_batch_relation": "independent of PR288; no overlapping code or ledger writes",
+  "evidence": "evidence.tar.gz and evidence-manifest.json"
+}
