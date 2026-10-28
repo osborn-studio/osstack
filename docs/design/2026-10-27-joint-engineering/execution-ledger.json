@@ -3435,7 +3435,7 @@
     "merged_at": "2026-10-28T16:24:46Z"
   },
   "next_framing_architecture_wave": {
-    "status": "preparing_after_297_merge",
+    "status": "authors_implementing_after_prefreeze",
     "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
     "owners": {
       "loader_adversarial": {
@@ -3458,6 +3458,8 @@
     },
     "model_calls_authorized_to_workers": false,
     "formal_gates_passed": false,
-    "full_regression_owner": "root_single_queue"
+    "full_regression_owner": "root_single_queue",
+    "criteria_sha256": "637590cc7b487b039e5c4f85469b494fe671aadaef236bbc25886a1a44b2a101",
+    "independent_criteria": 12
   }
 }
