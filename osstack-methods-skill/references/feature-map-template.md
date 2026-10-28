@@ -23,3 +23,5 @@ This is an authoring template, not a completed map or a machine contract. Replac
 - **Maintenance owner and trigger:** who reviews changes to source/driver/predicate; no automatic schedule implied.
 
 Use separate rows for behavior, cleanup and coverage rather than compressing them into one green badge. The [engineering decision example](engineering-decision.md) is a concrete starting map, with three observations from one scripted journey rather than three independent end-to-end scenarios.
+
+The [skills-check journey](skills-check-journey.md) is another concrete map: a healthy CLI result and an expected source failure, each with separate product and driver exits. It names the supported command, retained proof and cleanup limit. Use its two rows only for that scope; do not copy their outcomes into an unexecuted run.
