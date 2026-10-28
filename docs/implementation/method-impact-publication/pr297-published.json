@@ -1,0 +1,61 @@
+{
+  "baseRefName": "main",
+  "headRefOid": "0862bc382a61126124bdeff717aff95b051a7d5b",
+  "isDraft": true,
+  "mergeStateStatus": "BLOCKED",
+  "number": 297,
+  "state": "OPEN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-28T15:41:33Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922697074",
+      "name": "Paid DeepSeek semantic smoke",
+      "startedAt": "2026-10-28T15:41:33Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922695234",
+      "name": "graph-macos-fixtures (22)",
+      "startedAt": "2026-10-28T15:41:33Z",
+      "status": "QUEUED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922695040",
+      "name": "graph-macos-fixtures (24)",
+      "startedAt": "2026-10-28T15:41:33Z",
+      "status": "QUEUED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922695112",
+      "name": "graph-runtime-matrix (20.6.0)",
+      "startedAt": "2026-10-28T15:41:35Z",
+      "status": "IN_PROGRESS",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40718517835/job/122922694659",
+      "name": "graph-runtime-matrix (22.23.1)",
+      "startedAt": "2026-10-28T15:41:35Z",
+      "status": "IN_PROGRESS",
+      "workflowName": "CI"
+    }
+  ],
+  "url": "https://github.com/osborn-studio/osstack/pull/297"
+}

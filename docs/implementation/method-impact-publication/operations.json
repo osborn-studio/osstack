@@ -1,0 +1,107 @@
+{
+  "at": "2026-10-28T15:42:13.513061+00:00",
+  "receipts": [
+    {
+      "comment_id": 477,
+      "card_id": "card_575bf2b9",
+      "author": "joint-entry",
+      "body": "Implemented and integrated in PR297 published0862bc38, code687811a6. Actual Sonnet5.5 PASS and limited closure PASS;81exports,7144full/5skip/0fail,241docs/1hygiene. Remains running pending exact-head CI40718517835. No native-host effects or runtime qualification claimed.",
+      "created_at": 1793202133.506
+    },
+    {
+      "comment_id": 478,
+      "card_id": "card_b64a5211",
+      "author": "joint-entry",
+      "body": "Implemented and integrated in PR297 published0862bc38, code687811a6. Actual Sonnet5.5 PASS and limited closure PASS;81exports,7144full/5skip/0fail,241docs/1hygiene. Remains running pending exact-head CI40718517835. No native-host effects or runtime qualification claimed.",
+      "created_at": 1793202133.507
+    },
+    {
+      "comment_id": 479,
+      "card_id": "card_a9783847",
+      "author": "joint-entry",
+      "body": "Scoped independent assessment complete: original12criteria frozen ebec2ebc; final6878 two-host64files/201links each, exact math and authority checks, final manifest3cdcc78b. Evidence archive78fe18e9 verified672members. Original helper failure preserved; not native efficacy or formal gate.",
+      "created_at": 1793202133.507
+    },
+    {
+      "card_id": "card_a9783847",
+      "board": "joint-firstmate-pstack",
+      "task_id": null,
+      "title": "Independent impact/performance acceptance",
+      "body": "Prefreeze <=12 scoped behavior criteria across two method materials before implementations; source/authorization/evidence/sampling/claims and export integration independently checked. Own scratch only. No formal principal/gate or method efficacy claim from textual checks.",
+      "status": "done",
+      "priority": 1,
+      "assignee": "joint-entry",
+      "blocked_reason": null,
+      "tenant_id": null,
+      "card_type": "implementation",
+      "meta": null,
+      "created_at": 1793200482.723,
+      "updated_at": 1793202133.507,
+      "started_at": 1793200482.723,
+      "completed_at": 1793202133.507
+    }
+  ],
+  "boards": {
+    "joint-firstmate-pstack": {
+      "stats": {
+        "total": 55,
+        "by_status": {
+          "done": 21,
+          "running": 4,
+          "ready": 1,
+          "todo": 29
+        },
+        "by_assignee": {
+          "joint-entry": 43,
+          "loader_adversarial": 4,
+          "terminal_preflight": 5,
+          "cleanup_regression": 3
+        }
+      },
+      "latest_event_id": 840
+    },
+    "firstmate-upgrade-roadmap": {
+      "stats": {
+        "total": 50,
+        "by_status": {
+          "blocked": 6,
+          "done": 9,
+          "todo": 35
+        },
+        "by_assignee": {
+          "契约/来源维护者": 5,
+          "Session/决定开发者": 8,
+          "主控/存储开发者": 7,
+          "执行器开发者": 6,
+          "集成负责人": 12,
+          "独立验证/发布负责人": 7,
+          "看板维护者": 2,
+          "Session/恢复开发者": 3
+        }
+      },
+      "latest_event_id": 640
+    },
+    "session-pilot-debt": {
+      "stats": {
+        "total": 13,
+        "by_status": {
+          "todo": 3,
+          "blocked": 2,
+          "done": 8
+        },
+        "by_assignee": {
+          "future-runtime": 3,
+          "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13": 1,
+          "thread-b": 1,
+          "root": 3,
+          "pilot_completion": 1,
+          "pilot_runtime_cleanup": 1,
+          "pilot_smoke": 1,
+          "external-environment": 1,
+          "joint-entry": 1
+        }
+      },
+      "latest_event_id": 816
+    }
+  }
+}
