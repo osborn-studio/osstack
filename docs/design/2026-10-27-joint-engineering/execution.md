@@ -152,3 +152,10 @@ PR289 was then verified merged by the user at `64b203c32d245d5ad9a76914253ca18cb
 ## Named OSStack method entries — 2026-10-28
 
 PR290 merged at `f92914e0a98bd3e5f82765fddc5a275a93637f30`. PR291 initial CI found a mixed-case mismatch. Its repaired head `6df338e8` includes that main, a confirmed Git output-drain fix, 7,144 passing package tests and actual Sonnet audit PASS; new-head CI remains separately observed. The next D2a slice implements `osstack-mode`, `osstack-help`, `setup-osstack`, and `osstack-agent`, with self-contained project exports for both hosts. The slice does not port the entire upstream catalog or activate runtime gates. Root retains central ledger/PR ownership; materials, export implementation and independent forward review have separate owners. See [batch records](../../implementation/osstack-method-entrypoints/README.md).
+
+
+## PR291 repair and PR292 final CI observation (2026-10-28 UTC)
+
+PR291 `2b8ef9b7` and PR292 `fe9079a1` are Ready after five applicable CI checks each succeeded; paid smoke was skipped. PR291's latest Linux full test step reports 7142 passed / 7 skipped / 0 failed; PR292 reports 7136 / 7 / 0. Earlier local counts remain bound to their original candidates. PR291's actual Sonnet 5.5 audit covers both the Git stream-drain correction and the later bounded, checksum-verified headers preparation. Original failures are retained. Final actual verifier artifact 12808791882 has 49 hash-verified payloads and all five expected outcomes.
+
+The exact combined tree passed fresh build and targeted verification, without a combined full suite. See [final composition and CI observation](../../implementation/joint-final-ci-composition/README.md). OSStack cards are blocked only awaiting gilberthello approval/merge; merge PR291 first, then verify actual main against the recorded composition before PR292. No agent approval/merge or formal runtime qualification occurred. Native skill discovery is only a preserved, unexecuted next-batch proposal.
