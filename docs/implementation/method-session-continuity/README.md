@@ -37,3 +37,11 @@ Commands use Node 22.22.1 and the repository scratch root. The retained records 
 - `quick_validate.py` accepted the source skill and four entries. This checks skill format only.
 
 The author evidence is under the task-owned `method-continuity-20261029/author` scratch area, with source hashes, original RED/GREEN output, export receipts/manifests and validation records. Root owns final archival publication, independent review, actual Sonnet audit and the full-suite queue. No native model invocation, process stop/recovery, real provider, runtime gate or control-plane database was exercised by this slice. Historical host experiments do not qualify this new material.
+
+## Audit revision
+
+The actual Sonnet review of author candidate `0ed5bbb799df22048ef058e59861c86640c7b788` requested two corrections. The revision traces the goal and authority to current trusted instructions or an authorized task record, checks the action/candidate, and obtains ownership from current assignment rather than a handoff claim. It preserves visibly authorized work without repeated approval. The handoff now records base, dirty-file owners and the next observer/trigger or explicit coverage gap.
+
+The revision also makes review-only scope explicit, distinguishes failed backend queries from absence, preserves resumable scratch, links the authoritative ledger without completing the parent, and removes unexplained qualification jargon from exported guidance. Source attribution names the inspected copyright holder and links the exact implementation lines. No semantic wording-presence tests were added. The existing structural source-link check follows the anchored URL.
+
+Revision validation separately ran all 88 exporter tests and two fresh 76-file exports with complete member hash/size checks. These results do not replace the original RED/GREEN records. The original review and item dispositions remain in the task evidence; root owns their published archive and final audit closure.

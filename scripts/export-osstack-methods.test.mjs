@@ -562,6 +562,6 @@ test('session continuity links evidence and both original project sources at exa
     assert.ok(sources.includes(`https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/${path}`), path);
   }
   for (const path of ['.agents/skills/captain-hold-lifecycle/SKILL.md', '.agents/skills/away-quiet-supervision/SKILL.md', 'bin/fm-afk-launch.sh']) {
-    assert.ok(sources.includes(`https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/${path}`), path);
+    assert.ok(sources.includes(`https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/${path}${path.startsWith('bin/') ? '#L455-L523' : ''}`), path);
   }
 });

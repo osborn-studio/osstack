@@ -9,7 +9,7 @@ Read the requested entry below and [the common evidence rules](references/eviden
 
 | User intent | Read | Deliver |
 | --- | --- | --- |
-| Recall, resume, hand off or explicitly pause existing work | [Session continuity](references/session-continuity.md) | Current owner/state, inherited evidence, unresolved obligations and a safe resume point |
+| Recall, resume, hand off or explicitly pause existing work | [Session continuity](references/session-continuity.md) | Current owner/state, inherited evidence, unresolved obligations and a resume point with its prerequisite |
 | Choose interfaces, domain shapes and state ownership before implementation | [Architecture design](references/architecture-design.md) | Caller examples, compared structures, lifecycle contracts and falsifiable checks |
 | Restate a goal or sharpen a prompt without expanding it | [Task framing](references/task-framing.md) | Preserved intent, constraints, open choices and a concrete evidence-based task |
 | Assess a latency, throughput or regression claim | [Performance measurement](references/performance-measurement.md) | Comparable completed work, raw samples, uncertainty and user-visible significance |
