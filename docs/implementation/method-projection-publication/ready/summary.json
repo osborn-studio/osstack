@@ -1,0 +1,148 @@
+{
+  "head": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+  "run": 40698994343,
+  "full": {
+    "passed": 7142,
+    "skipped": 7,
+    "failed": 0
+  },
+  "package_rows": [
+    {
+      "line": "check\tTest\t2026-10-28T13:47:05.8196257Z packages/contracts test: ^[[2m      Tests ^[[22m ^[[1m^[[32m15 passed^[[39m^[[22m^[[90m (15)^[[39m",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:05.8642670Z packages/compliance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m17 passed^[[39m^[[22m^[[90m (17)^[[39m",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:08.4176312Z packages/github test: ^[[2m      Tests ^[[22m ^[[1m^[[32m107 passed^[[39m^[[22m^[[90m (107)^[[39m",
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:10.1358982Z packages/knowledge test: ^[[2m      Tests ^[[22m ^[[1m^[[32m44 passed^[[39m^[[22m^[[90m (44)^[[39m",
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:13.5783013Z packages/neat-eval test: ^[[2m      Tests ^[[22m ^[[1m^[[32m16 passed^[[39m^[[22m^[[90m (16)^[[39m",
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:13.6266729Z packages/runtime test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:21.7224060Z packages/protocol test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1012 passed^[[39m^[[22m^[[90m (1012)^[[39m",
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:23.1672582Z packages/governance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m301 passed^[[39m^[[22m^[[90m (301)^[[39m",
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:25.7343893Z packages/knowledge-cloud test: ^[[2m      Tests ^[[22m ^[[1m^[[32m36 passed^[[39m^[[22m^[[90m (36)^[[39m",
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:47:44.6556486Z packages/graph test: ^[[2m      Tests ^[[22m ^[[1m^[[32m257 passed^[[39m^[[22m^[[90m (257)^[[39m",
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:25.2968594Z packages/core test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1301 passed^[[39m^[[22m^[[90m (1301)^[[39m",
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:27.5016513Z packages/plugins test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:27.8786075Z packages/hermes-adapter test: ^[[2m      Tests ^[[22m ^[[1m^[[32m22 passed^[[39m^[[22m^[[90m (22)^[[39m",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:29.6023015Z packages/skills test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:36.6455789Z packages/autonomy test: ^[[2m      Tests ^[[22m ^[[1m^[[32m201 passed^[[39m^[[22m^[[90m (201)^[[39m",
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:40.0060377Z packages/skill-registry test: ^[[2m      Tests ^[[22m ^[[1m^[[32m43 passed^[[39m^[[22m^[[90m (43)^[[39m",
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:48:56.4411682Z packages/agents test: ^[[2m      Tests ^[[22m ^[[1m^[[32m361 passed^[[39m^[[22m^[[90m (361)^[[39m",
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:49:00.6975941Z packages/config test: ^[[2m      Tests ^[[22m ^[[1m^[[32m30 passed^[[39m^[[22m^[[90m (30)^[[39m",
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:49:23.7996526Z packages/loop test: ^[[2m      Tests ^[[22m ^[[1m^[[32m514 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m1 skipped^[[39m^[[90m (515)^[[39m",
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:49:31.4075471Z packages/conformance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m9 passed^[[39m^[[22m^[[90m (9)^[[39m",
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:49:33.1468684Z packages/supervisor test: ^[[2m      Tests ^[[22m ^[[1m^[[32m88 passed^[[39m^[[22m^[[90m (88)^[[39m",
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "line": "check\tTest\t2026-10-28T13:59:37.4346259Z packages/cli test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2764 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m6 skipped^[[39m^[[90m (2770)^[[39m",
+      "passed": 2764,
+      "skipped": 6,
+      "failed": 0
+    }
+  ],
+  "ci_log_sha256": "e91fc41d3c6a8e7fc046f2057f95e34446acb841049ab41f6af8d4664f6880d4",
+  "packet_artifact_id": 12821763009,
+  "packet_checker_exit": 0,
+  "packet_sha256": "42b903f7f3393923134a51826308a8a088ab7943b51336a9ac1aee22f6f91896",
+  "original_evidence_revalidated": false
+}

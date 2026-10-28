@@ -3043,7 +3043,7 @@
   "next_method_development_wave": {
     "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
     "authorization": "user explicitly requested OSStack parallel subagent implementation",
-    "status": "293_294_merged_295_draft_ci_running",
+    "status": "295_ready_waiting_user_merge",
     "owners": {
       "loader_adversarial": {
         "card": "card_766d64bc",
@@ -3150,7 +3150,7 @@
       "independent_card": "card_c49a2a2c",
       "branch": "codex/method-evidence-projection",
       "base": "5929180db44a6d05f0f6f2de1cb731fd273665dd",
-      "status": "published_draft_ci_running",
+      "status": "ready_waiting_user_merge",
       "scope": "three new projection script/test/docs files; no new model calls or raw evidence mutation",
       "criteria_sha256": "dea3d5b26124a97cf0dfba60cbe852a4fd167293231472b24790498354c3361e",
       "independent_vectors": 15,
@@ -3172,7 +3172,7 @@
       "card": "card_0596e0e4",
       "branch": "codex/method-journey-reference",
       "base": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
-      "status": "published_draft_ci_running",
+      "status": "ready_waiting_user_merge",
       "scope": "exported fixed journey reference, 3existingreferences and export tests, own docs only",
       "author_sha": "c29a3aa2c1c179255dabb0a7fca3f1fea817e0e7",
       "focused_tests": 74,
@@ -3193,11 +3193,47 @@
       "formal_gates_passed": false,
       "published_head": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
       "ci_run": 40698994343,
-      "ci_status": "in_progress",
-      "is_draft": true,
+      "ci_status": "success",
+      "is_draft": false,
       "archive_sha256": "29d6a9ccfd0a81f850bd781324a21166aefb1ba4ac8904818b99441361cc86e2",
       "final_document_tests": 241,
-      "final_hygiene_tests": 1
+      "final_hygiene_tests": 1,
+      "current_head_ci_full": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "ready_evidence": "docs/implementation/method-projection-publication/ready/summary.json"
     }
+  },
+  "next_method_host_wave": {
+    "status": "review_method_implementation_and_host_preparation",
+    "baseline": "42dbdb0a8cf3be68bb41b7ac6e57990cb0cb092f",
+    "provisional_dependency": "d63dbdce7f78c2647ad41576c98b6f2df4d41aaf",
+    "authorization": "user explicitly requests OSStack multiple agents continued implementation",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_3bfd2963",
+        "scope": "<=9 files code-review method adaptation/router/source/export tests; isolated author worktree",
+        "branch": "codex/method-code-review"
+      },
+      "terminal_preflight": {
+        "card": "card_6a06bc2e",
+        "scope": "read-only two-host packet consumption protocol/harness preparation, no calls before root dispatch"
+      },
+      "cleanup_regression": {
+        "card": "card_00430585",
+        "scope": "independent <=15 criteria freeze and offline validation"
+      }
+    },
+    "model_calls_performed": 0,
+    "driver_runs_performed": 0,
+    "host_plan": "native skill consumption where observed, existing coordinator-generated packet only; no claim host executed driver or OS filesystem sandbox",
+    "maximum_proposed_calls": 2,
+    "retries": 0,
+    "formal_gates_passed": false,
+    "updated_at": "2026-10-28T14:00:48.808103+00:00",
+    "host_criteria_sha256": "e5b91c4c44c3a267398fb48d9565ffb3cd6e929e78311210e8c33e53e2d9a81f",
+    "method_criteria_sha256": "d3f62cba1ea9d921a76b378f69b3b1cc1fd14da83c388bc00d27d7b776194f7d"
   }
 }
