@@ -3538,7 +3538,7 @@
     "actual_main_tree_equals_published_head": true
   },
   "next_continuity_wave": {
-    "status": "draft_repaired_ci_running",
+    "status": "ready_waiting_user_merge",
     "baseline": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "owners": {
       "loader_adversarial": {
@@ -3636,6 +3636,20 @@
           "scope": "7495b723 with2ledger/4generateddist changes unchanged duringrun; notfuturemethodwhole-tree"
         }
       }
+    },
+    "ready_observed_at": "2026-10-28T23:38:37.260635+00:00",
+    "applicable_ci": "5_SUCCESS_paid_SKIPPED",
+    "final_ci_test": {
+      "head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
+      "run": 40786370675,
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "cleanup_case_ms_including_setup": [
+        18718,
+        19048
+      ]
     }
   },
   "next_pr_readiness_preflight": {
@@ -3659,7 +3673,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "method_audited_host_refresh_pending",
+    "status": "audited_candidate_host_probe_closed_publication_pending",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3676,13 +3690,39 @@
       "actual_claude-sonnet-5-5_REVISE",
       "limited_R1_R3_closure_PASS"
     ],
-    "host_user_turns": 0,
+    "host_user_turns": 2,
     "formal_gates_passed": false,
     "runtime_enabled": false,
     "cards": [
       "card_00455914",
       "card_b6355d9e",
       "card_d520a214"
-    ]
+    ],
+    "host_probe": {
+      "source_sha": "95a33e371464fe48bf063afe17ed650852e925d5",
+      "codex": "LIMITED",
+      "claude": "FAILED",
+      "codex_final_words": 329,
+      "codex_all_words": 348,
+      "claude_words": 578,
+      "hard_max_words": 500,
+      "calls_each": 1,
+      "retries": 0,
+      "codex_native": "not_observed_explicit_cat",
+      "codex_model": "not_attested",
+      "claude_native": "Skill_osstack-mode_observed",
+      "claude_model": "reported_claude-sonnet-5-5",
+      "plan_gaps": "Both B plans omit corrected-candidate evidence rebinding; Claude omits explicit same-trigger execution",
+      "independent_grade_sha256": "bbeeb66408e9ba3acff4692590bb33836f21396c957ea86768ed81f7746a5a87",
+      "scope": "Synthetic snapshots/read-only plans; no real forge action or runtime qualification"
+    },
+    "evidence": "docs/implementation/method-pr-readiness-delivery",
+    "raw_archive_sha256": "30582ba5e0c7314a4af335d95564a30684e4dd2dcdc4101485fb30c6da528d52",
+    "host_report_audit": [
+      "actual_claude-sonnet-5-5_REVISE",
+      "limited_report_accuracy_closure_PASS"
+    ],
+    "owned_host_workspaces_archived_then_removed": 4,
+    "archive_independently_verified": true
   }
 }

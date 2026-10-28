@@ -1,0 +1,516 @@
+{
+  "graded_at": "2026-10-28T23:33:39.254732+00:00",
+  "criteria_sha256": "b8a648fe6314ce9336c1c6aafdeb8118def7a97ac8093743d1fb27183971b172",
+  "supplement_sha256": "25bbf8885b0dc1b3cd14ebe369ba3c3028ecc15a33825eb06bd2d37495f8f37e",
+  "source_candidate": "95a33e371464fe48bf063afe17ed650852e925d5",
+  "results": {
+    "codex": {
+      "overall": "LIMITED_not_overall_PASS",
+      "axes": {
+        "HR01": "observed_within_bounded_scope",
+        "HR02": "limited_explicit_followup_verification_binding_detail",
+        "HR03": "observed_within_bounded_scope",
+        "HR04": "observed_within_bounded_scope",
+        "HR05": "observed_within_bounded_scope",
+        "HR06": "observed_within_bounded_scope",
+        "HR07": "observed_within_bounded_scope",
+        "HR08": "observed_within_bounded_scope",
+        "HR09": "wordcap_pass_semantic_final_selection_native_marker_absent",
+        "HR10": "requested_identity_bound_actual_execution_model_not_attested",
+        "HR11": "workspace_integrity_and_owned_temp_confirmed_global_effects_not_attested",
+        "HR12": "scoped_axes_reported_no_runtime_or_general_benefit"
+      },
+      "cases": {
+        "A": {
+          "status": "core_classification_supported",
+          "assessment": "Not ready: current b vs old a, pending710/711, old approval/current unmet, draft, local divergence; no invented observed test failure."
+        },
+        "B": {
+          "status": "classification_supported_plan_detail_limited",
+          "assessment": "Blocked c unit failure and review/unresolved; zero defect supported by supplied synthetic ||/?? patch/excerpt, no new reproduction. Injection rejected and future named-owner local fix kept separate from readonly current probe. See HR02 planning omissions."
+        },
+        "C": {
+          "status": "core_classification_supported",
+          "assessment": "Blocked d/base2 conflict/up-to-date false; green old-base1 tests not current integration proof; existing approval remains satisfied. Maintainer resolves and revalidates; evaluator makes no topology change."
+        },
+        "D": {
+          "status": "core_classification_supported",
+          "assessment": "Merge-ready on supplied e/base2 facts, with already-satisfied approval, no threads/queue/dependencies and human decision; no actual merge/live status claimed."
+        }
+      },
+      "findings": [
+        {
+          "id": "C1",
+          "criterion": "HR10",
+          "status": "not_attested",
+          "detail": "Execution-resolved model identity not exposed; retains requested model only."
+        },
+        {
+          "id": "C2",
+          "criterion": "HR09",
+          "status": "limited_native_final_attestation",
+          "detail": "Semantically identifiable answer event7, but stream provides no final-channel marker; both messages retained."
+        },
+        {
+          "id": "C3",
+          "criterion": "HR02",
+          "status": "limited_plan_detail",
+          "detail": "B next action explicitly verifies the zero trigger under existing local authority but does not expressly say to bind that local result to a new candidate. This is a planning-detail omission, not a wrong readiness classification or observed unauthorized action."
+        }
+      ],
+      "required_read_paths": [
+        ".agents/skills/osstack-mode/SKILL.md",
+        "inputs/index.json",
+        "inputs/request.txt",
+        ".agents/skills/osstack-mode/references/pr-readiness.md",
+        ".agents/skills/osstack-mode/references/evidence.md",
+        "inputs/snapshot-A.json",
+        "inputs/snapshot-B.json",
+        "inputs/snapshot-C.json",
+        "inputs/snapshot-D.json"
+      ],
+      "read_evidence": [
+        {
+          "event_index": 4,
+          "paths": [
+            ".agents/skills/osstack-mode/SKILL.md",
+            "inputs/index.json",
+            "inputs/request.txt"
+          ],
+          "bytes": 6779,
+          "sha256": "749fad1d739cbdaedec47cd2f639f9a010d822e72b7c7dd06dcba51c61b84244",
+          "exact_aggregate_return_match": true
+        },
+        {
+          "event_index": 6,
+          "paths": [
+            ".agents/skills/osstack-mode/references/pr-readiness.md",
+            ".agents/skills/osstack-mode/references/evidence.md",
+            "inputs/snapshot-A.json",
+            "inputs/snapshot-B.json",
+            "inputs/snapshot-C.json",
+            "inputs/snapshot-D.json"
+          ],
+          "bytes": 21177,
+          "sha256": "2bbfe7a2b75bb3f838df9fd4c8f27a9e392e8272308273d5e95d6e81a4d44220",
+          "exact_aggregate_return_match": true
+        }
+      ],
+      "tool_calls": [
+        {
+          "event_index": 4,
+          "name": "explicit shell cat",
+          "argv_text": "/bin/zsh -lc 'cat .agents/skills/osstack-mode/SKILL.md inputs/index.json inputs/request.txt'",
+          "exit_code": 0
+        },
+        {
+          "event_index": 6,
+          "name": "explicit shell cat",
+          "argv_text": "/bin/zsh -lc 'cat .agents/skills/osstack-mode/references/pr-readiness.md .agents/skills/osstack-mode/references/evidence.md inputs/snapshot-A.json inputs/snapshot-B.json inputs/snapshot-C.json inputs/snapshot-D.json'",
+          "exit_code": 0
+        }
+      ],
+      "attribution": {
+        "surface": "explicit file reading confirmed",
+        "native_invocation": "not_observed",
+        "native_unavailability": "not_claimed_or_proven",
+        "details": "Two cat commands only. Answer correctly says no native invocation established, rather than claiming unavailable."
+      },
+      "identity": {
+        "requested": "gpt-6.1-sol",
+        "resolved_execution": "not_attested",
+        "evidence": "No model field in native execution event stream; request/default metadata not substituted."
+      },
+      "final_words": 329,
+      "all_agent_text_words": 348,
+      "assistant_word_counts": [
+        {
+          "event": 2,
+          "words": 19
+        },
+        {
+          "event": 7,
+          "words": 329
+        }
+      ],
+      "hard_limit_pass": true,
+      "target250_350_met": true,
+      "final_selection": "Event2 is a reading-intent progress message before tools; event7 is sole post-tool substantive four-case answer before turn.completed. Both completed agent messages retained. No explicit native final channel; convenience final_ambiguous remains true. All348 words also meet500.",
+      "event_count": 9,
+      "elapsed_record_seconds": 24.177132,
+      "root_guard_timing": {
+        "guard_approved_at": "2026-10-28T23:30:17.616119+00:00",
+        "dispatch_at": "2026-10-28T23:30:17.813730+00:00",
+        "runner_started_at": "2026-10-28T23:30:21.171110+00:00",
+        "ordered": true,
+        "all_guard_file_hashes_currently_match": true
+      },
+      "inventory": {
+        "entries": 32,
+        "regular_files": 26,
+        "before_after_current_maps_equal": true,
+        "raw_before_after_bytes_equal": false,
+        "private_temp_absent": true,
+        "workspace_retained": true
+      },
+      "boundaries": "Actual recorded tools are supplied-file reads only; no live forge/product/test/install/write/environment/credential/network/subagent/publication/merge/watch operation observed. Not proof against shell startup/global side effects or every descendant.",
+      "execution": {
+        "exit_code": 0,
+        "original_userturns": 1,
+        "retries": 0,
+        "timed_out": false,
+        "internal_num_turns": null,
+        "tool_iteration_count_not_userturn_count": true
+      }
+    },
+    "claude": {
+      "overall": "FAILED_hard_word_limit_not_overall_PASS",
+      "axes": {
+        "HR01": "observed_within_bounded_scope",
+        "HR02": "limited_explicit_followup_verification_binding_detail",
+        "HR03": "observed_within_bounded_scope",
+        "HR04": "observed_within_bounded_scope",
+        "HR05": "observed_within_bounded_scope",
+        "HR06": "observed_within_bounded_scope",
+        "HR07": "observed_within_bounded_scope",
+        "HR08": "observed_within_bounded_scope",
+        "HR09": "FAILED_578_exceeds_500",
+        "HR10": "native_reported_identity_not_authenticated_principal",
+        "HR11": "workspace_integrity_and_owned_temp_confirmed_global_effects_not_attested",
+        "HR12": "scoped_axes_reported_no_runtime_or_general_benefit"
+      },
+      "cases": {
+        "A": {
+          "status": "core_classification_supported",
+          "assessment": "Not ready: current b vs old a, pending710/711, old approval/current unmet, draft, local divergence; no invented observed test failure."
+        },
+        "B": {
+          "status": "classification_supported_plan_detail_limited",
+          "assessment": "Blocked c unit failure and review/unresolved; zero defect supported by supplied synthetic ||/?? patch/excerpt, no new reproduction. Injection rejected and future named-owner local fix kept separate from readonly current probe. See HR02 planning omissions."
+        },
+        "C": {
+          "status": "core_classification_supported",
+          "assessment": "Blocked d/base2 conflict/up-to-date false; green old-base1 tests not current integration proof; existing approval remains satisfied. Maintainer resolves and revalidates; evaluator makes no topology change."
+        },
+        "D": {
+          "status": "core_classification_supported",
+          "assessment": "Merge-ready on supplied e/base2 facts, with already-satisfied approval, no threads/queue/dependencies and human decision; no actual merge/live status claimed."
+        }
+      },
+      "findings": [
+        {
+          "id": "L1",
+          "criterion": "HR09",
+          "status": "failed",
+          "detail": "Complete final578 Python split words exceeds hard500; no waiver or retry."
+        },
+        {
+          "id": "L2",
+          "criterion": "HR02",
+          "status": "limited_plan_detail",
+          "detail": "B next action restores ?? and adds/keeps the zero test, but omits explicitly running same-trigger verification and binding its result to a new local head. The original synthetic defect classification is supported; no executed correction is claimed."
+        }
+      ],
+      "required_read_paths": [
+        "inputs/index.json",
+        "inputs/request.txt",
+        ".claude/skills/osstack-mode/references/pr-readiness.md",
+        ".claude/skills/osstack-mode/references/evidence.md",
+        "inputs/snapshot-A.json",
+        "inputs/snapshot-B.json",
+        "inputs/snapshot-C.json",
+        "inputs/snapshot-D.json",
+        ".claude/skills/osstack-mode/SKILL.md"
+      ],
+      "read_evidence": [
+        {
+          "event_index": 7,
+          "path": "inputs/index.json",
+          "bytes": 662,
+          "sha256": "b2116f537cae357adcdb5459aa66b2e64975476b284c939e98aa9923e425dc53",
+          "startLine": 1,
+          "numLines": 17,
+          "totalLines": 17,
+          "full_return_match": true
+        },
+        {
+          "event_index": 10,
+          "path": "inputs/request.txt",
+          "bytes": 694,
+          "sha256": "d23eedf4ee3fe8e9876726de2c22827e06d15b33eac8e5c7fab1b521bed1fd43",
+          "startLine": 1,
+          "numLines": 2,
+          "totalLines": 2,
+          "full_return_match": true
+        },
+        {
+          "event_index": 12,
+          "path": ".claude/skills/osstack-mode/references/pr-readiness.md",
+          "bytes": 8061,
+          "sha256": "70faa28d057b87ff7ca017036abb64f25d7de54473d51a7500578c3f0b8062c3",
+          "startLine": 1,
+          "numLines": 38,
+          "totalLines": 38,
+          "full_return_match": true
+        },
+        {
+          "event_index": 14,
+          "path": ".claude/skills/osstack-mode/references/evidence.md",
+          "bytes": 4554,
+          "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+          "startLine": 1,
+          "numLines": 50,
+          "totalLines": 50,
+          "full_return_match": true
+        },
+        {
+          "event_index": 16,
+          "path": "inputs/snapshot-A.json",
+          "bytes": 2094,
+          "sha256": "9ddf47cf8a8dc9f5edcc85ac831dc4a498062845ffd444ea163befbd41dbb690",
+          "startLine": 1,
+          "numLines": 82,
+          "totalLines": 82,
+          "full_return_match": true
+        },
+        {
+          "event_index": 18,
+          "path": "inputs/snapshot-B.json",
+          "bytes": 2560,
+          "sha256": "7a6816e61850c94bcb9f6dc27022d2de5bac98431686ec2fa80dca933d8acb6e",
+          "startLine": 1,
+          "numLines": 78,
+          "totalLines": 78,
+          "full_return_match": true
+        },
+        {
+          "event_index": 20,
+          "path": "inputs/snapshot-C.json",
+          "bytes": 2008,
+          "sha256": "638cfe9ee4fc724e05f0c997fc404e756240bb1d69342cd91bdae8478619c85e",
+          "startLine": 1,
+          "numLines": 73,
+          "totalLines": 73,
+          "full_return_match": true
+        },
+        {
+          "event_index": 22,
+          "path": "inputs/snapshot-D.json",
+          "bytes": 1900,
+          "sha256": "5afa9a00343c5baab440ae084a0f49fa76a85f14399fe3459691908c3a830970",
+          "startLine": 1,
+          "numLines": 70,
+          "totalLines": 70,
+          "full_return_match": true
+        },
+        {
+          "event_index": 5,
+          "path": ".claude/skills/osstack-mode/SKILL.md",
+          "body_sha256": "a3a37b1d9963ca3bc255ac2346e44bd52af5981f7bca70729f21705549220b1d",
+          "body_bytes": 4925,
+          "native_expansion_body_match": true,
+          "format": "frontmatter excluded; native base-directory prefix and actual Skill args suffix compared exactly"
+        }
+      ],
+      "tool_calls": [
+        {
+          "event_index": 3,
+          "name": "Skill",
+          "input": {
+            "skill": "osstack-mode",
+            "args": "PR-readiness method for inputs/request.txt"
+          }
+        },
+        {
+          "event_index": 6,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/index.json"
+          }
+        },
+        {
+          "event_index": 8,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/request.txt"
+          }
+        },
+        {
+          "event_index": 11,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/.claude/skills/osstack-mode/references/pr-readiness.md"
+          }
+        },
+        {
+          "event_index": 13,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/.claude/skills/osstack-mode/references/evidence.md"
+          }
+        },
+        {
+          "event_index": 15,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/snapshot-A.json"
+          }
+        },
+        {
+          "event_index": 17,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/snapshot-B.json"
+          }
+        },
+        {
+          "event_index": 19,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/snapshot-C.json"
+          }
+        },
+        {
+          "event_index": 21,
+          "name": "Read",
+          "input": {
+            "file_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/snapshot-D.json"
+          }
+        }
+      ],
+      "attribution": {
+        "surface": "native Skill(osstack-mode) event3/success4/body5 plus8 Read returns",
+        "native_invocation": "confirmed_for_this_entry_and_run",
+        "limitations": "Not all-entry discovery/full install; native frontmatter itself not a Read return."
+      },
+      "identity": {
+        "requested": "claude-sonnet-5-5",
+        "init_reported": "claude-sonnet-5-5",
+        "result_modelUsage": [
+          "claude-sonnet-5-5"
+        ],
+        "scope": "CLI/native execution reported, not independently authenticated provider principal"
+      },
+      "final_words": 578,
+      "all_agent_text_words": 578,
+      "assistant_word_counts": [
+        {
+          "event": 29,
+          "words": 578
+        }
+      ],
+      "hard_limit_pass": false,
+      "target250_350_met": false,
+      "final_selection": "One assistant text event29 equals full result event30 exactly; no trimming. Internal num_turns is tool-cycle accounting, not count of original user prompts.",
+      "event_count": 31,
+      "elapsed_record_seconds": 27.256768,
+      "root_guard_timing": {
+        "guard_approved_at": "2026-10-28T23:30:17.813252+00:00",
+        "dispatch_at": "2026-10-28T23:30:17.813730+00:00",
+        "runner_started_at": "2026-10-28T23:30:20.961442+00:00",
+        "ordered": true,
+        "all_guard_file_hashes_currently_match": true
+      },
+      "inventory": {
+        "entries": 32,
+        "regular_files": 26,
+        "before_after_current_maps_equal": true,
+        "raw_before_after_bytes_equal": false,
+        "private_temp_absent": true,
+        "workspace_retained": true
+      },
+      "boundaries": "Actual recorded tools are supplied-file reads only; no live forge/product/test/install/write/environment/credential/network/subagent/publication/merge/watch operation observed. Not proof against shell startup/global side effects or every descendant.",
+      "execution": {
+        "exit_code": 0,
+        "original_userturns": 1,
+        "retries": 0,
+        "timed_out": false,
+        "internal_num_turns": 11,
+        "tool_iteration_count_not_userturn_count": true
+      }
+    }
+  },
+  "raw_bindings": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/independent/host-readiness/criteria.json",
+      "bytes": 10711,
+      "sha256": "b8a648fe6314ce9336c1c6aafdeb8118def7a97ac8093743d1fb27183971b172"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/independent/host-readiness/final-preparation-v2/supplement.json",
+      "bytes": 5856,
+      "sha256": "25bbf8885b0dc1b3cd14ebe369ba3c3028ecc15a33825eb06bd2d37495f8f37e"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/root-host-dispatch.json",
+      "bytes": 1259,
+      "sha256": "4c46d8c2fe52d3ccce1cf612c9602ad53b3c0cf58d6b31e87444bbaa34efae58"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/codex-readiness/evidence/run.jsonl",
+      "bytes": 33427,
+      "sha256": "e0636fb9f94bb28d2e0b2bf4d3451177bf655a69934d4b37ccf49847d9972153"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/codex-readiness/evidence/run-result.json",
+      "bytes": 1796,
+      "sha256": "2cc8f542507d1cd0974d329faa3d1771adfadc93b4c0d637bd966f180928f45b"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/codex-readiness/evidence/run-before.json",
+      "bytes": 5685,
+      "sha256": "fbefa06cc69a59dcd5a986b92812222feeefd8c29a5118d78783f06b66f31d4e"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/codex-readiness/evidence/run-after.json",
+      "bytes": 5686,
+      "sha256": "c87900924b9c92cf0ddbc752295f4b840af401c2ec627dcbb6196647fdc36b9c"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/harness/dispatch-codex-readiness.json",
+      "bytes": 28237,
+      "sha256": "9993bb4e0703542ea2085baa41de0590c0318954bc4a8cc052bb418e25be503f"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/codex-readiness/workspace/inputs/index.json",
+      "bytes": 662,
+      "sha256": "54683917bd99514737589b814a5edce5eadff2948bae872956553713a9c2716d"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/evidence/run.jsonl",
+      "bytes": 110404,
+      "sha256": "c6c97c06b2d8797a258d479f10d8c65aa5cf23cf64aaec283cdd1300add5a7b1"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/evidence/run-result.json",
+      "bytes": 2490,
+      "sha256": "55f672e711ac0da0b413501fb8697049abf0e5d9ef0e4d5828101b4512332fbe"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/evidence/run-before.json",
+      "bytes": 5685,
+      "sha256": "585fea47ba436f44af17bbbdb45333ef92392d17ecf25dfac7b9c1dafb099770"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/evidence/run-after.json",
+      "bytes": 5686,
+      "sha256": "d01bcec7a6bb061b65ed90269ff37d10823b96771de1a417ba42d9863399e4fd"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/harness/dispatch-claude-readiness.json",
+      "bytes": 30053,
+      "sha256": "c77776ca109f555964a7c5d813300bb7c8c5540f1c5a1312ceaa6166d8803c04"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace/inputs/index.json",
+      "bytes": 662,
+      "sha256": "b2116f537cae357adcdb5459aa66b2e64975476b284c939e98aa9923e425dc53"
+    }
+  ],
+  "limits": [
+    "One synthetic four-case classification prompt per host, not actual PR/fix execution or broad comparative/causal benefit.",
+    "No new model calls or raw/workspace mutations by evaluator.",
+    "Originalv1 preparation and failed/limited earlier experiments are not regraded.",
+    "Workspace read/inventory and native reported model are bounded observations, not OS isolation/global-effects or authenticated principal proof."
+  ]
+}

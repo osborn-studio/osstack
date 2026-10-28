@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "docs/design/2026-10-27-joint-engineering",
+    "-p",
+    "test_validate_*.py"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-pr-readiness-control",
+  "head": "01e9c71b12ea48fd01affd65c7156a7f7d3ea028",
+  "started_at": "2026-10-28T23:39:57.350693+00:00",
+  "status_before": " M docs/design/2026-10-27-joint-engineering/execution-ledger.json\n M docs/design/2026-10-27-joint-engineering/execution.md\n?? docs/implementation/method-pr-readiness-delivery/\n",
+  "diff_before_sha256": "fdb552d6a52abd450aa66884ed3dcd357251b38208a25eddc5a27a86482fd2a5",
+  "exit_code": 0,
+  "finished_at": "2026-10-28T23:40:05.408675+00:00",
+  "status_after": " M docs/design/2026-10-27-joint-engineering/execution-ledger.json\n M docs/design/2026-10-27-joint-engineering/execution.md\n?? docs/implementation/method-pr-readiness-delivery/\n",
+  "diff_after_sha256": "fdb552d6a52abd450aa66884ed3dcd357251b38208a25eddc5a27a86482fd2a5",
+  "log_sha256": "e4690e963c3cf8ae7be1aab875764d25302b8702c04a95f26ef5a9f410af4d3b"
+}

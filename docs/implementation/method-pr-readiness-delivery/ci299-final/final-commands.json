@@ -1,0 +1,49 @@
+[
+  {
+    "argv": [
+      "gh",
+      "run",
+      "view",
+      "40786370675",
+      "--repo",
+      "osborn-studio/osstack",
+      "--json",
+      "status,conclusion,headSha,attempt,jobs,url"
+    ],
+    "exit": 0,
+    "started": "2026-10-28T23:39:48.951008+00:00",
+    "output": "final-run.json",
+    "bytes": 19002
+  },
+  {
+    "argv": [
+      "gh",
+      "pr",
+      "view",
+      "299",
+      "--repo",
+      "osborn-studio/osstack",
+      "--json",
+      "url,headRefOid,baseRefName,isDraft,state,statusCheckRollup"
+    ],
+    "exit": 0,
+    "started": "2026-10-28T23:39:50.715384+00:00",
+    "output": "final-pr.json",
+    "bytes": 1952
+  },
+  {
+    "argv": [
+      "gh",
+      "run",
+      "view",
+      "40786370675",
+      "--repo",
+      "osborn-studio/osstack",
+      "--log"
+    ],
+    "exit": 0,
+    "started": "2026-10-28T23:39:51.704934+00:00",
+    "output": "final-full.log",
+    "bytes": 2028918
+  }
+]
