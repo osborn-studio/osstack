@@ -3538,7 +3538,7 @@
     "actual_main_tree_equals_published_head": true
   },
   "next_continuity_wave": {
-    "status": "draft_ci_failed_diagnosis",
+    "status": "draft_repaired_ci_running",
     "baseline": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "owners": {
       "loader_adversarial": {
@@ -3611,8 +3611,8 @@
     "host_report_wording_closure": "PASS_limited_no_host_grade_upgrade",
     "archive_independently_verified": true,
     "pr": 299,
-    "published_head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
-    "ci_run": 40782209081,
+    "published_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
+    "ci_run": 40786370675,
     "publication_evidence": "docs/implementation/method-continuity-publication",
     "user_approval_required": true,
     "ci_failure": {
@@ -3621,7 +3621,21 @@
       "head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
       "failed": "2 upgrade-native cleanup tests exceeded combined30s setup+body",
       "runtime_matrix": "4_SUCCESS",
-      "cause": "Phase timing absent; product cause not proven. Separate prerequisite fullupgrade setup from cleanup budget, following existing samefile cases; actual target assertions/deadline unchanged."
+      "cause": "Phase timing absent; product cause not proven. Separate prerequisite fullupgrade setup from cleanup budget, following existing samefile cases; actual target assertions/deadline unchanged.",
+      "repair": {
+        "root_code": "7495b723a8cbe820201f62b3b1d70014edec62ab",
+        "pr_code": "109fd482",
+        "targeted": 25,
+        "actual_sonnet": "PASS_static",
+        "independent": "no_confirmed_coverage_loss",
+        "total_budget_change": "30s to60s preparation+30s cleanup; unchanged target/abort/assertions",
+        "full": {
+          "passed": 7144,
+          "skipped": 5,
+          "failed": 0,
+          "scope": "7495b723 with2ledger/4generateddist changes unchanged duringrun; notfuturemethodwhole-tree"
+        }
+      }
     }
   },
   "next_pr_readiness_preflight": {
@@ -3638,6 +3652,33 @@
       "ci_diagnosis": "terminal_preflight",
       "root": "ledger/PR/audit/full/integration"
     },
+    "cards": [
+      "card_00455914",
+      "card_b6355d9e",
+      "card_d520a214"
+    ]
+  },
+  "pr_readiness_wave": {
+    "status": "method_audited_host_refresh_pending",
+    "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+    "depends_on_pr": 299,
+    "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
+    "code_sha": "c95dccd01a884e84e413817c338f2303ed02a9a7",
+    "author_sha": "95a33e371464fe48bf063afe17ed650852e925d5",
+    "method_count": 13,
+    "export_tests": 91,
+    "independent": {
+      "files_per_host": 80,
+      "local_edges_per_host": 289,
+      "criteria_sha256": "c29856475cededf13d13c975fcb9c6d67d2ac61a77cfb1ecfc1bf1f93eb5a5e4"
+    },
+    "method_audit": [
+      "actual_claude-sonnet-5-5_REVISE",
+      "limited_R1_R3_closure_PASS"
+    ],
+    "host_user_turns": 0,
+    "formal_gates_passed": false,
+    "runtime_enabled": false,
     "cards": [
       "card_00455914",
       "card_b6355d9e",
