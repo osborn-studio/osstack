@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-10-28T07:41:20.234295+00:00",
+  "actual_main": "4d31c3f540672c81a6c5d65b3a2b090dc32da027",
+  "pr288_head": "10629495aafe7b3aca0de4c920bcaec40b083d7b",
+  "pr289_head": "48f5a9f1a6bfc5c4a82645dfd8bcc96a3125c69e",
+  "actual_main_tree": "30f2f2379f47f0102d3bb1909b28ba8196475e62",
+  "pr288_tree": "30f2f2379f47f0102d3bb1909b28ba8196475e62",
+  "tested_composition_commit": "d461b059c5cb475f11ac11acd35134be3a771938",
+  "tested_composition_tree": "827495237d56c84a49f7785eda373c1771ff0eca",
+  "actual_main_plus_pr289_tree": "827495237d56c84a49f7785eda373c1771ff0eca"
+}
