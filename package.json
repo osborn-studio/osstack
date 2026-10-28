@@ -75,7 +75,9 @@
     "eval:kimi-review": "pnpm --filter @osstack/agents build && node scripts/eval-kimi-review.mjs --check",
     "smoke:improvement-providers": "node scripts/smoke-improvement-providers.mjs",
     "test:method-journey": "node --test scripts/method-verification-journey.test.mjs",
-    "smoke:method-journey": "node scripts/method-verification-journey.mjs"
+    "smoke:method-journey": "node scripts/method-verification-journey.mjs",
+    "test:method-projection": "node --test scripts/project-method-journey-evidence.test.mjs",
+    "method:project-evidence": "node scripts/project-method-journey-evidence.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
