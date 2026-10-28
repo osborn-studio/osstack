@@ -1,0 +1,62 @@
+TAP version 13
+# Subtest: D2a codex CLI exports reachable feature and refactoring methods for every entry
+not ok 1 - D2a codex CLI exports reachable feature and refactoring methods for every entry
+  ---
+  duration_ms: 104.257
+  type: 'test'
+  location: '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-feature-refactoring/scripts/export-osstack-methods.test.mjs:351:3'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/osstack/tests/method-export-dfdcb75e-2e08-475a-aebc-0ca40e5ca3cd/export/.agents/skills/osstack-mode/references/feature.md'"
+  code: 'ENOENT'
+  stack: |-
+    async open (node:internal/fs/promises:636:25)
+    async readFile (node:internal/fs/promises:1235:14)
+    async TestContext.<anonymous> (file:///Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-feature-refactoring/scripts/export-osstack-methods.test.mjs:377:26)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: D2a claude CLI exports reachable feature and refactoring methods for every entry
+not ok 2 - D2a claude CLI exports reachable feature and refactoring methods for every entry
+  ---
+  duration_ms: 89.538917
+  type: 'test'
+  location: '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-feature-refactoring/scripts/export-osstack-methods.test.mjs:351:3'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open '/Volumes/AIMATE_WORK/tmp/osstack/tests/method-export-82c49445-9465-4dec-921f-18e3114d5da0/export/.claude/skills/osstack-mode/references/feature.md'"
+  code: 'ENOENT'
+  stack: |-
+    async open (node:internal/fs/promises:636:25)
+    async readFile (node:internal/fs/promises:1235:14)
+    async TestContext.<anonymous> (file:///Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-feature-refactoring/scripts/export-osstack-methods.test.mjs:377:26)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: D2a a missing advertised feature reference fails before reserving output
+not ok 3 - D2a a missing advertised feature reference fails before reserving output
+  ---
+  duration_ms: 9.193292
+  type: 'test'
+  location: '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-feature-refactoring/scripts/export-osstack-methods.test.mjs:390:3'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, lstat '/Volumes/AIMATE_WORK/tmp/osstack/tests/method-export-aedb178b-d434-464c-a478-d2ba23af7093/source/references/feature.md'"
+  code: 'ENOENT'
+  ...
+# Subtest: D2a a missing advertised refactoring reference fails before reserving output
+not ok 4 - D2a a missing advertised refactoring reference fails before reserving output
+  ---
+  duration_ms: 7.197167
+  type: 'test'
+  location: '/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/method-feature-refactoring/scripts/export-osstack-methods.test.mjs:390:3'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, lstat '/Volumes/AIMATE_WORK/tmp/osstack/tests/method-export-0aed637a-ce86-4c24-b264-851e3a1d248e/source/references/refactoring.md'"
+  code: 'ENOENT'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 0
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 283.291667

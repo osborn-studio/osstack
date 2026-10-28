@@ -1,0 +1,32 @@
+{
+  "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "authorship": "pstack by poteto in cursor/plugins; OSStack adaptation independently worded",
+  "methods": [
+    {
+      "method": "feature",
+      "upstream_commit": "99b609a72323b70204eab407c622f436e858e112",
+      "upstream_path": "pstack/skills/poteto-mode/playbooks/feature.md",
+      "upstream_sha256": "af8ce700b99953741cb547e34308fde0cf6b98ce67e1652c800d0deedf53aba1",
+      "upstream_bytes": 2870,
+      "adapted_path": "osstack-methods-skill/references/feature.md",
+      "adapted_sha256": "7446b4a84461a8b011ae91c0ac79f93114113d434d9d06f39da14909d3e2c4f4",
+      "source_url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/feature.md"
+    },
+    {
+      "method": "refactoring",
+      "upstream_commit": "99b609a72323b70204eab407c622f436e858e112",
+      "upstream_path": "pstack/skills/poteto-mode/playbooks/refactoring.md",
+      "upstream_sha256": "0f5dd38113379ea8cf61e2182eca0a7478eea9a869eb40c2dddab3335aeca197",
+      "upstream_bytes": 3315,
+      "adapted_path": "osstack-methods-skill/references/refactoring.md",
+      "adapted_sha256": "e9c3202d6228fa8d4ea8862f1a3c9b4a13187801ff216ec8a5a014b716fff96f",
+      "source_url": "https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/refactoring.md"
+    }
+  ],
+  "adaptation_choices": [
+    "Retain behavior/domain/checkpoint/equivalence practices.",
+    "No fixed upstream model, mandatory nested delegation or unavailable arena.",
+    "Respect existing compatibility contracts; remove old APIs only after scoped consumer migration.",
+    "Existing authorization, publication scope and runtime/gate boundaries remain in force."
+  ]
+}
