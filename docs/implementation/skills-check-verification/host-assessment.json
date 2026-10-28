@@ -1,0 +1,295 @@
+{
+  "assessed_at": "2026-10-28T08:41:09.731054+00:00",
+  "evaluator": "terminal_preflight subagent, read-only evidence inspection; not authenticated independent principal",
+  "classification": "bounded_host_assisted_observation_with_disclosed_harness_repair_and_remaining_limits",
+  "all_host_acceptance_passed": false,
+  "model_calls_total": 4,
+  "model_retries": 0,
+  "product_runs_by_root": 4,
+  "product_runs_by_evaluator": 0,
+  "phase2_packet_bytes": {
+    "codex": 5543,
+    "claude": 5547
+  },
+  "phase2_common_prefix_sha256": "a4ac8fea55d077d4777315c917da8a3fc6928de9e72217705f88445c06fc9076",
+  "criteria": [
+    {
+      "id": "HU01",
+      "status": "met_with_versioned_binding",
+      "evidence": [
+        "phase1.input.txt",
+        "phase2-prepared.json",
+        "shared-input-manifest.json"
+      ],
+      "note": "Both hosts received identical method bytes and common plan within each phase. Phase1 original v2 prompt remains; phase2 v3 plan discloses format repair. No assertion they read files using tools: embedding is the exposure surface."
+    },
+    {
+      "id": "HU02",
+      "status": "met_after_disclosed_posthoc_harness_repair",
+      "evidence": [
+        "v2/",
+        "v3-posthoc-revalidation.json"
+      ],
+      "note": "Both selected healthy/missing-ref, expected0/1, with predicates before root execution. Claude originally rejected by undisclosed limitations cap5; same7-limit response accepted by v3 cap10. Original v2 rejection retained. No new model call or response edit."
+    },
+    {
+      "id": "HU03",
+      "status": "met",
+      "evidence": [
+        "root-run-cases.py",
+        "runs/codex/results.json",
+        "runs/claude/results.json"
+      ],
+      "note": "Root runner uses hardcoded two-case allowlist and fixed argv after schema validation. No model text executed. Four distinct root-owned runs/evidence directories."
+    },
+    {
+      "id": "HU04",
+      "status": "bounded_behavior_and_direct_cleanup_met_process_tree_unknown",
+      "evidence": [
+        "phase2-reader-checks.json",
+        "root-receipt-gate.json"
+      ],
+      "note": "All four product predicates actual0/1, driver0, before/after input hash equal, direct child exit and fixture removal observed in records; each29 manifest file hashes/sizes rechecked. Broader no-dangling-process expectation not established because descendant_termination=not_attested. Do not label all cleanup/gates passed."
+    },
+    {
+      "id": "HU05",
+      "status": "semantic_interpretation_met_format_partial",
+      "evidence": [
+        "model-runs/codex/phase2/final-response.txt",
+        "model-runs/claude/phase2/final-response.txt"
+      ],
+      "note": "Both name exact host run IDs and raw pointers, interpret expected missing-ref failure, separate axes and withhold unconditional closeout for descendants. Codex341 words meets500; Claude527 words exceeds500. Keep full raw; no retry/truncation/reclassification."
+    },
+    {
+      "id": "HU06",
+      "status": "recorded_with_explicit_unavailable_metadata",
+      "evidence": [
+        "model-runs/",
+        "driver-binding.json",
+        "phase2-execution-binding.json",
+        "runs/"
+      ],
+      "note": "Actual CLI versions, stdin/raw streams, commands/time/exits/modelUsage recorded. Codex actual model absent in events is unavailable. Claude actual claude-sonnet-5-5. Historical a0be planning vs4f6 executed working bytes explicitly distinct. Build hashes are execution-time evidence, not reproducible source-to-build/dependency attestation; root later restored generated dist."
+    },
+    {
+      "id": "HU07",
+      "status": "met",
+      "evidence": [
+        "model-runs/codex/phase2/final-response.txt",
+        "model-runs/claude/phase2/final-response.txt"
+      ],
+      "note": "Both remain host-assisted and two-case bounded; no provider qualification, native autonomy, installation/trigger, independent principal, formal gate, ranking or causal benefit established."
+    }
+  ],
+  "calls": [
+    {
+      "host": "codex",
+      "phase": 1,
+      "invocation_ref": "model-runs/codex/phase1/invocation.json",
+      "invocation_sha256": "9c1e0b10aa163926af77ebdf695697da0d7acd4ca6a00ced00c3c56ef03d5ec1",
+      "response_ref": "model-runs/codex/phase1/final-response.txt",
+      "response_sha256": "6e71b9afe36c969e57276d636739ad0ef80fe3a70137ca64de4114edbd826401",
+      "raw_stream_ref": "model-runs/codex/phase1/response.jsonl",
+      "raw_stream_sha256": "13963923f740eef27a7f20c53180e7b4aa3494341004c611515d81c020734897",
+      "version": "codex-cli 0.160.1",
+      "actual_models": [
+        "unavailable"
+      ],
+      "model_process_exit": 0,
+      "tool_calls": 0,
+      "started_at": "2026-10-28T08:21:32.565730+00:00",
+      "ended_at": "2026-10-28T08:21:51.588487+00:00",
+      "historical_harness_status": "selection_valid_waiting_for_root_predicate_review",
+      "usage": {
+        "input_tokens": 27652,
+        "cached_input_tokens": 12288,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 459,
+        "reasoning_output_tokens": 0
+      },
+      "modelUsage": null,
+      "phase2_word_count": null,
+      "phase2_500_word_budget_met": null
+    },
+    {
+      "host": "codex",
+      "phase": 2,
+      "invocation_ref": "model-runs/codex/phase2/invocation.json",
+      "invocation_sha256": "054eccf606efc9c9ff0dddc8cbc916c0bcbdbd87c219aaeffc11a111fb2cb838",
+      "response_ref": "model-runs/codex/phase2/final-response.txt",
+      "response_sha256": "6acbd116d2ffa23181df6cd6883ecc787a4926a978aa6513dad4ffa7078d9e4b",
+      "raw_stream_ref": "model-runs/codex/phase2/response.jsonl",
+      "raw_stream_sha256": "170a6cf845ac99c70a104a7eb0dd780dd94c07b44913c84e87784e55beea05a6",
+      "version": "codex-cli 0.160.1",
+      "actual_models": [
+        "unavailable"
+      ],
+      "model_process_exit": 0,
+      "tool_calls": 0,
+      "started_at": "2026-10-28T08:38:21.056245+00:00",
+      "ended_at": "2026-10-28T08:38:46.017619+00:00",
+      "historical_harness_status": "response_recorded_pending_independent_assessment",
+      "usage": {
+        "input_tokens": 30058,
+        "cached_input_tokens": 12288,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 731,
+        "reasoning_output_tokens": 0
+      },
+      "modelUsage": null,
+      "phase2_word_count": 341,
+      "phase2_500_word_budget_met": true
+    },
+    {
+      "host": "claude",
+      "phase": 1,
+      "invocation_ref": "model-runs/claude/phase1/invocation.json",
+      "invocation_sha256": "7d8e373524722d1c31c8fddfd02043cf32daadf652704a768807b55a42d07032",
+      "response_ref": "model-runs/claude/phase1/final-response.txt",
+      "response_sha256": "677ca18d6c1dc6750d6171de0859cc9792d452102bad080d37ffa35249a0edd3",
+      "raw_stream_ref": "model-runs/claude/phase1/response.jsonl",
+      "raw_stream_sha256": "f40f02fb16dc5f933114b67d08cabe01af28919f5418801703abcec02b4a9747",
+      "version": "2.1.291 (Claude Code)",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "model_process_exit": 0,
+      "tool_calls": 0,
+      "started_at": "2026-10-28T08:21:44.400197+00:00",
+      "ended_at": "2026-10-28T08:21:54.487945+00:00",
+      "historical_harness_status": "blocked_no_retry",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 6681,
+        "cache_read_input_tokens": 1444,
+        "output_tokens": 1086,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 6681,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 1086,
+            "cache_read_input_tokens": 1444,
+            "cache_creation_input_tokens": 6681,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 6681
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-sonnet-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 1086,
+          "cacheReadInputTokens": 1444,
+          "cacheCreationInputTokens": 6681,
+          "webSearchRequests": 0,
+          "costUSD": 0.0378768,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 0,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "phase2_word_count": null,
+      "phase2_500_word_budget_met": null
+    },
+    {
+      "host": "claude",
+      "phase": 2,
+      "invocation_ref": "model-runs/claude/phase2/invocation.json",
+      "invocation_sha256": "9aba29d29065e48ba89ac9c2192bb171f432d6092d908821f5d813c3dd36a054",
+      "response_ref": "model-runs/claude/phase2/final-response.txt",
+      "response_sha256": "fc494f26425b2ba93175f52de1dd0e38dcc24029973e11b7b2ae743aa0c986b0",
+      "raw_stream_ref": "model-runs/claude/phase2/response.jsonl",
+      "raw_stream_sha256": "e9811d954e2a6e2b2e7e4b8c35fc610fd7738d4b5e35fe101738d54e32fb486b",
+      "version": "2.1.291 (Claude Code)",
+      "actual_models": [
+        "claude-sonnet-5-5"
+      ],
+      "model_process_exit": 0,
+      "tool_calls": 0,
+      "started_at": "2026-10-28T08:38:22.197809+00:00",
+      "ended_at": "2026-10-28T08:38:42.908896+00:00",
+      "historical_harness_status": "response_recorded_pending_independent_assessment",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 10682,
+        "cache_read_input_tokens": 1444,
+        "output_tokens": 2479,
+        "output_tokens_details": {
+          "thinking_tokens": 925
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 10682,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 2479,
+            "cache_read_input_tokens": 1444,
+            "cache_creation_input_tokens": 10682,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 10682
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-sonnet-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 2479,
+          "cacheReadInputTokens": 1444,
+          "cacheCreationInputTokens": 10682,
+          "webSearchRequests": 0,
+          "costUSD": 0.0678108,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 925,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "phase2_word_count": 527,
+      "phase2_500_word_budget_met": false
+    }
+  ],
+  "confirmed_limits": [
+    "Claude phase2 527 whitespace-delimited words exceeds500; output retained unmodified.",
+    "Full descendant process termination unproven; direct owned-child exit and fixture removal recorded separately.",
+    "v2 original Claude schema rejection persists; v3 was a posthoc harness repair, not pristine prospective pass.",
+    "Model responses planned a0be; root executed only revised4f6; response not replayed under new planning SHA.",
+    "Four deterministic local file:// fixtures do not establish provider/network/installation/gate qualification or causal improvement.",
+    "Rehash is later byte verification, not independent process observation; manifests have root/evaluator SHA anchors but no external timestamp or principal attestation.",
+    "No live build reread after root restored four tracked knowledge/dist files; execution-time bindings retained."
+  ]
+}

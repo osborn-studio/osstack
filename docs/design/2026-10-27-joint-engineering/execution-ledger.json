@@ -1,4 +1,27 @@
 {
+  "verification_driver_update": {
+    "observed_at": "2026-10-28T08:35:24.367627+00:00",
+    "main_sha": "64b203c32d245d5ad9a76914253ca18cbb54a073",
+    "merged_prs": [
+      288,
+      289
+    ],
+    "pr290": {
+      "head": "bf381f22b4833d781e9ec3d803d402f309e470a4",
+      "state": "Ready; awaiting gilberthello",
+      "ci_run": 40654394446,
+      "checks": "5 SUCCESS; paid smoke SKIPPED"
+    },
+    "card_id": "card_25794a87",
+    "candidate": "4f6c3c8fd21778798bdf22c12c0f4adfda28807a",
+    "state": "reviewed and tested candidate; publication CI pending",
+    "audit": "actual claude-sonnet-5-5 REVISE then R1-R3 closure PASS",
+    "delivery": "../../implementation/skills-check-verification/README.md",
+    "naming": "entry-point-naming.md",
+    "formal_gate_pass": false,
+    "runtime_enabled": false,
+    "host_use": "4 real root-owned cases passed; both models interpreted limits; Claude response-length criterion unmet; v2 hidden format constraint repaired transparently in v3"
+  },
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",

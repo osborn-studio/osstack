@@ -78,3 +78,7 @@ python3 docs/design/2026-10-27-joint-engineering/test_validate_design.py
 本批 [J11 复验记录](evidence/joint-execution/successors-retarget/recovery/README.md) 和 [J02a 复验记录](evidence/joint-execution/successors-retarget/source/README.md) 保留范围、修订与完整审计入口。J02b 来源认证/闭包/分型注册、J12 真实恢复均未因此完成，也没有启用运行时能力。当前待交付批次为 #282 / #279，后续按 [项目推进规则](project-operations.md) 的真实阶段门槛滚动推进。
 
 组件阶段修订见 [gate-layers.md](gate-layers.md)：新增组件/真实主机分层，JA01/JA02与原发布义务不变，所有新gate与case仍未执行。
+
+## 用户入口命名
+
+后续产品入口统一为 `/osstack-mode`、`/osstack-help`、`/setup-osstack` 和 `osstack-agent`。见[入口命名约定](entry-point-naming.md)；来源原名和历史证据保持不变，命名不代表宿主已安装或入口已实现。

@@ -1,6 +1,6 @@
 # Local skills-check verification
 
-Status: implementation in progress; candidate audit and host-assisted experiments pending. This is an OSStack application of the extracted create-verification and evidence methods. It turns the PR289 regression into a repeatable positive/negative workflow rather than a one-off transcript.
+Status: candidate `4f6c3c8f` passed 25 focused tests, the repository smoke command, actual Sonnet 5.5 required-finding closure, and independent black-box replay. Codex CLI and Claude CLI completed both host-assisted phases. Both interpreted the actual positive/negative outcomes correctly; Claude exceeded the 500-word response budget, so the host experiment is not an all-criteria pass. This is an OSStack application of the extracted create-verification and evidence methods. It turns the PR289 regression into a repeatable positive/negative workflow rather than a one-off transcript.
 
 ## Use and coverage
 
@@ -24,4 +24,4 @@ This verifies local file-backed Git sources with isolated configuration. It does
 
 When CLI output, source semantics or supported runtime changes, the maintainer should rerun the affected fixed cases, compare original raw failures, update the explicit expectation only when intended product semantics changed, and re-audit the driver. No scheduled execution is enabled by this file.
 
-See [the bounded specification](spec.md) for the interface and evidence contract. Test and audit records will be appended with exact candidate bindings when available.
+See [the bounded specification](spec.md) for the interface and evidence contract. Original failure, actual model audit and validation records are retained with exact candidate bindings. See [validation](validation.md).
