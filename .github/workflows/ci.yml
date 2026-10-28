@@ -151,6 +151,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Method verification journey contracts
+        run: pnpm test:method-journey
+
+      - name: Method verification journey (two real local cases)
+        id: method-journey
+        env:
+          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
+        run: |
+          mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
+          pnpm smoke:method-journey --output "$OSSTACK_SCRATCH_ROOT/runtime/method-journey-ci-evidence"
+
+      - name: Preserve method journey evidence
+        if: always() && steps.method-journey.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: method-journey-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/osstack/runtime/method-journey-ci-evidence
+          if-no-files-found: warn
+          retention-days: 7
+
       # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
       # Budgets are looser than the local defaults (150/500ms) because CI
       # runners spawn node slower; they still catch the eager-import class

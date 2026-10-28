@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-28T12:31:05.595964+00:00",
+  "owner": "joint-entry",
+  "card": "card_e0b5babf",
+  "main": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "code_candidate": "66ad1daa229101e4501392bbe1d6b4d86b7ca16b",
+  "method_pr": 293,
+  "status": "draft_pending_published_head_ci",
+  "review_archive_sha256": "da0c6a2a5787c417051038690a6ce12aeb631bc5d8dfb2342c29dd41e4b8ece4",
+  "formal_J01_J11_passed": false,
+  "host_journey": "separate ongoing experiment; not claimed by this deterministic tool"
+}

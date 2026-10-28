@@ -73,7 +73,9 @@
     "eval:neat-parity:doctor": "pnpm --filter @osstack/neat-eval build && node packages/neat-eval/dist/cli.js doctor --protocol eval/neat-parity/protocol-v1-v3.json --corpus-lock eval/neat-parity/corpus-lock-v1-v3.json --baseline .osstack/eval-cache/neat-freak-v3-2b4a645",
     "eval:neat-parity:offline": "pnpm --filter @osstack/cli... build && pnpm --filter @osstack/neat-eval build && node scripts/eval-neat-parity-offline.mjs",
     "eval:kimi-review": "pnpm --filter @osstack/agents build && node scripts/eval-kimi-review.mjs --check",
-    "smoke:improvement-providers": "node scripts/smoke-improvement-providers.mjs"
+    "smoke:improvement-providers": "node scripts/smoke-improvement-providers.mjs",
+    "test:method-journey": "node --test scripts/method-verification-journey.test.mjs",
+    "smoke:method-journey": "node scripts/method-verification-journey.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
