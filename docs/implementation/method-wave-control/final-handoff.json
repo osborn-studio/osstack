@@ -1,0 +1,18 @@
+{
+  "execution_archive": "public-evidence.tar.gz",
+  "execution_sha256": "fe4a43188e1da8c336f51714209eb413d6e7d93a065458973f4fbcdfd657b532",
+  "execution_bytes": 2087042,
+  "cleanup_archive": "cleanup-supplement.tar.gz",
+  "cleanup_sha256": "11e03a69ae68145a53628a3b279a0b00bc254f81bf0fd10dc63d1f29da15c067",
+  "cleanup_bytes": 1791,
+  "cleanup_receipt_sha256": "7c44b11700369c442ee0638c7960b2d5ce9e4cf8d88ef3fdd49c054a9ba640f2",
+  "independent_phase2_grade_sha256": "adfe811a72db5611da4223a0ef84d97a6b6ea6ebf849fcbcaacf6844fbb85ce1",
+  "model_calls": 3,
+  "driver_calls": 1,
+  "codex_phase1": "accepted_for_next_stage_with_limits",
+  "claude_phase1": "failed_507_words_stop",
+  "codex_phase2": "environment_record_reading_boundary_failed_limited",
+  "overall_pass": false,
+  "all_four_owned_workspaces_removed": true,
+  "author_66ad_worktree_removed_branch_retained": true
+}

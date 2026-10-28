@@ -1,0 +1,18 @@
+{
+  "card_id": "card_172badff",
+  "board": "joint-firstmate-pstack",
+  "task_id": null,
+  "title": "Next method slice: source-backed implementation preflight",
+  "body": "Read-only top3 next D2a slices from pinned upstream/currentmain+293/294; precise boundaries, acceptance, dependencies. No product/model call/PR. Owner terminal_preflight.",
+  "status": "running",
+  "priority": 1,
+  "assignee": "terminal_preflight",
+  "blocked_reason": null,
+  "tenant_id": null,
+  "card_type": "implementation",
+  "meta": null,
+  "created_at": 1793190933.516,
+  "updated_at": 1793190933.516,
+  "started_at": 1793190933.516,
+  "completed_at": null
+}

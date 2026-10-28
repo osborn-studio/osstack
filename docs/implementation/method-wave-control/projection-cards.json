@@ -1,0 +1,38 @@
+[
+  {
+    "card_id": "card_437276ee",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "Fixed journey model evidence projection",
+    "body": "Next slice1, from published294 exact5929180. Only 3 new files: projection script/tests/docs; no model/runtime/centralledger/PR. Await independent prefrozen input-boundary criteria before code. Original evidence immutable. Ordinary D2a.",
+    "status": "running",
+    "priority": 1,
+    "assignee": "loader_adversarial",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793191351.253,
+    "updated_at": 1793191351.253,
+    "started_at": 1793191351.253,
+    "completed_at": null
+  },
+  {
+    "card_id": "card_c49a2a2c",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "Independent projection boundary criteria and fault tests",
+    "body": "Predeclare closed-schema, inputmanifest, symlink/pathescape, unexpectedfile, nestedenv, unknowncleanup/failurecase controls before author code. Scratch only. Root actualaudit/PR ownership.",
+    "status": "running",
+    "priority": 1,
+    "assignee": "cleanup_regression",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793191351.253,
+    "updated_at": 1793191351.253,
+    "started_at": 1793191351.253,
+    "completed_at": null
+  }
+]
