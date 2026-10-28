@@ -8,16 +8,24 @@ Work from the root of the actual OSStack target checkout. Read `scripts/method-v
 
 Use the target's supported Node and pnpm versions, local Git, installed dependencies and current compiled artifacts. In a fresh checkout, run the repository's `pnpm install --frozen-lockfile` and `pnpm build` before the journey. Retain their logs separately. A successful build is a prerequisite, not proof of either CLI outcome. If tracked generated files were restored after a build, rebuild them explicitly; incremental cache state alone does not establish current output bytes.
 
-Set `OSSTACK_SCRATCH_ROOT` to an absolute, owned scratch root. Create its `runtime` child before invoking the wrapper if that parent does not exist. Do not use a project directory, a volume root or a serving home as scratch. Choose a new absolute output directory beneath that root. Existing output, including a symlink, is refused. The script also supports the platform temporary `osstack` root when the variable is unset; this recipe uses an explicit root to make ownership clear.
+Choose an absolute, owned scratch path and assign it to the shell variable `OSSTACK_SCRATCH_ROOT` before this recipe. Do not use a project directory, a volume root or a serving home. The preamble below rejects an unset, empty or relative value, exports the selected path for Node, and creates the scratch root and its `runtime` parent directory. The journey output itself must be new. Existing output, including a symlink, is refused. This recipe requires an explicit root; it does not use the wrapper's default temporary path.
 
 ## Drive and doctor
 
 From the target checkout root, with the prerequisites above satisfied:
 
 ```sh
-journey_output="$OSSTACK_SCRATCH_ROOT/runtime/skills-check-journey-$(date -u +%Y%m%dT%H%M%SZ)-$$"
-node scripts/method-verification-journey.mjs --output "$journey_output"
+export OSSTACK_SCRATCH_ROOT="${OSSTACK_SCRATCH_ROOT:?Set an absolute owned scratch path first}"
+case "$OSSTACK_SCRATCH_ROOT" in
+  /*) ;;
+  *) printf '%s\n' 'OSSTACK_SCRATCH_ROOT must be absolute' >&2; exit 2 ;;
+esac
+mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime" || exit 1
+journey_output="${OSSTACK_SCRATCH_ROOT:?}/runtime/skills-check-journey-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+node scripts/method-verification-journey.mjs --output "$journey_output" > "$journey_output.stdout" 2> "$journey_output.stderr"
 ```
+
+The shell retains invocation stdout/stderr as sibling files ending in `.stdout` and `.stderr`; it does not precreate the journey output directory. Read those logs and the command exit status before interpreting the report. Keep the build log separately.
 
 This wrapper accepts only `--output`. Do not add `--doctor`, `--dry-run`, `--case` or `--evidence-dir` to it. It calls the existing skills-check driver's read-only doctor before each case, then drives that case. A failed doctor stops the journey. Doctor does not create a passing behavior observation.
 
@@ -36,7 +44,7 @@ The wrapper exits 0 only when both rows and its evidence checks pass. Exit 1 mea
 
 Read `feature-map.md`, `journey.json` and `journey-manifest.json` in the selected output. For each case, read the retained `cases/healthy/` or `cases/missing-ref/` evidence: receipt, raw command output, cleanup record and manifest. The wrapper checks receipt bytes, raw-file hashes, fixed case expectations, required source/build anchors, Git identities and fixture ownership. Retain the invocation stdout/stderr and separate build log. Manifest digests establish consistency; they do not authenticate an oracle or prove the build was produced from the recorded source.
 
-These are full engineering audit records. Some command records include the non-secret fixture environment. Do not hand the full bundle to a model task that forbids reading those fields. Define that task's permitted inputs before use; this reference does not provide a filtered evidence interface or a registered projection command.
+These are full engineering audit records. Some command records include the non-secret fixture environment. Do not hand the full bundle to a model task that forbids reading those fields. Define that task's permitted inputs before use. This recipe consumes full local audit records and does not use or require an evidence projection command. If a separate task uses a projection interface available in its target checkout, follow that interface's documented input boundary; its availability does not establish native host execution or qualification.
 
 Successful cleanup removes each owned fixture and requires `scratch/` to contain only an empty `smoke/` directory. Evidence stays outside the disposable fixture and survives cleanup. Direct-child exit and fixture absence do not prove termination of every descendant: `descendant_termination` remains `not_attested`.
 

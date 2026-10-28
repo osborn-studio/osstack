@@ -426,7 +426,34 @@ test('the documented journey invocation is accepted by the actual output-only wr
   const body = await readFile(resolve(dirname(script), '../osstack-methods-skill/references/skills-check-journey.md'), 'utf8');
   const commands = [...body.matchAll(/^node scripts\/method-verification-journey\.mjs (.+)$/gm)];
   assert.equal(commands.length, 1, 'one unambiguous wrapper invocation');
-  const argv = commands[0][1].trim().split(/\s+/).map(part => part === '"$journey_output"' ? '/absolute/osstack/runtime/new-journey' : part);
+  const argv = commands[0][1].split(/\s+>/)[0].trim().split(/\s+/).map(part => part === '"$journey_output"' ? '/absolute/osstack/runtime/new-journey' : part);
   const { parseOptions } = await import('./method-verification-journey.mjs');
   assert.deepEqual(parseOptions(argv), { output: '/absolute/osstack/runtime/new-journey' });
 });
+
+for (const input of ['unexported absolute', 'unset', 'relative']) {
+  test(`journey shell preamble handles ${input} scratch before invoking a child`, async t => {
+    const f = await fixture(t); const chosen = join(f.root, 'owned scratch', 'new root');
+    const body = await readFile(resolve(dirname(script), '../osstack-methods-skill/references/skills-check-journey.md'), 'utf8');
+    const block = body.match(/```sh\n([\s\S]*?)\n```/)[1];
+    const driverLine = block.match(/^node scripts\/method-verification-journey\.mjs .+$/m)[0];
+    // Exercise the exact shell preamble/redirects with an observational child, not a product mock claim.
+    const observer = `node -e 'console.log(JSON.stringify({scratch:process.env.OSSTACK_SCRATCH_ROOT,output:process.argv[1]}))' "$journey_output" > "$journey_output.stdout" 2> "$journey_output.stderr"`;
+    const source = block.replace(driverLine, observer);
+    const env = { ...process.env }; delete env.OSSTACK_SCRATCH_ROOT;
+    const prefix = input === 'unset' ? 'unset OSSTACK_SCRATCH_ROOT\n' : 'OSSTACK_SCRATCH_ROOT=$1\n';
+    const args = ['-c', prefix + source, 'journey-preamble', input === 'relative' ? 'relative-root' : chosen];
+    if (input !== 'unexported absolute') {
+      await assert.rejects(run('/bin/bash', args, { env, cwd: f.root, timeout: 10000 }));
+      assert.equal(existsSync(chosen), false); assert.equal(existsSync(join(f.root, 'relative-root')), false);
+      return;
+    }
+    await run('/bin/bash', args, { env, cwd: f.root, timeout: 10000 });
+    const runtime = join(chosen, 'runtime'); const entries = await readdir(runtime);
+    assert.equal(entries.length, 2); const stdout = entries.find(name => name.endsWith('.stdout'));
+    assert.ok(stdout); assert.ok(entries.includes(stdout.replace(/\.stdout$/, '.stderr')));
+    const record = JSON.parse(await readFile(join(runtime, stdout), 'utf8'));
+    assert.equal(record.scratch, chosen); assert.equal(record.output, join(runtime, stdout.slice(0, -7)));
+    assert.equal(existsSync(record.output), false, 'logs must not precreate the output directory');
+  });
+}
