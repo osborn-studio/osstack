@@ -1,0 +1,415 @@
+TAP version 13
+# Subtest: codex exports self-contained methods with independently verifiable source/output hashes
+ok 1 - codex exports self-contained methods with independently verifiable source/output hashes
+  ---
+  duration_ms: 18.779333
+  type: 'test'
+  ...
+# Subtest: claude exports self-contained methods with independently verifiable source/output hashes
+ok 2 - claude exports self-contained methods with independently verifiable source/output hashes
+  ---
+  duration_ms: 8.972291
+  type: 'test'
+  ...
+# Subtest: dry-run leaves source and parent tree unchanged and plans exactly the real destinations
+ok 3 - dry-run leaves source and parent tree unchanged and plans exactly the real destinations
+  ---
+  duration_ms: 3.942167
+  type: 'test'
+  ...
+# Subtest: option parser rejects ambiguity and requires explicit absolute new project root
+ok 4 - option parser rejects ambiguity and requires explicit absolute new project root
+  ---
+  duration_ms: 0.257833
+  type: 'test'
+  ...
+# Subtest: refuses pre-existing directory without changing its contents or target
+ok 5 - refuses pre-existing directory without changing its contents or target
+  ---
+  duration_ms: 3.4035
+  type: 'test'
+  ...
+# Subtest: refuses pre-existing file without changing its contents or target
+ok 6 - refuses pre-existing file without changing its contents or target
+  ---
+  duration_ms: 3.558375
+  type: 'test'
+  ...
+# Subtest: refuses pre-existing symlink without changing its contents or target
+ok 7 - refuses pre-existing symlink without changing its contents or target
+  ---
+  duration_ms: 2.700791
+  type: 'test'
+  ...
+# Subtest: refuses pre-existing dangling-symlink without changing its contents or target
+ok 8 - refuses pre-existing dangling-symlink without changing its contents or target
+  ---
+  duration_ms: 2.680625
+  type: 'test'
+  ...
+# Subtest: missing parent rejects without creating it
+ok 9 - missing parent rejects without creating it
+  ---
+  duration_ms: 1.789333
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination ../../../outside.md before output creation
+ok 10 - rejects unsafe or missing Markdown destination ../../../outside.md before output creation
+  ---
+  duration_ms: 4.235041
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination ../../references/../../outside.md before output creation
+ok 11 - rejects unsafe or missing Markdown destination ../../references/../../outside.md before output creation
+  ---
+  duration_ms: 2.642291
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination ../../references/missing.md before output creation
+ok 12 - rejects unsafe or missing Markdown destination ../../references/missing.md before output creation
+  ---
+  duration_ms: 2.288708
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination file:///etc/passwd before output creation
+ok 13 - rejects unsafe or missing Markdown destination file:///etc/passwd before output creation
+  ---
+  duration_ms: 2.285417
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination %2e%2e/%2e%2e/outside.md before output creation
+ok 14 - rejects unsafe or missing Markdown destination %2e%2e/%2e%2e/outside.md before output creation
+  ---
+  duration_ms: 2.520417
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination /etc/passwd before output creation
+ok 15 - rejects unsafe or missing Markdown destination /etc/passwd before output creation
+  ---
+  duration_ms: 3.912792
+  type: 'test'
+  ...
+# Subtest: rejects unsafe or missing Markdown destination ..\\outside.md before output creation
+ok 16 - rejects unsafe or missing Markdown destination ..\\outside.md before output creation
+  ---
+  duration_ms: 2.450709
+  type: 'test'
+  ...
+# Subtest: reference-style link escape is validated, not just inline links
+ok 17 - reference-style link escape is validated, not just inline links
+  ---
+  duration_ms: 2.368208
+  type: 'test'
+  ...
+# Subtest: refuses entry symlink before reading/copying external bytes
+ok 18 - refuses entry symlink before reading/copying external bytes
+  ---
+  duration_ms: 2.941792
+  type: 'test'
+  ...
+# Subtest: refuses reference-file symlink before reading/copying external bytes
+ok 19 - refuses reference-file symlink before reading/copying external bytes
+  ---
+  duration_ms: 2.398292
+  type: 'test'
+  ...
+# Subtest: refuses reference-directory symlink before reading/copying external bytes
+ok 20 - refuses reference-directory symlink before reading/copying external bytes
+  ---
+  duration_ms: 2.072917
+  type: 'test'
+  ...
+# Subtest: refuses source-root symlink before reading/copying external bytes
+ok 21 - refuses source-root symlink before reading/copying external bytes
+  ---
+  duration_ms: 2.909167
+  type: 'test'
+  ...
+# Subtest: oversized source is rejected without allocating output
+ok 22 - oversized source is rejected without allocating output
+  ---
+  duration_ms: 2.823916
+  type: 'test'
+  ...
+# Subtest: CLI invoked through a real symlink executes read-only planning instead of silent exit0
+ok 23 - CLI invoked through a real symlink executes read-only planning instead of silent exit0
+  ---
+  duration_ms: 65.920709
+  type: 'test'
+  ...
+# Subtest: canonical shared reference bytes including UTF-8 BOM survive export unchanged
+ok 24 - canonical shared reference bytes including UTF-8 BOM survive export unchanged
+  ---
+  duration_ms: 6.050916
+  type: 'test'
+  ...
+# Subtest: refuses a new output inside the current global Codex home even in dry-run
+ok 25 - refuses a new output inside the current global Codex home even in dry-run
+  ---
+  duration_ms: 3.339542
+  type: 'test'
+  ...
+# Subtest: nonregular entry is rejected before output reservation
+ok 26 - nonregular entry is rejected before output reservation
+  ---
+  duration_ms: 1.867375
+  type: 'test'
+  ...
+# Subtest: a real post-reservation write failure retains only the owned incomplete root and reports it
+ok 27 - a real post-reservation write failure retains only the owned incomplete root and reports it
+  ---
+  duration_ms: 5.5595
+  type: 'test'
+  ...
+# Subtest: unsupported complex Markdown rejects before reservation: "See [the common\\nevidence rules](../../references/evidence.md)."
+ok 28 - unsupported complex Markdown rejects before reservation: "See [the common\\nevidence rules](../../references/evidence.md)."
+  ---
+  duration_ms: 2.693084
+  type: 'test'
+  ...
+# Subtest: unsupported complex Markdown rejects before reservation: "[the [draft] plan](../../references/evidence.md)"
+ok 29 - unsupported complex Markdown rejects before reservation: "[the [draft] plan](../../references/evidence.md)"
+  ---
+  duration_ms: 3.769166
+  type: 'test'
+  ...
+# Subtest: unsupported complex Markdown rejects before reservation: "[![b](https://example.invalid/b.svg)](../../references/missing.md)"
+ok 30 - unsupported complex Markdown rejects before reservation: "[![b](https://example.invalid/b.svg)](../../references/missing.md)"
+  ---
+  duration_ms: 2.183
+  type: 'test'
+  ...
+# Subtest: source-root trailing slash cannot bypass symlink refusal
+ok 31 - source-root trailing slash cannot bypass symlink refusal
+  ---
+  duration_ms: 1.77175
+  type: 'test'
+  ...
+# Subtest: bounded subprocess handles hostile brackets within source byte cap
+ok 32 - bounded subprocess handles hostile brackets within source byte cap
+  ---
+  duration_ms: 111.562291
+  type: 'test'
+  ...
+# Subtest: bounded subprocess handles hostile angles within source byte cap
+ok 33 - bounded subprocess handles hostile angles within source byte cap
+  ---
+  duration_ms: 85.672959
+  type: 'test'
+  ...
+# Subtest: bounded subprocess handles hostile backticks within source byte cap
+ok 34 - bounded subprocess handles hostile backticks within source byte cap
+  ---
+  duration_ms: 59.222542
+  type: 'test'
+  ...
+# Subtest: refuses unsupported reference material .DS_Store instead of unchecked copying
+ok 35 - refuses unsupported reference material .DS_Store instead of unchecked copying
+  ---
+  duration_ms: 2.774792
+  type: 'test'
+  ...
+# Subtest: refuses unsupported reference material unchecked.MD instead of unchecked copying
+ok 36 - refuses unsupported reference material unchecked.MD instead of unchecked copying
+  ---
+  duration_ms: 2.369959
+  type: 'test'
+  ...
+# Subtest: refuses unsupported reference material unchecked.markdown instead of unchecked copying
+ok 37 - refuses unsupported reference material unchecked.markdown instead of unchecked copying
+  ---
+  duration_ms: 2.252
+  type: 'test'
+  ...
+# Subtest: refuses unsupported reference material opaque.bin instead of unchecked copying
+ok 38 - refuses unsupported reference material opaque.bin instead of unchecked copying
+  ---
+  duration_ms: 4.650042
+  type: 'test'
+  ...
+# Subtest: protects explicitly configured CODEX_HOME without reading its contents
+ok 39 - protects explicitly configured CODEX_HOME without reading its contents
+  ---
+  duration_ms: 50.170541
+  type: 'test'
+  ...
+# Subtest: protects explicitly configured CLAUDE_CONFIG_DIR without reading its contents
+ok 40 - protects explicitly configured CLAUDE_CONFIG_DIR without reading its contents
+  ---
+  duration_ms: 49.45875
+  type: 'test'
+  ...
+# Subtest: protects explicitly configured OSSTACK_HOME without reading its contents
+ok 41 - protects explicitly configured OSSTACK_HOME without reading its contents
+  ---
+  duration_ms: 49.605959
+  type: 'test'
+  ...
+# Subtest: actual canonical tree exports both host layouts and reproducible source digest
+ok 42 - actual canonical tree exports both host layouts and reproducible source digest
+  ---
+  duration_ms: 39.128708
+  type: 'test'
+  ...
+# Subtest: unclosed angle prose cannot hide a later escaping Markdown link
+ok 43 - unclosed angle prose cannot hide a later escaping Markdown link
+  ---
+  duration_ms: 2.925375
+  type: 'test'
+  ...
+# Subtest: code masking preserves examples while plain navigation and Unicode destinations remain checked
+ok 44 - code masking preserves examples while plain navigation and Unicode destinations remain checked
+  ---
+  duration_ms: 6.068583
+  type: 'test'
+  ...
+# Subtest: unsupported navigation is rejected: "[x](../../references/evidence.md \\"title\\")"
+ok 45 - unsupported navigation is rejected: "[x](../../references/evidence.md \\"title\\")"
+  ---
+  duration_ms: 2.45175
+  type: 'test'
+  ...
+# Subtest: unsupported navigation is rejected: "<img srcset=\\"outside.png\\">"
+ok 46 - unsupported navigation is rejected: "<img srcset=\\"outside.png\\">"
+  ---
+  duration_ms: 2.295333
+  type: 'test'
+  ...
+# Subtest: unsupported navigation is rejected: "[x](\\n../../references/evidence.md)"
+ok 47 - unsupported navigation is rejected: "[x](\\n../../references/evidence.md)"
+  ---
+  duration_ms: 2.269417
+  type: 'test'
+  ...
+# Subtest: other unsupported Markdown navigation fails closed: "[long\\nlabel]: ../../outside.md"
+ok 48 - other unsupported Markdown navigation fails closed: "[long\\nlabel]: ../../outside.md"
+  ---
+  duration_ms: 2.383667
+  type: 'test'
+  ...
+# Subtest: other unsupported Markdown navigation fails closed: "<file:///etc/passwd>"
+ok 49 - other unsupported Markdown navigation fails closed: "<file:///etc/passwd>"
+  ---
+  duration_ms: 4.196792
+  type: 'test'
+  ...
+# Subtest: code masking cannot hide real navigation: inline-like fence info
+ok 50 - code masking cannot hide real navigation: inline-like fence info
+  ---
+  duration_ms: 2.389708
+  type: 'test'
+  ...
+# Subtest: code masking cannot hide real navigation: LF opener CRLF closer
+ok 51 - code masking cannot hide real navigation: LF opener CRLF closer
+  ---
+  duration_ms: 3.830958
+  type: 'test'
+  ...
+# Subtest: code masking cannot hide real navigation: escaped inline backticks
+ok 52 - code masking cannot hide real navigation: escaped inline backticks
+  ---
+  duration_ms: 2.151041
+  type: 'test'
+  ...
+# Subtest: all-CRLF fenced examples are code and retain bytes
+ok 53 - all-CRLF fenced examples are code and retain bytes
+  ---
+  duration_ms: 6.327875
+  type: 'test'
+  ...
+# Subtest: container-prefixed reference definition fails closed: "- "
+ok 54 - container-prefixed reference definition fails closed: "- "
+  ---
+  duration_ms: 2.416958
+  type: 'test'
+  ...
+# Subtest: container-prefixed reference definition fails closed: "> "
+ok 55 - container-prefixed reference definition fails closed: "> "
+  ---
+  duration_ms: 2.237834
+  type: 'test'
+  ...
+# Subtest: container-prefixed reference definition fails closed: "  1. "
+ok 56 - container-prefixed reference definition fails closed: "  1. "
+  ---
+  duration_ms: 2.259291
+  type: 'test'
+  ...
+# Subtest: container-prefixed reference definition fails closed: "> - "
+ok 57 - container-prefixed reference definition fails closed: "> - "
+  ---
+  duration_ms: 3.779417
+  type: 'test'
+  ...
+# Subtest: bounded subprocess export scanning and rewriting: dense-entry-links
+ok 58 - bounded subprocess export scanning and rewriting: dense-entry-links
+  ---
+  duration_ms: 405.671541
+  type: 'test'
+  ...
+# dense-entry-links child wall milliseconds: 398.0038329999999
+# Subtest: bounded subprocess export scanning and rewriting: prefixed-mixed-inline-backticks
+ok 59 - bounded subprocess export scanning and rewriting: prefixed-mixed-inline-backticks
+  ---
+  duration_ms: 72.934917
+  type: 'test'
+  ...
+# prefixed-mixed-inline-backticks child wall milliseconds: 70.21912499999985
+# Subtest: document-named source router, four entries and six method references actually exist
+ok 60 - document-named source router, four entries and six method references actually exist
+  ---
+  duration_ms: 1.09825
+  type: 'test'
+  ...
+# Subtest: quoted angle in an HTML attribute cannot hide navigation
+ok 61 - quoted angle in an HTML attribute cannot hide navigation
+  ---
+  duration_ms: 4.67075
+  type: 'test'
+  ...
+# Subtest: angle Markdown destinations and HTTP autolinks remain usable without enabling HTML
+ok 62 - angle Markdown destinations and HTTP autolinks remain usable without enabling HTML
+  ---
+  duration_ms: 4.877125
+  type: 'test'
+  ...
+# Subtest: long noncontainer prefix with many colon labels is scanned only once per line
+ok 63 - long noncontainer prefix with many colon labels is scanned only once per line
+  ---
+  duration_ms: 216.952042
+  type: 'test'
+  ...
+# dense-prefix child wall milliseconds: 213.559125
+# Subtest: D2a codex CLI exports reachable feature and refactoring methods for every entry
+ok 64 - D2a codex CLI exports reachable feature and refactoring methods for every entry
+  ---
+  duration_ms: 79.585584
+  type: 'test'
+  ...
+# Subtest: D2a claude CLI exports reachable feature and refactoring methods for every entry
+ok 65 - D2a claude CLI exports reachable feature and refactoring methods for every entry
+  ---
+  duration_ms: 79.356042
+  type: 'test'
+  ...
+# Subtest: D2a a missing advertised feature reference fails before reserving output
+ok 66 - D2a a missing advertised feature reference fails before reserving output
+  ---
+  duration_ms: 10.080292
+  type: 'test'
+  ...
+# Subtest: D2a a missing advertised refactoring reference fails before reserving output
+ok 67 - D2a a missing advertised refactoring reference fails before reserving output
+  ---
+  duration_ms: 9.968541
+  type: 'test'
+  ...
+1..67
+# tests 67
+# suites 0
+# pass 67
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1636.270417

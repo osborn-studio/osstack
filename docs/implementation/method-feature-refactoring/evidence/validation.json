@@ -1,0 +1,36 @@
+{
+  "baseline": "ca95aba1c186d9c3a9e70a45143b7a277db84404",
+  "at": "2026-10-28T11:49:44.638459+00:00",
+  "red": {
+    "argv": [
+      "node",
+      "--test",
+      "--test-name-pattern=D2a",
+      "scripts/export-osstack-methods.test.mjs"
+    ],
+    "exit_code": 1,
+    "tests": 4,
+    "failed": 4,
+    "interpretation": "Two real CLI positive cases fail on missing feature material; two negative-case setups also fail because new references did not exist yet. Only the positive pair demonstrates the initial capability gap."
+  },
+  "green": {
+    "argv": [
+      "node",
+      "--test",
+      "scripts/export-osstack-methods.test.mjs"
+    ],
+    "exit_code": 0,
+    "passed": 67,
+    "failed": 0,
+    "skipped": 0
+  },
+  "frontmatter_validated": 5,
+  "actual_export_files_per_host": 48,
+  "host_model_calls": 0,
+  "full_repository_tests_run": false,
+  "limits": [
+    "Routing tests verify exported material graph reachability and exact bytes, not model selection or implementation quality.",
+    "Earlier native discovery experiments are bound to their old material bytes; they do not validate these two new methods.",
+    "No formal gate or runtime integration is introduced."
+  ]
+}
