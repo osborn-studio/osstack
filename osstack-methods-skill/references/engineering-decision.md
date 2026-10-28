@@ -1,6 +1,6 @@
 # First executable example: engineering decision journey
 
-The repository already supplies `scripts/smoke-engineering-decision.mjs`. It uses the compiled CLI, an independent daemon and a deterministic unpaid adapter. Read the actual script in the candidate before executing it; this file describes the supported journey and does not certify a run.
+The repository already supplies `scripts/smoke-engineering-decision.mjs`. It uses the compiled CLI, an independent daemon bundled from the current source, and a deterministic unpaid adapter. Both source and build bytes are recorded; matching digests during a run do not prove that old compiled outputs were rebuilt from the current source. Read the actual script in the candidate before executing it; this file describes the supported journey and does not certify a run.
 
 From the repository root, after dependencies and builds are available:
 

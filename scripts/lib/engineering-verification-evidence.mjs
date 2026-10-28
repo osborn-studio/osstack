@@ -63,6 +63,9 @@ async function walk(directory, relative, files) {
 export async function engineeringBindings(repository) {
   const source = []; const build = [];
   for (const name of ordered(await readdir(join(repository, 'packages')))) {
+    const entry = await lstat(join(repository, 'packages', name));
+    if (entry.isSymbolicLink()) throw Error('evidence_binding_symlink:packages/' + name);
+    if (!entry.isDirectory()) continue;
     for (const [folder, files] of [['src', source], ['dist', build]]) {
       const dir = join(repository, 'packages', name, folder);
       if (await present(dir)) await walk(dir, `packages/${name}/${folder}`, files);
@@ -81,9 +84,35 @@ export async function engineeringBindings(repository) {
     scope: 'all package src/dist bytes and package manifests, lockfile, fixed smoke/helper and fixture sources; content digests bind working bytes even when Git HEAD is dirty; external dependencies are lockfile-pinned, not independently attested' };
 }
 export function sanitizeEvidence(text, secrets = []) {
-  let value = String(text ?? '');
+  let value = String(text ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '');
   for (const secret of secrets) if (secret) value = value.split(secret).join('[redacted]');
-  return value.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '');
+  return value;
+}
+// Normalize string values before JSON escapes controls; never treat serialized
+// JSON as the sanitization boundary. Evidence inputs are plain JSON records.
+export function sanitizeEngineeringRecord(value, secrets = []) {
+  if (typeof value === 'string') return sanitizeEvidence(value, secrets);
+  if (Array.isArray(value)) return value.map(item => sanitizeEngineeringRecord(item, secrets));
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [sanitizeEvidence(key, secrets), sanitizeEngineeringRecord(item, secrets)]));
+  return value;
+}
+export function createBoundedEvidenceTail(secrets = [], limit = 8192) {
+  let pending = ''; let tail = '';
+  const tokens = secrets.filter(Boolean);
+  return {
+    push(chunk) {
+      const clean = sanitizeEvidence(pending + sanitizeEvidence(chunk), tokens);
+      let overlap = 0;
+      for (const token of tokens) for (let size = 1; size < token.length && size <= clean.length; size++) {
+        if (clean.endsWith(token.slice(0, size))) overlap = Math.max(overlap, size);
+      }
+      pending = overlap ? clean.slice(-overlap) : '';
+      tail = (tail + (overlap ? clean.slice(0, -overlap) : clean)).slice(-limit);
+    },
+    // Withhold even incomplete token prefixes from snapshots. The unsanitized
+    // overlap is bounded by the longest credential and never written to disk.
+    read() { return (tail + (pending ? '[redacted-partial]' : '')).slice(-limit); },
+  };
 }
 export async function reserveEngineeringEvidence(evidenceDir, scratchRoot) {
   const runId = randomUUID();
@@ -99,11 +128,11 @@ export async function reserveEngineeringEvidence(evidenceDir, scratchRoot) {
 }
 export async function writeEngineeringEvidence(evidence, name, value, secrets = []) {
   if (!['run.json', 'receipt.json', 'cleanup.json', 'diagnostics.json'].includes(name)) throw Error('unknown_engineering_evidence_file');
-  await writeFile(join(evidence.directory, name), sanitizeEvidence(JSON.stringify(value, null, 2) + '\n', secrets), { mode: 0o600 });
+  await writeFile(join(evidence.directory, name), JSON.stringify(sanitizeEngineeringRecord(value, secrets), null, 2) + '\n', { mode: 0o600 });
 }
 export async function appendEngineeringObservation(evidence, value, secrets = []) {
   // The fixed smoke caps each child stream; never copy authority files or env.
-  await appendFile(join(evidence.directory, 'observations.ndjson'), sanitizeEvidence(JSON.stringify(value) + '\n', secrets), { mode: 0o600 });
+  await appendFile(join(evidence.directory, 'observations.ndjson'), JSON.stringify(sanitizeEngineeringRecord(value, secrets)) + '\n', { mode: 0o600 });
 }
 export async function sealEngineeringEvidence(evidence) {
   const files = [];

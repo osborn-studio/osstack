@@ -210,7 +210,7 @@ test('successful compiled user flow retains independently verifiable evidence af
   const root = await createScratchDir('tests', 'engineering-success-evidence');
   const evidence = join(root, 'evidence');
   try {
-    const receipt = await runJsonCommand(process.execPath, [fileURLToPath(new URL('./smoke-engineering-decision.mjs', import.meta.url)), '--evidence-dir', evidence], { timeout: 85000 });
+    const receipt = await runJsonCommand(process.execPath, [fileURLToPath(new URL('./smoke-engineering-decision.mjs', import.meta.url)), '--evidence-dir', evidence], { timeout: 150000 });
     assert.equal(receipt.status, 'passed'); assert.equal(receipt.action_receipt, 'applied'); assert.equal(receipt.cleanup.scratch_removed, true);
     assert.equal(receipt.completion_level, 'observed_turn'); assert.equal(receipt.provider_qualified, false);
     assert.equal(receipt.evidence.directory, evidence);
@@ -227,6 +227,8 @@ test('successful compiled user flow retains independently verifiable evidence af
     assert.equal(/fixture-only-[a-f0-9-]{36}/.test(raw), false);
     const cleanup = JSON.parse(await readFile(join(evidence, 'cleanup.json'), 'utf8'));
     assert.equal(cleanup.process_exit_confirmed, true); assert.equal(cleanup.scratch_removed, true);
+    assert.equal(cleanup.process_started, true); assert.ok(Number.isInteger(cleanup.pid));
+    assert.ok(observations.some(row => row.command === 'fixture daemon start' && row.pid === cleanup.pid));
     const manifest = JSON.parse(await readFile(join(evidence, 'manifest.json'), 'utf8'));
     for (const file of manifest.files) assert.equal(createHash('sha256').update(await readFile(join(evidence, file.path))).digest('hex'), file.sha256);
     assert.ok(manifest.files.some(file => file.path === 'observations.ndjson'));
@@ -235,7 +237,8 @@ test('successful compiled user flow retains independently verifiable evidence af
 });
 
 
-test('an applied observation survives failed cleanup without becoming a passed run', async () => {
+// Component checks only: this does not inject failure into the complete finally path.
+test('cleanup removal and workflow observation helpers preserve distinct component outcomes', async () => {
   const cleanup = await removeFixtureRoot('/owned-test-fixture', async () => { const error = Error('private detail'); error.code = 'EACCES'; throw error; });
   assert.deepEqual(cleanup, { scratch_removed: false, error_code: 'EACCES' });
   assert.deepEqual(engineeringWorkflowObservation(undefined, { action_receipt: 'applied', completion_level: 'observed_turn' }), {
@@ -253,7 +256,7 @@ test('fixture allocation failure closes the reserved independent evidence instea
       const report = JSON.parse(error.stderr); assert.equal(report.evidence.directory, evidence); assert.match(report.reason, /create_fixture/); return true;
     });
     const receipt = JSON.parse(await readFile(join(evidence, 'receipt.json'), 'utf8'));
-    assert.equal(receipt.status, 'failed'); assert.equal(receipt.cleanup.process_started, false); assert.equal(existsSync(join(evidence, 'manifest.json')), true);
+    assert.equal(receipt.status, 'failed'); assert.equal(receipt.cleanup.process_started, false); assert.equal(receipt.cleanup.process_exit_confirmed, true); assert.equal(existsSync(join(evidence, 'manifest.json')), true);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -285,4 +288,47 @@ test('doctor rejects missing git using read-only PATH lookup', async () => {
     });
     assert.equal(existsSync(join(root, 'evidence')), false); assert.equal(existsSync(join(root, 'untouched')), false);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('content bindings ignore a stray non-directory packages entry', async () => {
+  const { engineeringBindings } = await import('./lib/engineering-verification-evidence.mjs');
+  const { createScratchDir } = await import('../packages/core/dist/index.js'); const root = await createScratchDir('tests', 'engineering-binding-stray');
+  try {
+    for (const dir of ['packages', 'scripts/lib', 'scripts/fixtures']) await mkdir(join(root, dir), { recursive: true });
+    for (const file of ['package.json', 'pnpm-lock.yaml', 'scripts/smoke-engineering-decision.mjs', 'scripts/lib/engineering-verification-evidence.mjs']) await writeFile(join(root, file), '{}');
+    const before = await engineeringBindings(root); await writeFile(join(root, 'packages/.DS_Store'), 'stray');
+    assert.deepEqual(await engineeringBindings(root), before);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('assertion failure details preserve actual expected and predicate text', async () => {
+  const { engineeringFailureDetails } = await import('./smoke-engineering-decision.mjs');
+  let cause; try { assert.equal(2, 1, 'adapter invocation count'); } catch (error) { cause = error; }
+  const detail = engineeringFailureDetails(cause);
+  assert.equal(detail.actual, 2); assert.equal(detail.expected, 1); assert.match(detail.message, /adapter invocation count/);
+});
+
+test('disk evidence strips controls before credential redaction recursively', async () => {
+  const { reserveEngineeringEvidence, appendEngineeringObservation, writeEngineeringEvidence } = await import('./lib/engineering-verification-evidence.mjs');
+  const { createScratchDir } = await import('../packages/core/dist/index.js'); const root = await createScratchDir('tests', 'engineering-redaction');
+  const secret = 'fixture-only-secret'; const poisoned = 'fixture-only-\u001bsecret';
+  try {
+    const evidence = await reserveEngineeringEvidence(join(root, 'evidence'));
+    await appendEngineeringObservation(evidence, { stdout: poisoned, argv: [secret, { nested: poisoned }] }, [secret]);
+    await writeEngineeringEvidence(evidence, 'diagnostics.json', { nested: [poisoned, secret] }, [secret]);
+    for (const file of ['observations.ndjson', 'diagnostics.json']) {
+      const raw = await readFile(join(evidence.directory, file), 'utf8');
+      assert.equal(raw.includes(secret), false); assert.equal(raw.includes('\\u001b'), false); assert.ok(raw.includes('[redacted]'));
+    }
+    assert.deepEqual(JSON.parse(await readFile(join(evidence.directory, 'diagnostics.json'), 'utf8')), { nested: ['[redacted]', '[redacted]'] });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('bounded stderr redaction survives chunks controls and truncation boundaries', async () => {
+  const { createBoundedEvidenceTail } = await import('./lib/engineering-verification-evidence.mjs');
+  const secret = 'fixture-only-secret'; const tail = createBoundedEvidenceTail([secret], 32);
+  tail.push('x'.repeat(100) + 'fixture-only-'); assert.equal(tail.read().includes('fixture-only-'), false);
+  tail.push('\u001bsecret' + 'y'.repeat(20));
+  assert.equal(tail.read().includes(secret), false); assert.ok(tail.read().includes('[redacted]')); assert.ok(tail.read().length <= 32);
+  assert.equal(sanitizedDiagnostic('fixture-only-\u001bsecret', [secret]), '[redacted]');
 });
