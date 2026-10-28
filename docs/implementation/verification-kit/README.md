@@ -24,3 +24,7 @@
 ## 边界与账本
 
 用户本轮明确恢复开发，取代此前设计暂停；旧 bootstrap/C30 未交付工件保持隔离。本批 OSStack 卡片为 `card_f2a2453a`。J01 身份准备 issue #287 仍待用户确认，只约束其对应的正式资格，不阻塞本批工具改进。跨宿主材料、确定性 fixture、正式方法准入是三个不同的状态；不能通过重命名状态把前者当作后者。
+
+## 交付证据
+
+[PR #288](https://github.com/osborn-studio/osstack/pull/288) 的精确候选、测试边界与限制见 [delivery.json](delivery.json)。实际 Sonnet 首轮 REVISE、修订后 PASS 与处置见 [audit.md](audit.md)；完整原始记录、失败和内容清单保存在 `evidence.tar.gz` 与 `evidence-manifest.json`。是否可以合并以该 PR 最新 head 的 GitHub 检查和 OSStack 卡片为准，不用旧 head 的检查替代。

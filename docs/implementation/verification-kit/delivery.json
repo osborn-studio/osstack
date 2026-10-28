@@ -1,0 +1,45 @@
+{
+  "candidate_sha": "7a6137e5c8140b3469b298058c3ae5dc2ab21cdf",
+  "focused_tests": {
+    "passed": 27,
+    "failed": 0,
+    "log_sha256": "adc147caa9c4508c94e0854dbc3b21565b6e1f7bb8f3f3cdc5c5cd5fe3e94cef"
+  },
+  "real_journey": {
+    "status": "passed",
+    "action_receipt": "applied",
+    "completion_level": "observed_turn",
+    "provider_qualified": false,
+    "source_digest": "2759eaea928ee11cf882804ba07f6b29cde4ce0a5004aabd62510a1283a2874f",
+    "build_digest": "195cbf644e40e07d9d1369a1eb171c24b7743104b47e41b7ee8801a1ec882700",
+    "bindings_unchanged": true,
+    "manifest_files_verified": 4,
+    "fixture_removed": true
+  },
+  "audit": {
+    "candidate_sha": "348aed70dd5aa183f447b3f3fda55594eafc22af",
+    "result": "PASS",
+    "subsequent_diff": "one test timeout 90000->160000, material wording and docs only; no runtime/helper change"
+  },
+  "full_package_regression": "full-test-binding.json; package source unchanged from fd9, separately tested scripts",
+  "runtime_enabled": false,
+  "pr": 288,
+  "base_sha": "fd9cac8127dbfa5660d9c45e58a42da5ed642073",
+  "state": "reviewed_candidate",
+  "ci": "Final published head must pass applicable GitHub checks before Ready; live state is GitHub and OSStack card_f2a2453a. This is a time-bound local validation record, not a CI claim.",
+  "full_suite": {
+    "passed": 7129,
+    "skipped": 5,
+    "source_scope": "unchanged workspace package sources; separate script tests cover changed tooling"
+  },
+  "documentation_tests": 241,
+  "evidence": "evidence.tar.gz with evidence-manifest.json",
+  "limitations": [
+    "deterministic local fixture only",
+    "Codex/Claude explicit material consumption not empirically qualified",
+    "cleanup deletion failure tested at component level, not full forced-failure journey",
+    "J01/J11/J03/J09 formal gates not passed by this delivery"
+  ],
+  "approval_owner": "gilberthello",
+  "next_batch": "next-batch.md; real baseline failure reproduced, no product fix in this PR"
+}
