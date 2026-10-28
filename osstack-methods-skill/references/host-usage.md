@@ -12,10 +12,12 @@ Manual assembly means choosing the task entry and supplying the shared files. Th
 
 | Consumption cell | Current claim |
 | --- | --- |
-| Codex explicit file reading | Designed for this workflow; this document supplies no observed host-run evidence |
-| Claude explicit file reading | Designed for the same files; this document supplies no observed host-run evidence |
+| Codex explicit file reading | One recorded read-only investigation; see the experiment record below |
+| Claude explicit file reading | One recorded read-only investigation; see the experiment record below |
 | Automatic discovery / installation | Not provided or tested |
 | MethodBinding / mandatory adapter injection | Not wired by this package |
 | Live provider equivalence / formal qualification | Not established |
 
 A recorded host run can establish that particular host/version read and used particular material bytes for a task. It does not establish behavioral equivalence across providers, authenticated oracle independence, or automatic qualification of future tasks. Preserve raw output and limitations for each cell separately.
+
+[The two host experiments](../../docs/implementation/joint-host-effects/README.md) preserve the actual material versions, commands, outputs and limits. They observed read-only investigation, not product driving, cross-host equivalence or a causal improvement from the materials. Follow [the evidence reading rules](evidence.md): use targeted reads before large raw dumps, and distinguish unavailable evidence from supplied evidence that was not read or verified.

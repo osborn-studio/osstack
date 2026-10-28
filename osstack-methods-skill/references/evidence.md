@@ -8,6 +8,12 @@ Record the requested outcome and its observable predicate, repository and candid
 
 Use an isolated `OSSTACK_HOME`, socket and fixture. Never run a development CLI against the default control-plane home. Establish ownership before cleanup; do not kill by process name or sweep unrelated directories. Do not collect credentials or raw sensitive application data just to make evidence more complete. Record redaction and its effect on what can be concluded.
 
+## Reading existing evidence
+
+Read the input index, manifest and summary first, then inspect the specific fields or raw log sections needed for the claim. Avoid dumping large result files or thousands of build bindings into context. Keep the original file path and hash with any selected projection; a summary or projection does not establish that omitted content was verified. Expand the read when the claim requires it, and state the remaining coverage.
+
+Before saying evidence was not provided, check the supplied input inventory and the explicit referenced path. Distinguish **not provided**, **provided but unread**, **read but not verified**, and **verified for a stated predicate**. A failed read is an access/read failure, not proof that the file was absent. Record the attempted path and failure; do not turn an unread manifest into a missing-manifest claim or treat reading it as verification of its bindings.
+
 ## Outcome vocabulary
 
 | Axis | Values | Meaning |
