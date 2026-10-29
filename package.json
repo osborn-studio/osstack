@@ -74,6 +74,8 @@
     "eval:neat-parity:offline": "pnpm --filter @osstack/cli... build && pnpm --filter @osstack/neat-eval build && node scripts/eval-neat-parity-offline.mjs",
     "eval:kimi-review": "pnpm --filter @osstack/agents build && node scripts/eval-kimi-review.mjs --check",
     "smoke:improvement-providers": "node scripts/smoke-improvement-providers.mjs",
+    "test:skills-map": "node --test scripts/maintain-skills-check-map.test.mjs",
+    "smoke:skills-map": "node scripts/maintain-skills-check-map.mjs",
     "test:method-journey": "node --test scripts/method-verification-journey.test.mjs",
     "smoke:method-journey": "node scripts/method-verification-journey.mjs",
     "test:method-projection": "node --test scripts/project-method-journey-evidence.test.mjs",
