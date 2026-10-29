@@ -30,9 +30,9 @@ After authorized fixes, bind local verification to the exact new candidate. Read
 
 ## Report the next decision
 
-Return a compact report: observed base/head and time; checks/review/integration facts; confirmed changes and their evidence; unresolved blockers or unknowns; and the next action with its owner. When preparing an authorized PR update, explain the problem, resulting behavior, scope, material risks and checks actually run. Link detailed logs instead of turning the description into a work diary. Do not open a PR or mark it Ready merely because the method reached this step.
+Follow the requested level of detail; otherwise return a compact report: observed base/head and time; checks/review/integration facts; confirmed changes and their evidence; unresolved blockers or unknowns; and the next action with its owner. When preparing an authorized PR update, explain the problem, resulting behavior, scope, material risks and checks actually run. Link detailed logs instead of turning the description into a work diary. Do not open a PR or mark it Ready merely because the method reached this step.
 
-For multiple PRs, state shared scope and observation time once, then use one row per PR:
+For multiple PRs, state scope and observation time once only when they are identical; otherwise show the differing observation or failed read per row. Use one row per PR:
 
 ```text
 PR / observed remote head + base / checks + review + integration /
