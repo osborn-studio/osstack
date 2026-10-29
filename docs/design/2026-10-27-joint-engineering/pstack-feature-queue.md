@@ -62,3 +62,5 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
 
 
 Current next repair: existing stack ingestion discarded legacy StatusContext.state. New scoped two-source-file fix60495 has genuine12 RED→33 GREEN, independent old9/36 failures→36/36 and full7207/5/0 atbda. It does not change the pre-existing CheckRun neutral/skipped policy or refresh existing cards. PR307 original lint failure is retained; 24bed CI40928407347 passed lint/build but failed generated PUBLIC_EXPORTS freshness; original evidence retained, minimal generated sync8fd28911 pushed; latest CI is evaluated separately.
+
+PR308 b4a2fc30 publishes the scoped legacy StatusContext repair, Draft on PR307 parent. Latest307 inventory repair8fd28911 CI40929858660 is running;308 must wait for actual307 user merge, retarget and validation. Existing CheckRun ACTION_REQUIRED/STALE/STARTUP_FAILURE and WAITING/REQUESTED/empty-conclusion policies remain an explicit next gap, not fixed by308.

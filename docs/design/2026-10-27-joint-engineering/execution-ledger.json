@@ -5239,7 +5239,7 @@
     "merged_at": "2026-10-29T17:49:32Z"
   },
   "pr_candidate_snapshot_slice": {
-    "status": "draft_inventory_repaired_ci_pending",
+    "status": "draft_inventory_repaired_ci_running",
     "card": "card_55808960",
     "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
     "capabilities": [
@@ -5319,7 +5319,7 @@
     "pr": 307,
     "head_sha": "8fd2891174964bb539f5ca9b094549a090517d5e",
     "base_branch": "main",
-    "ci_run": 40928407347,
+    "ci_run": 40929858660,
     "original_ci_failure": {
       "head": "9d54cfdc",
       "run": 40926150260,
@@ -5355,7 +5355,7 @@
     }
   },
   "stack_status_context_slice": {
-    "status": "validated_pending_publication",
+    "status": "draft_ci_pending_parent307",
     "card": "card_7e0b1be2",
     "base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
     "primary_capability": "PS18",
@@ -5422,6 +5422,10 @@
       "archive_bytes": 1012054,
       "verification": "root all names/type/mode/hash/size/target verified"
     },
-    "archive_independent_sha256": "150f646eee40cd0ffac891bd3bfa28897f54da6f9c3623258248bb65dd22e8ad"
+    "archive_independent_sha256": "150f646eee40cd0ffac891bd3bfa28897f54da6f9c3623258248bb65dd22e8ad",
+    "pr": 308,
+    "head_sha": "b4a2fc30711d9c3ad5cddbc846839948f1810c56",
+    "base_branch": "codex/pr-candidate-snapshot-delivery",
+    "ci_run": 40930144304
   }
 }

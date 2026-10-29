@@ -151,3 +151,6 @@ PR302由root在五项适用CI成功后转Ready，用户审批合并。root中央
 
 
 2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.
+
+
+2026-10-29 latest delivery: actual main6c9a3e8f includes user-merged305/306. PR307 read-only candidate snapshot is Draft/main at8fd28911 with CI40929858660 running; original lint failure and subsequent inventory failure are preserved, repaired without relaxing gates. PR308 legacy StatusContext ingestion repair is Draft atb4a2fc30, based on307, CI40930144304 running. Same-test RED→GREEN, independently frozen36 vectors and Sonnet5.5 static PASS support the scoped repair; fullbda7207/5/0 and later172/14 focused receipts retain separate bindings. Root alone owns PR/ledger/full queue; A implementation, B downstream/CI, C independent checks have separate evidence. No new methods, no whole PS capability or formal J milestone completion. After user merges307, verify actualmain/tree/diff and retarget/revalidate308 before Ready; never merge into feature base.
