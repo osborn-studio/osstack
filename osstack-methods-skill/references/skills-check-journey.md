@@ -52,9 +52,35 @@ The wrapper exits 0 only when every selected row and its evidence checks pass. E
 
 Read `feature-map.md`, `journey.json` and `journey-manifest.json` in the selected output. For each selected case, read its retained `cases/<case-id>/` evidence: receipt, raw command output, cleanup record and manifest. Full scope adds `cases/drift/`, `cases/mixed/` and `cases/empty/` to the two default directories. The wrapper checks receipt bytes, raw-file hashes, fixed case expectations, required source/build anchors, Git identities and fixture ownership. Retain the invocation stdout/stderr and separate build log. Manifest digests establish consistency; they do not authenticate an oracle or prove the build was produced from the recorded source.
 
-These are full engineering audit records. Some command records include the non-secret fixture environment. Do not hand the full bundle to a model task that forbids reading those fields. Define that task's permitted inputs before use. This recipe consumes full local audit records and does not use or require a projection. The existing `scripts/project-method-journey-evidence.mjs` accepts only the default two-case journey. It refuses a full five-case journey before creating its output directory. Do not drop three rows, rewrite the scope or pass only selected case directories to make that projector accept a full run. Retain all five audit records and report this projection limit. If another task needs a two-case packet, use a separate authorized default journey in a new output directory; do not describe it as a projection of the full run. A projection does not establish native host execution or qualification.
+These are full engineering audit records. Some command records include the non-secret fixture environment. Do not hand the full bundle to a model task that forbids reading those fields. Define that task's permitted inputs before use. This recipe can retain the full local audit records without a projection. When a task needs a bounded packet, use the explicit projection scope below. The default `scripts/project-method-journey-evidence.mjs` path still accepts only the two-case journey and produces packet `schema_version: 1`. It still refuses a full five-case input before creating output. Explicit `--scope full` accepts the five-case journey and produces packet `schema_version: 2`; this is not a silent widening of the default. Do not drop rows or rewrite the input scope to obtain acceptance. Retain the original audit bundle unchanged.
 
 Successful cleanup removes each owned fixture and requires `scratch/` to contain only an empty `smoke/` directory. Evidence stays outside the disposable fixture and survives cleanup. Direct-child exit and fixture absence do not prove termination of every descendant: `descendant_termination` remains `not_attested`.
+
+## Project a retained full journey and check the packet
+
+First run the full journey using `--scope full` as described above. Keep its exact `journey_output` path, stdout, stderr and exit status. Projection can represent a closed failed journey; it does not require every case to pass. A missing or inconsistent evidence bundle is a projection refusal, not evidence that the product passed.
+
+From a target checkout that includes the full-scope projector, run this block as a shell script after the scratch preamble. `journey_output` must identify the retained full journey. The packet directory must be new, under the owned scratch root, with an existing parent and outside the input tree. This block retains command logs as sibling files. It does not run another journey or modify the input:
+
+```sh
+umask 077
+: "${journey_output:?Set the absolute retained full journey path}"
+packet_output="${OSSTACK_SCRATCH_ROOT:?}/runtime/skills-check-packet-$(date -u +%Y%m%dT%H%M%SZ)-$$"
+node scripts/project-method-journey-evidence.mjs --input "$journey_output" --output "$packet_output" --scope full > "$packet_output.stdout" 2> "$packet_output.stderr"
+projection_exit=$?
+if [ "$projection_exit" -ne 0 ]; then
+  exit "$projection_exit"
+fi
+node scripts/project-method-journey-evidence.mjs --check "$packet_output" > "$packet_output.check.stdout" 2> "$packet_output.check.stderr"
+```
+
+Inspect both command exit statuses and logs. `--check` reads the packet's version and validates either supported version; do not add `--scope` to that command. A consumer that supports only version 1 must not silently drop version 2's extra cases. The packet directory contains `packet.json` and `manifest.json`; the packet version, not the manifest envelope version, distinguishes the two-case and five-case formats. To project a default two-case journey, omit `--scope full` from the projection command. Do not use a default journey as input to the full projection.
+
+Projection reads retained bytes and recorded claims. It does not repeat CLI execution, reconnect to the original fixture or prove that the recorded build came from the source. `--check` verifies the packet's structure and byte consistency, not the original bundle or a current runtime. Hashes do not authenticate an oracle, author or historical account. Preserve the original source/build/time binding rather than relabel this check as a fresh product run.
+
+Keep every row's failed, `not_run` and unknown observations, including cleanup limits. Product exits remain 0/1/2/1/0 only for the five corresponding verified case observations; a failed or unverified row must not borrow those expected exits as an observed pass. Selected output and evidence hashes are not the full raw logs. The packet omits raw environment values and raw stderr rather than offering a generic redactor. Inspect its declared scope before sharing it within the task's input authorization. Neither projection nor checking proves model-visible delivery, model execution, provider qualification or all possible skills-check behavior.
+
+The examples are shell recipes for an authorized checkout. If a host task permits only specific literal calls, submit the approved commands separately within that task's boundary; do not treat these assignments, redirections or stop guards as permission to widen its shell access. Report a permission blocker without disguising or wrapping the denied command.
 
 ## Failure and maintenance
 
