@@ -1,0 +1,8 @@
+check	Inventory freshness	﻿2026-10-29T18:14:54.3339397Z ##[group]Run node scripts/generate-inventory.mjs --check
+check	Inventory freshness	2026-10-29T18:14:54.3339855Z ^[[36;1mnode scripts/generate-inventory.mjs --check^[[0m
+check	Inventory freshness	2026-10-29T18:14:54.3362139Z shell: /usr/bin/bash -e {0}
+check	Inventory freshness	2026-10-29T18:14:54.3362400Z env:
+check	Inventory freshness	2026-10-29T18:14:54.3362665Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+check	Inventory freshness	2026-10-29T18:14:54.3363002Z ##[endgroup]
+check	Inventory freshness	2026-10-29T18:14:54.5938171Z stale: docs/inventory/PUBLIC_EXPORTS.md — re-run scripts/generate-inventory.mjs
+check	Inventory freshness	2026-10-29T18:14:54.5995402Z ##[error]Process completed with exit code 1.

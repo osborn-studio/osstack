@@ -1,0 +1,10 @@
+--- current/PUBLIC_EXPORTS.md
++++ expected/PUBLIC_EXPORTS.md
+@@ -169,6 +169,7 @@
+ export * from "./delivery.js";
+ export { AttentionCiReader, type AttentionCiResult } from './attention-ci.js';
+ export * from "./candidate-evidence.js";
++export {
+ ```
+ 
+ ## `@osstack/governance`

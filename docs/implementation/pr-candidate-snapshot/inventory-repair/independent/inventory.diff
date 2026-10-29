@@ -1,0 +1,12 @@
+diff --git a/docs/inventory/PUBLIC_EXPORTS.md b/docs/inventory/PUBLIC_EXPORTS.md
+index ae725244..0427e82f 100644
+--- a/docs/inventory/PUBLIC_EXPORTS.md
++++ b/docs/inventory/PUBLIC_EXPORTS.md
+@@ -169,6 +169,7 @@ export * from "./portfolio-status.js";
+ export * from "./delivery.js";
+ export { AttentionCiReader, type AttentionCiResult } from './attention-ci.js';
+ export * from "./candidate-evidence.js";
++export {
+ ```
+ 
+ ## `@osstack/governance`
