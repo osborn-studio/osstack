@@ -58,9 +58,9 @@ Successful cleanup removes each owned fixture and requires `scratch/` to contain
 
 ## Project a retained full journey and check the packet
 
-First run the full journey using `--scope full` as described above. Keep its exact `journey_output` path, stdout, stderr and exit status. Projection can represent a closed failed journey; it does not require every case to pass. A missing or inconsistent evidence bundle is a projection refusal, not evidence that the product passed.
+First run the full journey using `--scope full` as described above. Keep its exact `journey_output` path, stdout, stderr and exit status. Projection can represent a coherent closed failed journey with sealed or not-created case evidence; it does not require every case to pass. An unsealed or unreadable case is refused and its original evidence must be retained. A missing or inconsistent evidence bundle is a projection refusal, not evidence that the product passed.
 
-From a target checkout that includes the full-scope projector, run this block as a shell script after the scratch preamble. `journey_output` must identify the retained full journey. The packet directory must be new, under the owned scratch root, with an existing parent and outside the input tree. This block retains command logs as sibling files. It does not run another journey or modify the input:
+From a target checkout that includes the full-scope projector, run this block in the same shell script after the scratch preamble and journey step, or explicitly set/export `journey_output` in the new script. `journey_output` must identify the retained full journey. The packet directory must be new, under the owned scratch root, with an existing parent and outside the input tree. This block retains command logs as sibling files. It does not run another journey or modify the input:
 
 ```sh
 umask 077
@@ -91,3 +91,5 @@ Timeout or interruption attempts bounded termination of the wrapper's own direct
 Use [maintain verification](maintain-verification.md) when the driver, CLI output, evidence layout or this recipe changes. A complete maintenance pass over this five-case map needs source review and actual drives for all five cases and their evidence paths. Run the journey with `--scope full` for that scope; the default two-case run remains valid partial coverage. A blocked or `not_run` row prevents a complete pass. Even five passing rows cover only these mapped local fixtures, not every source, remote provider, installation, race or global configuration. Reading or exporting this reference does not prove native host selection, model execution, provider qualification or a formal joint gate.
 
 This concrete example adapts the pinned upstream [create/maintain verification practices](sources.md). Apply [the common evidence rules](evidence.md) to each actual run.
+
+The full projector additionally requires empty stderr for its retained Git SHA observations. A bundle with nonempty Git stderr is refused even if the journey verifier had accepted it; keep the original bundle rather than treating refusal as a product failure or silently removing stderr.
