@@ -247,3 +247,7 @@ PR300 published head0e5d2c98 has five applicable CI checks SUCCESS in run4078914
 ## 2026-10-29：并行覆盖与简洁报告候选
 
 A/B 两个独占切片合为 code898033af，新增 supporting parallel-work 指南及现有证据/PR报告短模板，仍13项方法。92导出与独立双host84文件/302链接通过，实际 Sonnet 首审要求修订来源链，修订后限定闭环通过。组合c174598e全仓7144/5/0，明确带四个新鲜生成文件；首轮恢复旧dist造成的88项失败及复建过程完整保留。#300新main CI的真实分页断言缺陷已test-only修复，最新e16候选仍等CI，用户审批合并权不变。详见[本批交付](../../implementation/method-parallel-reporting/README.md)。
+
+### 本轮发布收口
+
+#300 已改为 main，经确认的分页测试修复与新 CI40803637902 的五项适用检查通过后，head e16ae5f9 转 Ready。OSStack 仅等 gilberthello 审批合并。下一批 #301 head4b7b0585 仍 Draft，基于 #300 分支运行 CI40805618553；前置合并后再核真实 main 与重定向。完整原始回执见[发布记录](../../implementation/method-parallel-reporting-publication/README.md)。

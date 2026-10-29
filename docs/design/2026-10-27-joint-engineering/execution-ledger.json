@@ -26,7 +26,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
-  "observed_at": "2026-10-29T02:17:15.722192+00:00",
+  "observed_at": "2026-10-29T02:26:02.106977+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -3678,7 +3678,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "main_repaired_new_ci_running",
+    "status": "ready_awaiting_user_merge",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3738,7 +3738,7 @@
     "publication_evidence": "docs/implementation/method-pr-readiness-publication",
     "user_approval_required": true,
     "applicable_ci": "5_SUCCESS_paid_SKIPPED",
-    "readiness_blocker": "Latest repaired-head CI check still running",
+    "readiness_blocker": "gilberthello approval and merge",
     "final_ci_test": {
       "head": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
       "run": 40789146519,
@@ -3764,7 +3764,7 @@
       "tree": "c673965b87aee1a239012f0d7090f4554243f89e",
       "content_equal_previous": true,
       "ci_run": 40802170819,
-      "status": "attempt1_failed_pagination_assumption",
+      "status": "repaired_ready",
       "exports": {
         "passed": 91,
         "failed": 0,
@@ -3772,7 +3772,9 @@
       },
       "document_tests": 241,
       "audit": "actual claude-sonnet-5-5 limited retarget PASS",
-      "evidence": "docs/implementation/method-post299-retarget"
+      "evidence": "docs/implementation/method-post299-retarget",
+      "final_head": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
+      "final_ci_run": 40803637902
     },
     "pagination_repair": {
       "code": "9432d319",
@@ -3783,10 +3785,28 @@
       "audit": "actual Sonnet5.5 static PASS",
       "evidence": "docs/implementation/method-pr-readiness-delivery/ci-main-repair",
       "archive_sha256": "71b630b7cd9cf3299d8e17d9b41630b8e78b776d4e927dfa59579d16f7189582"
+    },
+    "post_main_final_ci": {
+      "head": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
+      "run": 40803637902,
+      "base": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "exporter": {
+        "total": 91,
+        "passed": 90,
+        "skipped": 1
+      },
+      "original_retention_case": "passed408ms",
+      "ready": true,
+      "publication_evidence": "docs/implementation/method-parallel-reporting-publication",
+      "archive_sha256": "20a5ba0cbd52b0ade134f2212cda613abed82d68944679ef91984d3669e9aaca"
     }
   },
   "parallel_reporting_wave": {
-    "status": "tested_audited_candidate_pending_publication",
+    "status": "draft_ci_running_waiting_parent",
     "provisional_base": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
     "depends_on_pr": 300,
     "method_count": 13,
@@ -3826,6 +3846,13 @@
       "direct_missing_export": 75,
       "indirect_unproven_same_cause": 13,
       "cause": "root restored tracked stale generated artifacts after build; force build and actual export probe restored valid runtime"
-    }
+    },
+    "pr": 301,
+    "published_head": "4b7b0585b7f2463f86ba4f793548af820da3e6a6",
+    "base_branch": "codex/method-pr-readiness-delivery",
+    "ci_run": 40805618553,
+    "publication_evidence": "docs/implementation/method-parallel-reporting-publication",
+    "user_approval_required": true,
+    "publication_archive_sha256": "20a5ba0cbd52b0ade134f2212cda613abed82d68944679ef91984d3669e9aaca"
   }
 }
