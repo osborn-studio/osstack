@@ -2,11 +2,18 @@ import { z } from 'zod';
 import { defaultDeliveryCommandRunner, type DeliveryCommandRunner } from './delivery.js';
 
 const sha = z.string().regex(/^[a-f0-9]{40}$/);
+const hasAsciiControl = (value: string) => {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code < 32 || code === 127) return true;
+  }
+  return false;
+};
 const inputSchema = z.object({
   repo: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/),
   pr: z.number().int().positive().max(2147483647),
   expectedHead: sha.optional(), expectedBase: sha.optional(),
-  requiredChecks: z.array(z.string().min(1).max(256).refine(v => !/[\x00-\x1f\x7f]/.test(v))).max(100).optional(),
+  requiredChecks: z.array(z.string().min(1).max(256).refine(v => !hasAsciiControl(v))).max(100).optional(),
 }).strict().refine(v => (v.expectedHead === undefined) === (v.expectedBase === undefined))
   .refine(v => new Set(v.requiredChecks ?? []).size === (v.requiredChecks ?? []).length);
 export type PrCandidateInput = z.infer<typeof inputSchema>;
