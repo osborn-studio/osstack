@@ -4567,7 +4567,7 @@
     }
   },
   "full_journey_slice": {
-    "status": "draft_waiting_ci_and_parent303",
+    "status": "ci_pass_waiting_parent303_merge_and_retarget",
     "card": "card_ddf5e661",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
@@ -4619,10 +4619,24 @@
     "base_branch": "codex/method-material-delivery",
     "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
     "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
-    "all_workers_handed_off": true
+    "all_workers_handed_off": true,
+    "ci_final": {
+      "run": 40835326104,
+      "head": "185d283af23683ad084f81a6b049fcaab251a68f",
+      "success_checks": 5,
+      "paid": "skipped",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_total": 94,
+      "export_passed": 93,
+      "export_skipped": 1,
+      "tested_merge": "0b05194ae064388f96a86a8569a2967248225eb2"
+    }
   },
   "full_projection_slice": {
-    "status": "implementation_dispatched",
+    "status": "verified_prepublication",
     "card": "card_522ee55d",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "provisional_parent": "185d283af23683ad084f81a6b049fcaab251a68f",
@@ -4645,6 +4659,17 @@
       "C": "independent scratch",
       "root": "CI,ledger,audit,PR"
     },
-    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0"
+    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0",
+    "source_commit": "c7a712909f32f5691bc85afe43a033951ecc2447",
+    "author_code": "9ed86675b3c100a245e21ba7fc0a1b8d4dbcdd19",
+    "author_docs": "e603e7c6299b42e6f2f72851006cc7ad3f1c4d7c",
+    "focused": "230 pass; final documentation clarification94export pass",
+    "full": "da059ca3 7144pass5skip0fail, fresh generated dist; tracked bytes unchanged; precedes standalone repair, not final whole-tree",
+    "audit": "actual claude-sonnet-5-5 initial staticPASS; optional3 independently confirmed and fixed; limited closurePASS",
+    "independent": "45 initial bounded observations; 2 post-audit accepted counterexamples; repaired10 projection/5check calls",
+    "fresh": "current1d366 full5/default2 project/check passed; originals unchanged",
+    "evidence": "docs/implementation/method-full-projection/README.md",
+    "archive_sha256": "5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d",
+    "whole_capability_complete": false
   }
 }

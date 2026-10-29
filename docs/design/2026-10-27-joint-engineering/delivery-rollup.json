@@ -6905,7 +6905,7 @@
       "acceptance": "确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。",
       "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。",
       "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial",
-      "remaining": "PR304 full-five journey candidate awaiting CI and parent303 merge; broader map drift discovery remains unproven."
+      "remaining": "PR304 all five applicable CI successful; awaiting303merge and main retarget. Broader map drift discovery remains unproven."
     },
     {
       "rank": 2,
@@ -6917,10 +6917,11 @@
       "goal": "完整五case安全证据投影",
       "deliverable": "在明确full范围下投影五case；保留默认两case严格契约与失败/未知语义，不复制原环境字段到模型包。",
       "acceptance": "五case完整性、错误/未运行/清理状态、原件不变和旧接口兼容独立验证。",
-      "state": "implementation_dispatched",
+      "state": "validated_candidate_prepublication",
       "depends_on": "full five-case journey integration",
       "formal_gate_pass": false,
-      "card": "card_522ee55d"
+      "card": "card_522ee55d",
+      "latest_result": "Explicitfullv2/defaultv1, confirmed cleanup identity fix, independent recheck, actualSonnet closurePASS; no whole PS/J qualification."
     },
     {
       "rank": 3,
@@ -9392,8 +9393,8 @@
       "title": "PS08/09 五case完整验证旅程与维护覆盖",
       "task_kind": "implementation",
       "board": "joint-firstmate-pstack",
-      "observed_status": "running",
-      "observed_at": "2026-10-29T07:27:42.368996+00:00",
+      "observed_status": "blocked",
+      "observed_at": "2026-10-29T07:58:26.680474+00:00",
       "contributes_to": {
         "PS": [
           "PS08",
@@ -9405,7 +9406,7 @@
           "J09"
         ]
       },
-      "delivered_scope": "PR304 optional full journey candidate, actual five-case execution verified, default compatibility preserved. CI/parent merge pending.",
+      "delivered_scope": "PR304 five applicable CI success; Draft waiting303merge,main retarget and verification.",
       "evidence_paths": [
         "docs/implementation/method-full-journey/README.md"
       ],
@@ -9418,7 +9419,7 @@
       "task_kind": "implementation",
       "board": "joint-firstmate-pstack",
       "observed_status": "running",
-      "observed_at": "2026-10-29T07:38:59.475741+00:00",
+      "observed_at": "2026-10-29T07:58:26.680474+00:00",
       "contributes_to": {
         "PS": [
           "PS08",
@@ -9431,8 +9432,10 @@
           "J23"
         ]
       },
-      "delivered_scope": "Implementation dispatched, not delivered; provisional parent304; no new method/host call.",
-      "evidence_paths": [],
+      "delivered_scope": "Validated full projection candidate with actual fix and independent recheck; unpublished, parent304 pending.",
+      "evidence_paths": [
+        "docs/implementation/method-full-projection/README.md"
+      ],
       "formal_gate_pass": false,
       "whole_milestone_complete": false
     }
@@ -9906,7 +9909,7 @@
     }
   },
   "full_journey_slice": {
-    "status": "draft_waiting_ci_and_parent303",
+    "status": "ci_pass_waiting_parent303_merge_and_retarget",
     "card": "card_ddf5e661",
     "record": "docs/implementation/method-full-journey/README.md",
     "primary_j": "J03",
@@ -9927,7 +9930,21 @@
     "base_branch": "codex/method-material-delivery",
     "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
     "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
-    "all_workers_handed_off": true
+    "all_workers_handed_off": true,
+    "ci_final": {
+      "run": 40835326104,
+      "head": "185d283af23683ad084f81a6b049fcaab251a68f",
+      "success_checks": 5,
+      "paid": "skipped",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_total": 94,
+      "export_passed": 93,
+      "export_skipped": 1,
+      "tested_merge": "0b05194ae064388f96a86a8569a2967248225eb2"
+    }
   },
   "completed_queue_slices": [
     {
@@ -9945,7 +9962,7 @@
     }
   ],
   "full_projection_slice": {
-    "status": "implementation_dispatched",
+    "status": "verified_prepublication",
     "card": "card_522ee55d",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "provisional_parent": "185d283af23683ad084f81a6b049fcaab251a68f",
@@ -9968,6 +9985,17 @@
       "C": "independent scratch",
       "root": "CI,ledger,audit,PR"
     },
-    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0"
+    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0",
+    "source_commit": "c7a712909f32f5691bc85afe43a033951ecc2447",
+    "author_code": "9ed86675b3c100a245e21ba7fc0a1b8d4dbcdd19",
+    "author_docs": "e603e7c6299b42e6f2f72851006cc7ad3f1c4d7c",
+    "focused": "230 pass; final documentation clarification94export pass",
+    "full": "da059ca3 7144pass5skip0fail, fresh generated dist; tracked bytes unchanged; precedes standalone repair, not final whole-tree",
+    "audit": "actual claude-sonnet-5-5 initial staticPASS; optional3 independently confirmed and fixed; limited closurePASS",
+    "independent": "45 initial bounded observations; 2 post-audit accepted counterexamples; repaired10 projection/5check calls",
+    "fresh": "current1d366 full5/default2 project/check passed; originals unchanged",
+    "evidence": "docs/implementation/method-full-projection/README.md",
+    "archive_sha256": "5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d",
+    "whole_capability_complete": false
   }
 }
