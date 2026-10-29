@@ -154,3 +154,7 @@ J23一般运行时资格后排，但服务pstack闭环的真实宿主测量提�
 ## 2026-10-29：把材料完整读取接回现有使用路径
 
 新增候选是只读分页工具及既有host-usage/bug-fix指引，不新增方法。后续页绑定首个完整文件摘要，文件改变、非法范围和超限明确失败；已对两个宿主各88个导出文件逐页重组核对字节。它帮助暴露遗漏页，不能证明模型看见或理解输出。先前Claude修复实验仍为LIMITED，不重新评分。本项回链PS01/PS08/PS20及J04（主）、J09/J23（支持），已完成定向、独立工具验证、实际Sonnet审计修订及注明范围的全仓回归，仍待发布CI与PR合并；详见[候选记录](../../implementation/method-material-reader/README.md)。
+
+## 2026-10-29：pstack五case实际使用路径候选
+
+既有journey新增可选`--scope full`，真实覆盖healthy/missing-ref/drift/mixed/empty，默认两case保持兼容。186定向、独立实际2+5case与失败反例、实际Sonnet静态审计通过，待发布CI及用户合并；未新增方法。旧两case投影器拒绝full而不丢弃行。PS08/PS09，J03主贡献、J06/J09支持，正式gate不变。见[交付记录](../../implementation/method-full-journey/README.md)及[功能优先队列](pstack-feature-queue.md)。

@@ -1746,7 +1746,7 @@
       "id": "PS09",
       "title": "验证基础设施的健康、归属与漂移维护",
       "status": "partial_delivered",
-      "delivery": "maintain材料+健康/归属/清理验证；尚无完整功能地图漂移维护的真实缺陷闭环",
+      "delivery": "维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case维护路径与广义漂移发现仍未闭合。",
       "joint_work_items": [
         "J06",
         "J10",
@@ -2093,7 +2093,7 @@
       "id": "PS20",
       "title": "跨宿主方法适配",
       "status": "partial_delivered",
-      "delivery": "四入口双host导出，有限读取/native help观察；无全方法等价/强制context/资格激活",
+      "delivery": "四入口双host导出；Codex历史checker与Claude历史exporter各有一次有界真实修复闭环，Claude材料读取不全，旧失败保留；尚无全方法等价/强制context/资格激活。",
       "joint_work_items": [
         "J02",
         "J04",
@@ -6874,10 +6874,25 @@
       "deliverable": "在隔离的真实仓库任务上完成地图漂移发现、分类、授权范围内修复、同一触发路径复验及失败证据保留。",
       "acceptance": "确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。",
       "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。",
-      "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial"
+      "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial",
+      "remaining": "Optional full five-case journey is under implementation; broader map drift discovery remains unproven."
     },
     {
       "rank": 2,
+      "capability": [
+        "PS08",
+        "PS13",
+        "PS20"
+      ],
+      "goal": "完整五case安全证据投影",
+      "deliverable": "在明确full范围下投影五case；保留默认两case严格契约与失败/未知语义，不复制原环境字段到模型包。",
+      "acceptance": "五case完整性、错误/未运行/清理状态、原件不变和旧接口兼容独立验证。",
+      "state": "queued_not_dispatched",
+      "depends_on": "full five-case journey integration",
+      "formal_gate_pass": false
+    },
+    {
+      "rank": 3,
       "capability": [
         "PS01",
         "PS06",
@@ -6892,18 +6907,6 @@
       "protocol_state": "two_distinct_historical_tasks_observed_original_failures_retained",
       "latest_result": "Codex packet task bounded repair demonstrated; new Claude exporter task bounded repair demonstrated, required-reading protocol LIMITED; different tasks/permission surfaces, no host ranking or causal comparison",
       "remaining": "Make successful atomic execution and complete required-material delivery reusable in the existing host usage path; choose a fresh actual task for future validation. Do not retry or regrade either closed experiment, add methods merely for count, or infer whole PS/J completion."
-    },
-    {
-      "rank": 3,
-      "capability": [
-        "PS12"
-      ],
-      "goal": "收口已在途的技能编写候选",
-      "deliverable": "完成本批候选发布与CI；随后优先上述闭环，停止仅按方法数量扩张。",
-      "acceptance": "候选源SHA、实际审计、定向测试、原始失败与使用限制保留。",
-      "gate": "合并只确认该材料切片，不签发J19学习/检索运行时资格。",
-      "candidate_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e",
-      "latest_result": "PR302 merged at493caa4e, tree equal published72ab candidate; no formal gate upgrade"
     }
   ],
   "board_mechanics": {
@@ -9788,7 +9791,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "validated_candidate_pending_pr",
+    "status": "draft_waiting_ci",
     "card": "card_0e19c3c2",
     "source_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
     "record": "docs/implementation/method-material-reader/README.md",
@@ -9805,6 +9808,41 @@
     "new_methods": 0,
     "host_experiment_calls": 0,
     "formal_gate_pass": false,
-    "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim."
-  }
+    "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim.",
+    "pr": 303
+  },
+  "full_journey_slice": {
+    "status": "validated_pending_pr",
+    "card": "card_ddf5e661",
+    "record": "docs/implementation/method-full-journey/README.md",
+    "primary_j": "J03",
+    "supporting_j": [
+      "J06",
+      "J09"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS09"
+    ],
+    "new_methods": 0,
+    "formal_gate_pass": false,
+    "candidate": "6e4c61689ee4b58ee52929519e9bdb95d6c3e0ea",
+    "independent": "actual2+5,projection compatibility/refusal,30 bounded observations,4failure seams",
+    "audit": "actual claude-sonnet-5-5 staticPASS"
+  },
+  "completed_queue_slices": [
+    {
+      "rank": 3,
+      "capability": [
+        "PS12"
+      ],
+      "goal": "收口已在途的技能编写候选",
+      "deliverable": "完成本批候选发布与CI；随后优先上述闭环，停止仅按方法数量扩张。",
+      "acceptance": "候选源SHA、实际审计、定向测试、原始失败与使用限制保留。",
+      "gate": "合并只确认该材料切片，不签发J19学习/检索运行时资格。",
+      "candidate_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e",
+      "latest_result": "PR302 merged at493caa4e, tree equal published72ab candidate; no formal gate upgrade",
+      "queue_state": "historical_slice_closed_not_whole_capability"
+    }
+  ]
 }

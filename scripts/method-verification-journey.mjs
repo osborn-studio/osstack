@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Fixed two-feature journey. No model, arbitrary command, provider or runtime activation.
+// Fixed two-feature journey, with an explicit full five-case option. No model, arbitrary command, provider or runtime activation.
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
@@ -9,14 +9,31 @@ import { scratchRoot } from './lib/scratch.mjs';
 import { evaluateCase, fixtureEnvironment, sha256, writeJson } from './lib/skills-check-verification.mjs';
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const cases = ['healthy', 'missing-ref'];
+const defaultCases = ['healthy', 'missing-ref'];
+const fullCases = [...defaultCases, 'drift', 'mixed', 'empty'];
+const policies = {
+  healthy: { exit: 0, failed: 0, drifted: 0, sources: ['healthy'] },
+  'missing-ref': { exit: 1, failed: 1, drifted: 0, sources: ['missing-ref'] },
+  drift: { exit: 2, failed: 0, drifted: 1, sources: ['drift'] },
+  mixed: { exit: 1, failed: 1, drifted: 1, sources: ['healthy', 'missing-ref', 'drift'] },
+  empty: { exit: 0, failed: 0, drifted: 0, sources: [] },
+};
 const check = (condition, label) => { if (!condition) throw Error(label); };
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const inside = (root, path) => { const rel = relative(root, path); return rel !== '' && rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel); };
 const absent = async path => { try { await lstat(path); return false; } catch (error) { if (error.code === 'ENOENT') return true; throw error; } };
 export function parseOptions(args) {
-  if (args.length !== 2 || args[0] !== '--output' || !isAbsolute(args[1])) throw Error('usage: node scripts/method-verification-journey.mjs --output ABSOLUTE_NEW_ROOT');
-  return { output: args[1] };
+  const usage = () => Error('usage: node scripts/method-verification-journey.mjs --output ABSOLUTE_NEW_ROOT [--scope full]');
+  const result = {}; const seen = new Set();
+  for (let i = 0; i < args.length; i += 2) {
+    const flag = args[i]; const value = args[i + 1];
+    if (!['--output', '--scope'].includes(flag) || seen.has(flag) || !value) throw usage();
+    seen.add(flag);
+    if (flag === '--output') { if (!isAbsolute(value)) throw usage(); result.output = value; }
+    else { if (value !== 'full') throw usage(); result.scope = value; }
+  }
+  if (!result.output) throw usage();
+  return result;
 }
 async function boundedFile(path) {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
@@ -28,7 +45,7 @@ async function boundedFile(path) {
   } finally { await handle.close(); }
 }
 export async function verifyCaseEvidence({ directory, scratch, caseId, repository: target, stdout, driverExit }) {
-  check(cases.includes(caseId), 'invalid_case');
+  check(fullCases.includes(caseId), 'invalid_case');
   check((await lstat(directory)).isDirectory() && !(await lstat(directory)).isSymbolicLink(), 'evidence_directory');
   const manifest = JSON.parse(await boundedFile(join(directory, 'manifest.json')));
   check(Array.isArray(manifest.files) && manifest.files.length <= 128, 'manifest_shape');
@@ -62,10 +79,15 @@ export async function verifyCaseEvidence({ directory, scratch, caseId, repositor
   }
   const definitions = json('expectations.json').definitions;
   check(definitions?.length === 1 && definitions[0].case_id === caseId, 'expected_case');
-  const expected = definitions[0]; const expectedExit = caseId === 'healthy' ? 0 : 1;
-  check(expected.expected_exit === expectedExit && expected.failed === expectedExit && expected.drifted === 0 && /^[a-f0-9]{40}$/.test(expected.current_sha), 'fixed_expectation');
-  check(expected.sources?.length === 1 && expected.sources[0].id === caseId && expected.sources[0].ref === (caseId === 'healthy' ? 'refs/heads/main' : 'refs/heads/not-present') && expected.sources[0].blessed_sha === expected.current_sha, 'fixed_source');
-  check(expected.sources[0].origin === pathToFileURL(join(cleanup.fixture_path, 'origin')).href, 'fixture_origin');
+  const expected = definitions[0]; const policy = policies[caseId]; const expectedExit = policy.exit;
+  check(expected.expected_exit === expectedExit && expected.failed === policy.failed && expected.drifted === policy.drifted && /^[a-f0-9]{40}$/.test(expected.current_sha), 'fixed_expectation');
+  const oldSha = buffers.get('git-03.stdout')?.toString('utf8').trim();
+  check(typeof oldSha === 'string' && /^[a-f0-9]{40}$/.test(oldSha) && oldSha !== expected.current_sha, 'fixture_old_sha');
+  const origin = pathToFileURL(join(cleanup.fixture_path, 'origin')).href;
+  check(Array.isArray(expected.sources) && expected.sources.length === policy.sources.length, 'fixed_source');
+  check(expected.sources.every(source => source?.origin === origin), 'fixture_origin');
+  const fixedSources = policy.sources.map(id => ({ id, origin, ref: id === 'missing-ref' ? 'refs/heads/not-present' : 'refs/heads/main', blessed_sha: id === 'drift' ? oldSha : expected.current_sha, auto_minor: false }));
+  check(equal(expected.sources, fixedSources), 'fixed_source');
   const input = buffers.get(`${caseId}.input.json`); check(equal(JSON.parse(input), { version: 1, sources: expected.sources }), 'input_identity');
   const command = json(`${caseId}.command.json`); const detail = json(`${caseId}.json`);
   check(command.executable === process.execPath && equal(command.argv, [join(target, 'packages/cli/dist/bin.js'), 'skills', 'check']), 'product_entry');
@@ -74,6 +96,12 @@ export async function verifyCaseEvidence({ directory, scratch, caseId, repositor
   check(command.stdout_sha256 === sha256(rawOut) && command.stderr_sha256 === sha256(rawErr), 'command_output_hash');
   const observed = evaluateCase(expected, { ...command, stdout: rawOut.toString('utf8'), stderr: rawErr.toString('utf8') }, detail.manifest_before_sha256 === sha256(input) && detail.manifest_after_sha256 === sha256(input));
   check(observed.verification_status === 'passed', `behavior:${observed.errors.join(',')}`);
+  // Reject contradictory extra source rows as well as absent expected rows.
+  // Ignore only the CLI's blank separator lines, not arbitrary extra messages.
+  const sourceLines = fixedSources.map(source => source.id === 'missing-ref' ? '  ✗ missing-ref  unreachable: no_matching_ref'
+    : source.id === 'drift' ? `  ⚠ drift  drift  blessed=${oldSha.slice(0, 12)}  head=${expected.current_sha.slice(0, 12)}  ref=refs/heads/main`
+      : `  ✓ healthy  up-to-date (${expected.current_sha.slice(0, 12)})`);
+  check(equal(rawOut.toString('utf8').split('\n').filter(line => line !== ''), [`Checking ${fixedSources.length} source(s) against their tracked refs...`, ...sourceLines, `${policy.failed} source(s) failed to check.`, `${policy.drifted} source(s) drifted from blessed_sha.`]), 'raw_semantics');
   check(equal(receipt.cases[0], observed) && detail.input_path === `${caseId}.input.json` && Object.entries(observed).every(([key, value]) => equal(detail[key], value)), 'case_receipt');
   check(equal(receipt.cleanup, cleanup) && cleanup.status === 'passed' && cleanup.fixture_removed === true && cleanup.descendant_termination === 'not_attested', 'cleanup_claim');
   check(typeof cleanup.fixture_path === 'string' && dirname(cleanup.fixture_path) === join(await realpath(scratch), 'smoke') && /^skills-check-[A-Za-z0-9_-]+$/.test(cleanup.fixture_path.split(sep).at(-1)), 'cleanup_ownership');
@@ -164,7 +192,9 @@ async function retainedState(output, features) {
   }
   return { case_manifests: manifests, shallow_listings: listings, stability: 'snapshot only; interrupted descendants may still write retained files' };
 }
-export async function runJourney({ output }, seams = {}) {
+export async function runJourney({ output, scope }, seams = {}) {
+  check(scope === undefined || scope === 'full', 'invalid_scope');
+  const cases = scope === 'full' ? fullCases : defaultCases;
   check(typeof output === 'string' && isAbsolute(output), 'absolute_output_required'); output = resolve(output);
   const parent = await realpath(dirname(output)); const root = await realpath(scratchRoot());
   check(inside(root, join(parent, output.split(sep).at(-1))), 'output_outside_scratch');
@@ -174,7 +204,7 @@ export async function runJourney({ output }, seams = {}) {
   const features = cases.map(id => ({ case_id: id, verification: 'not_run', product_exit: null, driver_exit: null, cleanup: { status: 'not_started', descendant_termination: 'not_attested' } }));
   const result = { schema_version: 1, status: 'running', started_at: new Date().toISOString(), features,
     host_execution: 'not_run', native_skill_selection: 'not_observed', model_calls: 0, provider_qualified: false, formal_gate_pass: false,
-    scope: 'Fixed local skills-check healthy/missing-ref journey; omitted drift/mixed/empty; no model or native-host claim',
+    scope: scope === 'full' ? 'Fixed local skills-check healthy/missing-ref/drift/mixed/empty journey; no model or native-host claim' : 'Fixed local skills-check healthy/missing-ref journey; omitted drift/mixed/empty; no model or native-host claim',
     limitations: ['Manifest hashes establish retained-file consistency, not an authenticated source.', 'Binding digests check driver-declared records and cross-case consistency; they do not independently hash all live source/build files after closeout. Build hashes are not proof of a compiler invocation.', 'Direct child exit and fixture removal do not attest all descendants.'], output };
   const controller = new AbortController(); const interrupted = () => controller.abort();
   process.once('SIGINT', interrupted); process.once('SIGTERM', interrupted);
@@ -227,7 +257,7 @@ export async function runJourney({ output }, seams = {}) {
   for (const feature of features) feature.journey_status = result.status;
   await writeJson(join(output, 'journey.json'), result);
   const rows = features.map(f => `| ${f.case_id} | ${f.product_exit ?? (f.reported_product_exit !== undefined && f.reported_product_exit !== null ? `reported:${f.reported_product_exit} (unverified)` : 'not_observed')} | ${f.driver_exit ?? 'not_observed'} | ${f.verification} (journey:${f.journey_status}) | ${f.cleanup.status} | ${f.evidence_state === 'sealed' ? `cases/${f.case_id}/manifest.json` : f.evidence_state} |`);
-  await writeFile(join(output, 'feature-map.md'), `# Fixed skills-check journey\n\nJourney status: ${result.status}. See journey.json for failure details.\n\n| Feature | Product exit | Driver exit | Verification | Cleanup | Evidence |\n|---|---|---|---|---|---|\n${rows.join('\n')}\n\nExpected missing-ref product exit1 is an unrecovered source failure. Driver exit0 means its fixed negative predicate passed. Native selection/model execution: not observed/not run. Descendant termination: not attested. Other cases: not run.\n`, { mode: 0o600 });
+  await writeFile(join(output, 'feature-map.md'), `# Fixed skills-check journey\n\nJourney status: ${result.status}. See journey.json for failure details.\n\n| Feature | Product exit | Driver exit | Verification | Cleanup | Evidence |\n|---|---|---|---|---|---|\n${rows.join('\n')}\n\nExpected missing-ref product exit1 is an unrecovered source failure. Driver exit0 means its fixed negative predicate passed. Native selection/model execution: not observed/not run. Descendant termination: not attested. ${scope === 'full' ? 'Full scope covers only these five fixed cases. Expected drift exit2 reports changed source; mixed exit1 preserves failure precedence over drift. Existing two-case projection does not accept this scope.' : 'Other cases: not run.'}\n`, { mode: 0o600 });
   // Seal only own flat summaries. Per-case manifests retain the original driver's full evidence.
   const index = [];
   for (const name of (await readdir(output)).sort()) if ((await lstat(join(output, name))).isFile()) { const bytes = await boundedFile(join(output, name)); index.push({ path: name, bytes: bytes.length, sha256: sha256(bytes) }); }

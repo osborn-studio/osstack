@@ -20,13 +20,18 @@ async function evidenceFixture(t, id = 'missing-ref', location = ['smoke', 'skil
   const fixture = join(scratch, ...location);
   const expected = caseDefinition(id, pathToFileURL(join(fixture, 'origin')).href, 'a'.repeat(40), 'b'.repeat(40));
   const input = jsonBytes({ version: 1, sources: expected.sources });
-  const stdout = `Checking 1 source(s) against their tracked refs...\n${id === 'healthy' ? '  ✓ healthy  up-to-date (bbbbbbbbbbbb)' : '  ✗ missing-ref  unreachable: no_matching_ref'}\n${expected.failed} source(s) failed to check.\n0 source(s) drifted from blessed_sha.\n`;
+  const rows = {
+    healthy: '  ✓ healthy  up-to-date (bbbbbbbbbbbb)',
+    'missing-ref': '  ✗ missing-ref  unreachable: no_matching_ref',
+    drift: '  ⚠ drift  drift  blessed=aaaaaaaaaaaa  head=bbbbbbbbbbbb  ref=refs/heads/main',
+  };
+  const stdout = [`Checking ${expected.sources.length} source(s) against their tracked refs...`, ...expected.sources.map(source => rows[source.id]), '', `${expected.failed} source(s) failed to check.`, `${expected.drifted} source(s) drifted from blessed_sha.`, ''].join('\n');
   const environment = fixtureEnvironment(fixture, scratch, process.env.PATH, join(fixture, 'setup-home'));
   const command = { executable: process.execPath, argv: ['/target/packages/cli/dist/bin.js', 'skills', 'check'], cwd: fixture, environment: { ...environment, OSSTACK_HOME: join(fixture, `home-${id}`) },
     exit_code: expected.expected_exit, signal: null, direct_child_exit_confirmed: true, timed_out: false, output_limited: false, interrupted: false, spawn_error: null,
     stdout_path: `${id}.stdout`, stderr_path: `${id}.stderr`, stdout_sha256: sha256(Buffer.from(stdout)), stderr_sha256: sha256(Buffer.alloc(0)) };
   const observed = { case_id: id, verification_status: 'passed', actual_exit: expected.expected_exit, expected_exit: expected.expected_exit,
-    source_check_status: id === 'healthy' ? 'healthy' : 'failed', input_unchanged: true, errors: [] };
+    source_check_status: { healthy: 'healthy', 'missing-ref': 'failed', drift: 'drift', mixed: 'failed', empty: 'empty' }[id], input_unchanged: true, errors: [] };
   const cleanup = { status: 'passed', fixture_path: fixture, fixture_removed: true, descendant_termination: 'not_attested' };
   const bindings = {};
   for (const [kind, paths] of Object.entries({ source: ['scripts/smoke-skills-check.mjs', 'scripts/lib/skills-check-verification.mjs', 'packages/cli/src/skills-command.ts'], build: ['packages/cli/dist/bin.js', 'packages/core/dist/index.js', 'packages/skill-registry/dist/index.js'] })) {
@@ -202,4 +207,84 @@ test('an interruption after doctor prevents the next drive from starting', async
   } });
   assert.equal(calls, 1); assert.equal(result.status, 'failed'); assert.equal(result.failure, 'interrupted');
   assert.equal(result.features[1].verification, 'not_run');
+});
+
+
+test('full scope is explicit and omission retains the original API object', () => {
+  assert.deepEqual(parseOptions(['--output', '/scratch/new']), { output: '/scratch/new' });
+  assert.deepEqual(parseOptions(['--output', '/scratch/new', '--scope', 'full']), { output: '/scratch/new', scope: 'full' });
+  assert.deepEqual(parseOptions(['--scope', 'full', '--output', '/scratch/new']), { output: '/scratch/new', scope: 'full' });
+  for (const args of [['--output', '/a', '--scope'], ['--output', '/a', '--scope', 'all'], ['--output', '/a', '--scope', 'full', '--scope', 'full']]) assert.throws(() => parseOptions(args), /usage:/);
+});
+for (const [id, code, status] of [['drift', 2, 'drift'], ['mixed', 1, 'failed'], ['empty', 0, 'empty']]) test(`${id}: verifies semantic evidence independently of zero driver exit`, async t => {
+  const f = await evidenceFixture(t, id);
+  const result = await verifyCaseEvidence(f.args);
+  assert.deepEqual([result.product_exit, result.product_status, result.driver_exit, result.verification], [code, status, 0, 'passed']);
+});
+test('direct API rejects unknown scope before creating output', async t => {
+  const root = await setup(t); const output = join(root, 'not-created');
+  let calls = 0;
+  await assert.rejects(runJourney({ output, scope: 'unknown' }, { invoke: async () => { calls++; throw Error('unexpected_driver'); } }), /invalid_scope/);
+  assert.equal(calls, 0);
+  assert.deepEqual(await readdir(root), []);
+});
+test('full doctor failure keeps five rows and four later not_run rows', async t => {
+  const root = await setup(t); let calls = 0;
+  const result = await runJourney({ output: join(root, 'failed'), scope: 'full' }, { invoke: async () => {
+    calls++; return { exit_code: 1, stdout: Buffer.from('{"ready":false,"executed":false}'), stderr: Buffer.from('build missing') };
+  } });
+  assert.equal(calls, 1);
+  assert.deepEqual(result.features.map(f => f.case_id), ['healthy', 'missing-ref', 'drift', 'mixed', 'empty']);
+  assert.deepEqual(result.features.map(f => f.verification), ['failed', 'not_run', 'not_run', 'not_run', 'not_run']);
+  assert.ok(result.features.every(f => f.cleanup.status === 'not_started'));
+  assert.equal(result.formal_gate_pass, false);
+});
+for (const [id, change, reason] of [
+  ['drift', e => { e.sources[0].blessed_sha = e.current_sha; }, /fixed_source/],
+  ['drift', e => { e.sources[0].blessed_sha = 'd'.repeat(40); }, /fixed_source/],
+  ['mixed', e => { e.sources.splice(2, 1); }, /fixed_source/],
+  ['mixed', e => { e.sources[1].ref = 'refs/heads/main'; }, /fixed_source/],
+  ['empty', e => { e.sources.push({ id: 'healthy' }); }, /fixed_source/],
+  ['mixed', e => { e.drifted = 0; }, /fixed_expectation/],
+]) test(`${id}: resealed changed fixed expectation is rejected (${change.toString()})`, async t => {
+  const f = await evidenceFixture(t, id);
+  await mutate(f, 'expectations.json', data => change(data.definitions[0]), true);
+  await assert.rejects(verifyCaseEvidence(f.args), reason);
+});
+for (const [id, transform] of [
+  ['mixed', text => text.replace('Checking 3', 'Checking 1')],
+  ['mixed', text => text.replace('  ⚠ drift  drift  blessed=aaaaaaaaaaaa  head=bbbbbbbbbbbb  ref=refs/heads/main\n', '')],
+  ['empty', text => text.replace('\n\n', '\n  ✓ healthy  up-to-date (bbbbbbbbbbbb)\n\n')],
+  ['drift', text => text.replace('head=bbbbbbbbbbbb', 'head=aaaaaaaaaaaa')],
+]) test(`${id}: resealed raw output cannot contradict the selected sources`, async t => {
+  const f = await evidenceFixture(t, id);
+  const raw = transform(await readFile(join(f.directory, `${id}.stdout`), 'utf8'));
+  await writeFile(join(f.directory, `${id}.stdout`), raw);
+  await mutate(f, `${id}.command.json`, data => { data.stdout_sha256 = sha256(Buffer.from(raw)); });
+  await mutate(f, `${id}.json`, data => { data.stdout_sha256 = sha256(Buffer.from(raw)); }, true);
+  await assert.rejects(verifyCaseEvidence(f.args), /behavior|raw_semantics/);
+});
+
+test('full failed drive retains unknown cleanup and four unexecuted rows', async t => {
+  const root = await setup(t); let calls = 0;
+  const result = await runJourney({ output: join(root, 'drive-failed'), scope: 'full' }, { invoke: async argv => {
+    calls++;
+    if (argv.includes('--doctor')) return { exit_code: 0, stdout: Buffer.from('{"ready":true,"executed":false,"cases":["healthy"]}'), stderr: Buffer.alloc(0) };
+    return { exit_code: 1, stdout: Buffer.from('{"cases":[{"actual_exit":0}],"cleanup":{"status":"failed"}}'), stderr: Buffer.from('failed before sealing') };
+  } });
+  assert.equal(calls, 2);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.features[0].reported_product_exit, 0);
+  assert.equal(result.features[0].product_exit, null);
+  assert.equal(result.features[0].cleanup.status, 'unknown');
+  assert.equal(result.features[0].evidence_state, 'not_created');
+  assert.deepEqual(result.features.slice(1).map(f => [f.verification, f.cleanup.status]), Array.from({ length: 4 }, () => ['not_run', 'not_started']));
+});
+
+test('drift current SHA must also match the recorded Git head, not just expectation/output agreement', async t => {
+  const f = await evidenceFixture(t, 'drift');
+  const replacement = Buffer.from('d'.repeat(40) + '\n');
+  await writeFile(join(f.directory, 'git-05.stdout'), replacement);
+  await mutate(f, 'git-05.command.json', data => { data.stdout_sha256 = sha256(replacement); }, true);
+  await assert.rejects(verifyCaseEvidence(f.args), /git_sha_identity/);
 });
