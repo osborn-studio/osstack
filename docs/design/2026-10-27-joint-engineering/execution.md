@@ -268,3 +268,5 @@ A/B 两个独占切片合为 code898033af，新增 supporting parallel-work 指�
 ## pstack优先交付对账
 
 用户明确pstack能力优先。#301已合入main `1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0`。主线13方法/4入口，第14方法仅候选。以 [交付视图](delivery-status.md) 与 [逻辑映射](delivery-rollup.json) 分开统计32里程碑、24能力组和活动卡。先收口真实验证维护与宿主缺陷修复闭环，Firstmate深运行时后排；原正式门槛不降级。
+
+PR302已Draft发布，main基线1bf1f6ca，候选72ab99e7；CI40819652448运行。第14方法仍候选，主线13不变。最新发布回执见method-post300-publication；验证活动已收口，交付卡等待CI。

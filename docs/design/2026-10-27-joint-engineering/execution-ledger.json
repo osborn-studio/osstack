@@ -4305,7 +4305,7 @@
     "scope": "source planning, offline host preflight, independent retarget"
   },
   "skill_authoring_wave": {
-    "status": "verified_prepublication",
+    "status": "draft_ci_running",
     "depends_on_pr": 301,
     "base": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
     "author_sha": "b8bfc83ceee2065cf8192e9de083c24707c13976",
@@ -4348,7 +4348,13 @@
     ],
     "final_author_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e",
     "raw_archive_sha256": "df3fd71de02a03517ef2baa210ba2feadf95579e65371494dacf97b52a1d5b24",
-    "depends_on_pr_merged": true
+    "depends_on_pr_merged": true,
+    "pr": 302,
+    "head_sha": "72ab99e70ef54db924d775d3d3552ecde8780af0",
+    "base_branch": "main",
+    "ci_run": 40819652448,
+    "publication_evidence": "docs/implementation/method-post300-publication",
+    "user_approval_required": true
   },
   "delivery_reconciliation": {
     "priority": "pstack_first",
@@ -4367,6 +4373,7 @@
       "running": 2,
       "done": 37
     },
-    "audit": "actual claude-sonnet-5-5 REVISE/REVISE/limited F1-F4 PASS; later evidence-path typo independently checked"
+    "audit": "actual claude-sonnet-5-5 REVISE/REVISE/limited F1-F4 PASS; later evidence-path typo independently checked",
+    "publication_pr": 302
   }
 }
