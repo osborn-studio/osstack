@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inspectPrCandidate } from './pr-candidate-snapshot.js';
-import type { DeliveryCommandRunner } from './delivery.js';
+import type { DeliveryCommandRunner, DeliveryCommandResult } from './delivery.js';
 
 const H = 'a'.repeat(40), B = 'b'.repeat(40);
 const input = { repo: 'owner/repo', pr: 7, requiredChecks: ['test'] };
@@ -11,7 +11,7 @@ const facts = (overrides = {}) => ({ data: { repository: { nameWithOwner: 'owner
 } } } });
 const check = (overrides = {}) => ({ __typename: 'CheckRun', id: 'check-1', name: 'test', status: 'COMPLETED', conclusion: 'SUCCESS', detailsUrl: null, ...overrides });
 const page = (nodes: unknown[], cursor: string | null = null) => ({ nodes, pageInfo: { hasNextPage: cursor !== null, endCursor: cursor } });
-const checks = (nodes = [check()], cursor: string | null = null, oid = H) => ({ data: { repository: {
+const checks = (nodes: unknown[] = [check()], cursor: string | null = null, oid = H) => ({ data: { repository: {
   nameWithOwner: 'owner/repo', object: { oid, statusCheckRollup: { contexts: page(nodes, cursor) } },
 } } });
 const threads = (nodes: unknown[] = [], cursor: string | null = null) => ({ data: { repository: {
@@ -24,6 +24,7 @@ function scripted(responses: unknown[]) {
     const response = responses.shift();
     if (response instanceof Error) throw response;
     if (response === undefined) throw new Error('unexpected call');
+    if (typeof response === 'object' && response !== null && 'commandResult' in response) return response.commandResult as DeliveryCommandResult;
     return { stdout: JSON.stringify(response), stderr: '', exitCode: 0 };
   } };
   return { runner, calls };
@@ -71,7 +72,10 @@ describe('one bounded candidate observation', () => {
   });
   it('rejects duplicate names as ambiguous even when both are green', async () => {
     const { runner } = scripted([facts(), checks([check(), check({ id: 'check-2' })]), threads(), facts()]);
-    expect((await inspectPrCandidate(input, runner)).snapshot.checks.ambiguous_required).toEqual(['test']);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.ambiguous_required).toEqual(['test']);
+    expect(snapshot.summary).toBe('unknown');
+    expect(snapshot.unknowns).toContain('required_checks_ambiguous');
   });
   it('reads the unresolved thread on page two', async () => {
     const { runner } = scripted([facts(), checks(), threads([{ id: 'resolved', isResolved: true, isOutdated: false, path: 'a', line: null }], 'next'), threads([{ id: 'late', isResolved: false, isOutdated: false, path: 'b', line: 4 }]), facts()]);
@@ -109,9 +113,94 @@ describe('one bounded candidate observation', () => {
     expect(snapshot.checks.rows).toHaveLength(1);
   });
   it('the whole budget stops calls while retaining prior observations', async () => {
-    const { runner, calls } = scripted([facts()]); let t = 0;
-    const { snapshot } = await inspectPrCandidate(input, runner, () => { const now = t; t += 45000; return now; });
-    expect(snapshot.summary).toBe('unknown'); expect(calls.length).toBeLessThanOrEqual(1);
+    const { runner, calls } = scripted([facts()]);
+    const times = [0, 1, 2, 3];
+    const { snapshot, queries, raw } = await inspectPrCandidate(input, runner, () => times.shift() ?? 90000);
+    expect(snapshot.summary).toBe('unknown'); expect(calls).toHaveLength(1);
+    expect(snapshot.initial).toEqual(facts().data.repository.pullRequest);
+    expect(snapshot.final).toBe(null); expect(snapshot.binding.status).toBe('unknown');
+    expect(snapshot.checks.issue).toBe('budget_exhausted');
+    expect(snapshot.review.threads.issue).toBe('budget_exhausted');
+    expect(snapshot.unknowns).toContain('final_identity_unavailable');
+    expect(queries).toHaveLength(1);
+    expect(queries[0]).toMatchObject({ label: 'initial', exit_code: 0, issue: null });
+    expect(raw).toEqual([{ label: 'initial', stdout: JSON.stringify(facts()), stderr: '' }]);
+  });
+
+  it.each([
+    ['SUCCESS', 'success', 'no_observed_blocker'], ['FAILURE', 'failure', 'blocked'],
+    ['ERROR', 'failure', 'blocked'], ['PENDING', 'pending', 'waiting'], ['EXPECTED', 'unknown', 'unknown'],
+  ] as const)('maps StatusContext %s independently of CheckRun fields', async (state, expectedState, summary) => {
+    const context = { __typename: 'StatusContext', id: 'status-1', context: 'test', state, targetUrl: null };
+    const { runner } = scripted([facts(), checks([context]), threads(), facts()]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.rows[0]).toMatchObject({ name: 'test', state: expectedState, raw: context });
+    expect(snapshot.checks.missing_required).toEqual([]);
+    expect(snapshot.summary).toBe(summary);
+    if (state === 'PENDING') expect(snapshot.waiting).toContain('checks_pending');
+  });
+  it('reports a queued CheckRun with no conclusion as waiting', async () => {
+    const { runner } = scripted([facts(), checks([check({ status: 'QUEUED', conclusion: null })]), threads(), facts()]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.rows[0]?.state).toBe('pending');
+    expect(snapshot.waiting).toContain('checks_pending'); expect(snapshot.summary).toBe('waiting');
+  });
+  it('a missing required check alone cannot clear a stable candidate', async () => {
+    const { runner } = scripted([facts(), checks([]), threads(), facts()]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.complete).toBe(true); expect(snapshot.checks.missing_required).toEqual(['test']);
+    expect(snapshot.blockers).toEqual([]); expect(snapshot.summary).toBe('unknown');
+  });
+  it('matching expected head and base retain a stable observed result', async () => {
+    const { runner } = scripted(stable());
+    const { snapshot } = await inspectPrCandidate({ ...input, expectedHead: H, expectedBase: B }, runner);
+    expect(snapshot.binding).toMatchObject({ status: 'stable', head: H, base: B, expected_head: H, expected_base: B });
+    expect(snapshot.summary).toBe('no_observed_blocker'); expect(snapshot.merge_authorized).toBe(false);
+  });
+  it.each([
+    { issue: 'command_failed', stdout: 'fixture failure', stderr: 'denied', exitCode: 1 },
+    { issue: 'response_size', stdout: 'x'.repeat(1048577), stderr: '', exitCode: 0 },
+    { issue: 'invalid_json', stdout: 'not JSON', stderr: '', exitCode: 0 },
+    { issue: 'repository_mismatch', stdout: JSON.stringify({ data: { repository: { nameWithOwner: 'other/repo' } } }), stderr: '', exitCode: 0 },
+  ])('retains raw $issue response but cannot use it as checks', async ({ issue, ...commandResult }) => {
+    const { runner } = scripted([facts(), { commandResult }, threads(), facts()]);
+    const { snapshot, queries, raw } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.complete).toBe(false); expect(snapshot.checks.issue).toBe(issue);
+    expect(snapshot.checks.rows).toEqual([]); expect(snapshot.summary).toBe('unknown');
+    expect(queries[1]).toMatchObject({ label: 'checks-1', issue, exit_code: commandResult.exitCode });
+    expect(raw[1]).toEqual({ label: 'checks-1', stdout: commandResult.stdout, stderr: commandResult.stderr });
+    expect(snapshot.initial?.headRefOid).toBe(H); expect(snapshot.final?.headRefOid).toBe(H);
+  });
+  it('duplicate check IDs across pages keep the first row but invalidate completeness', async () => {
+    const { runner } = scripted([facts(), checks([check()], 'next'), checks([check()]), threads(), facts()]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.issue).toBe('duplicate_id'); expect(snapshot.checks.rows).toHaveLength(1);
+    expect(snapshot.checks.complete).toBe(false); expect(snapshot.summary).toBe('unknown');
+  });
+  it('thread pages from the wrong PR cannot establish zero unresolved threads', async () => {
+    const wrong = threads(); wrong.data.repository.pullRequest.number = 8;
+    const { runner } = scripted([facts(), checks(), wrong, facts()]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.review.threads.issue).toBe('pr_mismatch'); expect(snapshot.review.threads.complete).toBe(false);
+    expect(snapshot.summary).toBe('unknown');
+  });
+  it('hasNextPage without a cursor preserves rows but cannot establish completeness', async () => {
+    const wrong = checks(); wrong.data.repository.object.statusCheckRollup.contexts.pageInfo.hasNextPage = true;
+    const { runner, calls } = scripted([facts(), wrong, threads(), facts()]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.checks.issue).toBe('cursor_progress'); expect(snapshot.checks.rows).toHaveLength(1);
+    expect(snapshot.checks.complete).toBe(false); expect(snapshot.summary).toBe('unknown'); expect(calls).toHaveLength(4);
+  });
+  it.each(['MERGED', 'CLOSED'])('observes terminal %s without erasing independent blockers or authorizing an action', async state => {
+    const { runner } = scripted([facts(), checks([check({ conclusion: 'FAILURE' })]), threads(), facts({ state })]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.summary).toBe(state.toLowerCase()); expect(snapshot.blockers).toContain('check_failure');
+    expect(snapshot.merge_authorized).toBe(false);
+  });
+  it('null review decision is unknown even with successful checks', async () => {
+    const { runner } = scripted([facts(), checks(), threads(), facts({ reviewDecision: null })]);
+    const { snapshot } = await inspectPrCandidate(input, runner);
+    expect(snapshot.unknowns).toContain('review_decision_unknown'); expect(snapshot.summary).toBe('unknown');
   });
   it.each([{ repo: '-bad/repo' }, { pr: 0 }, { expectedHead: H }, { requiredChecks: ['test', 'test'] }])('invalid input never invokes forge %j', async change => {
     const { runner, calls } = scripted([]);

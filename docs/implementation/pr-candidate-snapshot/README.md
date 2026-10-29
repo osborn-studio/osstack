@@ -5,13 +5,15 @@ This tool reads one GitHub PR once. It reports the observed checks, review threa
 Build `@osstack/github` first. Use the existing authorized `gh` configuration. No credentials are copied or printed by this tool. Create an output parent under `OSSTACK_SCRATCH_ROOT`, then choose a new output directory:
 
 ```sh
+export OSSTACK_SCRATCH_ROOT="${OSSTACK_SCRATCH_ROOT:-/tmp/osstack}"
+mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
 pnpm --filter @osstack/github build
 node scripts/report-pr-candidate.mjs \
   --repo osborn-studio/osstack --pr 306 \
   --output "$OSSTACK_SCRATCH_ROOT/runtime/pr306-snapshot-NEW"
 ```
 
-The PR number is an example, not a frozen current candidate. Pass `--expect-head SHA40 --expect-base SHA40` together to detect a mismatch with your intended candidate. Pass repeated `--required-check NAME` only for requirements you actually know. Without names, requirements stay unspecified. A skipped paid job is not silently converted to success. The tool does not discover branch protection, rulesets or merge queue policy.
+The PR number is an example, not a frozen current candidate. Pass `--expect-head SHA40 --expect-base SHA40` together to detect a mismatch with your intended candidate. Pass repeated `--required-check NAME` only for requirements you actually know. Without names, requirements stay unspecified. Required checks match by name across CheckRun and StatusContext rows; app identity and source are not qualified. A null forge review decision remains unknown even if no review policy is configured. A skipped paid job is not silently converted to success. The tool does not discover branch protection, rulesets or merge queue policy.
 
 ## Result and limits
 
@@ -23,9 +25,9 @@ A favorable summary is `no_observed_blocker`, never Ready or permission to merge
 
 Initial and final facts include head/base SHA, branch names, state, draft status, review decision and mergeability. Check pages use the initial head SHA. Thread pages use the PR identity. A changed head/base or branch name, or mismatched expected pins, prevents a current consolidated favorable result. Stable pins do not create an atomic transaction: reviews and checks can change immediately after a read. Individual approvals are not bound to a commit here, and the workflow's evaluated merge commit is unknown.
 
-Each connection is limited to three pages of 100 rows. There are at most eight requests, each with a timeout at most 10 seconds and a 90-second collection budget. The reused default delivery runner bounds each subprocess stream at 16 MiB. The collector accepts JSON responses up to 1 MiB after the subprocess returns; that smaller limit is not a subprocess memory bound. It makes no retry. Null/partial/invalid data, failed commands, pagination gaps, repeated cursors, wrong OIDs and exhausted bounds remain unknown or incomplete. Prior valid rows remain available. Review comment bodies are not requested.
+Each connection is limited to three pages of 100 rows. There are at most eight requests, each with a timeout at most 10 seconds and a 90-second collection budget. The reused default delivery runner bounds each subprocess stream at 16 MiB. The collector accepts JSON responses up to 1 MiB after the subprocess returns; that smaller limit is not a subprocess memory bound. It makes no retry. Timeouts depend on the runner honoring `timeoutMs`; an injected runner is not forcibly cancelled by this collector. The collection clock is wall time, not a monotonic deadline source. Null/partial/invalid data, failed commands, pagination gaps, repeated cursors, wrong OIDs and exhausted bounds remain unknown or incomplete. Prior valid rows remain available. Review comment bodies are not requested.
 
-The output contains `snapshot.json`, `queries.json`, fixed-label `raw/*.stdout` and `raw/*.stderr`, and a manifest with member byte lengths and SHA-256 hashes. Output must be new and under the configured scratch root; its parent must exist. Directory/file permissions are 0700/0600. Existing paths and terminal symlinks refuse. This is not an OS sandbox or a claim against concurrent parent-directory replacement. Raw responses may contain private repository metadata; retain them within the authorized task's evidence scope. Environment values are not serialized. Hashes bind the retained bytes, not forge authenticity.
+The output contains `snapshot.json`, `queries.json`, fixed-label `raw/*.stdout` and `raw/*.stderr` (the UTF-8-decoded strings returned by the subprocess runner, not original arbitrary wire bytes), and a manifest with member byte lengths and SHA-256 hashes. When unset, the script scratch root defaults to the operating system temporary directory plus `osstack`; the example sets an explicit root before expanding it in the shell. Output must be new and under the configured scratch root; its parent must exist. Directory/file permissions are 0700/0600. Existing paths and terminal symlinks refuse. This is not an OS sandbox or a claim against concurrent parent-directory replacement. Raw responses may contain private repository metadata; retain them within the authorized task's evidence scope. Environment values are not serialized. Hashes bind the retained bytes, not forge authenticity.
 
 ## Reuse and testing
 

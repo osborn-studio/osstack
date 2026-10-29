@@ -25,7 +25,7 @@ async function fixture(fn) {
   const root = await createScratchDir('tests', 'pr-snapshot-script');
   try { await fn(root); } finally { await rm(root, { recursive: true, force: true }); }
 }
-test('writes exact raw receipts, manifest hashes and restrictive modes without mutation commands', () => fixture(async root => {
+test('writes returned UTF-8 strings as receipts, manifest hashes and restrictive modes without mutation commands', () => fixture(async root => {
   const output = join(root, 'report'), seam = runner();
   const result = await runPrCandidateReport(args(output), { runner: seam });
   assert.equal(result.exitCode, 0);
@@ -69,11 +69,34 @@ test('existing output and terminal symlink refuse before calls and preserve cont
   assert.equal((await runPrCandidateReport(args(link), { runner: seam })).exitCode, 2);
   assert.equal(seam.calls.length, 0); assert.deepEqual(await readdir(output), []);
 }));
-test('output outside scratch and relative output refuse before calls', async () => {
+test('relative output and missing outside parent refuse before calls', async () => {
   const seam = runner();
   for (const output of ['relative-output', '/not-the-scratch-root/pr-report']) assert.equal((await runPrCandidateReport(args(output), { runner: seam })).exitCode, 2);
   assert.equal(seam.calls.length, 0);
 });
+
+for (const variant of ['existing-outside-parent', 'escaping-symlink-parent', 'scratch-root-itself']) {
+  test(`canonical containment refuses ${variant} before forge calls`, () => fixture(async owned => {
+    const narrow = join(owned, 'narrow'), outside = join(owned, 'outside');
+    await mkdir(narrow); await mkdir(outside);
+    await symlink(outside, join(narrow, 'escape'));
+    const saved = process.env.OSSTACK_SCRATCH_ROOT;
+    process.env.OSSTACK_SCRATCH_ROOT = narrow;
+    try {
+      const output = variant === 'existing-outside-parent' ? join(outside, 'report')
+        : variant === 'escaping-symlink-parent' ? join(narrow, 'escape', 'report') : narrow;
+      const seam = runner();
+      assert.equal((await runPrCandidateReport(args(output), { runner: seam })).exitCode, 2);
+      assert.equal(seam.calls.length, 0);
+      assert.deepEqual(await readdir(outside), []);
+      assert.deepEqual(await readdir(narrow), ['escape']);
+      assert.equal((await lstat(join(narrow, 'escape'))).isSymbolicLink(), true);
+    } finally {
+      if (saved === undefined) delete process.env.OSSTACK_SCRATCH_ROOT;
+      else process.env.OSSTACK_SCRATCH_ROOT = saved;
+    }
+  }));
+}
 test('real process help is build-independent and never reads forge', () => {
   const result = spawnSync(process.execPath, ['scripts/report-pr-candidate.mjs', '--help'], { encoding: 'utf8' });
   assert.equal(result.status, 0); assert.match(result.stdout, /not a merge authorization/);
