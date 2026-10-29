@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "docs/design/2026-10-27-joint-engineering",
+    "-p",
+    "test_validate_*.py"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+  "head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
+  "started_at": "2026-10-28T22:45:45.848778+00:00",
+  "status_before": "M  docs/design/2026-10-27-joint-engineering/execution-ledger.json\nA  docs/implementation/method-continuity-publication/README.md\nA  docs/implementation/method-continuity-publication/board-receipts.json\nA  docs/implementation/method-continuity-publication/boards-publication.json\nA  docs/implementation/method-continuity-publication/host-workspace-cleanup.json\nA  docs/implementation/method-continuity-publication/independent-final-report.json\nA  docs/implementation/method-continuity-publication/next-pr-readiness/plan.md\nA  docs/implementation/method-continuity-publication/next-pr-readiness/protocol.json\nA  docs/implementation/method-continuity-publication/next-preparation-card.json\nA  docs/implementation/method-continuity-publication/pr299-published.json\nA  docs/implementation/method-continuity-publication/publication-docs.json\nA  docs/implementation/method-continuity-publication/publication-docs.log.gz\nA  docs/implementation/method-continuity-publication/publication-hygiene.json\nA  docs/implementation/method-continuity-publication/publication-hygiene.log.gz\n",
+  "diff_before_sha256": "dd16e4f063ef9be9cbd6c801e7051d16a4e1f0e65a2db1f05be3e4aa80feb154",
+  "exit_code": 0,
+  "finished_at": "2026-10-28T22:45:53.784261+00:00",
+  "status_after": "M  docs/design/2026-10-27-joint-engineering/execution-ledger.json\nA  docs/implementation/method-continuity-publication/README.md\nA  docs/implementation/method-continuity-publication/board-receipts.json\nA  docs/implementation/method-continuity-publication/boards-publication.json\nA  docs/implementation/method-continuity-publication/host-workspace-cleanup.json\nA  docs/implementation/method-continuity-publication/independent-final-report.json\nA  docs/implementation/method-continuity-publication/next-pr-readiness/plan.md\nA  docs/implementation/method-continuity-publication/next-pr-readiness/protocol.json\nA  docs/implementation/method-continuity-publication/next-preparation-card.json\nA  docs/implementation/method-continuity-publication/pr299-published.json\nA  docs/implementation/method-continuity-publication/publication-docs.json\nA  docs/implementation/method-continuity-publication/publication-docs.log.gz\nA  docs/implementation/method-continuity-publication/publication-hygiene.json\nA  docs/implementation/method-continuity-publication/publication-hygiene.log.gz\n",
+  "diff_after_sha256": "dd16e4f063ef9be9cbd6c801e7051d16a4e1f0e65a2db1f05be3e4aa80feb154",
+  "log_sha256": "2a554398ef5c205c173735b66afa37a87845ae4a40eca4613a40b16fa17f0379"
+}

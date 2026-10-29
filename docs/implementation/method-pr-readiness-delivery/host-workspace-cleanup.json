@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-28T23:37:43.053665+00:00",
+  "archive_sha256": "30582ba5e0c7314a4af335d95564a30684e4dd2dcdc4101485fb30c6da528d52",
+  "scope": "Four owned workspace directories only; private-home already absent; no global/all-descendant cleanup claim",
+  "rows": [
+    {
+      "workspace": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness/runs/codex-readiness/workspace",
+      "archived_files": 26,
+      "absent_after": true,
+      "prior_version_executed": false
+    },
+    {
+      "workspace": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness/runs/claude-readiness/workspace",
+      "archived_files": 26,
+      "absent_after": true,
+      "prior_version_executed": false
+    },
+    {
+      "workspace": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/codex-readiness/workspace",
+      "archived_files": 26,
+      "absent_after": true,
+      "prior_version_executed": true
+    },
+    {
+      "workspace": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-pr-readiness-20261029/host-readiness-v2/runs/claude-readiness/workspace",
+      "archived_files": 26,
+      "absent_after": true,
+      "prior_version_executed": true
+    }
+  ]
+}

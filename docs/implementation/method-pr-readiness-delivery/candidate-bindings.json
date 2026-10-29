@@ -1,0 +1,131 @@
+{
+  "kind": "publication traceability draft; not a new run or qualification",
+  "generated_at": "2026-10-28T23:31:36.657221+00:00",
+  "author_final": "95a33e371464fe48bf063afe17ed650852e925d5",
+  "integrated_root": "c95dccd01a884e84e413817c338f2303ed02a9a7",
+  "author_base": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
+  "ten_paths_byte_identical": true,
+  "paths": [
+    {
+      "path": "docs/implementation/method-pr-readiness/README.md",
+      "author_blob": "d777832ca035e21270d404187b8bd9f0f18a03d3",
+      "root_blob": "d777832ca035e21270d404187b8bd9f0f18a03d3",
+      "bytes": 6547,
+      "author_sha256": "2e6ac6becdbd265a2d277f091a0b2794c53d7f4904c21882b37425afd5ef03f9",
+      "root_sha256": "2e6ac6becdbd265a2d277f091a0b2794c53d7f4904c21882b37425afd5ef03f9",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/EXPORT.md",
+      "author_blob": "e255f6ee8da8874fa36ff88834788526ba0b2085",
+      "root_blob": "e255f6ee8da8874fa36ff88834788526ba0b2085",
+      "bytes": 5726,
+      "author_sha256": "14f42a72d5e0546be0c712ab5095180a074c027e12f2e625adaf7e0ea3487fc6",
+      "root_sha256": "14f42a72d5e0546be0c712ab5095180a074c027e12f2e625adaf7e0ea3487fc6",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/SKILL.md",
+      "author_blob": "6c26484307ebda2a4e456095693a1424fd185999",
+      "root_blob": "6c26484307ebda2a4e456095693a1424fd185999",
+      "bytes": 4942,
+      "author_sha256": "9cc57d5fda2c9e9d2e708a1c948e9f01ff57c680393bd9302f8d7fc1cd9c25d1",
+      "root_sha256": "9cc57d5fda2c9e9d2e708a1c948e9f01ff57c680393bd9302f8d7fc1cd9c25d1",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "author_blob": "25f8e939bea9681c32d580684cdc4ef62117d1e5",
+      "root_blob": "25f8e939bea9681c32d580684cdc4ef62117d1e5",
+      "bytes": 4783,
+      "author_sha256": "932e469d40383a1e312d9ac685bfed63f04a900901eb64fad5566f94ebfc572a",
+      "root_sha256": "932e469d40383a1e312d9ac685bfed63f04a900901eb64fad5566f94ebfc572a",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "author_blob": "baf069d80cee292b084b9776c95b2ce041f7324d",
+      "root_blob": "baf069d80cee292b084b9776c95b2ce041f7324d",
+      "bytes": 4682,
+      "author_sha256": "d8dc228e3b88abecf7ff143154e5bb7df10971aa85cfc18fa86c875bc4c62243",
+      "root_sha256": "d8dc228e3b88abecf7ff143154e5bb7df10971aa85cfc18fa86c875bc4c62243",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "author_blob": "e1fefd731d742d681416fb0710a160676f4067cd",
+      "root_blob": "e1fefd731d742d681416fb0710a160676f4067cd",
+      "bytes": 5513,
+      "author_sha256": "33f9ae651712eee11ab2fece8085f7bfb6f88f3e816630132a4458ca3688e6f3",
+      "root_sha256": "33f9ae651712eee11ab2fece8085f7bfb6f88f3e816630132a4458ca3688e6f3",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "author_blob": "ee4f894c8c90930677a38e68399bb42992a88cdf",
+      "root_blob": "ee4f894c8c90930677a38e68399bb42992a88cdf",
+      "bytes": 3512,
+      "author_sha256": "0f4465979f4e65db4fa4e28765807ba7cefc36fdac1ca128670d9b6855e29886",
+      "root_sha256": "0f4465979f4e65db4fa4e28765807ba7cefc36fdac1ca128670d9b6855e29886",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/references/pr-readiness.md",
+      "author_blob": "27e1cc662aa9e133cd817e3f24e1cb6d48b09369",
+      "root_blob": "27e1cc662aa9e133cd817e3f24e1cb6d48b09369",
+      "bytes": 8061,
+      "author_sha256": "70faa28d057b87ff7ca017036abb64f25d7de54473d51a7500578c3f0b8062c3",
+      "root_sha256": "70faa28d057b87ff7ca017036abb64f25d7de54473d51a7500578c3f0b8062c3",
+      "byte_identical": true
+    },
+    {
+      "path": "osstack-methods-skill/references/sources.md",
+      "author_blob": "2a6d19c707d77445b5dcc2266d4d1403b976f58c",
+      "root_blob": "2a6d19c707d77445b5dcc2266d4d1403b976f58c",
+      "bytes": 15665,
+      "author_sha256": "a966d03f4de2a6d5e3ac6e5bfeb5cc87c78af312ab1db92cd66fa23400b4db53",
+      "root_sha256": "a966d03f4de2a6d5e3ac6e5bfeb5cc87c78af312ab1db92cd66fa23400b4db53",
+      "byte_identical": true
+    },
+    {
+      "path": "scripts/export-osstack-methods.test.mjs",
+      "author_blob": "dccf41a82ceb4d549427abf7dab03f0a4f8f0f75",
+      "root_blob": "dccf41a82ceb4d549427abf7dab03f0a4f8f0f75",
+      "bytes": 39483,
+      "author_sha256": "7cb6d75bb4f885c09392624e19f11e4c440beec56d9a4da342c6e9afdd7d0422",
+      "root_sha256": "7cb6d75bb4f885c09392624e19f11e4c440beec56d9a4da342c6e9afdd7d0422",
+      "byte_identical": true
+    }
+  ],
+  "full_suite": {
+    "head": "7495b723a8cbe820201f62b3b1d70014edec62ab",
+    "counts": {
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "method_integrated": false,
+    "status_before": " M docs/design/2026-10-27-joint-engineering/execution-ledger.json\n M docs/design/2026-10-27-joint-engineering/execution.md\n M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+    "status_after": " M docs/design/2026-10-27-joint-engineering/execution-ledger.json\n M docs/design/2026-10-27-joint-engineering/execution.md\n M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+    "before_after_patch_digest_equal": true,
+    "patch_digest": "16d4c7a142caa1a3a051eccaf78f4dbe00378d8997d33bf0a4d522c686491ba4",
+    "raw_log_verified": true,
+    "package_source_delta_to_root": [],
+    "limits": "This check verifies stored log hash and unchanged reported diff digest; does not independently reconstruct or rerun its dirty checkout."
+  },
+  "final_export_suite": {
+    "head": "c95dccd01a884e84e413817c338f2303ed02a9a7",
+    "counts": {
+      "passed": 91,
+      "skipped": 0,
+      "failed": 0
+    },
+    "clean_before_after": true,
+    "raw_log_verified": true
+  },
+  "host_experiment": {
+    "status": "pending root experiment and independent grading",
+    "claims_imported": false,
+    "model_calls_by_this_task": 0
+  }
+}

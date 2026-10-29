@@ -1,0 +1,27 @@
+[
+  {
+    "comment_id": 510,
+    "card_id": "card_30da6fc0",
+    "author": "joint-entry",
+    "body": "PR299 repaired head7deee3af latest run40786370675 five applicable SUCCESS/paid SKIPPED. Actual Sonnet staticPASS and targeted25 passed; original failure retained. Root marked Ready, now only waiting gilberthello approval/merge. No formal gate/runtime qualification.",
+    "created_at": 1793230717.277
+  },
+  {
+    "card_id": "card_30da6fc0",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a session continuity method",
+    "body": "Base a9e480d3. Adapt upstream recall/session-pickup/pause-safely and Firstmate ownership into OSStack method; source-bound handoff, latest state reconciliation, unknown producer/locks fail closed; no autonomous runtime. Exclusive method package/export tests/own docs; no central ledger.",
+    "status": "blocked",
+    "priority": 2,
+    "assignee": "loader_adversarial",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793226151.852,
+    "updated_at": 1793230717.278,
+    "started_at": 1793226151.852,
+    "completed_at": null
+  }
+]

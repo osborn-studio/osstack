@@ -1,0 +1,283 @@
+{
+  "observed_at": "2026-10-28T23:40:30.241435+00:00",
+  "head_sha": "7deee3af868c50958dcc651f2a5a7599e4750c60",
+  "run_id": 40786370675,
+  "attempt": 1,
+  "status": "completed",
+  "conclusion": "success",
+  "applicable_checks": [
+    {
+      "name": "graph-macos-fixtures (22)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "check",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "package_summaries": [
+    {
+      "package": "compliance",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4644,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:06.4296693Z packages/compliance test:       Tests  17 passed (17)"
+    },
+    {
+      "package": "contracts",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4652,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:06.7237137Z packages/contracts test:       Tests  15 passed (15)"
+    },
+    {
+      "package": "github",
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4672,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:08.8604556Z packages/github test:       Tests  107 passed (107)"
+    },
+    {
+      "package": "knowledge",
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4682,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:09.3294557Z packages/knowledge test:       Tests  44 passed (44)"
+    },
+    {
+      "package": "runtime",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4707,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:11.9595489Z packages/runtime test:       Tests  1 passed (1)"
+    },
+    {
+      "package": "neat-eval",
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4715,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:12.4334414Z packages/neat-eval test:       Tests  16 passed (16)"
+    },
+    {
+      "package": "protocol",
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4767,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:17.9883886Z packages/protocol test:       Tests  1012 passed (1012)"
+    },
+    {
+      "package": "governance",
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4783,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:19.2656155Z packages/governance test:       Tests  301 passed (301)"
+    },
+    {
+      "package": "knowledge-cloud",
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4796,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:21.2594027Z packages/knowledge-cloud test:       Tests  36 passed (36)"
+    },
+    {
+      "package": "graph",
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4837,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:23:30.6183650Z packages/graph test:       Tests  257 passed (257)"
+    },
+    {
+      "package": "core",
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4969,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:08.7194657Z packages/core test:       Tests  1301 passed (1301)"
+    },
+    {
+      "package": "plugins",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4983,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:10.2765181Z packages/plugins test:       Tests  1 passed (1)"
+    },
+    {
+      "package": "hermes-adapter",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4992,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:10.5374286Z packages/hermes-adapter test:       Tests  22 passed (22)"
+    },
+    {
+      "package": "skills",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5001,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:11.7097009Z packages/skills test:       Tests  2 passed (2)"
+    },
+    {
+      "package": "autonomy",
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5129,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:17.6716152Z packages/autonomy test:       Tests  201 passed (201)"
+    },
+    {
+      "package": "skill-registry",
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5139,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:21.7614461Z packages/skill-registry test:       Tests  43 passed (43)"
+    },
+    {
+      "package": "agents",
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5200,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:33.3819966Z packages/agents test:       Tests  361 passed (361)"
+    },
+    {
+      "package": "config",
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5212,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:36.5977008Z packages/config test:       Tests  30 passed (30)"
+    },
+    {
+      "package": "loop",
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0,
+      "line": 5657,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:24:56.0846807Z packages/loop test:       Tests  514 passed | 1 skipped (515)"
+    },
+    {
+      "package": "conformance",
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5685,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:25:01.6095784Z packages/conformance test:       Tests  9 passed (9)"
+    },
+    {
+      "package": "supervisor",
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5698,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:25:02.8387713Z packages/supervisor test:       Tests  88 passed (88)"
+    },
+    {
+      "package": "cli",
+      "passed": 2764,
+      "skipped": 6,
+      "failed": 0,
+      "line": 8176,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:33:33.2717861Z packages/cli test:       Tests  2764 passed | 6 skipped (2770)"
+    }
+  ],
+  "totals": {
+    "passed": 7142,
+    "skipped": 7,
+    "failed": 0
+  },
+  "aggregation": "Exactly one Tests summary for each of 22 packages within check/Test only; no matrix/smoke or individual-case double counting.",
+  "cleanup_cases": [
+    {
+      "line": 7074,
+      "reported_ms": 18718,
+      "passed": true,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:30:07.3464670Z packages/cli test:    \u2713 managed native upgrade actual filesystem/process boundaries > verified history with an unfinished fence cleanup > keeps terminal history intact while explicitly cleaning a fence left after verification  18718ms"
+    },
+    {
+      "line": 7079,
+      "reported_ms": 19048,
+      "passed": true,
+      "raw_cleaned": "check\tTest\t2026-10-28T23:30:07.3477655Z packages/cli test:    \u2713 managed native upgrade actual filesystem/process boundaries > verified history with a foreign orphan permit > removes a foreign orphan permit during historically verified cleanup when no operation exists  19048ms"
+    }
+  ],
+  "test_file_exact_equal_to_reviewed_repair": {
+    "argv": [
+      "git",
+      "diff",
+      "7495b723a8cbe820201f62b3b1d70014edec62ab",
+      "7deee3af868c50958dcc651f2a5a7599e4750c60",
+      "--",
+      "packages/cli/src/upgrade-native.test.ts"
+    ],
+    "exit": 0,
+    "diff_bytes": 0,
+    "prior_review": "../ci299-repair/report.json"
+  },
+  "limits": [
+    "Reported per-case time includes hooks/setup as emitted by Vitest; not isolated target cleanup timing.",
+    "The earlier timeout root cause remains unproven. Setup/body budget separation preserves the reviewed assertions and target 30s, while increasing nominal aggregate allowance to 60s setup + 30s target.",
+    "No tests, CI retry, PR/Ready/ledger mutation performed by this reviewer."
+  ],
+  "raw": [
+    {
+      "path": "final-commands.json",
+      "bytes": 920,
+      "sha256": "c18420b68e095eeec64f75b1afba3244a8e0bd5a213b349147d4b5e732cf4993"
+    },
+    {
+      "path": "final-full.log",
+      "bytes": 2028918,
+      "sha256": "f1b595eaa6454cff901ea7ee18a06d643b2ac485200902b8f8a7befcb72c6308"
+    },
+    {
+      "path": "final-full.log.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-pr.json",
+      "bytes": 1952,
+      "sha256": "4fe5fc9bbd56b84f8d2fe6de8ff05fee59a14209e851bf811bfdb4116404caa8"
+    },
+    {
+      "path": "final-pr.json.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final-run.json",
+      "bytes": 19002,
+      "sha256": "8e69b1811dd2721a4c3171da35d3c8bc2bf9b73db298e957b2a59635484d368e"
+    },
+    {
+      "path": "final-run.json.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

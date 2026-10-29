@@ -1,0 +1,159 @@
+{
+  "observed_at": "2026-10-28T23:40:02.187323+00:00",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-pr-readiness-control/docs/implementation/method-pr-readiness-delivery/evidence/raw-verification.tar.gz",
+  "sha256": "30582ba5e0c7314a4af335d95564a30684e4dd2dcdc4101485fb30c6da528d52",
+  "archive_bytes": 3258817,
+  "manifest_sha256": "817c19d2a30f89e55399e51857443b72b58a60b4af614de8db2f2deb68f5543e",
+  "errors": [],
+  "original_comparisons": [
+    {
+      "path": "independent/criteria.json",
+      "bytes": 17752,
+      "sha256": "c29856475cededf13d13c975fcb9c6d67d2ac61a77cfb1ecfc1bf1f93eb5a5e4",
+      "equal": true
+    },
+    {
+      "path": "independent/host-readiness/criteria.json",
+      "bytes": 10711,
+      "sha256": "b8a648fe6314ce9336c1c6aafdeb8118def7a97ac8093743d1fb27183971b172",
+      "equal": true
+    },
+    {
+      "path": "independent/host-readiness/results-v2/results.json",
+      "bytes": 22675,
+      "sha256": "bbeeb66408e9ba3acff4692590bb33836f21396c957ea86768ed81f7746a5a87",
+      "equal": true
+    },
+    {
+      "path": "independent/candidate-0484/report.json",
+      "bytes": 14502,
+      "sha256": "99ec904446ab3e30e97ab6f67ddcaad3b1a0586e5fa2048d31466c7e60a12694",
+      "equal": true
+    },
+    {
+      "path": "independent/candidate-95a3/report.json",
+      "bytes": 3595,
+      "sha256": "7aa5182d62711557ee4e78d935733c212cbecaed472183931e1131b4071340dd",
+      "equal": true
+    },
+    {
+      "path": "method-audit/report.md",
+      "bytes": 5170,
+      "sha256": "23ca6731fc7c4d3b0199e0dbae6a6efa39da061961b2d7d43c45f1e7fed09bb3",
+      "equal": true
+    },
+    {
+      "path": "method-audit/response.json",
+      "bytes": 7073,
+      "sha256": "e6233f261f7593552d6a2817d3c27cd24208075bee3b08d99e3357c641df6d3a",
+      "equal": true
+    },
+    {
+      "path": "method-audit/binding.json",
+      "bytes": 765,
+      "sha256": "64e9513644a616fb0dba0a59ed560259852c3e0306dc0fc4d9a0ed98c990a4fd",
+      "equal": true
+    },
+    {
+      "path": "method-audit/audit-input.txt",
+      "bytes": 145924,
+      "sha256": "72cfac480f4f5677ed8882e5d0990696bad7bf3b2444163623cbfa46ee16b7a2",
+      "equal": true
+    },
+    {
+      "path": "method-closure/report.md",
+      "bytes": 2803,
+      "sha256": "a8854ad7479d25ab3ac1fa2a743d8d4a125aa7666ccad6b0f01ab38bd94a22be",
+      "equal": true
+    },
+    {
+      "path": "method-closure/response.json",
+      "bytes": 4647,
+      "sha256": "2591e50f8ddb2e0e16dab57e72200fb78313675a8ffc64c4104fb985b2648764",
+      "equal": true
+    },
+    {
+      "path": "method-closure/binding.json",
+      "bytes": 762,
+      "sha256": "c5cccfb3a3ed5a5550c59f8e0a974e705926af181ae6d6d4019076c802077a64",
+      "equal": true
+    },
+    {
+      "path": "method-closure/audit-input.txt",
+      "bytes": 54058,
+      "sha256": "f9ba8661159ec7cacc1763d64c64c6245ac02f4b9a7ee875f6147318bd7abe9d",
+      "equal": true
+    },
+    {
+      "path": "host-report-audit/report.md",
+      "bytes": 4895,
+      "sha256": "2c245d96ab1c4e05cef6d4a06bc687e0feedf188a2c3370afd8baa1b73348d99",
+      "equal": true
+    },
+    {
+      "path": "host-report-audit/response.json",
+      "bytes": 6787,
+      "sha256": "41832f3ab2f1782affcf3417d82207a2e53997294d119182dfe6cf0dc4f88830",
+      "equal": true
+    },
+    {
+      "path": "host-report-audit/binding.json",
+      "bytes": 763,
+      "sha256": "990da1ccc20e1c32c3ba0d42c8c9574a28ffd21aee50384f16332019c4496f03",
+      "equal": true
+    },
+    {
+      "path": "host-report-audit/audit-input.txt",
+      "bytes": 197833,
+      "sha256": "5f2df2770d3a340ad86b7d4c1f9720eb778f2e7ce6d33136cd1e6e8a3ad70e0c",
+      "equal": true
+    },
+    {
+      "path": "host-report-closure/report.md",
+      "bytes": 2976,
+      "sha256": "0ee6714e7339f0be5dc38f1a857ea9986108584903250334dc7fd2324dd2b881",
+      "equal": true
+    },
+    {
+      "path": "host-report-closure/response.json",
+      "bytes": 4822,
+      "sha256": "32e52364e6bc3deda329a7e3994d32680593779b28f190481d2aa1d41c519d87",
+      "equal": true
+    },
+    {
+      "path": "host-report-closure/binding.json",
+      "bytes": 763,
+      "sha256": "c546add6a3b2c83fdae13a15dfcfe22b4005100e19a260edba7a1c63a5a2c87d",
+      "equal": true
+    },
+    {
+      "path": "host-report-closure/audit-input.txt",
+      "bytes": 41597,
+      "sha256": "2eab693184141486d23269f25bcad8e33b06e1995ac439da8e2f47432717599c",
+      "equal": true
+    }
+  ],
+  "member_count": 1383,
+  "payload_bytes": 14146812,
+  "all_member_hash_size_mode_verified": true,
+  "all_paths_safe_regular_unique": true,
+  "archive_result": "PASS",
+  "ci_final": {
+    "report": "ci299-final/final-report.json",
+    "sha256": "14794dab9f54d0c0588c47f439344fec1955391fdb0a8bfa43e68b6ff9fc6cb0",
+    "head_sha": "7deee3af868c50958dcc651f2a5a7599e4750c60",
+    "run_id": 40786370675,
+    "applicable_successes": 5,
+    "totals": {
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0
+    },
+    "cleanup_case_reported_ms": [
+      18718,
+      19048
+    ],
+    "root_cause_unproven": true
+  },
+  "scope": "Read-only archive/source comparisons and GitHub observations; no archive/repo/PR/ledger changes or executions/retries."
+}

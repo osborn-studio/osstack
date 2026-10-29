@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "docs/design/2026-10-27-joint-engineering",
+    "-p",
+    "test_validate_*.py"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+  "head": "38f13cff5c4e161835eaa5c75c3976b5a8e95046",
+  "started_at": "2026-10-28T22:43:31.576699+00:00",
+  "status_before": "",
+  "diff_before_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "exit_code": 0,
+  "finished_at": "2026-10-28T22:43:39.864308+00:00",
+  "status_after": "",
+  "diff_after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "log_sha256": "ebd39c4979f2ca7152a923eda14d21e04b4ccb79e8a03b65547607115ad2a1b8"
+}
