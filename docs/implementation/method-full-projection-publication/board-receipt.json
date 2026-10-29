@@ -1,0 +1,7 @@
+{
+  "comment_id": 652,
+  "card_id": "card_522ee55d",
+  "author": "joint-entry",
+  "body": "PR305 published Draft https://github.com/osborn-studio/osstack/pull/305 head856bec1deaa720425d8b475793f9dd75e1364288 base304branch. CI40839214482 running. A/B/C all handed off. Confirmed cleanup identity defect fixed9ed, actual Sonnet initialPASS then limitedclosurePASS; final230targeted/freshfull+defaultprojectchecks0, original unchanged. Full da0597144pass5skip0fail predates standalonefix, not relabeled finalwhole-tree. Archive5c56faff independently1868members checked. Main493 unchanged; merge order303→304→305; root must retarget+revalidate each after parentmerge. No newmethod/hostexperiment/formalgate.",
+  "created_at": 1793260978.522
+}

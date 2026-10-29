@@ -4636,7 +4636,7 @@
     }
   },
   "full_projection_slice": {
-    "status": "verified_prepublication",
+    "status": "draft_ci_running_parent304",
     "card": "card_522ee55d",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "provisional_parent": "185d283af23683ad084f81a6b049fcaab251a68f",
@@ -4670,6 +4670,12 @@
     "fresh": "current1d366 full5/default2 project/check passed; originals unchanged",
     "evidence": "docs/implementation/method-full-projection/README.md",
     "archive_sha256": "5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d",
-    "whole_capability_complete": false
+    "whole_capability_complete": false,
+    "pr": 305,
+    "published_head": "856bec1deaa720425d8b475793f9dd75e1364288",
+    "base_branch": "codex/method-full-journey-delivery",
+    "ci_run": 40839214482,
+    "all_workers_handed_off": true,
+    "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference."
   }
 }
