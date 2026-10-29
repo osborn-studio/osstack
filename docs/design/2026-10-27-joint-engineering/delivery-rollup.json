@@ -6905,7 +6905,7 @@
       "acceptance": "确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。",
       "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。",
       "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial",
-      "remaining": "Optional full five-case journey is under implementation; broader map drift discovery remains unproven."
+      "remaining": "PR304 full-five journey candidate awaiting CI and parent303 merge; broader map drift discovery remains unproven."
     },
     {
       "rank": 2,
@@ -6917,9 +6917,10 @@
       "goal": "完整五case安全证据投影",
       "deliverable": "在明确full范围下投影五case；保留默认两case严格契约与失败/未知语义，不复制原环境字段到模型包。",
       "acceptance": "五case完整性、错误/未运行/清理状态、原件不变和旧接口兼容独立验证。",
-      "state": "queued_not_dispatched",
+      "state": "implementation_dispatched",
       "depends_on": "full five-case journey integration",
-      "formal_gate_pass": false
+      "formal_gate_pass": false,
+      "card": "card_522ee55d"
     },
     {
       "rank": 3,
@@ -9365,8 +9366,8 @@
       "title": "PS01/08 可重复方法材料分页与原子执行路径",
       "task_kind": "implementation",
       "board": "joint-firstmate-pstack",
-      "observed_status": "running",
-      "observed_at": "2026-10-29T06:59:18.352697+00:00",
+      "observed_status": "blocked",
+      "observed_at": "2026-10-29T07:38:59.475741+00:00",
       "contributes_to": {
         "PS": [
           "PS01",
@@ -9379,7 +9380,7 @@
           "J23"
         ]
       },
-      "delivered_scope": "Bounded readonly material helper plus existing host and bug-fix guidance, candidate not merged.",
+      "delivered_scope": "PR303 Ready, five applicable CI successful; waiting user merge only.",
       "evidence_paths": [
         "docs/implementation/method-material-reader/README.md"
       ],
@@ -9408,6 +9409,30 @@
       "evidence_paths": [
         "docs/implementation/method-full-journey/README.md"
       ],
+      "formal_gate_pass": false,
+      "whole_milestone_complete": false
+    },
+    {
+      "card_id": "card_522ee55d",
+      "title": "Full five-case safe evidence projection",
+      "task_kind": "implementation",
+      "board": "joint-firstmate-pstack",
+      "observed_status": "running",
+      "observed_at": "2026-10-29T07:38:59.475741+00:00",
+      "contributes_to": {
+        "PS": [
+          "PS08",
+          "PS13",
+          "PS20"
+        ],
+        "J": [
+          "J07",
+          "J03",
+          "J23"
+        ]
+      },
+      "delivered_scope": "Implementation dispatched, not delivered; provisional parent304; no new method/host call.",
+      "evidence_paths": [],
       "formal_gate_pass": false,
       "whole_milestone_complete": false
     }
@@ -9846,7 +9871,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "draft_waiting_ci",
+    "status": "ready_waiting_user_merge",
     "card": "card_0e19c3c2",
     "source_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
     "record": "docs/implementation/method-material-reader/README.md",
@@ -9864,7 +9889,21 @@
     "host_experiment_calls": 0,
     "formal_gate_pass": false,
     "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim.",
-    "pr": 303
+    "pr": 303,
+    "ci_final": {
+      "observed_at": "2026-10-29T07:37:35.267635+00:00",
+      "run": 40833415091,
+      "head": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "log_sha256": "af51b97f8b296644beb52eda77739094381a98a4e3d291a2e915d4a6daf69bc6",
+      "artifact_downloaded": false,
+      "parser_note": "Initial parser missed literal caret ANSI notation; zero-row result invalid, corrected before publication. Original retained.",
+      "independent_report_sha256": "1128d169566fb326e7952f6dbdcc4b57ab47822cc959d698879f008df3976c81",
+      "tested_object": "GitHub synthetic merge b2d2085e, not direct head checkout"
+    }
   },
   "full_journey_slice": {
     "status": "draft_waiting_ci_and_parent303",
@@ -9904,5 +9943,31 @@
       "latest_result": "PR302 merged at493caa4e, tree equal published72ab candidate; no formal gate upgrade",
       "queue_state": "historical_slice_closed_not_whole_capability"
     }
-  ]
+  ],
+  "full_projection_slice": {
+    "status": "implementation_dispatched",
+    "card": "card_522ee55d",
+    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "provisional_parent": "185d283af23683ad084f81a6b049fcaab251a68f",
+    "primary_j": "J07",
+    "supporting_j": [
+      "J03",
+      "J23"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "new_methods": 0,
+    "host_experiment_calls": 0,
+    "formal_gate_pass": false,
+    "owners": {
+      "A": "projector and tests",
+      "B": "skills-check-journey and maintain-verification refs",
+      "C": "independent scratch",
+      "root": "CI,ledger,audit,PR"
+    },
+    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0"
+  }
 }

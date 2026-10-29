@@ -6,9 +6,9 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 
 | Order | User-visible outcome | Current action | Completion boundary |
 |---|---|---|---|
-| 1 | Read the complete selected method material without silently losing its tail | PR303: bounded paging and digest-pinned continuation; CI pending | Tool contract + actual exported-byte reassembly; model consumption still requires a fresh host task |
-| 2 | Run the full five-case skills-check journey and maintain all mapped cases | card_ddf5e661: add optional `--scope full`; retain default two-case compatibility | Actual five outcomes 0/1/2/1/0, semantic receipts, cleanup limits, default projection compatibility and failure-path verification |
-| 3 | Give a host the complete five-case result without unrelated fixture fields | Queued explicit full-scope projection, preserving the two-case contract | All five cases and failed/not_run/unknown states preserved; original records unchanged |
+| 1 | Read the complete selected method material without silently losing its tail | PR303: bounded paging and digest-pinned continuation; five applicable CI passed; Ready awaiting user merge | Tool contract + actual exported-byte reassembly; model consumption still requires a fresh host task |
+| 2 | Run the full five-case skills-check journey and maintain all mapped cases | PR304 Draft, CI/parent pending: optional `--scope full`; retain default two-case compatibility | Actual five outcomes 0/1/2/1/0, semantic receipts, cleanup limits, default projection compatibility and failure-path verification |
+| 3 | Give a host the complete five-case result without unrelated fixture fields | card_522ee55d: implementation and independent verification dispatched for explicit full-scope projection, preserving the two-case contract | All five cases and failed/not_run/unknown states preserved; original records unchanged |
 | 4 | Use current method materials to complete a fresh actual host task | Next after the tool slice: choose distinct task and freeze fresh inputs/resources once | Codex/Claude actual commands, behavioral RED/fix/GREEN and complete required material delivery; no rerunning old failures for a better grade |
 | 5 | Make PR candidate status easier to assess | Later bounded read-only forge/candidate reconciliation | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
 

@@ -213,6 +213,23 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Project and check full five-case method evidence
+        id: method-projection-full
+        env:
+          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
+        run: |
+          pnpm method:project-evidence --input "$OSSTACK_SCRATCH_ROOT/runtime/method-journey-full-ci-evidence" --output "$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence" --scope full
+          pnpm method:project-evidence --check "$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence"
+
+      - name: Preserve full model evidence packet
+        if: always() && steps.method-projection-full.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: method-full-packet-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/osstack/runtime/method-full-packet-ci-evidence
+          if-no-files-found: warn
+          retention-days: 7
+
       # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
       # Budgets are looser than the local defaults (150/500ms) because CI
       # runners spawn node slower; they still catch the eager-import class

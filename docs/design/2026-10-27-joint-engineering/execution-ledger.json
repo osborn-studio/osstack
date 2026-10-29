@@ -4523,7 +4523,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "draft_waiting_ci",
+    "status": "ready_waiting_user_merge",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "card": "card_0e19c3c2",
     "primary_j": "J04",
@@ -4550,7 +4550,21 @@
     "host_experiment_calls": 0,
     "pr": 303,
     "published_head": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
-    "ci_run": 40833415091
+    "ci_run": 40833415091,
+    "ci_final": {
+      "observed_at": "2026-10-29T07:37:35.267635+00:00",
+      "run": 40833415091,
+      "head": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "log_sha256": "af51b97f8b296644beb52eda77739094381a98a4e3d291a2e915d4a6daf69bc6",
+      "artifact_downloaded": false,
+      "parser_note": "Initial parser missed literal caret ANSI notation; zero-row result invalid, corrected before publication. Original retained.",
+      "independent_report_sha256": "1128d169566fb326e7952f6dbdcc4b57ab47822cc959d698879f008df3976c81",
+      "tested_object": "GitHub synthetic merge b2d2085e, not direct head checkout"
+    }
   },
   "full_journey_slice": {
     "status": "draft_waiting_ci_and_parent303",
@@ -4606,5 +4620,31 @@
     "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
     "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
     "all_workers_handed_off": true
+  },
+  "full_projection_slice": {
+    "status": "implementation_dispatched",
+    "card": "card_522ee55d",
+    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "provisional_parent": "185d283af23683ad084f81a6b049fcaab251a68f",
+    "primary_j": "J07",
+    "supporting_j": [
+      "J03",
+      "J23"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "new_methods": 0,
+    "host_experiment_calls": 0,
+    "formal_gate_pass": false,
+    "owners": {
+      "A": "projector and tests",
+      "B": "skills-check-journey and maintain-verification refs",
+      "C": "independent scratch",
+      "root": "CI,ledger,audit,PR"
+    },
+    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0"
   }
 }
