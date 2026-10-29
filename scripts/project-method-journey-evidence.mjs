@@ -177,6 +177,7 @@ async function buildProjection(input, full) {
       const data = await sealed(dir, 'manifest.json'); check(sha256(data.manifestBytes) === retained.sha256 && retained.verified === (f.verification === 'passed'), 'case_manifest_binding');
       const receipt = parse(data.files, 'receipt.json'); const cleaned = parse(data.files, 'cleanup.json');
       check(equal(receipt.selected_cases, [f.case_id]) && receipt.driver_exit === out.driver_exit && receipt.provider_qualified === false, 'receipt_case');
+      if (full && f.verification === 'passed') check(typeof cleaned.fixture_path === 'string' && isAbsolute(cleaned.fixture_path) && receipt.cleanup?.fixture_path === cleaned.fixture_path && f.cleanup?.fixture_path === cleaned.fixture_path, 'cleanup_fixture_identity');
       out.receipt_cleanup_consistent = equal(cleanup(cleaned), cleanup(receipt.cleanup));
       if (f.verification !== 'passed') out.reported_cleanup = cleanup(receipt.cleanup);
       if (f.verification === 'passed') { check(out.receipt_cleanup_consistent, 'receipt_cleanup'); verifyPassed(data.files, f.case_id, f, receipt, data.manifest, full); check(equal(out.cleanup, cleanup(cleaned)), 'feature_cleanup'); }
@@ -249,8 +250,8 @@ export function validatePacket(p) {
         if (id === 'mixed') check(lines[1].match(/\(([a-f0-9]{12})\)/)[1] === lines[3].match(/head=([a-f0-9]{12})/)[1], 'passed_snippet_conflict');
       } else if (!full) {
         const failed = id === 'healthy' ? 0 : 1;
-      const summaries = ['Checking 1 source(s) against their tracked refs...', `${failed} source(s) failed to check.`, '0 source(s) drifted from blessed_sha.'];
-      check(s.selected_lines.every(line => summaries.includes(line) || (id === 'healthy' ? /^  ✓ healthy  up-to-date \([a-f0-9]{12}\)$/.test(line) : line === '  ✗ missing-ref  unreachable: no_matching_ref')), 'passed_snippet_conflict');
+        const summaries = ['Checking 1 source(s) against their tracked refs...', `${failed} source(s) failed to check.`, '0 source(s) drifted from blessed_sha.'];
+        check(s.selected_lines.every(line => summaries.includes(line) || (id === 'healthy' ? /^  ✓ healthy  up-to-date \([a-f0-9]{12}\)$/.test(line) : line === '  ✗ missing-ref  unreachable: no_matching_ref')), 'passed_snippet_conflict');
       }
     }
     const bytes = s.selected_lines.reduce((n, line) => n + Buffer.byteLength(line), 0);

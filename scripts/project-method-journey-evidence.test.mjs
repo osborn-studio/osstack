@@ -340,3 +340,22 @@ for (const mutation of ['env', 'unrun-removed', 'version3']) test(`full resealed
   if (mutation === 'version3') p.schema_version = 3;
   await put(join(f.output, 'packet.json'), p); await resealPacket(f.output); await assert.rejects(checkPacket(f.output));
 });
+
+for (const changed of ['receipt', 'feature']) test(`full passed ${changed} cleanup fixture identity must agree before path omission`, async t => {
+  const f = await fixture(t, { full: true });
+  if (changed === 'receipt') {
+    await edit(join(f.input, 'cases/healthy/receipt.json'), r => { r.cleanup.fixture_path = '/foreign/contradictory-fixture'; });
+    await resealCase(f, 'healthy');
+  } else {
+    await edit(join(f.input, 'journey.json'), j => { j.features[0].cleanup.fixture_path = '/foreign/contradictory-fixture'; });
+    await sealRoot(f.input);
+  }
+  await assert.rejects(projectJourney({ ...f, scope: 'full' }), /^Error: cleanup_fixture_identity$/);
+  assert.ok(!(await readdir(f.root)).includes('packet'));
+});
+test('full consistent retained cleanup identity projects without following deleted fixture paths', async t => {
+  const f = await fixture(t, { full: true });
+  await projectJourney({ ...f, scope: 'full' }); const p = await readPacket(f);
+  assert.ok(p.features.every(x => x.cleanup.status === 'passed' && x.cleanup.fixture_removed === true && x.receipt_cleanup_consistent === true));
+  assert.doesNotMatch(JSON.stringify(p), /fixture_path|secret-canary/);
+});
