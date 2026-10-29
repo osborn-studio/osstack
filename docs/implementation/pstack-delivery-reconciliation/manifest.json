@@ -1,0 +1,545 @@
+{
+  "archive_sha256": "a686fa2c26e3553120d514d8b16c6f25a17e2742bc9c2c2c1aadf7f0bd6eaaa2",
+  "members": [
+    {
+      "path": "reconciliation/activity-relations.json",
+      "bytes": 63478,
+      "mode": 384,
+      "sha256": "3248bb34a736a6b0615f1009780dba7a377fc3fb2ecae623c438df4add9346f4"
+    },
+    {
+      "path": "reconciliation/board-mechanics.json",
+      "bytes": 35720,
+      "mode": 384,
+      "sha256": "7bb226703a077ddb0730c0520cee20a71564ce3f84da6fb62273e432cb8d957d"
+    },
+    {
+      "path": "reconciliation/board-mechanics.md",
+      "bytes": 3162,
+      "mode": 384,
+      "sha256": "999133a2215df7077d8bd5eeafc0b41305ef6ff13fe92995ba259895b3013f63"
+    },
+    {
+      "path": "reconciliation/board-rollup-actions.jsonl",
+      "bytes": 120754,
+      "mode": 384,
+      "sha256": "0bca8a1b5c1cd5656fcf763b2ee707d260341170ebed120d7a92523431955ece"
+    },
+    {
+      "path": "reconciliation/boards-after-rollup.json",
+      "bytes": 210187,
+      "mode": 384,
+      "sha256": "16b41d884ba7d1a6564e9400186201bd3ac7aac01e1d9b2b11c578f5b5a877cc"
+    },
+    {
+      "path": "reconciliation/boards-readonly.json",
+      "bytes": 210083,
+      "mode": 384,
+      "sha256": "99eb86571769ccc1809b478e5fa7d6e03210a225ae5b245ce25f6c16f24ce7cd"
+    },
+    {
+      "path": "reconciliation/build-report.py",
+      "bytes": 21053,
+      "mode": 384,
+      "sha256": "2b195435585b5953ea6df8efa46b2c2219f082419137f319244e070263b8cd94"
+    },
+    {
+      "path": "reconciliation/build_map.py",
+      "bytes": 18020,
+      "mode": 384,
+      "sha256": "fb11f45e0af30007325f953e3b25f259161e7aee57efa5eb281644d488a5a9d5"
+    },
+    {
+      "path": "reconciliation/docs-final.log",
+      "bytes": 341,
+      "mode": 384,
+      "sha256": "1beef452a7fbcdf75b53d29a980b49980f2c428c76453dd747e0c2f23a3898ab"
+    },
+    {
+      "path": "reconciliation/docs-validation.log",
+      "bytes": 341,
+      "mode": 384,
+      "sha256": "e5ff0d341c51710a79cc959a5c16d1fb30144f457dde336c9816ece77e091b3f"
+    },
+    {
+      "path": "reconciliation/extend_early.py",
+      "bytes": 6915,
+      "mode": 384,
+      "sha256": "ff02f3b4333d299eeaf147097af84a22f61acc62687708c0ed2bdfbc38332fce"
+    },
+    {
+      "path": "reconciliation/gap-dimensions.json",
+      "bytes": 12918,
+      "mode": 384,
+      "sha256": "18f23056c149c06dc38ca6fe28d8045911bf0d2411d4d0063b2fdc2e3a6d0579"
+    },
+    {
+      "path": "reconciliation/hygiene.log",
+      "bytes": 362,
+      "mode": 384,
+      "sha256": "ec8ec4ca8546d6d3542f02541d585a3836a853890b2beb2531ed60c559dc1521"
+    },
+    {
+      "path": "reconciliation/installed-daemon-excerpt.txt",
+      "bytes": 2591,
+      "mode": 384,
+      "sha256": "574ce369d4de3c0afa42bbafe9f4f4a3c46db040e563637e5142440fe5fd0e07"
+    },
+    {
+      "path": "reconciliation/installed-repository-excerpt.txt",
+      "bytes": 3782,
+      "mode": 384,
+      "sha256": "c8c6e4a362642b02d9dc7cb552d24b01381cd0bac2030818d8bd453749d3a67f"
+    },
+    {
+      "path": "reconciliation/installed-schema-excerpt.txt",
+      "bytes": 2452,
+      "mode": 384,
+      "sha256": "2fab9a89179606c9f35b6847bd129eecc4dd5e5700e719e60730e6eb9900826b"
+    },
+    {
+      "path": "reconciliation/manifest.json",
+      "bytes": 8714,
+      "mode": 384,
+      "sha256": "63d1442224ddb7033be3c1d48069fa55a5fdc2d54ca0859fa45a549b0ef2772f"
+    },
+    {
+      "path": "reconciliation/milestone-gaps.json",
+      "bytes": 142806,
+      "mode": 384,
+      "sha256": "de86ba9aaeae7a49b91fb5cdc4734c738f63dbcece4d3298c0efeb76653af23e"
+    },
+    {
+      "path": "reconciliation/milestone-gaps.md",
+      "bytes": 15965,
+      "mode": 384,
+      "sha256": "37fd5a7a2ecd3204ba752653c218d9421be5d05c990d89117a547641822a40cc"
+    },
+    {
+      "path": "reconciliation/narrow_mapping.py",
+      "bytes": 3804,
+      "mode": 384,
+      "sha256": "2ba28d42f7003d908db647d04bb8fce2db1ef878844c1bffc7b48f6d88c96035"
+    },
+    {
+      "path": "reconciliation/next-real-task.md",
+      "bytes": 10556,
+      "mode": 384,
+      "sha256": "360cef8015ae83584f81676e132ba917c775b522415ca39f6312186d28a3bc5f"
+    },
+    {
+      "path": "reconciliation/post-closure-path-correction.json",
+      "bytes": 446,
+      "mode": 384,
+      "sha256": "462944df7369231259681a56fc5f2ee2d6fb3de7e03599eab530fd2fa157ed47"
+    },
+    {
+      "path": "reconciliation/pr301-board-merged.json",
+      "bytes": 2068,
+      "mode": 384,
+      "sha256": "2fa16b1bd4ff9b3550a3c90483db44548a28e98c2534a221ed92031e688a7eb2"
+    },
+    {
+      "path": "reconciliation/pr301-current.json",
+      "bytes": 208,
+      "mode": 384,
+      "sha256": "8cd7901845e6f46e987501b70a378c1fbd9ea92d244e92d88c3fb2beec82aa4f"
+    },
+    {
+      "path": "reconciliation/pstack-map.json",
+      "bytes": 94290,
+      "mode": 384,
+      "sha256": "0690c908cd3b5bf872d85365434c7f84220992081dd3c01e67ebf7aaf0e918a0"
+    },
+    {
+      "path": "reconciliation/pstack-map.md",
+      "bytes": 16561,
+      "mode": 384,
+      "sha256": "7b8686d84e4e882aa5556a9f066f06932e7267bc642cab482f568686b345dfbf"
+    },
+    {
+      "path": "reconciliation/root-consistency-check.json",
+      "bytes": 332,
+      "mode": 384,
+      "sha256": "9e7a4107020d2cd3a8247bb690223df8627761d6d9f5cd48dc12f887a08614fc"
+    },
+    {
+      "path": "reconciliation/root-review.md",
+      "bytes": 4448,
+      "mode": 384,
+      "sha256": "ccfaa817b82fb219a5cc88726209c5e0dfb991b5ed6ac2cd73e766707ecccb91"
+    },
+    {
+      "path": "reconciliation/rpc-helper-excerpt.txt",
+      "bytes": 802,
+      "mode": 384,
+      "sha256": "85cd1cc32c4c82f58c2e438cca690b045146fbcaff84f1802b7e3204516f450d"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "bytes": 132058,
+      "mode": 384,
+      "sha256": "606b4e894aa7d89af0e225cfc8d12859377c29c664733dfce03839c65eeb003b"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/capability-index.md",
+      "bytes": 5485,
+      "mode": 384,
+      "sha256": "39b455eec20a492add658433f22d2d138501950136bbcf2a21f9cd4e74907233"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/execution-gates.json",
+      "bytes": 62639,
+      "mode": 384,
+      "sha256": "489a7388a2ed1705deee7aaff76c65f7acd31a15d6b83d3b7f7c9747a35c97ee"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+      "bytes": 209217,
+      "mode": 384,
+      "sha256": "b594936fc80afd177ee65bebf44c2e61c92dc6a884399e4badd54616ee4c3bb6"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/gate-layers.md",
+      "bytes": 9374,
+      "mode": 384,
+      "sha256": "62d7004df8460c07059657a31510dc697070807a6cb233a6cfc624ff2d7867d0"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/unknowns.json",
+      "bytes": 5909,
+      "mode": 384,
+      "sha256": "34f586e2164b1b0c3c9d136d067c3b788c21abfc8a86596c7e44ae2dda835083"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/work-package-index.md",
+      "bytes": 4127,
+      "mode": 384,
+      "sha256": "98234b1f19a122def52023c35eeed9abfd684271354c6615d7cfc2eb2e4dc45c"
+    },
+    {
+      "path": "reconciliation/sources/docs/design/2026-10-27-joint-engineering/work-packages.json",
+      "bytes": 81299,
+      "mode": 384,
+      "sha256": "ff2403b1813b42f2a7adac93bd2ede70ea2ac7b654ec27880e2cfd6738bfa750"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-broker-spec/README.md",
+      "bytes": 3827,
+      "mode": 384,
+      "sha256": "4cae784f72d7622493e7f3c963ca4f558e7c3b278c9d290da423190aa5a5ffca"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-contract-acceptance/README.md",
+      "bytes": 3616,
+      "mode": 384,
+      "sha256": "870c285486feab4f4daea4a62c69d80c3bd2ff113d66b7f34a572ef9694da74f"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-recovery-composition/README.md",
+      "bytes": 5969,
+      "mode": 384,
+      "sha256": "a0fa639953ad4757f2b3bcc31ab9055706fa7bead045da24bf5f9317cf8b792e"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-recovery-retarget/README.md",
+      "bytes": 2519,
+      "mode": 384,
+      "sha256": "9c65f6bb1d78aac7e4bdc9d2aa2a726fbc7a6e4f9411aa17449df65f87a97f78"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-session-cleanup-retarget/README.md",
+      "bytes": 1173,
+      "mode": 384,
+      "sha256": "ea6bc22ea6d7e8d653b5a0a3ab30aa7280366aa0238e44e8ef8641be51189413"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-source-inspection/README.md",
+      "bytes": 9290,
+      "mode": 384,
+      "sha256": "060ce7ee7cbee2ae3529bad657d211e5ec21e8ec17507371fdb26da1278c239a"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/joint-terminal-post282/README.md",
+      "bytes": 4811,
+      "mode": 384,
+      "sha256": "f3e7fe96e29cc4ce663b1e45d9e594921becc954c35f6df4888529d7b433d338"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-evidence-projection/README.md",
+      "bytes": 9460,
+      "mode": 384,
+      "sha256": "4d03431634f2198acfaf68d26a86a46539805ef20b72350bf3a36e5b7f7a2d08"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-native-discovery/README.md",
+      "bytes": 7030,
+      "mode": 384,
+      "sha256": "740d56881a9be14a1792d829e4aa8530a7c9f51b998336596ff4f4b553d660bd"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-packet-host-consumption/README.md",
+      "bytes": 4749,
+      "mode": 384,
+      "sha256": "4d036ce781b7094923cb913fec75e1100fcd3b9bc0dbe1e4d3b425be31f0584d"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-performance-measurement/README.md",
+      "bytes": 3764,
+      "mode": 384,
+      "sha256": "fdceed94411e24fd0a9d8a48370c819d7807d4656b18c748e7475d50659d7be3"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-pr-readiness/README.md",
+      "bytes": 6547,
+      "mode": 384,
+      "sha256": "2e6ac6becdbd265a2d277f091a0b2794c53d7f4904c21882b37425afd5ef03f9"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-review-behavior/README.md",
+      "bytes": 4772,
+      "mode": 384,
+      "sha256": "8e342d8051915adbb3ae2de63a17e8fec62c420a9bea9317cca15b3cf42198d0"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-session-continuity/README.md",
+      "bytes": 6417,
+      "mode": 384,
+      "sha256": "20812d409e8a8c160414919023735942725ac14281366c14466dadf700f93522"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/method-verification-journey/README.md",
+      "bytes": 6202,
+      "mode": 384,
+      "sha256": "4e545342a0b088ecf20e2e375560f2fd8384e20cc7fe94e79a6a41293cd9774b"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/osstack-method-entrypoints/README.md",
+      "bytes": 2823,
+      "mode": 384,
+      "sha256": "3b7329c92fff99186b1f46619c5453e62880fc15e431976301b34adb8fbf1c05"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/skills-check-verification/README.md",
+      "bytes": 3940,
+      "mode": 384,
+      "sha256": "2907119d2bbb8736b36fc80bdd1896e18239ed39eb20a030353cedc6b28a127d"
+    },
+    {
+      "path": "reconciliation/sources/docs/implementation/verification-kit/README.md",
+      "bytes": 3161,
+      "mode": 384,
+      "sha256": "00e4e4fa1626a4f45ae062bfed53a063280f5c644cf89d895dc3ec5bdff9215a"
+    },
+    {
+      "path": "reconciliation/sources/osstack-methods-skill/SKILL.md",
+      "bytes": 4942,
+      "mode": 384,
+      "sha256": "9cc57d5fda2c9e9d2e708a1c948e9f01ff57c680393bd9302f8d7fc1cd9c25d1"
+    },
+    {
+      "path": "reconciliation/sources/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "mode": 384,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "reconciliation/sources/osstack-methods-skill/references/performance-measurement.md",
+      "bytes": 9893,
+      "mode": 384,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "reconciliation/sources/osstack-methods-skill/references/pr-readiness.md",
+      "bytes": 8061,
+      "mode": 384,
+      "sha256": "70faa28d057b87ff7ca017036abb64f25d7de54473d51a7500578c3f0b8062c3"
+    },
+    {
+      "path": "reconciliation/sources/osstack-methods-skill/references/session-continuity.md",
+      "bytes": 7170,
+      "mode": 384,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "reconciliation/sources/packages/cli/src/engineering-upgrade-guard.ts",
+      "bytes": 1094,
+      "mode": 384,
+      "sha256": "909b03a706135e0b70904063d82938e3c1f7b4e783f68e0cc2a1af92eef2c7df"
+    },
+    {
+      "path": "reconciliation/split-gaps.py",
+      "bytes": 9053,
+      "mode": 384,
+      "sha256": "e995951fd75f70890c28ec7ddd4b2b97424e23e5559562cbbde3c91bbc4f1163"
+    },
+    {
+      "path": "reconciliation-audit/audit-input.txt",
+      "bytes": 567935,
+      "mode": 384,
+      "sha256": "71188d283cb499247e1769f76cc1c620f5c328aa2a03d0fc9746846f4e0d3093"
+    },
+    {
+      "path": "reconciliation-audit/binding.json",
+      "bytes": 773,
+      "mode": 384,
+      "sha256": "9c2d528c2d472ecaa452ca57193548b89e98bc04d58903a97dd4b537febe645b"
+    },
+    {
+      "path": "reconciliation-audit/empty-mcp.json",
+      "bytes": 18,
+      "mode": 384,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "reconciliation-audit/report.md",
+      "bytes": 4273,
+      "mode": 384,
+      "sha256": "34e44fbcde0da0096438ae6963d0376d8e720d07f61d2f6f32cc79dd69c7c0fe"
+    },
+    {
+      "path": "reconciliation-audit/response.json",
+      "bytes": 6137,
+      "mode": 384,
+      "sha256": "130c2232da2547e5eac8de75bcc246915789e07ddc2b97bc583fb9814512dbb9"
+    },
+    {
+      "path": "reconciliation-audit/run.py",
+      "bytes": 1448,
+      "mode": 384,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+    },
+    {
+      "path": "reconciliation-audit/settings.json",
+      "bytes": 3,
+      "mode": 384,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "path": "reconciliation-audit/source-binding.json",
+      "bytes": 1058,
+      "mode": 384,
+      "sha256": "ce06ac1b6b60bb4151d70800a452d61e81f17f8a119824ac9094a36463ffc675"
+    },
+    {
+      "path": "reconciliation-audit/stderr.txt",
+      "bytes": 0,
+      "mode": 384,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reconciliation-audit-closure/audit-input.txt",
+      "bytes": 732724,
+      "mode": 384,
+      "sha256": "7638118d9fff102d34efd839c1b2a1e91fe35531f650b1444015abdd29e147b7"
+    },
+    {
+      "path": "reconciliation-audit-closure/binding.json",
+      "bytes": 766,
+      "mode": 384,
+      "sha256": "825897a3d12bd58fe9f2d1d47903c33627ab7d5917dfc8a0a0020b6e2dce20f5"
+    },
+    {
+      "path": "reconciliation-audit-closure/empty-mcp.json",
+      "bytes": 18,
+      "mode": 384,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "reconciliation-audit-closure/report.md",
+      "bytes": 4396,
+      "mode": 384,
+      "sha256": "59a0ef5637759da8b2a815c09f2da02cadb00fbe70c7039412b818ee22166618"
+    },
+    {
+      "path": "reconciliation-audit-closure/response.json",
+      "bytes": 6276,
+      "mode": 384,
+      "sha256": "4a6abdff9c3de72365ad989cf7c9aadeb32a57cc14b975b767b6aca314aa92df"
+    },
+    {
+      "path": "reconciliation-audit-closure/run.py",
+      "bytes": 1448,
+      "mode": 384,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+    },
+    {
+      "path": "reconciliation-audit-closure/settings.json",
+      "bytes": 3,
+      "mode": 384,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "path": "reconciliation-audit-closure/source-binding.json",
+      "bytes": 1746,
+      "mode": 384,
+      "sha256": "aff46089eb6963449a090f74104288b9b601b58bc176206871a6fa2cd139958f"
+    },
+    {
+      "path": "reconciliation-audit-closure/stderr.txt",
+      "bytes": 0,
+      "mode": 384,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reconciliation-audit-final/audit-input.txt",
+      "bytes": 52787,
+      "mode": 384,
+      "sha256": "f230ee12ea1112134da232dd75ff4efe72632f06f6672789ebf2653fee05e0b5"
+    },
+    {
+      "path": "reconciliation-audit-final/binding.json",
+      "bytes": 763,
+      "mode": 384,
+      "sha256": "306f16140653e2845a2e1b056403bea69d8c477b65042cdc87349d8a6586109e"
+    },
+    {
+      "path": "reconciliation-audit-final/empty-mcp.json",
+      "bytes": 18,
+      "mode": 384,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "reconciliation-audit-final/focused-final.json",
+      "bytes": 45913,
+      "mode": 384,
+      "sha256": "ecdf2c15f5b8ac5f76cf1627723a05e9d8df335eb585c1b0d090c7c33f3215d4"
+    },
+    {
+      "path": "reconciliation-audit-final/report.md",
+      "bytes": 4366,
+      "mode": 384,
+      "sha256": "3645d0139d15941007cbacf4379663b81405e8daded678d0cb395ca1b824c93b"
+    },
+    {
+      "path": "reconciliation-audit-final/response.json",
+      "bytes": 6216,
+      "mode": 384,
+      "sha256": "764ad51ba4cd92eb7f07289ead2c84b0623749df119b7d1f93ec898989fa395c"
+    },
+    {
+      "path": "reconciliation-audit-final/run.py",
+      "bytes": 1448,
+      "mode": 384,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3"
+    },
+    {
+      "path": "reconciliation-audit-final/settings.json",
+      "bytes": 3,
+      "mode": 384,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+    },
+    {
+      "path": "reconciliation-audit-final/source-binding.json",
+      "bytes": 221,
+      "mode": 384,
+      "sha256": "f24179b5d09c033651847662c459387fc62fb64de5d16fbcf28dd6b022b40110"
+    },
+    {
+      "path": "reconciliation-audit-final/stderr.txt",
+      "bytes": 0,
+      "mode": 384,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
