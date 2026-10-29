@@ -1,0 +1,1 @@
+Initial archive verification assertion expected unittest-style Ran 1 test in hygiene stderr. Actual retained hygiene uses Vitest Tests 1 passed (1) in stdout. Corrected only local verification assertion; archive unchanged.

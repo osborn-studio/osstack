@@ -1,0 +1,163 @@
+{
+  "at": "2026-10-29T10:13:53.872168+00:00",
+  "status": "PASS_bounded_archive_consistency",
+  "archive_sha256": "7fca30cfff7b38a92f5191700b03df44eac7a7b291867733dcdc9f5907f39cab",
+  "archive_bytes": 16312681,
+  "payload_files": 375,
+  "payload_bytes": 25001395,
+  "internal_manifest_sha256": "43a24d92ae937e0d6aae57a11e6958d355ad1ec0c2237a08ad2dc8869415453e",
+  "all_hash_bytes_mode_verified": true,
+  "nested_manifest_members_verified": 572,
+  "actual": {
+    "default": {
+      "product_exits": [
+        0,
+        1
+      ],
+      "driver_exits": [
+        0,
+        0
+      ],
+      "unchanged_retained_members": 75
+    },
+    "full": {
+      "product_exits": [
+        0,
+        1,
+        2,
+        1,
+        0
+      ],
+      "driver_exits": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unchanged_retained_members": 183
+    }
+  },
+  "focused_counts": {
+    "journey-tests": {
+      "tests": 43,
+      "pass": 43,
+      "fail": 0,
+      "skipped": 0
+    },
+    "projector-tests": {
+      "tests": 49,
+      "pass": 49,
+      "fail": 0,
+      "skipped": 0
+    },
+    "export-tests": {
+      "tests": 94,
+      "pass": 94,
+      "fail": 0,
+      "skipped": 0
+    },
+    "reader-tests": {
+      "tests": 14,
+      "pass": 14,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "commands_bound": [
+    {
+      "path": "validation/actual-default.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/actual-full.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/build.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/check-default.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/docs.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/export-tests.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/hygiene.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/install.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/journey-tests.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/node-version.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/project-default.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/project-full.command.json",
+      "exit": 1
+    },
+    {
+      "path": "validation/projector-tests.command.json",
+      "exit": 0
+    },
+    {
+      "path": "validation/reader-tests.command.json",
+      "exit": 0
+    }
+  ],
+  "audit": {
+    "raw_result": "PASS static read-only",
+    "modelUsage": {
+      "claude-sonnet-5-5": {
+        "inputTokens": 2,
+        "outputTokens": 13449,
+        "cacheReadInputTokens": 535,
+        "cacheCreationInputTokens": 48441,
+        "webSearchRequests": 0,
+        "costUSD": 0.328365,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 11518,
+        "canonicalModel": "claude-sonnet-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "prompt_response_hashes_valid": true,
+    "report_exact_response": true
+  },
+  "git": {
+    "candidate": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+    "tree": "dbe85299ac39ca9126110eb4f1c564f442844f05",
+    "base_ancestor": true,
+    "18path_binary_diff_equal": true,
+    "6_audit_source_bindings_equal": true,
+    "filtered_audit_diff_exact": true
+  },
+  "readme_consistent": true,
+  "full_rejection_no_output": "Recorded command exit1 fixed_case_set, orchestration asserts absent output, summary false and no archived output; no historic filesystem absence independently reconstructed.",
+  "limitations": [
+    "Read-only archive and fixed Git inspection; no tests/model calls/reruns or live CI/PR queries.",
+    "Sonnet PASS is supplied-text static review, not runtime qualification or independently attested provider identity.",
+    "No new local full-package test run claimed. CI remaining gate statement is historical document status, not current live status.",
+    "Manifest consistency does not authenticate evidence producer; fixture cleanup and no-output are retained observations, not live remeasurement."
+  ],
+  "confirmed_issues": []
+}

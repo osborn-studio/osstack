@@ -1,0 +1,11 @@
+# PR304 retarget to merged main
+
+303 merged as main a0ecd79d; its tree equals d05c9d91. PR304 now targets main and head7ef051ff integrates that main as a parent. The candidate tree equals original185d exactly; the complete18path diff is byte-identical to the earlier base/head diff. There are no package/dependency/shared-contract changes or imported PR305 features.
+
+Fresh install/build on Node22.22.1 and43journey+49projection+94export+14reader tests passed, plus241documentation and1hygiene. Actualdefault2/full5 journeys passed with product exits0/1 and0/1/2/1/0. Default projection/check succeeded; the old projector rejectedfull asfixed_case_set with no output and unchanged original evidence. Fresh generated dist was retained during tests, preserved and restored only after verification; no new local full-package run is claimed.
+
+Actual Claude CLI claude-sonnet-5-5 static audit PASS. Its ancestry/diff/README evidence requests were reconciled with Git objects. The review's diff was explicitly filtered to scripts/materials/CI; README was separately supplied from Git, so its absence from that filtered diff is not missing repository content. Optional key ordering/raw-command error specificity suggestions are retained, no confirmed defect. Fresh published-head CI40855140718 is the remaining Ready gate, not the old185d CI.
+
+Original audit inputs/response/bindings, independent Git proof and fresh validation are in [archive](raw-verification.tar.gz); [receipt](archive-receipt.json) binds every member. One scratch Python syntax error occurred before any product call and is retained separately. No formal PS/J gate or host-model outcome changed. User retains approval and merge.
+
+Independent archive review verified all375payloads and572nested manifest entries, raw audit/test records and Git bindings. See [report](archive-independent/report.json). An independent parser initially used unittest formatting against Vitest hygiene output; that assertion failure is retained and was corrected without changing source evidence.

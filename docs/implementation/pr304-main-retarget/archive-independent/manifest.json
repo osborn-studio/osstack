@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "path": "git-checks.json",
+      "sha256": "6a282f309fe4fc6157abafd01df218f998fcc3e7e79ef6a9489de5d04cc1ccb5",
+      "bytes": 13164080
+    },
+    {
+      "path": "initial-harness-error.txt",
+      "sha256": "8e660130e31e72d232a9282e388199d6c6b42da374aef6ab832b0c6144793807",
+      "bytes": 223
+    },
+    {
+      "path": "members-verified.json",
+      "sha256": "621f13daf609116e9393c8178c06f316e8cfd7d19534ef1726f2818186669cca",
+      "bytes": 69756
+    },
+    {
+      "path": "report.json",
+      "sha256": "a6e98acd27098b074c8068f10652282a505c413e69fd2b34c620b7f3bda75402",
+      "bytes": 4165
+    },
+    {
+      "path": "report.md",
+      "sha256": "2a7fb11d338d93148e9ac02a8fdcd719c5fe106670d5fa5baa3cb3a7c185ed58",
+      "bytes": 1241
+    },
+    {
+      "path": "verify-initial.py",
+      "sha256": "2e39bea07e8995933a564c8782e4577015594ba3d6ec3cfff5f89641c6ea3a1a",
+      "bytes": 9028
+    },
+    {
+      "path": "verify.py",
+      "sha256": "ea6e618cc7cbac08aeda2615c49521193d1a5964f2ec14c4a65c2949c960b660",
+      "bytes": 9037
+    }
+  ],
+  "scope": "read-only archive/Git inspection; no model or test runs"
+}
