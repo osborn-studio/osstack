@@ -359,3 +359,35 @@ test('full consistent retained cleanup identity projects without following delet
   assert.ok(p.features.every(x => x.cleanup.status === 'passed' && x.cleanup.fixture_removed === true && x.receipt_cleanup_consistent === true));
   assert.doesNotMatch(JSON.stringify(p), /fixture_path|secret-canary/);
 });
+
+for (const full of [false, true]) {
+  const ids = full ? ['healthy', 'missing-ref', 'drift', 'mixed', 'empty'] : ['healthy', 'missing-ref'];
+  for (const id of ids) test(`v${full ? 2 : 1} packet refuses verified ${id} with retained stderr`, async t => {
+    const f = await fixture(t, { full });
+    await projectJourney({ ...f, ...(full ? { scope: 'full' } : {}) });
+    const p = await readPacket(f);
+    const stderr = Buffer.from('unexpected diagnostic\n');
+    Object.assign(p.references.find(r => r.id === `${id}.product.stderr`), { bytes: stderr.length, sha256: sha256(stderr) });
+    p.streams.find(s => s.id === `${id}.product.stderr`).omitted_bytes = stderr.length;
+    await put(join(f.output, 'packet.json'), p); await resealPacket(f.output);
+    await assert.rejects(checkPacket(f.output), /passed_stderr_conflict/);
+  });
+  test(`v${full ? 2 : 1} packet retains unverified stderr without upgrading evidence`, async t => {
+    const f = await fixture(t, { full });
+    await projectJourney({ ...f, ...(full ? { scope: 'full' } : {}) });
+    const p = await readPacket(f);
+    p.journey_status = 'failed'; p.failure_recorded = true;
+    const row = p.features[0];
+    row.reported_cleanup = structuredClone(row.cleanup);
+    Object.assign(row, { verification: 'failed', product_exit: null, reported_product_exit: 0, product_status: 'unknown', cleanup: { status: 'unknown', fixture_removed: null, descendant_termination: 'not_attested' } });
+    const stderr = Buffer.from('diagnostic from unverified execution\n');
+    Object.assign(p.references.find(r => r.id === 'healthy.product.stderr'), { bytes: stderr.length, sha256: sha256(stderr) });
+    p.streams.find(s => s.id === 'healthy.product.stderr').omitted_bytes = stderr.length;
+    await put(join(f.output, 'packet.json'), p); await resealPacket(f.output);
+    const before = await readFile(join(f.output, 'packet.json'));
+    assert.equal((await checkPacket(f.output)).status, 'valid');
+    assert.deepEqual(await readFile(join(f.output, 'packet.json')), before);
+    assert.equal(p.features[0].verification, 'failed');
+    assert.equal(p.features[0].cleanup.status, 'unknown');
+  });
+}

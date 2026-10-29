@@ -238,6 +238,7 @@ export function validatePacket(p) {
     if (s.id.endsWith('.stderr')) check(s.selected_lines.length === 0, 'stderr_not_projected');
     const feature = p.features.find(f => s.id.startsWith(f.case_id + '.'));
     if (feature.verification === 'passed') {
+      if (s.id.endsWith('.stderr')) check(refs.get(s.id).bytes === 0, 'passed_stderr_conflict');
       const id = feature.case_id;
       if (full && s.id.endsWith('.stdout')) {
         const policy = POLICIES[id];
