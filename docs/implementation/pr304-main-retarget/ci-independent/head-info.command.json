@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "git",
+    "show",
+    "-s",
+    "--format=%H %T %P %s",
+    "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9"
+  ],
+  "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+  "exit_code": 0,
+  "sha256": "6ca0e1bc28af12c2cb4b9573d0978cf1ce0b75ec6eadc83331f9058aec593f47"
+}

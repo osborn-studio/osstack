@@ -25,7 +25,7 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+  "main_sha": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
   "observed_at": "2026-10-29T05:24:40.943500+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
@@ -4523,7 +4523,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "ready_waiting_user_merge",
+    "status": "merged",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "card": "card_0e19c3c2",
     "primary_j": "J04",
@@ -4564,12 +4564,13 @@
       "parser_note": "Initial parser missed literal caret ANSI notation; zero-row result invalid, corrected before publication. Original retained.",
       "independent_report_sha256": "1128d169566fb326e7952f6dbdcc4b57ab47822cc959d698879f008df3976c81",
       "tested_object": "GitHub synthetic merge b2d2085e, not direct head checkout"
-    }
+    },
+    "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7"
   },
   "full_journey_slice": {
-    "status": "ci_pass_waiting_parent303_merge_and_retarget",
+    "status": "merged",
     "card": "card_ddf5e661",
-    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "base_main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
     "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
     "scope": "optional full five-case journey; default two-case remains compatible",
     "primary_j": "J03",
@@ -4616,9 +4617,9 @@
     "audit": "actual claude-sonnet-5-5 staticPASS",
     "record": "docs/implementation/method-full-journey/README.md",
     "pr": 304,
-    "base_branch": "codex/method-material-delivery",
-    "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
-    "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
+    "base_branch": "main",
+    "published_head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+    "followup": "User gilberthello approves/merges304; then actual-main retarget and revalidate305.",
     "all_workers_handed_off": true,
     "ci_final": {
       "run": 40835326104,
@@ -4633,7 +4634,41 @@
       "export_passed": 93,
       "export_skipped": 1,
       "tested_merge": "0b05194ae064388f96a86a8569a2967248225eb2"
-    }
+    },
+    "historical_pre_retarget": {
+      "status": "ci_pass_waiting_parent303_merge_and_retarget",
+      "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
+      "base_branch": "codex/method-material-delivery",
+      "ci_final": {
+        "run": 40835326104,
+        "head": "185d283af23683ad084f81a6b049fcaab251a68f",
+        "success_checks": 5,
+        "paid": "skipped",
+        "packages": 22,
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0,
+        "export_total": 94,
+        "export_passed": 93,
+        "export_skipped": 1,
+        "tested_merge": "0b05194ae064388f96a86a8569a2967248225eb2"
+      }
+    },
+    "retarget_ci": {
+      "run": 40855140718,
+      "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+      "success_checks": 5,
+      "paid": "skipped",
+      "log_report": "docs/implementation/pr304-main-retarget/ci-independent/report.json",
+      "package_totals": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "actual_checkout": "0eea55e38b895805e35411e483e174a807624c6a",
+      "artifact_rehashed": false
+    },
+    "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681"
   },
   "full_projection_slice": {
     "status": "draft_ci_running_parent304",
@@ -4676,14 +4711,20 @@
     "base_branch": "codex/method-full-journey-delivery",
     "ci_run": 40839214482,
     "all_workers_handed_off": true,
-    "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference."
+    "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference.",
+    "current_publication": {
+      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "base": "main",
+      "state": "draft_final_docs_ci_pending",
+      "ci_run": 40912894527
+    }
   },
   "current_packet_repair": {
     "observed_at": "2026-10-29T08:43:38.541626+00:00",
     "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "candidate_base": "856bec1deaa720425d8b475793f9dd75e1364288",
     "card_id": "card_440af690",
-    "state": "reviewed_repair_publication_pending",
+    "state": "ci_passed_waiting_parent_merge_and_main_revalidation",
     "task": "Reject internally contradictory passed packet with nonempty product stderr; retain legitimate failed packets and v1/v2 compatibility",
     "source": "current main v1 and provisional full v2; not an old historical repair replay",
     "owners": {
@@ -4737,6 +4778,382 @@
       "run": 40839214482,
       "status": "5SUCCESS/paidSKIP",
       "scope": "22packages7142pass7skip0fail; does not validate new681repair"
+    },
+    "status": "ci_passed_waiting_parent_merge_and_main_revalidation",
+    "published_head": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+    "published_pr": 305,
+    "base": "codex/method-full-journey-delivery",
+    "published_ci": {
+      "head": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+      "run": 40845007211,
+      "status": "completed",
+      "conclusion": "success",
+      "applicable_checks": 5,
+      "paid_smoke": "skipped",
+      "base": "codex/method-full-journey-delivery",
+      "ready": false
+    },
+    "publication_receipt": "docs/implementation/pstack-current-repair/publication/published-candidate.json",
+    "ci_observed_at": "2026-10-29T09:23:47.620613+00:00",
+    "publication_plan": "Published in PR305; new-head CI passed; waiting parent304 merge then actual-main retarget and applicable revalidation before Ready",
+    "ci_receipt": "docs/implementation/pstack-current-repair/ci-complete/status.json",
+    "card_status": "blocked_parent_merge",
+    "ci_log_verification": {
+      "report": "docs/implementation/pstack-current-repair/ci-complete/independent/report.json",
+      "report_sha256": "b5b83525a590af5922985fa04d37f73b44ad5bd07017576af5b1bde9f572d3e0",
+      "actual_checkout": "c2c533b1d9ff823201434104146d2ad2465143e1",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_tests": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1
+      },
+      "artifacts_rehashed": false
+    },
+    "current_publication": {
+      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "base": "main",
+      "state": "draft_final_docs_ci_pending",
+      "ci_run": 40912894527
     }
+  },
+  "main_observed_at": "2026-10-29T16:28:33.165608+00:00",
+  "pr304_main_retarget": {
+    "observed_at": "2026-10-29T10:09:34.304403+00:00",
+    "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+    "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+    "same_tree_as_original_185d": true,
+    "actual_review_model": "claude-sonnet-5-5",
+    "review_status": "actual_static_PASS",
+    "primary_j": "J03",
+    "supports": [
+      "J06",
+      "J09"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS09"
+    ],
+    "formal_gate_pass": false,
+    "targeted_passed": 200,
+    "docs_passed": 241,
+    "hygiene_passed": 1,
+    "actual_default_full": "passed; defaultprojection/check0, fullrejected1 fixed_case_set withoutoutput orinputchange",
+    "record": "docs/implementation/pr304-main-retarget/README.md",
+    "archive_sha256": "7fca30cfff7b38a92f5191700b03df44eac7a7b291867733dcdc9f5907f39cab",
+    "status": "merged",
+    "ci": {
+      "run": 40855140718,
+      "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+      "success_checks": 5,
+      "paid": "skipped",
+      "log_report": "docs/implementation/pr304-main-retarget/ci-independent/report.json",
+      "package_totals": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "actual_checkout": "0eea55e38b895805e35411e483e174a807624c6a",
+      "artifact_rehashed": false
+    },
+    "ready_receipt": "docs/implementation/pr304-main-retarget/ready-receipt.json",
+    "ready_observed_at": "2026-10-29T10:32:52.230584+00:00",
+    "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+    "merged_at": "2026-10-29T16:24:29Z"
+  },
+  "pr305_main_retarget": {
+    "observed_at": "2026-10-29T16:28:33.165608+00:00",
+    "main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+    "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+    "same_tree_as_original_52f": true,
+    "primary_j": "J07",
+    "supports": [
+      "J03",
+      "J23"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "status": "local_validated_audit_passed_waiting_final_ci",
+    "ci_run": 40912894527,
+    "formal_gate_pass": false,
+    "record": "docs/implementation/pr305-main-retarget/README.md",
+    "code_sha": "6f79d125711e898862786fc0268ec20b0b89f24b",
+    "head_delta": "three documentation files only; packet boundary, historical v1 checker distinction, actual main addendum, original test count breakdown and EOF whitespace",
+    "targeted_passed": 239,
+    "docs_passed": 241,
+    "hygiene_passed": 1,
+    "post_docs_export_passed": 94,
+    "review_status": "actual claude-sonnet-5-5 static PASS; doc closure REVISE for accidental grammar splice then limited closure PASS atb0",
+    "actual_default_full": "journey/project/check all0; product0/1 and0/1/2/1/0; v1/v2 passed-stderr conflicts rejected and failed controls retained; original hashes unchanged",
+    "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c"
+  },
+  "maintenance_map_slice": {
+    "status": "validated_waiting_publication",
+    "card": "card_b8d97bff",
+    "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+    "primary_j": "J06",
+    "supports": [
+      "J03",
+      "J09"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS09"
+    ],
+    "new_methods": 0,
+    "runtime_enabled": false,
+    "formal_gate_pass": false,
+    "scope": "fixed full-five persistent-map correspondence; reuse runJourney; no automatic bless or source-drift diagnosis",
+    "owner": "joint-entry",
+    "depends_on_pr305": false,
+    "criteria_sha256": "8f6d3ad0eb56b07abcbc624ac7146868eb9d8a42c7c1fefbb1dd40130a1fea28",
+    "author_sha": "671f9d7eccd40be299e7c6183c4b78089607fd87",
+    "root_code_sha": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+    "record": "docs/implementation/skills-check-map-maintenance",
+    "targeted": {
+      "passed": 263,
+      "failed": 0,
+      "maintenance_tests": 24
+    },
+    "full": {
+      "packages": 22,
+      "passed": 7144,
+      "failed": 0,
+      "skipped": 5,
+      "rows": [
+        {
+          "package": "packages/contracts",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/contracts test:       Tests  15 passed (15)"
+        },
+        {
+          "package": "packages/compliance",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/compliance test:       Tests  17 passed (17)"
+        },
+        {
+          "package": "packages/github",
+          "passed": 107,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/github test:       Tests  107 passed (107)"
+        },
+        {
+          "package": "packages/knowledge",
+          "passed": 44,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/knowledge test:       Tests  44 passed (44)"
+        },
+        {
+          "package": "packages/runtime",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/runtime test:       Tests  1 passed (1)"
+        },
+        {
+          "package": "packages/neat-eval",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/neat-eval test:       Tests  16 passed (16)"
+        },
+        {
+          "package": "packages/protocol",
+          "passed": 1012,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/protocol test:       Tests  1012 passed (1012)"
+        },
+        {
+          "package": "packages/governance",
+          "passed": 301,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/governance test:       Tests  301 passed (301)"
+        },
+        {
+          "package": "packages/knowledge-cloud",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/knowledge-cloud test:       Tests  36 passed (36)"
+        },
+        {
+          "package": "packages/graph",
+          "passed": 257,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/graph test:       Tests  257 passed (257)"
+        },
+        {
+          "package": "packages/core",
+          "passed": 1301,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/core test:       Tests  1301 passed (1301)"
+        },
+        {
+          "package": "packages/plugins",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/plugins test:       Tests  1 passed (1)"
+        },
+        {
+          "package": "packages/hermes-adapter",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/hermes-adapter test:       Tests  22 passed (22)"
+        },
+        {
+          "package": "packages/skills",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/skills test:       Tests  2 passed (2)"
+        },
+        {
+          "package": "packages/autonomy",
+          "passed": 201,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/autonomy test:       Tests  201 passed (201)"
+        },
+        {
+          "package": "packages/skill-registry",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/skill-registry test:       Tests  43 passed (43)"
+        },
+        {
+          "package": "packages/agents",
+          "passed": 361,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/agents test:       Tests  361 passed (361)"
+        },
+        {
+          "package": "packages/config",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/config test:       Tests  30 passed (30)"
+        },
+        {
+          "package": "packages/loop",
+          "passed": 515,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/loop test:       Tests  515 passed (515)"
+        },
+        {
+          "package": "packages/conformance",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/conformance test:       Tests  9 passed (9)"
+        },
+        {
+          "package": "packages/supervisor",
+          "passed": 88,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/supervisor test:       Tests  88 passed (88)"
+        },
+        {
+          "package": "packages/cli",
+          "passed": 2765,
+          "failed": 0,
+          "skipped": 5,
+          "line": "packages/cli test:       Tests  2765 passed | 5 skipped (2770)"
+        }
+      ]
+    },
+    "full_binding": {
+      "head": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+      "started": "2026-10-29T16:47:51.808227+00:00",
+      "finished": "2026-10-29T16:56:12.989263+00:00",
+      "dirty_before": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+      "exit_code": 0,
+      "tracked_bytes_unchanged": true,
+      "tracked_count": 8471,
+      "changed_paths": []
+    },
+    "actual_root": {
+      "head": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+      "runs": [
+        {
+          "phase": "red",
+          "command": [
+            "pnpm",
+            "smoke:skills-map",
+            "--map",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/active-map.json",
+            "--output",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/actual-red"
+          ],
+          "exit": 1,
+          "status": "mismatch",
+          "map_sha256": "c20edff55bc6c893cd63f90d6d2a9f0760470fe7d56c5404ab2374e0c1c3963c",
+          "map_unchanged": true,
+          "product_exits": [
+            0,
+            1,
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "phase": "green",
+          "command": [
+            "pnpm",
+            "smoke:skills-map",
+            "--map",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/active-map.json",
+            "--output",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/actual-green"
+          ],
+          "exit": 0,
+          "status": "consistent",
+          "map_sha256": "f154e528e71e90ec3624368f400f1f877227491ea87c5d998bfe6ba7b9103531",
+          "map_unchanged": true,
+          "product_exits": [
+            0,
+            1,
+            2,
+            1,
+            0
+          ]
+        }
+      ],
+      "only_correction": "missing-ref expected_product_exit 0 to 1",
+      "classification": "explicit injected map drift; not spontaneous product bug"
+    },
+    "audit": "actual Sonnet 5.5 REVISE; diagnostic findings repaired and closed; conditional CI finding disproved by actual helper source then limited closure PASS; originals retained",
+    "archive": {
+      "sha256": "bebda658b5adff1de4de2fbd133bab9a372220b2a95d7cb24cc666b44f787886",
+      "payload_members": 1215,
+      "files": 1214,
+      "symlinks": 1,
+      "file_bytes": 21119793,
+      "manifest_sha256": "6a2db6a1fc86c76255b67d7eb16b9fcc88199dff111024fe3b892a30af6f136f",
+      "verification": "all members type/mode/hash/size or symlink target matched"
+    },
+    "whole_capability_complete": false
   }
 }

@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--no-renames",
+    "--name-status",
+    "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+    "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9"
+  ],
+  "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+  "exit_code": 0,
+  "sha256": "35ceb32dc8838995de42b294128318878dae18afca51ca067054453beb3ab7e0"
+}

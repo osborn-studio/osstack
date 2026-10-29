@@ -1,0 +1,19 @@
+{
+  "diff_endpoints": [
+    "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+    "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9"
+  ],
+  "new_main_ancestor": true,
+  "all_18_path_diff_identical_to_old_base_head": true,
+  "full_diff_sha256": "0b879e7faad7f74afae66717b9c355f634a1d74b26f1e62c30144a113332a6df",
+  "audit_diff_filter": [
+    "scripts",
+    "osstack-methods-skill",
+    ".github/workflows/ci.yml"
+  ],
+  "readme_supplied_separately": {
+    "git_path": "docs/implementation/method-full-journey/README.md",
+    "sha256": "11e3b760827bbe61f65876b361dc6d3be1c9ec9ff1f13aef76065811c3d39b87"
+  },
+  "audit_evidence_adjudication": "README absence from filtered diff is expected, not absence from Git; six full source files were separately bound. Actual journey and projection proof supplied by validation task. Full CI remains required. Optional key order/raw command reason suggestions retained, no confirmed defect or source change."
+}

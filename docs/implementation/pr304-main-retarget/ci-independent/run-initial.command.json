@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/opt/homebrew/bin/gh",
+    "run",
+    "view",
+    "40855140718",
+    "--repo",
+    "osborn-studio/osstack",
+    "--json",
+    "status,conclusion,headSha,jobs,url"
+  ],
+  "exit_code": 0,
+  "at": "2026-10-29T10:09:35.758140+00:00",
+  "stdout_sha256": "a6aa5a442d3b915aaea1f486cf2422bfadbda50fed8c91be9bc27a55e41cf4ee"
+}

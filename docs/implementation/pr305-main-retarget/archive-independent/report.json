@@ -1,0 +1,144 @@
+{
+  "at": "2026-10-29T16:37:28.778652+00:00",
+  "review_type": "independent archive byte/metadata verification; author of prior6f test execution, no independent test reexecution claimed",
+  "archive": {
+    "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr305-retarget-ledger/docs/implementation/pr305-main-retarget/raw-verification.tar.gz",
+    "sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c",
+    "compressed_bytes": 31174534,
+    "payload_members": 429,
+    "all_tar_members": 430,
+    "payload_bytes": 43823248,
+    "manifest_sha256": "a9b6edcf378c2fb9b200cf6fc7823c88b451cdf952ffdc1bf67e2dcb931d44bd",
+    "all_payload_hash_size_mode_match": true,
+    "safe_unique_regular_members": true
+  },
+  "audits": [
+    {
+      "directory": "audit",
+      "verdict": "PASS",
+      "report_sha256": "c1555a2f93be5535568ef59e5a1700f36f2b11361ce5bb7bb7877b5ec7d99bdc",
+      "response_sha256": "3917acf6faa4afbe725101f2b3af60125fc04347563fcaee7131fa99e9623acc",
+      "input_sha256": "c47f93f8512505777cc3eb4754bcb2086facadcec450fe63718968a6651be714",
+      "started": "2026-10-29T16:26:35.124335+00:00",
+      "finished": "2026-10-29T16:29:50.370524+00:00",
+      "model_usage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "static_read_only": true
+    },
+    {
+      "directory": "audit-closure",
+      "verdict": "REVISE",
+      "report_sha256": "e84bdde792feafabb79baaa5ef892468da292977759820d4e672b46aa7c7f425",
+      "response_sha256": "89904544e11f6df2073c93572681a17d90742bf6573a1e24dfc4dcf95539c3ec",
+      "input_sha256": "b166d2da746fb909cd5a4e00ec652f3cf0fb3a8160b08831f1353b1f254fa912",
+      "started": "2026-10-29T16:32:55.382445+00:00",
+      "finished": "2026-10-29T16:33:26.183363+00:00",
+      "model_usage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "static_read_only": true
+    },
+    {
+      "directory": "audit-closure-final",
+      "verdict": "PASS",
+      "report_sha256": "267c7e06aae3ee19c024d3016bd4310c87c7e723a92fb6c2d75c160ec8b9ba43",
+      "response_sha256": "484acc8837fb77b1439cac40a68698045000decd810d3a58facda5a68c948080",
+      "input_sha256": "9df0aaedc2e2df36af1a636bcec747c49ec5221fe5f5141bee09f5cdf82389db",
+      "started": "2026-10-29T16:34:14.001366+00:00",
+      "finished": "2026-10-29T16:34:32.999898+00:00",
+      "model_usage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "static_read_only": true
+    }
+  ],
+  "validation_binding": {
+    "sha": "6f79d125711e898862786fc0268ec20b0b89f24b",
+    "summary_sha256": "3cea818236ab5c09b9ff9b9adbc3e2dcc9f27fde3e8a96821e5ac2b6ed71abf2",
+    "manifest_sha256": "bfd739891a1361c7d5a62baabe5787447a7378ff6484db30c6c97e12a0666335",
+    "nested_members_verified": 357,
+    "test_counts": {
+      "journey-tests": {
+        "tests": 43,
+        "pass": 43,
+        "fail": 0,
+        "skipped": 0
+      },
+      "projector-tests": {
+        "tests": 88,
+        "pass": 88,
+        "fail": 0,
+        "skipped": 0
+      },
+      "export-tests": {
+        "tests": 94,
+        "pass": 94,
+        "fail": 0,
+        "skipped": 0
+      },
+      "reader-tests": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    "fresh_ci_not_inferred": true
+  },
+  "docs_only_commits": [
+    {
+      "commit": "d0c77fbcf90e31aab7bfcc4599b97c3ef7e2d3ca",
+      "paths": [
+        "docs/implementation/method-full-projection/README.md",
+        "osstack-methods-skill/references/maintain-verification.md",
+        "osstack-methods-skill/references/skills-check-journey.md"
+      ],
+      "diff_sha256": "9f16f36fba4c8f1007bda6b14addc99c9be23b9fc275a30c005d8c604bcb6fa1",
+      "classification": "documentation only, method reference prose included; not product test rerun"
+    },
+    {
+      "commit": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "paths": [
+        "docs/implementation/method-full-projection/README.md",
+        "osstack-methods-skill/references/maintain-verification.md"
+      ],
+      "diff_sha256": "98c4f65fe642fc71e6c58390b5b98895921279eba86e57ac6bc7eb48c5aae1c7",
+      "classification": "documentation only, method reference prose included; not product test rerun"
+    }
+  ],
+  "outside_archive_docs_export_logs": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr305-main-retarget-20261030/control/docs-export.log",
+      "bytes": 21569,
+      "sha256": "7320b2c23e80615effe57dea390d2e25da990c093453581ebe5016498be18393",
+      "counts": {
+        "tests": 94,
+        "pass": 94,
+        "fail": 0,
+        "skipped": 0
+      },
+      "inside_this_archive": false,
+      "binding_limit": "Log bytes confirm counts; own log does not independently encode the doc candidate SHA. Root context associates docs-only reruns; raw log preservation is pending separate collection."
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr305-main-retarget-20261030/control/docs-export-final.log",
+      "bytes": 21569,
+      "sha256": "0b2aea0c54f58f8bad711ea65da3c52e10ed7a3c307959150103872500a55c6e",
+      "counts": {
+        "tests": 94,
+        "pass": 94,
+        "fail": 0,
+        "skipped": 0
+      },
+      "inside_this_archive": false,
+      "binding_limit": "Log bytes confirm counts; own log does not independently encode the doc candidate SHA. Root context associates docs-only reruns; raw log preservation is pending separate collection."
+    }
+  ],
+  "limits": [
+    "No model, product, tests, network or CI reruns. Prior executions remain at original SHA.",
+    "PASS\u2192REVISE\u2192PASS documents audit chronology; middle REVISE was introduced prose splice, not withdrawal of source/CI PASS.",
+    "Scoped final PASS reads two doc hunks only; no independent model/provider attestation.",
+    "Only tar members/manifest/mode and selected payload bindings verified; no claim all repository documents or future CI are covered."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "recorded_at": "2026-10-29T16:44:54.890386+00:00",
+  "run": 40911455127,
+  "superseded_head": "6f79d125711e898862786fc0268ec20b0b89f24b",
+  "final_head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+  "final_run": 40912894527,
+  "reason": "Ordinary cancellation left always() check running; force-cancel superseded candidate to release final-head concurrency queue. No observed test failure is being retried."
+}

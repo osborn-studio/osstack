@@ -1,0 +1,76 @@
+{
+  "files": [
+    {
+      "path": "full.command.json",
+      "bytes": 390,
+      "mode": 420,
+      "sha256": "c4a6642e8b6a0b626afc3b4e3df1852a97e60a984e9acd5beb1c556204717699"
+    },
+    {
+      "path": "full.log",
+      "bytes": 2133460,
+      "mode": 420,
+      "sha256": "fd6f3a60ef1ae533736918613e4f822216fb45e55b6b916d4eb03649618e2a5f"
+    },
+    {
+      "path": "full.stderr",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "parse.py",
+      "bytes": 5502,
+      "mode": 420,
+      "sha256": "37f495e0e2547124e59bf1ed451d308a76a0cb3d74c1bd42e706cef824a594f6"
+    },
+    {
+      "path": "pr.command.json",
+      "bytes": 466,
+      "mode": 420,
+      "sha256": "c7882e2bd0fa94adcfa59249b3b118c19b5d27a870f285f6b55296410c0f47fc"
+    },
+    {
+      "path": "pr.json",
+      "bytes": 2050,
+      "mode": 420,
+      "sha256": "5124b626ffb10c2ccca27fdb5436fb5dd5aa768a064f5a6f907f22fe41788a08"
+    },
+    {
+      "path": "pr.stderr",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "report.json",
+      "bytes": 19839,
+      "mode": 420,
+      "sha256": "b5b83525a590af5922985fa04d37f73b44ad5bd07017576af5b1bde9f572d3e0"
+    },
+    {
+      "path": "report.md",
+      "bytes": 1074,
+      "mode": 420,
+      "sha256": "725596e629711780154e5a14a0318173cabbd41f3d460a5d5b7b321ef0aef2de"
+    },
+    {
+      "path": "run.command.json",
+      "bytes": 459,
+      "mode": 420,
+      "sha256": "ab65ee010e24fd19c1231b98f6b060c957d044e2e1294cb25aa3d9481e502d4a"
+    },
+    {
+      "path": "run.json",
+      "bytes": 19995,
+      "mode": 420,
+      "sha256": "03b02ad1a3c2ea0b15b744add404e0496816474ff30a6fa13f3c14ba9c07ae10"
+    },
+    {
+      "path": "run.stderr",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

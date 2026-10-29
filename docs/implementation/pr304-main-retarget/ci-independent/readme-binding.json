@@ -1,0 +1,10 @@
+{
+  "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+  "path": "docs/implementation/method-full-journey/README.md",
+  "blob_oid": "b7355b42d6e22d49607218a70d9d46b198f139e9",
+  "sha256": "11e3b760827bbe61f65876b361dc6d3be1c9ec9ff1f13aef76065811c3d39b87",
+  "bytes": 3675,
+  "whole_pr_diff_name_status": "new-vs-main.txt",
+  "whole_pr_path_count": 18,
+  "scope_note": "A filtered scripts/skills/CI diff is not the complete PR diff. README is an actual tracked blob separately accessible; absence from that filtered view is not evidence of a missing product artifact."
+}

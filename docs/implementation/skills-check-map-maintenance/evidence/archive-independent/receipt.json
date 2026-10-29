@@ -1,0 +1,238 @@
+{
+  "status": "verified",
+  "archive_sha256": "bebda658b5adff1de4de2fbd133bab9a372220b2a95d7cb24cc666b44f787886",
+  "payload_members": 1215,
+  "files": 1214,
+  "symlinks": [
+    {
+      "path": "independent/validation/map-link.json",
+      "target": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr305-main-retarget-20261030/maintenance-independent/validation/reordered-map.json",
+      "extraction_warning": "absolute test symlink intentionally stored; verified without extracting or following"
+    }
+  ],
+  "file_bytes": 21119793,
+  "archive_manifest_sha256": "6a2db6a1fc86c76255b67d7eb16b9fcc88199dff111024fe3b892a30af6f136f",
+  "all_payload_matches_live_frozen_originals": true,
+  "audits": [
+    {
+      "name": "audit",
+      "report_sha256": "97190303b95ed63d60b56fb898238cdfec853e2e689894668ada5d782ee305d9",
+      "verdict_line": "# Verdict: REVISE (small, non-blocking fixes)"
+    },
+    {
+      "name": "audit-closure",
+      "report_sha256": "04fbb45ee37da6fe70cfc7cc73282a8bed32b47ea2e99a042d3036666565cc7b",
+      "verdict_line": "# Verdict: REVISE (one CI item), with source and test closure at PASS"
+    },
+    {
+      "name": "audit-closure-final",
+      "report_sha256": "f25cc15b02668afe6e333df7533ed8b97388069b53e6a9e570d6a59cfc8dc09b",
+      "verdict_line": "# Verdict: PASS (closure of the conditional CI finding only)"
+    }
+  ],
+  "full": {
+    "head": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+    "packages": [
+      {
+        "package": "packages/contracts",
+        "passed": 15,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/compliance",
+        "passed": 17,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/github",
+        "passed": 107,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/knowledge",
+        "passed": 44,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/runtime",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/neat-eval",
+        "passed": 16,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/protocol",
+        "passed": 1012,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/governance",
+        "passed": 301,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/knowledge-cloud",
+        "passed": 36,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/graph",
+        "passed": 257,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/core",
+        "passed": 1301,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/plugins",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/hermes-adapter",
+        "passed": 22,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/skills",
+        "passed": 2,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/autonomy",
+        "passed": 201,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/skill-registry",
+        "passed": 43,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/agents",
+        "passed": 361,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/config",
+        "passed": 30,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/loop",
+        "passed": 515,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/conformance",
+        "passed": 9,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/supervisor",
+        "passed": 88,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/cli",
+        "passed": 2765,
+        "skipped": 5,
+        "failed": 0
+      }
+    ],
+    "totals": {
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "tracked_bytes_equal_count": 8471,
+    "preexisting_dirty": [
+      "packages/knowledge/dist/index.d.ts",
+      "packages/knowledge/dist/index.d.ts.map",
+      "packages/knowledge/dist/index.js",
+      "packages/knowledge/dist/index.js.map"
+    ]
+  },
+  "root_alias_runs": [
+    {
+      "phase": "red",
+      "exit": 1,
+      "status": "mismatch",
+      "bindings": {
+        "source_digest": "4d11341058409125faaf01bb10defd34ef9f1de58092b1ceff2df948fcc7dff5",
+        "build_digest": "1e510e0d38e6e4b186af2356bc08a62ca85a76db912cd05370544eedfeaae6f2"
+      },
+      "fixtures_observed_absent": 5
+    },
+    {
+      "phase": "green",
+      "exit": 0,
+      "status": "consistent",
+      "bindings": {
+        "source_digest": "4d11341058409125faaf01bb10defd34ef9f1de58092b1ceff2df948fcc7dff5",
+        "build_digest": "1e510e0d38e6e4b186af2356bc08a62ca85a76db912cd05370544eedfeaae6f2"
+      },
+      "fixtures_observed_absent": 5
+    }
+  ],
+  "map_only_delta": [
+    [
+      1,
+      "expected_product_exit",
+      0,
+      1
+    ]
+  ],
+  "nested_journey_manifests_verified": 12,
+  "source4cc_equals671": [
+    {
+      "path": "scripts/maintain-skills-check-map.mjs",
+      "sha256": "b95ddd7ce3d2fd1ea25a1e8bb5032944987be778f1d5b82ff29e34b59ccdecf0"
+    },
+    {
+      "path": "scripts/maintain-skills-check-map.test.mjs",
+      "sha256": "7b582715e8ec8d6479782aa7bdadee6bef3c34c6690a920c0ec2d0d03e962d49"
+    },
+    {
+      "path": "docs/implementation/skills-check-map-maintenance/map.json",
+      "sha256": "c1ab436209c3857822b74aebadf914761524f9de645177b20f502cac560e96d8"
+    },
+    {
+      "path": "docs/implementation/skills-check-map-maintenance/README.md",
+      "sha256": "da8e0e49de86fc1c14b2ad99039691c0dad24b446a7eb87f975e48a62ebb3766"
+    }
+  ],
+  "limits": [
+    "No tests/models rerun.",
+    "Stored absolute test symlink verified as link metadata, not extracted/followed.",
+    "Author8ed actual runs remain bound8ed; root alias runs bind4cc, not retroactive author rebinding.",
+    "Initial REVISE, source closure with conditional CI REVISE, and final conditional-only PASS remain raw and unchanged.",
+    "Byte/source/build equality is not authenticated compilation, fixture absence is not all-descendant termination."
+  ]
+}

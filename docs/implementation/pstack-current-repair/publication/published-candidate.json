@@ -1,0 +1,78 @@
+{
+  "at": "2026-10-29T08:50:15.648315+00:00",
+  "pr": {
+    "baseRefName": "codex/method-full-journey-delivery",
+    "headRefOid": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+    "isDraft": true,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T08:50:06Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40845007211/job/123350236424",
+        "name": "Paid DeepSeek semantic smoke",
+        "startedAt": "2026-10-29T08:50:06Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40845007211/job/123350234584",
+        "name": "graph-macos-fixtures (22)",
+        "startedAt": "2026-10-29T08:50:09Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40845007211/job/123350234851",
+        "name": "graph-macos-fixtures (24)",
+        "startedAt": "2026-10-29T08:50:10Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40845007211/job/123350234931",
+        "name": "graph-runtime-matrix (20.6.0)",
+        "startedAt": "2026-10-29T08:50:08Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40845007211/job/123350234965",
+        "name": "graph-runtime-matrix (22.23.1)",
+        "startedAt": "2026-10-29T08:50:08Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "CI"
+      }
+    ],
+    "url": "https://github.com/osborn-studio/osstack/pull/305"
+  },
+  "runs": [
+    {
+      "conclusion": "",
+      "databaseId": 40845007211,
+      "headSha": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+      "status": "in_progress",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40845007211"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 40839214482,
+      "headSha": "856bec1deaa720425d8b475793f9dd75e1364288",
+      "status": "completed",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40839214482"
+    }
+  ]
+}

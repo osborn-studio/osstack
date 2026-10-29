@@ -304,4 +304,13 @@ PS01/08/20 now have a bounded readonly material-reader candidate and updated exi
 
 ## Current packet repair (2026-10-29)
 
-[实际修复与证据](../../implementation/pstack-current-repair/README.md)：确认当前主线v1及候选v2的passed/nonempty-stderr矛盾漏检，采纳Codex实际一行修复，新增9个仓库回归。239项定向检查通过；代码681cf6e9全仓7144通过/5跳过/0失败，运行期间tracked字节不变，包含新鲜生成dist与已有账本工作改动，不称干净提交树。Sonnet5.5初审和限定报告复审PASS。Codex完成同测试RED→修复→GREEN；Claude六次基线后，首次复合源码读取执行、第二次被拒后停止，没有修复，也不追溯增加源码读取禁令。两宿主19必读文件（含16材料页）均完整送达，不等于理解或收益证明。修复准备追加至Draft #305，需新head CI及parent304合并/main重验后才可Ready；4入口/14方法、正式J门槛不变。
+[实际修复与证据](../../implementation/pstack-current-repair/README.md)：确认当前主线v1及候选v2的passed/nonempty-stderr矛盾漏检，采纳Codex实际一行修复，新增9个仓库回归。239项定向检查通过；代码681cf6e9全仓7144通过/5跳过/0失败，运行期间tracked字节不变，包含新鲜生成dist与已有账本工作改动，不称干净提交树。Sonnet5.5初审和限定报告复审PASS。Codex完成同测试RED→修复→GREEN；Claude六次基线后，首次复合源码读取执行、第二次被拒后停止，没有修复，也不追溯增加源码读取禁令。两宿主19必读文件（含16材料页）均完整送达，不等于理解或收益证明。修复已发布至Draft #305（52f16faf），CI40845007211五项适用检查成功；仍需parent304合并/main重验后才可Ready；4入口/14方法、正式J门槛不变。
+
+
+## PR304 合并后的 PR305 重验（2026-10-30，上海时间）
+
+已核实304合入main5248195b，合并树与已验证7ef相同。305已改main并合成6f79d125，树等旧52f。root管理PR与账本，B负责fresh适用验证，C独立核Git与CI，A只读核对可复用维护下一切片；实际Sonnet审计与新head CI尚在进行。旧CI不能替代本轮；正式资格与宿主旧失败不改。
+
+### Fixed-map maintenance candidate after PR304 merge
+
+`card_b8d97bff`: author8ed→671f; root4cc8ff7e, primaryJ06 / PS09, supportsJ03/J09/PS08. Real injected map RED1→map-only correction→GREEN0; initial actual8ed and final root4cc remain separately bound. Five new diagnostic regressions were RED before repair; 24 maintenance tests and root263 targeted passed. Full4cc22packages7144/5/0 with fresh4dist, trackedbytes unchanged. Original audit/independent omission/conditional CI concern and source-backed closure all retained in `docs/implementation/skills-check-map-maintenance/evidence`. No new native host experiment or named method.

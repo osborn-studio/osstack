@@ -1,0 +1,30 @@
+commit b0ea4e7836dd4be640b4f7c140befba73977837d
+Author:     gilosbornhello <osbornhello@gmail.com>
+AuthorDate: Thu Oct 29 09:34:03 2026 -0700
+Commit:     gilosbornhello <osbornhello@gmail.com>
+CommitDate: Thu Oct 29 09:34:03 2026 -0700
+
+    docs(methods): correct maintenance wording and test binding
+
+diff --git a/docs/implementation/method-full-projection/README.md b/docs/implementation/method-full-projection/README.md
+index 830d5ca2..32ab297a 100644
+--- a/docs/implementation/method-full-projection/README.md
++++ b/docs/implementation/method-full-projection/README.md
+@@ -50,6 +50,6 @@ Final documentation validation: 241 tests passed; repository hygiene: one test p
+ 
+ ## Actual-main integration update
+ 
+-PR304 is now merged at `5248195bd2611cc21a98a0ef3e39d229cdf9b681`. The main-retarget candidate `6f79d125711e898862786fc0268ec20b0b89f24b` has the same tree as the previously published `52f16faf9fdb73e0f8e815e8ee6987297c67d4da`; the observations above remain historical. Fresh local checks passed: 239 focused tests, 241 document checks, repository hygiene, real default/full projection and packet checks, contradictory passed-stderr rejection and legitimate failed controls. Fresh published-head CI remains a separate condition.
++PR304 is now merged at `5248195bd2611cc21a98a0ef3e39d229cdf9b681`. The main-retarget candidate `6f79d125711e898862786fc0268ec20b0b89f24b` has the same tree as the previously published `52f16faf9fdb73e0f8e815e8ee6987297c67d4da`; the observations above remain historical. Fresh local checks passed: 239 focused tests, 241 document checks, repository hygiene, real default/full projection and packet checks, contradictory passed-stderr rejection and legitimate failed controls. These fresh local observations bind to `6f79d125` and are retained separately from the original 1,868-member archive. Fresh published-head CI remains a separate condition.
+ 
+ Valid v1 producer output remains unchanged. The later stderr-consistency repair intentionally makes the v1 and v2 checkers stricter: previously accepted malformed passed packets with nonempty stderr are rejected. The earlier statement about the unchanged v1 branch describes the cleanup-identity repair alone.
+diff --git a/osstack-methods-skill/references/maintain-verification.md b/osstack-methods-skill/references/maintain-verification.md
+index 2972564c..d477c779 100644
+--- a/osstack-methods-skill/references/maintain-verification.md
++++ b/osstack-methods-skill/references/maintain-verification.md
+@@ -21,4 +21,4 @@ The [skills-check journey](skills-check-journey.md) is a concrete five-case targ
+ 
+ The five product exits are 0, 1, 2, 1 and 0 respectively. Also check their meanings: one healthy source, one unreachable ref, one reachable but drifted source, three mixed sources with both failure and drift retained, and no sources. A driver exit 0 confirms the expected observation and evidence checks; it does not turn failure/drift into healthy, or make an empty configuration proof of source health. Inspect per-case cardinality, refs, blessed/current SHAs, raw output, input stability and cleanup. Do not maintain the map by exit codes alone.
+ 
+-The default `healthy`/`missing-ref` run still provides useful two-case evidence. Label it partial when the requested maintenance scope is all five; blocked or `not_run` rows remain missing coverage. Preserve the failed attempt and unknown cleanup when execution stops early. Full completion covers these five local fixture cases only, not all live sources or global behavior. Keep the full audit bundle unchanged. The default projector still refuses full-journey input and preserves its two-case version 1 contract. Use the explicit `--scope full` projection in the linked journey recipe for a five-case version 2 packet, then run `--check` without a scope option. Never omit rows or claim that a two-case packet represents all five. Packet checking validates only the packet and its own manifest; it does not reopen or revalidate the original evidence. This consistency check it does not replace the source review, actual drives and cleanup observations required for maintenance, or turn failed/unknown/not-run rows into passed ones.
++The default `healthy`/`missing-ref` run still provides useful two-case evidence. Label it partial when the requested maintenance scope is all five; blocked or `not_run` rows remain missing coverage. Preserve the failed attempt and unknown cleanup when execution stops early. Full completion covers these five local fixture cases only, not all live sources or global behavior. Keep the full audit bundle unchanged. The default projector still refuses full-journey input and preserves its two-case version 1 contract. Use the explicit `--scope full` projection in the linked journey recipe for a five-case version 2 packet, then run `--check` without a scope option. Never omit rows or claim that a two-case packet represents all five. Packet checking validates only the packet and its own manifest; it does not reopen or revalidate the original evidence. This consistency check does not replace the source review, actual drives and cleanup observations required for maintenance, or turn failed/unknown/not-run rows into passed ones.
