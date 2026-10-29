@@ -10774,7 +10774,7 @@
     "merged_at": "2026-10-29T17:49:32Z"
   },
   "pr_candidate_snapshot_slice": {
-    "status": "validated_pending_pr",
+    "status": "draft_ci_running",
     "card": "card_55808960",
     "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
     "capabilities": [
@@ -10850,6 +10850,10 @@
       "verification": "root all names/type/mode/hash/size/target verified"
     },
     "docs_passed": 241,
-    "hygiene_passed": 1
+    "hygiene_passed": 1,
+    "pr": 307,
+    "head_sha": "9d54cfdc658ac137ae9e95d08499aad77ec529f0",
+    "base_branch": "main",
+    "ci_run": 40926150260
   }
 }
