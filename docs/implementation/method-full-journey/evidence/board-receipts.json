@@ -1,0 +1,30 @@
+[
+  {
+    "comment_id": 641,
+    "card_id": "card_7d169d5f",
+    "author": "joint-entry",
+    "body": "card_ddf5e661五case旅程候选：默认2兼容，full实际0/1/2/1/0；186定向、独立7case+30反例观察/4失败seam、实际Sonnet静态PASS。候选6e4c6168，主贡献；14methods不增加，正式gate不变。待发布CI/用户merge。",
+    "created_at": 1793258637.446
+  },
+  {
+    "comment_id": 642,
+    "card_id": "card_2b7cc24a",
+    "author": "joint-entry",
+    "body": "card_ddf5e661五case旅程候选：默认2兼容，full实际0/1/2/1/0；186定向、独立7case+30反例观察/4失败seam、实际Sonnet静态PASS。候选6e4c6168，支持；14methods不增加，正式gate不变。待发布CI/用户merge。",
+    "created_at": 1793258637.447
+  },
+  {
+    "comment_id": 643,
+    "card_id": "card_63ad0321",
+    "author": "joint-entry",
+    "body": "card_ddf5e661五case旅程候选：默认2兼容，full实际0/1/2/1/0；186定向、独立7case+30反例观察/4失败seam、实际Sonnet静态PASS。候选6e4c6168，支持；14methods不增加，正式gate不变。待发布CI/用户merge。",
+    "created_at": 1793258637.447
+  },
+  {
+    "comment_id": 644,
+    "card_id": "card_ddf5e661",
+    "author": "joint-entry",
+    "body": "A/B代码docs和C独立验证已交接。实际default/full和旧projector兼容/拒绝通过，186相关测试和SonnetPASS；准备PR，依赖303发布分支，等待最终CI与main复核，不把候选标整体完成。",
+    "created_at": 1793258637.447
+  }
+]

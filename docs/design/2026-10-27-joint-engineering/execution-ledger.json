@@ -4553,7 +4553,7 @@
     "ci_run": 40833415091
   },
   "full_journey_slice": {
-    "status": "implementation_in_progress",
+    "status": "validated_pending_pr",
     "card": "card_ddf5e661",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
@@ -4590,6 +4590,16 @@
         "full regression",
         "actual Sonnet audit"
       ]
-    }
+    },
+    "author_code": "32a9a9e18fc0b415c18cf14ce42c9f4f6d98f0c8",
+    "author_docs": "08c48fcb5300f5263bc5a2f15ebd6a8bca87e8fc",
+    "candidate": "6e4c61689ee4b58ee52929519e9bdb95d6c3e0ea",
+    "targeted": "186 pass;43journey+49projection+94export",
+    "actual_sonnet": "static PASS;no confirmed blockers",
+    "criteria_sha256": "8d6f29e30219d1d1887b90e1f224089882485f484096b52eefd089d9538426f8",
+    "audit_model_calls": 1,
+    "independent": "actual2+5,projection compatibility/refusal,30 bounded observations,4failure seams",
+    "audit": "actual claude-sonnet-5-5 staticPASS",
+    "record": "docs/implementation/method-full-journey/README.md"
   }
 }
