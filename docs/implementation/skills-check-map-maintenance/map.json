@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "target": "skills-check-full",
+  "features": [
+    { "case_id": "healthy", "expected_product_exit": 0, "expected_product_status": "healthy" },
+    { "case_id": "missing-ref", "expected_product_exit": 1, "expected_product_status": "failed" },
+    { "case_id": "drift", "expected_product_exit": 2, "expected_product_status": "drift" },
+    { "case_id": "mixed", "expected_product_exit": 1, "expected_product_status": "failed" },
+    { "case_id": "empty", "expected_product_exit": 0, "expected_product_status": "empty" }
+  ]
+}
