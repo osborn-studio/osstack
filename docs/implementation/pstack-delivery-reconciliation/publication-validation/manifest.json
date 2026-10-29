@@ -1,8 +1,8 @@
 [
   {
-    "path": "publication-docs.log",
-    "sha256": "4f0b471c804927f037000be1fa7ee08352af49c7a548ca145733199795aa635e",
-    "bytes": 341
+    "path": "publication-docs.log.gz",
+    "sha256": "0b7e6a54b9f335b47dbc5f5e9750efa435c67e7d359a48286dab680130b6f42a",
+    "bytes": 57
   },
   {
     "path": "publication-generated-dist-hashes.json",
@@ -15,9 +15,9 @@
     "bytes": 2363
   },
   {
-    "path": "publication-hygiene.log",
-    "sha256": "9d40229009e6a771489207716bc2fc83d97fecc23505fa0e0b26216cacc2bfee",
-    "bytes": 362
+    "path": "publication-hygiene.log.gz",
+    "sha256": "317edd6d20121a84165b26f741d5e92001ab3e4e55a3d0dd2cef1bd2a5a02524",
+    "bytes": 282
   },
   {
     "path": "reconciliation-final-independent.json",
