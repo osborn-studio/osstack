@@ -11,3 +11,9 @@ Actual Claude CLI `claude-sonnet-5-5` static review returned PASS with optional 
 Raw verification archive SHA256: `f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c`;429 payload files/43,823,248 bytes verified against the embedded manifest by root. It contains the fresh local test records, Git proof, audit adjudication and all actual audits. Original historical archives are untouched. Post-doc export logs and final CI records are separate below.
 
 CI40912894527 for publishedb0 remains pending/running at this recording; PR stays Draft until all applicable checks pass. User retains approval/merge. Formal J01/J11 and whole PS qualifications remain unpassed.
+
+## Final readiness receipt
+
+Final head `b0ea4e7836dd4be640b4f7c140befba73977837d` passed CI40912894527: all five applicable checks succeeded, paid-provider smoke skipped. Root refreshed actual main5248195b, head/base and review state, then marked Ready and read back `isDraft: false`, `baseRefName: main`, `MERGEABLE`. No review approval or merge was performed. OSStack projection and repair cards are blocked only for user approval/merge; original failures and historical execution bindings remain unchanged. Final CI logs and independent parsing are retained alongside this receipt.
+
+CI check/Test independently parsed 22 unique package summaries: **7142 passed / 7 skipped / 0 failed**. Exporter94total=93pass+1skip (global Codex home absent); projection88/journey43/reader14 all pass. Actual checkout was synthetic merge `84046a712d524800d0f4e764523a9a6df049255f` of b0 into524. Default/full journey product outcomes and both projection/check pairs agree in the complete log. Root verified all11 final payloads and lossless log bytes; no remote artifact was downloaded or independently rehashed.

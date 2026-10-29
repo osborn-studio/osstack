@@ -1,0 +1,61 @@
+{
+  "files": [
+    {
+      "path": "run.json",
+      "bytes": 12958,
+      "sha256": "1a3945cc76711f820bbd16fbeb7e4cbd09234b271dfe1f5a7b8c1d15fa47be65"
+    },
+    {
+      "path": "jobs.json",
+      "bytes": 23838,
+      "sha256": "d1b2fbc651240bddd7793a36148b149c6fccae4df1d0d91ae967016dd2db798a"
+    },
+    {
+      "path": "pr-final.json",
+      "bytes": 1976,
+      "sha256": "d6dfa76e8b69e9d4f1b1067bb984378a30679c97dbaf5c0e4ce33de58a341d2f"
+    },
+    {
+      "path": "pr-final.command.json",
+      "bytes": 257,
+      "sha256": "528831e155398114a9d1ef56a42a2b49bb483c025d7464cb42a543c863284db5"
+    },
+    {
+      "path": "pr-final.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "complete-log.log.gz",
+      "bytes": 272316,
+      "sha256": "d1dd419a432d0ec65ae59bc3b54859d1f76fa837c9ab768be6cf551785f3acca"
+    },
+    {
+      "path": "complete-log.command.json",
+      "bytes": 247,
+      "sha256": "0176ee8226c78ea6f1abf3d296ca8f6fd00c8f8c5500f3259e1640b6e3648e14"
+    },
+    {
+      "path": "complete-log.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "report.json",
+      "bytes": 26696,
+      "sha256": "d6cdda72fe81c93b38f6c4b576d1c93ded86f60f2ed6ddeb2c618c1964e91dd9"
+    },
+    {
+      "path": "report.md",
+      "bytes": 2091,
+      "sha256": "3b739963598361dde0590b7d1c72ac08762a5759f2ce0ad962e5dd0be0b131fc"
+    },
+    {
+      "path": "parse.py",
+      "bytes": 4091,
+      "sha256": "71012da3a4fad9ed9198ed39ee5e1a8acd9dbd8aa3d24c41f3878d8e9006de33"
+    }
+  ],
+  "raw_log_uncompressed_sha256": "62482e0b7d89fbef58f149ff82f696c2930d44675f10f701a0ba57a7422b1810",
+  "limits": "No artifact downloaded or rehashed. Poll originals retained separately in full manifest."
+}

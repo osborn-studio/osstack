@@ -4716,7 +4716,9 @@
       "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
       "base": "main",
       "state": "draft_final_docs_ci_pending",
-      "ci_run": 40912894527
+      "ci_run": 40912894527,
+      "status": "ready_waiting_user_merge",
+      "head_sha": "b0ea4e7836dd4be640b4f7c140befba73977837d"
     }
   },
   "current_packet_repair": {
@@ -4817,7 +4819,9 @@
       "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
       "base": "main",
       "state": "draft_final_docs_ci_pending",
-      "ci_run": 40912894527
+      "ci_run": 40912894527,
+      "status": "ready_waiting_user_merge",
+      "head_sha": "b0ea4e7836dd4be640b4f7c140befba73977837d"
     }
   },
   "main_observed_at": "2026-10-29T16:28:33.165608+00:00",
@@ -4879,7 +4883,7 @@
       "PS13",
       "PS20"
     ],
-    "status": "local_validated_audit_passed_waiting_final_ci",
+    "status": "ready_waiting_user_merge",
     "ci_run": 40912894527,
     "formal_gate_pass": false,
     "record": "docs/implementation/pr305-main-retarget/README.md",
@@ -4891,7 +4895,29 @@
     "post_docs_export_passed": 94,
     "review_status": "actual claude-sonnet-5-5 static PASS; doc closure REVISE for accidental grammar splice then limited closure PASS atb0",
     "actual_default_full": "journey/project/check all0; product0/1 and0/1/2/1/0; v1/v2 passed-stderr conflicts rejected and failed controls retained; original hashes unchanged",
-    "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c"
+    "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c",
+    "head_sha": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+    "ci_applicable_success": 5,
+    "ci_paid_skipped": true,
+    "ready_receipt": "docs/implementation/pr305-main-retarget/ready-receipt.json",
+    "ci_summary": {
+      "checkout_sha": "84046a712d524800d0f4e764523a9a6df049255f",
+      "checkout_kind": "synthetic merge of b0 into524",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1
+      },
+      "projection_passed": 88,
+      "journey_passed": 43,
+      "reader_passed": 14,
+      "record": "docs/implementation/pr305-main-retarget/ci-final",
+      "remote_artifact_rehashed": false
+    }
   },
   "maintenance_map_slice": {
     "status": "draft_waiting_ci_and_parent305_main_revalidation",

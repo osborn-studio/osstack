@@ -1,6 +1,6 @@
 # pstack 优先：能力与交付对账
 
-当前合并快照：`5248195bd2611cc21a98a0ef3e39d229cdf9b681`。#304已合并；主线为 **4 个 OSStack 入口、14 个共享方法**。历史宿主实验保留各自材料SHA；PR305已改为main并开始重验，未转Ready。
+当前合并快照：`5248195bd2611cc21a98a0ef3e39d229cdf9b681`。#304已合并；主线为 **4 个 OSStack 入口、14 个共享方法**。历史宿主实验保留各自材料SHA；PR305已对actualmain重验并转Ready：finalb0ea4e78、CI40912894527五适用SUCCESS/paidSKIP，仅等用户审批合并。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
