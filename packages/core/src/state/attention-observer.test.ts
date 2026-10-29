@@ -243,6 +243,11 @@ it("rolls back a subject cursor when a late projection failure would otherwise e
 it("reuses explicitly released capacity without silently evicting or readmitting its old owner", () => {
   const { observer, scope, store, owner, db } = setup(101);
   observer.tick(1000);
+  const retainedItem = store.listItems(scope.scope_id).find(
+    (item) => item.session_id === "s0000"
+  );
+  expect(retainedItem).toBeDefined();
+  if (!retainedItem) throw new Error("fixture did not project the original owner");
   store.release(owner, scope.scope_id, "session", "s0000", 1);
   observer.tick(2000);
   expect(
@@ -260,9 +265,13 @@ it("reuses explicitly released capacity without silently evicting or readmitting
       .get()
   ).toEqual({ admitted: 0 });
   expect(observer.inventory(scope.scope_id, 2000).coverage).toBe("degraded");
+  // Historical items now exceed the 100-item page. Hash ordering does not
+  // guarantee that the released owner's item remains on that first page.
+  expect(store.getItem(scope.scope_id, retainedItem.item_id)).toEqual(retainedItem);
   expect(
-    store.listItems(scope.scope_id).some((item) => item.session_id === "s0000")
-  ).toBe(true);
+    db.prepare("SELECT COUNT(*) n FROM attention_items WHERE scope_id=?")
+      .get(scope.scope_id)
+  ).toEqual({ n: 101 });
 });
 
 it("degrades coverage when a previously admitted standalone run disappears", () => {
