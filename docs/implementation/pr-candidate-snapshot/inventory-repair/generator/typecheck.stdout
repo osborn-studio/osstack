@@ -1,0 +1,61 @@
+Scope: 22 of 23 workspace projects
+packages/compliance typecheck$ tsc --noEmit
+packages/contracts typecheck$ tsc --noEmit
+packages/github typecheck$ tsc --noEmit
+packages/governance typecheck$ tsc --noEmit
+packages/compliance typecheck: Done
+packages/knowledge typecheck$ tsc --noEmit
+packages/contracts typecheck: Done
+packages/neat-eval typecheck$ tsc --noEmit
+packages/github typecheck: Done
+packages/protocol typecheck$ tsc --noEmit
+packages/governance typecheck: Done
+packages/runtime typecheck$ tsc --noEmit
+packages/knowledge typecheck: Done
+packages/runtime typecheck: Done
+packages/neat-eval typecheck: Done
+packages/protocol typecheck: Done
+packages/core typecheck$ tsc --noEmit
+packages/graph typecheck$ tsc --noEmit
+packages/knowledge-cloud typecheck$ tsc --noEmit
+packages/graph typecheck: Done
+packages/knowledge-cloud typecheck: Done
+packages/core typecheck: Done
+packages/hermes-adapter typecheck$ tsc --noEmit
+packages/plugins typecheck$ tsc --noEmit
+packages/autonomy typecheck$ tsc --noEmit
+packages/skill-registry typecheck$ tsc --noEmit
+packages/hermes-adapter typecheck: Done
+packages/skills typecheck$ tsc --noEmit
+packages/plugins typecheck: Done
+packages/skill-registry typecheck: Done
+packages/skills typecheck: Done
+packages/autonomy typecheck: Done
+packages/agents typecheck$ tsc --noEmit
+packages/agents typecheck: Done
+packages/config typecheck$ tsc --noEmit
+packages/loop typecheck$ tsc --noEmit
+packages/config typecheck: Done
+packages/loop typecheck: Done
+packages/supervisor typecheck$ tsc --noEmit
+packages/conformance typecheck$ tsc --noEmit
+packages/conformance typecheck: Done
+packages/supervisor typecheck: Done
+packages/cli typecheck$ tsc --noEmit
+packages/cli typecheck: src/execution-context.test.ts(6,10): error TS2305: Module '"@osstack/knowledge"' has no exported member 'executionContextDigest'.
+packages/cli typecheck: src/execution-context.test.ts(6,39): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextEntry'.
+packages/cli typecheck: src/execution-context.ts(6,10): error TS2305: Module '"@osstack/knowledge"' has no exported member 'assembleExecutionContext'.
+packages/cli typecheck: src/execution-context.ts(6,36): error TS2305: Module '"@osstack/knowledge"' has no exported member 'executionContextDigest'.
+packages/cli typecheck: src/execution-context.ts(7,8): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextAssembly'.
+packages/cli typecheck: src/execution-context.ts(7,39): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextEntry'.
+packages/cli typecheck: src/execution-context.ts(7,67): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextSource'.
+packages/cli typecheck: src/graph-contract-host.test.ts(240,11): error TS2339: Property 'executionContextDigest' does not exist on type '{ default: typeof import("/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/stack-status-context-root/packages/knowledge/dist/index"); loadKnowledgePack(path: string): Promise<...>; ... 18 more ...; resolveKnowledgeSearch(options: { ...; }): Promise<...>; }'.
+packages/cli typecheck: src/source-context-fence.ts(6,15): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextSource'.
+packages/cli typecheck: src/source-context.ts(4,10): error TS2305: Module '"@osstack/knowledge"' has no exported member 'executionContextDigest'.
+packages/cli typecheck: src/source-context.ts(4,39): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextEntry'.
+packages/cli typecheck: src/source-context.ts(4,67): error TS2305: Module '"@osstack/knowledge"' has no exported member 'ExecutionContextSource'.
+packages/cli typecheck: Failed
+/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/stack-status-context-root/packages/cli:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/cli@0.22.1 typecheck: `tsc --noEmit`
+Exit status 2
+[ELIFECYCLE] Command failed with exit code 2.

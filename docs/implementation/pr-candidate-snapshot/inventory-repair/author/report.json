@@ -1,0 +1,59 @@
+{
+  "candidate": "24bed464c321c5396f59adecaf72c116569ca768",
+  "ci_run": 40928407347,
+  "source_bindings": [
+    {
+      "commit": "24bed464c321c5396f59adecaf72c116569ca768",
+      "path": "scripts/generate-inventory.mjs",
+      "bytes": 6197,
+      "sha256": "1c3be1dd272d5975f40bb064627a4509f3fd31ec4fbe8996629ee9ee6d19e9fa"
+    },
+    {
+      "commit": "24bed464c321c5396f59adecaf72c116569ca768",
+      "path": "packages/github/src/index.ts",
+      "bytes": 656,
+      "sha256": "744c03b822de61eff55f183a344cfa2b55062ceaf8d92499009af28bd8ef47bf"
+    },
+    {
+      "commit": "24bed464c321c5396f59adecaf72c116569ca768",
+      "path": "docs/inventory/PUBLIC_EXPORTS.md",
+      "bytes": 12392,
+      "sha256": "27c1a12feff559811f4318d01b5c9882f0e04802f878dad25cd6b6a4b130e147"
+    },
+    {
+      "commit": "24bed464c321c5396f59adecaf72c116569ca768",
+      "path": ".github/workflows/ci.yml",
+      "bytes": 16940,
+      "sha256": "61411a7d245f916b68b05097d407eedf71a75dea260d07ebb7fd418412027fe9"
+    }
+  ],
+  "ci_log": {
+    "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr-candidate-ci307-repair-20261030/complete-log.stdout",
+    "sha256": "7788ebe508cc4c1a2a70552d9a0b4cc3066dd68560844e79669c00107761c995"
+  },
+  "conclusion": "Only generated PUBLIC_EXPORTS.md needs synchronization for the confirmed freshness failure. No generator or production source change is needed.",
+  "expected_change": "One added export { line under @osstack/github; this follows current generator first-line filtering for multiline exports.",
+  "generation_scope": [
+    "docs/inventory/PACKAGE_GRAPH.md",
+    "docs/inventory/PUBLIC_EXPORTS.md",
+    "docs/inventory/CLI_COMMANDS.md"
+  ],
+  "expected_modified_files": [
+    "docs/inventory/PUBLIC_EXPORTS.md"
+  ],
+  "commands": [
+    "node scripts/generate-inventory.mjs",
+    "git diff -- docs/inventory",
+    "node scripts/generate-inventory.mjs --check"
+  ],
+  "prerequisites": [
+    "Built packages/cli/dist/bin.js at the candidate; generation runs only --help",
+    "Node22 PATH; explicit authorized scratch OSSTACK_HOME for development CLI subprocess"
+  ],
+  "limits": [
+    "Read-only Git/log analysis; generator not executed here",
+    "Expected diff independently reconstructed from exact documented export-line filter, not a full generator run",
+    "Root must generate and run the actual --check before committing",
+    "Do not hand-edit full symbol lists or alter the generator to hide freshness failure"
+  ]
+}
