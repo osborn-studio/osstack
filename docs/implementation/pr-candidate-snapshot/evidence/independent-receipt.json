@@ -1,0 +1,1431 @@
+{
+  "verified_at": "2026-10-29T17:55:51.787319+00:00",
+  "result": "verified",
+  "archive": {
+    "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr306-control/docs/implementation/pr-candidate-snapshot/evidence/raw-verification.tar.gz",
+    "sha256": "15a3324dabc84aa9275dbb48b003a8b766729172f3411c8cd49668d51ac01788",
+    "bytes": 1120496
+  },
+  "manifest": {
+    "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr306-control/docs/implementation/pr-candidate-snapshot/evidence/manifest.json",
+    "sha256": "c83efa60621c65ad5b3236ffb719d384e37a6cb4cd08a1e39785fbd8e27084bd"
+  },
+  "counts": {
+    "members": 278,
+    "directory": 41,
+    "file": 236,
+    "symlink": 1,
+    "file_bytes": 5258202
+  },
+  "checks": [
+    "Every archive member name/type/mode matched manifest; regular file hash and bytes matched.",
+    "Every archived member matched current frozen scratch source via lstat; no symlink followed.",
+    "Source recursive inventory equals manifest after explicitly excluding publication-independent.",
+    "Independent original criteria/reports/failures and closure proof, both raw audits and live read guard/receipt retained."
+  ],
+  "symlinks": [
+    {
+      "path": "independent/cli-c8/scratch/escape",
+      "type": "symlink",
+      "mode": 493,
+      "target": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr306-main-retarget-20261030/next-candidate/independent/cli-c8/outside"
+    }
+  ],
+  "limits": [
+    "Archive was read without filesystem extraction. Absolute test symlink target is deliberately preserved, not validated as a safe extraction destination; never dereferenced.",
+    "publication-independent is outside this archive scope and separately saved; no claim of verification of that excluded bundle.",
+    "This check proves retained packaging/source consistency, not test re-execution, live current PR status, forge authenticity or audit model correctness."
+  ],
+  "member_checks": [
+    {
+      "path": "audit",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/audit-input.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/empty-mcp.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/report.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/response.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/run.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/settings.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/source-binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit/stderr.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/audit-input.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/empty-mcp.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/report.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/response.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/run.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/settings.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/source-binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "audit-closure/stderr.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/README.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/build-first.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/cli-green-final.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/cli-green-first.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/cli-red.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/commands.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/github-package.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/green-first.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/handoff.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/install.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author/red.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/audit-original.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/build.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/commands.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/dispositions.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/library.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/revision.patch",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "author-revision/script.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "card-created.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "card-relation-correction.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof/8a711-to-622.diff",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof/initial-report-helper-error.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof/report.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof/report.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "closure-proof/scratch-622.mjs.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "contract.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "docs.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "docs.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent/report.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent/report.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent/tracked-git-paths.command.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent/tracked-git-paths.raw",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "full-independent/verify.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist/before-restore.patch",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist/index.d.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist/index.d.ts.map",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist/index.js",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist/index.js.map",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "generated-dist/receipt.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "hygiene.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "hygiene.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/audit-coverage.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/changed-baseRefOid.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/changed-headRefName.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/changed-headRefOid.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/check-ACTION_REQUIRED.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/check-CANCELLED.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/check-FUTURE_ENUM.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/check-NEUTRAL.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/check-SKIPPED.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/check-TIMED_OUT.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/checks-100-plus-1.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/clear.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/cursor-cycle.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/duplicate-name.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/failed-plus-missing.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/final-query-failure.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/final-review-change.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/initial-unavailable.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/missing-cursor.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/null-rollup.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/page-cap.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/partial-graphql.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/threads-100-plus-1.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/untrusted-text.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/wrong-check-oid.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8/wrong-expected-pins.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8-score.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8-source-binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8.command.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/candidate-c8.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/ci-8a711.yml.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/bad-pr.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/bad-repo.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/control-required.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/duplicate-flag.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/duplicate-required.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/equal-scratch-root.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/existing-output.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/initial-unavailable.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/outside",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/outside-existing-parent.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/relative-output.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/queries.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/checks-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/checks-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/final.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/final.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/initial.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/initial.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/threads-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/raw/threads-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/blocked/snapshot.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/queries.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/checks-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/checks-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/final.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/final.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/initial.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/initial.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/threads-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/raw/threads-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/clear/snapshot.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/escape",
+      "type": "symlink",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable/queries.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable/raw",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable/raw/initial.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable/raw/initial.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unavailable/snapshot.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/queries.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/checks-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/checks-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/final.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/final.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/initial.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/initial.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/threads-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/raw/threads-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/scratch/unknown/snapshot.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/summary.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/symlink-parent-outside.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/terminal-symlink.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/unknown-flag.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/unpaired-pins.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/valid-blocked.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/valid-clear.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8/valid-unknown.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-c8.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-check-c8.mjs",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/cli-command-receipt.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/close-report.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/criteria-initial-fixture-alias.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/criteria.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/criteria.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/harness-preparation.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/live-read-review.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/live-review.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/live-review.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/report.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/report.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/runner-harness.mjs",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/score-c8.mjs",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/sources-verified.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/vectors-initial-fixture-alias.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/vectors.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "independent/verify-live.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "license-proof.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "offline-cases.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "plan.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "post-validation-status.txt",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/cli.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/cli.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/exports.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/exports.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/focused-receipts.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/full-after.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/full-before.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/full-binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/full.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/full.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/github.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/github.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/import.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/import.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-guard.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/manifest.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/queries.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/checks-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/checks-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/final.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/final.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/initial.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/initial.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/threads-1.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/raw/threads-1.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live-pr306/snapshot.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/live.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root/validate.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-build-candidate.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-build-initial.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-import-before.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-install.log",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/cli.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/cli.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/exports.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/exports.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/github.stderr",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/github.stdout",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "root-revision/receipts.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "source-map.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/playbooks",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/playbooks/babysit.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/playbooks/opening-a-pr.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/scripts",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/scripts/watch-pr",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/scripts/watch-pr/github.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/99b609a7/pstack/skills/poteto-mode/scripts/watch-pr/types.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/docs",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/docs/design",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/docs/design/2026-10-27-joint-engineering",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/docs/design/2026-10-27-joint-engineering/delivery-rollup.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/osstack-methods-skill",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/osstack-methods-skill/references",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/osstack-methods-skill/references/pr-readiness.md",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src",
+      "type": "directory",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src/attention-ci.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src/branch-scanner.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src/candidate-evidence.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src/delivery.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src/portfolio-status.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "sources/b2c18a20/packages/github/src/stack.ts",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "validation-binding.json",
+      "type": "file",
+      "archive_and_source_equal": true
+    },
+    {
+      "path": "write-verification.py",
+      "type": "file",
+      "archive_and_source_equal": true
+    }
+  ]
+}

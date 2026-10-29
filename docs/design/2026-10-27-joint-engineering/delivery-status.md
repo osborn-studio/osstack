@@ -1,6 +1,6 @@
 # pstack 优先：能力与交付对账
 
-当前合并快照：`e79fc92687c144969ad91242a979d904f2b2acdf`。#305已合并；主线为 **4 个 OSStack 入口、14 个共享方法**。历史宿主实验保留各自材料SHA；PR306已转main并完成263定向/241docs/1hygiene和真实地图RED→GREEN复验，Sonnet5.5静态PASS，等待最终CI。
+当前合并快照：`6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b`。#305/#306已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；下一候选状态只读工具已完成实现、实际读取及限定审计，正在发布。历史宿主实验与CI保留各自原始SHA。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -28,7 +28,7 @@
 1. PR303已合并：完整材料分页工具；工具字节送达不证明模型完整消费。
 2. PR304已合并：完整五案例旅程，默认两例兼容；合并树等原已验证候选，不重标历史测试。
 3. PR305已合并：完整五案例安全证据投影和passed stderr一致性修复，默认兼容与原件保持；旧宿主实验成绩不变。
-4. PR306已面向main：固定五case地图维护，本地实际RED→仅改地图→GREEN已通过，等待新head CI后转Ready。
+4. PR306已合并：固定五case地图维护，实际RED→仅改地图→GREEN、最终CI通过，树等验证候选。
 5. 下一项是只读候选状态核对，按明确head/base、检查、评审线程和前后快照报告缺口；不自动审批/合并。Firstmate深运行时后排。
 
 ## pstack能力清单
@@ -178,3 +178,6 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
 
 
 2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
+
+
+2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.

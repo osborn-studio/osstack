@@ -1,0 +1,13 @@
+ M docs/design/2026-10-27-joint-engineering/delivery-rollup.json
+ M docs/design/2026-10-27-joint-engineering/delivery-status.md
+ M docs/design/2026-10-27-joint-engineering/execution-ledger.json
+ M docs/design/2026-10-27-joint-engineering/execution.md
+ M docs/design/2026-10-27-joint-engineering/project-operations.md
+ M docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md
+ M docs/implementation/pr306-main-retarget/README.md
+?? .changeset/bounded-pr-candidate-snapshot.md
+?? docs/implementation/pr-candidate-snapshot/evidence/
+?? docs/implementation/pr-candidate-snapshot/verification.md
+?? docs/implementation/pr306-main-retarget/ci-final/merge-osstack.json
+?? docs/implementation/pr306-main-retarget/ci-final/merge306-proof.txt
+?? docs/implementation/pr306-main-retarget/ci-final/merge306.json

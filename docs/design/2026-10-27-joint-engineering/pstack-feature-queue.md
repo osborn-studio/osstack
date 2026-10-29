@@ -10,8 +10,8 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 | 2 | Run the full five-case skills-check journey and maintain all mapped cases | PR304 merged at5248195b; merge tree equals verified7ef051ff; historical tests keep their original SHA: optional `--scope full`; retain default two-case compatibility | Actual five outcomes 0/1/2/1/0, semantic receipts, cleanup limits, default projection compatibility and failure-path verification |
 | 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 merged e79fc926; tree equals published b0ea4e78, original CI/audit bindings retained | All five cases and failed/not_run/unknown states preserved; original records unchanged |
 | 4 | Use current method materials to complete a fresh actual host task | Current packet defect: Codex actual RED/fix/GREEN complete; Claude stopped after permission denial, unrepaired; both16pages delivered; fix published in305 | Separate actual host outcomes and fix delivery from whole capability claims; retain Claude failure and old results, no retries for a better grade |
-| 5 | Compare and repair a persistent fixed-five verification map | PR306 Draft/main958eb722; fresh263 focused/241docs/hygiene, actual map RED1→correction→GREEN0 and Sonnet5.5 static PASS; newCI40920378111 running | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
-| 6 | Make PR candidate status easier to assess | Later bounded read-only forge/candidate reconciliation | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
+| 5 | Compare and repair a persistent fixed-five verification map | PR306 merged at6c9a3e8f; actualmain tree equals validated958. Fixed-five map command and CI hook available | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
+| 6 | Make PR candidate status easier to assess | Implemented bounded snapshot:152 github/14 CLI/94 export checks,25 independent vectors and17 CLI cases; one actual read retained blocked state; publishing next PR | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
 
 Firstmate deep recovery/supervision is deferred behind these pstack paths except for necessary dependencies. Formal identity issue287 does not block ordinary bounded D2a tools.
 
@@ -27,7 +27,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
 | PS08 | 可操控的验证基础设施与功能地图 | create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明 |
-| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case地图比较候选已验证待交付；广义漂移发现仍未闭合。 |
+| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case地图比较已随PR306合入；广义漂移发现仍未闭合。 |
 | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
 | PS12 | 反思转结构化约束 | skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。 |
@@ -35,8 +35,8 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS14 | 性能结论审查 | 性能审查方法与合成数例可用；无因果性能提升结果 |
 | PS15 | 有预算的 hillclimb 与盲评 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
 | PS16 | 自包含单元与协调者边界 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
-| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；栈前沿自动校验服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
-| PS18 | forge 观察器分类 | 一次forge状态分类方法；未移植watch-pr观察器，不把既有github组件当本批新增；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
+| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；单次候选快照工具已完成待PR，自动栈前沿服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
+| PS18 | forge 观察器分类 | 一次forge状态分类方法；新单次只读观察工具待PR，未移植持续watch-pr观察器；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS19 | 暂停与恢复对账 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS20 | 跨宿主方法适配 | 四入口双host导出；历史Codex和Claude各一次有界实际修复已记录；新当前packet任务Codex修复完成，Claude材料完整送达但未修复。历史材料60/64与失败不改；全方法等价/强制context/资格未通过 |
 | PS21 | 来源快照与能力资格验证 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
@@ -50,9 +50,12 @@ One implementation owner for journey code/tests, one documentation owner, one in
 
 Historical Codex/Claude LIMITED/FAILED observations remain unchanged. New model calls require a fresh task protocol, resource boundary and budget; this queue is not an inherited experiment authorization.
 
-## PR305 merge / PR306 actual-main revalidation
+## Historical PR305 merge / PR306 actual-main revalidation
 
 PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals published `b0ea4e78`. PR306 now targets main with head `958eb72295937b96ee8affc32fa87910bbdde512`, tree unchanged from `38a6f358` and complete delta identical. Fresh validation, actual map RED→GREEN, independent checks and Sonnet 5.5 review are running. New CI40920378111 must succeed before Ready. Historical tests retain their original SHA and formal PS/J gates remain false.
 
 
 2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
+
+
+2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.

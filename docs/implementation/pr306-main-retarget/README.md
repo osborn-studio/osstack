@@ -19,3 +19,6 @@ New CI `40920378111` is the actual-main head run; five applicable jobs succeeded
 [Raw archive](evidence/raw-verification.tar.gz) and [receipt](evidence/archive-receipt.json) preserve482 original paths and175530656 original file bytes. Archive SHA256: `2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff`. The two identical83MB binary diff files share tar storage using an explicitly recorded hardlink; both original names, bytes, mode and hashes were verified after resolving the link. This does not alter the original scratch files.
 
 OSStack marks the two PR305 activity cards done for their merged slices and marks PR306 card_b8d97bff blocked only while waiting for user approval and merge. PS09/J06 primary and PS08/J03/J09 support remain partial; no formal gate, runtime activation, approval or merge is performed by root.
+
+
+User subsequently merged306 at17:49:32Z. Actualmain6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b has the same tree356296e4 as published958. The activity card is done for that merged slice; the prior Ready and CI observations retain their original timestamps and bindings.
