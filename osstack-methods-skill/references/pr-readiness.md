@@ -16,6 +16,12 @@ Keep these facts separate:
 
 If the head or base changes while reading, label the old snapshot and refresh the affected facts before giving a current recommendation. Do not carry an earlier head's green result to a newer head. A failed API request leaves status unknown; it is not an observed product failure or an empty review queue.
 
+## One bounded snapshot in the OSStack checkout
+
+For an authorized read in an OSStack source checkout, build `@osstack/github`, then run `pnpm inspect:pr-candidate --repo OWNER/REPO --pr N --output ABSOLUTE_NEW_SCRATCH_DIRECTORY`. The output parent must already exist under `OSSTACK_SCRATCH_ROOT`. Optional paired `--expect-head SHA40 --expect-base SHA40` pins detect a changed candidate; repeated `--required-check NAME` declares caller-known requirements. This command is available in the checkout, not automatically installed by a method-material export.
+
+Exit0 means a report was written, including blocked or unknown observations. It is not a passing readiness gate. The report preserves current-head checks and paged review threads, brackets head/base, and explicitly leaves branch protection, rulesets, merge-queue policy and approval-commit binding uncollected. It never watches, retries, marks Ready, approves or merges. Use those limits when reporting the actual blocker below.
+
 ## Handle the actual blocker
 
 Identify the owning PR and real dependency order. Work on the blocked dependency that prevents the requested delivery, while allowing independent authorized work to continue in separate write boundaries. Do not run a second coordinator on the same stack. A changed base, conflict or merged parent can require a topology update, but this method does not authorize retargeting, rebasing or force-pushing. Perform those only when the actual owner and existing task scope cover them; otherwise report the exact dependency and continue independent work. Preserve other workers' edits. If the owning PR has already merged, keep its history intact and put an authorized correction on a follow-up branch/PR, subject to publication authority.
