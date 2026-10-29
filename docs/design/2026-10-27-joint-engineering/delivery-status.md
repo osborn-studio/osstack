@@ -1,6 +1,6 @@
 # pstack 优先：能力与交付对账
 
-当前合并快照：`5248195bd2611cc21a98a0ef3e39d229cdf9b681`。#304已合并；主线为 **4 个 OSStack 入口、14 个共享方法**。历史宿主实验保留各自材料SHA；PR305已对actualmain重验并转Ready：finalb0ea4e78、CI40912894527五适用SUCCESS/paidSKIP，仅等用户审批合并。
+当前合并快照：`e79fc92687c144969ad91242a979d904f2b2acdf`。#305已合并；主线为 **4 个 OSStack 入口、14 个共享方法**。历史宿主实验保留各自材料SHA；PR306已转main并完成263定向/241docs/1hygiene和真实地图RED→GREEN复验，Sonnet5.5静态PASS，等待最终CI。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -27,8 +27,9 @@
 
 1. PR303已合并：完整材料分页工具；工具字节送达不证明模型完整消费。
 2. PR304已合并：完整五案例旅程，默认两例兼容；合并树等原已验证候选，不重标历史测试。
-3. card_522ee55d：完整五案例安全证据投影已实现并验证，修复了清理身份矛盾误接受；保持默认兼容与原件不变，已提交PR305，现已面向main，Draft等待新基线适用验证、实际审计及新head CI。
-4. 随后用新的当前任务验证Codex/Claude实际使用闭环；此前历史修复及LIMITED/FAILED保留，不重跑翻绿。Firstmate深运行时后排。
+3. PR305已合并：完整五案例安全证据投影和passed stderr一致性修复，默认兼容与原件保持；旧宿主实验成绩不变。
+4. PR306已面向main：固定五case地图维护，本地实际RED→仅改地图→GREEN已通过，等待新head CI后转Ready。
+5. 下一项是只读候选状态核对，按明确head/base、检查、评审线程和前后快照报告缺口；不自动审批/合并。Firstmate深运行时后排。
 
 ## pstack能力清单
 
@@ -170,3 +171,7 @@ J23一般运行时资格后排，但服务pstack闭环的真实宿主测量提�
 ## 固定地图维护候选
 
 候选 `4cc8ff7e` 将现有五案例旅程接到独立持久地图，实际 `pnpm smoke:skills-map` 在注入错误预期时返回1，仅修地图后同入口新输出返回0。263项定向与22包7144通过/5跳过/0失败；全仓执行期间tracked字节不变，但4个fresh生成dist存在，不能称clean committed tree。实际Sonnet发现诊断丢失后修复，并保留原REVISE和后续限定PASS；条件性CI疑点由真实scratch默认实现消除。此项仍是待发布候选，PS09/J06为有限贡献，不完成整个能力或正式门槛。
+
+## PR305 merge / PR306 actual-main revalidation
+
+PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals published `b0ea4e78`. PR306 now targets main with head `958eb72295937b96ee8affc32fa87910bbdde512`, tree unchanged from `38a6f358` and complete delta identical. Fresh validation, actual map RED→GREEN, independent checks and Sonnet 5.5 review are running. New CI40920378111 must succeed before Ready. Historical tests retain their original SHA and formal PS/J gates remain false.

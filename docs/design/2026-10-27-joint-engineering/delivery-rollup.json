@@ -2,8 +2,8 @@
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
   "observed_at": "2026-10-29T05:24:40.943500+00:00",
-  "main_sha": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
-  "main_tree": "dbe85299ac39ca9126110eb4f1c564f442844f05",
+  "main_sha": "e79fc92687c144969ad91242a979d904f2b2acdf",
+  "main_tree": "31a72ebdb5777ce7d90e54a501bd4ad52083b10e",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
@@ -10228,12 +10228,12 @@
     "all_workers_handed_off": true,
     "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference.",
     "current_publication": {
-      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
-      "base": "main",
-      "state": "draft_final_docs_ci_pending",
-      "ci_run": 40912894527,
-      "status": "ready_waiting_user_merge",
-      "head_sha": "b0ea4e7836dd4be640b4f7c140befba73977837d"
+      "status": "merged",
+      "pr": 305,
+      "published_head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "merge_tree_equals_published": true,
+      "historical_bindings_unchanged": true
     }
   },
   "current_packet_repair": {
@@ -10331,15 +10331,15 @@
       "artifacts_rehashed": false
     },
     "current_publication": {
-      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
-      "base": "main",
-      "state": "draft_final_docs_ci_pending",
-      "ci_run": 40912894527,
-      "status": "ready_waiting_user_merge",
-      "head_sha": "b0ea4e7836dd4be640b4f7c140befba73977837d"
+      "status": "merged",
+      "pr": 305,
+      "published_head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "merge_tree_equals_published": true,
+      "historical_bindings_unchanged": true
     }
   },
-  "main_observed_at": "2026-10-29T16:28:33.165608+00:00",
+  "main_observed_at": "2026-10-29T17:21:57.052243+00:00",
   "pr304_main_retarget": {
     "observed_at": "2026-10-29T10:09:34.304403+00:00",
     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
@@ -10398,7 +10398,7 @@
       "PS13",
       "PS20"
     ],
-    "status": "ready_waiting_user_merge",
+    "status": "merged",
     "ci_run": 40912894527,
     "formal_gate_pass": false,
     "record": "docs/implementation/pr305-main-retarget/README.md",
@@ -10432,10 +10432,12 @@
       "reader_passed": 14,
       "record": "docs/implementation/pr305-main-retarget/ci-final",
       "remote_artifact_rehashed": false
-    }
+    },
+    "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "merged_at": "2026-10-29T17:11:47Z"
   },
   "maintenance_map_slice": {
-    "status": "draft_waiting_ci_and_parent305_main_revalidation",
+    "status": "draft_main_revalidation",
     "card": "card_b8d97bff",
     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
     "primary_j": "J06",
@@ -10697,9 +10699,72 @@
     },
     "whole_capability_complete": false,
     "pr": 306,
-    "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
-    "base_branch": "codex/method-full-projection-delivery",
-    "ci_run": 40917058847,
-    "publication_dependency": "PR305 merge then actual main retarget/revalidate; code itself depends only on merged304 journey"
+    "head_sha": "958eb72295937b96ee8affc32fa87910bbdde512",
+    "base_branch": "main",
+    "ci_run": 40920378111,
+    "publication_dependency": "305 merged; fresh actual-main validation and CI required",
+    "historical_pre_retarget": {
+      "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
+      "base_branch": "codex/method-full-projection-delivery",
+      "ci_run": 40917058847
+    }
+  },
+  "pr306_main_retarget": {
+    "observed_at": "2026-10-29T17:21:57.052243+00:00",
+    "main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "head": "958eb72295937b96ee8affc32fa87910bbdde512",
+    "status": "draft_main_revalidation",
+    "same_tree_as_38a6": true,
+    "complete_delta_identical": true,
+    "record": "docs/implementation/pr306-main-retarget",
+    "primary_j": "J06",
+    "supports": [
+      "J03",
+      "J09"
+    ],
+    "capabilities": [
+      "PS09",
+      "PS08"
+    ],
+    "formal_gate_pass": false,
+    "ci_run": 40920378111,
+    "targeted_passed": 263,
+    "docs_passed": 241,
+    "hygiene_passed": 1,
+    "actual_map_red_green": true,
+    "review_status": "actual Sonnet5.5 static PASS; optional observations retained",
+    "archive_sha256": "2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff",
+    "archive_independent_receipt_sha256": "e21d4981736e0642726f165852f0ac4ae713e9e0c60fffb82f16d75559278bd1"
+  },
+  "pr_candidate_snapshot_slice": {
+    "status": "implementation_in_progress",
+    "card": "card_55808960",
+    "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "capabilities": [
+      "PS17",
+      "PS18",
+      "PS13"
+    ],
+    "supports": [
+      "J07"
+    ],
+    "design_context": [
+      "J20"
+    ],
+    "scope": "one bounded read-only PR snapshot; no watcher/approval/merge",
+    "author": "loader_adversarial",
+    "independent": "cleanup_regression",
+    "root_owned": [
+      "shared exports",
+      "CI",
+      "PR",
+      "ledger"
+    ],
+    "new_methods": 0,
+    "model_host_calls": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "source_pin": "99b609a72323b70204eab407c622f436e858e112",
+    "proposal": "pr306-main-retarget-20261030/next-candidate/contract.json"
   }
 }

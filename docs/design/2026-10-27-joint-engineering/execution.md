@@ -314,3 +314,7 @@ PS01/08/20 now have a bounded readonly material-reader candidate and updated exi
 ### Fixed-map maintenance candidate after PR304 merge
 
 `card_b8d97bff`: author8ed→671f; root4cc8ff7e, primaryJ06 / PS09, supportsJ03/J09/PS08. Real injected map RED1→map-only correction→GREEN0; initial actual8ed and final root4cc remain separately bound. Five new diagnostic regressions were RED before repair; 24 maintenance tests and root263 targeted passed. Full4cc22packages7144/5/0 with fresh4dist, trackedbytes unchanged. Original audit/independent omission/conditional CI concern and source-backed closure all retained in `docs/implementation/skills-check-map-maintenance/evidence`. No new native host experiment or named method.
+
+## PR305 merge / PR306 actual-main revalidation
+
+PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals published `b0ea4e78`. PR306 now targets main with head `958eb72295937b96ee8affc32fa87910bbdde512`, tree unchanged from `38a6f358` and complete delta identical. Fresh validation, actual map RED→GREEN, independent checks and Sonnet 5.5 review are running. New CI40920378111 must succeed before Ready. Historical tests retain their original SHA and formal PS/J gates remain false.

@@ -1,0 +1,33 @@
+{
+  "status": "verified_no_confirmed_issue",
+  "archive_sha256": "2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff",
+  "archive_bytes": 68017164,
+  "manifest_sha256": "e9980309a3377bd14a267513dd6cdd6ab2adac3d6cd6d6b462a0de9ea4de0c5f",
+  "payload_paths": 482,
+  "original_file_bytes": 175530656,
+  "hardlink_storage_verified": [
+    {
+      "path": "independent/old-diff.stdout",
+      "target": "independent/new-diff.stdout"
+    }
+  ],
+  "all_original_paths_match_raw_bytes_mode": true,
+  "manifest_member": "retarget-archive-manifest.json",
+  "validation_manifest_files": 422,
+  "validation_manifest_sha256": "cb777f504a52e0c3d2e974c9be30e51fb7f91ecfea060201d43f4c02ba5f0158",
+  "validation_summary_sha256": "0d7263467781fa94ca1d779952fcc1f282e17d1648c501f364a0af257bd6feb7",
+  "audit": {
+    "report_sha256": "cb42d5ebb710b296189740c1ee1f8592c0994a612eb1239c8b363201dad618db",
+    "prompt_sha256": "dad47ffe3934988b2c9d4458e36009d079fd79dc942392f41ae9a69122ee2dcf",
+    "response_sha256": "4241de0e78ad69cad8b42f052f4ddd7d6bbc5f39d767eb2cd85b9ec6b83d4b91",
+    "verdict": "PASS static only",
+    "head_958_in_prompt": true
+  },
+  "retarget_error_preserved_sha256": "a85e78b5d28dd023f47deeb7bebadc3ed92030e88f0512820d40b111cde0e789",
+  "limits": [
+    "No test/model/CI rerun or PR mutation.",
+    "Hardlinked member is declared deduplication: extractfile restores original83862005 bytes with unchanged hash/mode; archive was not extracted into filesystem.",
+    "Audit static PASS does not prove runtime or fresh CI success.",
+    "Final CI40920378111 remains separately evaluated; archived local validation remains bound958."
+  ]
+}
