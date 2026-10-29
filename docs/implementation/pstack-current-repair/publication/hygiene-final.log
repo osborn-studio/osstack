@@ -1,0 +1,10 @@
+
+ RUN  v3.2.6 /Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pstack-current-repair-control/packages/governance
+
+ ✓ src/knowledge-hygiene/osstack-config.test.ts (1 test) 247ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:48:30
+   Duration  605ms (transform 92ms, setup 18ms, collect 128ms, tests 247ms, environment 0ms, prepare 37ms)
+
