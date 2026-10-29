@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "gh",
+    "api",
+    "repos/osborn-studio/osstack/actions/runs/40929858660/jobs?per_page=100"
+  ],
+  "started_at": "2026-10-29T18:56:50.792276+00:00",
+  "ended_at": "2026-10-29T18:56:51.734747+00:00",
+  "exit_code": 0
+}

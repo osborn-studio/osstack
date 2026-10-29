@@ -1,0 +1,22 @@
+{
+  "verified_payloads": 34,
+  "original_manifest_sha256": "3a9c8db36cf34616ad84fa063ceffeb3b744d7d48d90869906878a3540c25731",
+  "lossless_storage": [
+    {
+      "original": "307/complete-log.stdout",
+      "stored": "307/complete-log.log.gz",
+      "decoded_bytes": 2184831,
+      "decoded_sha256": "f3291f96d350f42d6eb28e02816d1d52e95c4dec8fdafbeaf5f20cde430c11e7",
+      "mode": "0o644"
+    },
+    {
+      "original": "308/complete-log.stdout",
+      "stored": "308/complete-log.log.gz",
+      "decoded_bytes": 2186794,
+      "decoded_sha256": "c3da7ef57eb7c7d30780f5b83d9afa5f5fdf6b145bfa778f6845a3b389005f19",
+      "mode": "0o644"
+    }
+  ],
+  "all_other_payloads": "exact original bytes and modes",
+  "artifact_download": false
+}
