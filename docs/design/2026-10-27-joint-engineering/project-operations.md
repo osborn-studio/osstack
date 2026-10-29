@@ -141,3 +141,7 @@ JP-17a 使用 dedicated SQLite broker DB 作为明确的离线候选设计，nam
 ### 2026-10-29：pstack真实任务队列
 
 PR302由root在五项适用CI成功后转Ready，用户审批合并。root中央账本、A真实维护与CI核验、B两宿主实际修复执行、C独立验收分开负责；同一宿主仅一次600秒、零重试，失败不通过追加重试消除。下一批优先收口已有验证维护与bug-fix能力，不增加方法数量替代使用效果。已完成维护活动回链PS08/09及相关J项，仅有限工程证据，不提升正式门槛。完整观察见本轮pstack-real-loops记录。
+
+### 2026-10-29 exporter实际任务收口规则
+
+历史exporter任务已执行，模型8条原子命令与独立复验分列证据。旧packet失败不可重评分；本次evidence.md60/64读取缺口不能以实际修复成功掩盖。相同test/input的RED→GREEN仅证明该有限任务，不签PS/J整体资格。后续调度须读取新的export_repair_execution，不重复派发本次已用完的1turn预算；新任务另行定义范围和证据。

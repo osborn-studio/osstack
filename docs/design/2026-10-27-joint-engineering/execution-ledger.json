@@ -4467,5 +4467,59 @@
     "host_call_plan": 8,
     "plain_invalid_case": "coordinator_only",
     "formal_gate_pass": false
+  },
+  "export_repair_execution": {
+    "observed_at": "2026-10-29T06:05:27.781085+00:00",
+    "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+    "evidence": "docs/implementation/pstack-export-repair",
+    "method_main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "historical_source_sha": "4611fd6de998868e09fef042dc142bb52efaa6dd",
+    "candidate_source_sha256": "54708dbccb77ad6368b0b3ec5a10d8be738ea9fb358417e30f63e9410fec6c0f",
+    "regression_test_sha256": "019bab8761c0951d62b35ad91d3da4588c96409dec48177a35e5566ebbb25757",
+    "host": "Claude CLI",
+    "requested_and_cli_reported_model": "claude-sonnet-5-5",
+    "user_turns": 1,
+    "automatic_retries": 0,
+    "atomic_helper_calls": 8,
+    "behavioral_red": {
+      "passed": 2,
+      "failed": 1
+    },
+    "same_test_green": {
+      "passed": 3,
+      "failed": 0
+    },
+    "native_skill_observed": true,
+    "reading_limit": "evidence.md only 60 of 64 lines read; full required-material delivery not established",
+    "historical_packet_failure_unchanged": true,
+    "production_code_changed": false,
+    "new_methods": 0,
+    "new_prs": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "card": "card_7e6a11b1",
+    "independent_grade": "LIMITED",
+    "independent_grade_sha256": "e8a85599aeb1b7849bf44c9aa515b429f3a61cde626e366e93cb367d4da84c49",
+    "coordinator_rechecks": {
+      "old_new_same_test": 2,
+      "candidate_hidden": 6,
+      "all_expected": true
+    },
+    "required_reading_complete": false,
+    "raw_archive_sha256": "2b8e9bcfd274271fabb7356cfe38d6be2e4aae4c55a8ed14651aa289794298fc",
+    "audit": {
+      "model": "claude-sonnet-5-5",
+      "initial": "PASS_with_reporting_corrections",
+      "closure": "limited_reporting_PASS",
+      "archive_sha256": "5769866ab282c94f52b0d8b64fc7c2c4b059d309f019fba2e6abc7841d888c9f",
+      "not_host_or_runtime_qualification": true
+    },
+    "activity_status": "done_bounded_execution_and_evidence_only",
+    "primary_j": "J09",
+    "supporting_j": [
+      "J03",
+      "J07",
+      "J23"
+    ]
   }
 }

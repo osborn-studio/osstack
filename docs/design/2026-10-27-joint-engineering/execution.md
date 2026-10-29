@@ -284,3 +284,9 @@ PR302已Draft发布，main基线1bf1f6ca，候选72ab99e7；CI40819652448运行�
 ### 05:27 UTC后续预检
 
 main493caa4e与无openPR状态再核。三个工作者只读选择不同历史exporter围栏缺陷、起草原子接口并独立核八条协调者旧/已修CLI记录。未调用模型或初始化host；新专用adapter/隐藏基准/最终上下文与guard仍待准备。见[下一任务预检](../../implementation/pstack-atomic-preflight/README.md)。不新增方法/活动卡，不改变上一轮失败或正式门槛。
+
+## 2026-10-29：Claude 实际导出器修复闭环
+
+本轮没有新增方法。Claude 在一轮用户输入、零重试内完成8条单独命令：真实缺陷复现→新增行为测试RED（2过1败）→一行源码修正→同测试GREEN（3过），两个合法控制仍通过。任务是已修历史缺陷演练，不是当前main新缺陷。独立复验在旧/新源码上重跑模型所写测试，并检查6个预冻结隐藏输入；详见[实际修复记录](../../implementation/pstack-export-repair/README.md)。
+
+实际调用native osstack-mode；evidence.md只读取60/64行，因此保留阅读不完整限制。PS01/PS08/PS20增加有限使用证据，PS09关联已有维护演练；4入口/14方法不变，32项正式里程碑未自动通过。旧Claude packet失败不改写。
