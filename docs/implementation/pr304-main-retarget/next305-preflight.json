@@ -1,0 +1,12 @@
+{
+  "scope": "next305 dependency preflight only, not actualmain retarget or executed tests",
+  "parents": [
+    "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+    "52f16faf9fdb73e0f8e815e8ee6987297c67d4da"
+  ],
+  "exit": 0,
+  "stdout": "aa83717dcd492e1cdeb7312d647a99b251f42fe5\n",
+  "stderr": "",
+  "prior305tree": "aa83717dcd492e1cdeb7312d647a99b251f42fe5",
+  "tree_equal_to_305": true
+}

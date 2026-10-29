@@ -1,0 +1,5 @@
+{
+  "files_verified": 36,
+  "original_manifest_sha256": "a1178c5ba715c3c17e801dc92ddde4f23e8aaebbfff057c5978239a08de0d0b3",
+  "log_storage": "full.log is losslessly retained as full.log.gz; original manifest applies to decompressed bytes"
+}

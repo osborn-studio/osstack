@@ -4568,7 +4568,7 @@
     "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7"
   },
   "full_journey_slice": {
-    "status": "retargeted_main_validation_in_progress",
+    "status": "ready_waiting_user_merge",
     "card": "card_ddf5e661",
     "base_main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
     "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
@@ -4619,7 +4619,7 @@
     "pr": 304,
     "base_branch": "main",
     "published_head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
-    "followup": "Fresh retargeted main applicable verification and latest-head CI required before Ready.",
+    "followup": "User gilberthello approves/merges304; then actual-main retarget and revalidate305.",
     "all_workers_handed_off": true,
     "ci_final": {
       "run": 40835326104,
@@ -4656,7 +4656,17 @@
     },
     "retarget_ci": {
       "run": 40855140718,
-      "status": "in_progress"
+      "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+      "success_checks": 5,
+      "paid": "skipped",
+      "log_report": "docs/implementation/pr304-main-retarget/ci-independent/report.json",
+      "package_totals": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "actual_checkout": "0eea55e38b895805e35411e483e174a807624c6a",
+      "artifact_rehashed": false
     }
   },
   "full_projection_slice": {
@@ -4820,6 +4830,23 @@
     "hygiene_passed": 1,
     "actual_default_full": "passed; defaultprojection/check0, fullrejected1 fixed_case_set withoutoutput orinputchange",
     "record": "docs/implementation/pr304-main-retarget/README.md",
-    "archive_sha256": "7fca30cfff7b38a92f5191700b03df44eac7a7b291867733dcdc9f5907f39cab"
+    "archive_sha256": "7fca30cfff7b38a92f5191700b03df44eac7a7b291867733dcdc9f5907f39cab",
+    "status": "ready_waiting_user_merge",
+    "ci": {
+      "run": 40855140718,
+      "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+      "success_checks": 5,
+      "paid": "skipped",
+      "log_report": "docs/implementation/pr304-main-retarget/ci-independent/report.json",
+      "package_totals": {
+        "passed": 7142,
+        "skipped": 7,
+        "failed": 0
+      },
+      "actual_checkout": "0eea55e38b895805e35411e483e174a807624c6a",
+      "artifact_rehashed": false
+    },
+    "ready_receipt": "docs/implementation/pr304-main-retarget/ready-receipt.json",
+    "ready_observed_at": "2026-10-29T10:32:52.230584+00:00"
   }
 }

@@ -1,0 +1,16 @@
+{
+  "actor": "existing local validation, independently inspected by C; not a CI step and not rerun by C",
+  "code_sha": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
+  "exit": 1,
+  "error": "fixed_case_set",
+  "output_directory_absent_at_observation": true,
+  "retained_input_inventory_unchanged": true,
+  "bindings": {
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr304-main-retarget-20261029/validation/project-full.command.json": "b5e861aec047aa70a4a42101c91de9fd1f499000a571330c20b7f809b0254b68",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr304-main-retarget-20261029/validation/project-full.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr304-main-retarget-20261029/validation/project-full.stderr": "b332c00588a138b0749ab465bea4fc8dd2094104ff96db5d482f3edcfe67d14f",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr304-main-retarget-20261029/validation/full-before-projection.json": "c09e2bffd32057e78bf1685cf6d404a3d199acac6ca2924cc1a213593ac6b574",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr304-main-retarget-20261029/validation/full-after-projection.json": "c09e2bffd32057e78bf1685cf6d404a3d199acac6ca2924cc1a213593ac6b574",
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr304-main-retarget-20261029/validation/actual-summary.json": "27162b3ce96bb3cd2be647daaa157c94bfae12b1b1d5795814f52f8344b5c838"
+  }
+}
