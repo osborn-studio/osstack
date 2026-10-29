@@ -7,3 +7,5 @@ On f2df8504: actual Node22 exporter 91 passed / 0 failed / 0 skipped; document t
 Fresh run40802170819 is still in progress at this checkpoint; PR300 remains Draft. Old feature-base CI retains its original binding. No new host-model experiment ran; old Codex LIMITED / Claude FAILED remain unchanged. No formal J01/J11 qualification or runtime enabled.
 
 Subsequent observation: fresh CI40802170819 failed its final retention assertion because a first page of 100 was treated as the complete historical set of 101 items. A real built-artifact fixture reproduced this with s0000 on page two and exact getItem unchanged. Test-only repair9432d319 uses the captured item identity and also asserts101 count. The original admission/coverage checks and runtime remain unchanged. Root26 focused tests and actual Sonnet5.5 static PASS; CI repair publication pending. No blind CI rerun.
+
+Raw retarget opinions and observations are stored losslessly in raw-verification.tar.gz; manifest.json verifies every original member. This compression changes no opinion or observation.
