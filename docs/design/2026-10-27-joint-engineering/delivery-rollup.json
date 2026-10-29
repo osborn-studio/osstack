@@ -10855,5 +10855,25 @@
     "head_sha": "9d54cfdc658ac137ae9e95d08499aad77ec529f0",
     "base_branch": "main",
     "ci_run": 40926150260
+  },
+  "stack_status_context_slice": {
+    "status": "implementation_in_progress",
+    "card": "card_7e0b1be2",
+    "base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "primary_capability": "PS18",
+    "supports": [
+      "PS17",
+      "J07"
+    ],
+    "design_context": [
+      "J20"
+    ],
+    "scope": "legacy StatusContext mapping in existing stack ingest; no live forge or DB writes",
+    "criteria_sha256": "4c11f7f986da58ccc5a7639edad05a03ee199f8a424be18b648f9ef561c1dd3f",
+    "vectors_sha256": "78545afe813a065735f542e696f6a6a8cf96dd674c971fa8bdc42a2c8c6fa4fa",
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "new_methods": 0,
+    "record": "docs/implementation/stack-status-context"
   }
 }
