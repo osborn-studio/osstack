@@ -1,0 +1,9 @@
+# PR307 original CI failure and bounded repair
+
+Run40926150260 at9d54cfdc failed Biome lint: two noControlCharactersInRegex errors from the check-name exclusion pattern. The original log hid those errors behind its diagnostic limit; the author reran the exact lint surface with expanded diagnostics to locate them. Four matrix jobs succeeded but build/typecheck/Test and later smoke were not_run. Original complete log is retained; no blind retry was issued.
+
+Author6cea803e7b820410c188769a17341ff2c1e4f078 changes only the collector predicate and tests. Equivalent ASCII C0/DEL code-unit rejection replaces the regex without altering lint configuration. Same47 focused tests passed before and after; original lint failed2errors/21warnings and both expanded and exact pnpm lint now exit0 with21 existing warnings. Root fresh frozen installation/build, exact lint,154 GitHub tests and14 CLI tests passed at6cea. This does not relabel the earlier8a711 full suite as a new full run.
+
+Independent fresh freeze covered277 vectors plus omitted-checks control: all278 old/new outcomes equal,208 accepted/70 refused. All70 invalid inputs were rejected before runner calls; two complete clear/unknown observations including queries/raw remained structurally equal at a fixed clock. Actual Sonnet5.5 limited static review PASS explains the code-unit/code-point equivalence and retains optional notes. No forge or DB call occurred in this repair. The new published-head CI is evaluated separately.
+
+Raw repair archive SHA1984734bc2a9db48640e87dcd7c108c6dc1711c119e73f07b38f48e54e385677 retains64members/60files/755809bytes. Root and independent verifier checked every member and the separate original CI manifest11payloads plus lossless log decoding. Documentation241 passed. Generated dist was retained during all checks, saved by bytes/hash/patch and only then restored.

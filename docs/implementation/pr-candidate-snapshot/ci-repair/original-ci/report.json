@@ -1,0 +1,572 @@
+{
+  "at": "2026-10-29T18:02:35.975341+00:00",
+  "run": 40926150260,
+  "head": "9d54cfdc658ac137ae9e95d08499aad77ec529f0",
+  "base": {
+    "ref": "main",
+    "sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "repo": {
+      "id": 1255570742,
+      "url": "https://api.github.com/repos/osborn-studio/osstack",
+      "name": "osstack"
+    }
+  },
+  "conclusion": "failure",
+  "jobs": [
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-macos-fixtures (22)",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "conclusion": "success"
+    },
+    {
+      "name": "Paid DeepSeek semantic smoke",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "check",
+      "conclusion": "failure"
+    }
+  ],
+  "checkout": [
+    {
+      "line": 3752,
+      "text": "HEAD is now at f3722352 Merge 9d54cfdc658ac137ae9e95d08499aad77ec529f0 into 6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b"
+    },
+    {
+      "line": 3755,
+      "text": "f3722352faa9aa528c41c125f1cc5af3f1081819"
+    }
+  ],
+  "failed_step": "Lint (Biome)",
+  "failure_lines": [
+    {
+      "line": 4319,
+      "text": "The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it."
+    },
+    {
+      "line": 4320,
+      "text": "Diagnostics not shown: 3."
+    },
+    {
+      "line": 4322,
+      "text": "Found 2 errors."
+    },
+    {
+      "line": 4323,
+      "text": "Found 21 warnings."
+    },
+    {
+      "line": 4330,
+      "text": "##[error]Process completed with exit code 1."
+    }
+  ],
+  "diagnosis": "Biome reports 2 errors and 21 warnings; 3 diagnostics hidden by max-diagnostics. Displayed diagnostic bodies are warnings, so exact error paths/rules not established by this original CI log. No pure-load/network explanation inferred.",
+  "changeset_coverage": "passed; 1 release-sensitive package",
+  "full_tests": {
+    "status": "not_run",
+    "unique_package_summaries_observed": 0,
+    "pass": null,
+    "skip": null,
+    "fail": null
+  },
+  "requested152github14cli": "not_run in check job; prior local counts not rebound",
+  "actual_smokes": "not_run after lint failure",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-10-29T17:59:34Z",
+      "completed_at": "2026-10-29T17:59:35Z"
+    },
+    {
+      "name": "Require macOS Graph fixture success",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-10-29T17:59:35Z",
+      "completed_at": "2026-10-29T17:59:35Z"
+    },
+    {
+      "name": "Run actions/checkout@v7",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-10-29T17:59:35Z",
+      "completed_at": "2026-10-29T17:59:41Z"
+    },
+    {
+      "name": "Classify changed paths",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-10-29T17:59:41Z",
+      "completed_at": "2026-10-29T17:59:41Z"
+    },
+    {
+      "name": "Changeset coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-10-29T17:59:41Z",
+      "completed_at": "2026-10-29T17:59:41Z"
+    },
+    {
+      "name": "Run pnpm/action-setup@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-10-29T17:59:41Z",
+      "completed_at": "2026-10-29T17:59:46Z"
+    },
+    {
+      "name": "Run actions/setup-node@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-10-29T17:59:46Z",
+      "completed_at": "2026-10-29T17:59:49Z"
+    },
+    {
+      "name": "Run oven-sh/setup-bun@v2",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-10-29T17:59:49Z",
+      "completed_at": "2026-10-29T17:59:51Z"
+    },
+    {
+      "name": "Install",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-10-29T17:59:51Z",
+      "completed_at": "2026-10-29T17:59:55Z"
+    },
+    {
+      "name": "Lint (Biome)",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 10,
+      "started_at": "2026-10-29T17:59:55Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Release facts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Clean typecheck contract",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 12,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Build",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 13,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Inventory freshness",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 14,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Typecheck",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 15,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Test",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 16,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Method export contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 17,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Method material pagination contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 18,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Session adoption decision smoke (local fixture)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 19,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Skills check verification (local Git fixtures)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 20,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Preserve skills check evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 21,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Method verification journey contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 22,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Method verification journey (two real local cases)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 23,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Preserve method journey evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 24,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Full method verification journey (five real local cases)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 25,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Preserve full method journey evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 26,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Read-only PR snapshot contracts (offline)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 27,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Skills map maintenance contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 28,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Maintain fixed skills map (five real local cases)",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 29,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Preserve skills map maintenance evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 30,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Model evidence projection contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 31,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Project and check actual method evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 32,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Preserve model evidence packet",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 33,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Project and check full five-case method evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 34,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Preserve full model evidence packet",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 35,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "CLI startup budget",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 36,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Neat semantic live diagnostic tests",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 37,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Neat semantic beta contract gates",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 38,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Python protocol tests",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 39,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Release plan smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 40,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Knowledge Cloud smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 41,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Knowledge Cloud deploy asset smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 42,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Deliver proof smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 43,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Real repo deliver smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 44,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM preflight smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 45,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM Trusted Publisher preflight smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 46,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM broken release deprecation smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 47,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM install smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 48,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM package artifact smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 49,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM publish ordering smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 50,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "NPM registry skew smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 51,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Post Run oven-sh/setup-bun@v2",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 99,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Post Run actions/setup-node@v6",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 100,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Post Run pnpm/action-setup@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 101,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:58Z"
+    },
+    {
+      "name": "Post Run actions/checkout@v7",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 102,
+      "started_at": "2026-10-29T17:59:58Z",
+      "completed_at": "2026-10-29T17:59:59Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 103,
+      "started_at": "2026-10-29T17:59:59Z",
+      "completed_at": "2026-10-29T17:59:59Z"
+    }
+  ],
+  "raw_bindings": [
+    {
+      "path": "run.json",
+      "bytes": 12960,
+      "sha256": "fa40bb9a94fe3f8cf79bbf6926a351544ae9eaa49d5dfea425d2cb6b1b3a7bf7"
+    },
+    {
+      "path": "jobs.json",
+      "bytes": 24566,
+      "sha256": "251a394995e1280d3e5b9f5cfd9a5213c3caddb4e3454a16797de38df5217e52"
+    },
+    {
+      "path": "complete-log.stdout",
+      "bytes": 682838,
+      "sha256": "beff1f69448a1058809a003577348f9b5f731fea9377809b3ffaabb3647f35ad"
+    },
+    {
+      "path": "complete-log.log.gz",
+      "bytes": 92419,
+      "sha256": "b77b3e66aa90f9c20d58e8bc46a9075c411437d7b8fd892d88e649bddd32c2f8"
+    },
+    {
+      "path": "failed-check.stdout",
+      "bytes": 143281,
+      "sha256": "9c99f803f93e1b688e5e65c2f0e97de13da6e9bf83e5c0b39783439cd0f8aa87"
+    },
+    {
+      "path": "failed-check.log.gz",
+      "bytes": 22111,
+      "sha256": "206d942ad293eb45e698c8c9e2a996ae48797a43d683a73e19a3a9b6eaa87f3d"
+    }
+  ],
+  "limits": [
+    "Read-only review; no rerun/cancel/source/PR mutation.",
+    "Four matrix jobs succeeded; their tests are not the skipped check/Test suite.",
+    "No artifact download/rehash, model calls or broad qualification."
+  ]
+}

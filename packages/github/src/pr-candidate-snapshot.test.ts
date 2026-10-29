@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inspectPrCandidate } from './pr-candidate-snapshot.js';
+import { inspectPrCandidate, validatePrCandidateInput } from './pr-candidate-snapshot.js';
 import type { DeliveryCommandRunner, DeliveryCommandResult } from './delivery.js';
 
 const H = 'a'.repeat(40), B = 'b'.repeat(40);
@@ -30,6 +30,19 @@ function scripted(responses: unknown[]) {
   return { runner, calls };
 }
 const stable = () => [facts(), checks(), threads(), facts()];
+
+describe('required check names', () => {
+  it('rejects every ASCII C0 control and DEL without contacting the forge', () => {
+    const controls = Array.from({ length: 32 }, (_, code) => code).concat(127);
+    for (const code of controls) {
+      expect(() => validatePrCandidateInput({ ...input, requiredChecks: [`test${String.fromCharCode(code)}name`] })).toThrow('invalid_input');
+    }
+  });
+  it('preserves spaces, printable ASCII and non-ASCII names under the existing contract', () => {
+    const names = ['test name / suite', '~printable', '检查 🚦', `C1${String.fromCharCode(128)}`];
+    expect(validatePrCandidateInput({ ...input, requiredChecks: names }).requiredChecks).toEqual(names);
+  });
+});
 
 describe('one bounded candidate observation', () => {
   it('reports a stable observed clear candidate without granting authority', async () => {

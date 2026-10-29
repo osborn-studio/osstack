@@ -1,0 +1,9 @@
+{
+  "result": "published original CI copy exactly matches B frozen final-manifest and all11listed files; two gz payloads reconstruct original stdout exactly",
+  "source": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr-candidate-ci307-20261030",
+  "manifest_sha256": "4d698feffce9f907bc6203253015d784c313d830552597d0b999d61cb9d1f01c",
+  "full_raw_sha256": "beff1f69448a1058809a003577348f9b5f731fea9377809b3ffaabb3647f35ad",
+  "failed_raw_sha256": "9c99f803f93e1b688e5e65c2f0e97de13da6e9bf83e5c0b39783439cd0f8aa87",
+  "archive_receipt_sha256": "9250f69df6d780d92269417555c64eee6b1d79496578caa77511dc9c28a6039d",
+  "no_mutation": true
+}
