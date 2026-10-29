@@ -9450,7 +9450,11 @@
         "docs/implementation/method-full-projection/README.md"
       ],
       "formal_gate_pass": false,
-      "whole_milestone_complete": false
+      "whole_milestone_complete": false,
+      "current_status": "blocked",
+      "status_reason": "parent merge/main revalidation; published head CI succeeded",
+      "current_observed_at": "2026-10-29T09:23:47.620613+00:00",
+      "current_scope": "PR305 updated to52f16faf; CI40845007211 passed five applicable checks; parent304 merge/main revalidation pending. Historical observed_status/delivered_scope retain their recorded observation times."
     },
     {
       "card_id": "card_440af690",
@@ -9477,7 +9481,11 @@
         "docs/implementation/pstack-current-repair/README.md"
       ],
       "formal_gate_pass": false,
-      "whole_milestone_complete": false
+      "whole_milestone_complete": false,
+      "current_status": "blocked",
+      "status_reason": "parent merge/main revalidation; published head CI succeeded",
+      "current_observed_at": "2026-10-29T09:23:47.620613+00:00",
+      "current_scope": "PR305 updated to52f16faf; CI40845007211 passed five applicable checks; parent304 merge/main revalidation pending. Historical observed_status/delivered_scope retain their recorded observation times."
     }
   ],
   "activity_counting": {
@@ -10049,7 +10057,7 @@
     "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "candidate_base": "856bec1deaa720425d8b475793f9dd75e1364288",
     "card_id": "card_440af690",
-    "state": "reviewed_repair_publication_pending",
+    "state": "ci_passed_waiting_parent_merge_and_main_revalidation",
     "task": "Reject internally contradictory passed packet with nonempty product stderr; retain legitimate failed packets and v1/v2 compatibility",
     "source": "current main v1 and provisional full v2; not an old historical repair replay",
     "owners": {
@@ -10104,19 +10112,39 @@
       "status": "5SUCCESS/paidSKIP",
       "scope": "22packages7142pass7skip0fail; does not validate new681repair"
     },
-    "status": "published_draft_waiting_fresh_ci_and_parent_merge",
+    "status": "ci_passed_waiting_parent_merge_and_main_revalidation",
     "published_head": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
     "published_pr": 305,
     "base": "codex/method-full-journey-delivery",
-    "published_ci": [
-      {
-        "conclusion": "",
-        "databaseId": 40845007211,
-        "headSha": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
-        "status": "in_progress",
-        "url": "https://github.com/osborn-studio/osstack/actions/runs/40845007211"
-      }
-    ],
-    "publication_receipt": "docs/implementation/pstack-current-repair/publication/published-candidate.json"
+    "published_ci": {
+      "head": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+      "run": 40845007211,
+      "status": "completed",
+      "conclusion": "success",
+      "applicable_checks": 5,
+      "paid_smoke": "skipped",
+      "base": "codex/method-full-journey-delivery",
+      "ready": false
+    },
+    "publication_receipt": "docs/implementation/pstack-current-repair/publication/published-candidate.json",
+    "ci_observed_at": "2026-10-29T09:23:47.620613+00:00",
+    "publication_plan": "Published in PR305; new-head CI passed; waiting parent304 merge then actual-main retarget and applicable revalidation before Ready",
+    "ci_receipt": "docs/implementation/pstack-current-repair/ci-complete/status.json",
+    "card_status": "blocked_parent_merge",
+    "ci_log_verification": {
+      "report": "docs/implementation/pstack-current-repair/ci-complete/independent/report.json",
+      "report_sha256": "b5b83525a590af5922985fa04d37f73b44ad5bd07017576af5b1bde9f572d3e0",
+      "actual_checkout": "c2c533b1d9ff823201434104146d2ad2465143e1",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_tests": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1
+      },
+      "artifacts_rehashed": false
+    }
   }
 }
