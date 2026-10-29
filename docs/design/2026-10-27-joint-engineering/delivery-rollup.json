@@ -10774,7 +10774,7 @@
     "merged_at": "2026-10-29T17:49:32Z"
   },
   "pr_candidate_snapshot_slice": {
-    "status": "draft_ci_running",
+    "status": "draft_repaired_ci_running",
     "card": "card_55808960",
     "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
     "capabilities": [
@@ -10852,12 +10852,28 @@
     "docs_passed": 241,
     "hygiene_passed": 1,
     "pr": 307,
-    "head_sha": "9d54cfdc658ac137ae9e95d08499aad77ec529f0",
+    "head_sha": "24bed464c321c5396f59adecaf72c116569ca768",
     "base_branch": "main",
-    "ci_run": 40926150260
+    "ci_run": 40928407347,
+    "original_ci_failure": {
+      "head": "9d54cfdc",
+      "run": 40926150260,
+      "phase": "Biome lint",
+      "errors": 2,
+      "later_steps": "not_run"
+    },
+    "lint_repair": {
+      "source": "6cea803e7b820410c188769a17341ff2c1e4f078",
+      "semantics": "C0/DEL rejection equivalent; no rules relaxed",
+      "independent_inputs": 278,
+      "root_github": 154,
+      "root_cli": 14,
+      "review": "actual Sonnet5.5 static PASS",
+      "record": "docs/implementation/pr-candidate-snapshot/ci-repair"
+    }
   },
   "stack_status_context_slice": {
-    "status": "implementation_in_progress",
+    "status": "validated_pending_publication",
     "card": "card_7e0b1be2",
     "base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
     "primary_capability": "PS18",
@@ -10874,6 +10890,35 @@
     "formal_gate_pass": false,
     "whole_capability_complete": false,
     "new_methods": 0,
-    "record": "docs/implementation/stack-status-context"
+    "record": "docs/implementation/stack-status-context",
+    "author_sha": "60495d82b6f3190a47d840906795647395ed7151",
+    "root_code_sha": "bda3942a8d2b07c6af7c0ac4d64014b9f11cc3c5",
+    "post_merge_sha": "0e3a5553f49f793728cc2b7f1edf14662d15b089",
+    "author_red": {
+      "passed": 21,
+      "failed": 12
+    },
+    "author_green": 33,
+    "author_package": 125,
+    "independent": {
+      "frozen_vectors": 36,
+      "old_passed": 27,
+      "old_failed": 9,
+      "new_passed": 36,
+      "undefined_control": "separate",
+      "ingest_drift_topology": "real API injected runner only"
+    },
+    "full": {
+      "head": "bda3942a8d2b07c6af7c0ac4d64014b9f11cc3c5",
+      "packages": 22,
+      "passed": 7207,
+      "skipped": 5,
+      "failed": 0,
+      "tracked_files": 8562,
+      "tracked_bytes_unchanged": true,
+      "initial_dirty": "four fresh knowledge/dist"
+    },
+    "review": "actual Sonnet5.5 static PASS with optional suggestions retained; no model-host task",
+    "downstream": "new cards store ci_state; existing cards skipped; no DB or automatic merge claim"
   }
 }
