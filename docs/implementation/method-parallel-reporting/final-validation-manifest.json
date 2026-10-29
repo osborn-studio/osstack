@@ -1,0 +1,30 @@
+{
+  "archive_sha256": "03c0f3f15417d50413735a9210c7ba7f695f65af26be373ee6518d864539f076",
+  "files": [
+    {
+      "path": "full-final-before.json",
+      "bytes": 748,
+      "sha256": "c5eb437395d341e88eac08534b60cfbeed7d2f1c30d296039adb316cce736167"
+    },
+    {
+      "path": "full-final-result.json",
+      "bytes": 2443,
+      "sha256": "fdf7e2d6cc961ae4c6956351870e4a7fda11e5c56540defbf89996ffccefb007"
+    },
+    {
+      "path": "full-final.log",
+      "bytes": 250589,
+      "sha256": "8e61f2d1cf6f09024808bea15539c474ab834799d27ff1bddd81eab8263b0e68"
+    },
+    {
+      "path": "generated-dist-final.patch",
+      "bytes": 2363,
+      "sha256": "9cd0804e8ac972f377b8759044dd0a2ab17b4499e96fd6391f43a46f5a709567"
+    },
+    {
+      "path": "final-exports.log",
+      "bytes": 21202,
+      "sha256": "df2dfaf69065027eabdbf8b537d394bfd75acf7ff3bc7fd794a9abdd285c951d"
+    }
+  ]
+}
