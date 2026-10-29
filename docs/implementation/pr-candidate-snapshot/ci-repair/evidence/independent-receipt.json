@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-29T18:09:57.254543+00:00",
+  "result": "archive and separate published CI copy verified",
+  "archive_sha256": "1984734bc2a9db48640e87dcd7c108c6dc1711c119e73f07b38f48e54e385677",
+  "manifest_sha256": "aba45b7caf64485628a76e1af53ccbe61bec203b0a8f6ddfec6873ebd59510ea",
+  "members": 64,
+  "types": {
+    "file": 60,
+    "directory": 4
+  },
+  "file_bytes": 755809,
+  "scratch_original_members_equal": true,
+  "original_ci": {
+    "files": 11,
+    "manifest_sha256": "4d698feffce9f907bc6203253015d784c313d830552597d0b999d61cb9d1f01c",
+    "raw_bindings_verified_including_decompressed_bytes": [
+      {
+        "path": "run.json",
+        "bytes": 12960,
+        "sha256": "fa40bb9a94fe3f8cf79bbf6926a351544ae9eaa49d5dfea425d2cb6b1b3a7bf7"
+      },
+      {
+        "path": "jobs.json",
+        "bytes": 24566,
+        "sha256": "251a394995e1280d3e5b9f5cfd9a5213c3caddb4e3454a16797de38df5217e52"
+      },
+      {
+        "path": "complete-log.stdout",
+        "bytes": 682838,
+        "sha256": "beff1f69448a1058809a003577348f9b5f731fea9377809b3ffaabb3647f35ad"
+      },
+      {
+        "path": "complete-log.log.gz",
+        "bytes": 92419,
+        "sha256": "b77b3e66aa90f9c20d58e8bc46a9075c411437d7b8fd892d88e649bddd32c2f8"
+      },
+      {
+        "path": "failed-check.stdout",
+        "bytes": 143281,
+        "sha256": "9c99f803f93e1b688e5e65c2f0e97de13da6e9bf83e5c0b39783439cd0f8aa87"
+      },
+      {
+        "path": "failed-check.log.gz",
+        "bytes": 22111,
+        "sha256": "206d942ad293eb45e698c8c9e2a996ae48797a43d683a73e19a3a9b6eaa87f3d"
+      }
+    ],
+    "run": 40926150260,
+    "head": "9d54cfdc658ac137ae9e95d08499aad77ec529f0",
+    "observed_status": "failed Lint; check Test and later steps not_run. Matrix success does not imply full success."
+  },
+  "limits": [
+    "Archive read without filesystem extraction; frozen originals unchanged.",
+    "Retained raw CI log binds historical failed run only, not new repair CI result.",
+    "No tests/model/live forge executed."
+  ],
+  "issues": []
+}
