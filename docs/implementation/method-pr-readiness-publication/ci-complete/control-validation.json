@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "tests": 241,
+  "head_before": "02c3228accc565b97b049dd0723facf477b204de",
+  "scope": "after status/main/ledger update; before adding read-only CI receipts",
+  "log_sha256": "b0d9bda587c19e3ef0841bc0040b7332754d04bf465c14d20fbb1670ccf0b6a3"
+}

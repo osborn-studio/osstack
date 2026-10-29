@@ -1,0 +1,428 @@
+{
+  "observed_at": "2026-10-29T00:15:53.846864+00:00",
+  "run_id": 40789146519,
+  "attempt": 1,
+  "head_sha": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
+  "base": {
+    "name": "codex/method-continuity-delivery",
+    "sha": "7deee3af868c50958dcc651f2a5a7599e4750c60"
+  },
+  "pr300": {
+    "state": "OPEN",
+    "isDraft": true
+  },
+  "pr299": {
+    "baseRefName": "main",
+    "baseRefOid": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+    "headRefOid": "7deee3af868c50958dcc651f2a5a7599e4750c60",
+    "isDraft": false,
+    "state": "OPEN",
+    "url": "https://github.com/osborn-studio/osstack/pull/299"
+  },
+  "applicable_checks": [
+    {
+      "name": "graph-macos-fixtures (22)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "conclusion": "SUCCESS"
+    },
+    {
+      "name": "check",
+      "conclusion": "SUCCESS"
+    }
+  ],
+  "package_summaries": [
+    {
+      "package": "contracts",
+      "line": 4678,
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "compliance",
+      "line": 4686,
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "github",
+      "line": 4706,
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "knowledge",
+      "line": 4718,
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "neat-eval",
+      "line": 4736,
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "runtime",
+      "line": 4748,
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "protocol",
+      "line": 4801,
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "governance",
+      "line": 4815,
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "knowledge-cloud",
+      "line": 4828,
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "graph",
+      "line": 4873,
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "core",
+      "line": 5010,
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "plugins",
+      "line": 5026,
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "hermes-adapter",
+      "line": 5031,
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "skills",
+      "line": 5042,
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "autonomy",
+      "line": 5170,
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "skill-registry",
+      "line": 5179,
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "agents",
+      "line": 5242,
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "config",
+      "line": 5254,
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "loop",
+      "line": 5697,
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0
+    },
+    {
+      "package": "conformance",
+      "line": 5727,
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "supervisor",
+      "line": 5738,
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "package": "cli",
+      "line": 8214,
+      "passed": 2764,
+      "skipped": 6,
+      "failed": 0
+    }
+  ],
+  "package_totals": {
+    "passed": 7142,
+    "skipped": 7,
+    "failed": 0
+  },
+  "counting_scope": "One final Tests line for each of 22 unique packages within check/Test only; matrix, smoke and individual cases excluded from package total.",
+  "related_steps": {
+    "Method export contracts": {
+      "step_conclusion": "success",
+      "line_start": 8218,
+      "line_end": 8783,
+      "tests": 91,
+      "pass": 90,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 1,
+      "todo": 0,
+      "skip_details": [
+        {
+          "line": 8371,
+          "text": "ok 25 - refuses a new output inside the current global Codex home even in dry-run # SKIP global Codex home absent; do not create it for testing"
+        }
+      ]
+    },
+    "Session adoption decision smoke (local fixture)": {
+      "step_conclusion": "success",
+      "line_start": 8784,
+      "line_end": 9050,
+      "tests": 27,
+      "pass": 27,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "skip_details": []
+    },
+    "Skills check verification (local Git fixtures)": {
+      "step_conclusion": "success",
+      "line_start": 9051,
+      "line_end": 9302,
+      "tests": 25,
+      "pass": 25,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "skip_details": []
+    },
+    "Method verification journey contracts": {
+      "step_conclusion": "success",
+      "line_start": 9329,
+      "line_end": 9495,
+      "tests": 25,
+      "pass": 25,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "skip_details": []
+    },
+    "Method verification journey (two real local cases)": {
+      "step_conclusion": "success",
+      "line_start": 9496,
+      "line_end": 9607,
+      "skip_details": []
+    },
+    "Model evidence projection contracts": {
+      "step_conclusion": "success",
+      "line_start": 9634,
+      "line_end": 9945,
+      "tests": 49,
+      "pass": 49,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "skip_details": []
+    },
+    "Project and check actual method evidence": {
+      "step_conclusion": "success",
+      "line_start": 9946,
+      "line_end": 9957,
+      "skip_details": []
+    }
+  },
+  "smoke_observations": {
+    "adoption": {
+      "status": "passed",
+      "receipt": "applied",
+      "completion": "observed_turn",
+      "cleanup_removed": true
+    },
+    "skills": {
+      "status": "passed",
+      "driver_exit": 0,
+      "selected_cases": [
+        "healthy",
+        "missing-ref",
+        "drift",
+        "mixed",
+        "empty"
+      ],
+      "cases": [
+        {
+          "case_id": "healthy",
+          "verification_status": "passed",
+          "actual_exit": 0,
+          "expected_exit": 0,
+          "source_check_status": "healthy",
+          "input_unchanged": true,
+          "errors": []
+        },
+        {
+          "case_id": "missing-ref",
+          "verification_status": "passed",
+          "actual_exit": 1,
+          "expected_exit": 1,
+          "source_check_status": "failed",
+          "input_unchanged": true,
+          "errors": []
+        },
+        {
+          "case_id": "drift",
+          "verification_status": "passed",
+          "actual_exit": 2,
+          "expected_exit": 2,
+          "source_check_status": "drift",
+          "input_unchanged": true,
+          "errors": []
+        },
+        {
+          "case_id": "mixed",
+          "verification_status": "passed",
+          "actual_exit": 1,
+          "expected_exit": 1,
+          "source_check_status": "failed",
+          "input_unchanged": true,
+          "errors": []
+        },
+        {
+          "case_id": "empty",
+          "verification_status": "passed",
+          "actual_exit": 0,
+          "expected_exit": 0,
+          "source_check_status": "empty",
+          "input_unchanged": true,
+          "errors": []
+        }
+      ],
+      "cleanup": {
+        "status": "passed",
+        "fixture_path": "/home/runner/work/_temp/osstack/smoke/skills-check-bhCz5a",
+        "fixture_removed": true,
+        "descendant_termination": "not_attested"
+      }
+    },
+    "journey": {
+      "status": "passed",
+      "features": [
+        {
+          "case_id": "healthy",
+          "verification": "passed",
+          "product_exit": 0,
+          "product_status": "healthy",
+          "driver_exit": 0,
+          "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/cases/healthy",
+          "manifest_sha256": "be9dd565188c88056c3f5e6466199010b37b4fffa06dd43d3b973368b2b0519b",
+          "verified_files": 29,
+          "bindings": {
+            "source_digest": "afdfa7bf2461d07a1269002ea5c310a71abf82d0be93f36d7daa55d4331e8d63",
+            "build_digest": "0eed6e34ea30896b5a1c582cfc4036d03a96c6c431f3a7e35199a4ddc5df7eb8"
+          },
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-RGtu0u",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          },
+          "evidence_state": "sealed",
+          "journey_status": "passed"
+        },
+        {
+          "case_id": "missing-ref",
+          "verification": "passed",
+          "product_exit": 1,
+          "product_status": "failed",
+          "driver_exit": 0,
+          "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/cases/missing-ref",
+          "manifest_sha256": "5432741c93b1b2c0911e79265cc7a5080d8c1cf4f15714b7356b341dd5858666",
+          "verified_files": 29,
+          "bindings": {
+            "source_digest": "afdfa7bf2461d07a1269002ea5c310a71abf82d0be93f36d7daa55d4331e8d63",
+            "build_digest": "0eed6e34ea30896b5a1c582cfc4036d03a96c6c431f3a7e35199a4ddc5df7eb8"
+          },
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-jLu1aq",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          },
+          "evidence_state": "sealed",
+          "journey_status": "passed"
+        }
+      ],
+      "host_execution": "not_run",
+      "formal_gate_pass": false
+    },
+    "projection": [
+      {
+        "status": "projected",
+        "packet_sha256": "aa2110d7724c4d4d034813f1f0f65e754780a50e5c17093bae920e391b1b8814",
+        "input_opened_read_only": true,
+        "formal_gate_pass": false
+      },
+      {
+        "status": "valid",
+        "packet_sha256": "aa2110d7724c4d4d034813f1f0f65e754780a50e5c17093bae920e391b1b8814",
+        "original_evidence_revalidated": false,
+        "formal_gate_pass": false
+      }
+    ]
+  },
+  "limitations": [
+    "Current branch-base CI success does not substitute for post-parent-merge main revalidation. #300 remains Draft; #299 was OPEN at observation.",
+    "Exporter has 91 total, 90 passed, 1 skipped because global Codex home is absent; do not report 91 passed.",
+    "Smoke receipts are observed in complete CI log; artifact file contents were not independently downloaded/rehashed in this task.",
+    "No model calls, tests, CI dispatch/retry, product changes, PR/ledger mutations, or runtime qualification by this reviewer."
+  ]
+}

@@ -25,8 +25,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
-  "observed_at": "2026-10-28T14:43:16.043664+00:00",
+  "main_sha": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+  "observed_at": "2026-10-29T00:15:26.717489+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -3673,7 +3673,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "draft_ci_running",
+    "status": "draft_ci_passed_waiting_parent_merge",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3731,6 +3731,27 @@
     "final_document_tests": 241,
     "final_hygiene_tests": 1,
     "publication_evidence": "docs/implementation/method-pr-readiness-publication",
-    "user_approval_required": true
+    "user_approval_required": true,
+    "applicable_ci": "5_SUCCESS_paid_SKIPPED",
+    "readiness_blocker": "PR299 not merged; actual-main reconciliation and retarget still required",
+    "final_ci_test": {
+      "head": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
+      "run": 40789146519,
+      "base": {
+        "name": "codex/method-continuity-delivery",
+        "sha": "7deee3af868c50958dcc651f2a5a7599e4750c60"
+      },
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "exporter": {
+        "total": 91,
+        "passed": 90,
+        "skipped": 1,
+        "reason": "global Codex home absent"
+      },
+      "scope": "branch-base CI only; post-parent main reconciliation pending"
+    }
   }
 }
