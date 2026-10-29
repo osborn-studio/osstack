@@ -3435,7 +3435,7 @@
     "merged_at": "2026-10-28T16:24:46Z"
   },
   "next_framing_architecture_wave": {
-    "status": "validated_preparing_pr",
+    "status": "merged_bounded_delivery",
     "baseline": "711c45e75264000bde859328bd7dc131f68461d1",
     "owners": {
       "loader_adversarial": {
@@ -3491,6 +3491,124 @@
     "archive_sha256": "370e3482c7dba8b7180a3639b78c571437fe226210b63155dfe067cfa9d2d6ca",
     "archive_members": 767,
     "final_document_tests": 241,
-    "final_hygiene_tests": 1
+    "final_hygiene_tests": 1,
+    "pr": 298,
+    "published_head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+    "ci_run": 40730300608,
+    "is_draft": false,
+    "workers": "three workers handed off; author worktrees removed; root full queue empty",
+    "ci_status": "attempt2_success",
+    "ci_failure": {
+      "attempt": 1,
+      "test": "engineering-store.test.ts canonical schema46 migration",
+      "observed_ms": 5638,
+      "timeout_ms": 5000,
+      "core_passed": 1300,
+      "core_failed": 1,
+      "other_matrix_passed": 4,
+      "original_retained": true,
+      "cause": "unproven; prior297same test1094ms; Node and runner image differ"
+    },
+    "ci_revalidation": {
+      "attempt": 2,
+      "head": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+      "scope": "only failed check; one controlled repeat",
+      "code_timeout_selection_changes": false,
+      "repeat_again_if_fails": false,
+      "result": "success; original failure retained; cause unproven",
+      "migration_case_ms": 1590,
+      "package_passed": 7142,
+      "package_skipped": 7,
+      "package_failed": 0,
+      "package_count": 22,
+      "independent_report_sha256": "84a58e228c43603e503e74e968d9d5e594daa094210b85d882ece58c7d8e3caf"
+    },
+    "readiness": {
+      "main_sha": "711c45e75264000bde859328bd7dc131f68461d1",
+      "head_sha": "8ba3d98ad27f8febb172bc2392d72fe201ea3e96",
+      "applicable_checks_success": 5,
+      "paid_smoke": "skipped",
+      "mergeable": true,
+      "user_approval_required": true,
+      "evidence": "docs/implementation/method-framing-publication/ci-attempt2"
+    },
+    "merge_sha": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+    "merged_by": "gilberthello",
+    "merged_at": "2026-10-28T22:20:15Z",
+    "actual_main_tree_equals_published_head": true
+  },
+  "next_continuity_wave": {
+    "status": "verified_prepublication",
+    "baseline": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+    "owners": {
+      "loader_adversarial": {
+        "card": "card_30da6fc0",
+        "scope": "session continuity method and export contracts"
+      },
+      "terminal_preflight": {
+        "card": "card_e90a4adb",
+        "scope": "fresh framing host preparation; user turns require independent freeze and root dispatch"
+      },
+      "cleanup_regression": {
+        "card": "card_46471cf0",
+        "scope": "prefrozen criteria and independent verification"
+      },
+      "root": {
+        "scope": "central ledger/integration/full/audit/PR"
+      }
+    },
+    "formal_gates_passed": false,
+    "model_user_turns_dispatched": 2,
+    "runtime_enabled": false,
+    "code_sha": "adfb03def56ed183e151977a94642933dceff895",
+    "author_sha": "98b6cbad02ba29cb4fa78447b1117c763c2a1866",
+    "method_count": 12,
+    "export_tests": 88,
+    "independent_exports": {
+      "files_per_host": 76,
+      "local_edges_per_host": 266,
+      "entries": 4
+    },
+    "method_audit": {
+      "model": "claude-sonnet-5-5",
+      "first": "REVISE",
+      "final": "limited_B1_B2_closure_PASS"
+    },
+    "package_full": {
+      "sha": "848e4a2e57af0413ffb3e7fa5d7f5661dd2c3a69",
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0,
+      "scope": "Before method integration; four generated knowledge/dist files present, patch retained and files restored; not final whole-tree"
+    },
+    "host_probe": {
+      "material_sha": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
+      "codex": "LIMITED",
+      "claude": "LIMITED",
+      "user_turns_each": 1,
+      "retries": 0,
+      "codex_selected_words": 311,
+      "codex_all_message_words": 341,
+      "claude_words": 439,
+      "native_codex": "not_observed",
+      "native_claude": "Skill_osstack-mode_observed",
+      "resolved_codex_model": "not_attested",
+      "reported_claude_model": "claude-sonnet-5-5"
+    },
+    "evidence": "docs/implementation/method-continuity-delivery",
+    "raw_archive_sha256": "1b9d20a3a70db7f0fd3fd8aafe42b97cac51a71e513e5007d3e730653a5845d5",
+    "host_report_audit": {
+      "model": "claude-sonnet-5-5",
+      "history": [
+        "REVISE",
+        "REVISE",
+        "limited_report_wording_closure_PASS"
+      ],
+      "experiment_grades_unchanged": true
+    },
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1,
+    "host_report_wording_closure": "PASS_limited_no_host_grade_upgrade",
+    "archive_independently_verified": true
   }
 }

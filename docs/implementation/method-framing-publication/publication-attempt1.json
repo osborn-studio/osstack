@@ -1,0 +1,7 @@
+{
+  "action": "gh pr create before push had completed",
+  "exit_code": 1,
+  "observed_error": "pull request create failed: GraphQL: Head sha can't be blank, Base sha can't be blank, No commits between main and codex/method-framing-delivery, Head ref must be a branch (createPullRequest)",
+  "classification": "publication ordering error; no PR created, wait for confirmed push before retry",
+  "source": "root tool output"
+}

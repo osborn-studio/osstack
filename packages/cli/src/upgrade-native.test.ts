@@ -152,10 +152,21 @@ const backend={async assertConsumers(){},async service(label){const c=config.con
     await new Promise<void>(r=>{child.once('exit',()=>r());child.kill('SIGKILL');});expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(true);
     const recovery=new ManagedNativeUpgradePort(f.input,f.backend);try{const status=await f.journal.status(f.plan.digest,'first');expect(status.recovery.last_started_phase).toBe('draining');const result=await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000));expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}finally{await recovery.close();}
   },60000);
-  it('keeps terminal history intact while explicitly cleaning a fence left after verification',async()=>{
-    const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.close();const status=await f.journal.status(f.plan.digest,'first');
-    const recovery=new ManagedNativeUpgradePort(f.input,f.backend);try{await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000));expect((await f.journal.status(f.plan.digest,'first')).records).toEqual(status.records);expect(f.starts()).toBe(4);expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(false);}finally{await recovery.close();}
-  },30000);
+  describe('verified history with an unfinished fence cleanup',()=>{
+    let f:Awaited<ReturnType<typeof fixture>>;
+    let status:Awaited<ReturnType<UpgradeJournal['status']>>;
+    // Preparing a verified two-home upgrade has its own bounded budget;
+    // the actual recovery and its abort deadline remain 30 seconds.
+    beforeEach(async()=>{
+      f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
+      try{expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');}
+      finally{await port.close();}
+      status=await f.journal.status(f.plan.digest,'first');
+    },60000);
+    it('keeps terminal history intact while explicitly cleaning a fence left after verification',async()=>{
+      const recovery=new ManagedNativeUpgradePort(f.input,f.backend);try{await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000));expect((await f.journal.status(f.plan.digest,'first')).records).toEqual(status.records);expect(f.starts()).toBe(4);expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(false);}finally{await recovery.close();}
+    },30000);
+  });
   describe.each(['permit_missing','operation_missing','both_missing'] as const)('completed history after %s crash',missing=>{
     let f:Awaited<ReturnType<typeof fixture>>;
     let status:Awaited<ReturnType<UpgradeJournal['status']>>;
@@ -190,13 +201,23 @@ const backend={async assertConsumers(){},async service(label){const c=config.con
     await rm(peer);await link(marker,join(c.home,'untrusted-peer'));
     expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'))).toThrow('upgrade_managed_marker_invalid');
   },30000);
-  it('removes a foreign orphan permit during historically verified cleanup when no operation exists',async()=>{
-    const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
-    expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.complete();await port.close();
-    await publishPrivate(join(f.root,'restart-permit.json'),{plan_digest:'f'.repeat(64),build_digest:f.old.target.build_digest});
-    const status=await f.journal.status(f.plan.digest,'first'),recovery=new ManagedNativeUpgradePort(f.input,f.backend);
-    try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',services_observed:false});expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);expect(f.starts()).toBe(4);}finally{await recovery.close();}
-  },30000);
+  describe('verified history with a foreign orphan permit',()=>{
+    let f:Awaited<ReturnType<typeof fixture>>;
+    let status:Awaited<ReturnType<UpgradeJournal['status']>>;
+    // Only the real completed upgrade and orphan arrangement move into setup.
+    // Cleanup behavior retains the original assertions and 30-second budget.
+    beforeEach(async()=>{
+      f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
+      try{expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.complete();}
+      finally{await port.close();}
+      await publishPrivate(join(f.root,'restart-permit.json'),{plan_digest:'f'.repeat(64),build_digest:f.old.target.build_digest});
+      status=await f.journal.status(f.plan.digest,'first');
+    },60000);
+    it('removes a foreign orphan permit during historically verified cleanup when no operation exists',async()=>{
+      const recovery=new ManagedNativeUpgradePort(f.input,f.backend);
+      try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',services_observed:false});expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);expect(f.starts()).toBe(4);}finally{await recovery.close();}
+    },30000);
+  });
   it('waits for a physically pending stop before releasing owner locks and prevents late reacquisition after close',async()=>{
     const f=await fixture();let unblock!:()=>void;let arrived!:()=>void;const pending=new Promise<void>(r=>unblock=r);const started=new Promise<void>(r=>arrived=r);
     const port=new ManagedNativeUpgradePort(f.input,{...f.backend,stop:async(l,s)=>{await f.backend.stop(l,s);arrived();await pending;}});

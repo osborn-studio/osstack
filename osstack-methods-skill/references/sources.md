@@ -63,3 +63,19 @@ Additional architecture sources at the same pin:
 - [Redesign from first principles](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-redesign-from-first-principles/SKILL.md).
 
 Upstream restatement, sharpening and architect entries disable automatic model invocation. OSStack adapts them into shared mode selection instead of copying that host-specific setting. Task framing remains for a requested restatement/refinement; architecture follows the requested design or implementation scope. Selection does not itself authorize execution.
+
+The session-continuity method also draws on these original pstack sources at the same pin:
+
+- [Recall](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/recall/SKILL.md): scoped history and shared records, verified current state and a concise resume capsule.
+- [Session pickup](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/session-pickup.md): reuse the prior trail, separate finished and pending work, then verify inherited claims against real artifacts.
+- [Pause safely](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/pause-safely.md): explicit pause intent, a safe boundary and durable handoff.
+- [Guard context](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/principle-guard-the-context-window/SKILL.md): bounded reads and compact context. The idempotent-operations principle linked above informs reconciliation before retry.
+
+Firstmate, whose inspected MIT license names Kun Chen as copyright holder, was separately inspected at original commit `af1c6817fc47589b162cbc361671c43cdb150933`:
+
+- [Captain-hold lifecycle](https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/.agents/skills/captain-hold-lifecycle/SKILL.md): unresolved decisions survive report completion and cleanup, with an authoritative owner and evidence-based reconciliation.
+- [Away/quiet supervision](https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/.agents/skills/away-quiet-supervision/SKILL.md): ongoing responsibility, distinct user-return/internal signals and no authority expansion while away.
+- [Actual terminal lifecycle implementation](https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/bin/fm-afk-launch.sh#L455-L523): `fm_afk_launch_close_recorded` checks exact backend absence before removing its record; an unconfirmed teardown preserves the identifier. This is source inspection, not a claim that OSStack implements or executed that backend mechanism.
+- [Firstmate MIT license](https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/LICENSE): Copyright (c) 2026 Kun Chen.
+
+OSStack independently expresses these ideas without importing Cursor transcript paths, fixed models, mandatory WIP commits, Firstmate commands/turn-end hooks, automatic replay/unlocking, or a new approval policy. Prior user authorization remains effective. Session status, process liveness, unresolved runtime obligations and verified completion remain separate facts. Existing recovery contracts continue to govern actual runtime operations; this shared method neither grants execution qualification nor adds a principal-certification requirement to file work.

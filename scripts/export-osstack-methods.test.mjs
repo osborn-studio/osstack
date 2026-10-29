@@ -314,9 +314,9 @@ for (const [label, content] of [
   });
 }
 
-test('document-named source router, four entries and eleven method references actually exist', async () => {
+test('document-named source router, four entries and twelve method references actually exist', async () => {
   const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
-  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design'].map(name => `references/${name}.md`)]) {
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity'].map(name => `references/${name}.md`)]) {
     assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
     assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
   }
@@ -370,7 +370,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
           queue.push(resolve(dirname(path), target.split('#')[0]));
         }
       }
-      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design']) {
+      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity']) {
         // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
         const outputPath = join(entryRoot, 'references', `${method}.md`);
         const sourcePath = `references/${method}.md`;
@@ -386,7 +386,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
   });
 }
 
-for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design']) {
+for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity']) {
   test(`D2a a missing advertised ${method} reference fails before reserving output`, async t => {
     const f = await fixture(t);
     await rm(f.sourceRoot, { recursive: true });
@@ -538,4 +538,30 @@ test('task framing source links retain both original skills at the fixed upstrea
   for (const name of ['in-your-own-words', 'sharpen']) assert.ok(links.includes(`https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/${name}/SKILL.md`));
   const method = await readFile(join(root, 'task-framing.md'), 'utf8');
   assert.ok([...method.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].some(([, target]) => target === 'sources.md'));
+});
+
+// Navigation and provenance only; these checks do not execute a session recovery.
+test('session continuity has a distinct route from source, mode, help and delegate entries', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill');
+  for (const entry of ['SKILL.md', ...['osstack-mode', 'osstack-help', 'osstack-agent'].map(name => `entries/${name}/SKILL.md`)]) {
+    const body = await readFile(join(root, entry), 'utf8');
+    const links = [...body.matchAll(/\[([^\]\n]+)\]\(([^)\s]+)\)/g)].filter(([, label]) => label.toLowerCase() === 'session continuity');
+    assert.equal(links.length, 1, entry);
+    assert.equal(links[0][2], `${entry === 'SKILL.md' ? 'references' : '../../references'}/session-continuity.md`);
+    assert.ok((await readFile(resolve(root, dirname(entry), links[0][2]), 'utf8')).trim());
+  }
+});
+
+test('session continuity links evidence and both original project sources at exact pins', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill/references');
+  const links = text => [...text.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(([, target]) => target);
+  const method = links(await readFile(join(root, 'session-continuity.md'), 'utf8'));
+  for (const ref of ['evidence.md', 'sources.md']) assert.ok(method.includes(ref), ref);
+  const sources = links(await readFile(join(root, 'sources.md'), 'utf8'));
+  for (const path of ['recall/SKILL.md', 'poteto-mode/playbooks/session-pickup.md', 'poteto-mode/playbooks/pause-safely.md']) {
+    assert.ok(sources.includes(`https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/${path}`), path);
+  }
+  for (const path of ['.agents/skills/captain-hold-lifecycle/SKILL.md', '.agents/skills/away-quiet-supervision/SKILL.md', 'bin/fm-afk-launch.sh']) {
+    assert.ok(sources.includes(`https://github.com/kunchenguid/firstmate/blob/af1c6817fc47589b162cbc361671c43cdb150933/${path}${path.startsWith('bin/') ? '#L455-L523' : ''}`), path);
+  }
 });

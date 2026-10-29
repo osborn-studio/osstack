@@ -1,0 +1,82 @@
+{
+  "at": "2026-10-28T16:53:27.285840+00:00",
+  "receipts": [
+    {
+      "comment_id": 490,
+      "card_id": "card_f9c9aa23",
+      "author": "joint-entry",
+      "body": "PR298 published Draft head8ba3d98a against main711c45e7; CI40730300608 queued. Code035285cf actualSonnet limited closure PASS after REVISE; final85exports/independent72files247links,241docs1hygiene. Earlier85d34 package7144/5/0 retained original scope. Running until current-head CI passes.",
+      "created_at": 1793206407.279
+    },
+    {
+      "comment_id": 491,
+      "card_id": "card_a2ccebb6",
+      "author": "joint-entry",
+      "body": "PR298 published Draft head8ba3d98a against main711c45e7; CI40730300608 queued. Code035285cf actualSonnet limited closure PASS after REVISE; final85exports/independent72files247links,241docs1hygiene. Earlier85d34 package7144/5/0 retained original scope. Running until current-head CI passes.",
+      "created_at": 1793206407.28
+    }
+  ],
+  "boards": {
+    "joint-firstmate-pstack": {
+      "stats": {
+        "total": 59,
+        "by_status": {
+          "running": 4,
+          "done": 25,
+          "ready": 1,
+          "todo": 29
+        },
+        "by_assignee": {
+          "loader_adversarial": 5,
+          "terminal_preflight": 7,
+          "cleanup_regression": 4,
+          "joint-entry": 43
+        }
+      },
+      "latest_event_id": 862
+    },
+    "firstmate-upgrade-roadmap": {
+      "stats": {
+        "total": 50,
+        "by_status": {
+          "blocked": 6,
+          "done": 9,
+          "todo": 35
+        },
+        "by_assignee": {
+          "契约/来源维护者": 5,
+          "Session/决定开发者": 8,
+          "主控/存储开发者": 7,
+          "执行器开发者": 6,
+          "集成负责人": 12,
+          "独立验证/发布负责人": 7,
+          "看板维护者": 2,
+          "Session/恢复开发者": 3
+        }
+      },
+      "latest_event_id": 640
+    },
+    "session-pilot-debt": {
+      "stats": {
+        "total": 13,
+        "by_status": {
+          "todo": 3,
+          "blocked": 2,
+          "done": 8
+        },
+        "by_assignee": {
+          "future-runtime": 3,
+          "B:01a17bd6-a137-79d3-8a64-f52abcb8bf13": 1,
+          "thread-b": 1,
+          "root": 3,
+          "pilot_completion": 1,
+          "pilot_runtime_cleanup": 1,
+          "pilot_smoke": 1,
+          "external-environment": 1,
+          "joint-entry": 1
+        }
+      },
+      "latest_event_id": 816
+    }
+  }
+}

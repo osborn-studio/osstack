@@ -1,6 +1,6 @@
 ---
 name: osstack-methods
-description: Use for caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
+description: Use for session recall, authorized continuation and safe handoff or pause, caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
 ---
 
 # OSStack engineering methods
@@ -9,6 +9,7 @@ Read the requested entry below and [the common evidence rules](references/eviden
 
 | User intent | Read | Deliver |
 | --- | --- | --- |
+| Recall, resume, hand off or explicitly pause existing work | [Session continuity](references/session-continuity.md) | Current owner/state, inherited evidence, unresolved obligations and a resume point with its prerequisite |
 | Choose interfaces, domain shapes and state ownership before implementation | [Architecture design](references/architecture-design.md) | Caller examples, compared structures, lifecycle contracts and falsifiable checks |
 | Restate a goal or sharpen a prompt without expanding it | [Task framing](references/task-framing.md) | Preserved intent, constraints, open choices and a concrete evidence-based task |
 | Assess a latency, throughput or regression claim | [Performance measurement](references/performance-measurement.md) | Comparable completed work, raw samples, uncertainty and user-visible significance |
@@ -36,4 +37,4 @@ This directory installs nothing, edits no host configuration and introduces no n
 
 ## Named entries
 
-The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these eleven methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.
+The adapted OSStack entry materials are [osstack-mode](entries/osstack-mode/SKILL.md), [osstack-help](entries/osstack-help/SKILL.md), [setup-osstack](entries/setup-osstack/SKILL.md), and [osstack-agent](entries/osstack-agent/SKILL.md). They share these twelve methods; the larger upstream catalog remains source material, not an implemented capability list. [Export instructions](EXPORT.md) create a separate project layout for Codex or Claude without modifying an existing installation.

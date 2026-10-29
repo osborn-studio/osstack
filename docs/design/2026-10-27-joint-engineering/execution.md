@@ -221,3 +221,13 @@ PR297 is merged as main711c45e7, whose tree07aa7fc4 equals the published0862bc38
 
 
 The framing/architecture batch integrates eleven shared methods at035285cf. Final85export tests, independent72files/247local links per host,241document checks and1hygiene check passed. Actual Sonnet first requested revision, then passed limited B1–B4 closure after confirmed repairs and evidence-based reclassification of optional direct-link tests. The package suite7144/5/0 remains bound to85d34 with its disclosed working-tree scope, not relabelled as a final whole-tree run. [Delivery and original opinions](../../implementation/method-framing-architecture/README.md) retain all evidence. Next host-probe protocol is preparation only, with zero calls and no borrowed experiment budget.
+
+PR298 head8ba3d98a is Ready after run40730300608 attempt2 passed all five applicable checks (paid smoke skipped). Main711c45e7 is unchanged. The original schema46 timeout remains preserved; one unchanged-head failed-check rerun passed without proving the cause. Two method cards now await only user approval/merge. Formal gates and native-host efficacy remain unproven.
+
+PR298 was merged by gilberthello as a9e480d3. Actual main tree e50ba1df equals the validated published head8ba3 tree; this is object equality, not a new test run. The two method delivery cards are done within their bounded scope. The next wave separates session-continuity material, fresh framing-host preparation, and independent acceptance. Root retains integration, actual Sonnet audit, the full regression queue, PR publication and central ledger.
+
+## Session continuity after PR298
+
+PR298 is merged at a9e480d39b9fcff206f356cee75a72cc9cc4d9e4 with exact published-tree equality. The next bounded slice adds the twelfth shared method, session continuity, at integrated code adfb03def56ed183e151977a94642933dceff895. Final 88 export checks and independent 76-file/266-edge exports per host pass; actual Sonnet requested two fixes and then passed limited closure. Full 7144/5/0 remains bound to the earlier 848e4a2e package run and disclosed generated-build state.
+
+The separate actual task-framing probe used the merged eleven-method material, one user turn each, no retries. Both hosts remain LIMITED: Codex attribution/model/final-channel limits, Claude comparison/deliverable/evidence wording defects. This is not a new continuity-method native-effectiveness claim. See [delivery and evidence](../../implementation/method-continuity-delivery/README.md). Final candidate CI and user approval remain separate publication gates; J01/J11 remain unqualified.

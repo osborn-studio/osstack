@@ -1,0 +1,22 @@
+{
+  "command": [
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "docs/design/2026-10-27-joint-engineering",
+    "-p",
+    "test_validate_*.py"
+  ],
+  "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-continuity-control",
+  "head": "adfb03def56ed183e151977a94642933dceff895",
+  "started_at": "2026-10-28T22:42:11.789486+00:00",
+  "status_before": "M  docs/design/2026-10-27-joint-engineering/execution-ledger.json\nM  docs/design/2026-10-27-joint-engineering/execution.md\nA  docs/implementation/method-continuity-delivery/README.md\nA  docs/implementation/method-continuity-delivery/audit-closure.md\nA  docs/implementation/method-continuity-delivery/audit.md\nA  docs/implementation/method-continuity-delivery/evidence/archive.json\nA  docs/implementation/method-continuity-delivery/evidence/members.json\nA  docs/implementation/method-continuity-delivery/evidence/raw-verification.tar.gz\nA  docs/implementation/method-continuity-delivery/host-report-audit.md\nA  docs/implementation/method-continuity-delivery/host-report-closure-v2.md\nA  docs/implementation/method-continuity-delivery/host-report-closure.md\nA  docs/implementation/method-continuity-delivery/host-report.md\n",
+  "diff_before_sha256": "998ae1dbb558cb4772798ca4ed2f4d12ed5c7e67a06c9c2e6ed9647134f15965",
+  "exit_code": 0,
+  "finished_at": "2026-10-28T22:42:19.806862+00:00",
+  "status_after": "M  docs/design/2026-10-27-joint-engineering/execution-ledger.json\nM  docs/design/2026-10-27-joint-engineering/execution.md\nA  docs/implementation/method-continuity-delivery/README.md\nA  docs/implementation/method-continuity-delivery/audit-closure.md\nA  docs/implementation/method-continuity-delivery/audit.md\nA  docs/implementation/method-continuity-delivery/evidence/archive.json\nA  docs/implementation/method-continuity-delivery/evidence/members.json\nA  docs/implementation/method-continuity-delivery/evidence/raw-verification.tar.gz\nA  docs/implementation/method-continuity-delivery/host-report-audit.md\nA  docs/implementation/method-continuity-delivery/host-report-closure-v2.md\nA  docs/implementation/method-continuity-delivery/host-report-closure.md\nA  docs/implementation/method-continuity-delivery/host-report.md\n",
+  "diff_after_sha256": "998ae1dbb558cb4772798ca4ed2f4d12ed5c7e67a06c9c2e6ed9647134f15965",
+  "log_sha256": "697ed0e1f00c93696d6d963d708926fd8096ba911186e91312add471367c2fc4"
+}

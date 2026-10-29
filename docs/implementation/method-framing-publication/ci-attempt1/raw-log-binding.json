@@ -1,0 +1,12 @@
+[
+  {
+    "file": "failed.log.gz",
+    "original_bytes": 96088,
+    "original_sha256": "a5c1a5b8f92a34eaa2f2d736dc9afd26a5d5f9442d0228d6dcfe04f4ac76c628"
+  },
+  {
+    "file": "full-attempt1.log.gz",
+    "original_bytes": 820560,
+    "original_sha256": "1d14c1ee5e76e618557b7ee503b9b35690d95229f578cd987162c470c665a201"
+  }
+]
