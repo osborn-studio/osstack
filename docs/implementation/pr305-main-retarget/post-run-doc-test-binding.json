@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-10-29T16:38:11.870165+00:00",
+  "recording": "post-run reconciliation from root executed commands; not a pre-run immutable manifest",
+  "command": [
+    "node",
+    "--test",
+    "scripts/export-osstack-methods.test.mjs"
+  ],
+  "runs": [
+    {
+      "log": "docs-export.log",
+      "sha256": "7320b2c23e80615effe57dea390d2e25da990c093453581ebe5016498be18393",
+      "passed": 94,
+      "committed_after_run_as": "d0c77fbcf90e31aab7bfcc4599b97c3ef7e2d3ca",
+      "scope": "documentation working contents subsequently committed; no claim of clean final whole-tree/full package run"
+    },
+    {
+      "log": "docs-export-final.log",
+      "sha256": "0b2aea0c54f58f8bad711ea65da3c52e10ed7a3c307959150103872500a55c6e",
+      "passed": 94,
+      "committed_after_run_as": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "scope": "documentation working contents subsequently committed; no claim of clean final whole-tree/full package run"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+commit d0c77fbcf90e31aab7bfcc4599b97c3ef7e2d3ca
+Author:     gilosbornhello <osbornhello@gmail.com>
+AuthorDate: Thu Oct 29 09:32:39 2026 -0700
+Commit:     gilosbornhello <osbornhello@gmail.com>
+CommitDate: Thu Oct 29 09:32:39 2026 -0700
+
+    docs(methods): clarify packet validation and main retarget evidence
+
+diff --git a/docs/implementation/method-full-projection/README.md b/docs/implementation/method-full-projection/README.md
+index 14e7d331..830d5ca2 100644
+--- a/docs/implementation/method-full-projection/README.md
++++ b/docs/implementation/method-full-projection/README.md
+@@ -28,7 +28,7 @@ Root validation:
+ 
+ | Scope | Bound execution | Result |
+ |---|---|---|
+-| Initial standalone combination | `cc6b67c3`, tracked bytes stable | 227 passed |
++| Initial standalone combination | `cc6b67c3`, tracked bytes stable | 227 passed: 76 projection + 43 journey + 94 export + 14 reader |
+ | Full package regression | `da059ca3`, Node22.22.1, 22 packages | 7,144 passed / 5 skipped / 0 failed |
+ | Repaired standalone combination | `1d366d4d`, 79 projection +43 journey +94 export +14 reader | 230 passed |
+ | Fresh real journey and projection | `1d366d4d`; full5 and default2, project/check each | Passed; full product0/1/2/1/0; retained inputs unchanged |
+@@ -47,3 +47,9 @@ The [raw verification archive](evidence/raw-verification.tar.gz) preserves autho
+ Archive SHA256: `5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d`. All 1,868 members were checked for type/mode and each file's bytes/hash; see [archive verification](evidence/archive-verification.json). CI303/304 logs are stored losslessly compressed; neither remote artifact was downloaded for rehash. Independent report and both immutable author manifests remain inside the archive. Raw evidence binds each execution to its actual candidate; no earlier LIMITED/FAILED host result is regraded.
+ 
+ Final documentation validation: 241 tests passed; repository hygiene: one test passed. The [independent archive receipt](evidence/independent-archive-receipt.json) independently checks all archive payloads and source/audit bindings.
++
++## Actual-main integration update
++
++PR304 is now merged at `5248195bd2611cc21a98a0ef3e39d229cdf9b681`. The main-retarget candidate `6f79d125711e898862786fc0268ec20b0b89f24b` has the same tree as the previously published `52f16faf9fdb73e0f8e815e8ee6987297c67d4da`; the observations above remain historical. Fresh local checks passed: 239 focused tests, 241 document checks, repository hygiene, real default/full projection and packet checks, contradictory passed-stderr rejection and legitimate failed controls. Fresh published-head CI remains a separate condition.
++
++Valid v1 producer output remains unchanged. The later stderr-consistency repair intentionally makes the v1 and v2 checkers stricter: previously accepted malformed passed packets with nonempty stderr are rejected. The earlier statement about the unchanged v1 branch describes the cleanup-identity repair alone.
+diff --git a/osstack-methods-skill/references/maintain-verification.md b/osstack-methods-skill/references/maintain-verification.md
+index 699bdec6..2972564c 100644
+--- a/osstack-methods-skill/references/maintain-verification.md
++++ b/osstack-methods-skill/references/maintain-verification.md
+@@ -21,4 +21,4 @@ The [skills-check journey](skills-check-journey.md) is a concrete five-case targ
+ 
+ The five product exits are 0, 1, 2, 1 and 0 respectively. Also check their meanings: one healthy source, one unreachable ref, one reachable but drifted source, three mixed sources with both failure and drift retained, and no sources. A driver exit 0 confirms the expected observation and evidence checks; it does not turn failure/drift into healthy, or make an empty configuration proof of source health. Inspect per-case cardinality, refs, blessed/current SHAs, raw output, input stability and cleanup. Do not maintain the map by exit codes alone.
+ 
+-The default `healthy`/`missing-ref` run still provides useful two-case evidence. Label it partial when the requested maintenance scope is all five; blocked or `not_run` rows remain missing coverage. Preserve the failed attempt and unknown cleanup when execution stops early. Full completion covers these five local fixture cases only, not all live sources or global behavior. Keep the full audit bundle unchanged. The default projector still refuses full-journey input and preserves its two-case version 1 contract. Use the explicit `--scope full` projection in the linked journey recipe for a five-case version 2 packet, then run `--check` without a scope option. Never omit rows or claim that a two-case packet represents all five. Packet checking validates retained evidence structure and byte consistency; it does not replace the source review, actual drives and cleanup observations required for maintenance, or turn failed/unknown/not-run rows into passed ones.
++The default `healthy`/`missing-ref` run still provides useful two-case evidence. Label it partial when the requested maintenance scope is all five; blocked or `not_run` rows remain missing coverage. Preserve the failed attempt and unknown cleanup when execution stops early. Full completion covers these five local fixture cases only, not all live sources or global behavior. Keep the full audit bundle unchanged. The default projector still refuses full-journey input and preserves its two-case version 1 contract. Use the explicit `--scope full` projection in the linked journey recipe for a five-case version 2 packet, then run `--check` without a scope option. Never omit rows or claim that a two-case packet represents all five. Packet checking validates only the packet and its own manifest; it does not reopen or revalidate the original evidence. This consistency check it does not replace the source review, actual drives and cleanup observations required for maintenance, or turn failed/unknown/not-run rows into passed ones.
+diff --git a/osstack-methods-skill/references/skills-check-journey.md b/osstack-methods-skill/references/skills-check-journey.md
+index 6f292bd1..37352c5b 100644
+--- a/osstack-methods-skill/references/skills-check-journey.md
++++ b/osstack-methods-skill/references/skills-check-journey.md
+@@ -93,4 +93,3 @@ Timeout or interruption attempts bounded termination of the wrapper's own direct
+ Use [maintain verification](maintain-verification.md) when the driver, CLI output, evidence layout or this recipe changes. A complete maintenance pass over this five-case map needs source review and actual drives for all five cases and their evidence paths. Run the journey with `--scope full` for that scope; the default two-case run remains valid partial coverage. A blocked or `not_run` row prevents a complete pass. Even five passing rows cover only these mapped local fixtures, not every source, remote provider, installation, race or global configuration. Reading or exporting this reference does not prove native host selection, model execution, provider qualification or a formal joint gate.
+ 
+ This concrete example adapts the pinned upstream [create/maintain verification practices](sources.md). Apply [the common evidence rules](evidence.md) to each actual run.
+-

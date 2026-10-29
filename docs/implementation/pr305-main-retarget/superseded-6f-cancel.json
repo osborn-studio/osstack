@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-29T16:37:00.541660+00:00",
+  "reason": "superseded by final documentation head b0ea4e78; release workflow concurrency for newest candidate, not suppressing an observed test failure",
+  "returncode": 0,
+  "stdout": "\u2713 Request to cancel workflow 40911455127 submitted.\n",
+  "stderr": ""
+}

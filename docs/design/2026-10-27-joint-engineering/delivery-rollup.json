@@ -2,8 +2,8 @@
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
   "observed_at": "2026-10-29T05:24:40.943500+00:00",
-  "main_sha": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
-  "main_tree": "aefd2dcae182a068bc750eb4556c6b30debb2caa",
+  "main_sha": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+  "main_tree": "dbe85299ac39ca9126110eb4f1c564f442844f05",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
@@ -1440,6 +1440,86 @@
       "scope_relation": "supporting_method_material_not_formal_runtime_output",
       "design_associations": [],
       "evidence_readme": "docs/implementation/method-skill-authoring/README.md"
+    },
+    {
+      "pr": 303,
+      "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+      "mergedSHA": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+      "state": "merged_in_snapshot",
+      "primary_j": "J04",
+      "primaryJ": "J04",
+      "supporting_j": [
+        "J09",
+        "J23"
+      ],
+      "supportingJ": [
+        "J09",
+        "J23"
+      ],
+      "pstack_groups": [
+        "PS01",
+        "PS20"
+      ],
+      "delivered_capability": "完整方法材料分页工具",
+      "primary_artifacts": [
+        "scripts/read-method-material.mjs"
+      ],
+      "evidence_readme": "docs/implementation/method-material-reader/README.md",
+      "acceptance_limit": "材料字节送达与分页契约，不证明模型理解或强制读取资格",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [],
+      "merge_diff_inventory": {
+        "path_count": 87,
+        "sha256_of_git_diff_name_only_utf8": "c132805be88dadc023bcf55679110a41abfa7f00aee913acccab52e088e9eb7d",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7^1",
+          "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7"
+        ]
+      }
+    },
+    {
+      "pr": 304,
+      "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+      "mergedSHA": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+      "state": "merged_in_snapshot",
+      "primary_j": "J03",
+      "primaryJ": "J03",
+      "supporting_j": [
+        "J06",
+        "J09"
+      ],
+      "supportingJ": [
+        "J06",
+        "J09"
+      ],
+      "pstack_groups": [
+        "PS08",
+        "PS09"
+      ],
+      "delivered_capability": "固定五案例实际验证旅程，默认两例兼容",
+      "primary_artifacts": [
+        "scripts/method-verification-journey.mjs"
+      ],
+      "evidence_readme": "docs/implementation/method-full-journey/README.md",
+      "acceptance_limit": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [],
+      "merge_diff_inventory": {
+        "path_count": 18,
+        "sha256_of_git_diff_name_only_utf8": "ae92970141fc55a5446da2adc849ec5d598cb3a907f4218a86d7f5de751dc8c8",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "5248195bd2611cc21a98a0ef3e39d229cdf9b681^1",
+          "5248195bd2611cc21a98a0ef3e39d229cdf9b681"
+        ]
+      }
     }
   ],
   "pstack_capabilities": [
@@ -1482,7 +1562,8 @@
       "merged_prs": [
         288,
         292,
-        293
+        293,
+        303
       ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false,
@@ -1504,6 +1585,12 @@
       "material_delivery_candidate": {
         "record": "docs/implementation/method-material-reader/README.md",
         "status": "validated_candidate_pending_pr",
+        "whole_capability_complete": false
+      },
+      "latest_merged_slice": {
+        "pr": 303,
+        "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+        "boundary": "材料字节送达与分页契约，不证明模型理解或强制读取资格",
         "whole_capability_complete": false
       }
     },
@@ -1717,7 +1804,8 @@
         288,
         289,
         291,
-        294
+        294,
+        304
       ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false,
@@ -1750,6 +1838,12 @@
       "latest_bounded_delivery": {
         "evidence": "docs/implementation/pstack-current-repair/README.md",
         "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
+      },
+      "latest_merged_slice": {
+        "pr": 304,
+        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+        "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
+        "whole_capability_complete": false
       }
     },
     {
@@ -1777,7 +1871,8 @@
         288,
         289,
         291,
-        294
+        294,
+        304
       ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false,
@@ -1800,6 +1895,12 @@
         "pr": 304,
         "status": "draft_waiting_ci_and_parent303",
         "record": "docs/implementation/method-full-journey/README.md",
+        "whole_capability_complete": false
+      },
+      "latest_merged_slice": {
+        "pr": 304,
+        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+        "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
         "whole_capability_complete": false
       }
     },
@@ -2144,7 +2245,8 @@
         290,
         292,
         293,
-        295
+        295,
+        303
       ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false,
@@ -2171,6 +2273,12 @@
       "latest_bounded_delivery": {
         "evidence": "docs/implementation/pstack-current-repair/README.md",
         "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
+      },
+      "latest_merged_slice": {
+        "pr": 303,
+        "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+        "boundary": "材料字节送达与分页契约，不证明模型理解或强制读取资格",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2773,6 +2881,12 @@
         "record": "docs/implementation/method-full-journey/README.md",
         "relation": "contributes",
         "formal_gate_pass": false
+      },
+      "latest_merged_slice": {
+        "pr": 304,
+        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+        "scope": "固定五案例实际验证旅程，默认两例兼容",
+        "formal_gate_pass": false
       }
     },
     {
@@ -2906,6 +3020,12 @@
       "material_delivery_candidate": {
         "record": "docs/implementation/method-material-reader/README.md",
         "relation": "contributes",
+        "formal_gate_pass": false
+      },
+      "latest_merged_slice": {
+        "pr": 303,
+        "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+        "scope": "完整方法材料分页工具",
         "formal_gate_pass": false
       }
     },
@@ -9962,7 +10082,7 @@
     "merge_commit": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7"
   },
   "full_journey_slice": {
-    "status": "ready_waiting_user_merge",
+    "status": "merged",
     "card": "card_ddf5e661",
     "record": "docs/implementation/method-full-journey/README.md",
     "primary_j": "J03",
@@ -10031,7 +10151,8 @@
       },
       "actual_checkout": "0eea55e38b895805e35411e483e174a807624c6a",
       "artifact_rehashed": false
-    }
+    },
+    "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681"
   },
   "completed_queue_slices": [
     {
@@ -10089,7 +10210,13 @@
     "base_branch": "codex/method-full-journey-delivery",
     "ci_run": 40839214482,
     "all_workers_handed_off": true,
-    "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference."
+    "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference.",
+    "current_publication": {
+      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "base": "main",
+      "state": "draft_final_docs_ci_pending",
+      "ci_run": 40912894527
+    }
   },
   "current_packet_repair": {
     "observed_at": "2026-10-29T08:43:38.541626+00:00",
@@ -10184,9 +10311,15 @@
         "skipped": 1
       },
       "artifacts_rehashed": false
+    },
+    "current_publication": {
+      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "base": "main",
+      "state": "draft_final_docs_ci_pending",
+      "ci_run": 40912894527
     }
   },
-  "main_observed_at": "2026-10-29T10:09:34.304403+00:00",
+  "main_observed_at": "2026-10-29T16:28:33.165608+00:00",
   "pr304_main_retarget": {
     "observed_at": "2026-10-29T10:09:34.304403+00:00",
     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
@@ -10210,7 +10343,7 @@
     "actual_default_full": "passed; defaultprojection/check0, fullrejected1 fixed_case_set withoutoutput orinputchange",
     "record": "docs/implementation/pr304-main-retarget/README.md",
     "archive_sha256": "7fca30cfff7b38a92f5191700b03df44eac7a7b291867733dcdc9f5907f39cab",
-    "status": "ready_waiting_user_merge",
+    "status": "merged",
     "ci": {
       "run": 40855140718,
       "head": "7ef051ffa6c4bfa8d608eb41d9ea931622a10fb9",
@@ -10226,6 +10359,58 @@
       "artifact_rehashed": false
     },
     "ready_receipt": "docs/implementation/pr304-main-retarget/ready-receipt.json",
-    "ready_observed_at": "2026-10-29T10:32:52.235778+00:00"
+    "ready_observed_at": "2026-10-29T10:32:52.235778+00:00",
+    "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+    "merged_at": "2026-10-29T16:24:29Z"
+  },
+  "pr305_main_retarget": {
+    "observed_at": "2026-10-29T16:28:33.165608+00:00",
+    "main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+    "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+    "same_tree_as_original_52f": true,
+    "primary_j": "J07",
+    "supports": [
+      "J03",
+      "J23"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "status": "local_validated_audit_passed_waiting_final_ci",
+    "ci_run": 40912894527,
+    "formal_gate_pass": false,
+    "record": "docs/implementation/pr305-main-retarget/README.md",
+    "code_sha": "6f79d125711e898862786fc0268ec20b0b89f24b",
+    "head_delta": "three documentation files only; packet boundary, historical v1 checker distinction, actual main addendum, original test count breakdown and EOF whitespace",
+    "targeted_passed": 239,
+    "docs_passed": 241,
+    "hygiene_passed": 1,
+    "post_docs_export_passed": 94,
+    "review_status": "actual claude-sonnet-5-5 static PASS; doc closure REVISE for accidental grammar splice then limited closure PASS atb0",
+    "actual_default_full": "journey/project/check all0; product0/1 and0/1/2/1/0; v1/v2 passed-stderr conflicts rejected and failed controls retained; original hashes unchanged",
+    "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c"
+  },
+  "maintenance_map_slice": {
+    "status": "implementing",
+    "card": "card_b8d97bff",
+    "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+    "primary_j": "J06",
+    "supports": [
+      "J03",
+      "J09"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS09"
+    ],
+    "new_methods": 0,
+    "runtime_enabled": false,
+    "formal_gate_pass": false,
+    "scope": "fixed full-five persistent-map correspondence; reuse runJourney; no automatic bless or source-drift diagnosis",
+    "owner": "loader_adversarial",
+    "depends_on_pr305": false,
+    "criteria_sha256": "8f6d3ad0eb56b07abcbc624ac7146868eb9d8a42c7c1fefbb1dd40130a1fea28"
   }
 }

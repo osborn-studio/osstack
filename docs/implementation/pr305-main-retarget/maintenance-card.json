@@ -1,0 +1,18 @@
+{
+  "card_id": "card_b8d97bff",
+  "board": "joint-firstmate-pstack",
+  "task_id": null,
+  "title": "[PS09] 固定五案例持久地图维护闭环",
+  "body": "主贡献PS09/J06，支持PS08/J03/J09。基于已合并main5248195b，不依赖305。A独占standalone脚本/test及map/README四文件；C预冻结独立准则后开工；root整合审计/PR/账本。验收固定full5、错误地图→不一致→仅修地图→同路径复验，缺行/重复/未知/schema错误fail closed，保留原始证据，无新增方法/自动bless/全资格声明。",
+  "status": "ready",
+  "priority": 0,
+  "assignee": "loader_adversarial",
+  "blocked_reason": null,
+  "tenant_id": null,
+  "card_type": "implementation",
+  "meta": null,
+  "created_at": 1793291528.937,
+  "updated_at": 1793291528.937,
+  "started_at": null,
+  "completed_at": null
+}

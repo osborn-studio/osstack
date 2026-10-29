@@ -1,0 +1,7 @@
+{
+  "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c",
+  "payloads": 429,
+  "payload_bytes": 43823248,
+  "manifest_sha256": "a9b6edcf378c2fb9b200cf6fc7823c88b451cdf952ffdc1bf67e2dcb931d44bd",
+  "verification": "all payload SHA256/size/mode matched"
+}
