@@ -26,6 +26,21 @@ Before saying evidence was not provided, check the supplied input inventory and 
 
 These are reporting terms, not a new runtime schema or gate state. Keep the script's original output unchanged and attach this interpretation separately. A successful feature followed by failed cleanup remains a successful feature observation with failed run closeout; do not erase either fact or call the entire run clean.
 
+## Give a concise result and retain the full record
+
+Lead with the requested outcome, the decisive evidence and the next action. Follow the user's requested format and length. If an explicit hard limit applies, check the complete answer against that limit before returning it; this method sets no universal word limit. For several items, use one short row per item and state shared scope once. Link the detailed record at a real retained path instead of repeating its logs.
+
+Keep failed, blocked, unknown and not-run results visible in the short report, including cleanup limits. Brevity must not turn a successful subset into full coverage or a planned check into a result. For example, “Behavior passed; cleanup unknown; stop confirmation is still needed” preserves both observations. “All passed” does not. These are teaching examples, not observations from a run.
+
+A compact result can use:
+
+```text
+Item / observed candidate and time / result + decisive evidence /
+remaining limit / next action + owner + verification target / full record
+```
+
+Keep execution evidence bound to the source and build actually checked. If a later commit changes only metadata, record the relevant byte/scope comparison before reusing an earlier result, and preserve its original execution binding. Do not relabel the old log as a fresh run of the later commit. A new check remains `not_run` until it executes; record the resulting candidate ID only when it exists.
+
 ## Record template
 
 ```text
