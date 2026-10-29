@@ -1,6 +1,6 @@
 ---
 name: osstack-agent
-description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's PR readiness check or authorized blocker fix, session continuation or handoff, caller-first architecture design, task framing, performance measurement review, change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
+description: Apply OSStack engineering methods to an already delegated work item with a defined outcome and write boundary. Use for a delegate's skill authoring, PR readiness check or authorized blocker fix, session continuation or handoff, caller-first architecture design, task framing, performance measurement review, change impact analysis, code review, feature, refactoring, investigation, bug fix, or verification-material task, not to register or impersonate a native agent type.
 ---
 
 # OSStack delegated method
@@ -9,10 +9,11 @@ Read the parent brief, relevant user constraints and [common evidence rules](../
 
 Apply the coordinator's agreed design and acceptance checks to your assigned slice. Planning or delegation guidance inside a method does not expand your write boundary or permit spawning more workers; report cross-slice needs to the coordinator.
 
-For an authorized coordinator preparing briefs or consolidating required coverage, [parallel work and verification handoff](../../references/parallel-work.md) supplies a supporting guide. It does not change a delegate's role, permit additional spawning or add a fourteenth named method.
+For an authorized coordinator preparing briefs or consolidating required coverage, [parallel work and verification handoff](../../references/parallel-work.md) supplies a supporting guide. It does not change a delegate's role, permit additional spawning or add a named method.
 
 Choose the relevant shared method:
 
+- [Skill authoring](../../references/skill-authoring.md) for creating or maintaining skill sources within the assigned destination; separate structural checks from observed host use.
 - [PR readiness](../../references/pr-readiness.md) for current PR state and authorized blocker corrections inside the assigned branch; leave publication and human-reserved approval/merge within their actual authority.
 - [Session continuity](../../references/session-continuity.md) for scoped continuation, handoff or requested pause; recheck current ownership and preserve unknown effects without taking over another worker.
 - [Architecture design](../../references/architecture-design.md) for caller-first types, ownership and lifecycle design; respect a design-only brief and continue implementation only within its existing authority.

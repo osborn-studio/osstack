@@ -1,0 +1,89 @@
+{
+  "kind": "bounded_independent_archive_check",
+  "checked_at": "2026-10-29T04:46:03.743359+00:00",
+  "result": "passed_scoped_checks",
+  "archive_sha256": "a686fa2c26e3553120d514d8b16c6f25a17e2742bc9c2c2c1aadf7f0bd6eaaa2",
+  "member_count": 90,
+  "payload_bytes": 3096475,
+  "all_manifest_member_bytes_hashes_modes_match": true,
+  "safe_regular_unique_paths": true,
+  "manifest_sha256": "524d9cff6e80ff93d4d9fc2c1be86a1c9a03b1c1ec98d5578e049fd4b7d5a33e",
+  "rollup_sha256": "2923732cf8de3c9e0db132b437f83e925fe4dfb920b13d9e54cc260e33b341d8",
+  "gap_dimensions_distinct_for_all_32": true,
+  "all_formal_claims_false": true,
+  "pr301_paths": [
+    {
+      "path": "docs/implementation/method-parallel-reporting/README.md",
+      "git_sha256": "c976c2e855e84b1b92060d99195b4dcfd5447441f973bb16a79c02ea0fe5247f",
+      "worktree_sha256": "c976c2e855e84b1b92060d99195b4dcfd5447441f973bb16a79c02ea0fe5247f",
+      "same_bytes": true
+    },
+    {
+      "path": "osstack-methods-skill/references/parallel-work.md",
+      "git_sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2",
+      "worktree_sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2",
+      "same_bytes": true
+    }
+  ],
+  "raw_audits": [
+    {
+      "path": "reconciliation-audit",
+      "verdict": "REVISE",
+      "raw_scratch_byte_equality": {
+        "report.md": true,
+        "response.json": true,
+        "binding.json": true,
+        "audit-input.txt": true
+      },
+      "report_sha256": "34e44fbcde0da0096438ae6963d0376d8e720d07f61d2f6f32cc79dd69c7c0fe",
+      "model_usage_keys": [
+        "claude-sonnet-5-5"
+      ]
+    },
+    {
+      "path": "reconciliation-audit-closure",
+      "verdict": "REVISE",
+      "raw_scratch_byte_equality": {
+        "report.md": true,
+        "response.json": true,
+        "binding.json": true,
+        "audit-input.txt": true
+      },
+      "report_sha256": "59a0ef5637759da8b2a815c09f2da02cadb00fbe70c7039412b818ee22166618",
+      "model_usage_keys": [
+        "claude-sonnet-5-5"
+      ]
+    },
+    {
+      "path": "reconciliation-audit-final",
+      "verdict": "PASS",
+      "raw_scratch_byte_equality": {
+        "report.md": true,
+        "response.json": true,
+        "binding.json": true,
+        "audit-input.txt": true
+      },
+      "report_sha256": "3645d0139d15941007cbacf4379663b81405e8daded678d0cb395ca1b824c93b",
+      "model_usage_keys": [
+        "claude-sonnet-5-5"
+      ]
+    }
+  ],
+  "post_closure_correction": {
+    "record": {
+      "before": "be0f10699e3adb7b63d16e589c559be0c2d38610cd48edfe3a146e2ccd6beecb",
+      "after": "2923732cf8de3c9e0db132b437f83e925fe4dfb920b13d9e54cc260e33b341d8",
+      "change": "PR301 evidence directory typo corrected to actual Git tracked method-parallel-reporting/README.md",
+      "validation": "git ls-tree and filesystem existence; no other rollup content changed",
+      "audit_scope": "after limited F1-F4 PASS; not relabelled as same audited bytes"
+    },
+    "final_after_hash_matches": true,
+    "reversing_only_PR301_two_path_fields_matches_before": true
+  },
+  "harness_note": "Initial supplemental reverse-all-path-occurrences assertion failed because other records already contained the correct path; narrowed comparison to the two PR301 fields. Archive checks themselves passed.",
+  "limitations": [
+    "No tests/models/live board/CI calls; no repository mutations.",
+    "Final Sonnet PASS is F1-F4 static closure only, not whole source or archive certification.",
+    "Hashes establish retained bytes, not historical claim authenticity/formal gate qualification."
+  ]
+}

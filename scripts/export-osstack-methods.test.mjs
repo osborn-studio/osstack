@@ -314,9 +314,9 @@ for (const [label, content] of [
   });
 }
 
-test('document-named source router, four entries and thirteen method references actually exist', async () => {
+test('document-named source router, four entries and fourteen method references actually exist', async () => {
   const sourceRoot = resolve(dirname(script), '../osstack-methods-skill');
-  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity', 'pr-readiness'].map(name => `references/${name}.md`)]) {
+  for (const path of ['SKILL.md', ...names.map(name => `entries/${name}/SKILL.md`), ...['feature', 'refactoring', 'bug-fix', 'investigation', 'create-verification', 'maintain-verification', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity', 'pr-readiness', 'skill-authoring'].map(name => `references/${name}.md`)]) {
     assert.equal((await lstat(join(sourceRoot, path))).isFile(), true, path);
     assert.ok((await readFile(join(sourceRoot, path), 'utf8')).trim().length > 0, path);
   }
@@ -370,7 +370,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
           queue.push(resolve(dirname(path), target.split('#')[0]));
         }
       }
-      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity', 'pr-readiness', 'parallel-work']) {
+      for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity', 'pr-readiness', 'parallel-work', 'skill-authoring']) {
         // Every entry copies the method; graph reachability may go through mode in this four-entry bundle.
         const outputPath = join(entryRoot, 'references', `${method}.md`);
         const sourcePath = `references/${method}.md`;
@@ -386,7 +386,7 @@ for (const [host, namespace] of [['codex', '.agents/skills'], ['claude', '.claud
   });
 }
 
-for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity', 'pr-readiness', 'parallel-work']) {
+for (const method of ['feature', 'refactoring', 'skills-check-journey', 'code-review', 'change-impact', 'performance-measurement', 'task-framing', 'architecture-design', 'session-continuity', 'pr-readiness', 'parallel-work', 'skill-authoring']) {
   test(`D2a a missing linked ${method} reference fails before reserving output`, async t => {
     const f = await fixture(t);
     await rm(f.sourceRoot, { recursive: true });
@@ -589,5 +589,23 @@ test('PR readiness reuses existing methods and credits the pinned PR and triage 
   const sources = links(await readFile(join(root, 'sources.md'), 'utf8'));
   for (const path of ['playbooks/babysit.md', 'playbooks/opening-a-pr.md', 'references/bugbot-triage.md']) {
     assert.ok(sources.includes(`https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/${path}`), path);
+  }
+});
+
+// Navigation only: this cannot prove that a model chooses the correct method.
+test('each authoring and verification method has its own navigation row', async () => {
+  const root = resolve(dirname(script), '../osstack-methods-skill');
+  for (const entry of ['SKILL.md', 'entries/osstack-mode/SKILL.md']) {
+    const text = await readFile(join(root, entry), 'utf8');
+    const targets = ['skill-authoring', 'create-verification', 'maintain-verification']
+      .map(method => `${entry === 'SKILL.md' ? 'references' : '../../references'}/${method}.md`);
+    const rows = text.split('\n').filter(line => /^\s*\|.*\|\s*$/.test(line))
+      .map(line => [...line.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(([, target]) => target));
+    for (const target of targets) {
+      const matchingRows = rows.filter(links => links.includes(target));
+      assert.equal(matchingRows.length, 1, `${entry}: one navigation row for ${target}`);
+      assert.deepEqual(matchingRows[0].filter(link => targets.includes(link)), [target],
+        `${entry}: each method must have a separate navigation row`);
+    }
   }
 });

@@ -1,0 +1,38 @@
+diff --git a/packages/knowledge/dist/index.d.ts b/packages/knowledge/dist/index.d.ts
+index c1bf0dc6..2e420e16 100644
+--- a/packages/knowledge/dist/index.d.ts
++++ b/packages/knowledge/dist/index.d.ts
+@@ -1,3 +1,4 @@
+ export * from "./types.js";
+ export * from "./pack.js";
++export { assembleExecutionContext, executionContextDigest, ExecutionContextBudgetError, type ExecutionContextScope, type ExecutionContextEntry, type ExecutionContextSource, type ExecutionContextAssembly } from "./context-budget.js";
+ //# sourceMappingURL=index.d.ts.map
+\ No newline at end of file
+diff --git a/packages/knowledge/dist/index.d.ts.map b/packages/knowledge/dist/index.d.ts.map
+index 76438692..66b2981e 100644
+--- a/packages/knowledge/dist/index.d.ts.map
++++ b/packages/knowledge/dist/index.d.ts.map
+@@ -1 +1 @@
+-{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"AAAA,cAAc,YAAY,CAAC;AAC3B,cAAc,WAAW,CAAC"}
+\ No newline at end of file
++{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"AAAA,cAAc,YAAY,CAAC;AAC3B,cAAc,WAAW,CAAC;AAC1B,OAAO,EAAE,wBAAwB,EAAE,sBAAsB,EAAE,2BAA2B,EACpF,KAAK,qBAAqB,EAAE,KAAK,qBAAqB,EAAE,KAAK,sBAAsB,EACnF,KAAK,wBAAwB,EAAE,MAAM,qBAAqB,CAAC"}
+\ No newline at end of file
+diff --git a/packages/knowledge/dist/index.js b/packages/knowledge/dist/index.js
+index 01024042..7529d564 100644
+--- a/packages/knowledge/dist/index.js
++++ b/packages/knowledge/dist/index.js
+@@ -1,3 +1,4 @@
+ export * from "./types.js";
+ export * from "./pack.js";
++export { assembleExecutionContext, executionContextDigest, ExecutionContextBudgetError } from "./context-budget.js";
+ //# sourceMappingURL=index.js.map
+\ No newline at end of file
+diff --git a/packages/knowledge/dist/index.js.map b/packages/knowledge/dist/index.js.map
+index 9cff4ee4..3c003db7 100644
+--- a/packages/knowledge/dist/index.js.map
++++ b/packages/knowledge/dist/index.js.map
+@@ -1 +1 @@
+-{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"AAAA,cAAc,YAAY,CAAC;AAC3B,cAAc,WAAW,CAAC"}
+\ No newline at end of file
++{"version":3,"file":"index.js","sourceRoot":"","sources":["../src/index.ts"],"names":[],"mappings":"AAAA,cAAc,YAAY,CAAC;AAC3B,cAAc,WAAW,CAAC;AAC1B,OAAO,EAAE,wBAAwB,EAAE,sBAAsB,EAAE,2BAA2B,EAErD,MAAM,qBAAqB,CAAC"}
+\ No newline at end of file

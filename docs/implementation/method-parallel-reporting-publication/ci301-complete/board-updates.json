@@ -1,0 +1,52 @@
+[
+  {
+    "comment_id": 528,
+    "card_id": "card_2cccba22",
+    "author": "joint-entry",
+    "body": "PR301 head4b7b0585 CI40805618553 five applicable checks SUCCESS; paid smoke skipped. Remains Draft: parent PR300 still OPEN Ready. Wait for user merge300, then verify actual main/tree/diff, retarget301 main and applicable checks. No runtime/host qualification inferred.",
+    "created_at": 1793242738.927
+  },
+  {
+    "card_id": "card_2cccba22",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a next method: delegation source gap and implementation slice",
+    "body": "Read original pstack99b609a and current13methods; propose minimal missing delegation slice. Scratch next-slice-A only until root write boundary/independent freeze.",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "loader_adversarial",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793238242.01,
+    "updated_at": 1793242738.928,
+    "started_at": 1793238242.01,
+    "completed_at": null
+  },
+  {
+    "comment_id": 529,
+    "card_id": "card_be3dc4a2",
+    "author": "joint-entry",
+    "body": "PR301 head4b7b0585 CI40805618553 five applicable checks SUCCESS; paid smoke skipped. Remains Draft: parent PR300 still OPEN Ready. Wait for user merge300, then verify actual main/tree/diff, retarget301 main and applicable checks. No runtime/host qualification inferred.",
+    "created_at": 1793242738.929
+  },
+  {
+    "card_id": "card_be3dc4a2",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a host delivery: compact result and evidence rebinding slice",
+    "body": "Read previous host results and upstream sources; propose smallest product material improvement for concise output and corrected-candidate evidence rebinding. Scratch next-slice-B only; no model retry or old score change.",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "terminal_preflight",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793238242.01,
+    "updated_at": 1793242738.929,
+    "started_at": 1793238242.01,
+    "completed_at": null
+  }
+]

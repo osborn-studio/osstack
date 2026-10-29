@@ -1,0 +1,27 @@
+[
+  {
+    "path": "publication-docs.log.gz",
+    "sha256": "0b7e6a54b9f335b47dbc5f5e9750efa435c67e7d359a48286dab680130b6f42a",
+    "bytes": 57
+  },
+  {
+    "path": "publication-generated-dist-hashes.json",
+    "sha256": "798481fbbbddc9addc1fe99c24ccc8eec1a33896f40cd32a8600796d5e13f30b",
+    "bytes": 438
+  },
+  {
+    "path": "publication-generated-dist.patch",
+    "sha256": "9cd0804e8ac972f377b8759044dd0a2ab17b4499e96fd6391f43a46f5a709567",
+    "bytes": 2363
+  },
+  {
+    "path": "publication-hygiene.log.gz",
+    "sha256": "317edd6d20121a84165b26f741d5e92001ab3e4e55a3d0dd2cef1bd2a5a02524",
+    "bytes": 282
+  },
+  {
+    "path": "reconciliation-final-independent.json",
+    "sha256": "6de044344978fe17116ea909bba149e3b214562793ae7fcee3c10048b99ed542",
+    "bytes": 3598
+  }
+]

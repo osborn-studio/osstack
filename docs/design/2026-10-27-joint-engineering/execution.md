@@ -247,3 +247,24 @@ PR300 published head0e5d2c98 has five applicable CI checks SUCCESS in run4078914
 ## 2026-10-29：并行覆盖与简洁报告候选
 
 A/B 两个独占切片合为 code898033af，新增 supporting parallel-work 指南及现有证据/PR报告短模板，仍13项方法。92导出与独立双host84文件/302链接通过，实际 Sonnet 首审要求修订来源链，修订后限定闭环通过。组合c174598e全仓7144/5/0，明确带四个新鲜生成文件；首轮恢复旧dist造成的88项失败及复建过程完整保留。#300新main CI的真实分页断言缺陷已test-only修复，最新e16候选仍等CI，用户审批合并权不变。详见[本批交付](../../implementation/method-parallel-reporting/README.md)。
+
+### 本轮发布收口
+
+#300 已改为 main，经确认的分页测试修复与新 CI40803637902 的五项适用检查通过后，head e16ae5f9 转 Ready。OSStack 仅等 gilberthello 审批合并。下一批 #301 head4b7b0585 仍 Draft，基于 #300 分支运行 CI40805618553；前置合并后再核真实 main 与重定向。完整原始回执见[发布记录](../../implementation/method-parallel-reporting-publication/README.md)。
+
+### 2026-10-29 02:57 UTC：#301 CI 收口
+
+#301 head4b7b0585 的 CI40805618553 五项适用检查全部成功，付费 smoke 跳过。check/Test 的22个唯一包合计7142通过、7跳过、0失败；导出测试92项中91通过、1跳过。#300仍OPEN Ready，main仍7d3fc2bf，因此#301保持Draft，等待前置合并后核真实main、重定向与适用验证。仅核日志，未下载并重验CI artifact；无新模型调用或运行时资格。证据见发布记录 ci301-complete。
+
+## #300 合并与 #301 main 重验
+
+实际 main e26f6d2c 的树与 #300 已发布 e16ae5f9 相同。#301 已改为 main，新候选50ed89fb 的树与原4b7b0585完全相同。92导出测试、241文档测试及实际Claude Sonnet5.5限定静态审计通过；新CI40815575324仍在运行，保持Draft。原审计所需diff外链接与导出依赖另核，不把静态审计或同树关系写成新CI通过。三工作者分别准备下一能力切片、离线宿主实验准备脚本和独立核验；本轮尚无新模型宿主调用。
+
+### #301 Ready 与技能编写方法
+
+#301 head50ed89fb 在 main 上的新CI40815575324五项适用检查成功，已转Ready，仅等用户审批合并；22包7142通过/7跳过，导出92项中91通过/1跳过。下一批第14方法skill-authoring从固定原始来源独立适配，同四入口；实际Sonnet首审REVISE后确认导航测试缺陷修复，限定复审PASS。原94定向及双host88载荷/321链接通过；一份本地技能编辑试用按原b8方法完成并独立检查，不冒充native宿主或因果收益。组合b6包全仓7144/5/0含四个新鲜dist且hash不变；运行期间中央账本及证据文件变动，明确不是不变整工作树验证。
+
+
+## pstack优先交付对账
+
+用户明确pstack能力优先。#301已合入main `1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0`。主线13方法/4入口，第14方法仅候选。以 [交付视图](delivery-status.md) 与 [逻辑映射](delivery-rollup.json) 分开统计32里程碑、24能力组和活动卡。先收口真实验证维护与宿主缺陷修复闭环，Firstmate深运行时后排；原正式门槛不降级。
