@@ -1,0 +1,7 @@
+{
+  "comment_id": 645,
+  "card_id": "card_ddf5e661",
+  "author": "joint-entry",
+  "body": "PR304已发布Draft，head185d283a，base303分支codex/method-material-delivery；CI启动后跟踪。用户先merge303，root核main/retarget/适用复验后才Ready304。源码/实际7case/反例/Sonnet均已收口，三workers交接停写，作者工作树清理保留分支。下一项full5安全投影排队，不新增method。",
+  "created_at": 1793258805.716
+}

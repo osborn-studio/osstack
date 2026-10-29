@@ -294,3 +294,14 @@ main493caa4e与无openPR状态再核。三个工作者只读选择不同历史ex
 ## 2026-10-29 material-delivery candidate
 
 PS01/08/20 now have a bounded readonly material-reader candidate and updated existing host/bug-fix guidance. Card `card_0e19c3c2` contributes to J04 and supports J09/J23. Four entries/fourteen methods remain unchanged. Tool-byte verification and scoped package regression passed; actual Sonnet review corrected a false host-permission inheritance claim. Published-head CI and user merge remain pending. The previous Claude repair remains LIMITED for incomplete reading; no new model-host trial or formal gate is claimed. See [record](../../implementation/method-material-reader/README.md) and the candidate fields in delivery-rollup.json.
+
+## 2026-10-29：完整五案例证据投影执行窗口
+
+当前main493caa4e；PR303 head d05c9d91的五项适用CI成功并已转Ready，仅等待用户合并。PR304仍以303为前置，合并前不得把feature分支当main。下一切片card_522ee55d在185d283a临时组合上并行实施：A独占project-method-journey-evidence及测试，B独占skills-check-journey/maintain-verification说明，C独立冻结FP01–12（3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0）并验证；root独占CI、账本、审计及PR。
+
+目标是显式full五案例投影，同时保留默认两案例v1。failed/not_run/unknown不可升级；保留原始字节与历史失败，不复制无关路径或环境到模型包。该切片不增加方法、不新增宿主实验、不签发J/PS完整资格。验收后再安排新的当前任务宿主验证，不能继承已关闭历史实验预算。
+
+
+## Current packet repair (2026-10-29)
+
+[实际修复与证据](../../implementation/pstack-current-repair/README.md)：确认当前主线v1及候选v2的passed/nonempty-stderr矛盾漏检，采纳Codex实际一行修复，新增9个仓库回归。239项定向检查通过；代码681cf6e9全仓7144通过/5跳过/0失败，运行期间tracked字节不变，包含新鲜生成dist与已有账本工作改动，不称干净提交树。Sonnet5.5初审和限定报告复审PASS。Codex完成同测试RED→修复→GREEN；Claude六次基线后，首次复合源码读取执行、第二次被拒后停止，没有修复，也不追溯增加源码读取禁令。两宿主19必读文件（含16材料页）均完整送达，不等于理解或收益证明。修复准备追加至Draft #305，需新head CI及parent304合并/main重验后才可Ready；4入口/14方法、正式J门槛不变。

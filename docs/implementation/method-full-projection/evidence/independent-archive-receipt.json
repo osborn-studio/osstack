@@ -1,0 +1,128 @@
+{
+  "checked_at": "2026-10-29T07:59:06.465010+00:00",
+  "status": "verified",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-full-projection-control/docs/implementation/method-full-projection/evidence/raw-verification.tar.gz",
+  "archive_sha256": "5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d",
+  "members": 1868,
+  "files": 1673,
+  "directories": 195,
+  "file_payload_bytes": 36815361,
+  "manifest_listed_payload_members": 1867,
+  "archive_manifest_sha256": "7c20d83ea7edce16e45e6b8e21290e0b2bd7650f91f007c70621552bdb2c4e6d",
+  "all_listed_hashes_bytes_modes_verified": true,
+  "paths_safe_no_links": true,
+  "independent_files_equal_live_frozen": 1074,
+  "independent_manifest_sha256": "0be066fc870f430b01c25efe5d8cdfe3604bd598426cb80de792c9f2336696d6",
+  "candidate": "c7a712909f32f5691bc85afe43a033951ecc2447",
+  "author9ed_root_code_bytes": [
+    {
+      "path": "scripts/project-method-journey-evidence.mjs",
+      "sha256": "24c8f656bfe942eba1ea8f65fed732a46aa414fd8d3d4689b06647ba9790a62f"
+    },
+    {
+      "path": "scripts/project-method-journey-evidence.test.mjs",
+      "sha256": "59e2cccb65b8a89de00a88fd6367e588771be7d19a7ef2215b1f2049ef6f591d"
+    }
+  ],
+  "audit": [
+    {
+      "phase": "audit",
+      "source_head": "da059ca3acc8d3c1938ba2f9cc83e7133a5b3573",
+      "prompt_sha256": "c448e818c9f8f935971672ce756ec83731480f30cd4a78a9862e8b239227ced8",
+      "response_sha256": "6d370cc4bf6d9d90b73219ff95c20978fa21c025284af4bf11be09773898eb15",
+      "report_sha256": "418d9f9f8b7ab67db851c5bfdfb73e34e8ddd9c91d47dbcf3983ce1af8e0aa01",
+      "modelUsage_key": "claude-sonnet-5-5",
+      "source_files_match_git_and_prompt": [
+        {
+          "path": "scripts/project-method-journey-evidence.mjs",
+          "sha256": "54f35b2dd80f26f527d8dd532668fec4913d2421ceb99563ee3c629cc2496344"
+        },
+        {
+          "path": "scripts/project-method-journey-evidence.test.mjs",
+          "sha256": "4f5091dd6b54370bef0102d5c96ae73502f854b2b51efe26629c7eb934dcc414"
+        },
+        {
+          "path": "scripts/method-verification-journey.mjs",
+          "sha256": "b030e182adaf06db6a7941afeb0a79ec5a74e3101aaab36a56475a6de92025ab"
+        },
+        {
+          "path": "scripts/lib/skills-check-verification.mjs",
+          "sha256": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+        },
+        {
+          "path": "osstack-methods-skill/references/skills-check-journey.md",
+          "sha256": "0a3ce665038c416f5c978229a2c0d56327f0a19b0a7808d3b47a443316e6f19e"
+        },
+        {
+          "path": "osstack-methods-skill/references/maintain-verification.md",
+          "sha256": "c91b7559c8a09f27f2f150858f3d20cbd79a3f642dce46099da8db37d24fcb98"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "sha256": "96f2a3663241858291163f481e0318c017d72944d0bbf81e5276dea6e6d4529b"
+        }
+      ],
+      "scope": "actual model static review; no host execution or formal qualification"
+    },
+    {
+      "phase": "audit-closure",
+      "source_head": "1d366d4db462523b7d8b94db230de794dce160c7",
+      "prompt_sha256": "bda578f12aa07483715dfc66893977b58503bd4410e3fde5e4801f8f51710a14",
+      "response_sha256": "3b140e946dbc6e5fe113fbd5abfac026ac148c642b1ca1255c217ab8aab7f38f",
+      "report_sha256": "a94a12efab16e8307f0373ec274630be560fdd61bc093b2b5421e664828972fe",
+      "modelUsage_key": "claude-sonnet-5-5",
+      "source_files_match_git_and_prompt": [
+        {
+          "path": "scripts/project-method-journey-evidence.mjs",
+          "sha256": "24c8f656bfe942eba1ea8f65fed732a46aa414fd8d3d4689b06647ba9790a62f"
+        },
+        {
+          "path": "scripts/project-method-journey-evidence.test.mjs",
+          "sha256": "59e2cccb65b8a89de00a88fd6367e588771be7d19a7ef2215b1f2049ef6f591d"
+        },
+        {
+          "path": "osstack-methods-skill/references/skills-check-journey.md",
+          "sha256": "690f2c35339f4ee4d33afedba95307c5ab31055e7288cd537ec4d546911a75fc"
+        },
+        {
+          "path": "osstack-methods-skill/references/maintain-verification.md",
+          "sha256": "c91b7559c8a09f27f2f150858f3d20cbd79a3f642dce46099da8db37d24fcb98"
+        }
+      ],
+      "scope": "actual model static review; no host execution or formal qualification"
+    }
+  ],
+  "finding_history": "Initial static PASS classified cleanup identity as optional3; independent reproduced actual inconsistent acceptance; author fixed; bounded closure staticPASS. Original first verdict and two accepted-bad packets remain preserved.",
+  "full_suite": {
+    "head": "da059ca3acc8d3c1938ba2f9cc83e7133a5b3573",
+    "packages": 22,
+    "passed": 7144,
+    "skipped": 5,
+    "failed": 0,
+    "before_after_tracked_equal": true,
+    "generated_dist_preserved_count": 16
+  },
+  "final_targeted": {
+    "head": "1d366d4db462523b7d8b94db230de794dce160c7",
+    "passed": 230,
+    "failed": 0,
+    "tracked_equal": true
+  },
+  "fresh_projection": {
+    "head": "1d366d4db462523b7d8b94db230de794dce160c7",
+    "all_recorded_commands_exit_zero": true,
+    "input_inventories_equal": true
+  },
+  "full_to_final_changed_paths": [
+    "osstack-methods-skill/references/skills-check-journey.md",
+    "scripts/project-method-journey-evidence.mjs",
+    "scripts/project-method-journey-evidence.test.mjs"
+  ],
+  "limits": [
+    "This is archive/hash/log review, not new tests or model calls.",
+    "Full suite ran on da059 before standalone projector repair and docs changes; final230 and freshprojection have separate1d bindings. It is not a full suite result on c7.",
+    "ModelUsage reports actual Sonnet5.5 invocation; static review is not host/native behavior or formal gate/principal certification.",
+    "Archive manifest does not self-hash; its bytes are bound by outer archive SHA.",
+    "No claim of OS sandbox, compiler provenance, or authenticated origin."
+  ]
+}

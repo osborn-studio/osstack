@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-29T08:49:09.408793+00:00",
+  "scope": "only two archived owned host workspaces; raw/state/guards retained; not process-tree attestation",
+  "receipts": [
+    {
+      "host": "codex",
+      "members_verified_before_removal": 649,
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-current-repair-20261029/host/runs/codex/workspace",
+      "removed": true
+    },
+    {
+      "host": "claude",
+      "members_verified_before_removal": 294,
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-current-repair-20261029/host/runs/claude/workspace",
+      "removed": true
+    }
+  ]
+}

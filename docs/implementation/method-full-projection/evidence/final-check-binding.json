@@ -1,0 +1,12 @@
+{
+  "candidate_code_docs": "c7a712909f32f5691bc85afe43a033951ecc2447",
+  "tests": {
+    "documentation": 241,
+    "hygiene": 1
+  },
+  "log_hashes": {
+    "documentation-check.log": "6a54c045c26e21c431cf70a9b44637b388a7bfc382864a96485fec9da6833e2b",
+    "hygiene-check.log": "af0b0d92972cd67052d2b9f1c015ccce648da779549e54674d53471c5bee1db9"
+  },
+  "limitation": "documentation/evidence staged at check time; later receipt copies checked again before final commit, not a product full rerun"
+}

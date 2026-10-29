@@ -4523,7 +4523,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "draft_waiting_ci",
+    "status": "ready_waiting_user_merge",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "card": "card_0e19c3c2",
     "primary_j": "J04",
@@ -4550,10 +4550,24 @@
     "host_experiment_calls": 0,
     "pr": 303,
     "published_head": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
-    "ci_run": 40833415091
+    "ci_run": 40833415091,
+    "ci_final": {
+      "observed_at": "2026-10-29T07:37:35.267635+00:00",
+      "run": 40833415091,
+      "head": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "log_sha256": "af51b97f8b296644beb52eda77739094381a98a4e3d291a2e915d4a6daf69bc6",
+      "artifact_downloaded": false,
+      "parser_note": "Initial parser missed literal caret ANSI notation; zero-row result invalid, corrected before publication. Original retained.",
+      "independent_report_sha256": "1128d169566fb326e7952f6dbdcc4b57ab47822cc959d698879f008df3976c81",
+      "tested_object": "GitHub synthetic merge b2d2085e, not direct head checkout"
+    }
   },
   "full_journey_slice": {
-    "status": "validated_pending_pr",
+    "status": "ci_pass_waiting_parent303_merge_and_retarget",
     "card": "card_ddf5e661",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
@@ -4600,6 +4614,129 @@
     "audit_model_calls": 1,
     "independent": "actual2+5,projection compatibility/refusal,30 bounded observations,4failure seams",
     "audit": "actual claude-sonnet-5-5 staticPASS",
-    "record": "docs/implementation/method-full-journey/README.md"
+    "record": "docs/implementation/method-full-journey/README.md",
+    "pr": 304,
+    "base_branch": "codex/method-material-delivery",
+    "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
+    "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
+    "all_workers_handed_off": true,
+    "ci_final": {
+      "run": 40835326104,
+      "head": "185d283af23683ad084f81a6b049fcaab251a68f",
+      "success_checks": 5,
+      "paid": "skipped",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_total": 94,
+      "export_passed": 93,
+      "export_skipped": 1,
+      "tested_merge": "0b05194ae064388f96a86a8569a2967248225eb2"
+    }
+  },
+  "full_projection_slice": {
+    "status": "draft_ci_running_parent304",
+    "card": "card_522ee55d",
+    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "provisional_parent": "185d283af23683ad084f81a6b049fcaab251a68f",
+    "primary_j": "J07",
+    "supporting_j": [
+      "J03",
+      "J23"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "new_methods": 0,
+    "host_experiment_calls": 0,
+    "formal_gate_pass": false,
+    "owners": {
+      "A": "projector and tests",
+      "B": "skills-check-journey and maintain-verification refs",
+      "C": "independent scratch",
+      "root": "CI,ledger,audit,PR"
+    },
+    "criteria_sha256": "3ffbfae7150fd08c9d025903e18e4c40eae23dff501630f8b97105052d4306e0",
+    "source_commit": "c7a712909f32f5691bc85afe43a033951ecc2447",
+    "author_code": "9ed86675b3c100a245e21ba7fc0a1b8d4dbcdd19",
+    "author_docs": "e603e7c6299b42e6f2f72851006cc7ad3f1c4d7c",
+    "focused": "230 pass; final documentation clarification94export pass",
+    "full": "da059ca3 7144pass5skip0fail, fresh generated dist; tracked bytes unchanged; precedes standalone repair, not final whole-tree",
+    "audit": "actual claude-sonnet-5-5 initial staticPASS; optional3 independently confirmed and fixed; limited closurePASS",
+    "independent": "45 initial bounded observations; 2 post-audit accepted counterexamples; repaired10 projection/5check calls",
+    "fresh": "current1d366 full5/default2 project/check passed; originals unchanged",
+    "evidence": "docs/implementation/method-full-projection/README.md",
+    "archive_sha256": "5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d",
+    "whole_capability_complete": false,
+    "pr": 305,
+    "published_head": "856bec1deaa720425d8b475793f9dd75e1364288",
+    "base_branch": "codex/method-full-journey-delivery",
+    "ci_run": 40839214482,
+    "all_workers_handed_off": true,
+    "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference."
+  },
+  "current_packet_repair": {
+    "observed_at": "2026-10-29T08:43:38.541626+00:00",
+    "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "candidate_base": "856bec1deaa720425d8b475793f9dd75e1364288",
+    "card_id": "card_440af690",
+    "state": "reviewed_repair_publication_pending",
+    "task": "Reject internally contradictory passed packet with nonempty product stderr; retain legitimate failed packets and v1/v2 compatibility",
+    "source": "current main v1 and provisional full v2; not an old historical repair replay",
+    "owners": {
+      "discovery_template": "loader_adversarial",
+      "host_execution": "terminal_preflight",
+      "independent": "cleanup_regression",
+      "ledger_pr": "root"
+    },
+    "host_calls": {
+      "codex": 1,
+      "claude": 1,
+      "retries": 0
+    },
+    "dispatch": "requires concrete frozen context, criteria and root guard",
+    "primary_j": "J09",
+    "supporting_j": [
+      "J03",
+      "J07",
+      "J23"
+    ],
+    "pstack_groups": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "formal_gate_pass": false,
+    "runtime_enabled": false,
+    "guard_at": "2026-10-29T08:26:21Z",
+    "criteria_sha256": "000da1c46bb539a246b1f8ec1f03bfce895987c2b8a178d0c8b5e850d7217845",
+    "context_sha256": "1f793eb26d996eaf000128c6bb5d5f6239ad406384600013183b5ca537c5e23c",
+    "code_commit": "681cf6e92a5b33ef9d931662ad94d4b2f9fdfad8",
+    "candidate_checker_sha256": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+    "outcomes": {
+      "codex": "bounded actual RED2fail4pass then unchanged testGREEN6pass; 14helpercalls;12independentholdouts conform; attribution limited",
+      "claude": "6baseline helpers then compound source read executed, second denied; stopped without test/fix/retry; repair incomplete",
+      "material_delivery": "19required files including16short pages returned byte-exact per host; not understanding or causal benefit"
+    },
+    "validation": {
+      "targeted": "239pass (88projector43journey94exports14reader)",
+      "root_regression": "9new repo tests: RED7assertionfail2controlsPASS; unchangedtestsGREEN",
+      "full": "681cf6e9,22packages7144passed5skipped0failed; generated dist+preexistingledger working changes; trackedbytes stable; not cleancommittedtree",
+      "independent_report_sha256": "e96a9a4bdf53d7222b5c4cfd78afa042efae8b44df4c3187d3abe1f209743742"
+    },
+    "audit": "actual Claude CLI claude-sonnet-5-5 staticPASS then limited reporting closurePASS; optional notes reconciled, raw preserved",
+    "evidence": "docs/implementation/pstack-current-repair/README.md",
+    "archive_sha256": "3a895404c2b50b4b110f632582a0ec7a1c870782040f80e049083278c43ca1c6",
+    "pr": 305,
+    "publish_plan": "append confirmed consistency fix to still-Draft305; new head CI required; parent304 must merge before main retarget/Ready",
+    "old_305_ci": {
+      "head": "856bec1deaa720425d8b475793f9dd75e1364288",
+      "run": 40839214482,
+      "status": "5SUCCESS/paidSKIP",
+      "scope": "22packages7142pass7skip0fail; does not validate new681repair"
+    }
   }
 }

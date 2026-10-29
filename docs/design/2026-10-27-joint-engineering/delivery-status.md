@@ -23,15 +23,18 @@
 
 ## 下一批按完整能力收口
 
-1. **验证维护闭环**：在隔离的真实仓库任务上完成地图漂移发现、分类、授权范围内修复、同一触发路径复验及失败证据保留。 验收：确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。
-2. **Codex与Claude真实缺陷修复闭环**：各宿主使用方法完成一次预冻结的真实历史缺陷任务，独立记录读取、修改、测试和结论。 验收：同一路径RED→修复→GREEN；误报、越界、归因不足如实计入。工具代跑不冒充宿主完成。
-3. **收口已在途的技能编写候选**：完成本批候选发布与CI；随后优先上述闭环，停止仅按方法数量扩张。 验收：候选源SHA、实际审计、定向测试、原始失败与使用限制保留。
+当前队列以 [pstack-feature-queue.md](pstack-feature-queue.md) 为准。已完成的历史任务不再次列为待开工。
+
+1. PR303：完整材料分页工具，五项适用CI成功，Ready等用户合并；工具字节送达不证明模型完整消费。
+2. PR304：完整五案例旅程候选，默认两例兼容；五项适用CI已通过，等待303合并后main重验。
+3. card_522ee55d：完整五案例安全证据投影已实现并验证，修复了清理身份矛盾误接受；保持默认兼容与原件不变，已提交PR305，Draft等待CI及304合并后main重验。
+4. 随后用新的当前任务验证Codex/Claude实际使用闭环；此前历史修复及LIMITED/FAILED保留，不重跑翻绿。Firstmate深运行时后排。
 
 ## pstack能力清单
 
 | 能力 | 交付状态 | 具体边界 |
 |---|---|---|
-| PS01 单入口任务路由与渐进方法组合 | 部分已交付 | 13共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道 |
+| PS01 单入口任务路由与渐进方法组合 | 部分已交付 | 14共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道 |
 | PS02 代码机制与历史动机取证 | 部分已交付 | investigation可用；how/why/teach为方法吸收，没有专门历史取证工具或全面效果验证 |
 | PS03 意图校准与可纠正的问题模型 | 部分已交付 | task-framing已合并；实际两宿主均LIMITED，尚非任务执行收益证明 |
 | PS04 从使用草图到原型证据的架构循环 | 部分已交付 | architecture/feature/refactoring可用；独立多原型arena和完整采纳循环未交付 |
@@ -39,10 +42,10 @@
 | PS06 独立评审与意见裁决 | 部分已交付 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 影响面与关键前提验证 | 部分已交付 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
 | PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明 |
-| PS09 验证基础设施的健康、归属与漂移维护 | 部分已交付 | maintain材料+健康/归属/清理验证；尚无完整功能地图漂移维护的真实缺陷闭环 |
+| PS09 验证基础设施的健康、归属与漂移维护 | 部分已交付 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case维护路径与广义漂移发现仍未闭合。 |
 | PS10 形式化验证生命周期 | 暂缓/未实现 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 状态图与反例解释 | 暂缓/未实现 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
-| PS12 反思转结构化约束 | 候选未合并 | skill-authoring第14方法候选已定向验证和限定审计；未合并，不计入main。 |
+| PS12 反思转结构化约束 | 部分已交付 | skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。 |
 | PS13 决策轨迹与证据归因 | 部分已交付 | 原始回执/manifest/hash/错误保留及安全投影已可用；证据完整性不认证身份/历史真实性；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
 | PS14 性能结论审查 | 部分已交付 | 性能审查方法与合成数例可用；无因果性能提升结果 |
 | PS15 有预算的 hillclimb 与盲评 | 暂缓/未实现 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
@@ -50,7 +53,7 @@
 | PS17 栈前沿与候选绑定验证 | 部分已交付 | PR readiness材料+候选绑定实践；栈前沿自动校验服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
 | PS18 forge 观察器分类 | 部分已交付 | 一次forge状态分类方法；未移植watch-pr观察器，不把既有github组件当本批新增；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS19 暂停与恢复对账 | 部分已交付 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
-| PS20 跨宿主方法适配 | 部分已交付 | 四入口双host导出，有限读取/native help观察；无全方法等价/强制context/资格激活 |
+| PS20 跨宿主方法适配 | 部分已交付 | 四入口双host导出；Codex和Claude各一次有界实际修复已记录，Claude必读材料不全、旧失败保留；全方法等价/强制context/资格未通过 |
 | PS21 来源快照与能力资格验证 | 部分已交付 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
 | PS22 事件 intake 与补偿模式 | 暂缓/未实现 | Benny/外部事件intake补偿未启用或移植 |
 | PS23 使用方式驱动的接口与文档设计 | 部分已交付 | caller-first architecture、验证材料与文档；三条冻结地图和冷用户验收未全通过 |
@@ -65,7 +68,7 @@
 | J01 共享身份、完成与资格契约 | 严格身份/完成/资格/恢复契约及原始JSON、canonical、交叉字段和变异回归已交付。 | 已交付严格契约/回归仍待原JA59/70可信oracle流程与JA01/02真实宿主验收。 | 计划中的无副作用可信宿主准入入口尚未交付，不能由schema检查代替。 | 现有工程作者/审查者的证据是否满足原principal职责及独立性尚未正式确定。 | pstack或必要基础 |
 | J02 共用来源快照与分型注册 | typed registry、v1兼容和opt-in source inspector可用；固定Git对象/路径/预算检查已有实现。 | source inspector和typed registry组件尚未完成原JA03/04整体验收。 | 采用依赖闭包及相应图/漂移失效消费链尚未交付。 | 调用方声明的repository identity是否有足够外部映射证据未确定。 | pstack或必要基础 |
 | J03 session-answer-receipt 驱动夹具 | 现有CLI/daemon验证工具和固定两case旅程提供真实原始回执与证据。 | 现有真实CLI/daemon回执工具可复用，但未取得JA05/06/44对应资格。 | 计划中的method-control和session-answer-receipt统一驱动尚未交付。 | 现有工具迁入正式驱动需要多少新增接线，尚未按真实调用面验证。 | pstack或必要基础 |
-| J04 必需方法材料与 v2 调用回执 | 13共享方法材料与现有execution-context基础可用。 | 共享材料和既有context基础尚未验证强制通道的实际adapter证据。 | MethodBinding必需材料装载、方法快照与完整v2调用回执链尚未交付。 | 各实际adapter可提供的版本/读取/预算证据能力尚未全量核定。 | pstack或必要基础 |
+| J04 必需方法材料与 v2 调用回执 | 14共享方法材料与现有execution-context基础可用。 | 共享材料和既有context基础尚未验证强制通道的实际adapter证据。 | MethodBinding必需材料装载、方法快照与完整v2调用回执链尚未交付。 | 各实际adapter可提供的版本/读取/预算证据能力尚未全量核定。 | pstack或必要基础 |
 | J05 检查映射与单方法纯编译 | 共享方法含验证编写指导；尚无本计划recipe compiler交付证据。 | 暂无本计划recipe compiler候选可供正式JA10/11验收。 | 单方法纯编译与check映射输出尚未交付。 | J25.e0尚无决定，允许的完整方法链投资范围仍待真实可行性结果。 | pstack或必要基础 |
 | J06 使用草图与三条功能地图 | feature-map模板、五case source验证及固定healthy/missing-ref两行图已交付。 | 现有feature-map模板、五case验证器和两case旅程尚未证明规定三图与冷调用者验收。 | 复现/等待/取消三图及统一usage-sketch回执交付尚未完成。 | 现有冷调用者使用观察能覆盖多少原V05要求尚未逐项认定。 | pstack或必要基础 |
 | J07 产物消费与同候选评审 | 真实driver归档、严格两文件证据投影与输入完整性检查可用。 | 已交付证据投影与归档一致性工具尚未获得同候选产物消费正式验收。 | host-authoritative method artifacts及其资格消费链尚未交付。 | 保留证据的producer身份与历史真实性不能仅由hash/manifest确定。 | pstack或必要基础 |
@@ -76,7 +79,7 @@
 | J12 目标 schema 恢复与操作员处置 | 离线schema/bootstrap/旧hold与broker组合测试可复用；既有graph recovery基础存在。 | 已有离线bootstrap/旧hold组合准备尚无真实操作员恢复资格证据。 | operator-recovery host、白名单迁移selector及跨进程原子处置链尚未交付。 | 可信操作员授权、实际进程存活/停止及恢复可支持范围仍待实测。 | pstack或必要基础 |
 | J13 主控事件模型与累计预算 | 已有engineering持久store/DDL基础。 | 已有engineering store/DDL基础尚未接受新controller事件/预算全链验证。 | 联合controller/planner事件模型和累计预算执行链尚未交付。 | 跨重启/外部事件条件下的实际行为与成本尚未测定。 | 后排 |
 | J14 Loop/Graph 准入与单次启动 | 既有Loop/Graph与executor基础存在。 | 既有Loop/Graph基础尚未取得JA24联合准入/单次启动证据。 | 联合engineering-executor及对应新准入接线尚未交付。 | 真实query/stop能力及其支持边界尚未资格测定。 | 后排 |
-| J15 统一入口、范围纠正与路由 | 四命名入口、Codex/Claude可导出布局和13方法已合入；可按当前用户授权使用材料。 PR301已合并并行分工与紧凑报告；方法数仍13。 | 四入口/13材料的导出与读取证据不满足JA25/63/67持久问答和权限验收。 | 联合持久router、问题版本/纠偏与可信人类答案接线尚未交付。 | 四入口在所有目标宿主的原生发现/正确路由能力尚未证明。 | pstack或必要基础 |
+| J15 统一入口、范围纠正与路由 | 四命名入口、Codex/Claude可导出布局和14方法已合入；可按当前用户授权使用材料。 PR301加入并行分工与紧凑报告，PR302加入第14方法。 | 四入口/14材料的导出与读取证据不满足JA25/63/67持久问答和权限验收。 | 联合持久router、问题版本/纠偏与可信人类答案接线尚未交付。 | 四入口在所有目标宿主的原生发现/正确路由能力尚未证明。 | pstack或必要基础 |
 | J16 跨方法与监督的联合旅程 | 已有真实验证器旅程和小规模宿主材料使用观察。 | 现有验证器旅程与有限host观察尚无JA26/27联合监督旅程资格。 | 跨方法与持续监督/恢复的完整joint journey及指定crash集成尚未交付。 | 组合链的端到端正确性与收益仍未知。 | 后排 |
 | J17 容量、写集合与集成候选 | JP-17a独立broker namespace真实SQLite候选DDL/held orphan/不可变decision防护可用。 | JP-17a离线broker DDL和攻击回归尚未获得J17正式资格。 | JP-17b恢复与可信proof、JP-17c运行时容量/write-set/integration routing尚未交付。 | broker schema实际分配、跨进程fencing与隔离支持范围仍未确定。 | 后排 |
 | J18 竞争与覆盖模式的多候选扩展 | 已有独立审查/不同候选比较经验，不属于新运行时交付。 | 已有人工独立评审/候选比较不是JA29运行时多候选验收。 | method-candidates与coverage/integration候选选择扩展尚未交付。 | 多候选方式对真实质量/成本的增益仍未知。 | 后排 |
@@ -158,3 +161,8 @@ J23一般运行时资格后排，但服务pstack闭环的真实宿主测量提�
 ## 2026-10-29：pstack五case实际使用路径候选
 
 既有journey新增可选`--scope full`，真实覆盖healthy/missing-ref/drift/mixed/empty，默认两case保持兼容。186定向、独立实际2+5case与失败反例、实际Sonnet静态审计通过，待发布CI及用户合并；未新增方法。旧两case投影器拒绝full而不丢弃行。PS08/PS09，J03主贡献、J06/J09支持，正式gate不变。见[交付记录](../../implementation/method-full-journey/README.md)及[功能优先队列](pstack-feature-queue.md)。
+
+
+## Current packet repair (2026-10-29)
+
+[实际修复与证据](../../implementation/pstack-current-repair/README.md)：确认当前主线v1及候选v2的passed/nonempty-stderr矛盾漏检，采纳Codex实际一行修复，新增9个仓库回归。239项定向检查通过；代码681cf6e9全仓7144通过/5跳过/0失败，运行期间tracked字节不变，包含新鲜生成dist与已有账本工作改动，不称干净提交树。Sonnet5.5初审和限定报告复审PASS。Codex完成同测试RED→修复→GREEN；Claude六次基线后，首次复合源码读取执行、第二次被拒后停止，没有修复，也不追溯增加源码读取禁令。两宿主19必读文件（含16材料页）均完整送达，不等于理解或收益证明。修复准备追加至Draft #305，需新head CI及parent304合并/main重验后才可Ready；4入口/14方法、正式J门槛不变。

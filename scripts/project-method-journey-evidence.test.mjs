@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promis
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createScratchDir } from './lib/scratch.mjs';
-import { sha256, jsonBytes, sealEvidence, evaluateCase } from './lib/skills-check-verification.mjs';
+import { sha256, jsonBytes, sealEvidence, evaluateCase, caseDefinition } from './lib/skills-check-verification.mjs';
 import { parseOptions, projectJourney, checkPacket, validatePacket } from './project-method-journey-evidence.mjs';
 
 async function setup(t) {
@@ -19,21 +19,22 @@ async function sealRoot(input) {
     const bytes = await readFile(join(input, name)); files.push({ path: name, bytes: bytes.length, sha256: sha256(bytes) });
   }
   const case_manifests = []; const journey = JSON.parse(await readFile(join(input, 'journey.json')));
-  for (const id of ['healthy', 'missing-ref']) {
+  for (const id of journey.features.map(f => f.case_id)) {
     try { case_manifests.push({ case_id: id, sha256: sha256(await readFile(join(input, 'cases', id, 'manifest.json'))), verified: journey.features.find(f => f.case_id === id).verification === 'passed' }); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   }
   await put(join(input, 'journey-manifest.json'), { files, case_manifests });
 }
-async function fixture(t, { doctorFailure = false } = {}) {
+async function fixture(t, { doctorFailure = false, full = false } = {}) {
   const root = await setup(t); const input = join(root, 'machine'); await mkdir(input); await mkdir(join(input, 'cases'));
   const journey = { schema_version: 1, status: doctorFailure ? 'failed' : 'passed', failure: doctorFailure ? '/private/secret-canary missing build' : undefined,
     features: [], host_execution: 'not_run', native_skill_selection: 'not_observed', model_calls: 0, provider_qualified: false, formal_gate_pass: false };
-  for (const id of ['healthy', 'missing-ref']) {
+  for (const id of full ? ['healthy', 'missing-ref', 'drift', 'mixed', 'empty'] : ['healthy', 'missing-ref']) {
     if (doctorFailure) { journey.features.push({ case_id: id, verification: id === 'healthy' ? 'failed' : 'not_run', product_exit: null, driver_exit: null, cleanup: { status: 'not_started', descendant_termination: 'not_attested' }, evidence_state: 'not_created', journey_status: 'failed' }); continue; }
     const dir = join(input, 'cases', id); await mkdir(dir);
-    const exit = id === 'healthy' ? 0 : 1;
-    const expected = { case_id: id, expected_exit: exit, failed: exit, drifted: 0, current_sha: 'a'.repeat(40), sources: [{ id, origin: 'file:///private/secret-canary', ref: id === 'healthy' ? 'refs/heads/main' : 'refs/heads/not-present', blessed_sha: 'a'.repeat(40) }] };
-    const stdout = `Checking 1 source(s) against their tracked refs...\n${id === 'healthy' ? '  ✓ healthy  up-to-date (aaaaaaaaaaaa)' : '  ✗ missing-ref  unreachable: no_matching_ref'}\n${exit} source(s) failed to check.\n0 source(s) drifted from blessed_sha.\nsecret-canary /private/source env PATH=/private/bin\n`;
+    const exit = full ? ({ healthy: 0, 'missing-ref': 1, drift: 2, mixed: 1, empty: 0 })[id] : id === 'healthy' ? 0 : 1;
+    const expected = full ? caseDefinition(id, 'file:///private/secret-canary/origin', 'b'.repeat(40), 'a'.repeat(40)) : { case_id: id, expected_exit: exit, failed: exit, drifted: 0, current_sha: 'a'.repeat(40), sources: [{ id, origin: 'file:///private/secret-canary', ref: id === 'healthy' ? 'refs/heads/main' : 'refs/heads/not-present', blessed_sha: 'a'.repeat(40) }] };
+    const fullRows = { healthy: '  ✓ healthy  up-to-date (aaaaaaaaaaaa)', 'missing-ref': '  ✗ missing-ref  unreachable: no_matching_ref', drift: '  ⚠ drift  drift  blessed=bbbbbbbbbbbb  head=aaaaaaaaaaaa  ref=refs/heads/main' };
+    const stdout = full ? [`Checking ${expected.sources.length} source(s) against their tracked refs...`, ...expected.sources.map(source => fullRows[source.id]), '', `${expected.failed} source(s) failed to check.`, `${expected.drifted} source(s) drifted from blessed_sha.`, ''].join('\n') : `Checking 1 source(s) against their tracked refs...\n${id === 'healthy' ? '  ✓ healthy  up-to-date (aaaaaaaaaaaa)' : '  ✗ missing-ref  unreachable: no_matching_ref'}\n${exit} source(s) failed to check.\n0 source(s) drifted from blessed_sha.\nsecret-canary /private/source env PATH=/private/bin\n`;
     const command = { exit_code: exit, direct_child_exit_confirmed: true, timed_out: false, output_limited: false, interrupted: false, spawn_error: null, signal: null,
       environment: { HOME: '/private/secret-canary', TOKEN: 'secret-canary' }, argv: ['/private/secret-canary/bin.js', 'skills', 'check'], cwd: '/private/secret-canary',
       stdout_path: `${id}.stdout`, stderr_path: `${id}.stderr`, stdout_sha256: sha256(Buffer.from(stdout)), stderr_sha256: sha256(Buffer.alloc(0)) };
@@ -45,8 +46,18 @@ async function fixture(t, { doctorFailure = false } = {}) {
     const rawInput = jsonBytes({ version: 1, sources: expected.sources });
     for (const [name, value] of Object.entries({ 'receipt.json': receipt, 'run.json': { run_id: receipt.run_id, status: 'passed', selected_cases: [id], bindings_unchanged: true, bindings: receipt.binding_digests, final_bindings: receipt.binding_digests }, 'cleanup.json': cleanup, 'bindings.json': bindings, 'expectations.json': { definitions: [expected] }, [`${id}.command.json`]: command, [`${id}.json`]: { ...command, ...observed, manifest_before_sha256: sha256(Buffer.from(rawInput)), manifest_after_sha256: sha256(Buffer.from(rawInput)) } })) await put(join(dir, name), value);
     await writeFile(join(dir, `${id}.input.json`), rawInput); await writeFile(join(dir, `${id}.stdout`), stdout); await writeFile(join(dir, `${id}.stderr`), '');
+    if (full) {
+      const commands = [];
+      for (const [label, value] of [['git-03', 'b'.repeat(40)], ['git-05', 'a'.repeat(40)]]) {
+        const raw = Buffer.from(value + '\n');
+        const record = { ...command, argv: ['rev-parse', 'HEAD'], cwd: '/private/secret-canary/origin', exit_code: 0, stdout_path: `${label}.stdout`, stderr_path: `${label}.stderr`, stdout_sha256: sha256(raw), stderr_sha256: sha256(Buffer.alloc(0)) };
+        await put(join(dir, `${label}.command.json`), record); await writeFile(join(dir, `${label}.stdout`), raw); await writeFile(join(dir, `${label}.stderr`), '');
+        commands.push({ label, record: `${label}.command.json`, exit_code: 0 });
+      }
+      await edit(join(dir, 'run.json'), r => { r.commands = commands; });
+    }
     await sealEvidence(dir, receipt.run_id);
-    journey.features.push({ case_id: id, verification: 'passed', product_exit: exit, product_status: id === 'healthy' ? 'healthy' : 'failed', driver_exit: 0, bindings: receipt.binding_digests, cleanup, evidence: dir, evidence_state: 'sealed', journey_status: 'passed' });
+    journey.features.push({ case_id: id, verification: 'passed', product_exit: exit, product_status: full ? observed.source_check_status : id === 'healthy' ? 'healthy' : 'failed', driver_exit: 0, bindings: receipt.binding_digests, cleanup, evidence: dir, evidence_state: 'sealed', journey_status: 'passed' });
   }
   await put(join(input, 'journey.json'), journey); await sealRoot(input);
   return { root, input, output: join(root, 'packet'), journey };
@@ -243,3 +254,140 @@ test('CLI error code is fixed and path-free for rejected packet inventory', asyn
   const entry = new URL('./project-method-journey-evidence.mjs', import.meta.url).pathname;
   assert.throws(() => execFileSync(process.execPath, [entry, '--check', f.output], { stdio: 'pipe' }), e => e.status === 1 && JSON.parse(e.stderr).error === 'directory_entry_limit' && !e.stderr.includes('secret-canary'));
 });
+
+
+test('explicit full projection option is distinct from unchanged default and check', () => {
+  assert.deepEqual(parseOptions(['--input', '/a', '--output', '/b', '--scope', 'full']), { input: '/a', output: '/b', scope: 'full' });
+  for (const args of [['--input', '/a', '--output', '/b', '--scope', 'all'], ['--input', '/a', '--output', '/b', '--scope', 'full', '--scope', 'full'], ['--check', '/a', '--scope', 'full']]) assert.throws(() => parseOptions(args));
+});
+test('explicit full packet retains all five semantic outcomes and no private paths', async t => {
+  const f = await fixture(t, { full: true }); await projectJourney({ ...f, scope: 'full' });
+  const p = await readPacket(f); await checkPacket(f.output);
+  assert.equal(p.schema_version, 2); assert.deepEqual(p.scope.omitted, []);
+  assert.deepEqual(p.features.map(x => [x.case_id, x.product_exit, x.product_status]), [['healthy', 0, 'healthy'], ['missing-ref', 1, 'failed'], ['drift', 2, 'drift'], ['mixed', 1, 'failed'], ['empty', 0, 'empty']]);
+  assert.equal(p.streams.length, 10); assert.equal(p.references.length, 52);
+  assert.doesNotMatch(JSON.stringify(p), /secret-canary|private|environment|HOME|TOKEN/);
+});
+test('full failed doctor keeps all not_run rows without inventing evidence', async t => {
+  const f = await fixture(t, { full: true, doctorFailure: true }); await projectJourney({ ...f, scope: 'full' });
+  const p = await readPacket(f); assert.equal(p.schema_version, 2); assert.deepEqual(p.features.map(x => x.verification), ['failed', 'not_run', 'not_run', 'not_run', 'not_run']);
+  assert.ok(p.features.every(x => x.product_exit === null && x.cleanup.fixture_removed === null));
+});
+for (const mismatch of ['full-without-option', 'pair-with-full', 'unknown-api-scope']) test(`${mismatch} refuses before output acquisition`, async t => {
+  const f = await fixture(t, { full: mismatch === 'full-without-option' });
+  const scope = mismatch === 'pair-with-full' ? 'full' : mismatch === 'unknown-api-scope' ? 'unknown' : undefined;
+  await assert.rejects(projectJourney({ ...f, scope })); assert.ok(!(await readdir(f.root)).includes('packet'));
+});
+for (const mutation of ['missing-row', 'duplicate-row', 'order', 'full-version1', 'pair-scope', 'unknown-field', 'wrong-exit', 'empty-healthy', 'mixed-zero-failure', 'last-binding']) test(`full closed packet rejects ${mutation}`, async t => {
+  const f = await fixture(t, { full: true }); await projectJourney({ ...f, scope: 'full' });
+  const p = await readPacket(f);
+  if (mutation === 'missing-row') p.features.pop();
+  if (mutation === 'duplicate-row') p.features[4] = p.features[0];
+  if (mutation === 'order') p.features.reverse();
+  if (mutation === 'full-version1') p.schema_version = 1;
+  if (mutation === 'pair-scope') p.scope.cases = ['healthy', 'missing-ref'];
+  if (mutation === 'unknown-field') p.features[3].raw_path = '/private/file';
+  if (mutation === 'wrong-exit') p.features[2].product_exit = 0;
+  if (mutation === 'empty-healthy') p.features[4].product_status = 'healthy';
+  if (mutation === 'last-binding') p.features[4].bindings.source_digest = 'd'.repeat(64);
+  if (mutation === 'mixed-zero-failure') {
+    const s = p.streams.find(s => s.id === 'mixed.product.stdout'); s.selected_lines = ['0 source(s) failed to check.']; s.omitted_bytes = p.references.find(r => r.id === s.id).bytes - Buffer.byteLength(s.selected_lines[0]);
+  }
+  await put(join(f.output, 'packet.json'), p); await resealPacket(f.output); await assert.rejects(checkPacket(f.output));
+});
+for (const mutation of ['blessed-current', 'ref', 'cardinality', 'current-git', 'extra-source-output']) test(`full passed source rejects resealed ${mutation}`, async t => {
+  const f = await fixture(t, { full: true }); const id = 'drift'; const dir = join(f.input, 'cases', id);
+  if (mutation === 'blessed-current') await edit(join(dir, 'expectations.json'), e => { e.definitions[0].sources[0].blessed_sha = e.definitions[0].current_sha; });
+  if (mutation === 'ref') await edit(join(dir, 'expectations.json'), e => { e.definitions[0].sources[0].ref = 'refs/heads/other'; });
+  if (mutation === 'cardinality') await edit(join(dir, 'expectations.json'), e => { e.definitions[0].sources.push(e.definitions[0].sources[0]); });
+  if (mutation === 'current-git') {
+    const bytes = Buffer.from('c'.repeat(40) + '\n'); await writeFile(join(dir, 'git-05.stdout'), bytes);
+    await edit(join(dir, 'git-05.command.json'), c => { c.stdout_sha256 = sha256(bytes); });
+  }
+  if (mutation === 'extra-source-output') {
+    const bytes = Buffer.from(await readFile(join(dir, `${id}.stdout`), 'utf8') + '  ✓ healthy  up-to-date (aaaaaaaaaaaa)\n'); await writeFile(join(dir, `${id}.stdout`), bytes);
+    for (const name of [`${id}.command.json`, `${id}.json`]) await edit(join(dir, name), c => { c.stdout_sha256 = sha256(bytes); });
+  }
+  await resealCase(f, id); await assert.rejects(projectJourney({ ...f, scope: 'full' })); assert.ok(!(await readdir(f.root)).includes('packet'));
+});
+test('full late binding failure retains successful individual rows and unequal bindings', async t => {
+  const f = await fixture(t, { full: true }); await changeBindings(f);
+  await edit(join(f.input, 'journey.json'), j => { j.status = 'failed'; j.failure = 'cross_case_bindings_changed'; for (const x of j.features) x.journey_status = 'failed'; }); await sealRoot(f.input);
+  await projectJourney({ ...f, scope: 'full' }); const p = await readPacket(f);
+  assert.equal(p.journey_status, 'failed'); assert.ok(p.features.every(x => x.verification === 'passed')); assert.notEqual(p.features[0].bindings.source_digest, p.features[1].bindings.source_digest);
+});
+
+test('full verifier failure retains reported driver-pass as unknown, never verified', async t => {
+  const f = await fixture(t, { full: true });
+  await edit(join(f.input, 'journey.json'), j => {
+    j.status = 'failed'; j.failure = 'verification_failed';
+    Object.assign(j.features[2], { verification: 'failed', product_exit: null, product_status: 'unknown', reported_product_exit: 2, cleanup: { status: 'unknown', descendant_termination: 'not_attested' } });
+    for (const x of j.features) x.journey_status = 'failed';
+  }); await sealRoot(f.input);
+  await projectJourney({ ...f, scope: 'full' }); const p = await readPacket(f); await checkPacket(f.output);
+  assert.deepEqual([p.features[2].product_exit, p.features[2].reported_product_exit, p.features[2].product_status, p.features[2].cleanup.status, p.features[2].reported_cleanup.status], [null, 2, 'unknown', 'unknown', 'passed']);
+});
+test('full missing sealed receipt is rejected rather than silently omitting a case', async t => {
+  const f = await fixture(t, { full: true }); await rm(join(f.input, 'cases/empty/receipt.json')); await resealCase(f, 'empty');
+  await assert.rejects(projectJourney({ ...f, scope: 'full' }), /required_evidence/);
+  assert.ok(!(await readdir(f.root)).includes('packet'));
+});
+for (const mutation of ['env', 'unrun-removed', 'version3']) test(`full resealed failed packet rejects ${mutation}`, async t => {
+  const f = await fixture(t, { full: true, doctorFailure: true }); await projectJourney({ ...f, scope: 'full' });
+  const p = await readPacket(f);
+  if (mutation === 'env') p.features[0].bindings.environment = { TOKEN: 'secret' };
+  if (mutation === 'unrun-removed') p.features[4].cleanup.fixture_removed = true;
+  if (mutation === 'version3') p.schema_version = 3;
+  await put(join(f.output, 'packet.json'), p); await resealPacket(f.output); await assert.rejects(checkPacket(f.output));
+});
+
+for (const changed of ['receipt', 'feature']) test(`full passed ${changed} cleanup fixture identity must agree before path omission`, async t => {
+  const f = await fixture(t, { full: true });
+  if (changed === 'receipt') {
+    await edit(join(f.input, 'cases/healthy/receipt.json'), r => { r.cleanup.fixture_path = '/foreign/contradictory-fixture'; });
+    await resealCase(f, 'healthy');
+  } else {
+    await edit(join(f.input, 'journey.json'), j => { j.features[0].cleanup.fixture_path = '/foreign/contradictory-fixture'; });
+    await sealRoot(f.input);
+  }
+  await assert.rejects(projectJourney({ ...f, scope: 'full' }), /^Error: cleanup_fixture_identity$/);
+  assert.ok(!(await readdir(f.root)).includes('packet'));
+});
+test('full consistent retained cleanup identity projects without following deleted fixture paths', async t => {
+  const f = await fixture(t, { full: true });
+  await projectJourney({ ...f, scope: 'full' }); const p = await readPacket(f);
+  assert.ok(p.features.every(x => x.cleanup.status === 'passed' && x.cleanup.fixture_removed === true && x.receipt_cleanup_consistent === true));
+  assert.doesNotMatch(JSON.stringify(p), /fixture_path|secret-canary/);
+});
+
+for (const full of [false, true]) {
+  const ids = full ? ['healthy', 'missing-ref', 'drift', 'mixed', 'empty'] : ['healthy', 'missing-ref'];
+  for (const id of ids) test(`v${full ? 2 : 1} packet refuses verified ${id} with retained stderr`, async t => {
+    const f = await fixture(t, { full });
+    await projectJourney({ ...f, ...(full ? { scope: 'full' } : {}) });
+    const p = await readPacket(f);
+    const stderr = Buffer.from('unexpected diagnostic\n');
+    Object.assign(p.references.find(r => r.id === `${id}.product.stderr`), { bytes: stderr.length, sha256: sha256(stderr) });
+    p.streams.find(s => s.id === `${id}.product.stderr`).omitted_bytes = stderr.length;
+    await put(join(f.output, 'packet.json'), p); await resealPacket(f.output);
+    await assert.rejects(checkPacket(f.output), /passed_stderr_conflict/);
+  });
+  test(`v${full ? 2 : 1} packet retains unverified stderr without upgrading evidence`, async t => {
+    const f = await fixture(t, { full });
+    await projectJourney({ ...f, ...(full ? { scope: 'full' } : {}) });
+    const p = await readPacket(f);
+    p.journey_status = 'failed'; p.failure_recorded = true;
+    const row = p.features[0];
+    row.reported_cleanup = structuredClone(row.cleanup);
+    Object.assign(row, { verification: 'failed', product_exit: null, reported_product_exit: 0, product_status: 'unknown', cleanup: { status: 'unknown', fixture_removed: null, descendant_termination: 'not_attested' } });
+    const stderr = Buffer.from('diagnostic from unverified execution\n');
+    Object.assign(p.references.find(r => r.id === 'healthy.product.stderr'), { bytes: stderr.length, sha256: sha256(stderr) });
+    p.streams.find(s => s.id === 'healthy.product.stderr').omitted_bytes = stderr.length;
+    await put(join(f.output, 'packet.json'), p); await resealPacket(f.output);
+    const before = await readFile(join(f.output, 'packet.json'));
+    assert.equal((await checkPacket(f.output)).status, 'valid');
+    assert.deepEqual(await readFile(join(f.output, 'packet.json')), before);
+    assert.equal(p.features[0].verification, 'failed');
+    assert.equal(p.features[0].cleanup.status, 'unknown');
+  });
+}
