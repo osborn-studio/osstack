@@ -1740,6 +1740,12 @@
         "record": "docs/implementation/method-material-reader/README.md",
         "status": "validated_candidate_pending_pr",
         "whole_capability_complete": false
+      },
+      "full_journey_candidate": {
+        "pr": 304,
+        "status": "draft_waiting_ci_and_parent303",
+        "record": "docs/implementation/method-full-journey/README.md",
+        "whole_capability_complete": false
       }
     },
     {
@@ -1784,6 +1790,12 @@
         "record": "docs/implementation/pstack-export-repair",
         "relation": "adjacent_maintenance",
         "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      },
+      "full_journey_candidate": {
+        "pr": 304,
+        "status": "draft_waiting_ci_and_parent303",
+        "record": "docs/implementation/method-full-journey/README.md",
         "whole_capability_complete": false
       }
     },
@@ -2743,7 +2755,13 @@
       ],
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "full_journey_candidate": {
+        "pr": 304,
+        "record": "docs/implementation/method-full-journey/README.md",
+        "relation": "contributes",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -3104,7 +3122,13 @@
       ],
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "full_journey_candidate": {
+        "pr": 304,
+        "record": "docs/implementation/method-full-journey/README.md",
+        "relation": "supports",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -3538,6 +3562,12 @@
       "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
       "material_delivery_candidate": {
         "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "supports",
+        "formal_gate_pass": false
+      },
+      "full_journey_candidate": {
+        "pr": 304,
+        "record": "docs/implementation/method-full-journey/README.md",
         "relation": "supports",
         "formal_gate_pass": false
       }
@@ -9355,6 +9385,31 @@
       ],
       "formal_gate_pass": false,
       "whole_milestone_complete": false
+    },
+    {
+      "card_id": "card_ddf5e661",
+      "title": "PS08/09 五case完整验证旅程与维护覆盖",
+      "task_kind": "implementation",
+      "board": "joint-firstmate-pstack",
+      "observed_status": "running",
+      "observed_at": "2026-10-29T07:27:42.368996+00:00",
+      "contributes_to": {
+        "PS": [
+          "PS08",
+          "PS09"
+        ],
+        "J": [
+          "J03",
+          "J06",
+          "J09"
+        ]
+      },
+      "delivered_scope": "PR304 optional full journey candidate, actual five-case execution verified, default compatibility preserved. CI/parent merge pending.",
+      "evidence_paths": [
+        "docs/implementation/method-full-journey/README.md"
+      ],
+      "formal_gate_pass": false,
+      "whole_milestone_complete": false
     }
   ],
   "activity_counting": {
@@ -9812,7 +9867,7 @@
     "pr": 303
   },
   "full_journey_slice": {
-    "status": "validated_pending_pr",
+    "status": "draft_waiting_ci_and_parent303",
     "card": "card_ddf5e661",
     "record": "docs/implementation/method-full-journey/README.md",
     "primary_j": "J03",
@@ -9828,7 +9883,12 @@
     "formal_gate_pass": false,
     "candidate": "6e4c61689ee4b58ee52929519e9bdb95d6c3e0ea",
     "independent": "actual2+5,projection compatibility/refusal,30 bounded observations,4failure seams",
-    "audit": "actual claude-sonnet-5-5 staticPASS"
+    "audit": "actual claude-sonnet-5-5 staticPASS",
+    "pr": 304,
+    "base_branch": "codex/method-material-delivery",
+    "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
+    "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
+    "all_workers_handed_off": true
   },
   "completed_queue_slices": [
     {

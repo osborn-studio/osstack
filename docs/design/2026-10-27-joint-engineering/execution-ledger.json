@@ -4553,7 +4553,7 @@
     "ci_run": 40833415091
   },
   "full_journey_slice": {
-    "status": "validated_pending_pr",
+    "status": "draft_waiting_ci_and_parent303",
     "card": "card_ddf5e661",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
@@ -4600,6 +4600,11 @@
     "audit_model_calls": 1,
     "independent": "actual2+5,projection compatibility/refusal,30 bounded observations,4failure seams",
     "audit": "actual claude-sonnet-5-5 staticPASS",
-    "record": "docs/implementation/method-full-journey/README.md"
+    "record": "docs/implementation/method-full-journey/README.md",
+    "pr": 304,
+    "base_branch": "codex/method-material-delivery",
+    "published_head": "185d283af23683ad084f81a6b049fcaab251a68f",
+    "followup": "Merge303 by user, then refresh actualmain/retarget304 and verify applicable checks before Ready.",
+    "all_workers_handed_off": true
   }
 }

@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-29T07:25:56.673141+00:00",
+  "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/method-full-journey-author",
+  "head": "32a9a9e18fc0b415c18cf14ce42c9f4f6d98f0c8",
+  "restored_only": [
+    "packages/knowledge/dist/index.d.ts",
+    "packages/knowledge/dist/index.d.ts.map",
+    "packages/knowledge/dist/index.js",
+    "packages/knowledge/dist/index.js.map"
+  ],
+  "saved_patch_sha256": "9cd0804e8ac972f377b8759044dd0a2ab17b4499e96fd6391f43a46f5a709567",
+  "generated_hashes_verified": true,
+  "clean_before_remove": true,
+  "removed": true,
+  "pruned": true,
+  "branch_retained": "codex/method-full-journey-author",
+  "branch_head": "32a9a9e18fc0b415c18cf14ce42c9f4f6d98f0c8",
+  "scratch_retained": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/method-full-journey-20261029/author",
+  "prior_evidence_modified": false
+}
