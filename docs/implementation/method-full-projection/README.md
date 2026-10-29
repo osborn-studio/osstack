@@ -28,7 +28,7 @@ Root validation:
 
 | Scope | Bound execution | Result |
 |---|---|---|
-| Initial standalone combination | `cc6b67c3`, tracked bytes stable | 227 passed |
+| Initial standalone combination | `cc6b67c3`, tracked bytes stable | 227 passed: 76 projection + 43 journey + 94 export + 14 reader |
 | Full package regression | `da059ca3`, Node22.22.1, 22 packages | 7,144 passed / 5 skipped / 0 failed |
 | Repaired standalone combination | `1d366d4d`, 79 projection +43 journey +94 export +14 reader | 230 passed |
 | Fresh real journey and projection | `1d366d4d`; full5 and default2, project/check each | Passed; full product0/1/2/1/0; retained inputs unchanged |
@@ -47,3 +47,9 @@ The [raw verification archive](evidence/raw-verification.tar.gz) preserves autho
 Archive SHA256: `5c56faff6fc5e27c29c0d9ff5927b627aa1cf3ec1fb3783563a220c8d9084c8d`. All 1,868 members were checked for type/mode and each file's bytes/hash; see [archive verification](evidence/archive-verification.json). CI303/304 logs are stored losslessly compressed; neither remote artifact was downloaded for rehash. Independent report and both immutable author manifests remain inside the archive. Raw evidence binds each execution to its actual candidate; no earlier LIMITED/FAILED host result is regraded.
 
 Final documentation validation: 241 tests passed; repository hygiene: one test passed. The [independent archive receipt](evidence/independent-archive-receipt.json) independently checks all archive payloads and source/audit bindings.
+
+## Actual-main integration update
+
+PR304 is now merged at `5248195bd2611cc21a98a0ef3e39d229cdf9b681`. The main-retarget candidate `6f79d125711e898862786fc0268ec20b0b89f24b` has the same tree as the previously published `52f16faf9fdb73e0f8e815e8ee6987297c67d4da`; the observations above remain historical. Fresh local checks passed: 239 focused tests, 241 document checks, repository hygiene, real default/full projection and packet checks, contradictory passed-stderr rejection and legitimate failed controls. Fresh published-head CI remains a separate condition.
+
+Valid v1 producer output remains unchanged. The later stderr-consistency repair intentionally makes the v1 and v2 checkers stricter: previously accepted malformed passed packets with nonempty stderr are rejected. The earlier statement about the unchanged v1 branch describes the cleanup-identity repair alone.

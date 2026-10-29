@@ -93,4 +93,3 @@ Timeout or interruption attempts bounded termination of the wrapper's own direct
 Use [maintain verification](maintain-verification.md) when the driver, CLI output, evidence layout or this recipe changes. A complete maintenance pass over this five-case map needs source review and actual drives for all five cases and their evidence paths. Run the journey with `--scope full` for that scope; the default two-case run remains valid partial coverage. A blocked or `not_run` row prevents a complete pass. Even five passing rows cover only these mapped local fixtures, not every source, remote provider, installation, race or global configuration. Reading or exporting this reference does not prove native host selection, model execution, provider qualification or a formal joint gate.
 
 This concrete example adapts the pinned upstream [create/maintain verification practices](sources.md). Apply [the common evidence rules](evidence.md) to each actual run.
-
