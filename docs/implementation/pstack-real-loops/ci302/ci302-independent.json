@@ -1,0 +1,928 @@
+{
+  "checked_at": "2026-10-29T05:09:56.825760+00:00",
+  "mode": "read_only_existing_CI_records_no_rerun",
+  "pr": 302,
+  "run_id": 40819652448,
+  "head_sha": "72ab99e70ef54db924d775d3d3552ecde8780af0",
+  "base_sha_from_checkout": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+  "actual_test_checkout": "dca209453ab3cdd6e97bf83931730b3cabc1baf3",
+  "checkout_kind": "GitHub refs/pull/302/merge; not bare PR head",
+  "checkout_evidence": [
+    {
+      "job": "graph-runtime-matrix (20.6.0)",
+      "line": 130,
+      "text": "HEAD is now at dca2094 Merge 72ab99e70ef54db924d775d3d3552ecde8780af0 into 1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0"
+    },
+    {
+      "job": "graph-runtime-matrix (22.23.1)",
+      "line": 1028,
+      "text": "HEAD is now at dca2094 Merge 72ab99e70ef54db924d775d3d3552ecde8780af0 into 1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0"
+    },
+    {
+      "job": "graph-macos-fixtures (24)",
+      "line": 1941,
+      "text": "HEAD is now at dca2094 Merge 72ab99e70ef54db924d775d3d3552ecde8780af0 into 1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0"
+    },
+    {
+      "job": "graph-macos-fixtures (22)",
+      "line": 2624,
+      "text": "HEAD is now at dca2094 Merge 72ab99e70ef54db924d775d3d3552ecde8780af0 into 1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0"
+    },
+    {
+      "job": "check",
+      "line": 3665,
+      "text": "HEAD is now at dca20945 Merge 72ab99e70ef54db924d775d3d3552ecde8780af0 into 1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0"
+    }
+  ],
+  "input_files": [
+    {
+      "path": "ci302-full.log",
+      "bytes": 2037320,
+      "sha256": "415a02d0f64e3f08c3f387a61ec1f8b72bb1eafe77dcfdb33312d76dd970a3e1"
+    },
+    {
+      "path": "ci302-final.json",
+      "bytes": 1937,
+      "sha256": "b752d56a54a96f49d51bb4341eeb323d295088a75b7f61003c1f1e4e8bb4230a"
+    }
+  ],
+  "check_summary": {
+    "applicable_success": 5,
+    "paid_deepseek_skipped": 1,
+    "failure": 0,
+    "checks": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T04:46:54Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40819652448/job/123268880165",
+        "name": "Paid DeepSeek semantic smoke",
+        "startedAt": "2026-10-29T04:46:55Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T04:48:56Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40819652448/job/123268879119",
+        "name": "graph-macos-fixtures (22)",
+        "startedAt": "2026-10-29T04:46:57Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T04:48:55Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40819652448/job/123268879070",
+        "name": "graph-macos-fixtures (24)",
+        "startedAt": "2026-10-29T04:46:57Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T04:50:49Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40819652448/job/123268878877",
+        "name": "graph-runtime-matrix (20.6.0)",
+        "startedAt": "2026-10-29T04:46:57Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T04:50:07Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40819652448/job/123268879058",
+        "name": "graph-runtime-matrix (22.23.1)",
+        "startedAt": "2026-10-29T04:46:57Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T05:05:28Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/osborn-studio/osstack/actions/runs/40819652448/job/123269473591",
+        "name": "check",
+        "startedAt": "2026-10-29T04:48:58Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      }
+    ]
+  },
+  "package_tests": {
+    "packages": 22,
+    "totals": {
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0
+    },
+    "total_including_skips": 7149,
+    "per_package": [
+      {
+        "package": "compliance",
+        "line": 4658,
+        "summary": "17 passed (17)",
+        "passed": 17,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "contracts",
+        "line": 4664,
+        "summary": "15 passed (15)",
+        "passed": 15,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "github",
+        "line": 4687,
+        "summary": "107 passed (107)",
+        "passed": 107,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "knowledge",
+        "line": 4698,
+        "summary": "44 passed (44)",
+        "passed": 44,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "neat-eval",
+        "line": 4722,
+        "summary": "16 passed (16)",
+        "passed": 16,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "runtime",
+        "line": 4730,
+        "summary": "1 passed (1)",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "protocol",
+        "line": 4778,
+        "summary": "1012 passed (1012)",
+        "passed": 1012,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "governance",
+        "line": 4796,
+        "summary": "301 passed (301)",
+        "passed": 301,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "knowledge-cloud",
+        "line": 4809,
+        "summary": "36 passed (36)",
+        "passed": 36,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "graph",
+        "line": 4854,
+        "summary": "257 passed (257)",
+        "passed": 257,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "core",
+        "line": 4999,
+        "summary": "1301 passed (1301)",
+        "passed": 1301,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "plugins",
+        "line": 5016,
+        "summary": "1 passed (1)",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "hermes-adapter",
+        "line": 5020,
+        "summary": "22 passed (22)",
+        "passed": 22,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "skills",
+        "line": 5031,
+        "summary": "2 passed (2)",
+        "passed": 2,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "autonomy",
+        "line": 5159,
+        "summary": "201 passed (201)",
+        "passed": 201,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "skill-registry",
+        "line": 5168,
+        "summary": "43 passed (43)",
+        "passed": 43,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "agents",
+        "line": 5231,
+        "summary": "361 passed (361)",
+        "passed": 361,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "config",
+        "line": 5243,
+        "summary": "30 passed (30)",
+        "passed": 30,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "loop",
+        "line": 5687,
+        "summary": "514 passed | 1 skipped (515)",
+        "passed": 514,
+        "skipped": 1,
+        "failed": 0
+      },
+      {
+        "package": "conformance",
+        "line": 5715,
+        "summary": "9 passed (9)",
+        "passed": 9,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "supervisor",
+        "line": 5728,
+        "summary": "88 passed (88)",
+        "passed": 88,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "cli",
+        "line": 8207,
+        "summary": "2764 passed | 6 skipped (2770)",
+        "passed": 2764,
+        "skipped": 6,
+        "failed": 0
+      }
+    ],
+    "skipped_file_records": [
+      {
+        "line": 5655,
+        "text": "packages/loop test:  ✓ src/loop-containment.test.ts (8 tests | 1 skipped) 608ms"
+      },
+      {
+        "line": 5784,
+        "text": "packages/cli test:  ✓ src/graph-verification.test.ts (53 tests | 1 skipped) 49402ms"
+      },
+      {
+        "line": 7254,
+        "text": "packages/cli test:  ↓ src/supervision-active-qualification.test.ts (1 test | 1 skipped)"
+      },
+      {
+        "line": 7559,
+        "text": "packages/cli test:  ↓ src/improvement-provider-live.test.ts (1 test | 1 skipped)"
+      },
+      {
+        "line": 7573,
+        "text": "packages/cli test:  ✓ src/daemon-lock-ownership.test.ts (12 tests | 1 skipped) 549ms"
+      },
+      {
+        "line": 7650,
+        "text": "packages/cli test:  ↓ src/graph-performance.test.ts (1 test | 1 skipped)"
+      },
+      {
+        "line": 8154,
+        "text": "packages/cli test:  ↓ src/improvement-native-cold.test.ts (1 test | 1 skipped)"
+      }
+    ]
+  },
+  "method_export": {
+    "total": 94,
+    "passed": 93,
+    "skipped": 1,
+    "failed": 0,
+    "skip_reason": "global Codex home absent; do not create it for testing",
+    "skip_log_line": 8364,
+    "summary": {
+      "job": "check",
+      "step": "Method export contracts",
+      "summary": {
+        "tests": {
+          "value": 94,
+          "line": 8787
+        },
+        "pass": {
+          "value": 93,
+          "line": 8789
+        },
+        "fail": {
+          "value": 0,
+          "line": 8790
+        },
+        "skipped": {
+          "value": 1,
+          "line": 8792
+        }
+      }
+    }
+  },
+  "tap_summaries": [
+    {
+      "job": "graph-runtime-matrix (20.6.0)",
+      "step": "Test bounded Node header preparation",
+      "summary": {
+        "tests": {
+          "value": 14,
+          "line": 656
+        },
+        "pass": {
+          "value": 14,
+          "line": 658
+        },
+        "fail": {
+          "value": 0,
+          "line": 659
+        },
+        "skipped": {
+          "value": 0,
+          "line": 661
+        }
+      }
+    },
+    {
+      "job": "graph-runtime-matrix (22.23.1)",
+      "step": "Test bounded Node header preparation",
+      "summary": {
+        "tests": {
+          "value": 14,
+          "line": 1563
+        },
+        "pass": {
+          "value": 14,
+          "line": 1565
+        },
+        "fail": {
+          "value": 0,
+          "line": 1566
+        },
+        "skipped": {
+          "value": 0,
+          "line": 1568
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Method export contracts",
+      "summary": {
+        "tests": {
+          "value": 94,
+          "line": 8787
+        },
+        "pass": {
+          "value": 93,
+          "line": 8789
+        },
+        "fail": {
+          "value": 0,
+          "line": 8790
+        },
+        "skipped": {
+          "value": 1,
+          "line": 8792
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Session adoption decision smoke (local fixture)",
+      "summary": {
+        "tests": {
+          "value": 27,
+          "line": 8966
+        },
+        "pass": {
+          "value": 27,
+          "line": 8968
+        },
+        "fail": {
+          "value": 0,
+          "line": 8969
+        },
+        "skipped": {
+          "value": 0,
+          "line": 8971
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Skills check verification (local Git fixtures)",
+      "summary": {
+        "tests": {
+          "value": 25,
+          "line": 9223
+        },
+        "pass": {
+          "value": 25,
+          "line": 9225
+        },
+        "fail": {
+          "value": 0,
+          "line": 9226
+        },
+        "skipped": {
+          "value": 0,
+          "line": 9228
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Method verification journey contracts",
+      "summary": {
+        "tests": {
+          "value": 25,
+          "line": 9499
+        },
+        "pass": {
+          "value": 25,
+          "line": 9501
+        },
+        "fail": {
+          "value": 0,
+          "line": 9502
+        },
+        "skipped": {
+          "value": 0,
+          "line": 9504
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Model evidence projection contracts",
+      "summary": {
+        "tests": {
+          "value": 49,
+          "line": 9949
+        },
+        "pass": {
+          "value": 49,
+          "line": 9951
+        },
+        "fail": {
+          "value": 0,
+          "line": 9952
+        },
+        "skipped": {
+          "value": 0,
+          "line": 9954
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Neat semantic live diagnostic tests",
+      "summary": {
+        "tests": {
+          "value": 5,
+          "line": 10044
+        },
+        "pass": {
+          "value": 5,
+          "line": 10046
+        },
+        "fail": {
+          "value": 0,
+          "line": 10047
+        },
+        "skipped": {
+          "value": 0,
+          "line": 10049
+        }
+      }
+    },
+    {
+      "job": "check",
+      "step": "Real repo deliver smoke",
+      "summary": {
+        "tests": {
+          "value": 1,
+          "line": 12386
+        },
+        "pass": {
+          "value": 1,
+          "line": 12388
+        },
+        "fail": {
+          "value": 0,
+          "line": 12389
+        },
+        "skipped": {
+          "value": 0,
+          "line": 12391
+        }
+      }
+    }
+  ],
+  "key_smokes": [
+    {
+      "step": "Session adoption decision smoke (local fixture)",
+      "log_line_range": [
+        8795,
+        9061
+      ],
+      "observed_json": [
+        {
+          "line": 8974,
+          "fields": {
+            "status": "passed",
+            "completion_level": "observed_turn",
+            "action_receipt": "applied",
+            "cleanup": {
+              "pid": 91839,
+              "process_started": true,
+              "process_exit_confirmed": true,
+              "exit_code": 0,
+              "signal": null,
+              "forced": false,
+              "scratch_removed": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "Skills check verification (local Git fixtures)",
+      "log_line_range": [
+        9062,
+        9313
+      ],
+      "observed_json": [
+        {
+          "line": 9231,
+          "fields": {
+            "status": "passed",
+            "behavior": "passed",
+            "cases": [
+              {
+                "case_id": "healthy",
+                "verification_status": "passed",
+                "actual_exit": 0,
+                "source_check_status": "healthy"
+              },
+              {
+                "case_id": "missing-ref",
+                "verification_status": "passed",
+                "actual_exit": 1,
+                "source_check_status": "failed"
+              },
+              {
+                "case_id": "drift",
+                "verification_status": "passed",
+                "actual_exit": 2,
+                "source_check_status": "drift"
+              },
+              {
+                "case_id": "mixed",
+                "verification_status": "passed",
+                "actual_exit": 1,
+                "source_check_status": "failed"
+              },
+              {
+                "case_id": "empty",
+                "verification_status": "passed",
+                "actual_exit": 0,
+                "source_check_status": "empty"
+              }
+            ],
+            "cleanup": {
+              "status": "passed",
+              "fixture_path": "/home/runner/work/_temp/osstack/smoke/skills-check-x2RdzX",
+              "fixture_removed": true,
+              "descendant_termination": "not_attested"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "Method verification journey (two real local cases)",
+      "log_line_range": [
+        9507,
+        9618
+      ],
+      "observed_json": [
+        {
+          "line": 9516,
+          "fields": {
+            "status": "passed",
+            "formal_gate_pass": false,
+            "host_execution": "not_run",
+            "native_skill_selection": "not_observed",
+            "model_calls": 0,
+            "features": [
+              {
+                "case_id": "healthy",
+                "verification": "passed",
+                "product_exit": 0,
+                "driver_exit": 0,
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-AjCgvc",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                }
+              },
+              {
+                "case_id": "missing-ref",
+                "verification": "passed",
+                "product_exit": 1,
+                "driver_exit": 0,
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-tFRRrf",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "step": "Project and check actual method evidence",
+      "log_line_range": [
+        9957,
+        9968
+      ],
+      "observed_json": [
+        {
+          "line": 9966,
+          "fields": {
+            "status": "projected",
+            "formal_gate_pass": false,
+            "input_opened_read_only": true,
+            "packet_sha256": "f9ac3c9d4140f1c143e7b062edd730dd387fbf5c19af5faa07aad662b5435ecf"
+          }
+        },
+        {
+          "line": 9968,
+          "fields": {
+            "status": "valid",
+            "formal_gate_pass": false,
+            "original_evidence_revalidated": false,
+            "packet_sha256": "f9ac3c9d4140f1c143e7b062edd730dd387fbf5c19af5faa07aad662b5435ecf"
+          }
+        }
+      ]
+    },
+    {
+      "step": "Release plan smoke",
+      "log_line_range": [
+        11023,
+        11349
+      ],
+      "observed_json": [
+        {
+          "line": 11333,
+          "fields": {
+            "ok": true,
+            "kind": "release-plan-smoke"
+          }
+        }
+      ]
+    },
+    {
+      "step": "Knowledge Cloud smoke",
+      "log_line_range": [
+        11350,
+        11694
+      ],
+      "observed_json": [
+        {
+          "line": 11671,
+          "fields": {
+            "ok": true
+          }
+        }
+      ]
+    },
+    {
+      "step": "Deliver proof smoke",
+      "log_line_range": [
+        11717,
+        12052
+      ],
+      "observed_json": [
+        {
+          "line": 12038,
+          "fields": {
+            "ok": true
+          }
+        }
+      ]
+    },
+    {
+      "step": "Real repo deliver smoke",
+      "log_line_range": [
+        12053,
+        12406
+      ],
+      "observed_json": [
+        {
+          "line": 12394,
+          "fields": {
+            "ok": true,
+            "kind": "real-repo-deliver-smoke"
+          }
+        }
+      ]
+    },
+    {
+      "step": "NPM install smoke",
+      "log_line_range": [
+        12484,
+        14584
+      ],
+      "observed_json": [
+        {
+          "line": 12491,
+          "fields": {
+            "ok": true,
+            "kind": "npm-install-version-handshake-self-test"
+          }
+        },
+        {
+          "line": 14514,
+          "fields": {
+            "ok": true,
+            "tarballs": 22,
+            "installed_version_handshake": {
+              "cli_version": "0.22.1",
+              "daemon_version": "0.22.1",
+              "matched": true
+            },
+            "knowledge_eval": {
+              "total": 42,
+              "passed": 42,
+              "failed": 0
+            },
+            "launchd_install": {
+              "plist_path": "/tmp/osstack-npm-smoke-GPZkjH/LaunchAgents/ai.osstack.daemon.plist",
+              "load_skipped": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "step": "NPM package artifact smoke",
+      "log_line_range": [
+        14585,
+        14601
+      ],
+      "observed_json": [
+        {
+          "line": 14592,
+          "fields": {
+            "ok": true,
+            "kind": "npm-package-artifacts-smoke"
+          }
+        }
+      ]
+    },
+    {
+      "step": "NPM publish ordering smoke",
+      "log_line_range": [
+        14602,
+        14613
+      ],
+      "observed_json": [
+        {
+          "line": 14609,
+          "fields": {
+            "ok": true,
+            "kind": "npm-publish-order-smoke"
+          }
+        }
+      ]
+    },
+    {
+      "step": "NPM registry skew smoke",
+      "log_line_range": [
+        14614,
+        14629
+      ],
+      "observed_json": [
+        {
+          "line": 14621,
+          "fields": {
+            "ok": true,
+            "kind": "npm-registry-skew-self-test"
+          }
+        },
+        {
+          "line": 14622,
+          "fields": {
+            "ok": true,
+            "kind": "npm-registry-skew-smoke"
+          }
+        }
+      ]
+    }
+  ],
+  "other_evidence": {
+    "python_protocol": {
+      "passed": 13,
+      "lines": [
+        11020,
+        11022
+      ]
+    },
+    "startup_budget": {
+      "version_median_ms": 26,
+      "version_budget_ms": 250,
+      "help_median_ms": 160,
+      "help_budget_ms": 900,
+      "lines": [
+        10003,
+        10004
+      ]
+    },
+    "graph_runtime_each": {
+      "node_versions": [
+        "20.6.0",
+        "22.23.1"
+      ],
+      "tests_passed": 348,
+      "test_files_passed": 19,
+      "summary_lines": [
+        857,
+        1757
+      ]
+    },
+    "macos_each": {
+      "node_major_versions": [
+        22,
+        24
+      ],
+      "test_pass_groups": [
+        4,
+        85
+      ],
+      "summary_lines": [
+        2366,
+        2441,
+        3042,
+        3117
+      ]
+    }
+  },
+  "not_proven": [
+    "This is a review of retained log/status snapshots, not a new GitHub API query or test rerun.",
+    "CI executed merge-ref dca20945, not bare head72ab or any later main.",
+    "Seven package tests and one export test were skipped; they are not passes.",
+    "Paid DeepSeek semantic smoke did not execute; no paid/provider/native-host efficacy claim follows.",
+    "Raw uploaded evidence artifacts were not downloaded or rehashed here; emitted smoke JSON is CI-observed reporting.",
+    "Method presence/export and local fixtures do not prove autonomous host adoption, all methods effectiveness, complete pstack capability closure, or formal J gates.",
+    "Snapshot says Draft and REVIEW_REQUIRED; green CI does not authorize human approval, Ready transition or merge."
+  ],
+  "conclusion": "Five applicable checks succeeded; bounded reported counts and key smoke outputs are consistent with the retained records."
+}

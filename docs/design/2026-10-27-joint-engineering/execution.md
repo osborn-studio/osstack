@@ -268,3 +268,29 @@ A/B 两个独占切片合为 code898033af，新增 supporting parallel-work 指�
 ## pstack优先交付对账
 
 用户明确pstack能力优先。#301已合入main `1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0`。主线13方法/4入口，第14方法仅候选。以 [交付视图](delivery-status.md) 与 [逻辑映射](delivery-rollup.json) 分开统计32里程碑、24能力组和活动卡。先收口真实验证维护与宿主缺陷修复闭环，Firstmate深运行时后排；原正式门槛不降级。
+
+PR302已Draft发布，main基线1bf1f6ca，候选72ab99e7；CI40819652448运行。第14方法仍候选，主线13不变。最新发布回执见method-post300-publication；验证活动已收口，交付卡等待CI。
+
+## 2026-10-29：#302 Ready 与真实 pstack 闭环
+
+#302 head72ab99e7 已转 Ready，base main1bf1f6ca；CI40819652448五项适用检查成功，paid smoke跳过。实际merge ref dca20945的22包合计7142通过/7跳过/0失败，导出94项中93通过/1跳过。仅等待gilberthello审批合并。
+
+下一批没有新增命名方法。真实验证维护已完成一格过时映射修复并同入口复验，独立核验限定通过；两宿主各执行一次历史真实checker修复，Codex有实际回归RED→修复→GREEN，Claude因复合命令权限拒绝停止，分项验收已完成：Codex历史目标修复成立，Claude未修复。原始失败和历史修复属性保留，不写成新产品bug或正式J门槛通过。见[本轮原始记录与结论](../../implementation/pstack-real-loops/README.md)。
+
+### #302 已由用户合并
+
+最新main493caa4e于05:18:10Z合入#302，树c458ad2d与发布候选72ab99e7相同；不重新标注旧CI/宿主实验SHA。PR302卡done，主线14方法。真实维护有限闭环已完成，Codex历史目标修复成立且归因有限，Claude未修复；Sonnet两轮限定报告复审通过，原始失败保留。下一项为不同缺陷的新冻结原子命令可行性任务，尚未选题或派发。
+
+### 05:27 UTC后续预检
+
+main493caa4e与无openPR状态再核。三个工作者只读选择不同历史exporter围栏缺陷、起草原子接口并独立核八条协调者旧/已修CLI记录。未调用模型或初始化host；新专用adapter/隐藏基准/最终上下文与guard仍待准备。见[下一任务预检](../../implementation/pstack-atomic-preflight/README.md)。不新增方法/活动卡，不改变上一轮失败或正式门槛。
+
+## 2026-10-29：Claude 实际导出器修复闭环
+
+本轮没有新增方法。Claude 在一轮用户输入、零重试内完成8条单独命令：真实缺陷复现→新增行为测试RED（2过1败）→一行源码修正→同测试GREEN（3过），两个合法控制仍通过。任务是已修历史缺陷演练，不是当前main新缺陷。独立复验在旧/新源码上重跑模型所写测试，并检查6个预冻结隐藏输入；详见[实际修复记录](../../implementation/pstack-export-repair/README.md)。
+
+实际调用native osstack-mode；evidence.md只读取60/64行，因此保留阅读不完整限制。PS01/PS08/PS20增加有限使用证据，PS09关联已有维护演练；4入口/14方法不变，32项正式里程碑未自动通过。旧Claude packet失败不改写。
+
+## 2026-10-29 material-delivery candidate
+
+PS01/08/20 now have a bounded readonly material-reader candidate and updated existing host/bug-fix guidance. Card `card_0e19c3c2` contributes to J04 and supports J09/J23. Four entries/fourteen methods remain unchanged. Tool-byte verification and scoped package regression passed; actual Sonnet review corrected a false host-permission inheritance claim. Published-head CI and user merge remain pending. The previous Claude repair remains LIMITED for incomplete reading; no new model-host trial or formal gate is claimed. See [record](../../implementation/method-material-reader/README.md) and the candidate fields in delivery-rollup.json.

@@ -1,0 +1,185 @@
+{
+  "created_at": "2026-10-29T06:07:01.730460+00:00",
+  "overall": "LIMITED",
+  "repair_outcome": "historical_behavior_repair_demonstrated",
+  "protocol_outcome": "not_full_pass_due_to_required_read_omission",
+  "criteria_sha256": "2a01453afd68f1077b6ee8f4f3d3c9d494b5380b9e57e57dfd57c7b362c2083e",
+  "hidden_sha256": "762e0f130a61938fa58ad9219742434ffcda4c9654ec1fe7a3b73937f6f29b06",
+  "calibration_sha256": "24e540cf347e8e41485bbc513d32acaa00f86928a810373e28e09b4d99662bbd",
+  "dispatch_supplement_sha256": "62035183638f5b321bb23b50ada383326b95ff65de23cb967c13dca9be5df794",
+  "verified_observations_sha256": "6a377e068f74f9f8165206ebbc796ec285840013744e0cc0042c67b08ea74015",
+  "statuses": [
+    {
+      "id": "ER01",
+      "status": "satisfied",
+      "evidence": "Historical exporter exercise, exact old source; no current-main defect claim."
+    },
+    {
+      "id": "ER02",
+      "status": "satisfied",
+      "evidence": "Host incident baseline wrongly exported; new regression failed with ERR_ASSERTION at event75, not a missing/import/permission failure."
+    },
+    {
+      "id": "ER03",
+      "status": "satisfied",
+      "evidence": "Write72 precedes RED74; one Edit92 follows RED; exact test SHA unchanged through GREEN101 and independent copies."
+    },
+    {
+      "id": "ER04",
+      "status": "satisfied",
+      "evidence": "After incident exit1/link_missing_or_escape and no output; legal controls exit0/output retained, before/after manifest hashes equal."
+    },
+    {
+      "id": "ER05",
+      "status": "satisfied_for_frozen_scope",
+      "evidence": "Coordinator old/new same-test replay plus six candidate hidden CLI probes meet prior calibrated outcomes. Not credited to model execution."
+    },
+    {
+      "id": "ER06",
+      "status": "satisfied_for_observed_workspace",
+      "evidence": "Only original lib changed, new test/results added; all frozen input/helper/method bytes and CLI unchanged. No OS-wide observation claim."
+    },
+    {
+      "id": "ER07",
+      "status": "satisfied",
+      "evidence": "Exactly eight prescribed atomic Bash commands, zero permission denials; no retry. Stop-on-denial branch not exercised."
+    },
+    {
+      "id": "ER08",
+      "status": "failed_required_read_completeness",
+      "evidence": "Native mode Skill event9/body11 and explicit bug-fix full read observed. evidence.md only lines1–60 delivered at event15; lines61–64 content unread. No later follow-up, not complete required method consumption."
+    },
+    {
+      "id": "ER09",
+      "status": "satisfied_for_retained_records",
+      "evidence": "Eight wrapper/twelve product records with raw stream hashes and candidate/test/input binding; all model text inspected. No missing raw replaced by final prose."
+    },
+    {
+      "id": "ER10",
+      "status": "satisfied_with_declared_limits",
+      "evidence": "One userturn ~74.86s, no timeout/retry, eight helper runs under10s. Outer test timeout separately tested. Final word target advisory, no hard cap; no descendant attestation."
+    },
+    {
+      "id": "ER11",
+      "status": "limited_as_designed",
+      "evidence": "CLI requests/reports claude-sonnet-5-5; no independent provider identity, formal principal, OS sandbox or causal-method benefit."
+    },
+    {
+      "id": "ER12",
+      "status": "satisfied",
+      "evidence": "Criteria/hidden old-fixed calibration precede output; live guard binds criteria+supplement and predates launch. No post-output standard changes."
+    }
+  ],
+  "source_and_test": {
+    "test_sha256": "019bab8761c0951d62b35ad91d3da4588c96409dec48177a35e5566ebbb25757",
+    "original_source_sha256": "0d0b401c2e8f692728d836f4575be35f784a3795a121b3616452ed2e9cdeeec2",
+    "candidate_source_sha256": "54708dbccb77ad6368b0b3ec5a10d8be738ea9fb358417e30f63e9410fec6c0f"
+  },
+  "host_actual": {
+    "userturns": 1,
+    "atomic_helpers": 8,
+    "product_export_records": 12,
+    "regression_red": "3 tests:2pass1behaviorfail",
+    "regression_green": "3pass0fail",
+    "native": "Skill osstack-mode event9, body delivered event11 (zero-based)",
+    "permission_denials": [],
+    "final_words": 321,
+    "all_assistant_text_words": 367,
+    "modelUsage": {
+      "requested": "claude-sonnet-5-5",
+      "reported_modelUsage": [
+        "claude-sonnet-5-5"
+      ],
+      "independent_provider_attestation": false
+    },
+    "workspace_unchanged": false,
+    "allowed_write_check": "only library/test/results changed"
+  },
+  "coordinator_actual": {
+    "regression_replays": 2,
+    "candidate_hidden_cli": 6,
+    "calibration_not_repeated": true,
+    "not_model_credit": true
+  },
+  "reading_gap": {
+    "path": ".claude/skills/osstack-mode/references/evidence.md",
+    "event_index_zero_based": 15,
+    "delivered_content_lines": [
+      1,
+      60
+    ],
+    "missing_content_lines": [
+      61,
+      62,
+      63,
+      64
+    ],
+    "host_totalLines": 65,
+    "explanation": "Host counts trailing empty line; file has64 content lines. Omitted final paragraphs cover retained evidence preservation/publication limits and independent-principal/gate limits. No cognitive-consumption inference."
+  },
+  "final_answer_review": [
+    "Core incident/controls/test report matches retained evidence. CR cause expressly labelled inference from visible length/grep; candidate and independent byte inspection confirm mixed newline mechanism.",
+    "Model says tilde/opening variants not tested; coordinator hidden testing is kept separate and does not retrospectively change model coverage.",
+    "Evidence directory shorthand lists regression-red/green wrapper labels; regression product stages have reg-* generated labels, preserved in verified observations.",
+    "No all-method-read, production-newbug, publication, OS isolation or all-descendant claim credited."
+  ],
+  "retention": "Live workspace and independent evidence retained; no cleanup performed by reviewer. Root must authorize owned cleanup after archive verification.",
+  "limitations": [
+    "Small historical task, not general quality benchmark or causal evidence that the method caused success.",
+    "CLI settings plus task restrictions/trace/inventory, not universal containment.",
+    "Independent agent engineering verification, not authenticated independent principal/J gate."
+  ],
+  "created_export_manifest_member_checks": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-after-control-a/export/manifest.json",
+      "sha256": "36514930cb773f2cd9e123bd8c7ec30a180a84506ee2ba71d61c652a24b4b493",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-after-control-b/export/manifest.json",
+      "sha256": "9c6a389e13ba3758149fad70258611d8f1ab1bb8300e912cac1af347f939d42c",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-before-control-a/export/manifest.json",
+      "sha256": "36514930cb773f2cd9e123bd8c7ec30a180a84506ee2ba71d61c652a24b4b493",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-before-control-b/export/manifest.json",
+      "sha256": "9c6a389e13ba3758149fad70258611d8f1ab1bb8300e912cac1af347f939d42c",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-before-incident/export/manifest.json",
+      "sha256": "c09cf36cc69a7b2e67464d62884fbc1325b082e50c4f5ccec46a730c00d0b319",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-reg-control-a-mvt4zrbi-15027/export/manifest.json",
+      "sha256": "36514930cb773f2cd9e123bd8c7ec30a180a84506ee2ba71d61c652a24b4b493",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-reg-control-a-mvt501a3-15298/export/manifest.json",
+      "sha256": "36514930cb773f2cd9e123bd8c7ec30a180a84506ee2ba71d61c652a24b4b493",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-reg-control-b-mvt4zrbi-15027/export/manifest.json",
+      "sha256": "9c6a389e13ba3758149fad70258611d8f1ab1bb8300e912cac1af347f939d42c",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-reg-control-b-mvt501a3-15298/export/manifest.json",
+      "sha256": "9c6a389e13ba3758149fad70258611d8f1ab1bb8300e912cac1af347f939d42c",
+      "members": 40
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace/results/export-reg-incident-mvt4zrbi-15027/export/manifest.json",
+      "sha256": "c09cf36cc69a7b2e67464d62884fbc1325b082e50c4f5ccec46a730c00d0b319",
+      "members": 40
+    }
+  ],
+  "manifest_scope_note": "All10 created export manifests/400 members checked, including erroneous old incident exports; existence is not legal acceptance."
+}

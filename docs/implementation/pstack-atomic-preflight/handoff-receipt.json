@@ -1,0 +1,7 @@
+{
+  "comment_id": 628,
+  "card_id": "card_7e6a11b1",
+  "author": "joint-entry",
+  "body": "不同历史缺陷选题预检完成：exporter混合LF/CRLF围栏（旧4611fd6d/已修a1cb1779）8条协调者CLI old/fixed符合预期，独立核原源码/输入/流hash。下一模型计划仍8原子调用，额外plain-invalid只做协调者control。新封闭export adapter、hidden校准、最终context/guard尚缺；0新model/metadata/hostworkspace，不可派发。3workers已交接停写，不新增方法或卡，不改变旧失败。版本化docs/implementation/pstack-atomic-preflight，archive a212b5fd。",
+  "created_at": 1793252080.937
+}

@@ -1,0 +1,11 @@
+# Next pstack task: preparation only
+
+Latest checked main493caa4e is unchanged; no open PRs. Three existing workers independently selected a different historical defect, drafted the atomic interface and checked the offline feasibility evidence. No model call, metadata call, host workspace or approved guard was created. Prior Claude failure and Codex results remain unchanged.
+
+Selected historical product defect: exporter code masking with mixed LF/CRLF can hide a later broken navigation link. Old4611fd6de998868e09fef042dc142bb52efaa6dd, historical fixa1cb1779d62107d2c4f101b98311f3ec39116ae1 (already in main). This is a genuine historical regression fixture, not a new production defect or field-user incident. Eight coordinator CLI runs returned expected old/fixed outcomes within0.07seconds each, without install/network/model or repository edits. Exact original and fixed sources, input bytes, outputs and hashes are preserved in preparation.tar.gz.
+
+Independent preflight checked original Git sources, fixture identity, all eight records and sixteen stream hashes. It supports preparing a future task, not dispatch or formal acceptance. A new fixed-case export adapter is still needed: old packet-specific helper cannot be reused unchanged. Keep the narrow command surface and10second/1MiB bounds, fresh owned output/staging per case, immutable source inputs and explicit test scratch limits. Do not introduce a generic shell runner.
+
+Proposed host remains one Claude turn600seconds/zero retries, with eight helper calls: incident and two legal controls before/after, plus same-test RED/GREEN. The additional plain-invalid case belongs to independent coordinator checks; do not count it as host execution or silently increase the template to ten commands. First actual atomic permission denial ends the turn, no fallback/reissue. Final task, calibrated hidden checks, permissions/context, input hashes and root guard remain unfrozen. The different defect, known fix and coordinator answers must not leak into the model input.
+
+The existing blocked host-capability card records this preparation; no additional activity cards or methods were added. Root retains PR/ledger ownership. Fresh actual preparation and dispatch must follow the pending requirements, not launch from this draft.

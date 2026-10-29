@@ -1,0 +1,743 @@
+{
+  "created_at": "2026-10-29T06:09:04.221449+00:00",
+  "archive": "raw-execution.tar.gz",
+  "archive_sha256": "2b8e9bcfd274271fabb7356cfe38d6be2e4aae4c55a8ed14651aa289794298fc",
+  "archive_bytes": 3654528,
+  "member_count": 4614,
+  "member_counts_by_type": {
+    "file": 3202,
+    "directory": 1411,
+    "symlink": 1
+  },
+  "regular_file_bytes": 12111615,
+  "exclusions": [
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_bootlocale.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_collections_abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_sitebuiltins.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_weakrefset.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/codecs.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/copyreg.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/aliases.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/cp437.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/latin_1.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/utf_8.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/enum.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/fnmatch.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/functools.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/genericpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/hashlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/heapq.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/io.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/encoder.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/scanner.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/keyword.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ntpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/operator.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/os.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/posixpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/re.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/reprlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/signal.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/site.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_compile.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_constants.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_parse.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/stat.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/types.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/parse.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "adapter/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/warnings.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "host/harness/__pycache__",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "directory"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_bootlocale.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_collections_abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_sitebuiltins.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_weakrefset.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/codecs.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/copyreg.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/aliases.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/cp437.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/latin_1.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/utf_8.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/enum.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/fnmatch.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/functools.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/genericpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/hashlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/heapq.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/io.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/encoder.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/scanner.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/keyword.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ntpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/operator.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/os.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/posixpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/re.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/reprlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/signal.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/site.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_compile.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_constants.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_parse.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/stat.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/types.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/parse.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/adapter-review/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/warnings.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_bootlocale.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_collections_abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_sitebuiltins.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_weakrefset.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/codecs.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/abc.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/copyreg.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/aliases.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/cp437.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/latin_1.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/utf_8.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/enum.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/fnmatch.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/functools.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/genericpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/hashlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/heapq.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/io.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/encoder.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/scanner.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/keyword.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ntpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/operator.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/os.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/posixpath.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/re.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/reprlib.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/signal.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/site.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_compile.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_constants.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_parse.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/stat.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/types.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/__init__.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/parse.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    },
+    {
+      "path": "independent/graded/unused-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/warnings.cpython-39.pyc",
+      "reason": "Python bytecode cache excluded by requested publication scope",
+      "kind": "file"
+    }
+  ],
+  "scope_roots": [
+    "adapter",
+    "host",
+    "independent",
+    "independent-manifest.json"
+  ],
+  "not_in_scope": [
+    "audit/ (still running at packaging time)",
+    "other root coordination files not among requested roots"
+  ],
+  "all_members_read_back_verified": true,
+  "source_inventory_and_bytes_unchanged_after_packaging": true,
+  "independent_manifest_sha256": "ef8e8f4a29a13fab9420aee81545f22693ad48bb6c08610f115918574b22cfdc",
+  "independent_files_verified": 1425,
+  "symlinks_dereferenced": false,
+  "workspace_originals_retained": true,
+  "final_grade": "LIMITED; original grade retained without rewriting",
+  "manifest_sha256": "7dc1108cfbda4678a53e5ee79a6b17166eab53ac2bf1fbc297d8439cde16132d"
+}

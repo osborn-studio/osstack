@@ -25,8 +25,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
-  "observed_at": "2026-10-29T04:36:10.629727+00:00",
+  "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+  "observed_at": "2026-10-29T05:24:40.943500+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -4305,7 +4305,7 @@
     "scope": "source planning, offline host preflight, independent retarget"
   },
   "skill_authoring_wave": {
-    "status": "verified_prepublication",
+    "status": "merged",
     "depends_on_pr": 301,
     "base": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
     "author_sha": "b8bfc83ceee2065cf8192e9de083c24707c13976",
@@ -4348,7 +4348,31 @@
     ],
     "final_author_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e",
     "raw_archive_sha256": "df3fd71de02a03517ef2baa210ba2feadf95579e65371494dacf97b52a1d5b24",
-    "depends_on_pr_merged": true
+    "depends_on_pr_merged": true,
+    "pr": 302,
+    "head_sha": "72ab99e70ef54db924d775d3d3552ecde8780af0",
+    "base_branch": "main",
+    "ci_run": 40819652448,
+    "publication_evidence": "docs/implementation/method-post300-publication",
+    "user_approval_required": true,
+    "ci_final": {
+      "run": 40819652448,
+      "head": "72ab99e70ef54db924d775d3d3552ecde8780af0",
+      "tested_merge_ref": "dca209453ab3cdd6e97bf83931730b3cabc1baf3",
+      "checks_success": 5,
+      "paid": "skipped",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_total": 94,
+      "export_passed": 93,
+      "export_skipped": 1
+    },
+    "merged_at": "2026-10-29T05:18:10Z",
+    "merge_commit": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "merge_tree": "c458ad2d97ff72492131fdd20d2b7205d6cb5c4a",
+    "merge_tree_equals_published_candidate": true
   },
   "delivery_reconciliation": {
     "priority": "pstack_first",
@@ -4367,6 +4391,162 @@
       "running": 2,
       "done": 37
     },
-    "audit": "actual claude-sonnet-5-5 REVISE/REVISE/limited F1-F4 PASS; later evidence-path typo independently checked"
+    "audit": "actual claude-sonnet-5-5 REVISE/REVISE/limited F1-F4 PASS; later evidence-path typo independently checked",
+    "publication_pr": 302
+  },
+  "actual_pstack_loops": {
+    "status": "bounded_evidence_delivered_claude_repair_unresolved",
+    "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+    "priority": "pstack_complete_task_loops_not_method_count",
+    "cards": [
+      {
+        "card_id": "card_9797778f",
+        "owner": "loader_adversarial",
+        "title": "PS08/PS09 real verification maintenance closure",
+        "status": "done"
+      },
+      {
+        "card_id": "card_7e6a11b1",
+        "owner": "terminal_preflight",
+        "title": "PS01/PS08/PS20 actual host repair execution",
+        "status": "blocked"
+      },
+      {
+        "card_id": "card_b7f85dd8",
+        "owner": "cleanup_regression",
+        "title": "PS08/PS20 independent real-task acceptance",
+        "status": "done"
+      }
+    ],
+    "host_model_calls": 2,
+    "host_dispatch": "root_guard_2026-10-29T05:08:54Z",
+    "formal_gate_pass": false,
+    "scope": "maintenance drift-repair-recheck plus independent historical actual repair by Codex and Claude; no new production defect claim",
+    "dispatch_supplement_sha256": "11c6b678407e39c24fd03d16dc5111b1903b03f4cfcb684af6512661c27ea01c",
+    "maintenance": {
+      "status": "bounded_pass_independently_checked",
+      "archive_sha256": "2351b9625f9bcdcd07fe5e52aafa41179e05a0868787fc48ad86054a798e59fa",
+      "new_production_defect": false
+    },
+    "claude": "blocked_compound_command_denied_no_repair_zero_retries",
+    "codex": "historical_repair_demonstrated_with_attribution_limits",
+    "independent_grade_sha256": "d320a5e7fe69020dfe82f34624b2fb98b8adac8cabf034b1b3802b4de56cdcb0",
+    "production_code_changed": false,
+    "new_methods": 0,
+    "next_step": "Select a different defect for a newly frozen single-turn feasibility task; atomic commands, behavioral test created before RED, same permission boundary; first actual atomic denial ends turn, no fallback/reissue or inherited budget.",
+    "evidence": "docs/implementation/pstack-real-loops",
+    "method_consumption": "Codex exact method bytes in raw shell event; model-visible delivery not independently attested. Claude native mode observed, reference stdout full but model message preview; neither full consumption claim.",
+    "audit": {
+      "model": "claude-sonnet-5-5",
+      "initial": "REVISE",
+      "closure": "limited_R1-R5_reporting_PASS",
+      "archive_sha256": "bf9231dac7ef98df0f2fe12bed1cd2363d5c784fbc2dd7f3cafec5f00355f7ea",
+      "not_host_or_runtime_qualification": true
+    }
+  },
+  "next_atomic_preflight": {
+    "observed_at": "2026-10-29T05:34:19.853490+00:00",
+    "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "status": "offline_feasibility_checked_not_dispatchable",
+    "historical_old": "4611fd6de998868e09fef042dc142bb52efaa6dd",
+    "historical_fix": "a1cb1779d62107d2c4f101b98311f3ec39116ae1",
+    "new_production_defect": false,
+    "coordinator_cli_runs": 8,
+    "host_model_calls": 0,
+    "new_methods": 0,
+    "new_activity_cards": 0,
+    "card": "card_7e6a11b1",
+    "archive_sha256": "a212b5fda0be89d17ae268db87317ff7dc84031f07a92c7f40eefbcd5de6f2ac",
+    "evidence": "docs/implementation/pstack-atomic-preflight",
+    "pending": [
+      "closed export adapter with fixed cases and owned outputs",
+      "independent hidden input calibration and final criteria",
+      "fresh host context/catalog/input manifest",
+      "root explicit guard and dispatch"
+    ],
+    "host_call_plan": 8,
+    "plain_invalid_case": "coordinator_only",
+    "formal_gate_pass": false
+  },
+  "export_repair_execution": {
+    "observed_at": "2026-10-29T06:05:27.781085+00:00",
+    "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+    "evidence": "docs/implementation/pstack-export-repair",
+    "method_main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "historical_source_sha": "4611fd6de998868e09fef042dc142bb52efaa6dd",
+    "candidate_source_sha256": "54708dbccb77ad6368b0b3ec5a10d8be738ea9fb358417e30f63e9410fec6c0f",
+    "regression_test_sha256": "019bab8761c0951d62b35ad91d3da4588c96409dec48177a35e5566ebbb25757",
+    "host": "Claude CLI",
+    "requested_and_cli_reported_model": "claude-sonnet-5-5",
+    "user_turns": 1,
+    "automatic_retries": 0,
+    "atomic_helper_calls": 8,
+    "behavioral_red": {
+      "passed": 2,
+      "failed": 1
+    },
+    "same_test_green": {
+      "passed": 3,
+      "failed": 0
+    },
+    "native_skill_observed": true,
+    "reading_limit": "evidence.md only 60 of 64 lines read; full required-material delivery not established",
+    "historical_packet_failure_unchanged": true,
+    "production_code_changed": false,
+    "new_methods": 0,
+    "new_prs": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "card": "card_7e6a11b1",
+    "independent_grade": "LIMITED",
+    "independent_grade_sha256": "e8a85599aeb1b7849bf44c9aa515b429f3a61cde626e366e93cb367d4da84c49",
+    "coordinator_rechecks": {
+      "old_new_same_test": 2,
+      "candidate_hidden": 6,
+      "all_expected": true
+    },
+    "required_reading_complete": false,
+    "raw_archive_sha256": "2b8e9bcfd274271fabb7356cfe38d6be2e4aae4c55a8ed14651aa289794298fc",
+    "audit": {
+      "model": "claude-sonnet-5-5",
+      "initial": "PASS_with_reporting_corrections",
+      "closure": "limited_reporting_PASS",
+      "archive_sha256": "5769866ab282c94f52b0d8b64fc7c2c4b059d309f019fba2e6abc7841d888c9f",
+      "not_host_or_runtime_qualification": true
+    },
+    "activity_status": "done_bounded_execution_and_evidence_only",
+    "primary_j": "J09",
+    "supporting_j": [
+      "J03",
+      "J07",
+      "J23"
+    ]
+  },
+  "material_delivery_slice": {
+    "status": "validated_pending_pr",
+    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "card": "card_0e19c3c2",
+    "primary_j": "J04",
+    "supporting_j": [
+      "J09",
+      "J23"
+    ],
+    "scope": "bounded readonly material pagination with digest-pinned continuation and existing host usage guidance",
+    "owners": {
+      "A": "reader + scripts/read-method-material.test.mjs only in method-material-reader worktree",
+      "B": "references/host-usage.md + references/bug-fix.md only in method-host-usage worktree",
+      "C": "independent scratch criteria/vectors/rechecks only",
+      "root": "centralledger/CIintegration/PR/audit/fullqueue"
+    },
+    "new_methods": 0,
+    "formal_gate_pass": false,
+    "previous_experiment_unchanged": true,
+    "candidate_code_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
+    "focused": "108 pass; post-audit docs94 export pass",
+    "independent": "233 commands; 2hosts x88payload byte reassembly",
+    "full": "7144 pass/5 skip/0fail;14853 start with fresh dist; docs changed during run, not final immutable whole-tree",
+    "actual_sonnet": "initial REVISE B1/B2, limited text closure PASS",
+    "evidence": "docs/implementation/method-material-reader",
+    "host_experiment_calls": 0
   }
 }

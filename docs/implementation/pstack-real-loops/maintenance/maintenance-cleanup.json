@@ -1,0 +1,102 @@
+{
+  "time": "2026-10-29T05:03:25.723461+00:00",
+  "worktree": "/Users/osborn/Developer/CodeX/.worktrees/osstack/maintenance-real-loop",
+  "head": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+  "generated_patch_sha256": "9cd0804e8ac972f377b8759044dd0a2ab17b4499e96fd6391f43a46f5a709567",
+  "generated_files_verified_in_archive": [
+    {
+      "path": "packages/knowledge/dist/index.d.ts",
+      "bytes": 323,
+      "sha256": "d01b1f07d5eb6a2a4d429935f69db14cd81e03077d439cda3555b4a55cf4cb3a"
+    },
+    {
+      "path": "packages/knowledge/dist/index.d.ts.map",
+      "bytes": 283,
+      "sha256": "a89d70095f1016cb113d9d8028f5771125e564db287212eb2bf82d86397143c7"
+    },
+    {
+      "path": "packages/knowledge/dist/index.js",
+      "bytes": 205,
+      "sha256": "6287a976aa1d03d112e1dd290f043e119fafc60c0f6879e49163a6d18f4ab3d9"
+    },
+    {
+      "path": "packages/knowledge/dist/index.js.map",
+      "bytes": 212,
+      "sha256": "ab5b8ee5996d13f39ebbb6d577c6348ea6485a46428f94464f74928757ee63d5"
+    }
+  ],
+  "archive_sha256": "2351b9625f9bcdcd07fe5e52aafa41179e05a0868787fc48ad86054a798e59fa",
+  "only_generated_paths_restored": [
+    "packages/knowledge/dist/index.d.ts",
+    "packages/knowledge/dist/index.d.ts.map",
+    "packages/knowledge/dist/index.js",
+    "packages/knowledge/dist/index.js.map"
+  ],
+  "clean_before_removal": true,
+  "worktree_removed": true,
+  "branch_preserved": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+  "scratch_and_archive_preserved": true,
+  "private_dependency_home_retained_in_scratch_not_published": true,
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "restore",
+        "--",
+        "packages/knowledge/dist/index.d.ts",
+        "packages/knowledge/dist/index.d.ts.map",
+        "packages/knowledge/dist/index.js",
+        "packages/knowledge/dist/index.js.map"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/maintenance-real-loop",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain"
+      ],
+      "cwd": "/Users/osborn/Developer/CodeX/.worktrees/osstack/maintenance-real-loop",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "worktree",
+        "remove",
+        "/Users/osborn/Developer/CodeX/.worktrees/osstack/maintenance-real-loop"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "worktree",
+        "prune"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "codex/maintenance-real-loop"
+      ],
+      "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "exit_code": 0,
+      "stdout": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0\n",
+      "stderr": ""
+    }
+  ]
+}

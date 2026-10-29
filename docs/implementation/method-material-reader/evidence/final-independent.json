@@ -1,0 +1,110 @@
+{
+  "checked_at": "2026-10-29T07:05:58.299158+00:00",
+  "status": "verified",
+  "archive_sha256": "a1b6273be4017a4966e9c5403a2a478335f00c6900d8a161d7a415a461151467",
+  "manifest_sha256": "44e7d2b8c26614e9d8be4dcfd8473b16282fc7ea07edd6c3e15735a0f49b5c04",
+  "members": 1421,
+  "regular_files": 1421,
+  "directories": 0,
+  "payload_bytes": 8410216,
+  "all_member_hash_size_mode_verified": true,
+  "safe_unique_paths_no_links": true,
+  "final_head": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
+  "source_checks": [
+    {
+      "path": "scripts/read-method-material.mjs",
+      "sha256": "452e8624a07bd39d60b5ed7dd3b3647e1fd30674ccf1a761a39ad08d3a641ba2",
+      "matches_git_and_current_worktree": true
+    },
+    {
+      "path": "scripts/read-method-material.test.mjs",
+      "sha256": "dd27cae761796f54620ea03a0eb98098a0d3ad5a931a63ce8c6d8b3ce494e1ad",
+      "matches_git_and_current_worktree": true
+    },
+    {
+      "path": "osstack-methods-skill/references/host-usage.md",
+      "sha256": "69434a9c293fb76ae97004588817b4a756e9b63bfdaecfe5af58d40dc60bb1c5",
+      "matches_git_and_current_worktree": true
+    },
+    {
+      "path": "osstack-methods-skill/references/bug-fix.md",
+      "sha256": "33b73d057cb073793f9589213a57db25b8dbcfd2766dcf7398f178c68b0bdc0f",
+      "matches_git_and_current_worktree": true
+    },
+    {
+      "path": "package.json",
+      "sha256": "90b82bdf51d7490dc1b3f98d9a7ed950937ae49001b47c9ef866ab0642eeb35c",
+      "matches_git_and_current_worktree": true
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "4c76b61d31d7078153f137ca827bcda889e88ffbba9af542c5351505690c4d5f",
+      "matches_git_and_current_worktree": true
+    }
+  ],
+  "B1_false_guarantee_absent": true,
+  "B1_actual_replacement": "Continue through every page until `eof` is true. A hash mismatch means the file changed: retain the partial record and start a new reading sequence for the new version within the task's authorization. Do not join pages from different versions. If a page exceeds the text bound, request fewer lines; report an unsupported single long line rather than claim it was read. The helper accepts regular UTF-8 files up to 1 MiB, at most 200 lines per page and at most 16 KiB of page text. It runs with the invoking user’s OS permissions and has no path allowlist. Host file-tool allow/deny rules are not applied by this helper. Use it only for paths authorized by the task; never use it to bypass a denied read.",
+  "B1_review": "Explicit user OS permissions, no path allowlist, Host file-tool allow/deny rules not applied, and never bypass denied task read.",
+  "original_audit_and_independent_bytes_exact": [
+    {
+      "path": "audit/report.md",
+      "sha256": "14b443fbca2f81537ac2fb668f53637df6a4b69135ff87b684a15337b0862855"
+    },
+    {
+      "path": "audit/response.json",
+      "sha256": "496626d610d61a1023a641a4785c618275fc86ab283802b5992c50137791e35b"
+    },
+    {
+      "path": "audit-closure/report.md",
+      "sha256": "6de882279e8b9d72e5485f4bf017c1db0a50d5d7998a145b287889ef3deb3c55"
+    },
+    {
+      "path": "audit-closure/response.json",
+      "sha256": "a7e040f2a38a34e1107e2015ca33106cb305aa6f06e7c0dda4c16d6426b07647"
+    },
+    {
+      "path": "independent/criteria.json",
+      "sha256": "40d48d484fdb8e38f5b9d6d8ab031f9f5df6458d430014af21acb512bcb1311c"
+    },
+    {
+      "path": "independent/audit-adjudication.md",
+      "sha256": "0c348614abb9a3dc83d95b7e2cdc8a101144a5ed93277d7b5b16c2b69c5f660a"
+    },
+    {
+      "path": "independent/validation-final/summary.json",
+      "sha256": "2dcec24252432b9a64df09fafc85968a2821cdebc24aa79a018f04ced27a97d9"
+    },
+    {
+      "path": "independent/validation-final/freeze-timing-supplement.json",
+      "sha256": "925ab4d4dbe4ce6f524b1e5310ac6ae7c9f5af169c872a42a0b33c54de5130ce"
+    },
+    {
+      "path": "independent/harness-initial-failure.json",
+      "sha256": "1ad9fb783afd6c84efbe1277d25a8c2a244f5c98209d939afedc83bb9ca1b468"
+    },
+    {
+      "path": "independent/harness-second-failure.json",
+      "sha256": "fd67852a23b04caf56380f29dfac4fac7887dd99ffd7e848aa2e5d7b49518650"
+    }
+  ],
+  "audit_scope": "Initial REVISE and actual limited B1/B2 closure PASS retained. No new reviewer model call.",
+  "full_binding": {
+    "start_head": "14853ad61ebb396141a10f69a614cb59f27fa19b",
+    "finish_head": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
+    "git_diff_paths": [
+      "osstack-methods-skill/references/host-usage.md"
+    ],
+    "four_generated_dist_before_after_equal": true,
+    "recorded_passed": 7144,
+    "recorded_skipped": 5,
+    "scope": "Existing package regression records bound; no fresh full run, no immutable final whole-tree claim."
+  },
+  "initial_verifier_failure": {
+    "classification": "verifier case-sensitive prose assertion, not archive/source failure",
+    "error": "AssertionError after requiring lowercase host file-tool substring; actual corrected sentence starts Host file-tool.",
+    "correction": "Read actual sentence and record verbatim, without treating capitalization as a contract."
+  },
+  "new_model_calls": 0,
+  "tests_rerun": 0,
+  "source_changes": 0
+}

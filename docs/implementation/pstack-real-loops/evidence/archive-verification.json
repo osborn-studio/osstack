@@ -1,0 +1,42 @@
+{
+  "kind": "independent_read_only_archive_verification",
+  "at": "2026-10-29T05:17:25.585720+00:00",
+  "status": "passed_scoped_integrity_checks",
+  "archive_sha256": "0750403f4ab8b8ea71a1b5d5af02c0679a9c35db0f2ba25a979aa9ee0a385e01",
+  "archive_bytes": 872880,
+  "manifest_sha256": "294c3931e3b13c94ad72af568dc9799a50226087b9f35862d1661c267fe22d37",
+  "members": 521,
+  "counts": {
+    "directory": 110,
+    "file": 411
+  },
+  "payload_bytes": 3051290,
+  "all_member_bytes_hash_modes_match": true,
+  "safe_unique_member_paths": true,
+  "all_live_host_paths_match_except_declared_pycache_exclusion": true,
+  "host_checks": [
+    {
+      "host": "codex",
+      "workspace_members": 166,
+      "matches_recorded_after_inventory": true,
+      "stream_sha256": "42d6655d1f4ed419f952abfa377fe49484654543bc931b26c12d375cbc6ad389",
+      "guard_sha256": "d112260b7c54e24fcbb5539ce63d915001216a34f160a2bc628d8b62b255edcd"
+    },
+    {
+      "host": "claude",
+      "workspace_members": 116,
+      "matches_recorded_after_inventory": true,
+      "stream_sha256": "1227d79e2826aca0b38cf18109c1dc722ab40aa12a5755c465bdb4a4672f13e2",
+      "guard_sha256": "f042c13a8164aca0b752a65d887c18a72748a42707f3a6fbd694f30dd6a8f719"
+    }
+  ],
+  "root_guard_receipt_matches": true,
+  "independent_grade_directory_modified": false,
+  "limitations": [
+    "No model calls or product/test execution.",
+    "Directory lengths are checked against current filesystem and recorded inventory; tar directory payload size is zero.",
+    "Byte integrity does not authenticate historical claims or prove OS isolation/global/all-descendant cleanup.",
+    "Original outcomes unchanged: Codex scoped historical repair with attribution limits; Claude blocked, not repaired."
+  ],
+  "cleanup": "Evaluator performed no cleanup; root retains sole authorization after archive review."
+}

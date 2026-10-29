@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-29T04:36:10.629727+00:00",
-  "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
-  "main_tree": "4534c8043ce7b568ee18c5fc1f175dece8aea67b",
+  "observed_at": "2026-10-29T05:24:40.943500+00:00",
+  "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+  "main_tree": "c458ad2d97ff72492131fdd20d2b7205d6cb5c4a",
   "priority": "pstack_first",
-  "merged_named_methods": 13,
+  "merged_named_methods": 14,
   "merged_entries": 4,
-  "candidate_named_methods": 14,
-  "candidate_status": "skill_authoring_verified_unpublished",
+  "candidate_named_methods": null,
+  "candidate_status": "PR302 merged; fourteen named methods on main; actual repair experiments remain pinned to prior1bf1f6ca",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -1411,6 +1411,35 @@
       "scope_relation": "supporting_method_material_not_formal_runtime_output",
       "design_associations": [],
       "evidence_readme": "docs/implementation/method-parallel-reporting/README.md"
+    },
+    {
+      "pr": 302,
+      "merge_commit": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+      "mergedSHA": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+      "state": "merged_in_snapshot",
+      "primary_j": "J19",
+      "primaryJ": "J19",
+      "supporting_j": [
+        "J15",
+        "J26"
+      ],
+      "supportingJ": [
+        "J15",
+        "J26"
+      ],
+      "pstack_groups": [
+        "PS12"
+      ],
+      "delivered_capability": "skill-authoring material and pstack delivery reconciliation; fourteen named methods, no automatic learning runtime",
+      "primary_artifacts": [
+        "osstack-methods-skill/references/skill-authoring.md",
+        "docs/implementation/method-skill-authoring/README.md"
+      ],
+      "acceptance_limit": "Material/export checks and limited static audit; not scoped retrieval/lesson promotion or broad host qualification",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "supporting_method_material_not_formal_runtime_output",
+      "design_associations": [],
+      "evidence_readme": "docs/implementation/method-skill-authoring/README.md"
     }
   ],
   "pstack_capabilities": [
@@ -1418,7 +1447,7 @@
       "id": "PS01",
       "title": "单入口任务路由与渐进方法组合",
       "status": "partial_delivered",
-      "delivery": "13共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道",
+      "delivery": "14共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道",
       "joint_work_items": [
         "J04",
         "J05",
@@ -1456,7 +1485,27 @@
         293
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "subsequent_task_evidence": {
+        "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+        "record": "docs/implementation/pstack-real-loops",
+        "maintenance": "adjacent",
+        "codex": "historical_repair_demonstrated_with_attribution_limits",
+        "claude": "blocked_no_repair",
+        "new_method_count": 0,
+        "whole_capability_complete": false
+      },
+      "export_repair_evidence": {
+        "record": "docs/implementation/pstack-export-repair",
+        "relation": "bounded_actual_historical_repair",
+        "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      },
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "status": "validated_candidate_pending_pr",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS02",
@@ -1671,7 +1720,27 @@
         294
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "subsequent_task_evidence": {
+        "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+        "record": "docs/implementation/pstack-real-loops",
+        "maintenance": "bounded_pass",
+        "codex": "historical_repair_demonstrated_with_attribution_limits",
+        "claude": "blocked_no_repair",
+        "new_method_count": 0,
+        "whole_capability_complete": false
+      },
+      "export_repair_evidence": {
+        "record": "docs/implementation/pstack-export-repair",
+        "relation": "bounded_actual_historical_repair",
+        "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      },
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "status": "validated_candidate_pending_pr",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS09",
@@ -1701,7 +1770,22 @@
         294
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "subsequent_task_evidence": {
+        "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+        "record": "docs/implementation/pstack-real-loops",
+        "maintenance": "bounded_pass",
+        "codex": "historical_repair_demonstrated_with_attribution_limits",
+        "claude": "blocked_no_repair",
+        "new_method_count": 0,
+        "whole_capability_complete": false
+      },
+      "export_repair_evidence": {
+        "record": "docs/implementation/pstack-export-repair",
+        "relation": "adjacent_maintenance",
+        "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS10",
@@ -1754,8 +1838,8 @@
     {
       "id": "PS12",
       "title": "反思转结构化约束",
-      "status": "candidate_unpublished",
-      "delivery": "skill-authoring第14方法候选已定向验证和限定审计；未合并，不计入main。",
+      "status": "partial_delivered",
+      "delivery": "skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。",
       "joint_work_items": [
         "J19"
       ],
@@ -1771,7 +1855,9 @@
         "commit": "99b609a72323b70204eab407c622f436e858e112",
         "path": "pstack/skills/reflect/SKILL.md"
       },
-      "merged_prs": [],
+      "merged_prs": [
+        302
+      ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false
     },
@@ -2041,7 +2127,27 @@
         295
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "subsequent_task_evidence": {
+        "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+        "record": "docs/implementation/pstack-real-loops",
+        "maintenance": "adjacent",
+        "codex": "historical_repair_demonstrated_with_attribution_limits",
+        "claude": "blocked_no_repair",
+        "new_method_count": 0,
+        "whole_capability_complete": false
+      },
+      "export_repair_evidence": {
+        "record": "docs/implementation/pstack-export-repair",
+        "relation": "bounded_actual_historical_repair",
+        "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      },
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "status": "validated_candidate_pending_pr",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS21",
@@ -2766,7 +2872,12 @@
       ],
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "contributes",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -3424,7 +3535,12 @@
       ],
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "supports",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -4845,12 +4961,13 @@
       "title": "上下文恢复与受控经验",
       "engineering_classification": "material_partial_not_retrieval_promotion",
       "formal_milestone_completion": "not_established",
-      "delivered_or_reusable": "session-continuity方法保留当前授权核对、owner/dirty/base/next observer交接；反思指导只生成候选。",
+      "delivered_or_reusable": "session-continuity方法保留当前授权核对、owner/dirty/base/next observer交接；反思指导只生成候选。 PR302已合并skill-authoring材料，正式检索/晋升缺口不变。",
       "remaining_gap": "项目隔离检索/provenance/expiry/受控lesson promotion未实现；JA30跨项目与指令污染、JA69坏例/邻近好例抗全拒绝仍需真实验证。",
       "evidence_paths": [
         "docs/implementation/method-session-continuity/README.md",
         "osstack-methods-skill/references/session-continuity.md",
-        "docs/design/2026-10-27-joint-engineering/acceptance-cases.json"
+        "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+        "docs/implementation/method-skill-authoring/README.md"
       ],
       "original_outputs": [
         "经验草案、历史查询与受控方法改进候选"
@@ -4921,7 +5038,8 @@
         299
       ],
       "supporting_prs": [
-        301
+        301,
+        302
       ],
       "delivery_dimensions": {
         "delivered": "session-continuity方法保留当前授权核对、owner/dirty/base/next observer交接；反思指导只生成候选。",
@@ -5554,7 +5672,12 @@
       "priority_exception": "一般运行时宿主资格后排；pstack真实任务测量提前执行，但不替代J23正式门槛。",
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "supports",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -6750,7 +6873,8 @@
       "goal": "验证维护闭环",
       "deliverable": "在隔离的真实仓库任务上完成地图漂移发现、分类、授权范围内修复、同一触发路径复验及失败证据保留。",
       "acceptance": "确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。",
-      "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。"
+      "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。",
+      "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial"
     },
     {
       "rank": 2,
@@ -6765,7 +6889,9 @@
       "deliverable": "各宿主使用方法完成一次预冻结的真实历史缺陷任务，独立记录读取、修改、测试和结论。",
       "acceptance": "同一路径RED→修复→GREEN；误报、越界、归因不足如实计入。工具代跑不冒充宿主完成。",
       "gate": "每次新协议与预算独立冻结；旧失败不重评分；没有广义收益主张。",
-      "protocol_state": "not_yet_frozen_no_host_dispatch_authorized_by_this_document"
+      "protocol_state": "two_distinct_historical_tasks_observed_original_failures_retained",
+      "latest_result": "Codex packet task bounded repair demonstrated; new Claude exporter task bounded repair demonstrated, required-reading protocol LIMITED; different tasks/permission surfaces, no host ranking or causal comparison",
+      "remaining": "Make successful atomic execution and complete required-material delivery reusable in the existing host usage path; choose a fresh actual task for future validation. Do not retry or regrade either closed experiment, add methods merely for count, or infer whole PS/J completion."
     },
     {
       "rank": 3,
@@ -6776,7 +6902,8 @@
       "deliverable": "完成本批候选发布与CI；随后优先上述闭环，停止仅按方法数量扩张。",
       "acceptance": "候选源SHA、实际审计、定向测试、原始失败与使用限制保留。",
       "gate": "合并只确认该材料切片，不签发J19学习/检索运行时资格。",
-      "candidate_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e"
+      "candidate_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e",
+      "latest_result": "PR302 merged at493caa4e, tree equal published72ab candidate; no formal gate upgrade"
     }
   ],
   "board_mechanics": {
@@ -9199,6 +9326,32 @@
         "status": "done",
         "observed_at": "2026-10-29T04:39:34.545695+00:00"
       }
+    },
+    {
+      "card_id": "card_0e19c3c2",
+      "title": "PS01/08 可重复方法材料分页与原子执行路径",
+      "task_kind": "implementation",
+      "board": "joint-firstmate-pstack",
+      "observed_status": "running",
+      "observed_at": "2026-10-29T06:59:18.352697+00:00",
+      "contributes_to": {
+        "PS": [
+          "PS01",
+          "PS08",
+          "PS20"
+        ],
+        "J": [
+          "J04",
+          "J09",
+          "J23"
+        ]
+      },
+      "delivered_scope": "Bounded readonly material helper plus existing host and bug-fix guidance, candidate not merged.",
+      "evidence_paths": [
+        "docs/implementation/method-material-reader/README.md"
+      ],
+      "formal_gate_pass": false,
+      "whole_milestone_complete": false
     }
   ],
   "activity_counting": {
@@ -9539,5 +9692,119 @@
       "bytes": 3225,
       "availability": "read"
     }
-  ]
+  ],
+  "subsequent_dispatch": {
+    "observed_at": "2026-10-29T05:17:24.241072+00:00",
+    "activities": [
+      {
+        "card_id": "card_9797778f",
+        "owner": "loader_adversarial",
+        "title": "PS08/PS09 real verification maintenance closure",
+        "status": "done"
+      },
+      {
+        "card_id": "card_7e6a11b1",
+        "owner": "terminal_preflight",
+        "title": "PS01/PS08/PS20 actual host repair execution",
+        "status": "blocked"
+      },
+      {
+        "card_id": "card_b7f85dd8",
+        "owner": "cleanup_regression",
+        "title": "PS08/PS20 independent real-task acceptance",
+        "status": "done"
+      }
+    ],
+    "contributes_to": [
+      "PS01",
+      "PS08",
+      "PS09",
+      "PS13",
+      "PS20"
+    ],
+    "J_relation": "adjacent engineering evidence for J03/J06/J07/J09/J23; not formal gate pass",
+    "historical_activity_snapshot_unchanged": true,
+    "progress": "maintenance bounded pass; Codex historical repair observed with attribution limits; Claude blocked before product execution; no whole capability or formal gate pass"
+  },
+  "next_atomic_preflight": {
+    "status": "preparation_only",
+    "selected_historical_defect": "exporter mixed-line-ending code fence",
+    "evidence": "docs/implementation/pstack-atomic-preflight",
+    "model_calls": 0,
+    "whole_capability_complete": false
+  },
+  "export_repair_execution": {
+    "observed_at": "2026-10-29T06:05:27.781085+00:00",
+    "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+    "evidence": "docs/implementation/pstack-export-repair",
+    "method_main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "historical_source_sha": "4611fd6de998868e09fef042dc142bb52efaa6dd",
+    "candidate_source_sha256": "54708dbccb77ad6368b0b3ec5a10d8be738ea9fb358417e30f63e9410fec6c0f",
+    "regression_test_sha256": "019bab8761c0951d62b35ad91d3da4588c96409dec48177a35e5566ebbb25757",
+    "host": "Claude CLI",
+    "requested_and_cli_reported_model": "claude-sonnet-5-5",
+    "user_turns": 1,
+    "automatic_retries": 0,
+    "atomic_helper_calls": 8,
+    "behavioral_red": {
+      "passed": 2,
+      "failed": 1
+    },
+    "same_test_green": {
+      "passed": 3,
+      "failed": 0
+    },
+    "native_skill_observed": true,
+    "reading_limit": "evidence.md only 60 of 64 lines read; full required-material delivery not established",
+    "historical_packet_failure_unchanged": true,
+    "production_code_changed": false,
+    "new_methods": 0,
+    "new_prs": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "card": "card_7e6a11b1",
+    "independent_grade": "LIMITED",
+    "independent_grade_sha256": "e8a85599aeb1b7849bf44c9aa515b429f3a61cde626e366e93cb367d4da84c49",
+    "coordinator_rechecks": {
+      "old_new_same_test": 2,
+      "candidate_hidden": 6,
+      "all_expected": true
+    },
+    "required_reading_complete": false,
+    "raw_archive_sha256": "2b8e9bcfd274271fabb7356cfe38d6be2e4aae4c55a8ed14651aa289794298fc",
+    "audit": {
+      "model": "claude-sonnet-5-5",
+      "initial": "PASS_with_reporting_corrections",
+      "closure": "limited_reporting_PASS",
+      "archive_sha256": "5769866ab282c94f52b0d8b64fc7c2c4b059d309f019fba2e6abc7841d888c9f",
+      "not_host_or_runtime_qualification": true
+    },
+    "activity_status": "done_bounded_execution_and_evidence_only",
+    "primary_j": "J09",
+    "supporting_j": [
+      "J03",
+      "J07",
+      "J23"
+    ]
+  },
+  "material_delivery_slice": {
+    "status": "validated_candidate_pending_pr",
+    "card": "card_0e19c3c2",
+    "source_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
+    "record": "docs/implementation/method-material-reader/README.md",
+    "primary_j": "J04",
+    "supporting_j": [
+      "J09",
+      "J23"
+    ],
+    "capabilities": [
+      "PS01",
+      "PS08",
+      "PS20"
+    ],
+    "new_methods": 0,
+    "host_experiment_calls": 0,
+    "formal_gate_pass": false,
+    "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim."
+  }
 }

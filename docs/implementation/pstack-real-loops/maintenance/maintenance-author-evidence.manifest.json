@@ -1,0 +1,978 @@
+{
+  "archive": "maintenance-author-evidence.tar.gz",
+  "archive_sha256": "2351b9625f9bcdcd07fe5e52aafa41179e05a0868787fc48ad86054a798e59fa",
+  "archive_bytes": 720004,
+  "member_count": 193,
+  "members": [
+    {
+      "path": "README.md",
+      "bytes": 4492,
+      "sha256": "5c03d3bfaf1aac64e967b57feed412070ba28c76d2e739dbe2eac335fa705cdd"
+    },
+    {
+      "path": "build-generated.diff",
+      "bytes": 2363,
+      "sha256": "9cd0804e8ac972f377b8759044dd0a2ab17b4499e96fd6391f43a46f5a709567"
+    },
+    {
+      "path": "build.command.json",
+      "bytes": 1083,
+      "sha256": "b7c02b966b9628fd80ee925430842a0b0696e3a8772e723f3be5bde79fea58bc"
+    },
+    {
+      "path": "build.stderr",
+      "bytes": 16,
+      "sha256": "12af7ce88306afb6211b189bf41e870a3fddf683262f7e0df9a7c77e6e9452d0"
+    },
+    {
+      "path": "build.stdout",
+      "bytes": 31364,
+      "sha256": "ba7ddfc2dd21fa4134d6d095a2d334f07ace86ce9581c11a061881a06164b335"
+    },
+    {
+      "path": "check-map.py",
+      "bytes": 1496,
+      "sha256": "ff277d2b8a682200863de11e82430c309bda0870c9e282a6b934572b2e42c367"
+    },
+    {
+      "path": "diagnosis.json",
+      "bytes": 1147,
+      "sha256": "1e57ec5fce8aed934ab3a19a213cbe7e8e5e9fc0658044c3f851fc0e72fddb02"
+    },
+    {
+      "path": "feature-map.after.md",
+      "bytes": 936,
+      "sha256": "f47d2cba7e4e6b9d10e0be1ef225478cf3a07a9d70123d765dca8004e8c474ed"
+    },
+    {
+      "path": "feature-map.before.md",
+      "bytes": 936,
+      "sha256": "a8c036761f663cb8043424dab1c86efdac33af95f5abd7f19a900f462781b661"
+    },
+    {
+      "path": "feature-map.md",
+      "bytes": 936,
+      "sha256": "f47d2cba7e4e6b9d10e0be1ef225478cf3a07a9d70123d765dca8004e8c474ed"
+    },
+    {
+      "path": "green-drive/cases/healthy/bindings.json",
+      "bytes": 647317,
+      "sha256": "4a1c40ee8c4df7de23899e8233709376ae9ce40bfde24d2241ee546ea8f023cc"
+    },
+    {
+      "path": "green-drive/cases/healthy/cleanup.json",
+      "bytes": 243,
+      "sha256": "e061088c7410fe9646bf71d1adc06f33035975f546a9f9116c8d43ab968f3668"
+    },
+    {
+      "path": "green-drive/cases/healthy/environment.json",
+      "bytes": 1896,
+      "sha256": "a0b53ca8d23fcdd80b078a2023e1b1bd3827d230f5167deb969f75525fc4330c"
+    },
+    {
+      "path": "green-drive/cases/healthy/expectations.json",
+      "bytes": 734,
+      "sha256": "10f63488748d2a11a3c6dacd38fabe999e26f3e95872f90f6e834a8327293292"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-00.command.json",
+      "bytes": 2672,
+      "sha256": "a527b18a4e259aecb646aa2ba41705cbdd697793eef584f139d93f3bcdb0f55a"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-00.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-00.stdout",
+      "bytes": 41,
+      "sha256": "fefc806fd72f41839ef4179e9a7d62145d1025860f5e17d1633545555182f173"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-01.command.json",
+      "bytes": 2872,
+      "sha256": "fdb4502b427c61f113abd93804251e8142f60b292e9cc14e68a1dddb99f6047d"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-01.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-01.stdout",
+      "bytes": 175,
+      "sha256": "9a2b3402247f5d99f9fa268b696469f0d0e74941ff6ceeb6ed6184c29b650323"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-02.command.json",
+      "bytes": 2803,
+      "sha256": "daf50984426d3637e1119afc41b505630c671c354ddd82ed8fe3e52f1c78e12d"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-02.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-02.stdout",
+      "bytes": 44,
+      "sha256": "54d4df6fdc8c62d421dc5c030764baf175916ccc8e6c9e3ab71919cc3f740e19"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-03.command.json",
+      "bytes": 2727,
+      "sha256": "8a986add2b41ed8ab128f467a5f05d6c9d2c28fe8d15ad51d2b6f3d623eac09a"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-03.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-03.stdout",
+      "bytes": 41,
+      "sha256": "94a7e226457be4ff16fbdd91d06e1b28fe408127bc7aa9ce39d3b0a6ba13e98a"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-04.command.json",
+      "bytes": 2812,
+      "sha256": "6f65b0ff698773035457c1b837b3cac042407702db697ccbecba418e9ea566bf"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-04.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-04.stdout",
+      "bytes": 39,
+      "sha256": "ddd6d99d70b1f6825dc3a16c6429d94c4189884cc43259721bf235eada141c0f"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-05.command.json",
+      "bytes": 2727,
+      "sha256": "cc04779570cd0aed837c0e14ce61bf3929d57923650687f18e3501666ee76c59"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-05.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/git-05.stdout",
+      "bytes": 41,
+      "sha256": "9c17ffafa91f39b6fd3be2f3553bc799677dfd50295cb92a3ee67efc04804cd3"
+    },
+    {
+      "path": "green-drive/cases/healthy/healthy.command.json",
+      "bytes": 2867,
+      "sha256": "2c8c2873438b30e2395cde7699c0c8b38076b88defa5265fece0d1ba59bda64e"
+    },
+    {
+      "path": "green-drive/cases/healthy/healthy.input.json",
+      "bytes": 356,
+      "sha256": "39c9c0f331d1e16e6ef3790ccefaee68e7f5efd21d4d0a6ccac712bc9072c2bd"
+    },
+    {
+      "path": "green-drive/cases/healthy/healthy.json",
+      "bytes": 3456,
+      "sha256": "f383c67cdf1e77ec5b354f4993621297b184ab0899853507816beb563fa2dff1"
+    },
+    {
+      "path": "green-drive/cases/healthy/healthy.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/healthy/healthy.stdout",
+      "bytes": 160,
+      "sha256": "432a4209a02eb399776101ca53be8344f4ad3ddef5a60ff9615756b7288e30e5"
+    },
+    {
+      "path": "green-drive/cases/healthy/manifest.json",
+      "bytes": 4402,
+      "sha256": "9d996435fa2c5deb6ff4ed49efcb9ec18ba31af79efc42dbe99e18e2c0919a7a"
+    },
+    {
+      "path": "green-drive/cases/healthy/receipt.json",
+      "bytes": 1397,
+      "sha256": "5d50eeb67d0d9dce0b6e907d5d77a433d6441fc973b2da1d08cfc68a6e04f1cb"
+    },
+    {
+      "path": "green-drive/cases/healthy/run.json",
+      "bytes": 1874,
+      "sha256": "9a472a929356682cfee2908a9e23e08e10964fe5efa3fc6fab019535c576570f"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/bindings.json",
+      "bytes": 647317,
+      "sha256": "4a1c40ee8c4df7de23899e8233709376ae9ce40bfde24d2241ee546ea8f023cc"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/cleanup.json",
+      "bytes": 243,
+      "sha256": "c85b115557be6825a95527a5d57cef3a9a9148f3910bdd87d53107c333c497ed"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/environment.json",
+      "bytes": 1896,
+      "sha256": "d911e81a8627fd5e2e58c2839356e58254c7937a8a0ae7a08062abd66ab08029"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/expectations.json",
+      "bytes": 749,
+      "sha256": "c3d55f1bd92b81840cb23b504a05016d055d5490b47ee20d4d47914fcad4368d"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-00.command.json",
+      "bytes": 2672,
+      "sha256": "f86c769c6bb476029be29bcc1395a38fb8862fd1eb1ef972516169c354fb1d6c"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-00.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-00.stdout",
+      "bytes": 41,
+      "sha256": "fefc806fd72f41839ef4179e9a7d62145d1025860f5e17d1633545555182f173"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-01.command.json",
+      "bytes": 2872,
+      "sha256": "09c62741f547d022a2f38c248749f6761e8553151cfe7999b5b39ef2963c3a57"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-01.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-01.stdout",
+      "bytes": 175,
+      "sha256": "377bdc28907b40c23c360ebfa7255cab01e5da9d751ffa9427e318bb9814a451"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-02.command.json",
+      "bytes": 2803,
+      "sha256": "3a49ba0f63d93117e03b1c2d1a849d0cd3a24ab4ffc3c915aff29591af576654"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-02.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-02.stdout",
+      "bytes": 44,
+      "sha256": "43943dd2830643592c15cdab8b7f1c897590dab52033a7083fa11fda2cd630f0"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-03.command.json",
+      "bytes": 2727,
+      "sha256": "185e214cbceca306f7df4992068e9c96c102d7dd899161be94b2333dc6aa408d"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-03.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-03.stdout",
+      "bytes": 41,
+      "sha256": "c3a8f4dc6445a11859988aa257afaf8f0af1575f4fc1a9f9537bb9c536dcea96"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-04.command.json",
+      "bytes": 2812,
+      "sha256": "efc4fea3ef81a49db972942c4a99cb35bbfd71e6910209d655ab460b4374359b"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-04.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-04.stdout",
+      "bytes": 39,
+      "sha256": "dc1ac9f8927a1a7459535500943451b9653bac5d3452a64ebae25b0305c56f5d"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-05.command.json",
+      "bytes": 2727,
+      "sha256": "7441f5a540a13c185461e57b6bb6974252ff20e10f6386aec470c84bb7be5c1a"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-05.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/git-05.stdout",
+      "bytes": 41,
+      "sha256": "a26827c9e4269745832c33e877c1aae3fb613e9e98546afba3dae84668665983"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/manifest.json",
+      "bytes": 4422,
+      "sha256": "2b0369c6b56827acbaaa52a409ee55ca91260c4c451f9f80dffc51bc671da19e"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/missing-ref.command.json",
+      "bytes": 2879,
+      "sha256": "8b7e28592705cb41d84fb5cc6b14c371d14be4d06f82d0f00dfa69a5c9fa6241"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/missing-ref.input.json",
+      "bytes": 367,
+      "sha256": "f0cf076fd85a70f11e31960baf6e6dd0210c34a2d1e4b411f36e291510d78434"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/missing-ref.json",
+      "bytes": 3479,
+      "sha256": "17731dd61da42b89f783bd29e0c628ca633f00ad5310eb882fe8e70d44e64c5e"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/missing-ref.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/missing-ref.stdout",
+      "bytes": 167,
+      "sha256": "461238bbc7d14ba1123e66fa1aea254f72f5ca19dd433c313cf9c771defc9ef3"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/receipt.json",
+      "bytes": 1408,
+      "sha256": "710a70119e0967c257d1f16bfa68ed06b7af0094f4d54e3f14a5810dadcbacf3"
+    },
+    {
+      "path": "green-drive/cases/missing-ref/run.json",
+      "bytes": 1886,
+      "sha256": "f1939bf83529c5ef7ce773daaacb291427dffc50ce329d4373b5227be9cef2e0"
+    },
+    {
+      "path": "green-drive/feature-map.md",
+      "bytes": 616,
+      "sha256": "9c3e03bd2a6b53f1afb7c06901ec5785014a8876b33bbde2dd0c193ac45c2220"
+    },
+    {
+      "path": "green-drive/healthy-doctor.command.json",
+      "bytes": 764,
+      "sha256": "1946b2a6a33fdb711b04c01f583594da31747176653b8f00e661599d4db65596"
+    },
+    {
+      "path": "green-drive/healthy-doctor.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/healthy-doctor.stdout",
+      "bytes": 1266,
+      "sha256": "c9b6c0dc3f66e5ee11efb1bd16d479ecb82a5d36d5deb618066fa579e90d38eb"
+    },
+    {
+      "path": "green-drive/healthy-drive.command.json",
+      "bytes": 748,
+      "sha256": "42b2f9091cb1fda0979571fc14e83239e8923a0ed9acbbeb7c90bff5cc7fb0ce"
+    },
+    {
+      "path": "green-drive/healthy-drive.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/healthy-drive.stdout",
+      "bytes": 1397,
+      "sha256": "5d50eeb67d0d9dce0b6e907d5d77a433d6441fc973b2da1d08cfc68a6e04f1cb"
+    },
+    {
+      "path": "green-drive/journey-manifest.json",
+      "bytes": 2917,
+      "sha256": "cf67a942aa96d01c4bb5fb4bfc8b1e29cf8fd9aab471f8beff95e5b445dc69d2"
+    },
+    {
+      "path": "green-drive/journey.json",
+      "bytes": 4142,
+      "sha256": "d8546f5d8cdf698b31acd98c4ea022f2c6ec426bcfab60f879e5979dcc6e4905"
+    },
+    {
+      "path": "green-drive/missing-ref-doctor.command.json",
+      "bytes": 772,
+      "sha256": "7e4e8be830f907a3bb0db9b1eba6dcb4bbdd6ef2dd87cfad37162499aa281b63"
+    },
+    {
+      "path": "green-drive/missing-ref-doctor.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/missing-ref-doctor.stdout",
+      "bytes": 1274,
+      "sha256": "bd6d4e759fa29c70c662ebeca83a5dd5c9718543ea44e7c6ae072e8bbd210949"
+    },
+    {
+      "path": "green-drive/missing-ref-drive.command.json",
+      "bytes": 756,
+      "sha256": "94ec86e802ecce3eefb0734d475f60bc3531287cb5f0fad24392234808da4466"
+    },
+    {
+      "path": "green-drive/missing-ref-drive.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive/missing-ref-drive.stdout",
+      "bytes": 1408,
+      "sha256": "710a70119e0967c257d1f16bfa68ed06b7af0094f4d54e3f14a5810dadcbacf3"
+    },
+    {
+      "path": "green-drive.command.json",
+      "bytes": 1254,
+      "sha256": "2888b987b314c6e5091d2e59f087e4b66a9a09dd040599a877d7c5538fcc3527"
+    },
+    {
+      "path": "green-drive.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "green-drive.stdout",
+      "bytes": 4142,
+      "sha256": "d8546f5d8cdf698b31acd98c4ea022f2c6ec426bcfab60f879e5979dcc6e4905"
+    },
+    {
+      "path": "install.command.json",
+      "bytes": 1113,
+      "sha256": "17c03c53c363531e22fecc3d79d53046ea743b028051bd728e43f4bdddd11da6"
+    },
+    {
+      "path": "install.stderr",
+      "bytes": 82,
+      "sha256": "ebb43a1f7048312510e8bbb8ca49e10e47e0139ab3ee822fd7ef08b5801c760d"
+    },
+    {
+      "path": "install.stdout",
+      "bytes": 4205,
+      "sha256": "b93bae9a4b1c1854086c8a408a15a52de93ef50dd4dead5a9ac9dd84304cea9e"
+    },
+    {
+      "path": "map-green.command.json",
+      "bytes": 1383,
+      "sha256": "858eb58b6b86db946617d43760b65d32f5b9472df00a4ce42f8a55c173408eaf"
+    },
+    {
+      "path": "map-green.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "map-green.stdout",
+      "bytes": 326,
+      "sha256": "383c9f1458ac50f44f40f94588191d3cbc2e348f517c791d07630bd8446db74e"
+    },
+    {
+      "path": "map-red.command.json",
+      "bytes": 1377,
+      "sha256": "6eecd3c8f7cac091c9a03126cf1b5fb4c301a59a6b4f64169ae981104258700e"
+    },
+    {
+      "path": "map-red.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "map-red.stdout",
+      "bytes": 450,
+      "sha256": "4e806588ad9fb2f67c07979dfdb8baeb28fdf61badd7e8a3d6ed8531766d2379"
+    },
+    {
+      "path": "plan.json",
+      "bytes": 772,
+      "sha256": "e11775dd67bf25834c9ab8f189e2ccc9461ec6323a1f646b76d96aebfc52fdab"
+    },
+    {
+      "path": "post-run-status.txt",
+      "bytes": 156,
+      "sha256": "7683974ab8fde8ad6bafa4af7ff2fd375b7efa8056d182ea115269c81132d809"
+    },
+    {
+      "path": "red-drive/cases/healthy/bindings.json",
+      "bytes": 647317,
+      "sha256": "4a1c40ee8c4df7de23899e8233709376ae9ce40bfde24d2241ee546ea8f023cc"
+    },
+    {
+      "path": "red-drive/cases/healthy/cleanup.json",
+      "bytes": 241,
+      "sha256": "5a83ea506df73753038c2eba4708404e43a41ac432a6a05b385fd05ae5f5cff0"
+    },
+    {
+      "path": "red-drive/cases/healthy/environment.json",
+      "bytes": 1878,
+      "sha256": "b7496cb28ad2c509f61036fba3307b1363bbf19fe89d1c7ad70e7df8ecb6f222"
+    },
+    {
+      "path": "red-drive/cases/healthy/expectations.json",
+      "bytes": 732,
+      "sha256": "78f7b50fb17057b52d67b82bf688a66959ccb36bbd76dd5ec0ac1cb299d96e32"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-00.command.json",
+      "bytes": 2654,
+      "sha256": "bbfd4dee9d1864e4893f4064aa058a74716c0dacd0867de3689e96e970cbc911"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-00.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-00.stdout",
+      "bytes": 41,
+      "sha256": "fefc806fd72f41839ef4179e9a7d62145d1025860f5e17d1633545555182f173"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-01.command.json",
+      "bytes": 2850,
+      "sha256": "fd2dd15f0e81684e9204d7cd06fe4180c6570aeffbbeb062c760f0a19bbc79f0"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-01.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-01.stdout",
+      "bytes": 173,
+      "sha256": "4bb96c509b938a25c160127f72bb38df436a55d1b57a6956c5ff19694fa7d644"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-02.command.json",
+      "bytes": 2783,
+      "sha256": "7b7eb48fe9b2f495118afca9611f16efdffcb2b9025fc41b435eb4442f3f1628"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-02.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-02.stdout",
+      "bytes": 44,
+      "sha256": "6568914e6dd74182719cf075b6b3965506fb4b0b722ba1ac91b1d495a72d997b"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-03.command.json",
+      "bytes": 2707,
+      "sha256": "29d86067cf68b34c5fad0034d8b471ad4b97af12235d6a0c178997537da42cfa"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-03.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-03.stdout",
+      "bytes": 41,
+      "sha256": "31534d491348b898db7c446648a1157f3cee799badfc7760cff1b3bc0aa86979"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-04.command.json",
+      "bytes": 2792,
+      "sha256": "eb96dc9143e1c7d7e9094eb1c200a9ec53dfca9c3a5ad67b75ab6cb856317f9b"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-04.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-04.stdout",
+      "bytes": 39,
+      "sha256": "acba425f5f66d755fb6a8795999a80262e8994a2c97e4cfc34aedc9fe5e93482"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-05.command.json",
+      "bytes": 2707,
+      "sha256": "f766f7eafeb0db89ff1c69b66bd84e8f24be86acb45c5728542c11e68751b45d"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-05.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/git-05.stdout",
+      "bytes": 41,
+      "sha256": "010d751fa0a53772048259d675e4b357eb5ded1af1ba2c2b5e71fadeb4666385"
+    },
+    {
+      "path": "red-drive/cases/healthy/healthy.command.json",
+      "bytes": 2847,
+      "sha256": "555ad4d715726c93e7412ce2160e51cfacc89999069a5614d343e4b421812e12"
+    },
+    {
+      "path": "red-drive/cases/healthy/healthy.input.json",
+      "bytes": 354,
+      "sha256": "ecee22f47852518424b3e918d30fd310ff97ecd1d24f59b2e6e594a66651a0f2"
+    },
+    {
+      "path": "red-drive/cases/healthy/healthy.json",
+      "bytes": 3434,
+      "sha256": "3b7417620d190c5d51b70181009b95dfc563964683ed82659426de2f08439c25"
+    },
+    {
+      "path": "red-drive/cases/healthy/healthy.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/healthy/healthy.stdout",
+      "bytes": 160,
+      "sha256": "1989f165e00ad94403916a6f3a73a0e54eadaf6e2d47e022593624ffadcffcdf"
+    },
+    {
+      "path": "red-drive/cases/healthy/manifest.json",
+      "bytes": 4402,
+      "sha256": "80562ca2f4455a2c5bf26a2981b2d71c5ec38d72a4a328f5d27d6300cb19a3f0"
+    },
+    {
+      "path": "red-drive/cases/healthy/receipt.json",
+      "bytes": 1393,
+      "sha256": "55636d372de24b96ab6f410d51f0d87d97988b9212eb48364a33e68bd0feb95a"
+    },
+    {
+      "path": "red-drive/cases/healthy/run.json",
+      "bytes": 1874,
+      "sha256": "115941b5dcf10b81f41e11c25e47ad35515237d038da48493e146ddebe603772"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/bindings.json",
+      "bytes": 647317,
+      "sha256": "4a1c40ee8c4df7de23899e8233709376ae9ce40bfde24d2241ee546ea8f023cc"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/cleanup.json",
+      "bytes": 241,
+      "sha256": "1d3cb42e05b0ba56ea41e69ac2174ae63ca7f8784b36312f53ed961fb2254e3d"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/environment.json",
+      "bytes": 1878,
+      "sha256": "9115d304e378687e1137071928da0b61293760ba01588e8addeff2a50ae2e14c"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/expectations.json",
+      "bytes": 747,
+      "sha256": "3769a0591efcff591fe31aef7bf39f565a89cb5b714ff3eded8d106eb2ae9055"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-00.command.json",
+      "bytes": 2654,
+      "sha256": "de57241c1a74ad02a5114560c5f8a9b451bbaab8840d54403d085bbb1dd21492"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-00.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-00.stdout",
+      "bytes": 41,
+      "sha256": "fefc806fd72f41839ef4179e9a7d62145d1025860f5e17d1633545555182f173"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-01.command.json",
+      "bytes": 2850,
+      "sha256": "f33dfe8a951e4e51602ff004c40d127420692228f83de9bb60376245ee6e53fc"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-01.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-01.stdout",
+      "bytes": 173,
+      "sha256": "42bb177ded284002f62136bc6374b5d875bc607370dac660a0505893b205d85f"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-02.command.json",
+      "bytes": 2783,
+      "sha256": "2d2eaa8621fb5aa3acaf5b223e958e4f148505c9e6a8477fdf190c45e6444904"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-02.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-02.stdout",
+      "bytes": 44,
+      "sha256": "99bc6be6d269a5685cef07942e6f857ff18a1c5f2c72c077a75eeb1fd30ff9a3"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-03.command.json",
+      "bytes": 2707,
+      "sha256": "998867f44fa9ee88eac71e2fcf817a5137b6bf4a8a61385e0ced0cde9083a324"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-03.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-03.stdout",
+      "bytes": 41,
+      "sha256": "d2cccf40baf5dd4bf549b181feb73b22def00253f1148babe5352d0c75945914"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-04.command.json",
+      "bytes": 2792,
+      "sha256": "c6067d8f1104557d7b6128c317b3916c80982c9751f671b2c7ebebcb54ffcab7"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-04.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-04.stdout",
+      "bytes": 39,
+      "sha256": "3d8fefc7e2b139abb6b6891cbad457a938f6eb21635962851b901d8d662f4668"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-05.command.json",
+      "bytes": 2707,
+      "sha256": "99792f04150bbfd689a31acd6d563e2657cd49bdcdb7587f8e223700e6418aa9"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-05.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/git-05.stdout",
+      "bytes": 41,
+      "sha256": "88dc00277e60ea9a4f942d4f10e92af4787d8657f442acb51c8aa4596a63be65"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/manifest.json",
+      "bytes": 4422,
+      "sha256": "2a2d3b8f371f1b541c97323ce16451331dadc677883244b55ec2da0161751412"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/missing-ref.command.json",
+      "bytes": 2859,
+      "sha256": "7f829e589152a923414c2d245d24817cc37d1ff15e73de4fa9e029a1d0836f4e"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/missing-ref.input.json",
+      "bytes": 365,
+      "sha256": "94284abc220365b7bc6c85d78d18ea8fa6bfa933f5356b7bf7e82ece16518d65"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/missing-ref.json",
+      "bytes": 3457,
+      "sha256": "2579e31440aafd871b7ef5270161663651b7b2912ac4290e48d8d9bb4ef4e03a"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/missing-ref.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/missing-ref.stdout",
+      "bytes": 167,
+      "sha256": "461238bbc7d14ba1123e66fa1aea254f72f5ca19dd433c313cf9c771defc9ef3"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/receipt.json",
+      "bytes": 1404,
+      "sha256": "f9e6c99ed6195cd256e9f09af56e32b01f4bcd16a518daa5ccec0f138ba9646d"
+    },
+    {
+      "path": "red-drive/cases/missing-ref/run.json",
+      "bytes": 1886,
+      "sha256": "9fe68d2063236cf06c9bb79c8519c3b2e3c79ee73fb4390515c25541ef66ba45"
+    },
+    {
+      "path": "red-drive/feature-map.md",
+      "bytes": 616,
+      "sha256": "9c3e03bd2a6b53f1afb7c06901ec5785014a8876b33bbde2dd0c193ac45c2220"
+    },
+    {
+      "path": "red-drive/healthy-doctor.command.json",
+      "bytes": 762,
+      "sha256": "b94d3557b66112147b9640288b2919fb14eb5cca460159e71012ae33a32d0d70"
+    },
+    {
+      "path": "red-drive/healthy-doctor.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/healthy-doctor.stdout",
+      "bytes": 1264,
+      "sha256": "8996026b58d8d5a964ae97bb70ed62689a1b37472a2264c5ad593e59d1f461f5"
+    },
+    {
+      "path": "red-drive/healthy-drive.command.json",
+      "bytes": 746,
+      "sha256": "7b1a8d1d618b804f875063e8c466f5bce05c5c9a9916d1ff3961f611d6a6b1c4"
+    },
+    {
+      "path": "red-drive/healthy-drive.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/healthy-drive.stdout",
+      "bytes": 1393,
+      "sha256": "55636d372de24b96ab6f410d51f0d87d97988b9212eb48364a33e68bd0feb95a"
+    },
+    {
+      "path": "red-drive/journey-manifest.json",
+      "bytes": 2917,
+      "sha256": "ad2dd8a0f7ce3742631d2285a1f3f2831f4e677656e3993d282ae087eb4f10cd"
+    },
+    {
+      "path": "red-drive/journey.json",
+      "bytes": 4132,
+      "sha256": "9bd0893bdfd169a294ef9b36b1924b825b76e7c7052d1d38b282893e4c62b2f3"
+    },
+    {
+      "path": "red-drive/missing-ref-doctor.command.json",
+      "bytes": 770,
+      "sha256": "3f488ef13197c501f915ca9c597e19a5edd24dfbc83a9bca8a71059bd10b5902"
+    },
+    {
+      "path": "red-drive/missing-ref-doctor.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/missing-ref-doctor.stdout",
+      "bytes": 1272,
+      "sha256": "e3326d5a1345c20b6b822a9f64929b132002b4bcee2963653c3f3e9f62abcb46"
+    },
+    {
+      "path": "red-drive/missing-ref-drive.command.json",
+      "bytes": 754,
+      "sha256": "8ca999181ad66a36c907b67a5e4c36d8e1cbab20b60db0c5a65859dd7562ff8e"
+    },
+    {
+      "path": "red-drive/missing-ref-drive.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive/missing-ref-drive.stdout",
+      "bytes": 1404,
+      "sha256": "f9e6c99ed6195cd256e9f09af56e32b01f4bcd16a518daa5ccec0f138ba9646d"
+    },
+    {
+      "path": "red-drive.command.json",
+      "bytes": 1248,
+      "sha256": "4d932fc8515c4e9bceeac7139847606e0e7737afdf901500685f5a8eda8b5de4"
+    },
+    {
+      "path": "red-drive.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "red-drive.stdout",
+      "bytes": 4132,
+      "sha256": "9bd0893bdfd169a294ef9b36b1924b825b76e7c7052d1d38b282893e4c62b2f3"
+    },
+    {
+      "path": "repair.diff",
+      "bytes": 400,
+      "sha256": "f485d79ae4991cdbf06636233353a0e6ddb81c1568dba52274a99bde550bfed2"
+    },
+    {
+      "path": "repair.json",
+      "bytes": 401,
+      "sha256": "c36bce1213a011e1ee72ec0e604b2b682064e95873b7d2d18eb81de402053d3e"
+    },
+    {
+      "path": "retained-check.command.json",
+      "bytes": 1186,
+      "sha256": "57cdee730d5f3f83f49beb4ca57567be34d685a21a34f8b41856b0a5c3eabdfc"
+    },
+    {
+      "path": "retained-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "retained-check.stdout",
+      "bytes": 1766,
+      "sha256": "72ac927384134097d5c9578edef4fbf9d82a1e31df7b0cada9bcfa4fbbad25ca"
+    },
+    {
+      "path": "run.py",
+      "bytes": 1396,
+      "sha256": "56ea2eaa998bb5251541dcb462f0b33953b0c8ecd0c88abe1e95130535b86e1f"
+    },
+    {
+      "path": "source/maintain-verification.md",
+      "bytes": 3124,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "source/method-verification-journey.mjs",
+      "bytes": 21995,
+      "sha256": "36386ee891b46a544dfab5200a26b4b7b28f27e9481364e81f3c070417d09f44"
+    },
+    {
+      "path": "source/skills-check-verification.mjs",
+      "bytes": 13673,
+      "sha256": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+    },
+    {
+      "path": "source/skills-command.ts",
+      "bytes": 4975,
+      "sha256": "79a5fcc2a5ad3d29b9503485796175094fdb73792524ac190c7601f22f4be07b"
+    },
+    {
+      "path": "source/smoke-skills-check.mjs",
+      "bytes": 11883,
+      "sha256": "306bf661a3f6057027b11242182c0a58d149660ba17677dc013f26f5477d592f"
+    },
+    {
+      "path": "source/upstream-LICENSE",
+      "bytes": 1067,
+      "sha256": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e"
+    },
+    {
+      "path": "source/upstream-maintain-SKILL.md",
+      "bytes": 4922,
+      "sha256": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8"
+    },
+    {
+      "path": "source/upstream-provenance.json",
+      "bytes": 394,
+      "sha256": "da1cb33a4060f7f1909441dde9de6283aa392b3bd29302a9cf95f9334cdf73ef"
+    },
+    {
+      "path": "source-bindings.json",
+      "bytes": 1453,
+      "sha256": "2c4f0182f693231285e76f772f5f4f1b55b0de71de72aeb4b2f0c9054c566fdb"
+    },
+    {
+      "path": "verify-evidence.py",
+      "bytes": 2806,
+      "sha256": "e8532ebc57dfc0f02224a65b56d87f679979d05ca17036a886118be75ecde5df"
+    }
+  ],
+  "verified_all_members": true,
+  "excluded": [
+    "home/ (owned dependency caches, not model authentication or task evidence)"
+  ],
+  "scope": "author evidence only; independent report and later workspace cleanup are separate supplements"
+}

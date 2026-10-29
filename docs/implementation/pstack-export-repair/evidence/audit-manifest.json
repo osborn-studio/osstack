@@ -1,0 +1,146 @@
+[
+  {
+    "path": "audit/run.py",
+    "bytes": 1448,
+    "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3",
+    "mode": 420
+  },
+  {
+    "path": "audit/hidden-summary.json",
+    "bytes": 2498,
+    "sha256": "f75478cda641adf9f1270fc50293ee4691b56bcf50323a0d491782233c0ed3d1",
+    "mode": 420
+  },
+  {
+    "path": "audit/binding.json",
+    "bytes": 765,
+    "sha256": "7561f382c6a374842e1fd1c9a0ae7ce17ca40b12e1f6c96c64ad16ba20885d4b",
+    "mode": 420
+  },
+  {
+    "path": "audit/settings.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "mode": 420
+  },
+  {
+    "path": "audit/report.md",
+    "bytes": 5222,
+    "sha256": "01d0b59a88f577ca90d2fde884285346a8b776f3bf6070b96100f83116bceb52",
+    "mode": 420
+  },
+  {
+    "path": "audit/empty-mcp.json",
+    "bytes": 18,
+    "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
+    "mode": 420
+  },
+  {
+    "path": "audit/audit-input.txt",
+    "bytes": 106647,
+    "sha256": "891f69b505400c342cfe8fe93aa95e1186d34c41c8781bb21eb7940851ee5086",
+    "mode": 420
+  },
+  {
+    "path": "audit/input-bindings.json",
+    "bytes": 3065,
+    "sha256": "38286050d8df96609d5d09e0be7de7b98041ba2ecaa490a2f862063d869c7b77",
+    "mode": 420
+  },
+  {
+    "path": "audit/compact-command-records.json",
+    "bytes": 8249,
+    "sha256": "e2ed5c0e5dbd0869c1d1950a33187d84c640ec22127c6156a8aef7ecf5d6b86f",
+    "mode": 420
+  },
+  {
+    "path": "audit/stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mode": 420
+  },
+  {
+    "path": "audit/candidate.diff",
+    "bytes": 446,
+    "sha256": "7113f8a1752d5971e630196fa3ff1c422fd42717143b0e9f33d0745259265a4a",
+    "mode": 420
+  },
+  {
+    "path": "audit/preparation-failure.json",
+    "bytes": 368,
+    "sha256": "b6e9ba344c70ee674ccb66e09c651a75478a9e9619273237dcea3aaedbdde79d",
+    "mode": 420
+  },
+  {
+    "path": "audit/command-records.json",
+    "bytes": 124255,
+    "sha256": "4bf0996823626f787cb10c373eb68341296e894f11b558649ca5374cb01970d6",
+    "mode": 420
+  },
+  {
+    "path": "audit/response.json",
+    "bytes": 7107,
+    "sha256": "4c1c685e7d607ac2b3ecab8ab5efeae4efdc801715049f372bc4a738ea022ebc",
+    "mode": 420
+  },
+  {
+    "path": "audit/observed-tool-sequence.json",
+    "bytes": 14570,
+    "sha256": "b6a8c0c49ef2c7d917aa47d4551d0b3149fb1ce53ca23066972baf5b19f86e6c",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/run.py",
+    "bytes": 1448,
+    "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/binding.json",
+    "bytes": 765,
+    "sha256": "bc4bfe4adfb8a4f80d547fd7f965c220cc8a1bde453204dd89bb9b35900c8545",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/settings.json",
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/report.md",
+    "bytes": 4201,
+    "sha256": "59c8342194699c3b0268420c89fd9cd757eadebed745baadd606196170f13e40",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/empty-mcp.json",
+    "bytes": 18,
+    "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/audit-input.txt",
+    "bytes": 115137,
+    "sha256": "3d3f76fcb444c98587ecf10b0a9958ff7e42d496a58a609d468f1f1a257b4e48",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/input-bindings.json",
+    "bytes": 2143,
+    "sha256": "b726a3d3b950856889f36e87dd1ed801326600c989ead9d687590d4e00a7c230",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/stderr.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mode": 420
+  },
+  {
+    "path": "audit-closure/response.json",
+    "bytes": 6061,
+    "sha256": "aeddc51ecbf9452a825d5834e00e85f0e572b6e2b7b944983ebc7e4ef4e7279f",
+    "mode": 420
+  }
+]

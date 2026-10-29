@@ -1,0 +1,3663 @@
+{
+  "created_at": "2026-10-29T05:16:40.166934+00:00",
+  "scope": "entire owned host directory, excluding every __pycache__ directory; symlinks preserved, never followed",
+  "archive": "host-raw-evidence.tar.gz",
+  "archive_sha256": "0750403f4ab8b8ea71a1b5d5af02c0679a9c35db0f2ba25a979aa9ee0a385e01",
+  "archive_bytes": 872880,
+  "counts": {
+    "file": 411,
+    "directory": 110,
+    "symlink": 0
+  },
+  "members": [
+    {
+      "path": "host",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/codex-model-metadata",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/codex-model-metadata/requests.json",
+      "type": "file",
+      "bytes": 412,
+      "mode": 420,
+      "sha256": "321dd75d360315da49ab112bea6f4da053d3e284b1ab49034334f3fbc5cadf4f"
+    },
+    {
+      "path": "host/codex-model-metadata/responses.jsonl",
+      "type": "file",
+      "bytes": 9062,
+      "mode": 420,
+      "sha256": "e1d5f296a77c8a5b6c198497103309e730ba0383f64600f3cb3ec29162d3f74d"
+    },
+    {
+      "path": "host/codex-model-metadata/result.json",
+      "type": "file",
+      "bytes": 2186,
+      "mode": 420,
+      "sha256": "1dfa48ced07c015ad134064805247bb4652e0d9ac555b5b17cdb56fd90de211d"
+    },
+    {
+      "path": "host/control",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/baseline-control-a.stderr",
+      "type": "file",
+      "bytes": 50,
+      "mode": 420,
+      "sha256": "758c334d2efbc6b903f3ee847f3d1d5cf6cd33fdb693729c140f30cc4c9b0024"
+    },
+    {
+      "path": "host/control/baseline-control-a.stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "fe421fd296f65c2cebff5289e4aa39bca1a3a699fadab7c1b9db19f82cab05a0"
+    },
+    {
+      "path": "host/control/baseline-control-b.stderr",
+      "type": "file",
+      "bytes": 50,
+      "mode": 420,
+      "sha256": "4ed21a4ef3c6ec3b27618bd0958573cc15cc0a8c3d7d9ce5cbc93df639475ca7"
+    },
+    {
+      "path": "host/control/baseline-control-b.stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "d21976662d5bd5002335f6d09f2af3a32268f0a9cb810059cc2e7957b0684b88"
+    },
+    {
+      "path": "host/control/baseline-incident.stderr",
+      "type": "file",
+      "bytes": 49,
+      "mode": 420,
+      "sha256": "fe8d3c8daf501e0ebae310c201c7dabcb6f685a0effdcf95719fef3b6f940cf4"
+    },
+    {
+      "path": "host/control/baseline-incident.stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "e02693cb6f5673c773b3b462b1e67619e111e1c5eb4d9728aec81fdf8a2dece8"
+    },
+    {
+      "path": "host/control/claude-catalog-bootstrap-summary.json",
+      "type": "file",
+      "bytes": 2462,
+      "mode": 420,
+      "sha256": "b23e2268747234afcacede801a62feea8c6a2cadca03ce7904397ee4cc9c60db"
+    },
+    {
+      "path": "host/control/claude-help.json",
+      "type": "file",
+      "bytes": 83,
+      "mode": 420,
+      "sha256": "30179cdd8d6e4e27d983465efe52462139ddbd423f199303326503bd497b5c1b"
+    },
+    {
+      "path": "host/control/claude-help.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/claude-help.stdout",
+      "type": "file",
+      "bytes": 22116,
+      "mode": 420,
+      "sha256": "550db4f88ae1d97bf7244ca96dc89554aabd3978241ceb69f79001e816c35f09"
+    },
+    {
+      "path": "host/control/claude-settings-bootstrap.json",
+      "type": "file",
+      "bytes": 1548,
+      "mode": 420,
+      "sha256": "bc1fc2111e23e04efde5ac0af02c120694a369da870dc7366768f25fa18b3c22"
+    },
+    {
+      "path": "host/control/claude-version.json",
+      "type": "file",
+      "bytes": 86,
+      "mode": 420,
+      "sha256": "c5291795533ba0a03337dad3cf86ce5cfad89ffa7f1805159b3ee799ee6f4665"
+    },
+    {
+      "path": "host/control/claude-version.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/claude-version.stdout",
+      "type": "file",
+      "bytes": 22,
+      "mode": 420,
+      "sha256": "d75ceb4934bd37bdf8a10af2200bcf750356fa72749f4625e7ef6dd20001bb20"
+    },
+    {
+      "path": "host/control/codex-exec-help.json",
+      "type": "file",
+      "bytes": 94,
+      "mode": 420,
+      "sha256": "a343e499520046d974faf141f318fe2076928dd2bc34447183a17229c0c5518d"
+    },
+    {
+      "path": "host/control/codex-exec-help.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/codex-exec-help.stdout",
+      "type": "file",
+      "bytes": 4031,
+      "mode": 420,
+      "sha256": "0e82cfde0122715250e93dc65866caa956b2ac5b9d0b20ec4ad4f9e81486509e"
+    },
+    {
+      "path": "host/control/codex-help.json",
+      "type": "file",
+      "bytes": 82,
+      "mode": 420,
+      "sha256": "acbb96d6ca61e48f7b0d08e92818d468242f272cf137e39d69e99b2e91cce5b7"
+    },
+    {
+      "path": "host/control/codex-help.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/codex-help.stdout",
+      "type": "file",
+      "bytes": 5849,
+      "mode": 420,
+      "sha256": "4a7f0188d4d6e6d812c5cfbcf82468336b899acd5e437de7450421a403c0071e"
+    },
+    {
+      "path": "host/control/codex-metadata-summary.json",
+      "type": "file",
+      "bytes": 2186,
+      "mode": 420,
+      "sha256": "1dfa48ced07c015ad134064805247bb4652e0d9ac555b5b17cdb56fd90de211d"
+    },
+    {
+      "path": "host/control/codex-version.json",
+      "type": "file",
+      "bytes": 85,
+      "mode": 420,
+      "sha256": "f667866efeb0ff28446258d79c43e0ec28a7ec49c08a5a6ff6d9ed97f1ee6be6"
+    },
+    {
+      "path": "host/control/codex-version.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/codex-version.stdout",
+      "type": "file",
+      "bytes": 18,
+      "mode": 420,
+      "sha256": "eeecd3950ed2edf22e2f7ac0317480e921226b0a28df75a7f4af0f4bfe91fa49"
+    },
+    {
+      "path": "host/control/helper-preflight",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/inputs",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/control-a",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/control-a/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "039a667c3058119edd1f4f9a4742cdd4a3669079256f9cea6ea1c5b7e33339d4"
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/control-a/packet.json",
+      "type": "file",
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "c6d69b8762c119ec39da8938d2e026db209ec7fc1cd41d7401fd3d4f0c0e4d3b"
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/control-b",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/control-b/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "6386eca2ac0d8639c2d8b3bbd88a60e3a21c9d6f74d6446d552afa8c0c80eec7"
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/control-b/packet.json",
+      "type": "file",
+      "bytes": 6008,
+      "mode": 420,
+      "sha256": "b5c2c57fbf58e58f253e4f1e1e585731293c16c97fd5fba74c9c2d7a5e067cd3"
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/incident",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/incident/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "1c6ff6afcde4e06bdb2fc25e3631c735760e74233ab9fa561b32a72f4353cbd2"
+    },
+    {
+      "path": "host/control/helper-preflight/inputs/incident/packet.json",
+      "type": "file",
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "c2df3caede992a9d29142073090628aa677e2d0d430f79e3ef3c9501f3cca8f3"
+    },
+    {
+      "path": "host/control/helper-preflight/results",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-a",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-a/command.json",
+      "type": "file",
+      "bytes": 2209,
+      "mode": 420,
+      "sha256": "4f88726a4a2d433c7fac5cf301169dcbff622d33ca128897c14ce69c482d33ff"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-a/result.json",
+      "type": "file",
+      "bytes": 3411,
+      "mode": 420,
+      "sha256": "42e5a4e0f5639a0668515f297d0ad80a4c4c664385f8287bcea0b9686cdbb81a"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-a/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-a/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "fe421fd296f65c2cebff5289e4aa39bca1a3a699fadab7c1b9db19f82cab05a0"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-a/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-b",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-b/command.json",
+      "type": "file",
+      "bytes": 2209,
+      "mode": 420,
+      "sha256": "d3c094d205e36034f667f5605e02e0afc0c7ec4983016158605880ee4b88bb2c"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-b/result.json",
+      "type": "file",
+      "bytes": 3411,
+      "mode": 420,
+      "sha256": "3625f0b4b01a49eed1b888c971011b02918df334c44485a2efb8f62923ea5b56"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-b/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-b/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "d21976662d5bd5002335f6d09f2af3a32268f0a9cb810059cc2e7957b0684b88"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-control-b/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-incident",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-incident/command.json",
+      "type": "file",
+      "bytes": 2205,
+      "mode": 420,
+      "sha256": "9231c2b6bfd57d345a3b90b73938f61330a9d86db43b4a06042ebb70070d5c99"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-incident/result.json",
+      "type": "file",
+      "bytes": 3415,
+      "mode": 420,
+      "sha256": "f56a1407cb82ac8f2438848b7f01d2f6d2ae07fba5ec73648ba7bc261ee27ff2"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-incident/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-incident/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "e02693cb6f5673c773b3b462b1e67619e111e1c5eb4d9728aec81fdf8a2dece8"
+    },
+    {
+      "path": "host/control/helper-preflight/results/baseline-incident/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/missing-test",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/results/missing-test/command.json",
+      "type": "file",
+      "bytes": 2065,
+      "mode": 420,
+      "sha256": "ab38889caa29909e56f31993965ea12125af123ce005478524f28c7bf2f5d79c"
+    },
+    {
+      "path": "host/control/helper-preflight/results/missing-test/result.json",
+      "type": "file",
+      "bytes": 3266,
+      "mode": 420,
+      "sha256": "d6bab815a72976eb3ee9aca8133b06a19aeff885fa39434d66fad6af4b99d421"
+    },
+    {
+      "path": "host/control/helper-preflight/results/missing-test/stderr",
+      "type": "file",
+      "bytes": 58,
+      "mode": 420,
+      "sha256": "57cf943c04dff6fd9dcd4aaec56aece1add72a5e6cd465f5dbb1e1c22569d04a"
+    },
+    {
+      "path": "host/control/helper-preflight/results/missing-test/stdout",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/helper-preflight/results/missing-test/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/scripts",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/scripts/lib",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/scripts/lib/scratch.mjs",
+      "type": "file",
+      "bytes": 878,
+      "mode": 420,
+      "sha256": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af"
+    },
+    {
+      "path": "host/control/helper-preflight/scripts/lib/skills-check-verification.mjs",
+      "type": "file",
+      "bytes": 13673,
+      "mode": 420,
+      "sha256": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+    },
+    {
+      "path": "host/control/helper-preflight/scripts/project-method-journey-evidence.mjs",
+      "type": "file",
+      "bytes": 19706,
+      "mode": 420,
+      "sha256": "b22cbb16249396813717a814e637434f8b124081103d3fc207a399524c8e2dc4"
+    },
+    {
+      "path": "host/control/helper-preflight/tools",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/tools/run-node.py",
+      "type": "file",
+      "bytes": 3354,
+      "mode": 420,
+      "sha256": "8e88a68a5a7b89bfb37a8e8e87e6defd423dfcdb68b6d0408b62818c54a922c7"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_bootlocale.cpython-39.pyc",
+      "type": "file",
+      "bytes": 1306,
+      "mode": 420,
+      "sha256": "3fee0dffeacf8bc4e7edc5b987b07742d78c34b035b65ad17290543e5239145b"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_collections_abc.cpython-39.pyc",
+      "type": "file",
+      "bytes": 31816,
+      "mode": 420,
+      "sha256": "025aa2366cfa4ee5c784895870e6fa69a5cc893de4a06b6600c4bb66b080dfa6"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_sitebuiltins.cpython-39.pyc",
+      "type": "file",
+      "bytes": 3580,
+      "mode": 420,
+      "sha256": "875887203fa6ca2b711c3a8782499fd297e8df75ec5cdac3cf69a4257d619db0"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/_weakrefset.cpython-39.pyc",
+      "type": "file",
+      "bytes": 7752,
+      "mode": 420,
+      "sha256": "6d1560f5699b1dfeabc7e38fe232c743bc6666f14d72a144c2164b834ad342e7"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/abc.cpython-39.pyc",
+      "type": "file",
+      "bytes": 5854,
+      "mode": 420,
+      "sha256": "24800010f8463d60da6aac473fe4c6fc2e589219029f89c67d895dcc9ba8186a"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/codecs.cpython-39.pyc",
+      "type": "file",
+      "bytes": 33967,
+      "mode": 420,
+      "sha256": "13f18b89f0af59e3e83868d76980eb55acc63e1a576899fd3dc8ab09e551096f"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/__init__.cpython-39.pyc",
+      "type": "file",
+      "bytes": 48180,
+      "mode": 420,
+      "sha256": "18619ac849c8660d013aa4ed05ae51bf344668a0c69aa084410238839d98d964"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/collections/abc.cpython-39.pyc",
+      "type": "file",
+      "bytes": 383,
+      "mode": 420,
+      "sha256": "8e059bd9c5811c5ae2716c2fedf497aadb6aa2c807094f3034973d726120f375"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.cpython-39.pyc",
+      "type": "file",
+      "bytes": 19567,
+      "mode": 420,
+      "sha256": "e4ff5cfd2d4586217a3c079565292e7d35ab53c1a8e7275125ce0d20a6273ddd"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/copyreg.cpython-39.pyc",
+      "type": "file",
+      "bytes": 4509,
+      "mode": 420,
+      "sha256": "38460391f66aee00b24fb68e5660ba3beb2b65ec73208760f172dd791b255a2e"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/__init__.cpython-39.pyc",
+      "type": "file",
+      "bytes": 4004,
+      "mode": 420,
+      "sha256": "223ec7f89962a503ce772f26e266ea7cecbcc94f57b6c888732dfd9740320a4f"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/aliases.cpython-39.pyc",
+      "type": "file",
+      "bytes": 6409,
+      "mode": 420,
+      "sha256": "6f7cf93d22539994c14fb00b53030786c881d7b156b5848e4fa623a875539273"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/cp437.cpython-39.pyc",
+      "type": "file",
+      "bytes": 7927,
+      "mode": 420,
+      "sha256": "39b9fadae0704d0b46e24009d325efddf6ea0f779d6ecec44b7fc207b3148a26"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/latin_1.cpython-39.pyc",
+      "type": "file",
+      "bytes": 1974,
+      "mode": 420,
+      "sha256": "d3bc32a4af5f6bad032c9ee2f69a7b62910ab593c7ea809ea3f87bd6fd3de9b2"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/encodings/utf_8.cpython-39.pyc",
+      "type": "file",
+      "bytes": 1711,
+      "mode": 420,
+      "sha256": "dada6b69eb28b5ef21ba73925957c5890b8744c8a2e65705858494d8bf1a2867"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/enum.cpython-39.pyc",
+      "type": "file",
+      "bytes": 26099,
+      "mode": 420,
+      "sha256": "cbc4a4ee410f04ca0512d924aa218d24ac8ea0e25196215be2e85c26f86b4575"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/fnmatch.cpython-39.pyc",
+      "type": "file",
+      "bytes": 4021,
+      "mode": 420,
+      "sha256": "c5234937d7c44ef1db1e17d7fc5981ff4e217eb7d7117ab4ae688151b55326d2"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/functools.cpython-39.pyc",
+      "type": "file",
+      "bytes": 28261,
+      "mode": 420,
+      "sha256": "7b4e1d4e2becbf372b53f76606874f514cceb8c5538d802763ad370a72a44099"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/genericpath.cpython-39.pyc",
+      "type": "file",
+      "bytes": 4103,
+      "mode": 420,
+      "sha256": "6e14dc3d4a58678abbf15465f87e3126b80712a2faea87a24f8cb2758864fe83"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/hashlib.cpython-39.pyc",
+      "type": "file",
+      "bytes": 6770,
+      "mode": 420,
+      "sha256": "05d7000886c3081a066dfa38c975514de8b580fd747d8408eb61497d2a951ca1"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/heapq.cpython-39.pyc",
+      "type": "file",
+      "bytes": 14119,
+      "mode": 420,
+      "sha256": "f2b3770a6093dc2c1bba043e68eaa8216517c90e30e2617e7c2ee591eca2dc2a"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/io.cpython-39.pyc",
+      "type": "file",
+      "bytes": 3487,
+      "mode": 420,
+      "sha256": "bb126ce95c68ceaf9c09810027ee9456b79b1332bea24bec277ef08a858c4818"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.cpython-39.pyc",
+      "type": "file",
+      "bytes": 12372,
+      "mode": 420,
+      "sha256": "7bc68c432f50ae2ba5d6a90ad61b7895221b7def09350f1819d1ab8dcfaccbda"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.cpython-39.pyc",
+      "type": "file",
+      "bytes": 9887,
+      "mode": 420,
+      "sha256": "1e8867e6fd53eacded6912d15f61e08c9b3fce2d0381d3eff4abd51d38246232"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/encoder.cpython-39.pyc",
+      "type": "file",
+      "bytes": 11210,
+      "mode": 420,
+      "sha256": "704d937ba5349ecc4f6c7eb5a4870c3bb123cc66ffce1997008d15542a0d3b1f"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/scanner.cpython-39.pyc",
+      "type": "file",
+      "bytes": 2032,
+      "mode": 420,
+      "sha256": "c1f4e9088c6ee5a42ba3f6deb6b4659c84c87895b56ceb7308059fa211192803"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/keyword.cpython-39.pyc",
+      "type": "file",
+      "bytes": 995,
+      "mode": 420,
+      "sha256": "0ccc4f8047c656c5492c5df4259358fc96fd80873cdd71a41d6a3b7de5d15008"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ntpath.cpython-39.pyc",
+      "type": "file",
+      "bytes": 14621,
+      "mode": 420,
+      "sha256": "9a872e77062e2afeb6790cfb4a221bc2c127735c745a1166e60bde72fd67dbb8"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/operator.cpython-39.pyc",
+      "type": "file",
+      "bytes": 13827,
+      "mode": 420,
+      "sha256": "7d3e8814d3d3a9afeb0803333f93755b9262ffaff47d171569c899657d30af42"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/os.cpython-39.pyc",
+      "type": "file",
+      "bytes": 32076,
+      "mode": 420,
+      "sha256": "71244e2fa9bd81f978d18cc49b83c690d51ed074715c64088c3b91a35e00e41a"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.cpython-39.pyc",
+      "type": "file",
+      "bytes": 44748,
+      "mode": 420,
+      "sha256": "dfd2100233353be9deededff42081ad7b3f1d496f31524ea9bf4789c0efebad5"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/posixpath.cpython-39.pyc",
+      "type": "file",
+      "bytes": 10408,
+      "mode": 420,
+      "sha256": "285edce983f9020588bbd2d157ee15bf4f2c0f99c03853bbb3df1cff770d189e"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/re.cpython-39.pyc",
+      "type": "file",
+      "bytes": 14441,
+      "mode": 420,
+      "sha256": "3a991b7b6be05644651586a98f6fb7170e7118b9a035d8b5ab6159a2b158fa91"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/reprlib.cpython-39.pyc",
+      "type": "file",
+      "bytes": 5386,
+      "mode": 420,
+      "sha256": "e3182c2bac51e767df1b01557b8807a95c27bbff3e42257f985051e9af3a3599"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.cpython-39.pyc",
+      "type": "file",
+      "bytes": 17324,
+      "mode": 420,
+      "sha256": "5521727b21686dce3c25436758996b33e9b93b9e2078ec643338332ed788b5e3"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/signal.cpython-39.pyc",
+      "type": "file",
+      "bytes": 2902,
+      "mode": 420,
+      "sha256": "f4b5ea53a2c15c4270d25bfe9ebc32f88f722481514a4a8c9746aafe8e88b8c2"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/site.cpython-39.pyc",
+      "type": "file",
+      "bytes": 17473,
+      "mode": 420,
+      "sha256": "0e7de55ccedec23d507b2da822e37ce38913f8dfce85346ad88ce4ca59ec8f0f"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_compile.cpython-39.pyc",
+      "type": "file",
+      "bytes": 15132,
+      "mode": 420,
+      "sha256": "2a649e341abac872e1de03877e23bb63e67497d77895952a78bf2c6ddae3538e"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_constants.cpython-39.pyc",
+      "type": "file",
+      "bytes": 6396,
+      "mode": 420,
+      "sha256": "dd83deb0e24e948fd432ce7336f927a8d32b407f6f4c5aedb70ff056b4a56623"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/sre_parse.cpython-39.pyc",
+      "type": "file",
+      "bytes": 21682,
+      "mode": 420,
+      "sha256": "5dc0c414a7bf05cea406e17c3123353242abb9569ed4f95a2da4f2b7cb9e0dae"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/stat.cpython-39.pyc",
+      "type": "file",
+      "bytes": 4451,
+      "mode": 420,
+      "sha256": "84ac2f711bce1e14a192167a32090f0daa69576aa4102cd6bae963ae8ae0117a"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.cpython-39.pyc",
+      "type": "file",
+      "bytes": 44225,
+      "mode": 420,
+      "sha256": "9c340a8e8262c4fe512985c4bbd7da29475572b17e01efada9c8093665193d26"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.cpython-39.pyc",
+      "type": "file",
+      "bytes": 42164,
+      "mode": 420,
+      "sha256": "9ced14c97c8178f02ae2afd1b845868be5a9ab2221a9f03d3a14d14352c2a455"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/types.cpython-39.pyc",
+      "type": "file",
+      "bytes": 9300,
+      "mode": 420,
+      "sha256": "1805726c80bbe541a6670d89cf055a9465e0eef30c00d8088c33a464767615ec"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/__init__.cpython-39.pyc",
+      "type": "file",
+      "bytes": 209,
+      "mode": 420,
+      "sha256": "60de0d3ef2d0098ec9cf19cf1175d06a9a680acf57aa5185c1d3e513b91f5810"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/urllib/parse.cpython-39.pyc",
+      "type": "file",
+      "bytes": 35002,
+      "mode": 420,
+      "sha256": "c825a5554c8cb8f8074df08a16ee51483b1dfe6e57a718f487bc3515637beb5c"
+    },
+    {
+      "path": "host/control/helper-preflight/unused-host-home/Library/Caches/com.apple.python/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/warnings.cpython-39.pyc",
+      "type": "file",
+      "bytes": 13684,
+      "mode": 420,
+      "sha256": "88f12df753eef0319b2c9ffbc90b9435e5aadb1a1173a48a63cdfe034b088c92"
+    },
+    {
+      "path": "host/control/helper-preflight.json",
+      "type": "file",
+      "bytes": 12256,
+      "mode": 420,
+      "sha256": "af12b0cf7fb9e51c0f12f2595ab8219cbd668a48c2b1fdd011f82a3397344841"
+    },
+    {
+      "path": "host/control/node-version.json",
+      "type": "file",
+      "bytes": 96,
+      "mode": 420,
+      "sha256": "5bd24783e0d33bb4f1600f4214ce1fe5f854798b0ade6bed84ef335611b2730a"
+    },
+    {
+      "path": "host/control/node-version.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/control/node-version.stdout",
+      "type": "file",
+      "bytes": 9,
+      "mode": 420,
+      "sha256": "d757d43c53951704e32c04b9b1e6b4cc65713b659e72fcdbb02f5200675c7fd8"
+    },
+    {
+      "path": "host/control/source-bindings.json",
+      "type": "file",
+      "bytes": 5987,
+      "mode": 420,
+      "sha256": "294a5f2b5a43a8815edb7fc0c5ac50fbbfa0ad15ecd5af199524bc7c28e7738e"
+    },
+    {
+      "path": "host/harness",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/harness/claude-builtin-catalog.json",
+      "type": "file",
+      "bytes": 911,
+      "mode": 420,
+      "sha256": "328cd2e25c9395b96fbe89f15c4592b91cef4ffb507a16e27b1c3f9aaefb4003"
+    },
+    {
+      "path": "host/harness/common.py",
+      "type": "file",
+      "bytes": 1809,
+      "mode": 420,
+      "sha256": "f1e8295cf0cb5420de9eee699b8d2fffe37c2247638ff3e751fd0c03ff863920"
+    },
+    {
+      "path": "host/harness/dispatch-claude-repair.json",
+      "type": "file",
+      "bytes": 51918,
+      "mode": 420,
+      "sha256": "f042c13a8164aca0b752a65d887c18a72748a42707f3a6fbd694f30dd6a8f719"
+    },
+    {
+      "path": "host/harness/dispatch-claude-repair.template.json",
+      "type": "file",
+      "bytes": 51330,
+      "mode": 420,
+      "sha256": "650c0f7de997eab4087ded4804c1100639472986415538a93376328d5c948a89"
+    },
+    {
+      "path": "host/harness/dispatch-codex-repair.json",
+      "type": "file",
+      "bytes": 51372,
+      "mode": 420,
+      "sha256": "d112260b7c54e24fcbb5539ce63d915001216a34f160a2bc628d8b62b255edcd"
+    },
+    {
+      "path": "host/harness/dispatch-codex-repair.template.json",
+      "type": "file",
+      "bytes": 50784,
+      "mode": 420,
+      "sha256": "3413e1f737381aaa0be427826e6d6cd6744cc33ffb1ee5fb93e31d457a52262b"
+    },
+    {
+      "path": "host/harness/prompt.txt",
+      "type": "file",
+      "bytes": 272,
+      "mode": 420,
+      "sha256": "5b8bc431cdae062300659ac4ff8fa6edf6f33abc102dae23daa1ab28c6289abd"
+    },
+    {
+      "path": "host/harness/run_claude.py",
+      "type": "file",
+      "bytes": 8179,
+      "mode": 420,
+      "sha256": "13b46cfc3596754a37cedbdd0159d27b3126dd119995a2727762883208ef5b2e"
+    },
+    {
+      "path": "host/harness/run_codex.py",
+      "type": "file",
+      "bytes": 4096,
+      "mode": 420,
+      "sha256": "fb0971814e4113ca316bea38e0aa7127c1b099e402c7fe4885eb46eee6a6f43b"
+    },
+    {
+      "path": "host/model-list-metadata.py",
+      "type": "file",
+      "bytes": 2989,
+      "mode": 420,
+      "sha256": "0d981299ef13739892823b84abc91aaea24c86143a948890bfc86ea97d153492"
+    },
+    {
+      "path": "host/preflight.md",
+      "type": "file",
+      "bytes": 2500,
+      "mode": 420,
+      "sha256": "e2d03b1653b908458a418a42a414bb178c69174e2eb42211a1591c315a1ea363"
+    },
+    {
+      "path": "host/prepared-manifest.json",
+      "type": "file",
+      "bytes": 77488,
+      "mode": 420,
+      "sha256": "78cbf477671a1cb27350a17841de893a544e0bc1af9195b53086a580aea4fd27"
+    },
+    {
+      "path": "host/protocol.json",
+      "type": "file",
+      "bytes": 3731,
+      "mode": 420,
+      "sha256": "39f60ad58e8494df0cb231bf7dc38f1e9810420c57e8dd983093fa31b7e75a07"
+    },
+    {
+      "path": "host/runs",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/evidence",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-final-after.json",
+      "type": "file",
+      "bytes": 21435,
+      "mode": 420,
+      "sha256": "5776f70e55775e88b91f5d6ae4eb4ea6dd79c7b21af9c3325ae1ee877f5d7312"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-final-before.json",
+      "type": "file",
+      "bytes": 21434,
+      "mode": 420,
+      "sha256": "008cf03f7d75e597c14537b698eeea2bbdf7a1eafad07ebe9ccb667954922499"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-final-initialize-input.json",
+      "type": "file",
+      "bytes": 255,
+      "mode": 420,
+      "sha256": "5cf78a92ce1cb6807e7838d3c878af5003f38c3a8eca018d0e797cff912466cc"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-final-result.json",
+      "type": "file",
+      "bytes": 2462,
+      "mode": 420,
+      "sha256": "b23e2268747234afcacede801a62feea8c6a2cadca03ce7904397ee4cc9c60db"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-final.jsonl",
+      "type": "file",
+      "bytes": 23236,
+      "mode": 420,
+      "sha256": "ee50a4e9503d1acd4bdbbce764f111b927312a991cc74000edb9730803ea18a2"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-final.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-frozen-context-after.json",
+      "type": "file",
+      "bytes": 21435,
+      "mode": 420,
+      "sha256": "5776f70e55775e88b91f5d6ae4eb4ea6dd79c7b21af9c3325ae1ee877f5d7312"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-frozen-context-before.json",
+      "type": "file",
+      "bytes": 21434,
+      "mode": 420,
+      "sha256": "008cf03f7d75e597c14537b698eeea2bbdf7a1eafad07ebe9ccb667954922499"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-frozen-context-initialize-input.json",
+      "type": "file",
+      "bytes": 255,
+      "mode": 420,
+      "sha256": "5cf78a92ce1cb6807e7838d3c878af5003f38c3a8eca018d0e797cff912466cc"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-frozen-context-result.json",
+      "type": "file",
+      "bytes": 2462,
+      "mode": 420,
+      "sha256": "b7cc66e63508772e2da3d48a3fb4531cd19efd788b211538fdfcf51fb6856e95"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-frozen-context.jsonl",
+      "type": "file",
+      "bytes": 23236,
+      "mode": 420,
+      "sha256": "9441c19e9511769c287a6445d7c54056fda7d5cd3f16189167d11f816d2f3b21"
+    },
+    {
+      "path": "host/runs/claude/evidence/catalog-frozen-context.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/claude/evidence/export-command.json",
+      "type": "file",
+      "bytes": 410,
+      "mode": 420,
+      "sha256": "6502e6a358e34228ebf7372225c359c8098a5c6e7a949fc18e31961b6ce5f998"
+    },
+    {
+      "path": "host/runs/claude/evidence/export.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/claude/evidence/export.stdout",
+      "type": "file",
+      "bytes": 408,
+      "mode": 420,
+      "sha256": "c1b0fa0c2a39277ad15249b0028c8aba00581cd2d7c5530ab11d2591d126be48"
+    },
+    {
+      "path": "host/runs/claude/evidence/prepared-inventory.json",
+      "type": "file",
+      "bytes": 21435,
+      "mode": 420,
+      "sha256": "331f650f6aff0906284c9ce4b7840d4af09516742b377c63895dca21143f88df"
+    },
+    {
+      "path": "host/runs/claude/evidence/run-after.json",
+      "type": "file",
+      "bytes": 21435,
+      "mode": 420,
+      "sha256": "df3750ec847a1b25cda1760fc6f58e45150e4011ca3939650d55c5ed4bd38aac"
+    },
+    {
+      "path": "host/runs/claude/evidence/run-before.json",
+      "type": "file",
+      "bytes": 21434,
+      "mode": 420,
+      "sha256": "a674cfb638f38f4925fbe788f31b7e0af328e5abf67ff362d49fec7f8d2078b6"
+    },
+    {
+      "path": "host/runs/claude/evidence/run-initialize-input.json",
+      "type": "file",
+      "bytes": 255,
+      "mode": 420,
+      "sha256": "5cf78a92ce1cb6807e7838d3c878af5003f38c3a8eca018d0e797cff912466cc"
+    },
+    {
+      "path": "host/runs/claude/evidence/run-result.json",
+      "type": "file",
+      "bytes": 2508,
+      "mode": 420,
+      "sha256": "ebbd5acfcd0d681fb28904ca9bb992c5449951d4c261aecdff958f83f82663d2"
+    },
+    {
+      "path": "host/runs/claude/evidence/run.jsonl",
+      "type": "file",
+      "bytes": 135231,
+      "mode": 420,
+      "sha256": "1227d79e2826aca0b38cf18109c1dc722ab40aa12a5755c465bdb4a4672f13e2"
+    },
+    {
+      "path": "host/runs/claude/evidence/run.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/claude/evidence/user-input.json",
+      "type": "file",
+      "bytes": 352,
+      "mode": 420,
+      "sha256": "0fdef89722190ab6733e1a07bbd03d1a871f2810d7267a47f09f14cdec3c0802"
+    },
+    {
+      "path": "host/runs/claude/state",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/state/empty-mcp.json",
+      "type": "file",
+      "bytes": 18,
+      "mode": 420,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b"
+    },
+    {
+      "path": "host/runs/claude/state/settings.json",
+      "type": "file",
+      "bytes": 3094,
+      "mode": 420,
+      "sha256": "3385072a40f3db212497da8d5338ff5554afdb7421e8576019f68a8a75141c66"
+    },
+    {
+      "path": "host/runs/claude/workspace",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/SKILL.md",
+      "type": "file",
+      "bytes": 4975,
+      "mode": 420,
+      "sha256": "5d8e684b94262f5895563b36f62766dade55fab9bb6f916e358b12b0f72d0934"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-agent/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/SKILL.md",
+      "type": "file",
+      "bytes": 4610,
+      "mode": 420,
+      "sha256": "0092808143ce06835fdffeb7c5a87475720e95dd72ae20a719607ab195580bd6"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-help/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/SKILL.md",
+      "type": "file",
+      "bytes": 5423,
+      "mode": 420,
+      "sha256": "56970801aed6be94f67d38ec95fd1816535210c22e8621caa9c82446ea7710b1"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/osstack-mode/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/SKILL.md",
+      "type": "file",
+      "bytes": 3506,
+      "mode": 420,
+      "sha256": "58f9536f8c77d382498cda190b2682ba64b6c62a709145e3351aa7b85d5f758a"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/claude/workspace/.claude/skills/setup-osstack/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/control-a",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/control-a/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "039a667c3058119edd1f4f9a4742cdd4a3669079256f9cea6ea1c5b7e33339d4"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/control-a/packet.json",
+      "type": "file",
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "c6d69b8762c119ec39da8938d2e026db209ec7fc1cd41d7401fd3d4f0c0e4d3b"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/control-b",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/control-b/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "6386eca2ac0d8639c2d8b3bbd88a60e3a21c9d6f74d6446d552afa8c0c80eec7"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/control-b/packet.json",
+      "type": "file",
+      "bytes": 6008,
+      "mode": 420,
+      "sha256": "b5c2c57fbf58e58f253e4f1e1e585731293c16c97fd5fba74c9c2d7a5e067cd3"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/incident",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/incident/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "1c6ff6afcde4e06bdb2fc25e3631c735760e74233ab9fa561b32a72f4353cbd2"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/incident/packet.json",
+      "type": "file",
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "c2df3caede992a9d29142073090628aa677e2d0d430f79e3ef3c9501f3cca8f3"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/index.json",
+      "type": "file",
+      "bytes": 757,
+      "mode": 420,
+      "sha256": "d74441a9755167691534e4f26c69208b8dd957a34cc2193c828bf55f45559292"
+    },
+    {
+      "path": "host/runs/claude/workspace/inputs/request.txt",
+      "type": "file",
+      "bytes": 2858,
+      "mode": 420,
+      "sha256": "fc6b5a87640467b137400da241678817c11941a71c28443ad91afec3c5496503"
+    },
+    {
+      "path": "host/runs/claude/workspace/manifest.json",
+      "type": "file",
+      "bytes": 32990,
+      "mode": 420,
+      "sha256": "c8f45b3c778de925fdff79495b3e05ab2df13325913e59b31e73e7d63822ba75"
+    },
+    {
+      "path": "host/runs/claude/workspace/results",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/scripts",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/scripts/lib",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/scripts/lib/scratch.mjs",
+      "type": "file",
+      "bytes": 878,
+      "mode": 420,
+      "sha256": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af"
+    },
+    {
+      "path": "host/runs/claude/workspace/scripts/lib/skills-check-verification.mjs",
+      "type": "file",
+      "bytes": 13673,
+      "mode": 420,
+      "sha256": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+    },
+    {
+      "path": "host/runs/claude/workspace/scripts/project-method-journey-evidence.mjs",
+      "type": "file",
+      "bytes": 19706,
+      "mode": 420,
+      "sha256": "b22cbb16249396813717a814e637434f8b124081103d3fc207a399524c8e2dc4"
+    },
+    {
+      "path": "host/runs/claude/workspace/tools",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/claude/workspace/tools/run-node.py",
+      "type": "file",
+      "bytes": 3354,
+      "mode": 420,
+      "sha256": "8e88a68a5a7b89bfb37a8e8e87e6defd423dfcdb68b6d0408b62818c54a922c7"
+    },
+    {
+      "path": "host/runs/codex",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/evidence",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/evidence/agent-messages.json",
+      "type": "file",
+      "bytes": 1904,
+      "mode": 420,
+      "sha256": "c782659009d15cf92e35606c919495f3ea53b4460430c96a95cc9dd3295a4102"
+    },
+    {
+      "path": "host/runs/codex/evidence/export-command.json",
+      "type": "file",
+      "bytes": 408,
+      "mode": 420,
+      "sha256": "f0a5b58f4c01b27e41bd9328aeb28ef3e0318e73fb8cb056f946a8b3648a98bb"
+    },
+    {
+      "path": "host/runs/codex/evidence/export.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/evidence/export.stdout",
+      "type": "file",
+      "bytes": 406,
+      "mode": 420,
+      "sha256": "a3134f5752fe4c53f6426837de56ca6d68d684bc696fbe8e4e143adf7098b9fd"
+    },
+    {
+      "path": "host/runs/codex/evidence/final-response.txt",
+      "type": "file",
+      "bytes": 773,
+      "mode": 420,
+      "sha256": "eacd1258ee1ce3d8c1ea4910e131e1a85b6d0574f8cab50ebf82b7ea855a1155"
+    },
+    {
+      "path": "host/runs/codex/evidence/prepared-inventory.json",
+      "type": "file",
+      "bytes": 21435,
+      "mode": 420,
+      "sha256": "84a1c60ba9fbbecc56b5bf63183f395e1799595759861f70c5a8acbfd0ad24ee"
+    },
+    {
+      "path": "host/runs/codex/evidence/run-after.json",
+      "type": "file",
+      "bytes": 29217,
+      "mode": 420,
+      "sha256": "c8ec83552fc3e360fa001723eb7d6601c9459395f65a24cfe54b810df84aca84"
+    },
+    {
+      "path": "host/runs/codex/evidence/run-before.json",
+      "type": "file",
+      "bytes": 21434,
+      "mode": 420,
+      "sha256": "ddbc6e88213545647ac04e8ce29a107d37b8377ce3b5d6bd2af3f9ea9a0d0360"
+    },
+    {
+      "path": "host/runs/codex/evidence/run-result.json",
+      "type": "file",
+      "bytes": 1756,
+      "mode": 420,
+      "sha256": "d304e1411cf57202e6f33820b515fd509d0a4fae9ecbec5a8e24e82a7b93f148"
+    },
+    {
+      "path": "host/runs/codex/evidence/run.jsonl",
+      "type": "file",
+      "bytes": 111600,
+      "mode": 420,
+      "sha256": "42d6655d1f4ed419f952abfa377fe49484654543bc931b26c12d375cbc6ad389"
+    },
+    {
+      "path": "host/runs/codex/evidence/run.stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/evidence/started.json",
+      "type": "file",
+      "bytes": 1281,
+      "mode": 420,
+      "sha256": "491fdaa734d9e3d3014afe9d9660f53d93c909f07d78b6250f757b02b3991afb"
+    },
+    {
+      "path": "host/runs/codex/state",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/SKILL.md",
+      "type": "file",
+      "bytes": 4975,
+      "mode": 420,
+      "sha256": "5d8e684b94262f5895563b36f62766dade55fab9bb6f916e358b12b0f72d0934"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-agent/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/SKILL.md",
+      "type": "file",
+      "bytes": 4610,
+      "mode": 420,
+      "sha256": "0092808143ce06835fdffeb7c5a87475720e95dd72ae20a719607ab195580bd6"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-help/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/SKILL.md",
+      "type": "file",
+      "bytes": 5423,
+      "mode": 420,
+      "sha256": "56970801aed6be94f67d38ec95fd1816535210c22e8621caa9c82446ea7710b1"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/osstack-mode/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/SKILL.md",
+      "type": "file",
+      "bytes": 3506,
+      "mode": 420,
+      "sha256": "58f9536f8c77d382498cda190b2682ba64b6c62a709145e3351aa7b85d5f758a"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/runs/codex/workspace/.agents/skills/setup-osstack/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/control-a",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/control-a/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "039a667c3058119edd1f4f9a4742cdd4a3669079256f9cea6ea1c5b7e33339d4"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/control-a/packet.json",
+      "type": "file",
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "c6d69b8762c119ec39da8938d2e026db209ec7fc1cd41d7401fd3d4f0c0e4d3b"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/control-b",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/control-b/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "6386eca2ac0d8639c2d8b3bbd88a60e3a21c9d6f74d6446d552afa8c0c80eec7"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/control-b/packet.json",
+      "type": "file",
+      "bytes": 6008,
+      "mode": 420,
+      "sha256": "b5c2c57fbf58e58f253e4f1e1e585731293c16c97fd5fba74c9c2d7a5e067cd3"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/incident",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/incident/manifest.json",
+      "type": "file",
+      "bytes": 189,
+      "mode": 420,
+      "sha256": "1c6ff6afcde4e06bdb2fc25e3631c735760e74233ab9fa561b32a72f4353cbd2"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/incident/packet.json",
+      "type": "file",
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "c2df3caede992a9d29142073090628aa677e2d0d430f79e3ef3c9501f3cca8f3"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/index.json",
+      "type": "file",
+      "bytes": 757,
+      "mode": 420,
+      "sha256": "6589a095256ee2f92d78359d96917f1e1d77dc495dc7fafc9c42c77957b203d9"
+    },
+    {
+      "path": "host/runs/codex/workspace/inputs/request.txt",
+      "type": "file",
+      "bytes": 2858,
+      "mode": 420,
+      "sha256": "fc6b5a87640467b137400da241678817c11941a71c28443ad91afec3c5496503"
+    },
+    {
+      "path": "host/runs/codex/workspace/manifest.json",
+      "type": "file",
+      "bytes": 32989,
+      "mode": 420,
+      "sha256": "6bf697f79e29ced081332a39ee904aad23a745123d9d4fd3e5bf5ad387e11484"
+    },
+    {
+      "path": "host/runs/codex/workspace/results",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-a",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-a/command.json",
+      "type": "file",
+      "bytes": 2239,
+      "mode": 420,
+      "sha256": "ff86e86654cdfa25275f7fc39ac1a9638f13f40410f911cfce0fcb98fa9d9eba"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-a/result.json",
+      "type": "file",
+      "bytes": 3512,
+      "mode": 420,
+      "sha256": "540e8318490da0513a98477af785dd5053776bce07cb426b208b622fa5d89820"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-a/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-a/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "fe421fd296f65c2cebff5289e4aa39bca1a3a699fadab7c1b9db19f82cab05a0"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-a/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-b",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-b/command.json",
+      "type": "file",
+      "bytes": 2238,
+      "mode": 420,
+      "sha256": "fa8429a078a784ad83b85279a92c409382a2afd2818dd39f6639d81fe42595ce"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-b/result.json",
+      "type": "file",
+      "bytes": 3502,
+      "mode": 420,
+      "sha256": "a6d27266b4bef7903653168fda8f445fa9d316c23a7b3cf7adc9ebb8bbf669ed"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-b/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-b/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "d21976662d5bd5002335f6d09f2af3a32268f0a9cb810059cc2e7957b0684b88"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-control-b/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-incident",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-incident/command.json",
+      "type": "file",
+      "bytes": 2234,
+      "mode": 420,
+      "sha256": "b6b2622db6170dfbed91e92d9e333c975ce0d2c7146b6f4fc9f62f04374800a8"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-incident/result.json",
+      "type": "file",
+      "bytes": 3497,
+      "mode": 420,
+      "sha256": "7aff53def6c7dc7ae937f462788d72ff90cc5d140512e883e192860002971094"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-incident/stderr",
+      "type": "file",
+      "bytes": 71,
+      "mode": 420,
+      "sha256": "affeba52e20bff4a73806fb9f1126ff0ee2ede3c95481d22884c81ca90f013e5"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-incident/stdout",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/after-incident/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-a",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-a/command.json",
+      "type": "file",
+      "bytes": 2180,
+      "mode": 420,
+      "sha256": "b6f033422e7cdf94a1a92b7b52d187a5d19a21f7ad6c1188ff796054c80d463a"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-a/result.json",
+      "type": "file",
+      "bytes": 3391,
+      "mode": 420,
+      "sha256": "47ba0b840b5e35a54d4065e053ea5251e8116f841843708ff6abd453e5e5f067"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-a/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-a/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "fe421fd296f65c2cebff5289e4aa39bca1a3a699fadab7c1b9db19f82cab05a0"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-a/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-b",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-b/command.json",
+      "type": "file",
+      "bytes": 2179,
+      "mode": 420,
+      "sha256": "e004fb996fe6f0ee75ff2fe8eff63c55c23ebb3d83317bc8cb0bbde1953c91b9"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-b/result.json",
+      "type": "file",
+      "bytes": 3389,
+      "mode": 420,
+      "sha256": "4d4fbba4b050aae1f669f989a1de34fa8bd567ac2a9164e30c7fb8d1b5bb466f"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-b/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-b/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "d21976662d5bd5002335f6d09f2af3a32268f0a9cb810059cc2e7957b0684b88"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-control-b/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-incident",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-incident/command.json",
+      "type": "file",
+      "bytes": 2175,
+      "mode": 420,
+      "sha256": "b9ea746ff7e6836d46c797e5093a785e960ceef9750a5fff123511d1210d8a96"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-incident/result.json",
+      "type": "file",
+      "bytes": 3385,
+      "mode": 420,
+      "sha256": "da5d623e6bdcfaf00fa737b0695c88c7746ef1bbdc3da40d0eddc8719fd9fd92"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-incident/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-incident/stdout",
+      "type": "file",
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "e02693cb6f5673c773b3b462b1e67619e111e1c5eb4d9728aec81fdf8a2dece8"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/before-incident/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-green",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-green/command.json",
+      "type": "file",
+      "bytes": 2118,
+      "mode": 420,
+      "sha256": "175dd2c1e949bb37af5955c18af393b9625c60f79ea138f840c55db28930ac7f"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-green/result.json",
+      "type": "file",
+      "bytes": 3390,
+      "mode": 420,
+      "sha256": "c5b8b127971aa17a9d4d7f18ddf3b32986f2128dcd382bcd622313b43471176b"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-green/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-green/stdout",
+      "type": "file",
+      "bytes": 457,
+      "mode": 420,
+      "sha256": "ae1eed0901c33d0856e84bfbc6eca39b883f7d17449e902af3f97520706a1296"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-green/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-red",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 448,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-red/command.json",
+      "type": "file",
+      "bytes": 2113,
+      "mode": 420,
+      "sha256": "8316c46f400a23f690dc77f5bb85c2df55a46eb69c4268aa315f28b84ca40751"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-red/result.json",
+      "type": "file",
+      "bytes": 3375,
+      "mode": 420,
+      "sha256": "c0d60fac245e31e84d0b36f59116a5c245ed52d1d44624424c4135cf3cd5ee93"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-red/stderr",
+      "type": "file",
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-red/stdout",
+      "type": "file",
+      "bytes": 1407,
+      "mode": 420,
+      "sha256": "ba0f5d02045e0608ca2ce3bd4c1f1ab9eb41157309c3810af7339a8313a63caa"
+    },
+    {
+      "path": "host/runs/codex/workspace/results/regression-red/tmp",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/results/repair-report.txt",
+      "type": "file",
+      "bytes": 2136,
+      "mode": 420,
+      "sha256": "273018d69ff8524fdd1507dfbee4bd31c44462dae53778e4626e846ace4b50e9"
+    },
+    {
+      "path": "host/runs/codex/workspace/scripts",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/scripts/lib",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/scripts/lib/scratch.mjs",
+      "type": "file",
+      "bytes": 878,
+      "mode": 420,
+      "sha256": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af"
+    },
+    {
+      "path": "host/runs/codex/workspace/scripts/lib/skills-check-verification.mjs",
+      "type": "file",
+      "bytes": 13673,
+      "mode": 420,
+      "sha256": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+    },
+    {
+      "path": "host/runs/codex/workspace/scripts/packet-state-regression.test.mjs",
+      "type": "file",
+      "bytes": 1127,
+      "mode": 420,
+      "sha256": "9c4bdd938e04a7187fa82abc4b5cacf5a7524138081244e6d00548a642ad9e44"
+    },
+    {
+      "path": "host/runs/codex/workspace/scripts/project-method-journey-evidence.mjs",
+      "type": "file",
+      "bytes": 19744,
+      "mode": 420,
+      "sha256": "f8703f60adcdaaa4ed3c293e783a138ef6db2294b69b495336df9e53a3b17a48"
+    },
+    {
+      "path": "host/runs/codex/workspace/tools",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/runs/codex/workspace/tools/run-node.py",
+      "type": "file",
+      "bytes": 3354,
+      "mode": 420,
+      "sha256": "8e88a68a5a7b89bfb37a8e8e87e6defd423dfcdb68b6d0408b62818c54a922c7"
+    },
+    {
+      "path": "host/source-export",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/EXPORT.md",
+      "type": "file",
+      "bytes": 5726,
+      "mode": 420,
+      "sha256": "14f42a72d5e0546be0c712ab5095180a074c027e12f2e625adaf7e0ea3487fc6"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/SKILL.md",
+      "type": "file",
+      "bytes": 4942,
+      "mode": 420,
+      "sha256": "9cc57d5fda2c9e9d2e708a1c948e9f01ff57c680393bd9302f8d7fc1cd9c25d1"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/osstack-agent",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "type": "file",
+      "bytes": 5071,
+      "mode": 420,
+      "sha256": "5ececc424774e5a9a7b14c7dc0de39808c7fda289c395008c3243bba1a65e4b7"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/osstack-help",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "type": "file",
+      "bytes": 4682,
+      "mode": 420,
+      "sha256": "d8dc228e3b88abecf7ff143154e5bb7df10971aa85cfc18fa86c875bc4c62243"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/osstack-mode",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "type": "file",
+      "bytes": 5513,
+      "mode": 420,
+      "sha256": "33f9ae651712eee11ab2fece8085f7bfb6f88f3e816630132a4458ca3688e6f3"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/setup-osstack",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "type": "file",
+      "bytes": 3512,
+      "mode": 420,
+      "sha256": "0f4465979f4e65db4fa4e28765807ba7cefc36fdac1ca128670d9b6855e29886"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/architecture-design.md",
+      "type": "file",
+      "bytes": 10992,
+      "mode": 420,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/bug-fix.md",
+      "type": "file",
+      "bytes": 2168,
+      "mode": 420,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/change-impact.md",
+      "type": "file",
+      "bytes": 6238,
+      "mode": 420,
+      "sha256": "495253dc2065bf483c85fef6ebed23e6f279728a53ba1b28a4dfaceff55ce57e"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/code-review.md",
+      "type": "file",
+      "bytes": 7250,
+      "mode": 420,
+      "sha256": "e2636ecfdf9a6129cd7398f8fa1aa7f90706bd629d70c6d993eab5b331ba4188"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/create-verification.md",
+      "type": "file",
+      "bytes": 2603,
+      "mode": 420,
+      "sha256": "f33e05a490e7386a409b0e3b80417623927b11cdf24e4726b6bc6ad86c19b7d0"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/engineering-decision.md",
+      "type": "file",
+      "bytes": 4326,
+      "mode": 420,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/evidence.md",
+      "type": "file",
+      "bytes": 6441,
+      "mode": 420,
+      "sha256": "9cab2fbbc75cc1dba4d6a6a7ea7f1ecadc4f0ddf1f120c90f85be6c4b6a5237d"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/feature-map-template.md",
+      "type": "file",
+      "bytes": 2242,
+      "mode": 420,
+      "sha256": "00cf966c62fb5dd3c2aa716508aaf7557ca956e69b6bb7980994fe1366d2be86"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/feature.md",
+      "type": "file",
+      "bytes": 3934,
+      "mode": 420,
+      "sha256": "1cfeb58883fcf25dc129c905ff9ecfd8345b0c55af48381e309080dbf546878f"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/host-usage.md",
+      "type": "file",
+      "bytes": 3531,
+      "mode": 420,
+      "sha256": "75121d64399dc255c18cb0835b1a04f724e20ab3e9b8f0a7cbfbf070df4c02fc"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/investigation.md",
+      "type": "file",
+      "bytes": 1752,
+      "mode": 420,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/maintain-verification.md",
+      "type": "file",
+      "bytes": 3124,
+      "mode": 420,
+      "sha256": "14acfa2c6e23e56fee6cf11620778dd1b510db7560b862b05038e23e7777b6e7"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/parallel-work.md",
+      "type": "file",
+      "bytes": 6917,
+      "mode": 420,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/performance-measurement.md",
+      "type": "file",
+      "bytes": 9893,
+      "mode": 420,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/pr-readiness.md",
+      "type": "file",
+      "bytes": 9166,
+      "mode": 420,
+      "sha256": "58298194703764e1827fd0f9e98aaf2c09388397e677fc2cb0007fee12d02ef6"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/refactoring.md",
+      "type": "file",
+      "bytes": 4154,
+      "mode": 420,
+      "sha256": "6a96e47a736cc4bb1ab720f834be92f47252e192dc5e1beb8dc1f67322fbc743"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/session-continuity.md",
+      "type": "file",
+      "bytes": 7170,
+      "mode": 420,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/skills-check-journey.md",
+      "type": "file",
+      "bytes": 7447,
+      "mode": 420,
+      "sha256": "d0aab8db5c7e38a8033ae490a8566b06f53407b4b8cd2c8f0d0672524166c282"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/sources.md",
+      "type": "file",
+      "bytes": 16978,
+      "mode": 420,
+      "sha256": "f885c8e5df33764a43231bbb0636301067aa7c256a14f7354fdedd2792045b7f"
+    },
+    {
+      "path": "host/source-export/osstack-methods-skill/references/task-framing.md",
+      "type": "file",
+      "bytes": 5623,
+      "mode": 420,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be"
+    },
+    {
+      "path": "host/source-export/scripts",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/scripts/export-osstack-methods.mjs",
+      "type": "file",
+      "bytes": 1047,
+      "mode": 420,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821"
+    },
+    {
+      "path": "host/source-export/scripts/lib",
+      "type": "directory",
+      "bytes": 0,
+      "mode": 493,
+      "sha256": null
+    },
+    {
+      "path": "host/source-export/scripts/lib/osstack-method-export.mjs",
+      "type": "file",
+      "bytes": 16660,
+      "mode": 420,
+      "sha256": "7ac7278d1d0e5672bda5965b2bb4ae584b3f3bd6bc3fa928e36a4ea31fb3f805"
+    }
+  ],
+  "verification": "all tar members name/mode/type/content hashes matched; all regular source bytes rechecked after packaging",
+  "cleanup": "not performed"
+}

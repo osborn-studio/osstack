@@ -1,0 +1,27 @@
+[
+  {
+    "comment_id": 626,
+    "card_id": "card_b504ee89",
+    "author": "joint-entry",
+    "body": "User mergedPR302 at05:18:10Z into493caa4e; treec458ad2d equals published72ab. Delivery done, main14methods. Actual loops remain prior1bf13methods; no formal gate pass or evidence rebind.",
+    "created_at": 1793251480.953
+  },
+  {
+    "card_id": "card_b504ee89",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "Post300 next method slice source planning",
+    "body": "Read original pinned pstack/Firstmate and existing13methods; propose minimal nonduplicate D2a slice, then root assigns exclusive implementation scope. No product write yet.",
+    "status": "done",
+    "priority": 0,
+    "assignee": "loader_adversarial",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793246634.791,
+    "updated_at": 1793251480.954,
+    "started_at": 1793246634.792,
+    "completed_at": 1793251480.954
+  }
+]

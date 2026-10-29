@@ -1,0 +1,80 @@
+[
+  {
+    "comment_id": 620,
+    "card_id": "card_7e6a11b1",
+    "author": "joint-entry",
+    "body": "Both fixed calls finished, zero retry. Codex personally executed8helper records, same regression RED2pass1fail→GREEN3pass, scoped historical fix independently checked with11coordinator commands. Claude native mode then compound command denied; no product execution or repair. Different permission surfaces; no model ranking/causal value or formal gate. Remaining: independently frozen atomic-command/staged-test interface trial; same permissions, no retry/regrade of old failure.",
+    "created_at": 1793251154.479
+  },
+  {
+    "card_id": "card_7e6a11b1",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PS01/PS08/PS20 actual host repair execution",
+    "body": "Prepare isolated real historical packet repair, then root explicit dispatch after independent criteria and actual resource guards. Codex/Claude each one user turn up to600s zero retries; no model call before dispatch. No patch leakage or shared workspaces. Not a new production defect.",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "terminal_preflight",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793249648.407,
+    "updated_at": 1793251154.479,
+    "started_at": 1793249693.09,
+    "completed_at": null
+  },
+  {
+    "comment_id": 621,
+    "card_id": "card_b7f85dd8",
+    "author": "joint-entry",
+    "body": "RL01–12 independent assessment complete, grade SHA d320a5e7. Original H06 preparation mistake and Claude raw stdout vs model-preview assertion failure retained. Host archive0750403f:521members independently hash/bytes/mode/inventory verified. Limited evidence task complete; no formal principal/gate assertion.",
+    "created_at": 1793251154.48
+  },
+  {
+    "card_id": "card_b7f85dd8",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PS08/PS20 independent real-task acceptance",
+    "body": "Freeze independent holdouts before host outputs, verify actual baseline/known-repaired controls and evaluate outputs. Independent engineering observer, not formal oracle principal. Own scratch criteria/holdouts only; no product writes or model calls.",
+    "status": "done",
+    "priority": 0,
+    "assignee": "cleanup_regression",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793249648.407,
+    "updated_at": 1793251154.48,
+    "started_at": 1793249693.09,
+    "completed_at": 1793251154.48
+  },
+  {
+    "comment_id": 622,
+    "card_id": "card_7d169d5f",
+    "author": "joint-entry",
+    "body": "本批回链收口：PS08/09维护单元漂移→真实验证→唯一map修复→同入口GREEN，有限闭环成立。Codex历史checker实际RED/testRED/fix/GREEN与独立hidden通过，native/model归因有限；Claude复合命令权限拒绝无修复，保留失败。未新增方法/新产品bug；该J完整验收与未实现缺口不变。证据docs/implementation/pstack-real-loops。",
+    "created_at": 1793251154.48
+  },
+  {
+    "comment_id": 623,
+    "card_id": "card_2b7cc24a",
+    "author": "joint-entry",
+    "body": "本批回链收口：PS08/09维护单元漂移→真实验证→唯一map修复→同入口GREEN，有限闭环成立。Codex历史checker实际RED/testRED/fix/GREEN与独立hidden通过，native/model归因有限；Claude复合命令权限拒绝无修复，保留失败。未新增方法/新产品bug；该J完整验收与未实现缺口不变。证据docs/implementation/pstack-real-loops。",
+    "created_at": 1793251154.481
+  },
+  {
+    "comment_id": 624,
+    "card_id": "card_63ad0321",
+    "author": "joint-entry",
+    "body": "本批回链收口：PS08/09维护单元漂移→真实验证→唯一map修复→同入口GREEN，有限闭环成立。Codex历史checker实际RED/testRED/fix/GREEN与独立hidden通过，native/model归因有限；Claude复合命令权限拒绝无修复，保留失败。未新增方法/新产品bug；该J完整验收与未实现缺口不变。证据docs/implementation/pstack-real-loops。",
+    "created_at": 1793251154.481
+  },
+  {
+    "comment_id": 625,
+    "card_id": "card_efcfb696",
+    "author": "joint-entry",
+    "body": "本批回链收口：PS08/09维护单元漂移→真实验证→唯一map修复→同入口GREEN，有限闭环成立。Codex历史checker实际RED/testRED/fix/GREEN与独立hidden通过，native/model归因有限；Claude复合命令权限拒绝无修复，保留失败。未新增方法/新产品bug；该J完整验收与未实现缺口不变。证据docs/implementation/pstack-real-loops。",
+    "created_at": 1793251154.481
+  }
+]

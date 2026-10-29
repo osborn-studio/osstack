@@ -1,0 +1,121 @@
+{
+  "archive_sha256": "bf9231dac7ef98df0f2fe12bed1cd2363d5c784fbc2dd7f3cafec5f00355f7ea",
+  "members": 19,
+  "payload_bytes": 185386,
+  "files": [
+    {
+      "path": "audit/audit-input.txt",
+      "bytes": 109707,
+      "sha256": "0bb3ae6e8083d8620c2c5b039a34be8fc27409889abce18c76e986e3da82a47b",
+      "mode": 420
+    },
+    {
+      "path": "audit/binding.json",
+      "bytes": 765,
+      "sha256": "638c13182f1ce1768994379123fb11e44ed274100efc6210f68875afa35a6580",
+      "mode": 420
+    },
+    {
+      "path": "audit/empty-mcp.json",
+      "bytes": 18,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
+      "mode": 420
+    },
+    {
+      "path": "audit/preparation-error.json",
+      "bytes": 294,
+      "sha256": "a7d529b6a51a2c9013cb0978140bdbd806dd88b21b266790576beba2efa16bbb",
+      "mode": 420
+    },
+    {
+      "path": "audit/report.md",
+      "bytes": 7089,
+      "sha256": "4fc1a7afa690f2dc99a144a091b98fdb4bb4fcffe3e415dde2d70cef1a41fd2f",
+      "mode": 420
+    },
+    {
+      "path": "audit/response.json",
+      "bytes": 9023,
+      "sha256": "0977ae9c794b7fe09032f50d986b451b64d1772160f478be604a8e2fd6163b2f",
+      "mode": 420
+    },
+    {
+      "path": "audit/run.py",
+      "bytes": 1448,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3",
+      "mode": 420
+    },
+    {
+      "path": "audit/settings.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": 420
+    },
+    {
+      "path": "audit/source-bindings.json",
+      "bytes": 9747,
+      "sha256": "28837817abaced1062a696ffe77e0e6b58d866f09c24bb544a9c1efe27c120a1",
+      "mode": 420
+    },
+    {
+      "path": "audit/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/audit-input.txt",
+      "bytes": 35365,
+      "sha256": "604838117a62659b192ffda1b44a18d81590987b0b50388aa397fe332b6e563f",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/binding.json",
+      "bytes": 763,
+      "sha256": "57c59c3d6d60f26569736a2e3fda14816549948b5d7baab7e243db955ddef761",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/empty-mcp.json",
+      "bytes": 18,
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/report.md",
+      "bytes": 2836,
+      "sha256": "ae98834ec67a53e5426d12334d5009080b113e6b70eff1cb3fd464f0f79caaa8",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/response.json",
+      "bytes": 4677,
+      "sha256": "043986b8526e6f79c0add5dc24f52547c55add1579276ba8ff9b9b656d8cb6f6",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/run.py",
+      "bytes": 1448,
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/settings.json",
+      "bytes": 3,
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/source-bindings.json",
+      "bytes": 2182,
+      "sha256": "99646438651bec16ce2d2acfab0b61d3255ed61a352b9eafc0de7d701225e623",
+      "mode": 420
+    },
+    {
+      "path": "audit-closure/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "comment_id": 636,
+    "card_id": "card_b5bc8c45",
+    "author": "joint-entry",
+    "body": "本批card_0e19c3c2回链：只读分页helper+既有host/bug-fix指南，14方法不增加。108定向、233独立命令、双host各88payload逐页字节重组；实际Sonnet发现权限措辞错误已修，限定closurePASS。全仓7144/5/0绑定14853起点fresh dist，运行期间仅文档变动，非最终整树。候选待发布CI/合并，J04主贡献；不是宿主阅读/理解证明，正式gate不变。",
+    "created_at": 1793257495.048
+  },
+  {
+    "comment_id": 637,
+    "card_id": "card_63ad0321",
+    "author": "joint-entry",
+    "body": "本批card_0e19c3c2回链：只读分页helper+既有host/bug-fix指南，14方法不增加。108定向、233独立命令、双host各88payload逐页字节重组；实际Sonnet发现权限措辞错误已修，限定closurePASS。全仓7144/5/0绑定14853起点fresh dist，运行期间仅文档变动，非最终整树。候选待发布CI/合并，J09支持；不是宿主阅读/理解证明，正式gate不变。",
+    "created_at": 1793257495.049
+  },
+  {
+    "comment_id": 638,
+    "card_id": "card_efcfb696",
+    "author": "joint-entry",
+    "body": "本批card_0e19c3c2回链：只读分页helper+既有host/bug-fix指南，14方法不增加。108定向、233独立命令、双host各88payload逐页字节重组；实际Sonnet发现权限措辞错误已修，限定closurePASS。全仓7144/5/0绑定14853起点fresh dist，运行期间仅文档变动，非最终整树。候选待发布CI/合并，J23支持；不是宿主阅读/理解证明，正式gate不变。",
+    "created_at": 1793257495.05
+  },
+  {
+    "comment_id": 639,
+    "card_id": "card_0e19c3c2",
+    "author": "joint-entry",
+    "body": "3worker已交接。实现及适用验证完成，原始失败/审计保留，准备PR。actual source969da2df，14methods unchanged；Sonnet B1权限保证修正/B2完整记录限定PASS，原LIMITED不改。",
+    "created_at": 1793257495.05
+  }
+]

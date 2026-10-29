@@ -1,0 +1,40 @@
+{
+  "scope": "Existing host-path material delivery and atomic execution guidance; no new method, no runtime qualification",
+  "base": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+  "reader": "scripts/read-method-material.mjs",
+  "interface": "--file PATH --start N --lines N [--sha256 HEX]",
+  "defaults": {
+    "start": 1,
+    "lines": 60
+  },
+  "bounds": {
+    "file_bytes": 1048576,
+    "max_lines": 200,
+    "page_text_utf8_bytes": 16384
+  },
+  "contract": [
+    "Node builtins, readonly standalone script, no DB/global config/network/install/model calls",
+    "Strict unique known args, positive integers, max bounds; missing or invalid args fail with structured JSON error and nonzero",
+    "Only bounded regular UTF8 file; reject final symlink, FIFO and invalid UTF8. Do not claim OS sandbox or concurrent writer fencing. Avoid unbounded read/block on nonregular file.",
+    "SHA256 over exact whole file bytes, byte length, LF-based content line count: remove only terminal empty split element; preserve CRLF and original selected bytes in text. Empty file has0lines and first page eoftrue.",
+    "start1-based; beyond EOF rejected except empty start1; subsequent start>1 requires caller-supplied exact full-file sha256, mismatch returns no content. First call may pin optionalsha.",
+    "JSON has schema_version,path,sha256,file_bytes,total_lines,start,end,text,eof,next_start. eof is page reaches actual file end, not proof model read previous pages or understood. No automatic reading receipt/qualification.",
+    "Too much requested text yields bounded explicit error without text; caller may reduce lines. Long single line beyond cap remains unsupported and reported.",
+    "Help documents flags/limits; output errors do not leak file content. No changes to exporter manifest schema or dynamic execution permissions."
+  ],
+  "validation": [
+    "64line and65line materials with trailingLF/without LF; default60 then tail with hash, missingtail neverEOF",
+    "mixed LF/CRLF, blanklines, unicode byte bounds, emptyfile",
+    "content drift betweenpages oldhash refused; identicalsize drift refused; wronghash firstpage refused",
+    "invalidflags/duplicates/start/range/invalidUTF8/oversize/symlink/nonregular refused, no stdout content on failure",
+    "actual main exports bothhosts: concatenate exact returned pages to originalbytes; no model consumption claims"
+  ],
+  "owners": {
+    "A": "reader + scripts/read-method-material.test.mjs only in method-material-reader worktree",
+    "B": "references/host-usage.md + references/bug-fix.md only in method-host-usage worktree",
+    "C": "independent scratch criteria/vectors/rechecks only",
+    "root": "centralledger/CIintegration/PR/audit/fullqueue"
+  },
+  "model_calls_authorized": 0,
+  "created_at": "2026-10-29T06:47:54.889990+00:00"
+}

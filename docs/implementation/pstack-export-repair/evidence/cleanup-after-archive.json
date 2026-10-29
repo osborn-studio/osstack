@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-29T06:10:28.533475+00:00",
+  "authorization": "root approved after its complete 4614-member archive verification plus tar hash and five key original checks",
+  "archive_sha256": "2b8e9bcfd274271fabb7356cfe38d6be2e4aae4c55a8ed14651aa289794298fc",
+  "archive_total_verified_members_by_root": 4614,
+  "removed_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/workspace",
+  "pre_delete_inventory_source": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-export-repair-20261029/host/runs/claude/evidence/run-after.json",
+  "inventory_sha256": "aba83ebce4e85420386197b57ec8651d126637c08e16c05c4df031811f97b2ae",
+  "matched_inventory_members": 1169,
+  "inventory_matches_run_after": true,
+  "removed": true,
+  "preserved": "host raw/evidence/state/manifest/guards and all other directories",
+  "scope": "only owned Claude workspace; does not attest all descendant process cleanup",
+  "new_model_calls": 0,
+  "grades_modified": false
+}
