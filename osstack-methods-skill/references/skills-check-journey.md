@@ -58,7 +58,9 @@ Successful cleanup removes each owned fixture and requires `scratch/` to contain
 
 ## Project a retained full journey and check the packet
 
-First run the full journey using `--scope full` as described above. Keep its exact `journey_output` path, stdout, stderr and exit status. Projection can represent a coherent closed failed journey with sealed or not-created case evidence; it does not require every case to pass. An unsealed or unreadable case is refused and its original evidence must be retained. A missing or inconsistent evidence bundle is a projection refusal, not evidence that the product passed.
+First run the full journey using `--scope full` as described above. Keep its exact `journey_output` path, stdout, stderr and exit status. Projection can represent a coherent closed failed journey with sealed or not-created case evidence; it does not require every case to pass. An unsealed or unreadable case is refused and its original evidence must be retained. A missing or inconsistent evidence bundle is a projection refusal, not evidence that the product passed. Passed full rows must also agree on the absolute fixture identity in the journey feature, receipt and cleanup record before paths are omitted.
+
+The full projector additionally requires empty stderr for its retained Git SHA observations. A bundle with nonempty Git stderr is refused even if the journey verifier had accepted it; keep the original bundle rather than treating refusal as a product failure or silently removing stderr.
 
 From a target checkout that includes the full-scope projector, run this block in the same shell script after the scratch preamble and journey step, or explicitly set/export `journey_output` in the new script. `journey_output` must identify the retained full journey. The packet directory must be new, under the owned scratch root, with an existing parent and outside the input tree. This block retains command logs as sibling files. It does not run another journey or modify the input:
 
@@ -92,4 +94,3 @@ Use [maintain verification](maintain-verification.md) when the driver, CLI outpu
 
 This concrete example adapts the pinned upstream [create/maintain verification practices](sources.md). Apply [the common evidence rules](evidence.md) to each actual run.
 
-The full projector additionally requires empty stderr for its retained Git SHA observations. A bundle with nonempty Git stderr is refused even if the journey verifier had accepted it; keep the original bundle rather than treating refusal as a product failure or silently removing stderr.
