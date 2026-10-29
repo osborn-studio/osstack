@@ -4737,6 +4737,20 @@
       "run": 40839214482,
       "status": "5SUCCESS/paidSKIP",
       "scope": "22packages7142pass7skip0fail; does not validate new681repair"
-    }
+    },
+    "status": "published_draft_waiting_fresh_ci_and_parent_merge",
+    "published_head": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+    "published_pr": 305,
+    "base": "codex/method-full-journey-delivery",
+    "published_ci": [
+      {
+        "conclusion": "",
+        "databaseId": 40845007211,
+        "headSha": "52f16faf9fdb73e0f8e815e8ee6987297c67d4da",
+        "status": "in_progress",
+        "url": "https://github.com/osborn-studio/osstack/actions/runs/40845007211"
+      }
+    ],
+    "publication_receipt": "docs/implementation/pstack-current-repair/publication/published-candidate.json"
   }
 }
