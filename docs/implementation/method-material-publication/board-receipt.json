@@ -1,0 +1,7 @@
+{
+  "comment_id": 640,
+  "card_id": "card_0e19c3c2",
+  "author": "joint-entry",
+  "body": "PR303已发布Draft/base main/head d05c9d91，CI40833415091运行中。源码审计/独立/适用测试完成，等待发布head CI，5适用通过才Ready；不把Draft当可审批。用户仍唯一merge。下一card_ddf5e661已3worker分边界推进full5case可用路径。",
+  "created_at": 1793257841.405
+}

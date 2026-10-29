@@ -4523,7 +4523,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "validated_pending_pr",
+    "status": "draft_waiting_ci",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "card": "card_0e19c3c2",
     "primary_j": "J04",
@@ -4547,6 +4547,49 @@
     "full": "7144 pass/5 skip/0fail;14853 start with fresh dist; docs changed during run, not final immutable whole-tree",
     "actual_sonnet": "initial REVISE B1/B2, limited text closure PASS",
     "evidence": "docs/implementation/method-material-reader",
-    "host_experiment_calls": 0
+    "host_experiment_calls": 0,
+    "pr": 303,
+    "published_head": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
+    "ci_run": 40833415091
+  },
+  "full_journey_slice": {
+    "status": "implementation_in_progress",
+    "card": "card_ddf5e661",
+    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "delivery_parent": "d05c9d91a79d8198e671452ebc96b3d3fcc34602",
+    "scope": "optional full five-case journey; default two-case remains compatible",
+    "primary_j": "J03",
+    "supporting_j": [
+      "J06",
+      "J09"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS09"
+    ],
+    "new_methods": 0,
+    "host_experiment_calls": 0,
+    "formal_gate_pass": false,
+    "owners": {
+      "A": [
+        "scripts/method-verification-journey.mjs",
+        "scripts/method-verification-journey.test.mjs"
+      ],
+      "B": [
+        "osstack-methods-skill/references/skills-check-journey.md",
+        "osstack-methods-skill/references/maintain-verification.md"
+      ],
+      "C": [
+        "independent scratch only"
+      ],
+      "root": [
+        "CI",
+        "ledger",
+        "PR",
+        "composition",
+        "full regression",
+        "actual Sonnet audit"
+      ]
+    }
   }
 }

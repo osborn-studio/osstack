@@ -1746,7 +1746,7 @@
       "id": "PS09",
       "title": "验证基础设施的健康、归属与漂移维护",
       "status": "partial_delivered",
-      "delivery": "maintain材料+健康/归属/清理验证；尚无完整功能地图漂移维护的真实缺陷闭环",
+      "delivery": "维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case维护路径与广义漂移发现仍未闭合。",
       "joint_work_items": [
         "J06",
         "J10",
@@ -9788,7 +9788,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "validated_candidate_pending_pr",
+    "status": "draft_waiting_ci",
     "card": "card_0e19c3c2",
     "source_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
     "record": "docs/implementation/method-material-reader/README.md",
@@ -9805,6 +9805,23 @@
     "new_methods": 0,
     "host_experiment_calls": 0,
     "formal_gate_pass": false,
-    "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim."
+    "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim.",
+    "pr": 303
+  },
+  "full_journey_slice": {
+    "status": "implementation_in_progress",
+    "card": "card_ddf5e661",
+    "record": "docs/implementation/method-full-journey",
+    "primary_j": "J03",
+    "supporting_j": [
+      "J06",
+      "J09"
+    ],
+    "capabilities": [
+      "PS08",
+      "PS09"
+    ],
+    "new_methods": 0,
+    "formal_gate_pass": false
   }
 }
