@@ -25,7 +25,7 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+  "main_sha": "e26f6d2ca81628b565d2db0fd047fcb041fa8a45",
   "observed_at": "2026-10-29T02:26:02.106977+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
@@ -3678,7 +3678,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "ready_awaiting_user_merge",
+    "status": "merged",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3803,10 +3803,15 @@
       "ready": true,
       "publication_evidence": "docs/implementation/method-parallel-reporting-publication",
       "archive_sha256": "20a5ba0cbd52b0ade134f2212cda613abed82d68944679ef91984d3669e9aaca"
+    },
+    "merge_observation": {
+      "sha": "e26f6d2ca81628b565d2db0fd047fcb041fa8a45",
+      "tree": "b840cc1850260a1d6ff87821697060ab5a11b32b",
+      "published_tree_equal": true
     }
   },
   "parallel_reporting_wave": {
-    "status": "draft_ci_passed_waiting_parent",
+    "status": "draft_main_revalidation",
     "provisional_base": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
     "depends_on_pr": 300,
     "method_count": 13,
@@ -3848,9 +3853,9 @@
       "cause": "root restored tracked stale generated artifacts after build; force build and actual export probe restored valid runtime"
     },
     "pr": 301,
-    "published_head": "4b7b0585b7f2463f86ba4f793548af820da3e6a6",
-    "base_branch": "codex/method-pr-readiness-delivery",
-    "ci_run": 40805618553,
+    "published_head": "50ed89fbe1fa9e7ebba520214390f97725164728",
+    "base_branch": "main",
+    "ci_run": 40815575324,
     "publication_evidence": "docs/implementation/method-parallel-reporting-publication",
     "user_approval_required": true,
     "publication_archive_sha256": "20a5ba0cbd52b0ade134f2212cda613abed82d68944679ef91984d3669e9aaca",
@@ -3870,6 +3875,76 @@
       },
       "artifact_download_verified": false
     },
-    "readiness_blocker": "PR300 user merge, actual main reconciliation, retarget and applicable validation"
+    "readiness_blocker": "Latest-head CI40815575324 must pass; user gilberthello alone approves/merges",
+    "post_main_revalidation": {
+      "base": "e26f6d2ca81628b565d2db0fd047fcb041fa8a45",
+      "head": "50ed89fbe1fa9e7ebba520214390f97725164728",
+      "old_head": "4b7b0585b7f2463f86ba4f793548af820da3e6a6",
+      "tree_unchanged": true,
+      "exports_passed": 92,
+      "docs_passed": 241,
+      "audit": "actual claude-sonnet-5-5 static PASS; diff-external assumptions independently checked",
+      "ci_status": "in_progress"
+    }
+  },
+  "post300_dispatch": {
+    "cards": [
+      {
+        "card_id": "card_b504ee89",
+        "board": "joint-firstmate-pstack",
+        "task_id": null,
+        "title": "Post300 next method slice source planning",
+        "body": "Read original pinned pstack/Firstmate and existing13methods; propose minimal nonduplicate D2a slice, then root assigns exclusive implementation scope. No product write yet.",
+        "status": "triage",
+        "priority": 0,
+        "assignee": "loader_adversarial",
+        "blocked_reason": null,
+        "tenant_id": null,
+        "card_type": "implementation",
+        "meta": null,
+        "created_at": 1793246634.791,
+        "updated_at": 1793246634.791,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "card_id": "card_6bcbd19e",
+        "board": "joint-firstmate-pstack",
+        "task_id": null,
+        "title": "Post300 host probe executable preparation",
+        "body": "Offline preparation of new frozen four-lane probe; no model calls/auth/workspace initialization. New independent criteria and root guard required before dispatch.",
+        "status": "triage",
+        "priority": 0,
+        "assignee": "terminal_preflight",
+        "blocked_reason": null,
+        "tenant_id": null,
+        "card_type": "implementation",
+        "meta": null,
+        "created_at": 1793246634.792,
+        "updated_at": 1793246634.792,
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "card_id": "card_06b941ef",
+        "board": "joint-firstmate-pstack",
+        "task_id": null,
+        "title": "Post300 independent retarget and next-slice checks",
+        "body": "Read-only tree/diff verification PR301 vs actual main e26f6d2c; next-slice criteria only after source plan. No full regression or model calls.",
+        "status": "triage",
+        "priority": 0,
+        "assignee": "cleanup_regression",
+        "blocked_reason": null,
+        "tenant_id": null,
+        "card_type": "implementation",
+        "meta": null,
+        "created_at": 1793246634.793,
+        "updated_at": 1793246634.793,
+        "started_at": null,
+        "completed_at": null
+      }
+    ],
+    "no_host_calls": true,
+    "scope": "source planning, offline host preflight, independent retarget"
   }
 }
