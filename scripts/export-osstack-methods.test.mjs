@@ -593,15 +593,19 @@ test('PR readiness reuses existing methods and credits the pinned PR and triage 
 });
 
 // Navigation only: this cannot prove that a model chooses the correct method.
-test('skill authoring remains distinct from the two project verification routes', async () => {
+test('each authoring and verification method has its own navigation row', async () => {
   const root = resolve(dirname(script), '../osstack-methods-skill');
   for (const entry of ['SKILL.md', 'entries/osstack-mode/SKILL.md']) {
     const text = await readFile(join(root, entry), 'utf8');
-    const destinations = [...text.matchAll(/\|[^\n]+\[([^\]\n]+)\]\(([^)\s]+)\)/g)].map(([, , target]) => target);
-    for (const method of ['skill-authoring', 'create-verification', 'maintain-verification']) {
-      const target = `${entry === 'SKILL.md' ? 'references' : '../../references'}/${method}.md`;
-      assert.equal(destinations.filter(value => value === target).length, 1, `${entry}: ${method}`);
-      assert.ok((await readFile(resolve(root, dirname(entry), target), 'utf8')).trim());
+    const targets = ['skill-authoring', 'create-verification', 'maintain-verification']
+      .map(method => `${entry === 'SKILL.md' ? 'references' : '../../references'}/${method}.md`);
+    const rows = text.split('\n').filter(line => /^\s*\|.*\|\s*$/.test(line))
+      .map(line => [...line.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(([, target]) => target));
+    for (const target of targets) {
+      const matchingRows = rows.filter(links => links.includes(target));
+      assert.equal(matchingRows.length, 1, `${entry}: one navigation row for ${target}`);
+      assert.deepEqual(matchingRows[0].filter(link => targets.includes(link)), [target],
+        `${entry}: each method must have a separate navigation row`);
     }
   }
 });

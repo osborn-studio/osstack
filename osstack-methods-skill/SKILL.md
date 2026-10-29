@@ -1,6 +1,6 @@
 ---
 name: osstack-methods
-description: Use for reusable skill creation and evidence-based maintenance, PR readiness checks and authorized blocker fixes, session recall, authorized continuation and safe handoff or pause, caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
+description: Use for creating and maintaining reusable agent skills (SKILL.md), PR readiness checks and authorized blocker fixes, session recall, authorized continuation and safe handoff or pause, caller-first architecture design, task restatement and prompt refinement, performance measurement review, change impact analysis, code review, feature implementation, behavior-preserving refactoring, evidence-led bug fixes, read-only investigations, and creating or maintaining project verification instructions. Intended for Codex and Claude through explicit file reading of one shared method set.
 ---
 
 # OSStack engineering methods
