@@ -1500,6 +1500,11 @@
         "relation": "bounded_actual_historical_repair",
         "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
         "whole_capability_complete": false
+      },
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "status": "validated_candidate_pending_pr",
+        "whole_capability_complete": false
       }
     },
     {
@@ -1729,6 +1734,11 @@
         "record": "docs/implementation/pstack-export-repair",
         "relation": "bounded_actual_historical_repair",
         "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      },
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "status": "validated_candidate_pending_pr",
         "whole_capability_complete": false
       }
     },
@@ -2131,6 +2141,11 @@
         "record": "docs/implementation/pstack-export-repair",
         "relation": "bounded_actual_historical_repair",
         "status": "closed_bounded_repair_demonstrated_protocol_LIMITED",
+        "whole_capability_complete": false
+      },
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "status": "validated_candidate_pending_pr",
         "whole_capability_complete": false
       }
     },
@@ -2857,7 +2872,12 @@
       ],
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "contributes",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -3515,7 +3535,12 @@
       ],
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "supports",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -5647,7 +5672,12 @@
       "priority_exception": "一般运行时宿主资格后排；pstack真实任务测量提前执行，但不替代J23正式门槛。",
       "mutation_verified": true,
       "historical_engineering_recommendation": "partial_engineering_not_formally_accepted",
-      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation."
+      "historical_recommendation_limit": "Original independent e26 snapshot recommendation; includes reused foundations, not a current board state or evidence of new implementation.",
+      "material_delivery_candidate": {
+        "record": "docs/implementation/method-material-reader/README.md",
+        "relation": "supports",
+        "formal_gate_pass": false
+      }
     },
     {
       "formal_gate": false,
@@ -9296,6 +9326,32 @@
         "status": "done",
         "observed_at": "2026-10-29T04:39:34.545695+00:00"
       }
+    },
+    {
+      "card_id": "card_0e19c3c2",
+      "title": "PS01/08 可重复方法材料分页与原子执行路径",
+      "task_kind": "implementation",
+      "board": "joint-firstmate-pstack",
+      "observed_status": "running",
+      "observed_at": "2026-10-29T06:59:18.352697+00:00",
+      "contributes_to": {
+        "PS": [
+          "PS01",
+          "PS08",
+          "PS20"
+        ],
+        "J": [
+          "J04",
+          "J09",
+          "J23"
+        ]
+      },
+      "delivered_scope": "Bounded readonly material helper plus existing host and bug-fix guidance, candidate not merged.",
+      "evidence_paths": [
+        "docs/implementation/method-material-reader/README.md"
+      ],
+      "formal_gate_pass": false,
+      "whole_milestone_complete": false
     }
   ],
   "activity_counting": {
@@ -9730,5 +9786,25 @@
       "J07",
       "J23"
     ]
+  },
+  "material_delivery_slice": {
+    "status": "validated_candidate_pending_pr",
+    "card": "card_0e19c3c2",
+    "source_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
+    "record": "docs/implementation/method-material-reader/README.md",
+    "primary_j": "J04",
+    "supporting_j": [
+      "J09",
+      "J23"
+    ],
+    "capabilities": [
+      "PS01",
+      "PS08",
+      "PS20"
+    ],
+    "new_methods": 0,
+    "host_experiment_calls": 0,
+    "formal_gate_pass": false,
+    "observation": "Bounded material reader and existing host guidance; actual exports reassembled exactly, no model-visible reading or understanding claim."
   }
 }

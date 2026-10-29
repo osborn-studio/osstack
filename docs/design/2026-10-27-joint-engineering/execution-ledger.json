@@ -4523,7 +4523,7 @@
     ]
   },
   "material_delivery_slice": {
-    "status": "implementation_in_progress",
+    "status": "validated_pending_pr",
     "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
     "card": "card_0e19c3c2",
     "primary_j": "J04",
@@ -4539,8 +4539,14 @@
       "root": "centralledger/CIintegration/PR/audit/fullqueue"
     },
     "new_methods": 0,
-    "model_calls": 0,
     "formal_gate_pass": false,
-    "previous_experiment_unchanged": true
+    "previous_experiment_unchanged": true,
+    "candidate_code_sha": "969da2df53cad4ca8aff1728d3ea729a0bbc1b00",
+    "focused": "108 pass; post-audit docs94 export pass",
+    "independent": "233 commands; 2hosts x88payload byte reassembly",
+    "full": "7144 pass/5 skip/0fail;14853 start with fresh dist; docs changed during run, not final immutable whole-tree",
+    "actual_sonnet": "initial REVISE B1/B2, limited text closure PASS",
+    "evidence": "docs/implementation/method-material-reader",
+    "host_experiment_calls": 0
   }
 }
