@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-29T18:20:14.133396+00:00",
+  "result": "verified",
+  "archive_sha256": "07dd50a68eae4329a24f60c49b741393da1ec8d4cb8fdbffda2d06f142add62b",
+  "manifest_sha256": "f9edc01a9d3380ed7628eb10bc8203c298dfc087dc8b066685182b0bfcf11498",
+  "members": 133,
+  "types": {
+    "directory": 19,
+    "file": 114
+  },
+  "file_bytes": 3733395,
+  "all_members_match_scratch": true,
+  "full_source_inventory_matches_after_declared_exclusion": true,
+  "actual_audit": "Retained Sonnet5.5 modelUsage/exit0/prompt+response hashes and report result match; static PASS only.",
+  "retained_full": {
+    "head": "bda3942a8d2b07c6af7c0ac4d64014b9f11cc3c5",
+    "unique_packages": 22,
+    "passed": 7207,
+    "skipped": 5,
+    "failed": 0,
+    "tracked": 8562
+  },
+  "cleanup_current_absence": [
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr307-lint-author",
+      "absent_now": true
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr307-lint-root",
+      "absent_now": true
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/stack-status-context-author",
+      "absent_now": true
+    }
+  ],
+  "limits": [
+    "No filesystem extraction or symlink dereference. No tests/model/forge calls.",
+    "Actual author/full/independent/source proof/audit/cleanup originals retained without relabeling; later lint merge not assigned original bda full result.",
+    "publication-independent explicitly excluded and not verified as part of this archive."
+  ],
+  "issues": []
+}
