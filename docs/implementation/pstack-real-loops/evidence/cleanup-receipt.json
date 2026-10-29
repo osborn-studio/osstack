@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-29T05:17:55.442021+00:00",
+  "authorization": "root explicit approval after independent archive verification",
+  "archive_sha256": "0750403f4ab8b8ea71a1b5d5af02c0679a9c35db0f2ba25a979aa9ee0a385e01",
+  "independent_verification_sha256": "c69f0579c6a568b0ee19e1f6b2d2eeaf5976d748b386d3147b4674abf64767fe",
+  "removed": [
+    {
+      "host": "codex",
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/host/runs/codex/workspace",
+      "verified_members": 166,
+      "pre_delete_inventory": "exact archived member set, type/mode/size/content hash match",
+      "removed": true
+    },
+    {
+      "host": "claude",
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/host/runs/claude/workspace",
+      "verified_members": 116,
+      "pre_delete_inventory": "exact archived member set, type/mode/size/content hash match",
+      "removed": true
+    }
+  ],
+  "preserved": "raw archive, evidence, state, guards and all other paths",
+  "scope": "only two owned workspace directories; no process-descendant cleanup or global-resource cleanup claim",
+  "new_model_calls": 0
+}

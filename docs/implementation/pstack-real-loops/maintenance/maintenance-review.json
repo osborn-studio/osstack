@@ -1,0 +1,162 @@
+{
+  "kind": "independent_bounded_retained_run_review",
+  "reviewed_at": "2026-10-29T05:02:37.050625+00:00",
+  "criteria_sha256": "bca15a7b0e3e76c6c744376a55d35bcade8b2cbfe5f15a441c8859599e2f382d",
+  "result": "scoped maintenance loop demonstrated",
+  "MT01_to_MT06": "supported within disclosed injected, coordinator-driven scope",
+  "commands": [
+    {
+      "name": "install",
+      "command_sha256": "17c03c53c363531e22fecc3d79d53046ea743b028051bd728e43f4bdddd11da6",
+      "exit": 0,
+      "argv": [
+        "/opt/homebrew/bin/pnpm",
+        "install",
+        "--frozen-lockfile"
+      ],
+      "start": "2026-10-29T04:57:55.103502+00:00",
+      "end": "2026-10-29T04:58:22.859002+00:00"
+    },
+    {
+      "name": "build",
+      "command_sha256": "b7c02b966b9628fd80ee925430842a0b0696e3a8772e723f3be5bde79fea58bc",
+      "exit": 0,
+      "argv": [
+        "/opt/homebrew/bin/pnpm",
+        "build"
+      ],
+      "start": "2026-10-29T04:58:39.407976+00:00",
+      "end": "2026-10-29T04:58:54.615256+00:00"
+    },
+    {
+      "name": "red-drive",
+      "command_sha256": "4d932fc8515c4e9bceeac7139847606e0e7737afdf901500685f5a8eda8b5de4",
+      "exit": 0,
+      "argv": [
+        "/opt/homebrew/opt/node@22/bin/node",
+        "scripts/method-verification-journey.mjs",
+        "--output",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/red-drive"
+      ],
+      "start": "2026-10-29T04:59:10.196628+00:00",
+      "end": "2026-10-29T04:59:12.140060+00:00"
+    },
+    {
+      "name": "map-red",
+      "command_sha256": "6eecd3c8f7cac091c9a03126cf1b5fb4c301a59a6b4f64169ae981104258700e",
+      "exit": 1,
+      "argv": [
+        "/usr/bin/python3",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/check-map.py",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/feature-map.md",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/red-drive/journey.json"
+      ],
+      "start": "2026-10-29T04:59:26.741939+00:00",
+      "end": "2026-10-29T04:59:26.826862+00:00"
+    },
+    {
+      "name": "green-drive",
+      "command_sha256": "2888b987b314c6e5091d2e59f087e4b66a9a09dd040599a877d7c5538fcc3527",
+      "exit": 0,
+      "argv": [
+        "/opt/homebrew/opt/node@22/bin/node",
+        "scripts/method-verification-journey.mjs",
+        "--output",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/green-drive"
+      ],
+      "start": "2026-10-29T04:59:41.585170+00:00",
+      "end": "2026-10-29T04:59:43.556905+00:00"
+    },
+    {
+      "name": "map-green",
+      "command_sha256": "858eb58b6b86db946617d43760b65d32f5b9472df00a4ce42f8a55c173408eaf",
+      "exit": 0,
+      "argv": [
+        "/usr/bin/python3",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/check-map.py",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/feature-map.md",
+        "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/green-drive/journey.json"
+      ],
+      "start": "2026-10-29T04:59:53.290950+00:00",
+      "end": "2026-10-29T04:59:53.331771+00:00"
+    }
+  ],
+  "map_only_expected_diff_verified": true,
+  "manifests": [
+    {
+      "path": "red-drive/journey-manifest.json",
+      "sha256": "ad2dd8a0f7ce3742631d2285a1f3f2831f4e677656e3993d282ae087eb4f10cd",
+      "members": 14
+    },
+    {
+      "path": "red-drive/cases/healthy/manifest.json",
+      "sha256": "80562ca2f4455a2c5bf26a2981b2d71c5ec38d72a4a328f5d27d6300cb19a3f0",
+      "members": 29
+    },
+    {
+      "path": "red-drive/cases/missing-ref/manifest.json",
+      "sha256": "2a2d3b8f371f1b541c97323ce16451331dadc677883244b55ec2da0161751412",
+      "members": 29
+    },
+    {
+      "path": "green-drive/journey-manifest.json",
+      "sha256": "cf67a942aa96d01c4bb5fb4bfc8b1e29cf8fd9aab471f8beff95e5b445dc69d2",
+      "members": 14
+    },
+    {
+      "path": "green-drive/cases/healthy/manifest.json",
+      "sha256": "9d996435fa2c5deb6ff4ed49efcb9ec18ba31af79efc42dbe99e18e2c0919a7a",
+      "members": 29
+    },
+    {
+      "path": "green-drive/cases/missing-ref/manifest.json",
+      "sha256": "2b0369c6b56827acbaaa52a409ee55ca91260c4c451f9f80dffc51bc671da19e",
+      "members": 29
+    }
+  ],
+  "live_source_build_checks": [
+    {
+      "kind": "source",
+      "files_verified": 1061,
+      "digest": "9277e834b66ba8d367618350ab4a767e8fb1899cfd19cdfc69c1e3d642da4885"
+    },
+    {
+      "kind": "build",
+      "files_verified": 2336,
+      "digest": "1e510e0d38e6e4b186af2356bc08a62ca85a76db912cd05370544eedfeaae6f2"
+    }
+  ],
+  "four_distinct_fixture_paths_absent": true,
+  "cleanup": [
+    {
+      "status": "passed",
+      "fixture_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/red-drive/scratch/smoke/skills-check-MF50ty",
+      "fixture_removed": true,
+      "descendant_termination": "not_attested"
+    },
+    {
+      "status": "passed",
+      "fixture_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/red-drive/scratch/smoke/skills-check-sWJ1BZ",
+      "fixture_removed": true,
+      "descendant_termination": "not_attested"
+    },
+    {
+      "status": "passed",
+      "fixture_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/green-drive/scratch/smoke/skills-check-E3A7yL",
+      "fixture_removed": true,
+      "descendant_termination": "not_attested"
+    },
+    {
+      "status": "passed",
+      "fixture_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/maintenance/green-drive/scratch/smoke/skills-check-ha8FGe",
+      "fixture_removed": true,
+      "descendant_termination": "not_attested"
+    }
+  ],
+  "limitations": [
+    "No extra driver/test/model execution by evaluator; conclusions from actual retained raw commands plus current independent byte checks.",
+    "Task-local comparator is not an authenticated oracle; independent reviewer checked its table relation and actual receipts without copying its PASS conclusion.",
+    "Injected stale map, not discovered production bug; no native host effect, causal benefit, generic coverage or formal J gate.",
+    "Current file checks and direct-child/fixture facts do not prove all descendants or global state."
+  ]
+}

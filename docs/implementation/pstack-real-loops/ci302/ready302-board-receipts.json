@@ -1,0 +1,77 @@
+[
+  {
+    "comment_id": 617,
+    "card_id": "card_b504ee89",
+    "author": "joint-entry",
+    "body": "PR302 Ready at head72ab99e7/base1bf1f6ca; 5 applicable CI success, paid skip, 22packages7142pass7skip0fail; exporter94total93pass1skip. Actual Sonnet B1/B2 closure evidence unchanged. Only awaiting gilberthello approval/merge; no formal gate pass.",
+    "created_at": 1793250611.853
+  },
+  {
+    "card_id": "card_b504ee89",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "Post300 next method slice source planning",
+    "body": "Read original pinned pstack/Firstmate and existing13methods; propose minimal nonduplicate D2a slice, then root assigns exclusive implementation scope. No product write yet.",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "loader_adversarial",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793246634.791,
+    "updated_at": 1793250611.853,
+    "started_at": 1793246634.792,
+    "completed_at": null
+  },
+  {
+    "comment_id": 618,
+    "card_id": "card_9797778f",
+    "author": "joint-entry",
+    "body": "Bounded actual maintenance exercise independently checked: one stale expectation cell corrected, same driver fresh fixtures re-run, actual product 0/1 unchanged, map comparator RED1→GREEN0. 6 manifests/4 fixtures/1061 source+2336 build checked. Not native model repair or formal J completion.",
+    "created_at": 1793250611.854
+  },
+  {
+    "card_id": "card_9797778f",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PS08/PS09 real verification maintenance closure",
+    "body": "Own isolated verification-maintenance task: existing map drift classification, repair and same-path revalidation, no new named method. Contributes PS08/09, adjacent J06; bounded engineering not formal gate. Root owns shared files/PR.",
+    "status": "done",
+    "priority": 0,
+    "assignee": "loader_adversarial",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793249648.406,
+    "updated_at": 1793250611.855,
+    "started_at": 1793249693.089,
+    "completed_at": 1793250611.855
+  },
+  {
+    "comment_id": 619,
+    "card_id": "card_7e6a11b1",
+    "author": "joint-entry",
+    "body": "Root guards frozen 05:08:54Z, one600s0retry call each dispatched. Claude stopped after disallowed loop-wrapped helper command; no actual repair, no retry. Codex still running; independent grading pending.",
+    "created_at": 1793250611.855
+  },
+  {
+    "card_id": "card_7e6a11b1",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PS01/PS08/PS20 actual host repair execution",
+    "body": "Prepare isolated real historical packet repair, then root explicit dispatch after independent criteria and actual resource guards. Codex/Claude each one user turn up to600s zero retries; no model call before dispatch. No patch leakage or shared workspaces. Not a new production defect.",
+    "status": "running",
+    "priority": 0,
+    "assignee": "terminal_preflight",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793249648.407,
+    "updated_at": 1793250611.855,
+    "started_at": 1793249693.09,
+    "completed_at": null
+  }
+]

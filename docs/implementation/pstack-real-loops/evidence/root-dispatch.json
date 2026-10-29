@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-29T05:08:54.942272+00:00",
+  "actor": "root",
+  "supplement_sha256": "11c6b678407e39c24fd03d16dc5111b1903b03f4cfcb684af6512661c27ea01c",
+  "manifest_sha256": "78cbf477671a1cb27350a17841de893a544e0bc1af9195b53086a580aea4fd27",
+  "verified_members": 359,
+  "guards": [
+    {
+      "host": "codex",
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/host/harness/dispatch-codex-repair.json",
+      "sha256": "d112260b7c54e24fcbb5539ce63d915001216a34f160a2bc628d8b62b255edcd"
+    },
+    {
+      "host": "claude",
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-real-loops-20261029/host/harness/dispatch-claude-repair.json",
+      "sha256": "f042c13a8164aca0b752a65d887c18a72748a42707f3a6fbd694f30dd6a8f719"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+# Root reporting amendment after Sonnet challenge
+
+The original independent grade and failed assertions are retained unchanged. The current README governs the narrower reporting claims: Codex raw event exact bytes prove a recorded read, not independently attested model-visible delivery; Claude full raw reference bytes versus truncated model message remain separate. Neither native-unavailable claim is adopted. Maintenance was a coordinator-authored map repair supported by source diagnosis; no per-run comparator byte hash was captured. Coordinator checks and their baseline preparation are separate from host-run regression, and H06b is relocation rather than new data. Harness credential handling is attributed to its declared implementation, not an audit of CLI authentication internals.
+
+Sonnet's original five reporting issues and optional suggestions remain in the audit archive. No original host output, grade, criteria or execution result was modified to obtain a pass. The new proposal drops in-turn fallback and requires a different independently frozen defect; no new task or model call is authorized by these documents.

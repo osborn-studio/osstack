@@ -1,0 +1,43 @@
+{
+  "kind": "maintenance_engineering_prefreeze",
+  "frozen_at": "2026-10-29T04:57:54.750398+00:00",
+  "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+  "scope": "Explicitly injected stale map expectation, not discovered production defect, native host effect or formal gate. Author executes actual existing wrapper; independent evaluator does not implement author solution.",
+  "source_bindings": [
+    {
+      "path": "scripts/method-verification-journey.mjs",
+      "sha256": "36386ee891b46a544dfab5200a26b4b7b28f27e9481364e81f3c070417d09f44"
+    },
+    {
+      "path": "scripts/smoke-skills-check.mjs",
+      "sha256": "306bf661a3f6057027b11242182c0a58d149660ba17677dc013f26f5477d592f"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "MT01",
+      "expectation": "Pin actual main source and fresh compiled build identity; use isolated explicit home/scratch and retain two-row original map whose missing-ref expected product exit is intentionally 0. Disclose injected nature."
+    },
+    {
+      "id": "MT02",
+      "expectation": "Run unchanged real fixed journey with both healthy and missing-ref executed. First map check fails specifically because actual missing-ref product exit1 disagrees with stale0; driver exit0 and healthy product0 remain separate. Wrapper failure/fixture failure is not this intended RED."
+    },
+    {
+      "id": "MT03",
+      "expectation": "Classify as map/expectation drift using actual source contract and raw command/result evidence; do not modify product, raw receipts, inputs, helper behavior or checker predicate to force success."
+    },
+    {
+      "id": "MT04",
+      "expectation": "Only authorized map expectation changes to actual contract1; preserve original stale map/RED record. New verification output is fresh and owned, not overwritten or relabelled old evidence."
+    },
+    {
+      "id": "MT05",
+      "expectation": "Re-run same wrapper path and original two-case semantics after map-only correction; map check GREEN requires both actual cases, exact manifests/hashes, recorded exits and owned fixture removal. Compare source/build and map candidate identities across runs; differences remain explicit."
+    },
+    {
+      "id": "MT06",
+      "expectation": "Provide exact commands/exits/raw logs, map before/after diff, complete evidence/boundary/cleanup status. Preserve unknown and failures; no whole-process-tree, production fix, model capability, cold-user generality or formal acceptance claim."
+    }
+  ],
+  "dispatch": "Author may prepare/run only under root existing authorization. No model calls authorized."
+}

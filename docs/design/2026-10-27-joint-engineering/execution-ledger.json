@@ -26,7 +26,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
-  "observed_at": "2026-10-29T04:36:10.629727+00:00",
+  "observed_at": "2026-10-29T05:17:24.241072+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -4305,7 +4305,7 @@
     "scope": "source planning, offline host preflight, independent retarget"
   },
   "skill_authoring_wave": {
-    "status": "draft_ci_running",
+    "status": "ready_awaiting_user_merge",
     "depends_on_pr": 301,
     "base": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
     "author_sha": "b8bfc83ceee2065cf8192e9de083c24707c13976",
@@ -4354,7 +4354,21 @@
     "base_branch": "main",
     "ci_run": 40819652448,
     "publication_evidence": "docs/implementation/method-post300-publication",
-    "user_approval_required": true
+    "user_approval_required": true,
+    "ci_final": {
+      "run": 40819652448,
+      "head": "72ab99e70ef54db924d775d3d3552ecde8780af0",
+      "tested_merge_ref": "dca209453ab3cdd6e97bf83931730b3cabc1baf3",
+      "checks_success": 5,
+      "paid": "skipped",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_total": 94,
+      "export_passed": 93,
+      "export_skipped": 1
+    }
   },
   "delivery_reconciliation": {
     "priority": "pstack_first",
@@ -4375,5 +4389,48 @@
     },
     "audit": "actual claude-sonnet-5-5 REVISE/REVISE/limited F1-F4 PASS; later evidence-path typo independently checked",
     "publication_pr": 302
+  },
+  "actual_pstack_loops": {
+    "status": "bounded_evidence_delivered_claude_repair_unresolved",
+    "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
+    "priority": "pstack_complete_task_loops_not_method_count",
+    "cards": [
+      {
+        "card_id": "card_9797778f",
+        "owner": "loader_adversarial",
+        "title": "PS08/PS09 real verification maintenance closure",
+        "status": "done"
+      },
+      {
+        "card_id": "card_7e6a11b1",
+        "owner": "terminal_preflight",
+        "title": "PS01/PS08/PS20 actual host repair execution",
+        "status": "blocked"
+      },
+      {
+        "card_id": "card_b7f85dd8",
+        "owner": "cleanup_regression",
+        "title": "PS08/PS20 independent real-task acceptance",
+        "status": "done"
+      }
+    ],
+    "host_model_calls": 2,
+    "host_dispatch": "root_guard_2026-10-29T05:08:54Z",
+    "formal_gate_pass": false,
+    "scope": "maintenance drift-repair-recheck plus independent historical actual repair by Codex and Claude; no new production defect claim",
+    "dispatch_supplement_sha256": "11c6b678407e39c24fd03d16dc5111b1903b03f4cfcb684af6512661c27ea01c",
+    "maintenance": {
+      "status": "bounded_pass_independently_checked",
+      "archive_sha256": "2351b9625f9bcdcd07fe5e52aafa41179e05a0868787fc48ad86054a798e59fa",
+      "new_production_defect": false
+    },
+    "claude": "blocked_compound_command_denied_no_repair_zero_retries",
+    "codex": "historical_repair_demonstrated_with_attribution_limits",
+    "independent_grade_sha256": "d320a5e7fe69020dfe82f34624b2fb98b8adac8cabf034b1b3802b4de56cdcb0",
+    "production_code_changed": false,
+    "new_methods": 0,
+    "next_step": "Select a different defect for a newly frozen single-turn feasibility task; atomic commands, behavioral test created before RED, same permission boundary; first actual atomic denial ends turn, no fallback/reissue or inherited budget.",
+    "evidence": "docs/implementation/pstack-real-loops",
+    "method_consumption": "Codex exact method bytes in raw shell event; model-visible delivery not independently attested. Claude native mode observed, reference stdout full but model message preview; neither full consumption claim."
   }
 }

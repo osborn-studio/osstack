@@ -1,0 +1,30 @@
+[
+  {
+    "comment_id": 613,
+    "card_id": "card_7d169d5f",
+    "author": "joint-entry",
+    "body": "pstack实际闭环批次：card_9797778f验证维护注入漂移→map修复→同wrapper复验；card_7e6a11b1双宿主隔离历史真实bug修复；card_b7f85dd8独立准则和隐藏控制。属于本项相邻工程验证/使用证据，不等于原运行时正式交付；原验收缺口保留。root账本 actual_pstack_loops 统一记录，无新增命名方法。",
+    "created_at": 1793249862.058
+  },
+  {
+    "comment_id": 614,
+    "card_id": "card_2b7cc24a",
+    "author": "joint-entry",
+    "body": "pstack实际闭环批次：card_9797778f验证维护注入漂移→map修复→同wrapper复验；card_7e6a11b1双宿主隔离历史真实bug修复；card_b7f85dd8独立准则和隐藏控制。属于本项相邻工程验证/使用证据，不等于原运行时正式交付；原验收缺口保留。root账本 actual_pstack_loops 统一记录，无新增命名方法。",
+    "created_at": 1793249862.058
+  },
+  {
+    "comment_id": 615,
+    "card_id": "card_63ad0321",
+    "author": "joint-entry",
+    "body": "pstack实际闭环批次：card_9797778f验证维护注入漂移→map修复→同wrapper复验；card_7e6a11b1双宿主隔离历史真实bug修复；card_b7f85dd8独立准则和隐藏控制。属于本项相邻工程验证/使用证据，不等于原运行时正式交付；原验收缺口保留。root账本 actual_pstack_loops 统一记录，无新增命名方法。",
+    "created_at": 1793249862.059
+  },
+  {
+    "comment_id": 616,
+    "card_id": "card_efcfb696",
+    "author": "joint-entry",
+    "body": "pstack实际闭环批次：card_9797778f验证维护注入漂移→map修复→同wrapper复验；card_7e6a11b1双宿主隔离历史真实bug修复；card_b7f85dd8独立准则和隐藏控制。属于本项相邻工程验证/使用证据，不等于原运行时正式交付；原验收缺口保留。root账本 actual_pstack_loops 统一记录，无新增命名方法。",
+    "created_at": 1793249862.059
+  }
+]
