@@ -237,3 +237,13 @@ PR299 remains Draft after two native-upgrade cleanup tests exceeded their combin
 PR-readiness final c95dccd0:13 shared methods,91 exporter tests; actual Sonnet R1–R3 limited closure PASS. Final95a33e host probe ran once per host without retry: Codex LIMITED(329 final/348 all words, explicit reads, model not_attested), Claude FAILED(578 >500 words despite native Skill). Both B plans omit corrected-candidate evidence rebinding; no live forge action or runtime gate change. See method-pr-readiness-delivery for separate evidence axes.
 
 PR299 repaired published head7deee3af:run40786370675 five applicable checks SUCCESS, paid smoke SKIPPED. Root verified current maina9e480d3 unchanged and marked Ready. Awaiting gilberthello approval/merge; original failed run remains archived.
+
+PR300 published head0e5d2c98 has five applicable CI checks SUCCESS in run40789146519; paid smoke skipped. It remains Draft on codex/method-continuity-delivery because PR299 is still open. Next: observe user merge of299, reconcile actualmain and current candidate, retarget300 to main and complete applicable checks before notifying merge readiness. Current main remains a9e480d3. No new host call or runtime qualification.
+
+## 2026-10-29：#299 合并后核验
+
+#299 已实际合入 main `7d3fc2bf`。#300 已改为 main，合入新 main 后 head `f2df8504` 与原候选文件树完全相同；91 导出、241 文档测试及实际 Sonnet5.5 限定重定向审计通过，新 CI 仍等待最终结果。证据见 [本轮记录](../../implementation/method-post299-retarget/README.md)。下一批准备并行任务覆盖指南及紧凑证据报告，保留13项命名方法；主入口独占共享来源、账本和 PR。
+
+## 2026-10-29：并行覆盖与简洁报告候选
+
+A/B 两个独占切片合为 code898033af，新增 supporting parallel-work 指南及现有证据/PR报告短模板，仍13项方法。92导出与独立双host84文件/302链接通过，实际 Sonnet 首审要求修订来源链，修订后限定闭环通过。组合c174598e全仓7144/5/0，明确带四个新鲜生成文件；首轮恢复旧dist造成的88项失败及复建过程完整保留。#300新main CI的真实分页断言缺陷已test-only修复，最新e16候选仍等CI，用户审批合并权不变。详见[本批交付](../../implementation/method-parallel-reporting/README.md)。

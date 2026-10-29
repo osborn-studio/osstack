@@ -25,8 +25,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "92088fe55a2f985ca743fa1fabee0c081a6f672d",
-  "observed_at": "2026-10-28T14:43:16.043664+00:00",
+  "main_sha": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+  "observed_at": "2026-10-29T02:17:15.722192+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -3650,6 +3650,11 @@
         18718,
         19048
       ]
+    },
+    "merge_observation": {
+      "pr": 299,
+      "merge_sha": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+      "tree_matches_published": true
     }
   },
   "next_pr_readiness_preflight": {
@@ -3673,7 +3678,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "audited_candidate_host_probe_closed_publication_pending",
+    "status": "main_repaired_new_ci_running",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3723,6 +3728,104 @@
       "limited_report_accuracy_closure_PASS"
     ],
     "owned_host_workspaces_archived_then_removed": 4,
-    "archive_independently_verified": true
+    "archive_independently_verified": true,
+    "pr": 300,
+    "published_head": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
+    "base_branch": "main",
+    "ci_run": 40803637902,
+    "final_document_tests": 241,
+    "final_hygiene_tests": 1,
+    "publication_evidence": "docs/implementation/method-pr-readiness-publication",
+    "user_approval_required": true,
+    "applicable_ci": "5_SUCCESS_paid_SKIPPED",
+    "readiness_blocker": "Latest repaired-head CI check still running",
+    "final_ci_test": {
+      "head": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
+      "run": 40789146519,
+      "base": {
+        "name": "codex/method-continuity-delivery",
+        "sha": "7deee3af868c50958dcc651f2a5a7599e4750c60"
+      },
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "exporter": {
+        "total": 91,
+        "passed": 90,
+        "skipped": 1,
+        "reason": "global Codex home absent"
+      },
+      "scope": "branch-base CI only; post-parent main reconciliation pending"
+    },
+    "retarget_main": {
+      "main": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+      "head": "f2df8504b76e5f238a0571fe12d29347ec82bfdf",
+      "tree": "c673965b87aee1a239012f0d7090f4554243f89e",
+      "content_equal_previous": true,
+      "ci_run": 40802170819,
+      "status": "attempt1_failed_pagination_assumption",
+      "exports": {
+        "passed": 91,
+        "failed": 0,
+        "skipped": 0
+      },
+      "document_tests": 241,
+      "audit": "actual claude-sonnet-5-5 limited retarget PASS",
+      "evidence": "docs/implementation/method-post299-retarget"
+    },
+    "pagination_repair": {
+      "code": "9432d319",
+      "original_run": 40802170819,
+      "confirmed": "first100page incorrectly treated as full101 history",
+      "production_changed": false,
+      "targeted_passed": 26,
+      "audit": "actual Sonnet5.5 static PASS",
+      "evidence": "docs/implementation/method-pr-readiness-delivery/ci-main-repair",
+      "archive_sha256": "71b630b7cd9cf3299d8e17d9b41630b8e78b776d4e927dfa59579d16f7189582"
+    }
+  },
+  "parallel_reporting_wave": {
+    "status": "tested_audited_candidate_pending_publication",
+    "provisional_base": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
+    "depends_on_pr": 300,
+    "method_count": 13,
+    "new_named_method": false,
+    "cards": [
+      "card_2cccba22",
+      "card_be3dc4a2",
+      "card_02bff156"
+    ],
+    "runtime_enabled": false,
+    "formal_gate_pass": false,
+    "host_calls": 0,
+    "code_sha": "898033afd81b8f010786a2076b18a4bff52253d8",
+    "criteria_sha256": "543bf7e1a0a131149e93efec3252cd8d7e793d918b79ee3742e4cb7b5dc6e514",
+    "full": {
+      "head": "c174598e8a3913672b9aa4c05192831987466053",
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0,
+      "fresh_generated_dist_files": 4,
+      "hashes_unchanged": true
+    },
+    "exports": 92,
+    "independent": {
+      "files_per_host": 84,
+      "local_links_per_host": 302,
+      "frozen_criteria_sha256": "543bf7e1a0a131149e93efec3252cd8d7e793d918b79ee3742e4cb7b5dc6e514"
+    },
+    "audit": [
+      "actual claude-sonnet-5-5 REVISE B1",
+      "limited B1 and clarity closure PASS"
+    ],
+    "evidence": "docs/implementation/method-parallel-reporting",
+    "initial_local_full": {
+      "head": "45fe453b",
+      "cli_failed": 88,
+      "direct_missing_export": 75,
+      "indirect_unproven_same_cause": 13,
+      "cause": "root restored tracked stale generated artifacts after build; force build and actual export probe restored valid runtime"
+    }
   }
 }

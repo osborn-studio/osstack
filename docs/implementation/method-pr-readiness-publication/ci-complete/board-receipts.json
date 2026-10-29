@@ -1,0 +1,27 @@
+[
+  {
+    "comment_id": 514,
+    "card_id": "card_00455914",
+    "author": "joint-entry",
+    "body": "PR300 exact head0e5d2c98 run40789146519 now five applicable SUCCESS/paidSKIP. Still Draft and based on PR299 branch; parent299 not merged, so actualmain reconciliation/retarget/applicable checks pending. No new merge-ready notification. Original host grades unchanged.",
+    "created_at": 1793232926.724
+  },
+  {
+    "card_id": "card_00455914",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "D2a PR readiness method: prepared next slice",
+    "body": "Original pstack99b609a babysit/opening-a-pr/bugbot-triage read; scheduling plan and9future vectors prepared. No implementation, no model calls, no freeze. Recheck latestmain/PR299 and owners before dispatch. Scope10files method material/export contracts; no watcher/runtime/automerge. Usergilberthello merges. Protocol in docs/implementation/method-continuity-publication/next-pr-readiness.",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793227545.778,
+    "updated_at": 1793232926.725,
+    "started_at": 1793229160.772,
+    "completed_at": null
+  }
+]

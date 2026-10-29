@@ -9,6 +9,8 @@ Read the parent brief, relevant user constraints and [common evidence rules](../
 
 Apply the coordinator's agreed design and acceptance checks to your assigned slice. Planning or delegation guidance inside a method does not expand your write boundary or permit spawning more workers; report cross-slice needs to the coordinator.
 
+For an authorized coordinator preparing briefs or consolidating required coverage, [parallel work and verification handoff](../../references/parallel-work.md) supplies a supporting guide. It does not change a delegate's role, permit additional spawning or add a fourteenth named method.
+
 Choose the relevant shared method:
 
 - [PR readiness](../../references/pr-readiness.md) for current PR state and authorized blocker corrections inside the assigned branch; leave publication and human-reserved approval/merge within their actual authority.
