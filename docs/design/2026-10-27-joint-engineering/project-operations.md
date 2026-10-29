@@ -145,3 +145,6 @@ PR302由root在五项适用CI成功后转Ready，用户审批合并。root中央
 ### 2026-10-29 exporter实际任务收口规则
 
 历史exporter任务已执行，模型8条原子命令与独立复验分列证据。旧packet失败不可重评分；本次evidence.md60/64读取缺口不能以实际修复成功掩盖。相同test/input的RED→GREEN仅证明该有限任务，不签PS/J整体资格。后续调度须读取新的export_repair_execution，不重复派发本次已用完的1turn预算；新任务另行定义范围和证据。
+
+
+2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.

@@ -10437,7 +10437,7 @@
     "merged_at": "2026-10-29T17:11:47Z"
   },
   "maintenance_map_slice": {
-    "status": "draft_main_revalidation",
+    "status": "ready_waiting_user_merge",
     "card": "card_b8d97bff",
     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
     "primary_j": "J06",
@@ -10702,7 +10702,7 @@
     "head_sha": "958eb72295937b96ee8affc32fa87910bbdde512",
     "base_branch": "main",
     "ci_run": 40920378111,
-    "publication_dependency": "305 merged; fresh actual-main validation and CI required",
+    "publication_dependency": "305 merged; main retarget and validation completed; waiting user approval/merge of306",
     "historical_pre_retarget": {
       "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
       "base_branch": "codex/method-full-projection-delivery",
@@ -10713,7 +10713,7 @@
     "observed_at": "2026-10-29T17:21:57.052243+00:00",
     "main": "e79fc92687c144969ad91242a979d904f2b2acdf",
     "head": "958eb72295937b96ee8affc32fa87910bbdde512",
-    "status": "draft_main_revalidation",
+    "status": "ready_waiting_user_merge",
     "same_tree_as_38a6": true,
     "complete_delta_identical": true,
     "record": "docs/implementation/pr306-main-retarget",
@@ -10734,7 +10734,22 @@
     "actual_map_red_green": true,
     "review_status": "actual Sonnet5.5 static PASS; optional observations retained",
     "archive_sha256": "2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff",
-    "archive_independent_receipt_sha256": "e21d4981736e0642726f165852f0ac4ae713e9e0c60fffb82f16d75559278bd1"
+    "archive_independent_receipt_sha256": "e21d4981736e0642726f165852f0ac4ae713e9e0c60fffb82f16d75559278bd1",
+    "ready_observed_at": "2026-10-29T17:50:10.346526+00:00",
+    "ci_applicable_success": 5,
+    "ci_paid_skipped": true,
+    "ready_receipt": "docs/implementation/pr306-main-retarget/ci-final/ready-readback.json",
+    "ci_summary": {
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_passed": 93,
+      "export_skipped": 1,
+      "checkout_sha": "057f32d4620d71bec8d26a4fe0f074cc9e921855",
+      "checkout_parents": "b0ea4e78 and958eb722; tree equals958; b0 tree equals actualmain e79",
+      "remote_artifact_rehashed": false
+    }
   },
   "pr_candidate_snapshot_slice": {
     "status": "implementation_in_progress",

@@ -318,3 +318,6 @@ PS01/08/20 now have a bounded readonly material-reader candidate and updated exi
 ## PR305 merge / PR306 actual-main revalidation
 
 PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals published `b0ea4e78`. PR306 now targets main with head `958eb72295937b96ee8affc32fa87910bbdde512`, tree unchanged from `38a6f358` and complete delta identical. Fresh validation, actual map RED→GREEN, independent checks and Sonnet 5.5 review are running. New CI40920378111 must succeed before Ready. Historical tests retain their original SHA and formal PS/J gates remain false.
+
+
+2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
