@@ -131,6 +131,9 @@ jobs:
       - name: Method export contracts
         run: pnpm test:method-export
 
+      - name: Method material pagination contracts
+        run: pnpm test:method-read
+
       - name: Session adoption decision smoke (local fixture)
         run: pnpm smoke:engineering-decision
 

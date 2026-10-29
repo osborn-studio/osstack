@@ -4521,5 +4521,26 @@
       "J07",
       "J23"
     ]
+  },
+  "material_delivery_slice": {
+    "status": "implementation_in_progress",
+    "base_main": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "card": "card_0e19c3c2",
+    "primary_j": "J04",
+    "supporting_j": [
+      "J09",
+      "J23"
+    ],
+    "scope": "bounded readonly material pagination with digest-pinned continuation and existing host usage guidance",
+    "owners": {
+      "A": "reader + scripts/read-method-material.test.mjs only in method-material-reader worktree",
+      "B": "references/host-usage.md + references/bug-fix.md only in method-host-usage worktree",
+      "C": "independent scratch criteria/vectors/rechecks only",
+      "root": "centralledger/CIintegration/PR/audit/fullqueue"
+    },
+    "new_methods": 0,
+    "model_calls": 0,
+    "formal_gate_pass": false,
+    "previous_experiment_unchanged": true
   }
 }
