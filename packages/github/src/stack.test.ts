@@ -62,6 +62,67 @@ describe("mapRollupToCheckState", () => {
   });
 });
 
+describe("StatusContext rollups", () => {
+  const context = (state: unknown) => ({ __typename: "StatusContext", context: "legacy-ci", state, targetUrl: "https://example.invalid/build" });
+
+  it.each([
+    ["SUCCESS", "success"], ["FAILURE", "failure"], ["ERROR", "failure"],
+    ["PENDING", "pending"], ["EXPECTED", "pending"],
+  ])("maps legacy status %s to %s", (state, expected) => {
+    expect(mapRollupToCheckState([context(state)])).toBe(expected);
+  });
+
+  it.each([undefined, null, "FUTURE_STATE"])("does not invent success for missing or unknown status %s", state => {
+    expect(mapRollupToCheckState([{ ...context(state), conclusion: "SUCCESS", status: "COMPLETED" }])).not.toBe("success");
+  });
+
+  it("accepts a state-shaped legacy context without a typename", () => {
+    expect(mapRollupToCheckState([{ context: "legacy-ci", state: "SUCCESS" }])).toBe("success");
+    expect(mapRollupToCheckState([{ context: "legacy-ci", state: "FAILURE" }])).toBe("failure");
+  });
+
+  it("a legacy failure dominates a pending CheckRun and successful context", () => {
+    expect(mapRollupToCheckState([
+      context("SUCCESS"), { conclusion: null, status: "QUEUED" }, context("ERROR"),
+    ])).toBe("failure");
+  });
+
+  it("a CheckRun failure still dominates pending and successful legacy contexts", () => {
+    expect(mapRollupToCheckState([
+      context("PENDING"), { __typename: "CheckRun", conclusion: "FAILURE", status: "COMPLETED" }, context("SUCCESS"),
+    ])).toBe("failure");
+  });
+
+  it("legacy success does not hide a pending CheckRun", () => {
+    expect(mapRollupToCheckState([context("SUCCESS"), { conclusion: null, status: "IN_PROGRESS" }])).toBe("pending");
+  });
+
+  it("keeps the existing neutral and skipped CheckRun policy beside legacy success", () => {
+    expect(mapRollupToCheckState([
+      context("SUCCESS"), { conclusion: "NEUTRAL", status: "COMPLETED" }, { conclusion: "SKIPPED", status: "COMPLETED" },
+    ])).toBe("success");
+  });
+
+  it.each([
+    ["SUCCESS", "success", null], ["FAILURE", "failure", "ci_failing"],
+    ["ERROR", "failure", "ci_failing"], ["PENDING", "pending", "ci_pending"], ["EXPECTED", "pending", "ci_pending"],
+  ])("ingests %s through the real stack parser with correct drift classification", async (state, expected, issue) => {
+    const calls: string[][] = [];
+    const runner: CommandRunner = { run: async (command, args) => {
+      calls.push([command, ...args]);
+      return prViewJson({ number: 9, baseRefName: "main", headRefName: "feature", statusCheckRollup: [context(state)] });
+    } };
+    const model = await ingestStack({ repo: "fixture/repo", prNumbers: [9] }, runner);
+    expect(model.nodes[0]?.ciState).toBe(expected);
+    expect(model.order).toEqual([9]); expect(model.edges).toEqual([]);
+    const drift = detectDrift(model);
+    expect(drift.issues.map(row => row.kind)).toEqual(issue ? [issue] : []);
+    expect(drift.clean).toBe(issue === null);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.slice(0, 4)).toEqual(["gh", "pr", "view", "9"]);
+  });
+});
+
 describe("ingestStack", () => {
   it("builds a 3-PR linear chain with edges and bottom-up order", async () => {
     const runner: CommandRunner = {

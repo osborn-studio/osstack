@@ -68,6 +68,8 @@ const PrViewJson = z.object({
 });
 
 const RollupCheck = z.object({
+  __typename: z.string().optional(),
+  state: z.string().nullable().optional(),
   conclusion: z.string().nullable().optional(),
   status: z.string().optional(),
 });
@@ -80,7 +82,19 @@ export function mapRollupToCheckState(statusCheckRollup: unknown): CheckState {
     return "unknown";
   }
 
-  const checks = statusCheckRollup.map((entry) => RollupCheck.parse(entry));
+  const checks = statusCheckRollup.map((entry) => {
+    const check = RollupCheck.parse(entry);
+    // GitHub rollups contain both CheckRun and legacy StatusContext rows.
+    // Only a context's state is authoritative for that row; CheckRun-shaped
+    // fields must not make a missing or unknown legacy state successful.
+    if (check.__typename === "StatusContext" || (check.__typename === undefined && check.state !== undefined)) {
+      if (check.state === "SUCCESS") return { conclusion: "SUCCESS", status: "COMPLETED" };
+      if (check.state === "FAILURE" || check.state === "ERROR") return { conclusion: "FAILURE", status: "COMPLETED" };
+      // PENDING/EXPECTED, missing and unknown states remain conservatively pending.
+      return { conclusion: null, status: "PENDING" };
+    }
+    return check;
+  });
 
   const hasFailure = checks.some(
     (check) => check.conclusion != null && FAILING_CONCLUSIONS.has(check.conclusion),
