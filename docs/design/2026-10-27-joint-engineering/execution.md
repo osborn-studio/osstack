@@ -310,3 +310,7 @@ PS01/08/20 now have a bounded readonly material-reader candidate and updated exi
 ## PR304 合并后的 PR305 重验（2026-10-30，上海时间）
 
 已核实304合入main5248195b，合并树与已验证7ef相同。305已改main并合成6f79d125，树等旧52f。root管理PR与账本，B负责fresh适用验证，C独立核Git与CI，A只读核对可复用维护下一切片；实际Sonnet审计与新head CI尚在进行。旧CI不能替代本轮；正式资格与宿主旧失败不改。
+
+### Fixed-map maintenance candidate after PR304 merge
+
+`card_b8d97bff`: author8ed→671f; root4cc8ff7e, primaryJ06 / PS09, supportsJ03/J09/PS08. Real injected map RED1→map-only correction→GREEN0; initial actual8ed and final root4cc remain separately bound. Five new diagnostic regressions were RED before repair; 24 maintenance tests and root263 targeted passed. Full4cc22packages7144/5/0 with fresh4dist, trackedbytes unchanged. Original audit/independent omission/conditional CI concern and source-backed closure all retained in `docs/implementation/skills-check-map-maintenance/evidence`. No new native host experiment or named method.

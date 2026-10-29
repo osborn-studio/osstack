@@ -166,3 +166,7 @@ J23一般运行时资格后排，但服务pstack闭环的真实宿主测量提�
 ## Current packet repair (2026-10-29)
 
 [实际修复与证据](../../implementation/pstack-current-repair/README.md)：确认当前主线v1及候选v2的passed/nonempty-stderr矛盾漏检，采纳Codex实际一行修复，新增9个仓库回归。239项定向检查通过；代码681cf6e9全仓7144通过/5跳过/0失败，运行期间tracked字节不变，包含新鲜生成dist与已有账本工作改动，不称干净提交树。Sonnet5.5初审和限定报告复审PASS。Codex完成同测试RED→修复→GREEN；Claude六次基线后，首次复合源码读取执行、第二次被拒后停止，没有修复，也不追溯增加源码读取禁令。两宿主19必读文件（含16材料页）均完整送达，不等于理解或收益证明。修复已发布至Draft #305（52f16faf），CI40845007211五项适用检查成功；仍需parent304合并/main重验后才可Ready；4入口/14方法、正式J门槛不变。
+
+## 固定地图维护候选
+
+候选 `4cc8ff7e` 将现有五案例旅程接到独立持久地图，实际 `pnpm smoke:skills-map` 在注入错误预期时返回1，仅修地图后同入口新输出返回0。263项定向与22包7144通过/5跳过/0失败；全仓执行期间tracked字节不变，但4个fresh生成dist存在，不能称clean committed tree。实际Sonnet发现诊断丢失后修复，并保留原REVISE和后续限定PASS；条件性CI疑点由真实scratch默认实现消除。此项仍是待发布候选，PS09/J06为有限贡献，不完成整个能力或正式门槛。

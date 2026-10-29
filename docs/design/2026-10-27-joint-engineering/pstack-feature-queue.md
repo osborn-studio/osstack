@@ -8,9 +8,10 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 |---|---|---|---|
 | 1 | Read the complete selected method material without silently losing its tail | PR303 merged into maina0ecd79d: bounded paging and digest-pinned continuation | Tool contract + actual exported-byte reassembly; model consumption still requires a fresh host task |
 | 2 | Run the full five-case skills-check journey and maintain all mapped cases | PR304 merged at5248195b; merge tree equals verified7ef051ff; historical tests keep their original SHA: optional `--scope full`; retain default two-case compatibility | Actual five outcomes 0/1/2/1/0, semantic receipts, cleanup limits, default projection compatibility and failure-path verification |
-| 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 Draft/main candidate6f79d125: actual merged main5248195b incorporated; original52f tree preserved; fresh applicable validation/audit and CI40911455127 in progress, preserving the two-case contract | All five cases and failed/not_run/unknown states preserved; original records unchanged |
+| 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 Draft/main finalb0ea4e78: actual merged main5248195b incorporated; source tree equality proved at6f, later three documentation refinements; local validation/audit passed and final CI40912894527 in progress, preserving the two-case contract | All five cases and failed/not_run/unknown states preserved; original records unchanged |
 | 4 | Use current method materials to complete a fresh actual host task | Current packet defect: Codex actual RED/fix/GREEN complete; Claude stopped after permission denial, unrepaired; both16pages delivered; fix published in305 | Separate actual host outcomes and fix delivery from whole capability claims; retain Claude failure and old results, no retries for a better grade |
-| 5 | Make PR candidate status easier to assess | Later bounded read-only forge/candidate reconciliation | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
+| 5 | Compare and repair a persistent fixed-five verification map | Candidate4cc8ff7e: actual same-command RED1 → only map correction → GREEN0; 263 targeted and 22-package7144/5/0 passed; publication pending | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
+| 6 | Make PR candidate status easier to assess | Later bounded read-only forge/candidate reconciliation | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
 
 Firstmate deep recovery/supervision is deferred behind these pstack paths except for necessary dependencies. Formal identity issue287 does not block ordinary bounded D2a tools.
 
@@ -26,7 +27,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
 | PS08 | 可操控的验证基础设施与功能地图 | create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明 |
-| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case维护路径与广义漂移发现仍未闭合。 |
+| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case地图比较候选已验证待交付；广义漂移发现仍未闭合。 |
 | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
 | PS12 | 反思转结构化约束 | skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。 |

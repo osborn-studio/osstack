@@ -1,0 +1,9 @@
+{
+  "sha256": "bebda658b5adff1de4de2fbd133bab9a372220b2a95d7cb24cc666b44f787886",
+  "payload_members": 1215,
+  "files": 1214,
+  "symlinks": 1,
+  "file_bytes": 21119793,
+  "manifest_sha256": "6a2db6a1fc86c76255b67d7eb16b9fcc88199dff111024fe3b892a30af6f136f",
+  "verification": "all members type/mode/hash/size or symlink target matched"
+}

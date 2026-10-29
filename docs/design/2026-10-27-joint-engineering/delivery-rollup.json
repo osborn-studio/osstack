@@ -1844,6 +1844,12 @@
         "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
         "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
         "whole_capability_complete": false
+      },
+      "maintenance_map_candidate": {
+        "code_sha": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+        "status": "validated_waiting_publication",
+        "record": "docs/implementation/skills-check-map-maintenance",
+        "whole_capability_complete": false
       }
     },
     {
@@ -1901,6 +1907,12 @@
         "pr": 304,
         "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
         "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
+        "whole_capability_complete": false
+      },
+      "maintenance_map_candidate": {
+        "code_sha": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+        "status": "validated_waiting_publication",
+        "record": "docs/implementation/skills-check-map-maintenance",
         "whole_capability_complete": false
       }
     },
@@ -10393,7 +10405,7 @@
     "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c"
   },
   "maintenance_map_slice": {
-    "status": "implementing",
+    "status": "validated_waiting_publication",
     "card": "card_b8d97bff",
     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
     "primary_j": "J06",
@@ -10409,8 +10421,250 @@
     "runtime_enabled": false,
     "formal_gate_pass": false,
     "scope": "fixed full-five persistent-map correspondence; reuse runJourney; no automatic bless or source-drift diagnosis",
-    "owner": "loader_adversarial",
+    "owner": "joint-entry",
     "depends_on_pr305": false,
-    "criteria_sha256": "8f6d3ad0eb56b07abcbc624ac7146868eb9d8a42c7c1fefbb1dd40130a1fea28"
+    "criteria_sha256": "8f6d3ad0eb56b07abcbc624ac7146868eb9d8a42c7c1fefbb1dd40130a1fea28",
+    "author_sha": "671f9d7eccd40be299e7c6183c4b78089607fd87",
+    "root_code_sha": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+    "record": "docs/implementation/skills-check-map-maintenance",
+    "targeted": {
+      "passed": 263,
+      "failed": 0,
+      "maintenance_tests": 24
+    },
+    "full": {
+      "packages": 22,
+      "passed": 7144,
+      "failed": 0,
+      "skipped": 5,
+      "rows": [
+        {
+          "package": "packages/contracts",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/contracts test:       Tests  15 passed (15)"
+        },
+        {
+          "package": "packages/compliance",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/compliance test:       Tests  17 passed (17)"
+        },
+        {
+          "package": "packages/github",
+          "passed": 107,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/github test:       Tests  107 passed (107)"
+        },
+        {
+          "package": "packages/knowledge",
+          "passed": 44,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/knowledge test:       Tests  44 passed (44)"
+        },
+        {
+          "package": "packages/runtime",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/runtime test:       Tests  1 passed (1)"
+        },
+        {
+          "package": "packages/neat-eval",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/neat-eval test:       Tests  16 passed (16)"
+        },
+        {
+          "package": "packages/protocol",
+          "passed": 1012,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/protocol test:       Tests  1012 passed (1012)"
+        },
+        {
+          "package": "packages/governance",
+          "passed": 301,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/governance test:       Tests  301 passed (301)"
+        },
+        {
+          "package": "packages/knowledge-cloud",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/knowledge-cloud test:       Tests  36 passed (36)"
+        },
+        {
+          "package": "packages/graph",
+          "passed": 257,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/graph test:       Tests  257 passed (257)"
+        },
+        {
+          "package": "packages/core",
+          "passed": 1301,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/core test:       Tests  1301 passed (1301)"
+        },
+        {
+          "package": "packages/plugins",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/plugins test:       Tests  1 passed (1)"
+        },
+        {
+          "package": "packages/hermes-adapter",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/hermes-adapter test:       Tests  22 passed (22)"
+        },
+        {
+          "package": "packages/skills",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/skills test:       Tests  2 passed (2)"
+        },
+        {
+          "package": "packages/autonomy",
+          "passed": 201,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/autonomy test:       Tests  201 passed (201)"
+        },
+        {
+          "package": "packages/skill-registry",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/skill-registry test:       Tests  43 passed (43)"
+        },
+        {
+          "package": "packages/agents",
+          "passed": 361,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/agents test:       Tests  361 passed (361)"
+        },
+        {
+          "package": "packages/config",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/config test:       Tests  30 passed (30)"
+        },
+        {
+          "package": "packages/loop",
+          "passed": 515,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/loop test:       Tests  515 passed (515)"
+        },
+        {
+          "package": "packages/conformance",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/conformance test:       Tests  9 passed (9)"
+        },
+        {
+          "package": "packages/supervisor",
+          "passed": 88,
+          "failed": 0,
+          "skipped": 0,
+          "line": "packages/supervisor test:       Tests  88 passed (88)"
+        },
+        {
+          "package": "packages/cli",
+          "passed": 2765,
+          "failed": 0,
+          "skipped": 5,
+          "line": "packages/cli test:       Tests  2765 passed | 5 skipped (2770)"
+        }
+      ]
+    },
+    "full_binding": {
+      "head": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+      "started": "2026-10-29T16:47:51.808227+00:00",
+      "finished": "2026-10-29T16:56:12.989263+00:00",
+      "dirty_before": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+      "exit_code": 0,
+      "tracked_bytes_unchanged": true,
+      "tracked_count": 8471,
+      "changed_paths": []
+    },
+    "actual_root": {
+      "head": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
+      "runs": [
+        {
+          "phase": "red",
+          "command": [
+            "pnpm",
+            "smoke:skills-map",
+            "--map",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/active-map.json",
+            "--output",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/actual-red"
+          ],
+          "exit": 1,
+          "status": "mismatch",
+          "map_sha256": "c20edff55bc6c893cd63f90d6d2a9f0760470fe7d56c5404ab2374e0c1c3963c",
+          "map_unchanged": true,
+          "product_exits": [
+            0,
+            1,
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "phase": "green",
+          "command": [
+            "pnpm",
+            "smoke:skills-map",
+            "--map",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/active-map.json",
+            "--output",
+            "/Volumes/AIMATE_WORK/tmp/osstack/runtime/skills-map-maintenance-20261030/root/actual-green"
+          ],
+          "exit": 0,
+          "status": "consistent",
+          "map_sha256": "f154e528e71e90ec3624368f400f1f877227491ea87c5d998bfe6ba7b9103531",
+          "map_unchanged": true,
+          "product_exits": [
+            0,
+            1,
+            2,
+            1,
+            0
+          ]
+        }
+      ],
+      "only_correction": "missing-ref expected_product_exit 0 to 1",
+      "classification": "explicit injected map drift; not spontaneous product bug"
+    },
+    "audit": "actual Sonnet 5.5 REVISE; diagnostic findings repaired and closed; conditional CI finding disproved by actual helper source then limited closure PASS; originals retained",
+    "archive": {
+      "sha256": "bebda658b5adff1de4de2fbd133bab9a372220b2a95d7cb24cc666b44f787886",
+      "payload_members": 1215,
+      "files": 1214,
+      "symlinks": 1,
+      "file_bytes": 21119793,
+      "manifest_sha256": "6a2db6a1fc86c76255b67d7eb16b9fcc88199dff111024fe3b892a30af6f136f",
+      "verification": "all members type/mode/hash/size or symlink target matched"
+    },
+    "whole_capability_complete": false
   }
 }
