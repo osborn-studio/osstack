@@ -4894,7 +4894,7 @@
     "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c"
   },
   "maintenance_map_slice": {
-    "status": "validated_waiting_publication",
+    "status": "draft_waiting_ci_and_parent305_main_revalidation",
     "card": "card_b8d97bff",
     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
     "primary_j": "J06",
@@ -5154,6 +5154,11 @@
       "manifest_sha256": "6a2db6a1fc86c76255b67d7eb16b9fcc88199dff111024fe3b892a30af6f136f",
       "verification": "all members type/mode/hash/size or symlink target matched"
     },
-    "whole_capability_complete": false
+    "whole_capability_complete": false,
+    "pr": 306,
+    "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
+    "base_branch": "codex/method-full-projection-delivery",
+    "ci_run": 40917058847,
+    "publication_dependency": "PR305 merge then actual main retarget/revalidate; code itself depends only on merged304 journey"
   }
 }
