@@ -9645,5 +9645,12 @@
     "J_relation": "adjacent engineering evidence for J03/J06/J07/J09/J23; not formal gate pass",
     "historical_activity_snapshot_unchanged": true,
     "progress": "maintenance bounded pass; Codex historical repair observed with attribution limits; Claude blocked before product execution; no whole capability or formal gate pass"
+  },
+  "next_atomic_preflight": {
+    "status": "preparation_only",
+    "selected_historical_defect": "exporter mixed-line-ending code fence",
+    "evidence": "docs/implementation/pstack-atomic-preflight",
+    "model_calls": 0,
+    "whole_capability_complete": false
   }
 }

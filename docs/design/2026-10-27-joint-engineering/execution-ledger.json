@@ -4443,5 +4443,29 @@
       "archive_sha256": "bf9231dac7ef98df0f2fe12bed1cd2363d5c784fbc2dd7f3cafec5f00355f7ea",
       "not_host_or_runtime_qualification": true
     }
+  },
+  "next_atomic_preflight": {
+    "observed_at": "2026-10-29T05:34:19.853490+00:00",
+    "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "status": "offline_feasibility_checked_not_dispatchable",
+    "historical_old": "4611fd6de998868e09fef042dc142bb52efaa6dd",
+    "historical_fix": "a1cb1779d62107d2c4f101b98311f3ec39116ae1",
+    "new_production_defect": false,
+    "coordinator_cli_runs": 8,
+    "host_model_calls": 0,
+    "new_methods": 0,
+    "new_activity_cards": 0,
+    "card": "card_7e6a11b1",
+    "archive_sha256": "a212b5fda0be89d17ae268db87317ff7dc84031f07a92c7f40eefbcd5de6f2ac",
+    "evidence": "docs/implementation/pstack-atomic-preflight",
+    "pending": [
+      "closed export adapter with fixed cases and owned outputs",
+      "independent hidden input calibration and final criteria",
+      "fresh host context/catalog/input manifest",
+      "root explicit guard and dispatch"
+    ],
+    "host_call_plan": 8,
+    "plain_invalid_case": "coordinator_only",
+    "formal_gate_pass": false
   }
 }

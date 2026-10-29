@@ -1,0 +1,2221 @@
+{
+  "archive_sha256": "a212b5fda0be89d17ae268db87317ff7dc84031f07a92c7f40eefbcd5de6f2ac",
+  "members": 369,
+  "payload_bytes": 1239826,
+  "files": [
+    {
+      "path": "selection/export-fix.diff",
+      "bytes": 9907,
+      "sha256": "dc759dc00d755a58e6466628d73f70c1de7dd9158b8391584736bcbeb5008005",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-canonical.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-canonical.stdout",
+      "bytes": 422,
+      "sha256": "97d7956b5e44155156a105ffbd60736830376749514fb8730d2008d783046b38",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-incident.stderr",
+      "bytes": 150,
+      "sha256": "05d9250abd6243cc157d38ddb99c84dfb822ff084071c16748f1182619910937",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-incident.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-plain-invalid.stderr",
+      "bytes": 150,
+      "sha256": "05d9250abd6243cc157d38ddb99c84dfb822ff084071c16748f1182619910937",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-plain-invalid.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-valid-fenced-example.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/fixed-valid-fenced-example.stdout",
+      "bytes": 433,
+      "sha256": "2918120c1b55113514b572d809da1f645bf17c0d8205f341e6c6d6b7305ca7b5",
+      "mode": 420
+    },
+    {
+      "path": "selection/navigation-fix.diff",
+      "bytes": 2242,
+      "sha256": "5d53d5f74d524c53e9287e9b088a21607f31dfed512ac2453654584c6907e6de",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-canonical.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-canonical.stdout",
+      "bytes": 420,
+      "sha256": "e97e3686893b3c604a02bdf443396d77155c84f90ee476ec24b13bae7a9f1f5e",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-incident.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-incident.stdout",
+      "bytes": 419,
+      "sha256": "1640845d63b935ebb9aac588b18ea27752869cf85b8389cae942d99a040098da",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-plain-invalid.stderr",
+      "bytes": 150,
+      "sha256": "05d9250abd6243cc157d38ddb99c84dfb822ff084071c16748f1182619910937",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-plain-invalid.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-valid-fenced-example.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420
+    },
+    {
+      "path": "selection/old-valid-fenced-example.stdout",
+      "bytes": 431,
+      "sha256": "9b4c9c67c9af3637d7687f1426bc400344017f9b67d0ed92ed79f35908170a16",
+      "mode": 420
+    },
+    {
+      "path": "selection/probe-results.json",
+      "bytes": 16119,
+      "sha256": "cecd356c9579541b5a2a1640c9659e004b4e0305567506f16d65276481b68667",
+      "mode": 420
+    },
+    {
+      "path": "selection/probe.py",
+      "bytes": 3552,
+      "sha256": "9c7924ac90f57d7215fcbd1aa2da61dca2125a0a2c07dca2a9979839a4727a96",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 2850,
+      "sha256": "224545af7fbed5d48be1daf3b27f4fb3cff44465cac880064755e87295801220",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/SKILL.md",
+      "bytes": 2754,
+      "sha256": "4a6da2e9c6327ed495e609b902f63d636bb139efbb7206f79c375e4918c6d7fc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-agent/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/SKILL.md",
+      "bytes": 2469,
+      "sha256": "44b169e2e10d2b888772b055aa78e9572fda50ba273cad08030ffd41d393802d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-help/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/SKILL.md",
+      "bytes": 2814,
+      "sha256": "d69fcfc256ba33177d4d4f39d0a9ec173907bb180f020beec24d56b41b512b13",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/osstack-mode/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/SKILL.md",
+      "bytes": 3502,
+      "sha256": "f9c35d40222875674b4f987c979cd7cc591bd3c1aaf7196089fe65ee3bbe5569",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/.claude/skills/setup-osstack/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/output/manifest.json",
+      "bytes": 16380,
+      "sha256": "36514930cb773f2cd9e123bd8c7ec30a180a84506ee2ba71d61c652a24b4b493",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/canonical/scripts/lib/osstack-method-export.mjs",
+      "bytes": 16320,
+      "sha256": "89ab6fbcc5a667efa1c56be27aa8acf828e4f136162eb3089ce32fca343461e2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 52,
+      "sha256": "3404a3ce478d4870b218f69a98749b7c1e29be2857aee7d906510f85ef60ff02",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/incident/scripts/lib/osstack-method-export.mjs",
+      "bytes": 16320,
+      "sha256": "89ab6fbcc5a667efa1c56be27aa8acf828e4f136162eb3089ce32fca343461e2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 33,
+      "sha256": "bffb8521fb40c0b65c2ad3276ae06f6ce6bbd3d7694d9fe5cd08f1ab2b912ddc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/plain-invalid/scripts/lib/osstack-method-export.mjs",
+      "bytes": 16320,
+      "sha256": "89ab6fbcc5a667efa1c56be27aa8acf828e4f136162eb3089ce32fca343461e2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 43,
+      "sha256": "2f6a8b3c45b212bcf22ba68f3d71b9d2acc63dbb28c9b6a46f311575000eb7d6",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/SKILL.md",
+      "bytes": 2754,
+      "sha256": "4a6da2e9c6327ed495e609b902f63d636bb139efbb7206f79c375e4918c6d7fc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-agent/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/SKILL.md",
+      "bytes": 2469,
+      "sha256": "44b169e2e10d2b888772b055aa78e9572fda50ba273cad08030ffd41d393802d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-help/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/SKILL.md",
+      "bytes": 43,
+      "sha256": "2f6a8b3c45b212bcf22ba68f3d71b9d2acc63dbb28c9b6a46f311575000eb7d6",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/osstack-mode/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/SKILL.md",
+      "bytes": 3502,
+      "sha256": "f9c35d40222875674b4f987c979cd7cc591bd3c1aaf7196089fe65ee3bbe5569",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/.claude/skills/setup-osstack/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/output/manifest.json",
+      "bytes": 16376,
+      "sha256": "9c6a389e13ba3758149fad70258611d8f1ab1bb8300e912cac1af347f939d42c",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/fixed/valid-fenced-example/scripts/lib/osstack-method-export.mjs",
+      "bytes": 16320,
+      "sha256": "89ab6fbcc5a667efa1c56be27aa8acf828e4f136162eb3089ce32fca343461e2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 2850,
+      "sha256": "224545af7fbed5d48be1daf3b27f4fb3cff44465cac880064755e87295801220",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/SKILL.md",
+      "bytes": 2754,
+      "sha256": "4a6da2e9c6327ed495e609b902f63d636bb139efbb7206f79c375e4918c6d7fc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-agent/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/SKILL.md",
+      "bytes": 2469,
+      "sha256": "44b169e2e10d2b888772b055aa78e9572fda50ba273cad08030ffd41d393802d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-help/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/SKILL.md",
+      "bytes": 2814,
+      "sha256": "d69fcfc256ba33177d4d4f39d0a9ec173907bb180f020beec24d56b41b512b13",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/osstack-mode/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/SKILL.md",
+      "bytes": 3502,
+      "sha256": "f9c35d40222875674b4f987c979cd7cc591bd3c1aaf7196089fe65ee3bbe5569",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/.claude/skills/setup-osstack/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/output/manifest.json",
+      "bytes": 16380,
+      "sha256": "36514930cb773f2cd9e123bd8c7ec30a180a84506ee2ba71d61c652a24b4b493",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/canonical/scripts/lib/osstack-method-export.mjs",
+      "bytes": 15338,
+      "sha256": "0d0b401c2e8f692728d836f4575be35f784a3795a121b3616452ed2e9cdeeec2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 52,
+      "sha256": "3404a3ce478d4870b218f69a98749b7c1e29be2857aee7d906510f85ef60ff02",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/SKILL.md",
+      "bytes": 2754,
+      "sha256": "4a6da2e9c6327ed495e609b902f63d636bb139efbb7206f79c375e4918c6d7fc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-agent/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/SKILL.md",
+      "bytes": 2469,
+      "sha256": "44b169e2e10d2b888772b055aa78e9572fda50ba273cad08030ffd41d393802d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-help/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/SKILL.md",
+      "bytes": 52,
+      "sha256": "3404a3ce478d4870b218f69a98749b7c1e29be2857aee7d906510f85ef60ff02",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/osstack-mode/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/SKILL.md",
+      "bytes": 3502,
+      "sha256": "f9c35d40222875674b4f987c979cd7cc591bd3c1aaf7196089fe65ee3bbe5569",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/.claude/skills/setup-osstack/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/output/manifest.json",
+      "bytes": 16376,
+      "sha256": "c09cf36cc69a7b2e67464d62884fbc1325b082e50c4f5ccec46a730c00d0b319",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/incident/scripts/lib/osstack-method-export.mjs",
+      "bytes": 15338,
+      "sha256": "0d0b401c2e8f692728d836f4575be35f784a3795a121b3616452ed2e9cdeeec2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 33,
+      "sha256": "bffb8521fb40c0b65c2ad3276ae06f6ce6bbd3d7694d9fe5cd08f1ab2b912ddc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/plain-invalid/scripts/lib/osstack-method-export.mjs",
+      "bytes": 15338,
+      "sha256": "0d0b401c2e8f692728d836f4575be35f784a3795a121b3616452ed2e9cdeeec2",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/EXPORT.md",
+      "bytes": 2117,
+      "sha256": "53225702d80cbf8693f2929b42bc2e1dbeb1ba9cadd4174d3761213309c4c46f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/SKILL.md",
+      "bytes": 2928,
+      "sha256": "44a877116533aa2e641789afed4373fdf8f00ff6fbc17b9e22c65ad6ed961a2b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/entries/osstack-agent/SKILL.md",
+      "bytes": 2790,
+      "sha256": "f5331ead58b3637df1c7baec7502020a5cd57eda622c6f1e5f5bd0157bcb0f1b",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/entries/osstack-help/SKILL.md",
+      "bytes": 2487,
+      "sha256": "b8ea62ac734df756d31f9440ef347dd64354946d598630f8f48ce1b9ed35d435",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 43,
+      "sha256": "2f6a8b3c45b212bcf22ba68f3d71b9d2acc63dbb28c9b6a46f311575000eb7d6",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/entries/setup-osstack/SKILL.md",
+      "bytes": 3508,
+      "sha256": "0bce20e33a1573dc671a4d06b8c216aa4b63f07f9d34a4ec2a0dbbd78dfe9c30",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/osstack-methods-skill/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/SKILL.md",
+      "bytes": 2754,
+      "sha256": "4a6da2e9c6327ed495e609b902f63d636bb139efbb7206f79c375e4918c6d7fc",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-agent/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/SKILL.md",
+      "bytes": 2469,
+      "sha256": "44b169e2e10d2b888772b055aa78e9572fda50ba273cad08030ffd41d393802d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-help/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/SKILL.md",
+      "bytes": 43,
+      "sha256": "2f6a8b3c45b212bcf22ba68f3d71b9d2acc63dbb28c9b6a46f311575000eb7d6",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/osstack-mode/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/SKILL.md",
+      "bytes": 3502,
+      "sha256": "f9c35d40222875674b4f987c979cd7cc591bd3c1aaf7196089fe65ee3bbe5569",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/bug-fix.md",
+      "bytes": 2168,
+      "sha256": "c63027eaee3efa8e36d8b1583a54db3cc642cc19665efaab95ec1f9945fac052",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/create-verification.md",
+      "bytes": 2385,
+      "sha256": "d6a37f654d7f57afe3625adc93aa1a38128164e829621c4c8289b6588d206f3f",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/engineering-decision.md",
+      "bytes": 4326,
+      "sha256": "de7d5f5d40c1ac3e3eb31188a7d86e84aba9707140f9c4e2ac5970de68b87955",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/evidence.md",
+      "bytes": 4554,
+      "sha256": "5f5711a2fd9e01c406694b8e0f009e0143c7a11da299754b5dfc763a085f459e",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/feature-map-template.md",
+      "bytes": 1911,
+      "sha256": "24c79dd089f5e39c0eed97f15edb8cbf284efd31dafcce8925b6f1c1d3eb38bd",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/host-usage.md",
+      "bytes": 3145,
+      "sha256": "f79c481ac292c780531ae8344baf720478a356df19d8ec3cef0884338dd8f314",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/investigation.md",
+      "bytes": 1752,
+      "sha256": "422ef93ca9294ec3181207c2d43f0c6b8e4000db7f605093d6d5466c381ba75d",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/maintain-verification.md",
+      "bytes": 2724,
+      "sha256": "703a73c754e504af5b51422745e0df03b682b820dfe31962745573b94b39bcba",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/.claude/skills/setup-osstack/references/sources.md",
+      "bytes": 2658,
+      "sha256": "6430f693475076eb93fad330def96bb582c20b5c58d17c4c7c45abe33c7f95ef",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/output/manifest.json",
+      "bytes": 16376,
+      "sha256": "9c6a389e13ba3758149fad70258611d8f1ab1bb8300e912cac1af347f939d42c",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/scripts/export-osstack-methods.mjs",
+      "bytes": 1047,
+      "sha256": "9ab61bfaee77b0ca52447df854a3d768ceea07fe54f4731cdb705d9672437821",
+      "mode": 420
+    },
+    {
+      "path": "selection/probes/old/valid-fenced-example/scripts/lib/osstack-method-export.mjs",
+      "bytes": 15338,
+      "sha256": "0d0b401c2e8f692728d836f4575be35f784a3795a121b3616452ed2e9cdeeec2",
+      "mode": 420
+    },
+    {
+      "path": "selection/selection-manifest.json",
+      "bytes": 76989,
+      "sha256": "0169b84bac91e42f7e6d83d0a2a94ac52bf4e1cb19d041f7b748e45329239a4a",
+      "mode": 420
+    },
+    {
+      "path": "selection/selection.json",
+      "bytes": 4315,
+      "sha256": "4f386a754b03e829601ca5abe788a723104467d2ca92dd4dcb77d35e94cbcf83",
+      "mode": 420
+    },
+    {
+      "path": "selection/selection.md",
+      "bytes": 4436,
+      "sha256": "3ccebedbdfa2814c020c50773ee8a02b9bbaf207cac9701292a96083002aba6f",
+      "mode": 420
+    },
+    {
+      "path": "interface/handoff.json",
+      "bytes": 681,
+      "sha256": "fd22593f74e3128b0b43e314e81fb3db2e6398cd28320f387cf0c03b35d788ba",
+      "mode": 420
+    },
+    {
+      "path": "interface/prompt-template.md",
+      "bytes": 3391,
+      "sha256": "7ede4218d3f5875c291a30bae0ee9c87c41bcbc2fd5ea2b4d0805b555e109d7b",
+      "mode": 420
+    },
+    {
+      "path": "interface/protocol.json",
+      "bytes": 5591,
+      "sha256": "303ae8f89e41be62e3b18deed21f756a1746139d048f1556b54bbf58a8dfee31",
+      "mode": 420
+    },
+    {
+      "path": "independent/preflight.json",
+      "bytes": 6335,
+      "sha256": "1e33d0a6045702028f8130eea90180e3f60f712ca90f69f55adee9186b1b93e7",
+      "mode": 420
+    },
+    {
+      "path": "independent/preflight.md",
+      "bytes": 3366,
+      "sha256": "e539809356d27ededbc9b31f0901de097f178c9921ca40376126e88076ae3414",
+      "mode": 420
+    }
+  ]
+}
