@@ -25,8 +25,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
-  "observed_at": "2026-10-29T00:15:26.717489+00:00",
+  "main_sha": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+  "observed_at": "2026-10-29T01:49:57.222119+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -3673,7 +3673,7 @@
     ]
   },
   "pr_readiness_wave": {
-    "status": "draft_ci_passed_waiting_parent_merge",
+    "status": "retarget_ci_failed_test_repair_in_validation",
     "base_main": "a9e480d39b9fcff206f356cee75a72cc9cc4d9e4",
     "depends_on_pr": 299,
     "provisional_parent_head": "7deee3af868c50958dcc651f2a5a7599e4750c60",
@@ -3725,15 +3725,15 @@
     "owned_host_workspaces_archived_then_removed": 4,
     "archive_independently_verified": true,
     "pr": 300,
-    "published_head": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
-    "base_branch": "codex/method-continuity-delivery",
+    "published_head": "f2df8504b76e5f238a0571fe12d29347ec82bfdf",
+    "base_branch": "main",
     "ci_run": 40789146519,
     "final_document_tests": 241,
     "final_hygiene_tests": 1,
     "publication_evidence": "docs/implementation/method-pr-readiness-publication",
     "user_approval_required": true,
     "applicable_ci": "5_SUCCESS_paid_SKIPPED",
-    "readiness_blocker": "PR299 not merged; actual-main reconciliation and retarget still required",
+    "readiness_blocker": "CI40802170819 first-page assertion defect; repair9432d319 validated focused, publication pending",
     "final_ci_test": {
       "head": "0e5d2c9800ddc657c11580a5e80ff4d7ea342bf7",
       "run": 40789146519,
@@ -3752,6 +3752,39 @@
         "reason": "global Codex home absent"
       },
       "scope": "branch-base CI only; post-parent main reconciliation pending"
+    },
+    "retarget_main": {
+      "main": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+      "head": "f2df8504b76e5f238a0571fe12d29347ec82bfdf",
+      "tree": "c673965b87aee1a239012f0d7090f4554243f89e",
+      "content_equal_previous": true,
+      "ci_run": 40802170819,
+      "status": "attempt1_failed_pagination_assumption",
+      "exports": {
+        "passed": 91,
+        "failed": 0,
+        "skipped": 0
+      },
+      "document_tests": 241,
+      "audit": "actual claude-sonnet-5-5 limited retarget PASS",
+      "evidence": "docs/implementation/method-post299-retarget"
     }
+  },
+  "parallel_reporting_wave": {
+    "status": "candidate_integrated",
+    "provisional_base": "f2df8504b76e5f238a0571fe12d29347ec82bfdf",
+    "depends_on_pr": 300,
+    "method_count": 13,
+    "new_named_method": false,
+    "cards": [
+      "card_2cccba22",
+      "card_be3dc4a2",
+      "card_02bff156"
+    ],
+    "runtime_enabled": false,
+    "formal_gate_pass": false,
+    "host_calls": 0,
+    "code_sha": "9bc8facd965bd986311b02b55355e021b7ee444b",
+    "criteria_sha256": "543bf7e1a0a131149e93efec3252cd8d7e793d918b79ee3742e4cb7b5dc6e514"
   }
 }

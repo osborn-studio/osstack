@@ -1,0 +1,18 @@
+{
+  "head": "f2df8504b76e5f238a0571fe12d29347ec82bfdf",
+  "main": "7d3fc2bfc39cbb8afc382973cc17be4c60a29f70",
+  "files": [
+    {
+      "path": "osstack-methods-skill/references/pr-readiness.md",
+      "sha256": "70faa28d057b87ff7ca017036abb64f25d7de54473d51a7500578c3f0b8062c3"
+    },
+    {
+      "path": "osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "sha256": "33f9ae651712eee11ab2fece8085f7bfb6f88f3e816630132a4458ca3688e6f3"
+    },
+    {
+      "path": "scripts/export-osstack-methods.test.mjs",
+      "sha256": "7cb6d75bb4f885c09392624e19f11e4c440beec56d9a4da342c6e9afdd7d0422"
+    }
+  ]
+}
