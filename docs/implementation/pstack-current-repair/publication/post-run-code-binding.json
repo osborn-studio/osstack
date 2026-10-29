@@ -1,0 +1,14 @@
+{
+  "recorded_at": "2026-10-29T08:37:28.977346+00:00",
+  "timing": "post-run reconciliation; does not claim pre-run binding",
+  "code_commit": "681cf6e92a5b33ef9d931662ad94d4b2f9fdfad8",
+  "committed_checker_sha256": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+  "committed_repository_test_sha256": "1608380927ffb0efb603d5a2a55a9cf5aef7956dfb30045c8d9c6e9f86aae5eb",
+  "root_regression_test_sha256_label": "root full repository test file; distinct from host-authored test254cae99",
+  "worktree_argument": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-current-repair-control",
+  "worktree_realpath": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pstack-current-repair-control",
+  "host_candidate_sha256": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+  "host_test_sha256": "254cae993e4c3e44c2fa24c5080b14bcc3d8cffba6d19f88c232a5b85b78a535",
+  "root_regression_red_log_sha256": "3799ee122a0cb8accc73644dc3010d4c5c168577d828d4c4406b85ca1b717686",
+  "root_targeted_log_sha256": "d82a578bae6cb8564e4b249211974ab836cf36a470781eb9868e7b5b633efaa9"
+}

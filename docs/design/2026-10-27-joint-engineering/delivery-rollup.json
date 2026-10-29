@@ -1746,6 +1746,10 @@
         "status": "draft_waiting_ci_and_parent303",
         "record": "docs/implementation/method-full-journey/README.md",
         "whole_capability_complete": false
+      },
+      "latest_bounded_delivery": {
+        "evidence": "docs/implementation/pstack-current-repair/README.md",
+        "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
       }
     },
     {
@@ -1915,7 +1919,11 @@
         301
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "latest_bounded_delivery": {
+        "evidence": "docs/implementation/pstack-current-repair/README.md",
+        "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
+      }
     },
     {
       "id": "PS14",
@@ -2159,6 +2167,10 @@
         "record": "docs/implementation/method-material-reader/README.md",
         "status": "validated_candidate_pending_pr",
         "whole_capability_complete": false
+      },
+      "latest_bounded_delivery": {
+        "evidence": "docs/implementation/pstack-current-repair/README.md",
+        "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
       }
     },
     {
@@ -9439,6 +9451,33 @@
       ],
       "formal_gate_pass": false,
       "whole_milestone_complete": false
+    },
+    {
+      "card_id": "card_440af690",
+      "title": "Current packet consistency repair and actual host use",
+      "task_kind": "implementation_and_bounded_host_validation",
+      "board": "joint-firstmate-pstack",
+      "observed_status": "running",
+      "observed_at": "2026-10-29T08:43:38.541626+00:00",
+      "contributes_to": {
+        "PS": [
+          "PS08",
+          "PS13",
+          "PS20"
+        ],
+        "J": [
+          "J09",
+          "J03",
+          "J07",
+          "J23"
+        ]
+      },
+      "delivered_scope": "Current bug fixed by actual Codex candidate; Claude repair incomplete, both16pages delivered. PR305 update/CI pending.",
+      "evidence_paths": [
+        "docs/implementation/pstack-current-repair/README.md"
+      ],
+      "formal_gate_pass": false,
+      "whole_milestone_complete": false
     }
   ],
   "activity_counting": {
@@ -10004,5 +10043,66 @@
     "ci_run": 40839214482,
     "all_workers_handed_off": true,
     "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference."
+  },
+  "current_packet_repair": {
+    "observed_at": "2026-10-29T08:43:38.541626+00:00",
+    "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "candidate_base": "856bec1deaa720425d8b475793f9dd75e1364288",
+    "card_id": "card_440af690",
+    "state": "reviewed_repair_publication_pending",
+    "task": "Reject internally contradictory passed packet with nonempty product stderr; retain legitimate failed packets and v1/v2 compatibility",
+    "source": "current main v1 and provisional full v2; not an old historical repair replay",
+    "owners": {
+      "discovery_template": "loader_adversarial",
+      "host_execution": "terminal_preflight",
+      "independent": "cleanup_regression",
+      "ledger_pr": "root"
+    },
+    "host_calls": {
+      "codex": 1,
+      "claude": 1,
+      "retries": 0
+    },
+    "dispatch": "requires concrete frozen context, criteria and root guard",
+    "primary_j": "J09",
+    "supporting_j": [
+      "J03",
+      "J07",
+      "J23"
+    ],
+    "pstack_groups": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "formal_gate_pass": false,
+    "runtime_enabled": false,
+    "guard_at": "2026-10-29T08:26:21Z",
+    "criteria_sha256": "000da1c46bb539a246b1f8ec1f03bfce895987c2b8a178d0c8b5e850d7217845",
+    "context_sha256": "1f793eb26d996eaf000128c6bb5d5f6239ad406384600013183b5ca537c5e23c",
+    "code_commit": "681cf6e92a5b33ef9d931662ad94d4b2f9fdfad8",
+    "candidate_checker_sha256": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+    "outcomes": {
+      "codex": "bounded actual RED2fail4pass then unchanged testGREEN6pass; 14helpercalls;12independentholdouts conform; attribution limited",
+      "claude": "6baseline helpers then compound source read executed, second denied; stopped without test/fix/retry; repair incomplete",
+      "material_delivery": "19required files including16short pages returned byte-exact per host; not understanding or causal benefit"
+    },
+    "validation": {
+      "targeted": "239pass (88projector43journey94exports14reader)",
+      "root_regression": "9new repo tests: RED7assertionfail2controlsPASS; unchangedtestsGREEN",
+      "full": "681cf6e9,22packages7144passed5skipped0failed; generated dist+preexistingledger working changes; trackedbytes stable; not cleancommittedtree",
+      "independent_report_sha256": "e96a9a4bdf53d7222b5c4cfd78afa042efae8b44df4c3187d3abe1f209743742"
+    },
+    "audit": "actual Claude CLI claude-sonnet-5-5 staticPASS then limited reporting closurePASS; optional notes reconciled, raw preserved",
+    "evidence": "docs/implementation/pstack-current-repair/README.md",
+    "archive_sha256": "3a895404c2b50b4b110f632582a0ec7a1c870782040f80e049083278c43ca1c6",
+    "pr": 305,
+    "publish_plan": "append confirmed consistency fix to still-Draft305; new head CI required; parent304 must merge before main retarget/Ready",
+    "old_305_ci": {
+      "head": "856bec1deaa720425d8b475793f9dd75e1364288",
+      "run": 40839214482,
+      "status": "5SUCCESS/paidSKIP",
+      "scope": "22packages7142pass7skip0fail; does not validate new681repair"
+    }
   }
 }

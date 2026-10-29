@@ -1,0 +1,120 @@
+{
+  "packages": {
+    "packages/compliance": {
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/contracts": {
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/github": {
+      "passed": 107,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/knowledge": {
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/runtime": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/neat-eval": {
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/protocol": {
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/governance": {
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/knowledge-cloud": {
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/graph": {
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/core": {
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/plugins": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/hermes-adapter": {
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/skills": {
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/autonomy": {
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/skill-registry": {
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/agents": {
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/config": {
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/loop": {
+      "passed": 515,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/conformance": {
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/supervisor": {
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0
+    },
+    "packages/cli": {
+      "passed": 2765,
+      "skipped": 5,
+      "failed": 0
+    }
+  },
+  "total": {
+    "passed": 7144,
+    "skipped": 5,
+    "failed": 0
+  },
+  "binding": "full-binding.json"
+}

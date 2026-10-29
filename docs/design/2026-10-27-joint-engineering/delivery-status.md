@@ -34,7 +34,7 @@
 
 | 能力 | 交付状态 | 具体边界 |
 |---|---|---|
-| PS01 单入口任务路由与渐进方法组合 | 部分已交付 | 13共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道 |
+| PS01 单入口任务路由与渐进方法组合 | 部分已交付 | 14共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道 |
 | PS02 代码机制与历史动机取证 | 部分已交付 | investigation可用；how/why/teach为方法吸收，没有专门历史取证工具或全面效果验证 |
 | PS03 意图校准与可纠正的问题模型 | 部分已交付 | task-framing已合并；实际两宿主均LIMITED，尚非任务执行收益证明 |
 | PS04 从使用草图到原型证据的架构循环 | 部分已交付 | architecture/feature/refactoring可用；独立多原型arena和完整采纳循环未交付 |
@@ -79,7 +79,7 @@
 | J12 目标 schema 恢复与操作员处置 | 离线schema/bootstrap/旧hold与broker组合测试可复用；既有graph recovery基础存在。 | 已有离线bootstrap/旧hold组合准备尚无真实操作员恢复资格证据。 | operator-recovery host、白名单迁移selector及跨进程原子处置链尚未交付。 | 可信操作员授权、实际进程存活/停止及恢复可支持范围仍待实测。 | pstack或必要基础 |
 | J13 主控事件模型与累计预算 | 已有engineering持久store/DDL基础。 | 已有engineering store/DDL基础尚未接受新controller事件/预算全链验证。 | 联合controller/planner事件模型和累计预算执行链尚未交付。 | 跨重启/外部事件条件下的实际行为与成本尚未测定。 | 后排 |
 | J14 Loop/Graph 准入与单次启动 | 既有Loop/Graph与executor基础存在。 | 既有Loop/Graph基础尚未取得JA24联合准入/单次启动证据。 | 联合engineering-executor及对应新准入接线尚未交付。 | 真实query/stop能力及其支持边界尚未资格测定。 | 后排 |
-| J15 统一入口、范围纠正与路由 | 四命名入口、Codex/Claude可导出布局和13方法已合入；可按当前用户授权使用材料。 PR301已合并并行分工与紧凑报告；方法数仍13。 | 四入口/13材料的导出与读取证据不满足JA25/63/67持久问答和权限验收。 | 联合持久router、问题版本/纠偏与可信人类答案接线尚未交付。 | 四入口在所有目标宿主的原生发现/正确路由能力尚未证明。 | pstack或必要基础 |
+| J15 统一入口、范围纠正与路由 | 四命名入口、Codex/Claude可导出布局和14方法已合入；可按当前用户授权使用材料。 PR301加入并行分工与紧凑报告，PR302加入第14方法。 | 四入口/14材料的导出与读取证据不满足JA25/63/67持久问答和权限验收。 | 联合持久router、问题版本/纠偏与可信人类答案接线尚未交付。 | 四入口在所有目标宿主的原生发现/正确路由能力尚未证明。 | pstack或必要基础 |
 | J16 跨方法与监督的联合旅程 | 已有真实验证器旅程和小规模宿主材料使用观察。 | 现有验证器旅程与有限host观察尚无JA26/27联合监督旅程资格。 | 跨方法与持续监督/恢复的完整joint journey及指定crash集成尚未交付。 | 组合链的端到端正确性与收益仍未知。 | 后排 |
 | J17 容量、写集合与集成候选 | JP-17a独立broker namespace真实SQLite候选DDL/held orphan/不可变decision防护可用。 | JP-17a离线broker DDL和攻击回归尚未获得J17正式资格。 | JP-17b恢复与可信proof、JP-17c运行时容量/write-set/integration routing尚未交付。 | broker schema实际分配、跨进程fencing与隔离支持范围仍未确定。 | 后排 |
 | J18 竞争与覆盖模式的多候选扩展 | 已有独立审查/不同候选比较经验，不属于新运行时交付。 | 已有人工独立评审/候选比较不是JA29运行时多候选验收。 | method-candidates与coverage/integration候选选择扩展尚未交付。 | 多候选方式对真实质量/成本的增益仍未知。 | 后排 |
@@ -161,3 +161,8 @@ J23一般运行时资格后排，但服务pstack闭环的真实宿主测量提�
 ## 2026-10-29：pstack五case实际使用路径候选
 
 既有journey新增可选`--scope full`，真实覆盖healthy/missing-ref/drift/mixed/empty，默认两case保持兼容。186定向、独立实际2+5case与失败反例、实际Sonnet静态审计通过，待发布CI及用户合并；未新增方法。旧两case投影器拒绝full而不丢弃行。PS08/PS09，J03主贡献、J06/J09支持，正式gate不变。见[交付记录](../../implementation/method-full-journey/README.md)及[功能优先队列](pstack-feature-queue.md)。
+
+
+## Current packet repair (2026-10-29)
+
+[实际修复与证据](../../implementation/pstack-current-repair/README.md)：确认当前主线v1及候选v2的passed/nonempty-stderr矛盾漏检，采纳Codex实际一行修复，新增9个仓库回归。239项定向检查通过；代码681cf6e9全仓7144通过/5跳过/0失败，运行期间tracked字节不变，包含新鲜生成dist与已有账本工作改动，不称干净提交树。Sonnet5.5初审和限定报告复审PASS。Codex完成同测试RED→修复→GREEN；Claude六次基线后，首次复合源码读取执行、第二次被拒后停止，没有修复，也不追溯增加源码读取禁令。两宿主19必读文件（含16材料页）均完整送达，不等于理解或收益证明。修复准备追加至Draft #305，需新head CI及parent304合并/main重验后才可Ready；4入口/14方法、正式J门槛不变。

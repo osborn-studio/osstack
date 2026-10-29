@@ -1,0 +1,87 @@
+{
+  "checked_at": "2026-10-29T08:44:51.261196+00:00",
+  "archive_sha256": "3a895404c2b50b4b110f632582a0ec7a1c870782040f80e049083278c43ca1c6",
+  "members": 2135,
+  "listed_payload_file_bytes": 17258317,
+  "all_member_hash_size_mode_type_verified": true,
+  "path_safety": "unique relative regular files/directories only; no links or traversal",
+  "independent_original_manifest_files": 335,
+  "independent_original_bytes_exact": true,
+  "host_and_audit_live_files_compared": 667,
+  "guard_chronology": [
+    {
+      "host": "codex",
+      "approved_at": "2026-10-29T08:26:21.688592+00:00",
+      "run_at": "2026-10-29T08:26:37.366257+00:00",
+      "guard_sha256": "aa93baddeabeff17de4afcc40637dff6fd8f9d360e317d55f4cade2f9b9fb7df"
+    },
+    {
+      "host": "claude",
+      "approved_at": "2026-10-29T08:26:21.693092+00:00",
+      "run_at": "2026-10-29T08:26:37.350353+00:00",
+      "guard_sha256": "4cae9d57d070c0ea7b8f11c307881a8d7cdb26e9b088168ed3c87c43293eb919"
+    }
+  ],
+  "audits": [
+    {
+      "scope": "audit",
+      "prompt_sha256": "4b5e973257b5bddc210bda7c7bfe6f92f2ae5635a1960e67a8a69372923f59d7",
+      "response_sha256": "6f37b60c551e9bb52b616d18c14c0c52d329c300accfd71d9db5d58b7adad55e",
+      "exit": 0
+    },
+    {
+      "scope": "audit-closure",
+      "prompt_sha256": "9ba90045c89f9bf2e1546d1aafc0cba0c1c51d904c67da3b5e79547c8a61c00e",
+      "response_sha256": "a99cdf679bf25f98f819115e3636e9f21d2056f6d6ff835fead20370a819c27d",
+      "exit": 0
+    }
+  ],
+  "audit_input_bindings": [
+    {
+      "audit": "audit",
+      "input_files": 14,
+      "all_input_bytes_retained": true
+    },
+    {
+      "audit": "audit-closure",
+      "input_files": 12,
+      "all_input_bytes_retained": true
+    }
+  ],
+  "full": {
+    "head": "681cf6e92a5b33ef9d931662ad94d4b2f9fdfad8",
+    "exit": 0,
+    "unique_packages": 22,
+    "totals": {
+      "passed": 7144,
+      "skipped": 5,
+      "failed": 0
+    },
+    "tracked_before_after_files": 8356,
+    "tracked_bytes_unchanged": true,
+    "source_hashes": {
+      "scripts/project-method-journey-evidence.mjs": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+      "scripts/project-method-journey-evidence.test.mjs": "1608380927ffb0efb603d5a2a55a9cf5aef7956dfb30045c8d9c6e9f86aae5eb"
+    },
+    "clean_committed_tree_claim": false,
+    "qualification": "fresh generateddist and ledger working changes explicitly recorded; targeted runs postbound, not relabeled as originally started on681"
+  },
+  "readme": {
+    "sha256": "906eea2cef3466fbd4ab8876606563d41b1d11649fa8a2e4f47778aaee8ba010",
+    "scope_wording_consistent": true,
+    "claude": "six total baseline helpers, first compoundsource read executed; next denied; no sourceinspection retroactiveatomicrule; incomplete repair",
+    "codex": "boundedrepair, requiredpages delivery; nativeunavailable selfreport unproven",
+    "main": "493 baseline not patched/revalidated"
+  },
+  "confirmed_issues": [],
+  "verification_notes": [
+    "Initial verifier assumed both audit input-binding files were dictionaries; closure uses list, original script preserved.",
+    "Closure5501-byte report-draft snapshot is retained byte-exact inside audit-input.txt (SHA66ccca26...), while live report-draft later changed. Initial separate-member-only check was incomplete; original verifier preserved."
+  ],
+  "limits": [
+    "Archive integrity and retained-byte comparison, not independent provenance authentication.",
+    "No test/model rerun. Full counts derive from preserved raw log; executionbinding is owner-observed evidence.",
+    "Both static audits retained; later full result and final prose are not silently added to earlier audit scope.",
+    "No OS containment/all-descendant/native-methodcausality/formalgate claim."
+  ]
+}
