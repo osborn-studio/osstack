@@ -276,3 +276,7 @@ PR302已Draft发布，main基线1bf1f6ca，候选72ab99e7；CI40819652448运行�
 #302 head72ab99e7 已转 Ready，base main1bf1f6ca；CI40819652448五项适用检查成功，paid smoke跳过。实际merge ref dca20945的22包合计7142通过/7跳过/0失败，导出94项中93通过/1跳过。仅等待gilberthello审批合并。
 
 下一批没有新增命名方法。真实验证维护已完成一格过时映射修复并同入口复验，独立核验限定通过；两宿主各执行一次历史真实checker修复，Codex有实际回归RED→修复→GREEN，Claude因复合命令权限拒绝停止，分项验收已完成：Codex历史目标修复成立，Claude未修复。原始失败和历史修复属性保留，不写成新产品bug或正式J门槛通过。见[本轮原始记录与结论](../../implementation/pstack-real-loops/README.md)。
+
+### #302 已由用户合并
+
+最新main493caa4e于05:18:10Z合入#302，树c458ad2d与发布候选72ab99e7相同；不重新标注旧CI/宿主实验SHA。PR302卡done，主线14方法。真实维护有限闭环已完成，Codex历史目标修复成立且归因有限，Claude未修复；Sonnet两轮限定报告复审通过，原始失败保留。下一项为不同缺陷的新冻结原子命令可行性任务，尚未选题或派发。

@@ -1,6 +1,8 @@
 # pstack actual maintenance and repair loops
 
-PR302 is Ready at head `72ab99e70ef54db924d775d3d3552ecde8780af0`, based on main `1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0`. CI40819652448 checked merge ref `dca209453ab3cdd6e97bf83931730b3cabc1baf3`: five applicable checks passed, paid smoke skipped. The 22 package summaries contain 7,142 passed, 7 skipped and 0 failed; export tests contain 94 total, 93 passed and 1 skipped. Existing Sonnet5.5 source audit remains bound to its original candidate. Only gilberthello approves and merges.
+**Latest status:** PR302 was merged by the user at2026-10-29T05:18:10Z into main `493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1`. Its tree `c458ad2d97ff72492131fdd20d2b7205d6cb5c4a` equals the published candidate tree. The audited task evidence below remains pinned to its original inputs; this merge observation does not re-run or rebind it.
+
+At the Ready snapshot, PR302 was Ready at head `72ab99e70ef54db924d775d3d3552ecde8780af0`, based on main `1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0`. CI40819652448 checked merge ref `dca209453ab3cdd6e97bf83931730b3cabc1baf3`: five applicable checks passed, paid smoke skipped. The 22 package summaries contain 7,142 passed, 7 skipped and 0 failed; export tests contain 94 total, 93 passed and 1 skipped. Existing Sonnet5.5 source audit remains bound to its original candidate. Only gilberthello approves and merges.
 
 This next slice exercised existing pstack methods. It added no method and changed no production source. The repair used a historical defect already fixed in production; it is evidence of bounded task execution, not another production fix.
 

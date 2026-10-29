@@ -25,8 +25,8 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
-  "observed_at": "2026-10-29T05:17:24.241072+00:00",
+  "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+  "observed_at": "2026-10-29T05:24:40.943500+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -4305,7 +4305,7 @@
     "scope": "source planning, offline host preflight, independent retarget"
   },
   "skill_authoring_wave": {
-    "status": "ready_awaiting_user_merge",
+    "status": "merged",
     "depends_on_pr": 301,
     "base": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
     "author_sha": "b8bfc83ceee2065cf8192e9de083c24707c13976",
@@ -4368,7 +4368,11 @@
       "export_total": 94,
       "export_passed": 93,
       "export_skipped": 1
-    }
+    },
+    "merged_at": "2026-10-29T05:18:10Z",
+    "merge_commit": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+    "merge_tree": "c458ad2d97ff72492131fdd20d2b7205d6cb5c4a",
+    "merge_tree_equals_published_candidate": true
   },
   "delivery_reconciliation": {
     "priority": "pstack_first",
@@ -4431,6 +4435,13 @@
     "new_methods": 0,
     "next_step": "Select a different defect for a newly frozen single-turn feasibility task; atomic commands, behavioral test created before RED, same permission boundary; first actual atomic denial ends turn, no fallback/reissue or inherited budget.",
     "evidence": "docs/implementation/pstack-real-loops",
-    "method_consumption": "Codex exact method bytes in raw shell event; model-visible delivery not independently attested. Claude native mode observed, reference stdout full but model message preview; neither full consumption claim."
+    "method_consumption": "Codex exact method bytes in raw shell event; model-visible delivery not independently attested. Claude native mode observed, reference stdout full but model message preview; neither full consumption claim.",
+    "audit": {
+      "model": "claude-sonnet-5-5",
+      "initial": "REVISE",
+      "closure": "limited_R1-R5_reporting_PASS",
+      "archive_sha256": "bf9231dac7ef98df0f2fe12bed1cd2363d5c784fbc2dd7f3cafec5f00355f7ea",
+      "not_host_or_runtime_qualification": true
+    }
   }
 }

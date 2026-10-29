@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-29T04:36:10.629727+00:00",
-  "main_sha": "1bf1f6caa0ac0ae7b05c3caa9bb44d7ce6517dd0",
-  "main_tree": "4534c8043ce7b568ee18c5fc1f175dece8aea67b",
+  "observed_at": "2026-10-29T05:24:40.943500+00:00",
+  "main_sha": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+  "main_tree": "c458ad2d97ff72492131fdd20d2b7205d6cb5c4a",
   "priority": "pstack_first",
-  "merged_named_methods": 13,
+  "merged_named_methods": 14,
   "merged_entries": 4,
-  "candidate_named_methods": 14,
-  "candidate_status": "PR302 Ready; CI five applicable checks passed, awaiting user merge; main remains 13 methods",
+  "candidate_named_methods": null,
+  "candidate_status": "PR302 merged; fourteen named methods on main; actual repair experiments remain pinned to prior1bf1f6ca",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -1411,6 +1411,35 @@
       "scope_relation": "supporting_method_material_not_formal_runtime_output",
       "design_associations": [],
       "evidence_readme": "docs/implementation/method-parallel-reporting/README.md"
+    },
+    {
+      "pr": 302,
+      "merge_commit": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+      "mergedSHA": "493caa4e46e616b1d7e9e1c87ed0a5775eae3ad1",
+      "state": "merged_in_snapshot",
+      "primary_j": "J19",
+      "primaryJ": "J19",
+      "supporting_j": [
+        "J15",
+        "J26"
+      ],
+      "supportingJ": [
+        "J15",
+        "J26"
+      ],
+      "pstack_groups": [
+        "PS12"
+      ],
+      "delivered_capability": "skill-authoring material and pstack delivery reconciliation; fourteen named methods, no automatic learning runtime",
+      "primary_artifacts": [
+        "osstack-methods-skill/references/skill-authoring.md",
+        "docs/implementation/method-skill-authoring/README.md"
+      ],
+      "acceptance_limit": "Material/export checks and limited static audit; not scoped retrieval/lesson promotion or broad host qualification",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "supporting_method_material_not_formal_runtime_output",
+      "design_associations": [],
+      "evidence_readme": "docs/implementation/method-skill-authoring/README.md"
     }
   ],
   "pstack_capabilities": [
@@ -1418,7 +1447,7 @@
       "id": "PS01",
       "title": "单入口任务路由与渐进方法组合",
       "status": "partial_delivered",
-      "delivery": "13共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道",
+      "delivery": "14共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道",
       "joint_work_items": [
         "J04",
         "J05",
@@ -1781,8 +1810,8 @@
     {
       "id": "PS12",
       "title": "反思转结构化约束",
-      "status": "candidate_unpublished",
-      "delivery": "skill-authoring第14方法候选已定向验证和限定审计；未合并，不计入main。",
+      "status": "partial_delivered",
+      "delivery": "skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。",
       "joint_work_items": [
         "J19"
       ],
@@ -1798,7 +1827,9 @@
         "commit": "99b609a72323b70204eab407c622f436e858e112",
         "path": "pstack/skills/reflect/SKILL.md"
       },
-      "merged_prs": [],
+      "merged_prs": [
+        302
+      ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false
     },
@@ -4881,12 +4912,13 @@
       "title": "上下文恢复与受控经验",
       "engineering_classification": "material_partial_not_retrieval_promotion",
       "formal_milestone_completion": "not_established",
-      "delivered_or_reusable": "session-continuity方法保留当前授权核对、owner/dirty/base/next observer交接；反思指导只生成候选。",
+      "delivered_or_reusable": "session-continuity方法保留当前授权核对、owner/dirty/base/next observer交接；反思指导只生成候选。 PR302已合并skill-authoring材料，正式检索/晋升缺口不变。",
       "remaining_gap": "项目隔离检索/provenance/expiry/受控lesson promotion未实现；JA30跨项目与指令污染、JA69坏例/邻近好例抗全拒绝仍需真实验证。",
       "evidence_paths": [
         "docs/implementation/method-session-continuity/README.md",
         "osstack-methods-skill/references/session-continuity.md",
-        "docs/design/2026-10-27-joint-engineering/acceptance-cases.json"
+        "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+        "docs/implementation/method-skill-authoring/README.md"
       ],
       "original_outputs": [
         "经验草案、历史查询与受控方法改进候选"
@@ -4957,7 +4989,8 @@
         299
       ],
       "supporting_prs": [
-        301
+        301,
+        302
       ],
       "delivery_dimensions": {
         "delivered": "session-continuity方法保留当前授权核对、owner/dirty/base/next observer交接；反思指导只生成候选。",
@@ -6816,7 +6849,7 @@
       "acceptance": "候选源SHA、实际审计、定向测试、原始失败与使用限制保留。",
       "gate": "合并只确认该材料切片，不签发J19学习/检索运行时资格。",
       "candidate_sha": "9cbb463af972d6fc0ad5265971b966ba2c35523e",
-      "latest_result": "PR302 Ready with five applicable CI SUCCESS; awaiting gilberthello merge"
+      "latest_result": "PR302 merged at493caa4e, tree equal published72ab candidate; no formal gate upgrade"
     }
   ],
   "board_mechanics": {

@@ -1,0 +1,45 @@
+{
+  "recorded_after_execution": true,
+  "recorded_at": "2026-10-29T05:25:29.198460+00:00",
+  "head_at_execution": "4d0b361c992b6ed8a74bd015964b235cbd50d792",
+  "working_tree": "uncommitted final report/ledger merge-observation and audit archive additions; no product source edits",
+  "tests": [
+    {
+      "name": "joint docs",
+      "count": 241,
+      "passed": 241,
+      "log": "docs-merged.log",
+      "sha256": "7dbdd7a645bbe7583ed9b0684d8acf9306c91e2876e9981fe70261ea06632a3d"
+    },
+    {
+      "name": "governance osstack-config hygiene",
+      "count": 1,
+      "passed": 1,
+      "log": "hygiene-merged.log",
+      "sha256": "1c3d1723ec8b0f747e2d679c0ad1832d3b533b245baee7cfb8f9601cd0d3f547"
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/delivery-rollup.json",
+      "sha256": "d66cbcbd6c37b90555abbe4c6eab1456dbfb1c8a5d0aa7b561bcf183b66ffdc1"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/delivery-status.md",
+      "sha256": "f5178f1e926d2c5efe72b9e08d7b9712070d0d75a5dcc3929108b19686a13200"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+      "sha256": "875ad93cee0f9ad18522b353c48edac742bfda66f7610038a1348f353e876b12"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution.md",
+      "sha256": "4c65fc09578b04f36ba9c5c6f2b0643ed5b573b63db1c635353fb54ad7538ff3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/project-operations.md",
+      "sha256": "3195e4ef3f59379ee065189ca623e5e303c1e030fa23b3101cc3c792a566aae5"
+    }
+  ],
+  "not_new_full_package_run": true
+}
