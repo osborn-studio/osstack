@@ -1,6 +1,6 @@
 # Skills-check verification journey
 
-Use this example to check two real CLI outcomes with a reusable driver. It creates local Git fixtures, runs the compiled `skills check` command, checks retained evidence, and writes a two-row feature map. The missing-ref case is an expected product failure, not a recovered source.
+Use this example to check real CLI outcomes with a reusable driver. The default journey covers `healthy` and `missing-ref`. Add `--scope full` to cover all five mapped cases: `healthy`, `missing-ref`, `drift`, `mixed` and `empty`. It creates local Git fixtures, runs the compiled `skills check` command, checks retained evidence, and writes a feature map for the selected scope. An expected negative remains a product failure or drift result; verification does not recover the source.
 
 ## Target and prerequisites
 
@@ -28,24 +28,31 @@ node scripts/method-verification-journey.mjs --output "$journey_output" > "$jour
 
 The script sets `umask 077` before creating directories and logs. The shell retains invocation stdout/stderr as sibling files ending in `.stdout` and `.stderr`; it does not precreate the journey output directory. Read those logs and the command exit status before interpreting the report. Keep the build log separately.
 
-This wrapper accepts only `--output`. Do not add `--doctor`, `--dry-run`, `--case` or `--evidence-dir` to it. It calls the existing skills-check driver's read-only doctor before each case, then drives that case. A failed doctor stops the journey. Doctor does not create a passing behavior observation.
+The wrapper accepts `--output ABSOLUTE_NEW_ROOT` and optional `--scope full`. Omitting `--scope` preserves the two-case journey. Unknown or repeated scope options are invalid usage. Do not add `--doctor`, `--dry-run`, `--case` or `--evidence-dir` to it. It calls the existing skills-check driver's read-only doctor before each case, then drives that case. A failed doctor stops the journey. Doctor does not create a passing behavior observation.
+
+Choose the scope before running the block. For the five-case journey, replace its driver line with `node scripts/method-verification-journey.mjs --output "$journey_output" --scope full > "$journey_output.stdout" 2> "$journey_output.stderr"`. Keep the same scratch preamble and new-output requirement. Do not run both forms against the same output directory.
 
 The wrapper creates only its new output tree. Its children use fixture-only HOME, OSSTACK_HOME and scratch paths. It does not open the default control-plane database. Each case uses its own local Git source and fresh fixture. No daemon, live provider or remote source is required.
 
-## The two-feature map
+## The selected feature map
 
-| Feature / user goal | Actual drive | Required product result | Driver and journey result |
-| --- | --- | --- | --- |
-| `healthy`: check a source at its blessed revision | Real `skills check` against the owned local repository's main ref | Product exit 0; source is healthy with no drift | Driver exit 0 if behavior, unchanged input and cleanup checks pass |
-| `missing-ref`: detect an unreachable tracked ref | Real `skills check` against the owned repository's absent ref | Product exit 1 with `no_matching_ref`; source remains failed | Driver exit 0 means the expected negative was verified; it does not mean the source recovered |
+| Case / scope | Required product observation | Product exit |
+| --- | --- | --- |
+| `healthy` / default and full | One source tracks the owned repository's main ref; its blessed SHA equals the current SHA; output reports up-to-date, no failure or drift | 0 |
+| `missing-ref` / default and full | One source tracks an absent ref; output reports `no_matching_ref`; the source remains failed | 1 |
+| `drift` / full | One reachable main-ref source has an older blessed SHA than the current SHA; output reports drift, with no unreachable source | 2 |
+| `mixed` / full | Three sources retain their distinct healthy, absent-ref and drift observations; failure count 1 and drift count 1 both appear. The failure takes exit precedence; it does not erase the drift | 1 |
+| `empty` / full | Zero configured sources and zero failed or drifted sources. This is an empty check, not proof that a source is healthy | 0 |
 
-The wrapper exits 0 only when both rows and its evidence checks pass. Exit 1 means failure or refusal; exit 2 means invalid usage. Read the exit status and `journey.json` together. A failure stops later work. A row can retain an earlier verified observation while the overall journey fails; check each row's `journey_status`.
+Each case's driver exits 0 only if its expected behavior, unchanged inputs and cleanup checks pass. A driver exit 0 for `missing-ref`, `drift` or `mixed` means the expected negative was verified, not that the source became healthy. Product exits alone are insufficient: check source counts, refs, blessed/current SHAs and raw per-source output against the fixed case definition.
+
+The wrapper exits 0 only when every selected row and its evidence checks pass. Exit 1 means failure or refusal; exit 2 means invalid usage. Read the exit status and `journey.json` together. A failure stops later work; later rows remain `not_run`, not passed. A row can retain an earlier verified observation while the overall journey fails; check each row's `journey_status` and preserve unknown cleanup as unknown.
 
 ## Observe and retain
 
-Read `feature-map.md`, `journey.json` and `journey-manifest.json` in the selected output. For each case, read the retained `cases/healthy/` or `cases/missing-ref/` evidence: receipt, raw command output, cleanup record and manifest. The wrapper checks receipt bytes, raw-file hashes, fixed case expectations, required source/build anchors, Git identities and fixture ownership. Retain the invocation stdout/stderr and separate build log. Manifest digests establish consistency; they do not authenticate an oracle or prove the build was produced from the recorded source.
+Read `feature-map.md`, `journey.json` and `journey-manifest.json` in the selected output. For each selected case, read its retained `cases/<case-id>/` evidence: receipt, raw command output, cleanup record and manifest. Full scope adds `cases/drift/`, `cases/mixed/` and `cases/empty/` to the two default directories. The wrapper checks receipt bytes, raw-file hashes, fixed case expectations, required source/build anchors, Git identities and fixture ownership. Retain the invocation stdout/stderr and separate build log. Manifest digests establish consistency; they do not authenticate an oracle or prove the build was produced from the recorded source.
 
-These are full engineering audit records. Some command records include the non-secret fixture environment. Do not hand the full bundle to a model task that forbids reading those fields. Define that task's permitted inputs before use. This recipe consumes full local audit records and does not use or require an evidence projection command. If a separate task uses a projection interface available in its target checkout, follow that interface's documented input boundary; its availability does not establish native host execution or qualification.
+These are full engineering audit records. Some command records include the non-secret fixture environment. Do not hand the full bundle to a model task that forbids reading those fields. Define that task's permitted inputs before use. This recipe consumes full local audit records and does not use or require a projection. The existing `scripts/project-method-journey-evidence.mjs` accepts only the default two-case journey. It refuses a full five-case journey before creating its output directory. Do not drop three rows, rewrite the scope or pass only selected case directories to make that projector accept a full run. Retain all five audit records and report this projection limit. If another task needs a two-case packet, use a separate authorized default journey in a new output directory; do not describe it as a projection of the full run. A projection does not establish native host execution or qualification.
 
 Successful cleanup removes each owned fixture and requires `scratch/` to contain only an empty `smoke/` directory. Evidence stays outside the disposable fixture and survives cleanup. Direct-child exit and fixture absence do not prove termination of every descendant: `descendant_termination` remains `not_attested`.
 
@@ -55,6 +62,6 @@ Keep the failed attempt. A missing build is a prerequisite blocker; an unexpecte
 
 Timeout or interruption attempts bounded termination of the wrapper's own direct child. It does not authorize killing similarly named processes or deleting unrelated homes. If cleanup is unknown, preserve the owned residue and report it. Use a new output directory for an authorized rerun after fixing the cause.
 
-Use [maintain verification](maintain-verification.md) when the driver, CLI output, evidence layout or this recipe changes. The owner of the changed driver or map must recheck both mapped cases and their evidence paths. `drift`, `mixed` and `empty` are outside this two-row map, even though the underlying driver supports them. Report that coverage limit; do not claim full skills-check maintenance. Reading or exporting this reference does not prove native host selection, model execution, provider qualification or a formal joint gate.
+Use [maintain verification](maintain-verification.md) when the driver, CLI output, evidence layout or this recipe changes. A complete maintenance pass over this five-case map needs source review and actual drives for all five cases and their evidence paths. Run the journey with `--scope full` for that scope; the default two-case run remains valid partial coverage. A blocked or `not_run` row prevents a complete pass. Even five passing rows cover only these mapped local fixtures, not every source, remote provider, installation, race or global configuration. Reading or exporting this reference does not prove native host selection, model execution, provider qualification or a formal joint gate.
 
 This concrete example adapts the pinned upstream [create/maintain verification practices](sources.md). Apply [the common evidence rules](evidence.md) to each actual run.
