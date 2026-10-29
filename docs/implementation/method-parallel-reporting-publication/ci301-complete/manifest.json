@@ -1,0 +1,74 @@
+[
+  {
+    "source": "board-updates.json",
+    "stored": "board-updates.json",
+    "bytes": 2232,
+    "sha256": "66b6d4ec01c8db8a56877a6808cec58b399da43cd8544f709bfb7fa2cc829791"
+  },
+  {
+    "source": "docs-validation.log",
+    "stored": "docs-validation.log.gz",
+    "bytes": 341,
+    "sha256": "5a00c88b2b1e9e2148a0b7254d8e09949b60e5ec4e38f3cbb2853d992dfc65b1"
+  },
+  {
+    "source": "firstmate-upgrade-roadmap.json",
+    "stored": "firstmate-upgrade-roadmap.json",
+    "bytes": 101860,
+    "sha256": "84caf08109ee576595c03fac66f3978ec14cf1e235ba3195515ecc5b3f5e2bde"
+  },
+  {
+    "source": "independent-report.json",
+    "stored": "independent-report.json",
+    "bytes": 18484,
+    "sha256": "68668a623cb4bbf7671221d1861ccc8d2990f24465232c23d543e64022cd8525"
+  },
+  {
+    "source": "independent-report.md",
+    "stored": "independent-report.md",
+    "bytes": 1243,
+    "sha256": "0750af5cd3f72c1ca9cc55bd595df0956a09144d9bdf5a6e0fb00521e83882cd"
+  },
+  {
+    "source": "joint-firstmate-pstack.json",
+    "stored": "joint-firstmate-pstack.json",
+    "bytes": 77078,
+    "sha256": "3bf7145560c2b1458e1944bc57dc87328054388b8f1e0159ca069dbbc4e42df9"
+  },
+  {
+    "source": "package-summary.json",
+    "stored": "package-summary.json",
+    "bytes": 1622,
+    "sha256": "26890b48cfa699df74e1421ac86f0d82c716afa82a9e2dcd9d3be405ef8ea15f"
+  },
+  {
+    "source": "pr300.json",
+    "stored": "pr300.json",
+    "bytes": 110,
+    "sha256": "db081e29591c5f85c700a7379a455e6b6fa4d77a8e94a88c3a6bb5a4513bd61b"
+  },
+  {
+    "source": "pr301.json",
+    "stored": "pr301.json",
+    "bytes": 1923,
+    "sha256": "bc97aa39d978e57649d1ee67cb1ce050fd04dc15bdac4dfade34dda38b439b6b"
+  },
+  {
+    "source": "run.json",
+    "stored": "run.json",
+    "bytes": 18939,
+    "sha256": "fac619b1ca051c1d6005e520e396e6967938f5007686f595ee78e12b03d5a0cb"
+  },
+  {
+    "source": "run.log",
+    "stored": "run.log.gz",
+    "bytes": 2047451,
+    "sha256": "a531f10f9c7b6290ca2648fa42ff6e431596a6b2552cc587c4e68973329d7ccd"
+  },
+  {
+    "source": "session-pilot-debt.json",
+    "stored": "session-pilot-debt.json",
+    "bytes": 14360,
+    "sha256": "945763c3fbb2928a9021a98377d7479828205c65a62fde49b57e6df40f0f605f"
+  }
+]

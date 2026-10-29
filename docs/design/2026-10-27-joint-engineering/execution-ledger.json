@@ -3806,7 +3806,7 @@
     }
   },
   "parallel_reporting_wave": {
-    "status": "draft_ci_running_waiting_parent",
+    "status": "draft_ci_passed_waiting_parent",
     "provisional_base": "e16ae5f900af53f41dd6909fe2c1c0175d9cc4a2",
     "depends_on_pr": 300,
     "method_count": 13,
@@ -3853,6 +3853,23 @@
     "ci_run": 40805618553,
     "publication_evidence": "docs/implementation/method-parallel-reporting-publication",
     "user_approval_required": true,
-    "publication_archive_sha256": "20a5ba0cbd52b0ade134f2212cda613abed82d68944679ef91984d3669e9aaca"
+    "publication_archive_sha256": "20a5ba0cbd52b0ade134f2212cda613abed82d68944679ef91984d3669e9aaca",
+    "final_ci": {
+      "run": 40805618553,
+      "head": "4b7b0585b7f2463f86ba4f793548af820da3e6a6",
+      "applicable_success": 5,
+      "paid_smoke": "skipped",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "exports": {
+        "total": 92,
+        "passed": 91,
+        "skipped": 1
+      },
+      "artifact_download_verified": false
+    },
+    "readiness_blocker": "PR300 user merge, actual main reconciliation, retarget and applicable validation"
   }
 }

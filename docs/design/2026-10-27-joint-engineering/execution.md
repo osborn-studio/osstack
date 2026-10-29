@@ -251,3 +251,7 @@ A/B 两个独占切片合为 code898033af，新增 supporting parallel-work 指�
 ### 本轮发布收口
 
 #300 已改为 main，经确认的分页测试修复与新 CI40803637902 的五项适用检查通过后，head e16ae5f9 转 Ready。OSStack 仅等 gilberthello 审批合并。下一批 #301 head4b7b0585 仍 Draft，基于 #300 分支运行 CI40805618553；前置合并后再核真实 main 与重定向。完整原始回执见[发布记录](../../implementation/method-parallel-reporting-publication/README.md)。
+
+### 2026-10-29 02:57 UTC：#301 CI 收口
+
+#301 head4b7b0585 的 CI40805618553 五项适用检查全部成功，付费 smoke 跳过。check/Test 的22个唯一包合计7142通过、7跳过、0失败；导出测试92项中91通过、1跳过。#300仍OPEN Ready，main仍7d3fc2bf，因此#301保持Draft，等待前置合并后核真实main、重定向与适用验证。仅核日志，未下载并重验CI artifact；无新模型调用或运行时资格。证据见发布记录 ci301-complete。
