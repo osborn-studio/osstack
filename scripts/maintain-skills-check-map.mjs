@@ -68,45 +68,55 @@ export async function runMaintenance({ map: mapPath, output }, seams = {}) {
   const result = {
     schema_version: 1, status: 'blocked', exit_code: 2, started_at: new Date().toISOString(),
     map: { before_sha256: sha256(before), bytes: before.length, after_sha256: null, unchanged: false },
-    journey: null, rows: [], failure: null, model_calls: 0, formal_gate_pass: false,
+    journey: null, rows: [], failure: null, subsequent_failures: [], model_calls: 0, formal_gate_pass: false,
+    execution_path: seams.journey ? 'injected_journey' : seams.invoke ? 'runJourney_with_injected_driver' : 'runJourney',
     limitations: [
       'Map agreement covers only the five fixed local cases. It does not establish source-review completion or classify a discrepancy as documentation drift or a product regression.',
       'Source/build bindings and cleanup retain the existing journey claims and limits. They do not authenticate an independent producer or attest every descendant.',
       'Map hashes compare before/after snapshots, not concurrent-writer fencing. No map or product correction is automatic.',
     ],
   };
+  const fail = reason => {
+    if (result.failure === null) result.failure = reason; else result.subsequent_failures.push(reason);
+    result.status = 'blocked'; result.exit_code = 2;
+  };
   let journey;
   try {
     // The seam is for focused tests only; the CLI exposes no alternate driver or command.
     journey = await (seams.journey ?? runJourney)({ output: join(output, 'journey'), scope: 'full' }, { invoke: seams.invoke });
-    const raw = await readFile(join(output, 'journey', 'journey.json'));
-    check(JSON.stringify(JSON.parse(raw)) === JSON.stringify(journey), 'journey_result_identity');
     result.journey = {
       status: journey.status, failure: journey.failure ?? null,
-      receipt: 'journey/journey.json', receipt_sha256: sha256(raw),
-      manifest: 'journey/journey-manifest.json', manifest_sha256: sha256(await readFile(join(output, 'journey', 'journey-manifest.json'))),
+      receipt: 'journey/journey.json', receipt_sha256: null, receipt_matches_returned: null,
+      manifest: 'journey/journey-manifest.json', manifest_sha256: null,
       features: journey.features, limitations: journey.limitations,
     };
-    check(journey.status === 'passed', 'journey_failed');
-    check(Array.isArray(journey.features) && journey.features.length === 5 && journey.features.every((f, i) => f.case_id === IDS[i]
-      && f.verification === 'passed' && f.driver_exit === 0 && f.evidence_state === 'sealed'
-      && f.cleanup?.status === 'passed' && f.cleanup.fixture_removed === true), 'journey_incomplete');
-    result.rows = journey.features.map(f => {
-      const expected = map.features.find(row => row.case_id === f.case_id);
-      return { case_id: f.case_id, expected: { product_exit: expected.expected_product_exit, product_status: expected.expected_product_status },
-        actual: { product_exit: f.product_exit, product_status: f.product_status },
-        matches: expected.expected_product_exit === f.product_exit && expected.expected_product_status === f.product_status };
-    });
-    result.status = result.rows.every(row => row.matches) ? 'consistent' : 'mismatch';
-    result.exit_code = result.status === 'consistent' ? 0 : 1;
-  } catch (error) { result.failure = error.code ?? error.message; }
+    if (journey.status !== 'passed') fail('journey_failed');
+    const raw = await readFile(join(output, 'journey', 'journey.json'));
+    result.journey.receipt_sha256 = sha256(raw);
+    result.journey.receipt_matches_returned = JSON.stringify(JSON.parse(raw)) === JSON.stringify(journey);
+    check(result.journey.receipt_matches_returned, 'journey_result_identity');
+    result.journey.manifest_sha256 = sha256(await readFile(join(output, 'journey', 'journey-manifest.json')));
+    if (journey.status === 'passed') {
+      check(Array.isArray(journey.features) && journey.features.length === 5 && journey.features.every((f, i) => f.case_id === IDS[i]
+        && f.verification === 'passed' && f.driver_exit === 0 && f.evidence_state === 'sealed'
+        && f.cleanup?.status === 'passed' && f.cleanup.fixture_removed === true), 'journey_incomplete');
+      result.rows = journey.features.map(f => {
+        const expected = map.features.find(row => row.case_id === f.case_id);
+        return { case_id: f.case_id, expected: { product_exit: expected.expected_product_exit, product_status: expected.expected_product_status },
+          actual: { product_exit: f.product_exit, product_status: f.product_status },
+          matches: expected.expected_product_exit === f.product_exit && expected.expected_product_status === f.product_status };
+      });
+      result.status = result.rows.every(row => row.matches) ? 'consistent' : 'mismatch';
+      result.exit_code = result.status === 'consistent' ? 0 : 1;
+    }
+  } catch (error) { fail(error.code ?? error.message); }
   try {
     const after = await mapBytes(mapPath); result.map.after_sha256 = sha256(after); result.map.unchanged = before.equals(after);
     if (!result.map.unchanged) {
+      fail('map_changed');
       await writeFile(join(output, 'map-after.json'), after, { flag: 'wx', mode: 0o600 });
-      result.failure = 'map_changed'; result.status = 'blocked'; result.exit_code = 2;
     }
-  } catch (error) { result.failure = `map_after:${error.code ?? error.message}`; result.status = 'blocked'; result.exit_code = 2; }
+  } catch (error) { fail(`map_after:${error.code ?? error.message}`); }
   result.ended_at = new Date().toISOString();
   await writeFile(join(output, 'maintenance.json'), json(result), { flag: 'wx', mode: 0o600 });
   return result;

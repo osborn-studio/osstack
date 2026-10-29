@@ -24,6 +24,8 @@ The map is a regular, non-symlink UTF-8 JSON file of at most 64 KiB. Its closed 
 
 `empty` has product exit 0 and status `empty`; it is not a healthy-source observation. Expected source failures and drift keep their original product exits and statuses. Driver exit 0 means that the expected observation was verified. The existing journey validates raw semantics, source counts, refs, blessed/current SHAs, source/build records and fixture cleanup. This command does not replace those checks with exit-only comparison. Failed, `not_run` and unknown states stay in the original journey and cannot produce a complete maintenance pass.
 
+`failure` preserves the first maintenance failure; `subsequent_failures` lists later errors, including map closeout failures. Partial `journey` fields are the returned observations, not success claims: inspect overall status, `receipt_matches_returned` and nullable hashes. A missing manifest cannot erase earlier journey details. `execution_path` states whether normal `runJourney`, an injected journey, or an injected driver was used. The last two are programmatic test seams, unavailable through this CLI, and do not prove real product execution. This marker is a declaration, not identity authentication.
+
 ## Correct a map with evidence
 
 A discrepancy does not identify its cause. Inspect the relevant current source, governing expectation and raw journey first. Classify documentation drift, harness gap, product regression or unknown. Do not bless a broken product by changing its expected result. Keep the earlier map snapshot and failed comparison. For a confirmed correction within the authorized map scope, edit that map and rerun the same command with a new output directory. Do not reuse or overwrite the failed output.

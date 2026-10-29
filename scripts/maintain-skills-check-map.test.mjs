@@ -17,7 +17,7 @@ async function setup(t, map = makeMap()) {
   const file = join(root, 'map.json'); await writeFile(file, JSON.stringify(map, null, 2) + '\n');
   return { root, map: file, output: join(root, 'output') };
 }
-// Unit seam exercises only comparison/closeout. Actual CLI behavior is tested separately with the real journey.
+// Unit seams exercise comparison/closeout. Real five-case runs are separate release evidence, not this suite.
 async function passedJourney({ output, scope }) {
   assert.equal(scope, 'full'); await mkdir(output);
   const result = { status: 'passed', features: ids.map((case_id, i) => ({ case_id, verification: 'passed', product_exit: exits[i], product_status: statuses[i], driver_exit: 0, evidence_state: 'sealed', bindings: { source_digest: 'a'.repeat(64), build_digest: 'b'.repeat(64) }, cleanup: { status: 'passed', fixture_removed: true, descendant_termination: 'not_attested' } })), limitations: ['test seam, not actual product evidence'] };
@@ -92,7 +92,7 @@ test('not_run and unknown cleanup are never promoted to complete coverage', asyn
   const result = await runMaintenance(f, { journey: async args => { const j = await passedJourney(args); j.features[4].verification = 'not_run'; j.features[0].cleanup.status = 'unknown'; await writeFile(join(args.output, 'journey.json'), JSON.stringify(j)); return j; } });
   assert.equal(result.exit_code, 2); assert.equal(result.failure, 'journey_incomplete');
 });
-test('real existing journey doctor failure retains failed/not_run states and no artificial GREEN', async t => {
+test('real runJourney with a stubbed driver retains doctor failure and later not_run states', async t => {
   const f = await setup(t);
   const result = await runMaintenance(f, { invoke: async () => ({ stdout: '', stderr: 'test prerequisite absent', exit_code: 1, signal: null }) });
   assert.equal(result.exit_code, 2); assert.equal(result.journey.status, 'failed');
@@ -102,4 +102,54 @@ test('real existing journey doctor failure retains failed/not_run states and no 
 test('CLI invalid input exits 2 with no output directory', async t => {
   const f = await setup(t, {}); const p = spawnSync(process.execPath, ['scripts/maintain-skills-check-map.mjs', '--map', f.map, '--output', f.output], { encoding: 'utf8', env: process.env });
   assert.equal(p.status, 2); assert.equal(JSON.parse(p.stderr).status, 'blocked'); assert.deepEqual(await readdir(f.root), ['map.json']);
+});
+
+test('journey failure stays primary when the input map disappears at closeout', async t => {
+  const f = await setup(t);
+  const result = await runMaintenance(f, { journey: async args => {
+    const j = await passedJourney(args); j.status = 'failed'; j.failure = 'doctor_execution_failed';
+    await writeFile(join(args.output, 'journey.json'), JSON.stringify(j)); await rm(f.map); return j;
+  } });
+  assert.equal(result.exit_code, 2); assert.equal(result.failure, 'journey_failed');
+  assert.deepEqual(result.subsequent_failures, ['map_after:ENOENT']);
+  assert.equal(result.journey.failure, 'doctor_execution_failed');
+});
+test('map change and its snapshot write failure do not erase the earlier journey failure', async t => {
+  const f = await setup(t);
+  const result = await runMaintenance(f, { journey: async args => {
+    const j = await passedJourney(args); j.status = 'failed'; j.failure = 'drive_execution_failed';
+    await writeFile(join(args.output, 'journey.json'), JSON.stringify(j));
+    await writeFile(f.map, '{}'); await writeFile(join(f.output, 'map-after.json'), 'owned collision'); return j;
+  } });
+  assert.equal(result.failure, 'journey_failed'); assert.equal(result.exit_code, 2);
+  assert.deepEqual(result.subsequent_failures, ['map_changed', 'map_after:EEXIST']);
+  assert.equal(await readFile(join(f.output, 'map-after.json'), 'utf8'), 'owned collision');
+});
+test('missing manifest retains partial journey metadata and later map-change diagnosis', async t => {
+  const f = await setup(t);
+  const result = await runMaintenance(f, { journey: async args => {
+    const j = await passedJourney(args); await rm(join(args.output, 'journey-manifest.json'));
+    await writeFile(f.map, '{}'); return j;
+  } });
+  assert.equal(result.exit_code, 2); assert.equal(result.failure, 'ENOENT');
+  assert.deepEqual(result.subsequent_failures, ['map_changed']);
+  assert.equal(result.journey.features.length, 5); assert.equal(result.journey.status, 'passed');
+  assert.match(result.journey.receipt_sha256, /^[a-f0-9]{64}$/); assert.equal(result.journey.manifest_sha256, null);
+  assert.equal(result.journey.receipt_matches_returned, true);
+});
+test('receipt identity failure remains primary and labels partial metadata as unconfirmed', async t => {
+  const f = await setup(t);
+  const result = await runMaintenance(f, { journey: async args => {
+    const j = await passedJourney(args); await writeFile(join(args.output, 'journey.json'), '{}');
+    await writeFile(f.map, '{}'); return j;
+  } });
+  assert.equal(result.failure, 'journey_result_identity'); assert.equal(result.exit_code, 2);
+  assert.deepEqual(result.subsequent_failures, ['map_changed']);
+  assert.equal(result.journey.receipt_matches_returned, false); assert.equal(result.journey.features.length, 5);
+});
+test('programmatic test seams are declared, not represented as normal CLI execution', async t => {
+  const f = await setup(t); const result = await runMaintenance(f, seam);
+  assert.equal(result.execution_path, 'injected_journey'); assert.equal(result.formal_gate_pass, false);
+  const next = await runMaintenance({ map: f.map, output: join(f.root, 'injected-driver') }, { invoke: async () => ({ stdout: '', stderr: '', exit_code: 1 }) });
+  assert.equal(next.execution_path, 'runJourney_with_injected_driver');
 });
