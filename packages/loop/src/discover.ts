@@ -1,7 +1,7 @@
 // Discover — scan for work.
 //
 // Scanners implement DiscoverScanner and return Task[].
-// The MVP ships with GitDiffScanner (reads `git diff --stat`).
+// The MVP ships with GitDiffScanner (reads `git diff --numstat -z`).
 //
 // Future scanners (L2+):
 //   - GhIssueScanner: `gh issue list --json` → Task[]
@@ -41,24 +41,31 @@ export class GitDiffScanner implements DiscoverScanner {
 
   async scan(): Promise<Task[]> {
     try {
-      const diffStat = execSync("git diff --stat", {
+      const diffStat = execSync("git diff --numstat -z", {
         cwd: this.workspacePath,
         encoding: "utf-8",
         timeout: 10_000,
       });
 
-      if (!diffStat || diffStat.trim() === "") return [];
+      if (!diffStat) return [];
 
-      const lines = diffStat.trim().split("\n");
+      const records = diffStat.split("\0");
       const tasks: Task[] = [];
 
-      for (const line of lines) {
-        // Parse "file.ts | 12 +++++++++---"
-        const match = line.match(/^\s*(.+?)\s*\|\s*(\d+)/);
+      for (let index = 0; index < records.length; index++) {
+        const line = records[index]!;
+        // NUL termination preserves paths without display truncation or quoting.
+        const match = line.match(/^(\d+|-)\t(\d+|-)\t([\s\S]*)$/);
         if (!match) continue;
 
-        const file = match[1]!.trim();
-        const changes = parseInt(match[2]!, 10);
+        let file = match[3]!;
+        if (file === "") {
+          // Rename records store the old and new paths in the next two fields.
+          file = records[index + 2] ?? "";
+          index += 2;
+        }
+        if (!file || match[1] === "-" || match[2] === "-") continue;
+        const changes = parseInt(match[1]!, 10) + parseInt(match[2]!, 10);
 
         tasks.push({
           task_id: randomUUID(),
