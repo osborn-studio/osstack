@@ -74,8 +74,10 @@ const RollupCheck = z.object({
   status: z.string().optional(),
 });
 
-const FAILING_CONCLUSIONS = new Set(["FAILURE", "CANCELLED", "TIMED_OUT", "ERROR"]);
-const IN_PROGRESS_STATUSES = new Set(["IN_PROGRESS", "QUEUED", "PENDING"]);
+const FAILING_CONCLUSIONS = new Set([
+  "FAILURE", "CANCELLED", "TIMED_OUT", "ERROR", "ACTION_REQUIRED", "STALE", "STARTUP_FAILURE",
+]);
+const SUCCESSFUL_CONCLUSIONS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
 
 export function mapRollupToCheckState(statusCheckRollup: unknown): CheckState {
   if (!Array.isArray(statusCheckRollup) || statusCheckRollup.length === 0) {
@@ -103,8 +105,9 @@ export function mapRollupToCheckState(statusCheckRollup: unknown): CheckState {
 
   const hasPending = checks.some(
     (check) =>
+      check.status !== "COMPLETED" ||
       check.conclusion == null ||
-      (check.status != null && IN_PROGRESS_STATUSES.has(check.status)),
+      !SUCCESSFUL_CONCLUSIONS.has(check.conclusion),
   );
   if (hasPending) return "pending";
 
