@@ -242,7 +242,7 @@ jobs:
         run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools
 
   graph-macos-fixtures:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 15
     strategy:
       fail-fast: false
