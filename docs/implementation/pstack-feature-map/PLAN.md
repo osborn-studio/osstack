@@ -1,6 +1,6 @@
 # W18: next implementation boundary
 
-Status: ready to implement, not implemented or accepted. This decision follows the bounded post-hoc C0 tutorial; it does not repeat that closed experiment. Baseline control `147c59cfab63de7cb93d0445c63334a52f5c57a0`, actual main `01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211`. PR310 is merged. Firstmate deep runtime remains prohibited by the user's instruction.
+Historical pre-implementation decision; current bounded implementation and validation are recorded in [delivery](README.md). Original scope decision status: ready to implement, not implemented or accepted. This decision follows the bounded post-hoc C0 tutorial; it does not repeat that closed experiment. Baseline control `147c59cfab63de7cb93d0445c63334a52f5c57a0`, actual main `01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211`. PR310 is merged. Firstmate deep runtime remains prohibited by the user's instruction.
 
 ## Next delivery
 

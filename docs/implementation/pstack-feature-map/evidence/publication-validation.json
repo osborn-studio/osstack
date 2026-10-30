@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-30T06:33:28.134824+00:00",
+  "argv": [
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/joint-handoff-20261027/venv/bin/python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "docs/design/2026-10-27-joint-engineering",
+    "-p",
+    "test_validate_*.py"
+  ],
+  "exit": 0,
+  "scope": "241 documentation checks after staging; no product rerun"
+}

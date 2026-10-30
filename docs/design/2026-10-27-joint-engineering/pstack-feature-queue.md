@@ -6,9 +6,9 @@
 
 This is the delivery queue, separate from activity counts and the 32 formal joint milestones. Main has four entry points and fourteen method materials; those counts are not completed capability counts. The 24 source capability groups currently contain 20 partially delivered and four deferred groups. No whole-capability completion is inferred.
 
-## Next implementation: W18 relevant leaves
+## Current implementation: W18 relevant leaves
 
-[Implementation decision](../../implementation/pstack-feature-map/PLAN.md): three existing CLI scenarios, index-only BM25, required closure and bounded selected-leaf reads. The next action is product implementation with independent frozen cases. Scope analysis has run no product tests and completes no W18/C0 gate. W19 ownership/health and actual cross-entry coverage remain separate obligations. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
+[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. Publication is pending. W19 configured ownership/health is next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
 
 ## Active delivery
 
@@ -34,7 +34,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS05 | 覆盖式并行与预先声明的竞赛 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；任意项目地图生成、相关叶子检索和完整使用场景仍未闭合。 |
+| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，待发布；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
 | PS09 | 验证基础设施的健康、归属与漂移维护 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |

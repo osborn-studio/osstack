@@ -386,3 +386,8 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 ## 2026-10-30 W18 next implementation
 
 Three read-only workers completed source/scope analysis; [the decision](../../implementation/pstack-feature-map/PLAN.md) assigns the next product boundary. No code or product tests ran in this scope round, no activity card or acceptance was completed. Next dispatch implements the bounded reader and freezes independent cases. PR310 remains merged; no Firstmate deep runtime.
+
+
+## 2026-10-30 W18 implementation publication
+
+[Bounded feature reader](../../implementation/pstack-feature-map/README.md) now selects metadata using the existing public BM25 API and reads only selected/required local leaves. Three workers split code, independent inputs and actual command documentation; root owns integration, ledger, PR and full queue. Final 40 focused checks pass. Full9e37bfa0 has22 packages/7261passed/5skipped/0failed,8914tracked bytes unchanged during execution with four initial fresh-dist changes; later small unavailable-export repair has its own RED/GREEN and independent old/new controls, not a relabelled full run. Publication CI remains separate. Card_9a676553 contributes PS08, supports PS23/J03/J06; no formal gate or whole capability completion. W19 configured ownership/health and original C1/C2 remain next, Firstmate deep runtime prohibited.

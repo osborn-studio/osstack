@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-10-30T06:30:42.526200+00:00",
+  "archive_sha256": "ae8ff3fbaf43af9f40f31f90939f3cb76c76ebc5c59e06b8688589d82f631c2d",
+  "manifest_sha256": "024c4ea062da9b635712470cded1d3bf7f3239938e0bc41da1866a9cc373990b",
+  "members": 789,
+  "files": 660,
+  "symlinks": 4,
+  "file_bytes": 5239883,
+  "all_members_verified": true
+}
