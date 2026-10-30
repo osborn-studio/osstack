@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
@@ -156,20 +156,29 @@ const backend={async assertConsumers(){},async service(label){const c=config.con
     const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.close();const status=await f.journal.status(f.plan.digest,'first');
     const recovery=new ManagedNativeUpgradePort(f.input,f.backend);try{await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000));expect((await f.journal.status(f.plan.digest,'first')).records).toEqual(status.records);expect(f.starts()).toBe(4);expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(false);}finally{await recovery.close();}
   },30000);
-  it.each(['permit_missing','operation_missing','both_missing'] as const)('cleans completed history with stopped consumers after %s crash without restarting them',async missing=>{
-    const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
-    expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.close();
-    const status=await f.journal.status(f.plan.digest,'first');
-    for(const c of f.config.consumers)await f.backend.stop(c.label,new AbortController().signal);
-    if(missing!=='operation_missing')await rm(join(f.root,'restart-permit.json'));
-    if(missing!=='permit_missing')await rm(join(f.root,'upgrade-operation.json'));
-    const recovery=new ManagedNativeUpgradePort(f.input,f.backend);
-    try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',reason:'verified_history_fence_cleanup_only',services_observed:false});
-      await recovery.complete(); // Repeating cleanup under the same owner is idempotent.
-      expect(f.starts()).toBe(4);expect((await f.journal.status(f.plan.digest,'first')).records).toEqual(status.records);
-      expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(false);
-    }finally{await recovery.close();}
-  },30000);
+  describe.each(['permit_missing','operation_missing','both_missing'] as const)('completed history after %s crash',missing=>{
+    let f:Awaited<ReturnType<typeof fixture>>;
+    let status:Awaited<ReturnType<UpgradeJournal['status']>>;
+    // Full two-home upgrade preparation has its own budget. The cleanup behavior
+    // below still has 30 seconds; this is not a performance optimization.
+    beforeEach(async()=>{
+      f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
+      try{expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');}
+      finally{await port.close();}
+      status=await f.journal.status(f.plan.digest,'first');
+      for(const c of f.config.consumers)await f.backend.stop(c.label,new AbortController().signal);
+      if(missing!=='operation_missing')await rm(join(f.root,'restart-permit.json'));
+      if(missing!=='permit_missing')await rm(join(f.root,'upgrade-operation.json'));
+    },60000);
+    it('cleans completed history with stopped consumers without restarting them',async()=>{
+      const recovery=new ManagedNativeUpgradePort(f.input,f.backend);
+      try{expect(await recovery.reconcileForward(f.plan,f.plan.plan.groups[0]!,f.journal,upgradeDigest(status.records),AbortSignal.timeout(30000))).toMatchObject({state:'verified',reason:'verified_history_fence_cleanup_only',services_observed:false});
+        await recovery.complete(); // Repeating cleanup under the same owner is idempotent.
+        expect(f.starts()).toBe(4);expect((await f.journal.status(f.plan.digest,'first')).records).toEqual(status.records);
+        expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);expect(existsSync(join(f.root,'upgrade-operation.json'))).toBe(false);
+      }finally{await recovery.close();}
+    },30000);
+  });
   it('clears an orphan permit from another plan before the next upgrade stops consumers',async()=>{
     const f=await fixture();await publishPrivate(join(f.root,'restart-permit.json'),{plan_digest:'f'.repeat(64),build_digest:f.old.target.build_digest});
     const port=new ManagedNativeUpgradePort(f.input,f.backend);
