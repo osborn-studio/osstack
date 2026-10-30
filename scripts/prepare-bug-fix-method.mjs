@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { constants } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { lstat, mkdir, open, realpath, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const roles = ['builder', 'reviewer', 'verifier'];
 const help = 'Usage: node scripts/prepare-bug-fix-method.mjs --input <request.json> --output <new-directory-in-workspace>\nCompiles data only; does not invoke an agent, authorize execution, or modify a board.\n';
@@ -56,13 +57,18 @@ export async function prepareBugFixMethod(request, outputPath) {
   const compiled = compileBugFix(request.compilation);
   if (compiled.target_repository !== workspace) fail('REPOSITORY_MISMATCH');
   const prefix = relative(workspace, output).split(sep).join('/');
+  // The compiler bounds canonical JSON bytes. Pretty-printing can push an
+  // otherwise valid result beyond the host's identical 512 KiB file bound.
+  const compiledBytes = JSON.stringify(compiled);
+  if (Buffer.byteLength(compiledBytes) > 524288) fail('COMPILED_RESOURCE_LIMIT');
   const context = { schema_version: 1, mode: 'local', repo_path: workspace, default_tenant: true,
     max_prompt_bytes: host.max_prompt_bytes, max_knowledge_bytes: host.max_knowledge_bytes, packs: [],
     methods: { schema_version: 1, task_id: compiled.proposal.task_id, package_version: host.package_version,
       proposal_digest: compiled.proposal_digest, max_bytes: 65536,
+      compiled: { path: `${prefix}/compiled.json`, sha256: createHash('sha256').update(compiledBytes).digest('hex') },
       roles: host.capabilities.map(row => ({ ...row, materials: [{ path: `${prefix}/${row.role}.md`,
         sha256: compiled.materials.find(material => material.role === row.role).sha256 }] })) } };
-  const outputs = [['compiled.json', `${JSON.stringify(compiled, null, 2)}\n`], ['context.json', `${JSON.stringify(context, null, 2)}\n`],
+  const outputs = [['compiled.json', compiledBytes], ['context.json', `${JSON.stringify(context, null, 2)}\n`],
     ...compiled.materials.map(row => [`${row.role}.md`, row.text])];
   // Use the host schema; its final prompt budget is enforced again at invocation.
   const { validateMethodContextConfig } = await import('../packages/cli/dist/method-context.js');
@@ -85,4 +91,8 @@ export async function main(args) {
     process.stderr.write(`${JSON.stringify({ status: 'rejected', code: typeof error?.code === 'string' ? error.code : 'PREPARATION_FAILED', executable: false })}\n`); return 2;
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) process.exitCode = await main(process.argv.slice(2));
+// Node resolves the module filename but preserves aliases in argv[1]. Compare
+// physical files so an explicitly invoked symlink still runs, while imports do not.
+if (process.argv[1] && await realpath(resolve(process.argv[1])).catch(() => null) === await realpath(fileURLToPath(import.meta.url))) {
+  process.exitCode = await main(process.argv.slice(2));
+}

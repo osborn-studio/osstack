@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -30,6 +31,8 @@ test('compiles synthetic facts into exact three role bytes and a matching existi
     const context = JSON.parse(await readFile(join(state.output, 'context.json'), 'utf8'));
     assert.equal(context.methods.task_id, compiled.proposal.task_id);
     assert.equal(context.methods.proposal_digest, compiled.proposal_digest);
+    assert.deepEqual(context.methods.compiled, { path: 'bundle/compiled.json',
+      sha256: createHash('sha256').update(await readFile(join(state.output, 'compiled.json'))).digest('hex') });
     assert.deepEqual(context.packs, []);
     for (const material of compiled.materials) {
       assert.equal(await readFile(join(state.output, `${material.role}.md`), 'utf8'), material.text);
@@ -38,7 +41,7 @@ test('compiles synthetic facts into exact three role bytes and a matching existi
       assert.equal(row.materials[0].path, `bundle/${material.role}.md`);
     }
     const again = await run(state); assert.equal(again.status, 2); assert.equal(JSON.parse(again.stderr).code, 'EEXIST');
-    assert.equal(await readFile(join(state.output, 'compiled.json'), 'utf8'), `${JSON.stringify(compiled, null, 2)}\n`);
+    assert.equal(await readFile(join(state.output, 'compiled.json'), 'utf8'), JSON.stringify(compiled));
   } finally { await rm(state.root, { recursive: true, force: true }); }
 });
 for (const [name, mutate, code] of [
@@ -69,4 +72,33 @@ test('rejects parent symlinks even when they resolve inside the workspace', asyn
 });
 test('help does not import or invoke product modules', () => {
   assert.match(execFileSync(process.execPath, [cli, '--help'], { encoding: 'utf8' }), /Compiles data only/);
+});
+for (const kind of ['file', 'directory']) test(`CLI ${kind} alias runs preparation instead of silently exiting`, async () => {
+  const state = await setup();
+  try {
+    const alias = join(state.root, 'entry');
+    await symlink(kind === 'file' ? cli : fileURLToPath(new URL('.', import.meta.url)), alias);
+    const entry = kind === 'file' ? alias : join(alias, 'prepare-bug-fix-method.mjs');
+    const input = join(state.root, 'request.json'); await writeFile(input, JSON.stringify(state.request));
+    const result = spawnSync(process.execPath, [entry, '--input', input, '--output', state.output], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'prepared');
+    assert.equal(JSON.parse(await readFile(join(state.output, 'compiled.json'), 'utf8')).kind, 'compiled_bug_fix');
+  } finally { await rm(state.root, { recursive: true, force: true }); }
+});
+test('importing the preparer has no CLI side effects', () => {
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(new URL('./prepare-bug-fix-method.mjs', import.meta.url).href)})`], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout, ''); assert.equal(result.stderr, '');
+});
+test('prepared compiled bytes fit the host bound for escaped material near the compiler limit', async () => {
+  const state = await setup();
+  try {
+    for (const material of state.request.compilation.materials) {
+      material.text = '\u0001'.repeat(28600);
+      material.sha256 = createHash('sha256').update(material.text).digest('hex');
+    }
+    const result = await run(state); assert.equal(result.status, 0, result.stderr);
+    const bytes = await readFile(join(state.output, 'compiled.json'));
+    assert.ok(bytes.length <= 524288, `compiled file is ${bytes.length} bytes`);
+  } finally { await rm(state.root, { recursive: true, force: true }); }
 });
