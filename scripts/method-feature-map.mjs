@@ -167,7 +167,10 @@ export async function selectFeatureMap(input, { onRead } = {}) {
     observed = validateObservations(parse(observedBytes), rows);
   }
   let searchKnowledgePacks;
-  try { ({ searchKnowledgePacks } = await import('../packages/knowledge/dist/index.js')); }
+  try {
+    ({ searchKnowledgePacks } = await import('../packages/knowledge/dist/index.js'));
+    if (typeof searchKnowledgePacks !== 'function') fail('knowledge_unavailable');
+  }
   catch { fail('knowledge_unavailable'); }
   const pack = { path: indexPath, manifest: { id: 'feature-map-index', version: '1', name: 'Local feature metadata', license: 'UNSPECIFIED', source_kind: 'local-index', quality_score: 100,
     chunks: index.features.map(row => ({ chunk_id: row.feature_id, title: row.feature_id, body: [row.user_outcome, ...row.keywords].join(' '), tags: row.keywords })) } };
@@ -207,10 +210,12 @@ export async function selectFeatureMap(input, { onRead } = {}) {
 }
 const help = `Usage: node scripts/method-feature-map.mjs --index PATH --query TEXT [--limit 1..5] [--observations PATH]
 Select index metadata with existing BM25; read only matched and required leaves.
+Ranking is lexical, not semantic. Tokens shorter than two characters are ignored.
+For CJK queries, use explicit indexed keywords separated by spaces.
 Limits: index/observations 64 KiB; query 4 KiB; 8 leaves, 32 KiB each, 128 KiB total.
 Leaf paths stay under the index directory; leaf symlinks are rejected.
 Exit 0 means complete material delivery, not product success. Inspect availability.
-Exit 1 means no match; 2 invalid/unreadable input; 3 material drift, missing required leaf, budget or unavailable knowledge build.
+Exit 1 means no match; 2 invalid/unreadable input; 3 material drift, missing required leaf, selection budget or unavailable knowledge build.
 Observations are caller-declared. Missing observations remain unknown. No commands run.
 Evidence references, entry coverage, source/driver freshness and ownership are not independently verified.
 `;

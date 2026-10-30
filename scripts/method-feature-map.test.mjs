@@ -130,7 +130,7 @@ test('aggregate leaf bytes reject instead of truncating required material', asyn
   await assert.rejects(selectFeatureMap({ index: f.index, query: 'packet' }, { onRead: x => reads.push(x) }), code('selection_budget'));
   assert.equal(reads.filter(x => x.kind === 'leaf').length, 4, 'over-budget fifth body must not be read');
 });
-test('CLI JSON and help are bounded, bad arguments do not read input', async t => {
+test('CLI returns expected JSON/help and rejects invalid arguments', async t => {
   const f = await fixture(t);
   const ok = call(['--index', f.index, '--query', 'packet']); assert.equal(ok.status, 0, ok.stderr);
   assert.equal(JSON.parse(ok.stdout).selected.length, 2); assert.equal(ok.stderr, '');
@@ -211,3 +211,20 @@ for (const [query, expected] of [
     assert.deepEqual(row.unverified_entry_ids, row.leaf.entries.map(x => x.id));
   }
 });
+
+
+for (const [label, stub] of [['missing export', 'export {};\n'], ['nonfunction export', 'export const searchKnowledgePacks = null;\n']]) {
+  test(`stale knowledge build reports unavailable: ${label}`, async t => {
+    const f = await fixture(t);
+    const copy = join(f.root, 'copy');
+    await mkdir(join(copy, 'scripts'), { recursive: true });
+    await mkdir(join(copy, 'packages', 'knowledge', 'dist'), { recursive: true });
+    await writeFile(join(copy, 'package.json'), '{"type":"module"}\n');
+    await writeFile(join(copy, 'scripts', 'method-feature-map.mjs'), await readFile(cliPath));
+    await writeFile(join(copy, 'packages', 'knowledge', 'dist', 'index.js'), stub);
+    const run = spawnSync(process.execPath, [join(copy, 'scripts', 'method-feature-map.mjs'), '--index', f.index, '--query', 'maintenance'], { encoding: 'utf8', timeout: 10000 });
+    assert.equal(run.status, 3, run.stderr);
+    assert.equal(run.stdout, '');
+    assert.deepEqual(JSON.parse(run.stderr), { schema_version: 1, error: 'knowledge_unavailable', details: {} });
+  });
+}
