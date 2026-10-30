@@ -1,6 +1,6 @@
 # pstack 优先：能力与交付对账
 
-最新发布：PR312 Ready/main，head `418ffe02929845e73ef56372c8920b51a64b772d`，CI41030888483五适用SUCCESS/paidSKIP，已Ready回读；只等gilberthello审批合并。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。新P2/P3候选已实现显式组件采用、五份固定版本材料与局部导出；尚无真实host首用/Loop同卡链。下一步P4纯编译→P5既有调用材料接入→P6当前真实缺陷同卡收据。Firstmate深运行禁止，正式资格不升级。
+最新发布：PR312 Ready/main（418ffe02，CI41030888483五适用SUCCESS/paidSKIP）等gilberthello审批合并；PR313 Draft/base codex/pstack-maintenance-health-delivery，head `f6d7c09a487249a9973783912adb117e1df4333c`，CI41036945434运行。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。313在312合并后必须actualmain核对、retarget与适用重验，禁止合featurebase。下一步P4→P5→P6真实Loop/同卡链；Firstmate深运行禁止。
 
 ## 最新执行：固定 v0.15.36，接通 Loop Engineering 与看板首用（2026-10-30）
 

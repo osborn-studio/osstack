@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-30T09:49:34.877334+00:00",
+  "observed_at": "2026-10-30T09:56:32.773024+00:00",
   "main_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
   "main_tree": "88ea7afcc6f03ba7c63755c306f5814899101820",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
   "candidate_named_methods": null,
-  "candidate_status": "PR312 Ready/main only human merge pending; P2/P3 adoption/export validated candidate, actual Loop/card first use pending",
+  "candidate_status": "PR312 Ready/main human merge pending; PR313 Draft on312, CI41036945434 running; actual-main retarget/revalidation required after parent merge",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -12109,7 +12109,7 @@
     "next_action": "P4 single bug_fix pure compiler binds registered checks; P5 mandatory material preinvoke wiring in existing deliver/Loop; P6 fresh real defect with durable receipt before same-card idempotent projection. No new maintenance platform or method-count target."
   },
   "pstack_adoption_bundle": {
-    "status": "validated_candidate_prepublication",
+    "status": "draft_pr_ci_and_parent_pending",
     "card_id": "card_7c5152bc",
     "record": "docs/implementation/pstack-adoption-bundle/README.md",
     "source_commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
@@ -12148,6 +12148,19 @@
     "formal_gate_pass": false,
     "whole_capability_complete": false,
     "firstmate_deep_runtime": "prohibited",
-    "original_failures_preserved": true
+    "original_failures_preserved": true,
+    "pr": 313,
+    "head_sha": "f6d7c09a487249a9973783912adb117e1df4333c",
+    "base_branch": "codex/pstack-maintenance-health-delivery",
+    "ci_run": 41036945434,
+    "ready": false,
+    "final_code_sha": "b36d97567d6ad0b3ab7458649583079512bf4dce",
+    "archive_sha256": "f38dbe9453ec706a77f6122409c86beb74a4ed446a100ebbc9481b400f120d60",
+    "archive_manifest_sha256": "0fb426034573a4f14c09888b06ce8a377792ee3e7dcd686b7888df7f8438b752",
+    "archive_members": 1286,
+    "archive_file_bytes": 30450418,
+    "independent_archive_manifest_sha256": "3e18aed8f740aa11e833a8961e97122dfb7b48ad3faffd60e07fa43060b736c1",
+    "audit": "Actual Sonnet5.5 PASS_WITH_CONCERNS then limited closure PASS; static only",
+    "post_audit_independent": "Six vectors old4pass2fail to new6pass; two fresh export layouts verified; original harness errors retained"
   }
 }

@@ -114,3 +114,5 @@ root初次full在同一候选 `2389dcd9` 的默认Node26.5下遇到原有 `deliv
 [evidence/raw-manifest.json](evidence/raw-manifest.json)列1286成员（1064files/222dirs，30,450,418 filebytes），[原件归档](evidence/raw-verification.tar.gz)SHA `f38dbe9453ec706a77f6122409c86beb74a4ed446a100ebbc9481b400f120d60`，manifest SHA `0fb426034573a4f14c09888b06ce8a377792ee3e7dcd686b7888df7f8438b752`。包含两次实际静态审计完整输入输出、作者/独立冻结与原失败、actual Git原件、两轮候选和全回归环境失败/成功日志、最终源码绑定。root已逐type/mode/size/hash核对源与tar，无symlink成员。本归档不包含模型实际使用或formal资格证明。
 
 独立归档核验同样逐1286成员与源/manifest比较，且42项最终源码/Git、两审输入绑定通过：[核验报告](evidence/independent-archive/report.md)。核验包清单SHA `3e18aed8f740aa11e833a8961e97122dfb7b48ad3faffd60e07fa43060b736c1`。
+
+本批发布为 [PR313](https://github.com/osborn-studio/osstack/pull/313)，head f6d7c09a，Draft依赖312，CI41036945434待终态；需父合并后actualmain重验。该发布记录在后续control保存，不改变候选CI身份。
