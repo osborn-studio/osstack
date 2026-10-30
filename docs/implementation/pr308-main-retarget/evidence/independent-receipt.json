@@ -1,0 +1,723 @@
+{
+  "verified_at": "2026-10-30T00:20:28.585693+00:00",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr308-main-retarget/docs/implementation/pr308-main-retarget/evidence/raw-verification.tar.gz",
+  "archive_sha256": "83f112d625c243e28df9d3f0b02dab58138c7129b5835b7109d3aeb10294f476",
+  "manifest_sha256": "a092efd9fe755f29786edd4bb14a40614002e580409c3a7e355b3e0efb9b1c2c",
+  "members": 135,
+  "files": 129,
+  "directories": 6,
+  "file_bytes": 1664252,
+  "all_manifest_members_match_source": true,
+  "issues": [],
+  "audit_sequence": [
+    {
+      "path": "validation/audit",
+      "verdict": "PASS",
+      "bindings_match": true,
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "scope": "static supplied material; no independent execution by reviewer"
+    },
+    {
+      "path": "closure",
+      "verdict": "REVISE",
+      "bindings_match": true,
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "scope": "static supplied material; no independent execution by reviewer"
+    },
+    {
+      "path": "closure-v2",
+      "verdict": "PASS",
+      "bindings_match": true,
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "scope": "static supplied material; no independent execution by reviewer"
+    }
+  ],
+  "limits": [
+    "Exact manifest snapshot checked; later source additions are not required archive members.",
+    "No tests, live forge queries, models or CI reruns.",
+    "Stored logs and reviewer bindings verified byte-for-byte; this is not a new execution or independent validation of every historical claim."
+  ],
+  "member_checks": [
+    {
+      "path": "ci-final",
+      "type": "directory",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/collect.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-00-jobs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-00-jobs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-00-jobs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-00-run.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-00-run.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-00-run.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-01-jobs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-01-jobs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-01-jobs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-01-run.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-01-run.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-01-run.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-02-jobs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-02-jobs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-02-jobs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-02-run.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-02-run.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-02-run.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-03-jobs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-03-jobs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-03-jobs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-03-run.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-03-run.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-03-run.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-04-jobs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-04-jobs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-04-jobs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-04-run.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-04-run.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-04-run.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-05-jobs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-05-jobs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-05-jobs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-05-run.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-05-run.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "ci-final/poll-05-run.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure",
+      "type": "directory",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/audit-input.txt",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/binding.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/empty-mcp.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/independent-proof.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/manifest.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/prepare.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/report.md",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/response.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/run.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/scoped-docs.diff",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/settings.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure/stderr.txt",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2",
+      "type": "directory",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/audit-input.txt",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/binding.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/empty-mcp.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/fix.diff",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/prepare.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/proof.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/report.md",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/response.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/run.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/settings.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "closure-v2/stderr.txt",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation",
+      "type": "directory",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/after-source-before-restore.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit",
+      "type": "directory",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/audit-input.txt",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/binding.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/empty-mcp.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/preparation-failure.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/prepare.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/report.md",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/response.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/run.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/settings.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/source-binding.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/stderr.txt",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/version.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/audit/version.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/base-head.diff",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/before-source.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/build.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/build.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/build.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/candidate-cli-tests.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/candidate-cli-tests.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/candidate-cli-tests.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/capture.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/docs.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/docs.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/docs.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/downstream-launch-preparation-failure.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/downstream-result.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/downstream.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/downstream.mjs",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/downstream.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/downstream.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/finalize.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/generated-before-restore",
+      "type": "directory",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.d.ts",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.d.ts.map",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.js",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.js.map",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/generated-binding.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/git-binding.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/github-tests.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/github-tests.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/github-tests.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/hygiene.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/hygiene.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/hygiene.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/install.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/install.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/install.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/inventory.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/inventory.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/inventory.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/knowledge-generated.patch",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/lint.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/lint.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/lint.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/manifest.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/node-version.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/node-version.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/node-version.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/report.md",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/restore-receipt.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/restore.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/restore.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/run-validation.py",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/summary.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/three-pr-input.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/typecheck.command.json",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/typecheck.stderr",
+      "type": "file",
+      "matched_manifest_and_source": true
+    },
+    {
+      "path": "validation/typecheck.stdout",
+      "type": "file",
+      "matched_manifest_and_source": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-30T00:19:55.986471+00:00",
+  "validation": "frozen",
+  "closure_v1": "REVISE preserved",
+  "closure_v2": "PASS",
+  "parent_ci_head_base_checked_against_preserved_run": true,
+  "ci_status": "poll05 in_progress Test; four matrix success; paid skipped; not terminal",
+  "future_ci_directory": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr308-final-ci-20261030"
+}

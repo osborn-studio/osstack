@@ -5439,16 +5439,26 @@
     "pr": 308,
     "head_sha": "6d97897325efdeea47d86f3ae169c72907b74d6e",
     "base_branch": "main",
-    "ci_run": 40930144304,
-    "ci_applicable_success": 5,
-    "ci_paid": "SKIPPED",
-    "parent_based_ci_tests": {
-      "packages": 22,
-      "passed": 7207,
-      "skipped": 7,
-      "failed": 0
+    "parent_based_ci": {
+      "head_sha": "b4a2fc30711d9c3ad5cddbc846839948f1810c56",
+      "base_branch": "codex/pr-candidate-snapshot-delivery",
+      "ci_run": 40930144304,
+      "ci_applicable_success": 5,
+      "ci_paid": "SKIPPED",
+      "ci_actual_checkout": "c323e040a627a3e97f67e39987e061ca7e6852a0",
+      "parent_based_ci_tests": {
+        "packages": 22,
+        "passed": 7207,
+        "skipped": 7,
+        "failed": 0
+      }
     },
-    "ci_actual_checkout": "c323e040a627a3e97f67e39987e061ca7e6852a0"
+    "current_ci": {
+      "run": 40977980388,
+      "head_sha": "6d97897325efdeea47d86f3ae169c72907b74d6e",
+      "base": "main",
+      "status": "in_progress; final documentation head will require its own CI"
+    }
   },
   "post307_dispatch": {
     "observed_at": "2026-10-30T00:10:59.539925+00:00",
