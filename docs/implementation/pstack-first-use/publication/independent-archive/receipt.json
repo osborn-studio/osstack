@@ -1,0 +1,93 @@
+{
+  "verified_at_utc": "2026-10-30T11:30:18.670382+00:00",
+  "status": "verified",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-first-use/docs/implementation/pstack-first-use/evidence/raw-verification.tar.gz",
+  "archive_sha256": "1b1146ff92916ea675d26c53b56560a032694984f541a984418f3a9a1571c098",
+  "manifest_sha256": "f0ef2d26521a0faa3b4143319d7002ca72298ae68ee5871e893f90364db97191",
+  "members": 419,
+  "types": {
+    "file": 311,
+    "directory": 102,
+    "symlink": 6
+  },
+  "file_bytes": 11968136,
+  "all_listed_members_match_frozen_originals": true,
+  "symlinks_not_dereferenced": true,
+  "extraction_performed": false,
+  "candidate_git_bindings": [
+    {
+      "path": "packages/agents/src/adapters/codex-cli.ts",
+      "git_head": "1438f3c5ec6775befe4be22d6074ca204b27ae8a",
+      "sha256": "7abc045c8fd186bc35ef2ca9b3f99b699c818ed874b52fd62b19acee45b1c1a0"
+    },
+    {
+      "path": "packages/agents/src/adapters/codex-cli.test.ts",
+      "git_head": "1438f3c5ec6775befe4be22d6074ca204b27ae8a",
+      "sha256": "0ab09d4fc74828238db0a9b77cf520fac191b32914191c4cb8ebfe35e067be68"
+    },
+    {
+      "path": ".changeset/codex-explicit-writable-roots.md",
+      "git_head": "1438f3c5ec6775befe4be22d6074ca204b27ae8a",
+      "sha256": "4efe3234e30ad0c9a0ad44a11d0f20ece9bd2df5474786d765eae5564602faab"
+    }
+  ],
+  "audit": {
+    "inputs_exact_and_present_in_prompt": [
+      {
+        "path": "packages/agents/src/adapters/codex-cli.ts",
+        "sha256": "7abc045c8fd186bc35ef2ca9b3f99b699c818ed874b52fd62b19acee45b1c1a0",
+        "size": 24935
+      },
+      {
+        "path": "packages/agents/src/adapters/codex-cli.test.ts",
+        "sha256": "0ab09d4fc74828238db0a9b77cf520fac191b32914191c4cb8ebfe35e067be68",
+        "size": 13433
+      },
+      {
+        "path": "docs/implementation/pstack-first-use/README.md",
+        "sha256": "79e6d97e6dc39d498b9a8360f0d0ec23ad79debb817fe13c15122604f3e6a5ea",
+        "size": 5134
+      }
+    ],
+    "raw_response_matches_review": true,
+    "model_usage_keys": [
+      "claude-sonnet-5-5"
+    ],
+    "scope": "Actual tool-less static PASS_WITH_CONCERNS, not native product repair success."
+  },
+  "native": {
+    "prompt_bytes": 36134,
+    "prompt_sha256": "7a91a18f8a8045e597f19435ea4babf91f58b42f5243ee0aeb2804718a889cda",
+    "material_bytes": 32286,
+    "material_sha256": "5f7ed62b3f5202894712c2dcff140b220fbb6ae5d35e71d64724f07ef9a0cdfd",
+    "receipts": [
+      {
+        "path": "home/execution-context-receipts/b1eced4a4b8248031d88e0a668f85b6c4098abab6b6753205ede158e42b99491-c1f8189e-0bfd-4c56-9bb6-151c70cfd1f0.json",
+        "phase": "prepared",
+        "sha256": "b1eced4a4b8248031d88e0a668f85b6c4098abab6b6753205ede158e42b99491",
+        "prompt_sha256": "7a91a18f8a8045e597f19435ea4babf91f58b42f5243ee0aeb2804718a889cda"
+      },
+      {
+        "path": "home/execution-context-receipts/6378f0e01f1cc52bee87d98f107bab7a02e753544a916c98dd814cfd4961eaaa-792f2e43-3b1e-4e20-90ff-5573f25bbdc7.json",
+        "phase": "adapter_observed",
+        "sha256": "6378f0e01f1cc52bee87d98f107bab7a02e753544a916c98dd814cfd4961eaaa",
+        "prompt_sha256": "7a91a18f8a8045e597f19435ea4babf91f58b42f5243ee0aeb2804718a889cda"
+      }
+    ],
+    "freeze_precedes_invocation": true,
+    "outcome": "blocked_incomplete"
+  },
+  "preserved_results": {
+    "original_P6": "blocked; scratch EPERM before tests, no patch",
+    "new_adapter_independent": "27/27 fake-binary tests; not an actual model retry",
+    "old_adapter_comparison": "9 pass /18 unsupported new-option failures, not 18 prior promised-contract bugs",
+    "root_full": "7448/5/0 at1438;9docs changed during run, product/scripts stable; no allbytesunchanged claim",
+    "inventory": "wrong filename MODULE_NOT_FOUND retained, corrected generate-inventory exit0 retained"
+  },
+  "limits": [
+    "Checks frozen manifest snapshot, not a new whole-filesystem audit.",
+    "Absolute / symlink control retained as link target only; never traversed.",
+    "No product/model/full execution; no remote artifacts redownloaded.",
+    "No provider wire/model comprehension, universal sandbox or complete descendant cleanup certification."
+  ]
+}

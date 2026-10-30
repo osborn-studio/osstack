@@ -1,5 +1,11 @@
 # 以 Loop Engineering 和看板为首用入口
 
+## 2026-10-30 首次实际调用后的当前缺口
+
+已在 `joint-firstmate-pstack/card_ebb91eda` 通过已有 Loop + execution-context host + Codex CLI 实际送达固定0.15.36材料。模型尝试复现时，统一 scratch 不在可写范围，零测试、零修改；Loop 如实 escalated。当前缺口收窄为：显式任务 scratch 授权的实际验证、真实缺陷修复与独立最终候选、同卡证据。已有两份持久收据，人工同卡关联允许，不能为了自动投影再造调度平台。
+
+可选 writableRoots 接线为独立小修；其 argv 回归不等新原生任务成功。普通 deliver 默认只读且 V2 reported identity 前提尚不满足，所以 assisted U1 与 U2/local_verified 分开。首次 Node26 packet 保持 BLOCKED，不重试翻绿；下一项真正的新需求须新冻结任务/权限/检查/预算。详见[原始失败与修复范围](../pstack-first-use/README.md)。Firstmate 深运行继续禁止。
+
 > 2026-10-30最新实施：P4单bug_fix编译与P5既有host mandatory接线已形成候选，见[实施记录](../pstack-method-bridge/README.md)和[调用教程](../../verification/bug-fix-method-handoff.md)。固定Git材料已实际准备并通过受控adapter验证，尚无本批原生模型/真实修复/同卡闭环。下一步直接P6；本文较早“拟接线”段落保留为设计起点，不能用来覆盖最新代码事实。
 
 

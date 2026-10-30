@@ -26,7 +26,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
-  "observed_at": "2026-10-30T10:53:25.612338+00:00",
+  "observed_at": "2026-10-30T11:23:48.841083+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -5957,10 +5957,10 @@
     "docs_tests": 241
   },
   "next_pstack_implementation": {
-    "observed_at": "2026-10-30T10:46:16.940076+00:00",
-    "status": "method_bridge_implemented_native_task_next",
+    "observed_at": "2026-10-30T11:23:48.841083+00:00",
+    "status": "first_native_attempt_blocked_explicit_scratch_repair",
     "plan": "docs/implementation/pstack-fixed-release/PLAN.md",
-    "next_action": "P6: one fresh real defect, explicit card/board/tenant/task, frozen reproduction/regression/primary and path/tool budgets; existing V2 deliver/Loop local consumes fixed mandatory materials, real RED/fix/GREEN, independently verified final candidate, durable receipt before same-card projection. Assisted manual card/contract and evidence linking is permitted; no invented admission/qualification or new scheduler.",
+    "next_action": "Validate explicit task-scoped writable directory behavior in installed host before the next genuinely new task; finish one real RED/fix/GREEN with independent final candidate and durable evidence manually linked to same card. Keep original Node26 packet BLOCKED, no retry or regrade. Do not invent runtime identity, remove V2 guards, extend health platform or Firstmate runtime.",
     "firstmate_deep_runtime": "prohibited",
     "formal_gate_pass": false
   },
@@ -6205,7 +6205,7 @@
     }
   },
   "pstack_method_bridge": {
-    "status": "draft_ci_and_parent_pending",
+    "status": "draft_parent_main_revalidation_pending",
     "card_id": "card_93efbff1",
     "record": "docs/implementation/pstack-method-bridge/README.md",
     "tutorial": "docs/verification/bug-fix-method-handoff.md",
@@ -6257,7 +6257,7 @@
     "formal_gate_pass": false,
     "whole_capability_complete": false,
     "firstmate_deep_runtime": "prohibited",
-    "next_action": "P6: one fresh real defect, explicit card/board/tenant/task, frozen reproduction/regression/primary and path/tool budgets; existing V2 deliver/Loop local consumes fixed mandatory materials, real RED/fix/GREEN, independently verified final candidate, durable receipt before same-card projection. Assisted manual card/contract and evidence linking is permitted; no invented admission/qualification or new scheduler.",
+    "next_action": "Validate explicit task-scoped writable directory behavior in installed host before the next genuinely new task; finish one real RED/fix/GREEN with independent final candidate and durable evidence manually linked to same card. Keep original Node26 packet BLOCKED, no retry or regrade. Do not invent runtime identity, remove V2 guards, extend health platform or Firstmate runtime.",
     "audit": "Actual Sonnet5.5 static PASS_WITH_CONCERNS then bounded closure PASS_WITH_CONCERNS; confirmed mode bypass repaired, protocol and PR313-history concerns disproved by retained evidence; limits remain",
     "archive_sha256": "ef0900ac9672c5d7cc0c48ef268bd97510235ad3e58c56dbb981a836f486511e",
     "archive_manifest_sha256": "dde230cd3c1c09ac79bbb59082ac8524cedcc1810a15a2e49ad7d71e1acdde2f",
@@ -6268,6 +6268,74 @@
     "head_sha": "b161223bb3d2a3574a3ce9797ae07cbcd63c3fb3",
     "base_branch": "codex/pstack-adoption-bundle-delivery",
     "ci_run": 41043889043,
-    "ready": false
+    "ready": false,
+    "ci_status": "five_applicable_success_paid_skip",
+    "ci_synthetic_checkout": "cb3b7d4c8ef5b3c52c955e54328f99edc6cdacb5",
+    "ci_scope": "314_to_313_not_main",
+    "ci_record": "docs/implementation/pstack-method-bridge/ci-final/README.md"
+  },
+  "pstack_first_use": {
+    "observed_at": "2026-10-30T11:23:48.841083+00:00",
+    "status": "native_attempt_blocked_adapter_candidate_validated",
+    "record": "docs/implementation/pstack-first-use/README.md",
+    "card_id": "card_ebb91eda",
+    "task_id": "pstack-first-use-node26-20261030",
+    "source_version": "0.15.36",
+    "source_commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
+    "mode": "assisted_U1",
+    "actual_native_invocations": 1,
+    "native_thread": "01a18c7e-cf16-76c3-8f76-c8e7d95e49b9",
+    "outcome": "blocked_before_native_tests_scratch_EPERM",
+    "native_test_count": 0,
+    "source_changes_by_model": 0,
+    "loop_status": "escalated",
+    "original_packet_retry": false,
+    "task_completed": false,
+    "builder_material_bytes": 32286,
+    "prompt_bytes": 36134,
+    "durable_context_receipts": 2,
+    "card_linking": "manual; native card task_id/tenant_id null",
+    "writable_roots_patch": {
+      "code_sha": "bcb596cd18dc64e0a6d308ea411a93226ea826af",
+      "with_changeset_sha": "1438f3c5ec6775befe4be22d6074ca204b27ae8a",
+      "focused_passed": 36,
+      "independent_passed": 27,
+      "actual_os_grant_validated": false,
+      "audit": "Actual Sonnet5.5 tool-less PASS_WITH_CONCERNS; no confirmed code blocker; documentation clarifications adopted",
+      "full": {
+        "head": "1438f3c5ec6775befe4be22d6074ca204b27ae8a",
+        "packages": 22,
+        "passed": 7448,
+        "skipped": 5,
+        "failed": 0,
+        "tracked_files": 9134,
+        "root_documentation_changes": [
+          "docs/design/2026-10-27-joint-engineering/delivery-rollup.json",
+          "docs/design/2026-10-27-joint-engineering/delivery-status.md",
+          "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+          "docs/design/2026-10-27-joint-engineering/execution.md",
+          "docs/design/2026-10-27-joint-engineering/project-operations.md",
+          "docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md",
+          "docs/implementation/pstack-fixed-release/LOOP-AND-BOARD-FIRST.md",
+          "docs/implementation/pstack-fixed-release/PLAN.md",
+          "docs/verification/bug-fix-method-handoff.md"
+        ],
+        "product_and_scripts_tracked_unchanged": true,
+        "clean_committed_tree": false
+      },
+      "other_checks": "fresh build/typecheck/TS lint/inventory/changeset/startup pass; initial wrong inventory filename retained as harness error"
+    },
+    "native_defect_fixed": false,
+    "local_verified": false,
+    "formal_gate_pass": false,
+    "runtime_enabled": false,
+    "firstmate_deep_runtime": "prohibited",
+    "archive": {
+      "sha256": "1b1146ff92916ea675d26c53b56560a032694984f541a984418f3a9a1571c098",
+      "manifest_sha256": "f0ef2d26521a0faa3b4143319d7002ca72298ae68ee5871e893f90364db97191",
+      "members": 419,
+      "file_bytes": 11968136,
+      "independent_receipt_sha256": "fb2777c9cfc11b7e536c1c33797e6f742e450904ff0a72dc82646d680a7f30c7"
+    }
   }
 }

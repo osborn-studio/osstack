@@ -1,5 +1,14 @@
 # pstack-first feature queue
 
+## 2026-10-30 首次原生 Loop 尝试与显式 scratch 接点
+
+固定0.15.36材料已实际经既有 Loop/host 交给原生 Codex，card_ebb91eda、任务 pstack-first-use-node26-20261030。第一条复现命令在 Vitest scratch mkdir 遭 EPERM，零测试、零修改；原生完成回复后宿主检查 Node22通过/Node26失败，Loop escalated。两份持久收据与人工同卡回链保留；这是 assisted U1 失败观察，不是 local_verified 或 P6完成。原packet保持BLOCKED且不重跑翻绿。
+
+新增 CodexCliAdapter 可选 writableRoots，显式传 --add-dir；仅workspace-write非空、去重前≤8、绝对现存非根目录，三调用入口支持；不由环境变量自动推权限。实例复用/构造时canonical快照不等任务隔离或OS围栏，实际CLI目录写入效果尚未证明。作者36、独立27通过，实际Sonnet5.5静态PASS_WITH_CONCERNS；完整回归与出版结果见[首用记录](../../implementation/pstack-first-use/README.md)。下一步先验证任务专用scratch在真实宿主的权限，再选真正新需求完成RED→修复→GREEN→独立最终候选→同卡证据；保持人工绑定可用，不扩维护平台/新scheduler。普通deliver默认只读及V2 reported identity前提仍不能省略。
+
+PR312仍Ready等人类合并，313/314保持Draft等各自parent合并/main复验。314当前b161的CI41043889043五适用SUCCESS/paidSKIP，synthetic cb3b7d4c为314→313，22包7420pass7skip0fail；不是当前main或新接点CI。详[原始CI](../../implementation/pstack-method-bridge/ci-final/README.md)。当前main仍abcd9edf。Firstmate深运行禁止；4入口14方法、24PS20partial4deferred0whole、32J formalfalse均不升级。
+
+
 最新发布：PR312仍Ready/main待gilberthello合并；PR313 headf6d7 CI41036945434五适用SUCCESS/paidSKIP但保持Draft/base312。新PR314 Draft/base codex/pstack-adoption-bundle-delivery，head b161223bb3d2a3574a3ce9797ae07cbcd63c3fb3，CI41043889043运行。按312→313→314人类合并、actualmain核对/retarget/适用重验，不合featurebase。P4/P5组件已交付候选；下一步P6真实模型/同卡闭环。main仍abcd9edf，禁止Firstmate深运行。
 
 ## 最新执行：固定方法接入既有调用边界（2026-10-30）

@@ -2,7 +2,7 @@
 
 本教程使用仓库 helper `scripts/prepare-bug-fix-method.mjs`。它把显式输入编译为非执行 proposal，写出角色材料与现有 `deliver --execution-context` 配置。它不建卡、不选择待办、不启动 Loop，也不授予执行权限。
 
-目标是同一张当前缺陷卡：问题与检查 → 方法材料 → 既有 V2 deliver/Loop → host 候选核验 → 同卡证据。本批尚无 P6 真实任务或 native skill 使用证据，自动看板回写也未接通。
+目标是同一张当前缺陷卡：问题与检查 → 方法材料 → 既有 V2 deliver/Loop → host 候选核验 → 同卡证据。首个实际 assisted U1 任务已调用原生 Codex，但因测试 scratch 权限在复现前阻塞；没有修复成功或 native slash 发现证据，自动看板回写也未接通。详见[首次实际调用](../implementation/pstack-first-use/README.md)。
 
 ## 输入与前提
 
@@ -94,9 +94,29 @@ TASK_HOME 必须显式自有，不能使用默认/保留 home。V2检查来自 h
 4. 读所选角色完整材料并核 hash，装配独立数据块，检查最终 prompt 预算。
 5. prepared receipt 与 source validators 后、adapter invoke 前，同步重读 compiled 和所选材料，核原 hash。
 
-方法 receipt 含 compiled 的 path/hash/bytes 与 `proposal_binding:recompiled_caller_facts`；identity 仍是 caller_declared。重编不认证源数据、grant 或 registry。代码已加入该连接，但真实 host 使用与 P6 尚待独立证据，不把结构检查写成实际修复结果。
+方法 receipt 含 compiled 的 path/hash/bytes 与 `proposal_binding:recompiled_caller_facts`；identity 仍是 caller_declared。重编不认证源数据、grant 或 registry。代码已加入该连接；首次 assisted U1 调用已有独立材料/调用/失败核验，但 P6 修复闭环仍未完成，不把结构检查或 turn.completed 写成实际修复结果。
 
 现有 wrapper 在 invoke 前保存 prepared receipt，在 adapter 首个事件后保存 adapter_observed receipt。边界是 `agent_task_prompt_not_provider_wire`，不是 provider 内部上下文、native skill 调用或 token-window 资格。Prepared 不等于已调用 adapter；最终成功还要看真实 trigger、required checks、候选与 host delivery receipt。
+
+## 实际调用发现的配置缺口
+
+当前普通 `deliver` 的默认 Codex adapter 仍是只读，且缺少 V2 所需的 reported runtime identity。上面的 V2 命令是有前置条件的接口形状，不能仅准备材料就声称能够修复。首次实际尝试没有绕过这些 guard，而由既有 Loop API 显式配置 assisted U1；目标测试因工作区外 scratch 不可写而阻塞，原记录保留为 BLOCKED。
+
+本批新增 `CodexCliAdapter` 的可选 `writableRoots`。调用方应先创建统一 scratch 根下面的本任务专用目录，然后在 **SDK 配置**中显式传入真实绝对目录：
+
+```ts
+const adapter = new CodexCliAdapter({
+  cwd: taskWorkspace,
+  sandbox: "workspace-write",
+  writableRoots: [taskScratch],
+  env: { ...taskEnvironment, OSSTACK_SCRATCH_ROOT: taskScratch },
+  strictCompletion: true,
+});
+```
+
+这不是新的 CLI flag，也不自动授予 `deliver` 权限。非空列表只允许 workspace-write，去重前最多8项现存绝对目录，拒文件/根目录/控制字符，canonical 去重。每任务创建独立 adapter；该列表属于实例，后续调用/恢复都会复用，不能共享给无关任务。不得将整个历史归档根作为 taskScratch。HOME、CODEX_HOME、仓库及其祖先未被自动拒绝，范围由调用方审核。canonical 检查发生在 constructor，不能声称启动期间的文件系统并发围栏或全部后代隔离。
+
+新参数已有公共 API argv 回归，安装版 CLI help 声明支持 `--add-dir`；本批额外无模型 sandbox 控制因 permissions profile 配置在命令前拒绝，尚无新参数的实际 OS 写入成功证据。下次新任务先核权限与匹配 build；原一次模型尝试不重跑、不改成绩。
 
 ## 有界真实材料与恢复
 

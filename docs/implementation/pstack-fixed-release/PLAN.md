@@ -1,6 +1,6 @@
 # pstack 0.15.36：固定范围，交付可以直接使用的 OSStack 能力
 
-> 2026-10-30最新实施：P4单bug_fix编译与P5既有host mandatory接线已形成候选，见[实施记录](../pstack-method-bridge/README.md)和[调用教程](../../verification/bug-fix-method-handoff.md)。固定Git材料已实际准备并通过受控adapter验证，尚无本批原生模型/真实修复/同卡闭环。下一步直接P6；本文较早“拟接线”段落保留为设计起点，不能用来覆盖最新代码事实。
+> 2026-10-30最新实施：P4/P5候选已形成，P6首次 assisted U1 原生调用已发生但在测试前因 scratch EPERM 阻塞，零测试/零修改。固定材料实际完整进入调用 prompt，两份持久收据已留存；新增显式 writableRoots 接点正在出版，尚无实际 OS grant 或修复成功证明。见[首用记录](../pstack-first-use/README.md)及[更新教程](../../verification/bug-fix-method-handoff.md)。原失败不重试翻绿，Firstmate深运行仍禁止。
 
 
 决策时间：2026-10-30（上海）。目标是让用户在指定仓库实际使用固定的方法与工具，随后逐步补齐强制执行接线；不是等待整个 Firstmate 联合运行时完成。Firstmate 深运行仍禁止。本文是执行方案，未勾选的验收不是已完成结果。
@@ -25,12 +25,12 @@
 
 | 层 | 已有可复用内容 | 距直接使用的具体缺口 | 本轮停止线 |
 | --- | --- | --- | --- |
-| 固定来源 | `inspectGitSource` 能从固定 Git 对象读取、检查许可和摘要 | 旧镜像为 partial store；整个新版子树 573 路径超过读取器 512 上限；旧 manifest 不保存 subdir，未知字段被丢弃；本轮修复候选已支持登记，消费者与采用闭包尚未接线 | 有可重放来源锁、准确的组件采用清单、候选不自动激活；不重建第二 registry |
-| 方法包 | OSStack 四入口、14 个独立改写的方法及双宿主导出/有界读取 | 现包仍来自旧研究 pin；不能把新 lock 放旁边便称 .36 适配完成；目标项目安装/发现和来源关联尚未一次性跑通 | 一个固定版本、一个项目局部包、一个支持宿主可实际发现或显式调用，缺引用拒绝 |
-| 验证工具 | 固定五例驱动、地图维护、证据投影、PR/栈只读核对、W18 材料读取 | W19 健康查询尚在候选；这些工具仍需调用者拼接，不能自动解释为任意项目验证 | 完成本次有界 W19，不新增后台 watcher、自动修复平台或新地图体系 |
-| 方法编译 | `MethodRecipe` / `MethodProposal` / `CheckRegistry` / 摘要合同 | 形状已有，生产 recipe→proposal 编译与 repo 主检查选择尚未接通 | 只做 bug_fix 一种 recipe；输出可审阅且不可执行的 proposal |
-| 实际调用 | 已有 `deliver --autonomy guarded-local`、合同、adapter、execution-context、候选验证收据 | 没有现成 `--method bug-fix`；mandatory 方法材料、角色分配、调用前摘要/预算核对未连成一个入口 | 复用既有 deliver；先一个 host / 一个真实任务，不另建调度器 |
-| 可信结果 | 已有候选、检查与路径约束 | 尚未证明一个任务从固定方法选择走到实际修复、独立检查和最终状态 | 一次真实 RED→修复→GREEN，合法控制通过、最终候选一致、原失败保留 |
+| 固定来源 | 完整固定Git store、来源登记与显式组件检查候选；11组件51唯一文件，原573文件快照保留 | 声明组件采用不等整个.36所有技能已集成；自动晋升/升级保持关闭 | 不追上游main，不建立第二registry；其余组件另行采用 |
+| 方法包 | 已适配.36的五份材料、全新项目局部导出、三角色预算内组合；builder32286字节实际进入原生调用prompt | 尚未完成使用材料解决真实任务，未证明native slash发现或其他host | 一个host显式读取可先用，缺材料拒绝；原packet失败保留 |
+| 验证工具 | 五例驱动、地图维护、证据投影、PR/栈核对、W18读取已交付；W19候选PR312 Ready | 固定工具并不自动适用于任意项目；W19待人类合并 | W19有界收口，不再扩健康平台/watcher |
+| 方法编译 | bug_fix纯编译、注册逻辑check绑定、primary=acceptance、不可执行proposal候选已完成 | 检查声明不等目标host policy注册或权限 | 复用已实现compiler，匹配build重新准备 |
+| 实际调用 | mandatory材料/完整重编/调用前hash与预算接线；首次已有Loop+Codex原生turn | scratch目录未列入可写范围导致测试前EPERM；普通deliver默认只读且V2 reported identity未满足 | 显式task scratch权限先核；assisted U1与U2区分，不删guard或新建scheduler |
+| 可信结果 | 首次失败被宿主检查正确识别：Node22通过/Node26失败、无补丁、Loop escalated；同卡人工留痕 | 仍无一个当前真实缺陷RED→修复→GREEN及独立最终候选完整成功 | 原packet保留BLOCKED，下一真正新需求须独立冻结与预算；收据先于人工回链 |
 | formal / statechart | .36 上游工具已经存在；OSStack 尚未采用执行链 | TS runtime、TLC/Java、输入/输出/取消边界、代码回放、项目局部验证技能尚未接线 | 独立能力包验收一条代码不变量；不作为首个普通 bugfix 的前置 |
 
 本次已实际建立无 filter 的固定 commit Git store，消除 partial store 限制。现有检查器对完整 pstack 返回 `RESOURCE_LIMIT`；对 `pstack/skills/statechart` + MIT 许可成功读取 408 成员、返回 `source_inspection`。后者只证明来源读取，不证明依赖闭包、执行或正式采用。最初错误 Git binary 的 INVALID_INPUT 与随后 PARTIAL_STORE 原件均保留。

@@ -1,0 +1,295 @@
+{
+  "run": 41043889043,
+  "head": "b161223bb3d2a3574a3ce9797ae07cbcd63c3fb3",
+  "status": "success",
+  "log_sha256": "1ebb49006f27516c9afecef7e9e5d2c1c096f31751400e3865d2681d05d83018",
+  "log_bytes": 2285637,
+  "check_test_unique_packages": {
+    "contracts": {
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4739
+    },
+    "compliance": {
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4746
+    },
+    "github": {
+      "passed": 224,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4773
+    },
+    "knowledge": {
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4778
+    },
+    "neat-eval": {
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4801
+    },
+    "runtime": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4809
+    },
+    "protocol": {
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4867
+    },
+    "governance": {
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4878
+    },
+    "knowledge-cloud": {
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4891
+    },
+    "graph": {
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0,
+      "line": 4935
+    },
+    "core": {
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5065
+    },
+    "plugins": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5080
+    },
+    "hermes-adapter": {
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5086
+    },
+    "skills": {
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5097
+    },
+    "autonomy": {
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5227
+    },
+    "skill-registry": {
+      "passed": 155,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5240
+    },
+    "agents": {
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5297
+    },
+    "config": {
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5309
+    },
+    "loop": {
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0,
+      "line": 5752
+    },
+    "conformance": {
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5780
+    },
+    "supervisor": {
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0,
+      "line": 5793
+    },
+    "cli": {
+      "passed": 2813,
+      "skipped": 6,
+      "failed": 0,
+      "line": 8239
+    }
+  },
+  "check_test_total": {
+    "passed": 7420,
+    "skipped": 7,
+    "failed": 0
+  },
+  "tap_steps_separate_not_added_to_package_total": {
+    "Method export contracts": {
+      "tests": 115,
+      "pass": 114,
+      "fail": 0,
+      "skipped": 1
+    },
+    "Relevant feature-map selection contracts": {
+      "tests": 40,
+      "pass": 40,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Read-only maintenance health contracts": {
+      "tests": 45,
+      "pass": 45,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Fixed bug-fix preparation contracts": {
+      "tests": 16,
+      "pass": 16,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Method material pagination contracts": {
+      "tests": 14,
+      "pass": 14,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Session adoption decision smoke (local fixture)": {
+      "tests": 27,
+      "pass": 27,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Skills check verification (local Git fixtures)": {
+      "tests": 25,
+      "pass": 25,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Method verification journey contracts": {
+      "tests": 43,
+      "pass": 43,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Read-only PR snapshot contracts (offline)": {
+      "tests": 14,
+      "pass": 14,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Ordered PR stack snapshot contracts (offline)": {
+      "tests": 29,
+      "pass": 29,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Skills map maintenance contracts": {
+      "tests": 25,
+      "pass": 25,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Model evidence projection contracts": {
+      "tests": 89,
+      "pass": 89,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Neat semantic live diagnostic tests": {
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Real repo deliver smoke": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "checkout": [
+    {
+      "job": "graph-runtime-matrix (20.6.0)",
+      "step": "Run actions/checkout@v6",
+      "sha": "cb3b7d4c8ef5b3c52c955e54328f99edc6cdacb5",
+      "line": 133
+    },
+    {
+      "job": "graph-macos-fixtures (22)",
+      "step": "Run actions/checkout@v7",
+      "sha": "cb3b7d4c8ef5b3c52c955e54328f99edc6cdacb5",
+      "line": 1057
+    },
+    {
+      "job": "graph-macos-fixtures (24)",
+      "step": "Run actions/checkout@v7",
+      "sha": "cb3b7d4c8ef5b3c52c955e54328f99edc6cdacb5",
+      "line": 1768
+    },
+    {
+      "job": "graph-runtime-matrix (22.23.1)",
+      "step": "Run actions/checkout@v6",
+      "sha": "cb3b7d4c8ef5b3c52c955e54328f99edc6cdacb5",
+      "line": 2444
+    },
+    {
+      "job": "check",
+      "step": "Run actions/checkout@v7",
+      "sha": "cb3b7d4c8ef5b3c52c955e54328f99edc6cdacb5",
+      "line": 3746
+    }
+  ],
+  "jobs": [
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-macos-fixtures (22)",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "conclusion": "success"
+    },
+    {
+      "name": "Paid DeepSeek semantic smoke",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "check",
+      "conclusion": "success"
+    }
+  ],
+  "limits": [
+    "Metadata head differs from synthetic checkout by design; actual checkout SHA recorded from log.",
+    "No artifacts downloaded/rehashed. No CI rerun/product execution.",
+    "Full Test package totals exclude separate TAP and repeated matrix execution."
+  ]
+}

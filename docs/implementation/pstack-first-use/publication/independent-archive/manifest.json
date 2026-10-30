@@ -1,0 +1,17 @@
+[
+  {
+    "path": "receipt.json",
+    "bytes": 4172,
+    "sha256": "fb2777c9cfc11b7e536c1c33797e6f742e450904ff0a72dc82646d680a7f30c7"
+  },
+  {
+    "path": "receipt.md",
+    "bytes": 585,
+    "sha256": "828b176d5c23092d150baaf06d0e6f08b4a764a12b21517f951c46babc9c2bf7"
+  },
+  {
+    "path": "verify.py",
+    "bytes": 6883,
+    "sha256": "3c64f34afab9fce896b18b971001cfa2fa83472a586f58183c4228b5656d6b01"
+  }
+]
