@@ -246,7 +246,7 @@ it("WD-40 keeps source identity separate from daemon replacement and queries the
 });
 it("WD-53 upgrades schema46 then releases only a proven uncommitted cancellation", () => {
   const f = setup(true);
-  expect(f.db.pragma("user_version", { simple: true })).toBe(47);
+  expect(f.db.pragma("user_version", { simple: true })).toBe(48);
   const receipt = f.store.decide(f.principal, f.answer, 1002);
   f.store.cancel(f.principal, { mission_id: f.mission.mission_id, if_revision: receipt.mission.revision, request_id: "stop" }, 1003);
   const sql = (f.db.prepare("SELECT sql FROM sqlite_master WHERE name='attention_receipt_resolutions'").get() as { sql: string }).sql;

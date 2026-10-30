@@ -272,7 +272,7 @@ describe("graph action ledger", () => {
       for (let i = 0; i < 3; i++) reserve({ ...admission, nodeId: `existing-${i}`, reservationTokens: 0 });
     }
     const ts = await import("typescript");
-    for (const name of ["graph-actions", "graph-apply", "graph-invocations", "graph-storage", "graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl", "source-observations-ddl", "engineering-ddl"]) {
+    for (const name of ["graph-actions", "graph-apply", "graph-invocations", "graph-storage", "graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl", "source-observations-ddl", "engineering-ddl", "attention-reminders-ddl"]) {
       writeFileSync(join(dir, `${name}.js`), ts.transpileModule(readFileSync(join(process.cwd(), `src/state/${name}.ts`), "utf8"),
         { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
     }
