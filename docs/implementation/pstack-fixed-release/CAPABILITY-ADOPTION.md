@@ -1,5 +1,8 @@
 # 固定版本能力采用对账
 
+> 2026-10-30最新实施：P4单bug_fix编译与P5既有host mandatory接线已形成候选，见[实施记录](../pstack-method-bridge/README.md)和[调用教程](../../verification/bug-fix-method-handoff.md)。固定Git材料已实际准备并通过受控adapter验证，尚无本批原生模型/真实修复/同卡闭环。下一步直接P6；本文较早“拟接线”段落保留为设计起点，不能用来覆盖最新代码事实。
+
+
 本表把原24个PS能力组映射到 [PLAN.md](PLAN.md) 的U1/U2/U3与仍保留的原义务，**不是删除原义务、重新签收原24PS/19W/48A，或宣称61个skill已适配**。U1是固定方法材料首用；U2是一个真实任务经OSStack入口完成的bugfix链；U3是选定范围的formal/statechart工具使用。单项首用通过不等于全部能力完成，正式trial/qualified仍须其真实门槛。
 
 依据：[当前queue](../../design/2026-10-27-joint-engineering/pstack-feature-queue.md)、[stage能力对账](../pstack-stage-acceptance/CAPABILITIES.md)、[原验收逐项对账](../pstack-stage-acceptance/ORIGINAL-ACCEPTANCE.md)、[原集成规格](../../reports/2026-10-26-pstack/integration-spec.md)。stage记录有自己的历史候选和时间，本表不改写它；本批W01/W19只按[本目录证据](README.md)与现有实现的有限范围补充。旧99b609a7研究能力映射不会自动成为.36语义审计结果。
