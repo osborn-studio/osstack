@@ -1,0 +1,10 @@
+{
+  "archive_sha256": "abd12dd19cb43b8ed9b67f69b7ed19be212800df60930554774fb2ee0d014c7f",
+  "manifest_sha256": "8c0941c0e6048b6ef9f1e02729f1fe679103a72691b2ad43f06015d055d028d5",
+  "members": 140,
+  "files": 140,
+  "symlinks": 0,
+  "file_bytes": 3326240,
+  "archive_bytes": 656298,
+  "verification": "root all names/type/mode/hash/size/target verified"
+}

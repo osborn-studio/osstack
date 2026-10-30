@@ -1,0 +1,987 @@
+{
+  "created_at": "2026-10-30T01:13:43.389344+00:00",
+  "source": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr309-main-final-ci-20261030",
+  "members": [
+    {
+      "path": "collect.py",
+      "type": "file",
+      "mode": 420,
+      "bytes": 2309,
+      "sha256": "e2e7c021e3b87eb51c9deaaefabfbc5052417fcefdc2d2696ca614d43b5a91cf"
+    },
+    {
+      "path": "complete-log.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 240,
+      "sha256": "80b7f148edbd572f77be15e646c92b2b1c0e057174d055f83ffd818b95437bb8"
+    },
+    {
+      "path": "complete-log.log.gz",
+      "type": "file",
+      "mode": 420,
+      "bytes": 278320,
+      "sha256": "6d07762c4cb2a39ef42fa2d22c725a0a223e1a036d35e660ad92590909f51035"
+    },
+    {
+      "path": "complete-log.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "complete-log.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 2189490,
+      "sha256": "8f0b65da7e6086a3f4cde675608681234a3412d808752a64a01b34f049a6cb90"
+    },
+    {
+      "path": "final-manifest.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 2458,
+      "sha256": "df6e8c0cfdd7e942cfda31f7f2850044704dcc088e13cd3edaf7bcbfd8e74c5e"
+    },
+    {
+      "path": "finalize.py",
+      "type": "file",
+      "mode": 420,
+      "bytes": 5413,
+      "sha256": "d4925d888163149cf1a671b9dbe0838521fe86f793f96cbc7756c1a709301f1e"
+    },
+    {
+      "path": "jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 24560,
+      "sha256": "64b390dd56c161a374e76fe4aa06470d31fc572b3d264b39f40eec7ada272be2"
+    },
+    {
+      "path": "manifest.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 24454,
+      "sha256": "16b1e9c57190e269bfa48c22f0ec77a0541211bacdf6f947db868b7aa30b62c0"
+    },
+    {
+      "path": "parse.py",
+      "type": "file",
+      "mode": 420,
+      "bytes": 4342,
+      "sha256": "8b0e4558246f64ef8578d77d413e61a2fbeb11c63baca46bdc560820d68e87e6"
+    },
+    {
+      "path": "poll-00-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "0a31f6c003dfe6e2d4f6ca64d08adfda529a0ff1bd0c7b90176ad236a400bf14"
+    },
+    {
+      "path": "poll-00-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-00-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 13002,
+      "sha256": "3b70983261bf7abc98a77b3e585e552dd39ae77b6f62c68590227d118f9a2ce8"
+    },
+    {
+      "path": "poll-00-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "c5e42fa2da70c9bb00afe06aa1346902c291ce9903e15c3693548478a54917dd"
+    },
+    {
+      "path": "poll-00-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-00-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "949bc4ee6acd171aa099cc9a8d178b8d3da37de0a4e4e6ea64a5d9b15b297429"
+    },
+    {
+      "path": "poll-01-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "ba9473dcb521433b6e918389d1556f5328a836916cb14f4ba81f62c2a6a6f037"
+    },
+    {
+      "path": "poll-01-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-01-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22189,
+      "sha256": "dac851fa22c2b4b4bbe5c8a45005e5f5a8b493fc30b3cb45c3898479e0adfd8c"
+    },
+    {
+      "path": "poll-01-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "a40971578fe30d82aa2eaa419aca11fa6ed08b3467df0a0cf1e19f5cf587e1c6"
+    },
+    {
+      "path": "poll-01-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-01-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-02-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "ed9c4bbc534c7a325689084c1a40749f55ed04546fa2f5fb81332eb29fce8ef9"
+    },
+    {
+      "path": "poll-02-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-02-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-02-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "cb8bf554d859c5d7466297989c28f000b8940092e8f127ff3cbdb9088618ca5a"
+    },
+    {
+      "path": "poll-02-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-02-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-03-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "544c9ee99606ef737cd743bb08eb743751ecec4bed07996aed884db43a701654"
+    },
+    {
+      "path": "poll-03-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-03-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-03-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "db3baf01d8d378fbb27589b3a5a5f7ce226d4e1cff948cd80f101c08765bb1ac"
+    },
+    {
+      "path": "poll-03-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-03-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-04-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "2688d1d64334431b22988e63c3a4ce4bfa0cb8ec13e1042b60e83a35081a8e95"
+    },
+    {
+      "path": "poll-04-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-04-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-04-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "7d9b3b228cbb394fc68d7c7d2be324d243e9737f5cd7c39d6ee43eb875f858f9"
+    },
+    {
+      "path": "poll-04-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-04-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-05-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "44486228c59f0a24942d16df530b97eaa88b9ba7be48970a1e1892485d2edb2f"
+    },
+    {
+      "path": "poll-05-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-05-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-05-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "bb9d70221fd289a4a0f72c3414228b691c75da1de8f25f1bb177a4254b1fa31e"
+    },
+    {
+      "path": "poll-05-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-05-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-06-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "7b60f1f6004384d68b3e3036883f1bba9be7794270245db4103194904907439c"
+    },
+    {
+      "path": "poll-06-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-06-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-06-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "0e1c83b5707857803483699f4f95fd3414b710268da70a632b9dd85255f41111"
+    },
+    {
+      "path": "poll-06-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-06-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-07-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "934b6d07f50c25481282e774ffa314529fb96ab0d40063d8785003ce9b370e81"
+    },
+    {
+      "path": "poll-07-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-07-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-07-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "a5fdf1b9c2f8dc915cda82a227780516eff91c2355d28f14dccf62c3293fea22"
+    },
+    {
+      "path": "poll-07-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-07-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-08-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "2f121b2b7f9a76c457d65efd8c0edad616204756ab35b0c23ab9dc6fb18fa215"
+    },
+    {
+      "path": "poll-08-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-08-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-08-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "e7bc106f4ccc20d7d01970436d8cb33fd1fb1a1aebe6d704cbcc4264298b110e"
+    },
+    {
+      "path": "poll-08-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-08-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-09-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "7f9ce1bfb93b09aeafb16d42cabb9fdd4853cfee942a591f1235ac74fbbe0778"
+    },
+    {
+      "path": "poll-09-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-09-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-09-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "01ef77231342f7c609baa884e06f0f094fdcdd60879f27f31189f99cda57053a"
+    },
+    {
+      "path": "poll-09-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-09-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-10-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "877e1a6a01715c7202237be8598179089b447f1ab20b2fd200aa1e3e9b9afafc"
+    },
+    {
+      "path": "poll-10-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-10-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-10-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "e53dcc5e63a89d789dc0a61f4bed8aa34f6f584723e403ce113a3a1041f02480"
+    },
+    {
+      "path": "poll-10-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-10-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-11-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "57f66a488ec6beff97178397363f1a21ff23bee48246dbb83f902f4e7953bf42"
+    },
+    {
+      "path": "poll-11-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-11-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-11-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "9e29f974c0b304dfd497b4be3b45c57f848dd5de2d76e38f9e10ecb6ac3a279f"
+    },
+    {
+      "path": "poll-11-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-11-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-12-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "b66283f90de2779d7f81df8fc3e7d34b6307556a6f9ea07d6b01e0dcdb3cb559"
+    },
+    {
+      "path": "poll-12-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-12-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-12-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "1b3394e8a349f9f20fe6613e06728ced93e93c83e6166b2b6023d5a72cbcdde4"
+    },
+    {
+      "path": "poll-12-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-12-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-13-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "8c346d7fb8117bc92270438c5abda83efc0dc70ec6801210e6af4f9ab0e4d861"
+    },
+    {
+      "path": "poll-13-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-13-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22686,
+      "sha256": "b45da89275c418dccf1b20e233d2ef5a3199ec264192465d0f8daab433bda593"
+    },
+    {
+      "path": "poll-13-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "bf6e6db36e09c7f87c76e659d4715088caaffe8d6eebe04fb07915dcca4c0dc7"
+    },
+    {
+      "path": "poll-13-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-13-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-14-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "b735b4548a72377ddb5385914f52cadc993e96ea49ea96edb564ce472d166f5a"
+    },
+    {
+      "path": "poll-14-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-14-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 22858,
+      "sha256": "79a45503cdf18e94bb07d2ace01e50c7b13b626c06946ddd55a6716dc08006d8"
+    },
+    {
+      "path": "poll-14-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "a1b32c9ec69a8f5d75f1cbd8f4548f830f8982285080be942a7258b781631832"
+    },
+    {
+      "path": "poll-14-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-14-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-15-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "faaf0da72c9cde2750fc5b595ec450e7ee0d53acc24c5d02775ba7fd321d4ddc"
+    },
+    {
+      "path": "poll-15-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-15-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 23632,
+      "sha256": "a009cbc8eb3152bbf42fb0072daa39e250bcfab4429f8ddb9c944eef3d8a817a"
+    },
+    {
+      "path": "poll-15-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "00ee01e5a4ee0e2491f4d5ed212d12e7fd0456aa24e3f2cdf00d3e3dfaf6f1d4"
+    },
+    {
+      "path": "poll-15-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-15-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-16-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "31262393511cf2a599590d35e9813b61398041448c638d3a4c1e594e1afe5173"
+    },
+    {
+      "path": "poll-16-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-16-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 23632,
+      "sha256": "a009cbc8eb3152bbf42fb0072daa39e250bcfab4429f8ddb9c944eef3d8a817a"
+    },
+    {
+      "path": "poll-16-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "e4d72147d0b7247dc77f2e23a9af157401068cf2343402fa8e6abc8a3a27792c"
+    },
+    {
+      "path": "poll-16-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-16-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-17-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "6c224a2599afec7576d6cbe2b2ea6aed0d0b9fa1d3ab29c51bc9cd36f8e2632c"
+    },
+    {
+      "path": "poll-17-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-17-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 23847,
+      "sha256": "e7f680724be09fe5b0cfca3febd9c36e92921993aa34ae5c3141624744a303f6"
+    },
+    {
+      "path": "poll-17-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "45d33fe3a2872f220151a0ae71cdd5d8fb2a97574bb78aa301e354c5a85736fa"
+    },
+    {
+      "path": "poll-17-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-17-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-18-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "e31628941ceba8894eaf469012baaf00f3b50af379cde195029e6552bdd94c01"
+    },
+    {
+      "path": "poll-18-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-18-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 24062,
+      "sha256": "7a18cb7d1f9deec060ec1040e3f651740a046e1b0ec0092887f3af2d9eaa0b6e"
+    },
+    {
+      "path": "poll-18-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "da29238c69390972e55c311f966885d24c96c7f6e3d9bb7fc5fc97d1aba8ffa8"
+    },
+    {
+      "path": "poll-18-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-18-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12985,
+      "sha256": "e875f0902edba9203e9a85d8a7734913c9593e41767187b004d53e32d0711332"
+    },
+    {
+      "path": "poll-19-jobs.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 231,
+      "sha256": "51707e7c40aa9a91e4efebf499bb42bf18cd31ebc84e6318822351d3d2769955"
+    },
+    {
+      "path": "poll-19-jobs.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-19-jobs.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 24560,
+      "sha256": "64b390dd56c161a374e76fe4aa06470d31fc572b3d264b39f40eec7ada272be2"
+    },
+    {
+      "path": "poll-19-run.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 213,
+      "sha256": "9b64d51d4ee09ec4a6bd1cfd2b116b3cb7e8be665dbad40562bfd6b5ff59b1b5"
+    },
+    {
+      "path": "poll-19-run.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "poll-19-run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12988,
+      "sha256": "c007300cf73cdd74c5e9c32c29fad92f6c2c645506a0df70194c9403c28f3ba2"
+    },
+    {
+      "path": "pr-final.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 308,
+      "sha256": "119ef84b865ca3c041d3f7fc0c45fbafb2bc674640244171b0b66784e643dea9"
+    },
+    {
+      "path": "pr-final.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "pr-final.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 1975,
+      "sha256": "638c1dc2454858737516b35c4fa4e340971d73c3c6c8f2fd4cd890556cf403b7"
+    },
+    {
+      "path": "pr-initial.command.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 308,
+      "sha256": "9ab126d57305f0541d7c1589cc167537f3e0607a817d7e2d421222a30b2e0ccd"
+    },
+    {
+      "path": "pr-initial.stderr",
+      "type": "file",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "pr-initial.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 1685,
+      "sha256": "51de7927fa04077d8e740e9b1271fb8e179d4a696a2f892796681d1edcbf2461"
+    },
+    {
+      "path": "report.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 56844,
+      "sha256": "b5c00745471dc2df9f8ef7c906b6f5ae1ab5cc4839b518f576ee39c57bd8be25"
+    },
+    {
+      "path": "report.md",
+      "type": "file",
+      "mode": 420,
+      "bytes": 1821,
+      "sha256": "8dc06e9557e41afbeadcafa45d8dc2aa90706821f35adc9cb4b62c0d4984d709"
+    },
+    {
+      "path": "run.stdout",
+      "type": "file",
+      "mode": 420,
+      "bytes": 12988,
+      "sha256": "c007300cf73cdd74c5e9c32c29fad92f6c2c645506a0df70194c9403c28f3ba2"
+    },
+    {
+      "path": "target-binding.json",
+      "type": "file",
+      "mode": 420,
+      "bytes": 128,
+      "sha256": "6249e8d8c693be1105021fa98a083c01aaf9c2ab2337d392d9b5ab3ec1756f46"
+    }
+  ],
+  "scope": "all specified frozen scratch paths as of archive creation, excluding separately collected publication-independent; directories and symlinks retained without dereference"
+}

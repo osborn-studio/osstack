@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "gh",
+    "pr",
+    "view",
+    "309",
+    "--repo",
+    "osborn-studio/osstack",
+    "--json",
+    "headRefOid,baseRefName,isDraft,state,mergeable,statusCheckRollup,url"
+  ],
+  "start": "2026-10-30T00:48:08.625628+00:00",
+  "finish": "2026-10-30T00:48:09.552269+00:00",
+  "exit_code": 0
+}

@@ -1,0 +1,282 @@
+{
+  "verified_at": "2026-10-30T00:52:35.620366+00:00",
+  "archive_sha256": "0fbbc5a39c3aa5372fe3dab02a30da23a0b9532a2608d29785ba7d9417ccf7f5",
+  "manifest_sha256": "76958e3263396e3a2fe6394775fa0a2b74bdbeb5b66e32c0c91e046465212907",
+  "members": 66,
+  "files": 64,
+  "directories": 2,
+  "file_bytes": 4815861,
+  "issues": [],
+  "all_members_match_manifest_and_original": true,
+  "checks": [
+    {
+      "path": "actual-main.diff",
+      "verified": true
+    },
+    {
+      "path": "dispatch-ledger.json",
+      "verified": true
+    },
+    {
+      "path": "git-proof.json",
+      "verified": true
+    },
+    {
+      "path": "pr-after.json",
+      "verified": true
+    },
+    {
+      "path": "pr-before.json",
+      "verified": true
+    },
+    {
+      "path": "validation",
+      "verified": true
+    },
+    {
+      "path": "validation/after-source-before-restore.json",
+      "verified": true
+    },
+    {
+      "path": "validation/base-head.diff",
+      "verified": true
+    },
+    {
+      "path": "validation/before-source.json",
+      "verified": true
+    },
+    {
+      "path": "validation/build.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/build.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/build.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/candidate-cli-tests.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/candidate-cli-tests.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/candidate-cli-tests.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/capture.py",
+      "verified": true
+    },
+    {
+      "path": "validation/changeset-coverage.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/changeset-coverage.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/changeset-coverage.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/docs.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/docs.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/docs.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/finalize.py",
+      "verified": true
+    },
+    {
+      "path": "validation/frozen-vector-results.json",
+      "verified": true
+    },
+    {
+      "path": "validation/frozen-vectors.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/frozen-vectors.json",
+      "verified": true
+    },
+    {
+      "path": "validation/frozen-vectors.mjs",
+      "verified": true
+    },
+    {
+      "path": "validation/frozen-vectors.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/frozen-vectors.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/generated-before-restore",
+      "verified": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.d.ts",
+      "verified": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.d.ts.map",
+      "verified": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.js",
+      "verified": true
+    },
+    {
+      "path": "validation/generated-before-restore/index.js.map",
+      "verified": true
+    },
+    {
+      "path": "validation/generated-binding.json",
+      "verified": true
+    },
+    {
+      "path": "validation/git-binding.json",
+      "verified": true
+    },
+    {
+      "path": "validation/github-tests.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/github-tests.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/github-tests.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/hygiene.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/hygiene.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/hygiene.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/install.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/install.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/install.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/inventory.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/inventory.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/inventory.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/knowledge-generated.patch",
+      "verified": true
+    },
+    {
+      "path": "validation/lint.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/lint.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/lint.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/manifest.json",
+      "verified": true
+    },
+    {
+      "path": "validation/node-version.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/node-version.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/node-version.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/report.md",
+      "verified": true
+    },
+    {
+      "path": "validation/restore-receipt.json",
+      "verified": true
+    },
+    {
+      "path": "validation/restore.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/restore.stdout",
+      "verified": true
+    },
+    {
+      "path": "validation/run-validation.py",
+      "verified": true
+    },
+    {
+      "path": "validation/summary.json",
+      "verified": true
+    },
+    {
+      "path": "validation/three-pr-input.json",
+      "verified": true
+    },
+    {
+      "path": "validation/typecheck.command.json",
+      "verified": true
+    },
+    {
+      "path": "validation/typecheck.stderr",
+      "verified": true
+    },
+    {
+      "path": "validation/typecheck.stdout",
+      "verified": true
+    }
+  ],
+  "limits": [
+    "Exact archive snapshot compared; no additional product tests/full/model/forge calls.",
+    "Retarget evidence is preserved with original source bindings; this receipt is archive verification, not fresh static product audit.",
+    "Original Sonnet product PASS may be inherited only through unchanged source/tree evidence; it is not a new audit invocation."
+  ]
+}

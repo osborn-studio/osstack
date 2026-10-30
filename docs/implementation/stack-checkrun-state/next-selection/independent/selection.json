@@ -1,0 +1,142 @@
+{
+  "observed_at": "2026-10-30T00:32:01.467732+00:00",
+  "baseline": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+  "scope": "Read-only source-grounded next-slice proposal; not implemented, not frozen acceptance, no test/model/DB/forge invocation.",
+  "policy_adjudications": [
+    {
+      "question": "Existing card ci_state is not refreshed on repeated stack ingest",
+      "classification": "explicit existing create-only/idempotence contract; missing refresh capability, not confirmed regression",
+      "evidence": [
+        "packages/cli/src/stack-cli.ts:151-161 skips existing cards",
+        "packages/cli/src/stack-cli.test.ts:209-261 fixes no duplicate/no-op event behavior",
+        "docs/design/2026-10-26-firstmate-upgrade/README.md:205 explicitly states existing metadata cannot be refreshed"
+      ],
+      "implication": "Do not silently change ingest into refresh or reset manually completed checks/status. A new opt-in current observation/refresh contract is needed."
+    },
+    {
+      "question": "Unknown aggregate CI yields no detectDrift issue and may return clean:true",
+      "classification": "confirmed static behavior; readiness bug not established from current caller/contract evidence",
+      "evidence": [
+        "packages/github/src/stack.ts:219 onward enumerates failure/pending but not unknown",
+        "package-wide Git grep shows definition and tests, no other production caller",
+        "inspectPrCandidate already has explicit unknowns/coverage/merge_authorized:false"
+      ],
+      "implication": "clean currently means no enumerated issue. Do not infer CI success or merge authorization. Any new completeness/ci_unknown field must be specified as a contract change rather than silently changing existing policy."
+    }
+  ],
+  "candidates": [
+    {
+      "rank": 1,
+      "name": "Bounded current stack observation and historical-state comparison",
+      "kind": "useful new read-only user loop; not a repair claim for create-only ingest",
+      "user_loop": "Given an explicit repository and bounded ordered PR list, collect current per-PR snapshots, retain head/base/time/raw evidence, show each current outcome and changed historical fields, and report the first unresolved frontier with no merge or topology mutation. A subsequent run after user-authorized fix produces a new report rather than overwriting the first.",
+      "reuse": [
+        "inspectPrCandidate and report-pr-candidate manifest/exclusive-output patterns",
+        "existing stack topology representation only after validating supplied order/ref relationships",
+        "existing readiness material and pstack babysit check-mode boundary"
+      ],
+      "minimum_contract_before_code": [
+        "Use explicit repo/PR identities and a small total query/time cap; do not infer repo identity from global pr-N cards.",
+        "Fresh per-PR bracketed snapshots are sequential, not an atomic whole-stack transaction; preserve unknown/changed/partial records.",
+        "Comparison must label historical/stored data and collection times; never auto-pass local checklist, move cards, update metadata, merge, retarget or watch.",
+        "If no trustworthy stored snapshot is supplied, report comparison unavailable instead of inventing freshness."
+      ],
+      "acceptance_scenarios": [
+        "Old green H1 versus current H2 pending must display changed binding and pending, never reuse H1 green.",
+        "A failed/partial API read retains available facets and unknown outcome; one failed PR cannot disappear from aggregate.",
+        "Merged bottom PR plus open dependent PR identifies next frontier only with explicit current base/ref evidence; no automatic retarget.",
+        "All clear report remains no_observed_blocker with merge_authorized:false, not READY authorization.",
+        "Same immutable inputs rerun to a new output after fixture status correction gives observable red/waiting to clear comparison; no DB required."
+      ],
+      "limits": "Do not transplant upstream default-drive loops, retry heuristics or owner-gate special cases wholesale. This is a single-pass bounded tool, not full PS17/18."
+    },
+    {
+      "rank": 2,
+      "name": "Opt-in refresh of stored PR observations without resetting human work",
+      "kind": "deferred follow-on capability, not an existing-contract bug fix",
+      "user_loop": "User explicitly refreshes an identified PR card; current pinned observation is retained and only observation metadata is updated, then runbook distinguishes fresh observation from human checklist state.",
+      "priority_reason": "More moving parts than read-only observation: stored identity, compare-and-set, provenance, and failure semantics must be agreed before writes. Rank below candidate1.",
+      "minimum_contract_before_code": [
+        "Require explicit stable repository+PR+card/board identity; current pr-N/meta fields do not prove cross-repo uniqueness.",
+        "Do not update on head/base drift, query failure or identity mismatch without recording the unavailable/changed result; never replace old facts with guessed success.",
+        "Preserve manual checks, status, assignee, comments and topology; identical observation should not flood events.",
+        "Record observed_at and head/base OIDs; mutable branch names alone cannot prove freshness."
+      ],
+      "acceptance_scenarios": [
+        "Refresh stored pending→success updates only observation fields with retained previous evidence.",
+        "Manual CI checklist fail and blocked lane survive a successful forge observation.",
+        "Wrong repo/card collision and concurrent card revision reject without partial updates.",
+        "Identical reread produces no duplicate observation/event, while a real changed binding is visible."
+      ],
+      "limits": "Requires a separately authorized isolated DB exercise when implemented; none performed here. Not a continuous watch or merge service."
+    }
+  ],
+  "additional_observation_not_a_third_candidate": "renderRunbook emits auto-retargets wording while its own execution path is only local rendering. Any new observation UX should avoid inheriting this unconditional promise; this report does not prove all repository merge mechanisms absent or propose a separate documentation-only delivery.",
+  "source_provenance": [
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md",
+      "copy": "source-0.txt",
+      "sha256": "86256275b1c69e1c779b65310988a71035bccfa23ac1ceb0c32651d30605cebb"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/cli/src/stack-cli.ts",
+      "copy": "source-1.txt",
+      "sha256": "054644260f339f9c40c714731d4e2dc92be69cc49fb138ade4d90a12a9d61a71"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/cli/src/stack-cli.test.ts",
+      "copy": "source-2.txt",
+      "sha256": "4b0edb58e91d3616f44a8f3eeb3ce883e1c1ca99feb349fde759ae989d0c5d56"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/github/src/stack.ts",
+      "copy": "source-3.txt",
+      "sha256": "f6a2435f10c3a400c6b58bf6c5ee0cc41c61ff7f7c64b0287919ba86017b2c98"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/github/src/stack.test.ts",
+      "copy": "source-4.txt",
+      "sha256": "b649798d453799c0ca3d176260390ad5ef6ad2f110c610cd7bcba95e3549df22"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/github/src/pr-candidate-snapshot.ts",
+      "copy": "source-5.txt",
+      "sha256": "f9df94098c9367bc520c9eb0710845be216de0d1994f51a24f7f2254f25d4fca"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "scripts/report-pr-candidate.mjs",
+      "copy": "source-6.txt",
+      "sha256": "3c0a5c7cad064a21291f80c7a6a2eb3d522f1f895ad25b24c4ac4d1c572f8093"
+    },
+    {
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "docs/design/2026-10-26-firstmate-upgrade/README.md",
+      "copy": "source-7.txt",
+      "sha256": "f9fe5bedddc488bfb0fbcc218ced364ca11f3e3362438b8f3cf6c3a3429c0ecb"
+    },
+    {
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/babysit.md",
+      "copy": "source-8.txt",
+      "sha256": "e261c1ff5581e0f8fc6c686f34de4b535f87473e77beabea7dd8323021214610"
+    },
+    {
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "copy": "source-9.txt",
+      "sha256": "2d4823aeea788acab258ec60eb52e7b9e3a23a6649850af128d6ada5c33d7778"
+    }
+  ],
+  "no_runtime_claims": [
+    "No product edits, worktree, model calls, DB, full tests, central/PR writes.",
+    "No implementation candidate or formal gate qualification delivered.",
+    "Old LIMITED/FAILED host results and CI histories remain unchanged."
+  ]
+}

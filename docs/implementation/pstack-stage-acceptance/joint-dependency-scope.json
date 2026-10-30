@@ -1,0 +1,249 @@
+{
+  "at": "2026-10-30T01:44:01.890552+00:00",
+  "r7": {
+    "correction": "69指2026-10-27联合设计审计当时新增的联合JA场景，不是原pstack48，也不是继承Firstmate66+pstack48共114。",
+    "source": "docs/design/2026-10-27-joint-engineering/claude-audit.md:109",
+    "exact_quote": "114继承场景、69新场景、124阶段节点均保持可追溯。未执行的产品场景数量为全部69项，运行验收通过数为0。",
+    "historical_scope": "That audit round only; not current count.",
+    "current_data": {
+      "joint_JA_count": 72,
+      "legacy_total": 114,
+      "legacy_FM": 66,
+      "legacy_PS": 48
+    },
+    "suggested_text": "历史联合审计当时的69项新增JA产品场景全部未执行；另有66项Firstmate+48项pstack=114项继承场景，不能混称为69原始场景。当前main新增JA清单已为72项，本句保留历史时点而不回写旧统计。"
+  },
+  "minimal_existing_c2_dependency_scope": {
+    "target": "J09.scoped (original W08/C2 local bug-fix trial)",
+    "direct_gates": [
+      {
+        "id": "J09.scoped",
+        "owner_work_item": "J09",
+        "requires": [
+          "J08.scoped"
+        ],
+        "stage": "scoped_acceptance",
+        "evidence_state": "specified_not_run",
+        "joint_case_requirements": [
+          "JA18"
+        ]
+      },
+      {
+        "id": "J08.scoped",
+        "owner_work_item": "J08",
+        "requires": [
+          "J03.scoped",
+          "J07.scoped",
+          "J12.scoped",
+          "J08.recovery",
+          "J01.scoped"
+        ],
+        "stage": "scoped_acceptance",
+        "evidence_state": "specified_not_run",
+        "joint_case_requirements": [
+          "JA16",
+          "JA17",
+          "JA49",
+          "JA61",
+          "JA71",
+          "JA72"
+        ]
+      },
+      {
+        "id": "J08.admission_boundary",
+        "owner_work_item": "J08",
+        "requires": [
+          "J01.contracts"
+        ],
+        "stage": "real_host_non_effecting_admission_boundary",
+        "evidence_state": "specified_not_run",
+        "joint_case_requirements": [
+          "JA02",
+          "JA71"
+        ],
+        "effects": "none",
+        "identity_fields": [
+          "candidate_sha",
+          "contract_artifacts_digest",
+          "entry_source_digest",
+          "config_digest",
+          "dependency_manifest_digest",
+          "support_cell_digest",
+          "oracle_digest",
+          "harness_digest"
+        ],
+        "evidence_binding_ref": "evidence/gate-layers/component-slice-specs.json#gate_evidence_bindings/J08.admission_boundary"
+      },
+      {
+        "id": "J11.scoped",
+        "owner_work_item": "J11",
+        "requires": [
+          "J01.contracts"
+        ],
+        "stage": "scoped_acceptance",
+        "evidence_state": "specified_not_run",
+        "joint_case_requirements": [
+          "JA20",
+          "JA47"
+        ]
+      },
+      {
+        "id": "J12.bootstrap_preflight",
+        "owner_work_item": "J12",
+        "requires": [
+          "J11.scoped"
+        ],
+        "stage": "isolated_bootstrap_fixture_qualification",
+        "evidence_state": "specified_not_run"
+      },
+      {
+        "id": "J12.scoped",
+        "owner_work_item": "J12",
+        "requires": [
+          "J11.scoped",
+          "J12.bootstrap_preflight"
+        ],
+        "stage": "scoped_acceptance",
+        "evidence_state": "specified_not_run",
+        "joint_case_requirements": [
+          "JA21",
+          "JA51",
+          "JA52"
+        ]
+      },
+      {
+        "id": "J08.schema_spec",
+        "owner_work_item": "J08",
+        "requires": [
+          "J11.scoped"
+        ],
+        "stage": "exact_rebased_migration_spec",
+        "evidence_state": "specified_not_run"
+      },
+      {
+        "id": "J08.recovery",
+        "owner_work_item": "J08",
+        "requires": [
+          "J08.schema_spec",
+          "J12.scoped"
+        ],
+        "stage": "exact_target_recovery_qualification",
+        "evidence_state": "specified_not_run",
+        "identity_fields": [
+          "source_schema",
+          "target_schema",
+          "ddl_digest",
+          "fixture_digest",
+          "schema_spec_digest",
+          "candidate_sha",
+          "recovery_build_digest"
+        ]
+      },
+      {
+        "id": "J12.full_recovery",
+        "owner_work_item": "J12",
+        "requires": [
+          "J12.scoped",
+          "J17.recovery"
+        ],
+        "stage": "full_home_and_broker_recovery",
+        "evidence_state": "specified_not_run"
+      },
+      {
+        "id": "J17.schema_spec",
+        "owner_work_item": "J17",
+        "requires": [
+          "J11.scoped"
+        ],
+        "stage": "broker_schema_spec",
+        "evidence_state": "specified_not_run"
+      }
+    ],
+    "gate_source_lines": {
+      "J09.scoped": 149,
+      "J08.scoped": 128,
+      "J08.admission_boundary": 1872,
+      "J11.scoped": 184,
+      "J12.bootstrap_preflight": 870,
+      "J12.scoped": 197,
+      "J08.schema_spec": 730,
+      "J08.recovery": 739,
+      "J12.full_recovery": 720,
+      "J17.schema_spec": 682
+    },
+    "actual_transitive_gate_ids": [
+      "J01.contracts",
+      "J01.scoped",
+      "J02.scoped",
+      "J03.diagnostics",
+      "J03.scoped",
+      "J04.scoped",
+      "J05.scoped",
+      "J06.scoped",
+      "J07.scoped",
+      "J08.admission_boundary",
+      "J08.recovery",
+      "J08.schema_spec",
+      "J08.scoped",
+      "J09.scoped",
+      "J11.scoped",
+      "J12.bootstrap_preflight",
+      "J12.scoped",
+      "J25.e0",
+      "J25.protocol"
+    ],
+    "scope_notes": [
+      "Local broker-disabled C2 requires J11.scoped home/method exact schema specification, J12.bootstrap_preflight and J12.scoped, then J08.schema_spec/J08.recovery for the actual trial persistence migration. J11 covers format/template; each actual DDL/version/candidate is rebound, not any future migration.",
+      "J08.scoped also directly requires J03.scoped/J07.scoped/J01.scoped. J01.scoped includes J08.admission_boundary real-host non-effecting entry, not only schemas. Keep full material/check/artifact prerequisites and J25.e0 continue/shrink from their graph.",
+      "J08 trial uses createAndConsumeTrial same FULL transaction for root+permit consumption; actual external calls retain graph_actions admission; duplicate conflicts, crash state, bounded budgets and no reinvoke of unknown effects must be tested.",
+      "J12 scoped requires trusted owner/operator, no-auto-migrate recovery open, exact recovery_target_version, white-listed ledger bootstrap, hold/proof poststates and candidate-bound crash/recovery tests. Offline SQL fixtures alone are not completion.",
+      "J12.full_recovery (requires J17.recovery), general broker dispatch/capacity, remote supervisors, all future method migrations, J27.default_enable and J32 value conclusion are not in this local J09 dependency closure. Broker-enabled use cannot borrow the broker-disabled exception.",
+      "This is extraction of existing gates, not a new approval rule, removed requirement or claim of passed gates."
+    ],
+    "spec_lines": {
+      "J12_open_guard": 22,
+      "bootstrap_target_version": 24,
+      "exact_per_migration_binding": 26,
+      "J08_atomic_trial_FULL": 32,
+      "local_broker_exception": 60
+    }
+  },
+  "source_bindings": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "git_blob": "c9d1a94b4d7fe2954c71a9e4f403c442013202c4",
+      "sha256": "6c1db9580309fd8eb703a4a1b42abfe760c129c944edd81639a6498803ba46e6",
+      "bytes": 14592
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-gates.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "git_blob": "b432c83265bd790ecbe0c514c6facc3b28d9d72f",
+      "sha256": "489a7388a2ed1705deee7aaff76c65f7acd31a15d6b83d3b7f7c9747a35c97ee",
+      "bytes": 62639
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/acceptance-cases.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "git_blob": "c60a5ab0187a9ec359aeadd84c029611cf1ffc2c",
+      "sha256": "606b4e894aa7d89af0e225cfc8d12859377c29c664733dfce03839c65eeb003b",
+      "bytes": 132058
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-case-map.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "git_blob": "93523b0e0e2f6443b25b984baa0c45b14e91de42",
+      "sha256": "80f1975ca2911e69468e7772bc12d25a495ac70a66cc24bc12f27bed2b206564",
+      "bytes": 91680
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/closeout-specifications.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "git_blob": "b6fa3b9fef04399f962306f8097a3edd31fb8de5",
+      "sha256": "0372fecf3be44148688b8139f4b99494e4dd2dd76ae7ff1dd158df4287be23f3",
+      "bytes": 15891
+    }
+  ],
+  "limits": "No model, tests, runtime/DB/forge, shared documents or frozen prior reports changed."
+}

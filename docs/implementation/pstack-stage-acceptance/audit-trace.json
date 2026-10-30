@@ -1,0 +1,1211 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T01:29:10.020510+00:00",
+  "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+  "purpose": "historical research/audit disposition to current bounded implementation evidence; no reruns",
+  "counts": {
+    "article_revisions": 12,
+    "original_audit_and_challenge": 22,
+    "joint_all_opinions": 47,
+    "host_added_HV01": "separate, not counted in22"
+  },
+  "historical_verdicts": [
+    "DONE_WITH_CONCERNS",
+    "joint_initial_REVISE",
+    "first_closeout_REVISE",
+    "second_PASS_WITH_CONCERNS",
+    "third_targeted_PASS_WITH_CONCERNS"
+  ],
+  "historical_test_counts": {
+    "document_tests": 77,
+    "schema_examples": 100,
+    "positive_digest_vectors": 24,
+    "invalid_raw_json": 5,
+    "source_anchors": 227,
+    "product_cases_executed_in_that_design_round": 0,
+    "product_cases_not_run_then": 69,
+    "scope": "historical final design round only, not current product acceptance"
+  },
+  "identity_limit": "CLI modelUsage/canonicalModel records claude-fable-5-1 or claude-sonnet-5-5; no independent provider/principal attestation. Same model review/challenge is not cross-model consensus. Article-reading record is host observation, not independent Claude access to both X originals.",
+  "ps21_verified_mapping": {
+    "work_packages": [
+      "W01",
+      "W02",
+      "W11"
+    ],
+    "article_delta_work_packages": [],
+    "joint_work_items": [
+      "J02",
+      "J08",
+      "J10",
+      "J26",
+      "J01"
+    ]
+  },
+  "themes": [
+    {
+      "id": "T01",
+      "theme": "使用先于接口冻结 / W17",
+      "original_refs": "AD04/05；D02；AU/CH原CH01/04；联合CH08/09、RV12、CO08",
+      "design_disposition": "W17→J06、W03依赖W17/W18已写入；E0可continue/shrink/stop，纯合同可先行。",
+      "bounded_product_evidence": "已有实际CLI用户路径、有限宿主修复及五例journey，证明可驱动/可观察的具体路径。",
+      "remaining_or_unknown": "没有原W17统一usage-sketch回执与命名repro/wait/cancel三图验收；不能由后来的接口文档倒称首次冻结前已做完整使用试验。",
+      "joint_ids": [
+        "J03",
+        "J06",
+        "J25"
+      ],
+      "evidence_paths": [
+        "docs/implementation/method-full-journey/README.md",
+        "docs/implementation/pstack-current-repair/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T02",
+      "theme": "PS21遗漏与完整映射",
+      "original_refs": "D01；AU01/08、CH03/10；RV15/16/17",
+      "design_disposition": "PS21 work_packages现为W01/W02/W11，article_delta_work_packages独立为空；J02/J08/J10/J26/J01关联单列。",
+      "bounded_product_evidence": "typed registry、opt-in source inspector与固定Git/path/预算组件已交付。",
+      "remaining_or_unknown": "依赖闭包J02b、资格/漂移/撤销实际链仍欠缺；映射不空不等于来源能力完成。",
+      "joint_ids": [
+        "J01",
+        "J02",
+        "J10"
+      ],
+      "evidence_paths": [
+        "docs/implementation/joint-source-inspection/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T03",
+      "theme": "必读材料送达与必需产物checker",
+      "original_refs": "D03；AU04/11、CH02；RV06/11、CH15、CO05/06",
+      "design_disposition": "角色材料、全局完成义务、host-owned配置、预算/不可裁剪、可信receipt及消费职责设计已明确；直接改frozen.brief建议被真实负例拒绝。",
+      "bounded_product_evidence": "四入口/14方法双导出；分页工具wholefile SHA与EOF；闭合两文件/v2五例投影检查器；部分实际host有字节送达。",
+      "remaining_or_unknown": "reader不证明理解/强制消费；projection不证明原运行真实性。J04 mandatory MethodBinding与J07受信同候选产物拒缺链未完成。Claude历史export最后4行未读LIMITED仍保留。",
+      "joint_ids": [
+        "J04",
+        "J07"
+      ],
+      "evidence_paths": [
+        "docs/implementation/method-material-reader/README.md",
+        "docs/implementation/method-full-projection/README.md",
+        "docs/implementation/pstack-export-repair/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T04",
+      "theme": "检查注册与主检查选择",
+      "original_refs": "D04；AU03/06、CH09；RV08、CH16",
+      "design_disposition": "primary_id唯一required→registry command digest→AcceptanceCommandSpec.ref，检查数/命令字节/退出规则已固定。",
+      "bounded_product_evidence": "严格schema/契约正负例和已有宿主检查基础可复用；固定工具命令已真实执行。",
+      "remaining_or_unknown": "J05 recipe compiler/两仓库不同命令映射/多个检查主项选择未按新入口完成；不能以既有host拒绝测试或硬编码smoke替代。",
+      "joint_ids": [
+        "J01",
+        "J05"
+      ],
+      "evidence_paths": [
+        "docs/implementation/joint-contract-acceptance/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T05",
+      "theme": "首次资格与维护依赖",
+      "original_refs": "HV01/D05；AU09；RV02/03/04/12、CH03/04/11、CO04/06/07/10",
+      "design_disposition": "candidate试验许可与active区分、单root消费/预算、profile、J11→J12→J08、J10分阶段已规定；后续gate-layers避免组件与host循环。",
+      "bounded_product_evidence": "有合同/离线恢复DDL/支持profile基础；没有首次trial运行产品证据。",
+      "remaining_or_unknown": "method-host-admission、createAndConsumeTrial FULL持久性、原子消费/崩溃恢复、实际operator/profile/首资格失败不激活仍待实施。普通D2a材料不需冒充qualified才可使用。",
+      "joint_ids": [
+        "J08",
+        "J10",
+        "J11",
+        "J12",
+        "J23"
+      ],
+      "evidence_paths": [
+        "docs/implementation/joint-recovery-composition/README.md",
+        "docs/implementation/joint-broker-spec/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T06",
+      "theme": "真实验证场景、地图维护与故障归属",
+      "original_refs": "AD01/02/07/08/09；D02/06；AU05/09、CH01/06/07；RV09/10、CH07/08",
+      "design_disposition": "命名driver、环境/产品/工具/unknown分类、owner与地图writer及负例设计已明示。",
+      "bounded_product_evidence": "实际five-case 0/1/2/1/0语义验证；固定地图错配RED→只改地图→fresh GREEN；保留原始失败、partial和cleanup。",
+      "remaining_or_unknown": "固定本地五例并非任意项目生成/发现/修复；原J03/06命名统一driver和JA05/06/44仍未整体执行；注入地图漂移不是新生产bug。",
+      "joint_ids": [
+        "J03",
+        "J06",
+        "J09",
+        "J10"
+      ],
+      "evidence_paths": [
+        "docs/implementation/skills-check-map-maintenance/README.md",
+        "docs/implementation/pstack-real-loops/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T07",
+      "theme": "语义、独立性与价值实验",
+      "original_refs": "AD03/06/11；D08；AU07/08、CH04；RV13、CH09/10/12、CO08/09",
+      "design_disposition": "结构与语义、共同oracle、冻结时点/真实principal、完整分母、E0/E1/E2与default-enable决定已分开。",
+      "bounded_product_evidence": "有独立工程挑战、静态Sonnet审计、有限真实双host观察与修复，原FAILED/LIMITED有记录。",
+      "remaining_or_unknown": "未实施预冻结成本/任务/holdout的正式E0/E1及baseline/F/P/F+P四臂、冷用户/功效/成本实验；不推出因果收益、模型排名、独立身份或J32继续决定。",
+      "joint_ids": [
+        "J23",
+        "J25",
+        "J32"
+      ],
+      "evidence_paths": [
+        "docs/implementation/method-continuity-delivery/host-report.md",
+        "docs/implementation/method-verification-journey/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T08",
+      "theme": "摘要/恢复/旧门槛和迁移",
+      "original_refs": "D07；AU02/10、CH08；RV01/05/07/14、CH01/02/05/06/13/14、CO01/02/03/05/07、CF01/02/03",
+      "design_disposition": "严格raw JSON/canonical域、typed恢复后态、每迁移资格、legacy完整闭包与local例外均已设计修正。",
+      "bounded_product_evidence": "J01严格解析/摘要/交叉字段组件；J11/J17真实SQLite候选DDL和离线恢复fixture。",
+      "remaining_or_unknown": "不等于真实hold处置、openRecoveryDb、跨进程CAS、broker启用或发布资格；正式oracle未认证，旧gate不由组件通过替代。",
+      "joint_ids": [
+        "J01",
+        "J11",
+        "J12",
+        "J17"
+      ],
+      "evidence_paths": [
+        "docs/implementation/joint-contract-acceptance/README.md",
+        "docs/implementation/joint-recovery-retarget/README.md"
+      ],
+      "formal_gate_pass": false
+    },
+    {
+      "id": "T09",
+      "theme": "来源、文档生命周期与入口收敛",
+      "original_refs": "AD10/12；AU12/CH05非缺陷；RV18、CO10",
+      "design_disposition": "旧计划退出默认上下文、单目标入口路由、来源hash/完整checkout/归档前提及不采纳建议有记录。",
+      "bounded_product_evidence": "四入口14方法、来源许可、历史原审计与修订档案已保存。",
+      "remaining_or_unknown": "没有通用计划退休/上下文自动清理运行时；同模型多prompt不等于跨模型独立共识；文档统计不能替代任何产品场景。",
+      "joint_ids": [
+        "J04",
+        "J19"
+      ],
+      "evidence_paths": [
+        "docs/implementation/osstack-method-entrypoints/README.md"
+      ],
+      "formal_gate_pass": false
+    }
+  ],
+  "original_index": [
+    {
+      "original_namespace": "article",
+      "id": "AD01",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD02",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD03",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD04",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T01",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD05",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T01",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD06",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD07",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD08",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD09",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD10",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T09",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD11",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "article",
+      "id": "AD12",
+      "original_disposition": "design_revision",
+      "original_status": null,
+      "original_summary": "见原修订映射",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "current_assessment_theme": "T09",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU01",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "与 CH03 相同的实际映射缺口。应将 article-delta 涉及包与完整实现映射分开；不能让 PS21 无实施项却被 P0 依赖。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU02",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "报告需注明既有 host 的受控提交身份转换例外。但不能采纳“head 只在 tree/diff 变化时才失效”的宽泛放行：现有实现还要求 expectedHeads、原 base、workspace 状态等。首期 local_verified 禁止 commit，不能把 guarded-git 后续阶段兼容问题说成首期必失败。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU03",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "通用检查 ID/角色如何映射仓库级注册项、optional check 的处理需明确；CheckReference 尚未定义，不能据此断言所有仓库都必然无法编译。报告 README 没有第 610 行；有效位置是规格 §4.3–4.4。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T04",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU04",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "必需方法材料的实际通道与摘要绑定需要 W17 验证。16KiB 为候选上限而非默认 prompt 预算，不是单独的矛盾；直接改 FrozenDeliveryContractV2.brief 的建议被 host 负例探针证伪。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU05",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "需定义稳定的失败归属和 timeout/cleanup 的 reason code。现有 evidence_refs/recovery.code 可以区分原因，unknown/blocked 文案也允许 blocked，所以不是类型上绝对无法表达；应补约束而非机械增加字段。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU06",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "采纳 primaryRef 与授权输入来源要明确；run/task 关联已由规格第 270 行交给现有 host，不能断言 link 相同就一定无法区分执行。父合同和 graph_input_ref 是备选，不能无条件要求所有任务新增父合同。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T04",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU07",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "应分开字段结构、确定性决策逻辑、模型语义评估与真实调用；补固定 transcript/反例/oracle。integration 测试可以含模型，问题不在名称本身。A10 应覆盖新的 method-admission 路径并保留底层 host 回归。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU08",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "补能力覆盖和 inventory 集合相等检查；原 validation 已明确不证明分析正确。其“删除一条改为 199 仍通过”的证伪用例不成立，因为代码硬编码 len==200；重复一条替换另一条才可能保持计数绕过集合检查。两个工作区快照均存在，各有时间边界，不必强行统一名称。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU09",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "补 host profile 变化的具体拒绝样例与比较点有价值。规格已要求资格绑定 host profile 并只允许固定组合，不能说完全没有该约束；不必为每种不满足不变量的原因新增状态。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU10",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "需要对外部技能引用列明“未采用/由本地主机替代/实际依赖并固定版本”。当前集成不直接运行上游跨插件链，因此仅其他插件变化不必总触发新 candidate；区分 pstack 内容未变与运行资格是否仍有效。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU11",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "required_artifacts 的消费者、可信写入/绑定、传给 reviewer 的方式及缺失的完成门槛未充分指定。需删除必需产物的负例真正阻止相关完成，且不能为此暗改 frozen Graph 拓扑。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_audit",
+      "id": "AU12",
+      "original_disposition": "not_accepted_as_defect",
+      "original_status": null,
+      "original_summary": "直接把 analysis_preparation 传到执行 admission 是有效的防御性边界测试，无须 compiler 先产生非法 execution_proposal。编译输入模式错误与执行宿主不支持可分别定义错误；现有文字不构成必然矛盾。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "current_assessment_theme": "T09",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH01",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "首个具体场景和终点未固定，W06 范围偏宽。采纳先命名垂直切片；不机械规定四操作，也不把所有七个操作都视为已证实的先决条件。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T01",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH02",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "采纳必需材料通道和预算尚未收敛；16KiB 上限与 8KiB 默认预算本身不是逻辑矛盾。拒绝直接追加 frozen.brief、删除遗漏检查的建议；纯函数探针确认当前 host 拒绝该追加。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH03",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "9 个 capability 的 work_packages 为空，其中 PS21 是 P0；生成器只从文章差异投影工作包，未覆盖全部集成安排。必须补完整映射并检验覆盖。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH04",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "应在完整方法包前增加有预算的价值比较；原稿 W17/A47 已有早期可用性试验，不能说所有价值证据都在 C3 之后。E0 的直接修改 frozen.brief 步骤不可执行；精确数量检查也不应简单改成下限。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH05",
+      "original_disposition": "not_accepted_as_defect",
+      "original_status": null,
+      "original_summary": "选择/隔离方法包不等于签发执行权限。运行中发现方法缺陷或 host profile 不再兼容即可能需要阻止新启动，包内定义也可能被 quarantine；可讨论简化持久化，但没有证据支持删除该能力。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T09",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH06",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "drive/recovery 动作目录的所有权、身份与重试语义需要明确；驱动有副作用且可能返回句柄，不能未经证明就等同 AcceptanceCommandSpec 的 exit-code 验收语义。共享 executor/identity 可实验。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH07",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "地图正文修改与运行证据登记需明确 writer、路径授权和提交时机。不推断现有系统存在越权，也不采用自动推断 CODEOWNERS 就是工具维护者的默认规则。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH08",
+      "original_disposition": "partially_accepted",
+      "original_status": null,
+      "original_summary": "采纳旧 manifest 的未知字段兼容，以及本地 Git 对象可用性/获取预算缺口。拒绝只支持 40 位 commit：当前协议同时允许 40/64 位；ls-remote 常规输出也不是 7 位 SHA。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH09",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "必须固定 primaryRef 的选择来源或确定性算法，并绑定到 proposal/admission；新增字段是备选，不是唯一解。多检查情形否则留给各实现自行猜测。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T04",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "original_challenge",
+      "id": "CH10",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "technical-writing 对应四类文档目的；调用方式反推接口应引用 architect。ART2 对本次 Claude 是未独立核验，对上轮宿主是已直接读取的可变网页来源，两者不能混为一谈。",
+      "original_record": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV01",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "digest-catalog 和逐字节 canonical 规则、Binding 自身摘要、26 个黄金向量；旧合同/config hash 不变。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV02",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "host/core 权威存储与 state-owner 明确；方法存储 J08/J10 依赖 J12；所有新 schema 包声明迁移/谱系路径与队列。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV03",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "24h TTL、30min wall 上限；完整 Binding/profile 绑定、单 root 原子消费与内部预算；失败后新许可。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV04",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "J01 定义 SupportProfile，operator_attested_trial 与 measured_qualified 分型；J08登记试验，J23测量并对接线候选重测。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV05",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "补 actual_target_schema/DDL/fixture/candidate；J11冻结 home+method 状态，broker 在独立 J17.schema_spec 冻结，完整 gate 仍合取两者，不要求首个 local 先建 broker。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV06",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "选定 host-owned v2 immutable config，不污染 repo；持久 registration 重启重算同 envelope，实时许可状态独立校验。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV07",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "typed subject 区分旧 attention action、effect、broker lease，旧对象不再要求伪造 effect_id；证明按裁决分型。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV08",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "primary→registry command digest→AcceptanceCommandSpec.ref 映射、16项/字节限制、路径语法、512任务ID和首期64KiB预算边界明确。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T04",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV09",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "114旧场景保留，A16/A17/A27等有 gate 负责人；新增可信失败、blocking findings、历史反例与分类器验收。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV10",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "负例赋稳定 ID，cases covers_negative_ids 双向校验；专门补 wait/gap/父回执/发布权限反例。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV11",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "原10类方法材料保留在 artifact-catalog，明确 body schema 冻结/生产/消费；五类 host receipts 与材料区分。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV12",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "J25 protocol/E0/E1 分阶段，E1 依赖 J09；J10 及后继经决定门槛，避免全包依赖造成自举循环。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV13",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "接受样本精度不足；40任务改为探索并要求功效分析，不为通过而降低阈值。审计“更高不一致率所需样本下降”的补充不采用；近似方差随之增大。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV14",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "24项FM差异逐项重写，planner不能代答/away不转权、父回执持久发布；不采纳禁止一切非人类自动动作的过宽表达。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV15",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "恢复原 inspection/usage，另记录本轮 hash核验；200个pstack文件逐项分类，tdd/sequence原则补pin；未采用不等于已语义阅读。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV16",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "R04/V01/V02/V05 的真实产出和子工作流明确归 J02/J23/J06；不采用关键词相交充当语义覆盖证明。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV17",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "关键依赖、旧gate、oracle、schema关键约束、图边、PR键、来源和迁移队列增加负例。只主张已覆盖的变异，未宣称任意schema约束完整变异证明。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T02",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "RV18",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "缺 pstack 当前报告明确失败；README声明完整 checkout及历史审计归档前置。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T09",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH01",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "确认设计缺矩阵；补phase/decision/typed proof和真实authority读取。P0是原审计标签，本次归为实施前P1设计阻塞，未证实现行产品漏洞。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH02",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "选择受控增量 recovery-ledger bootstrap，JADR11明确ADR16窄例外；原hold行/谱系/owner/事务均验证。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH03",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "补完整Binding闭包与TrialSupportProfile、scratch真实路径和issuer验证。无需在permit重复所有已经通过Binding摘要绑定的字段。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH04",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "采用持久单root消费和实际authorize挂点；不采用整条Graph“raw调用恰好1次”的错误验收，改为一个root且内部槽位有界。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH05",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "接受精确字节/域/字段需求；采用受限joint-canonical-v1而非声称完整JCS，保留既有摘要算法不变。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH06",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "66 FM +48 PS 全量保留原状态与断言、绑定J负责人和适用scope；不能以新JA通过替代旧场景。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH07",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "新增semantic_assertions及具体状态/简报/清理/分类断言；记录仍需独立语义复核，结构覆盖不是穷尽证明。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T06",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH08",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "J03显式拆两个命名driver；J09只消费注册bug-fix场景的受信复现回执。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T01",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH09",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "增加早期E0与后续决定门槛；可选pinned pack只用于探索，不替代mandatory或提供资格；不把可行性试验当收益结论。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH10",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "两臂共同oracle、封存holdout、意向处理、小样本与unknown成本规则。要求在锁候选/试验前封存，不强制holdout必须早于所有recipe提交。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH11",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "profile标各维enforceability，许可含累计上限，unknown占整笔预留；不可强制的硬预算请求拒绝，不能以忽略该维度放行。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH12",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "每case oracle_spec独立角色/冻结时点及专属证据；当前未分配人或摘要，保持未执行。语义裁决不由同一作者模型自证。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH13",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "登记实际db/migrations/schema与共享资源队列、PR路径manifest；不在未来main未确定时抢占迁移号，合入候选重新分配并复验。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH14",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "O01–O06机器化且blocked_by双向校验；按阶段阻断，不阻止为解决未知所必需的规格/调查工作。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH15",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "Binding角色材料映射、receipt.role和受信node-role映射；reviewer不能收到builder专用指令。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_initial",
+      "id": "CH16",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "补检查/Git标识约束及host verifier规则；原schema已有host_record_ref，问题是信任校验而非字段缺失。",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "current_assessment_theme": "T04",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO01",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "后态四列表、legacy只保留未知、resolution独立读取、JADR13受控hold/fence处置，不能合成applied",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO02",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "J12专用openRecoveryDb与普通pre-migration guard；每个实际迁移独立schema_spec/recovery，重编号重验",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO03",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "legacy显式null、subject/target/home约束、broker相位与证明身份；补正反fixture",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO04",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "根ID签发前确定；GraphRunStore创建事务消费；复用graph_actions且permit只能收窄policy；finance cap可缺省并交叉核验",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO05",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "role摘要改名并定义输入；完整domain目录、原始JSON解析、转义向量、Profile v2自动start字段、J01明确产出",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO06",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "64KiB配置总上限与角色分配；原子私有registration文件；未终态保留；恢复授权不走过期执行许可",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T03",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO07",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "原gate独立full wrapper保留依赖闭包；114case有真实消费边；local明确12项延期；旧scope不被早期组件通过覆盖",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO08",
+      "original_disposition": "accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "local opt-in/default分开、E1仅可行性与保护指标、J32输出价值决定；merge_after条件排序",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO09",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "oracle生命周期、实际主体独立、冻结早于候选及关键第二复核；不用任意作者占比上限，改为披露集中度",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T07",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout1",
+      "id": "CO10",
+      "original_disposition": "partially_accepted",
+      "original_status": "design_revised_product_verification_pending",
+      "original_summary": "补P0-B恢复依赖和图边、最终统计与复审记录；统计指旧输入，首次closeout冻结后validation已更新，保留其当时原文",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "current_assessment_theme": "T05",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout2",
+      "id": "CF01",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "独立检查与复审发现相同缺口；release_bindings消费S2门槛，local C03/C04/E02变体只去broker前置，full_original_completion合取全部gate/case；三项负例防回归",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout2",
+      "id": "CF02",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "恢复后态使用JADR15，保留JADR13试验root且修正Graph事务措辞；同步规范、任务和Firstmate addendum；不改历史原文",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    },
+    {
+      "original_namespace": "joint_closeout2",
+      "id": "CF03",
+      "original_disposition": "accepted",
+      "original_status": null,
+      "original_summary": "Profile向量更新support-profile.v2并重算；所有向量域匹配目录，补role投影向量和两项域漂移负例",
+      "original_record": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "current_assessment_theme": "T08",
+      "current_product_completion": "not_established_by_original_audit; see bounded evidence and gaps in theme"
+    }
+  ],
+  "source_bindings": [
+    {
+      "path": "docs/reports/2026-10-26-pstack/author-reading.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 7743,
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/claude-audit.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 17451,
+      "sha256": "c0f5a592aca0e48e9c8db7fe6e16bee6374943e683c32c198c71381120b51cf5"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 14592,
+      "sha256": "6c1db9580309fd8eb703a4a1b42abfe760c129c944edd81639a6498803ba46e6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/audit-specifications.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 23322,
+      "sha256": "e5fd5916b357d28e1a2ff0847cdc635db69fedce3918c67ba7a35ac1f6942bc5"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/closeout-specifications.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 15891,
+      "sha256": "0372fecf3be44148688b8139f4b99494e4dd2dd76ae7ff1dd158df4287be23f3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/gate-layers.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 9374,
+      "sha256": "62d7004df8460c07059657a31510dc697070807a6cb233a6cfc624ff2d7867d0"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/evidence/article-design-deltas.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 5125,
+      "sha256": "348889ddf73572a2599dcc9f1564967674db6d04be8da0331531d293dd8c5f7e"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 4583,
+      "sha256": "349cf4f201c0fabda15bbf71752c02316960d449a7d43dad7a4a9f110adfbddb"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 3437,
+      "sha256": "c890c5851998ce3002410960e362267292744cb792f1d86e988b7193e41ff1b3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 21142,
+      "sha256": "b33cc9fc2d9250d26cdd07938f77d4aeae5a0d0de7ee545526b700dd24e6371d"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 3648,
+      "sha256": "2d839dda1af35c2d68da4cb24ad2d89730a1b6a60d5d17946ab899ab91896ce3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 896,
+      "sha256": "db95507af14cb41208984f65e633e077b321d8fd015bf13cb85270d44c3a3f8d"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/capability-map.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 59354,
+      "sha256": "ca921f4b0af76e5158a6745238f1d91c86b21feb378ee132318284e148781e79"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-work-map.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 23674,
+      "sha256": "bb8a4588453f458d33a68af682f08ba0b6d4d9797d928ea66c46a6711830b85e"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/delivery-rollup.json",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 399217,
+      "sha256": "2529d470b4c593990b248d6fa2003dfc71bcd268239801ce71c85ad683487d5d"
+    },
+    {
+      "path": "docs/implementation/method-full-journey/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 3675,
+      "sha256": "11e3b760827bbe61f65876b361dc6d3be1c9ec9ff1f13aef76065811c3d39b87"
+    },
+    {
+      "path": "docs/implementation/pstack-current-repair/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 7385,
+      "sha256": "e442960b69f01fc61bc78ae20604a9ec0bf442d40ef3238c5a700cb0018e4dd3"
+    },
+    {
+      "path": "docs/implementation/joint-source-inspection/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 9290,
+      "sha256": "060ce7ee7cbee2ae3529bad657d211e5ec21e8ec17507371fdb26da1278c239a"
+    },
+    {
+      "path": "docs/implementation/method-material-reader/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 4467,
+      "sha256": "f86a8d0ba23b654a228e9a5cea21775f4dc8c6b8a1b3dc18106c4a4793d9a0c9"
+    },
+    {
+      "path": "docs/implementation/method-full-projection/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 8445,
+      "sha256": "5ae7f8781857b9b210ad771b177487d4373e89aaf49cf1aa78232a438951cb0f"
+    },
+    {
+      "path": "docs/implementation/pstack-export-repair/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 7816,
+      "sha256": "62353994e28185a5f09a4e8f879f2dcd9874a494f83432726fb42d3030b58afb"
+    },
+    {
+      "path": "docs/implementation/joint-contract-acceptance/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 3616,
+      "sha256": "870c285486feab4f4daea4a62c69d80c3bd2ff113d66b7f34a572ef9694da74f"
+    },
+    {
+      "path": "docs/implementation/joint-recovery-composition/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 5969,
+      "sha256": "a0fa639953ad4757f2b3bcc31ab9055706fa7bead045da24bf5f9317cf8b792e"
+    },
+    {
+      "path": "docs/implementation/joint-broker-spec/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 3827,
+      "sha256": "4cae784f72d7622493e7f3c963ca4f558e7c3b278c9d290da423190aa5a5ffca"
+    },
+    {
+      "path": "docs/implementation/skills-check-map-maintenance/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 7517,
+      "sha256": "ac68ef207a9dde76b95ce6d2f0be7541b260973d3c0f7837f2f0aee173df4125"
+    },
+    {
+      "path": "docs/implementation/pstack-real-loops/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 9007,
+      "sha256": "77b1939586169128d6a8c9b6d245705d36a9806f5aa89fe78456c33024d75283"
+    },
+    {
+      "path": "docs/implementation/method-continuity-delivery/host-report.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 8315,
+      "sha256": "4b7f24616ddd99bfa4f0ef4d4fc2fdd2f6893b1bcd7d3109e33ac80d0e35aff6"
+    },
+    {
+      "path": "docs/implementation/method-verification-journey/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 6202,
+      "sha256": "4e545342a0b088ecf20e2e375560f2fd8384e20cc7fe94e79a6a41293cd9774b"
+    },
+    {
+      "path": "docs/implementation/joint-recovery-retarget/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 2519,
+      "sha256": "9c65f6bb1d78aac7e4bdc9d2aa2a726fbc7a6e4f9411aa17449df65f87a97f78"
+    },
+    {
+      "path": "docs/implementation/osstack-method-entrypoints/README.md",
+      "revision": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "bytes": 2823,
+      "sha256": "3b7329c92fff99186b1f46619c5453e62880fc15e431976301b34adb8fbf1c05"
+    }
+  ],
+  "frozen_a_unchanged": {
+    "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/a/manifest.json",
+    "sha256": "fb9f3274b2320900b4987041d6240e49915bb27e9ac464b4090ae9b2eaeeb595"
+  },
+  "limits": [
+    "No new model/test/product execution or complete raw archive rehash.",
+    "Original design dispositions preserved, including rejected/partial recommendations; no runtime gate raised.",
+    "Current evidence statements are bounded source/readme reconciliation; original tests retain original SHA."
+  ]
+}

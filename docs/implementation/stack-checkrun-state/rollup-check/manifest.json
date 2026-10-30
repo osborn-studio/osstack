@@ -1,0 +1,52 @@
+[
+  {
+    "path": "observed-three-rows.json",
+    "bytes": 3821,
+    "sha256": "0be31001ffc74f0e3ba7c45997fbf2d2acc98c81b7e6c178385e9f2762781431"
+  },
+  {
+    "path": "original-work-package-scope.json",
+    "bytes": 13105,
+    "sha256": "768a386f455ad3c583185ae40344f76eef5b17e6a517f2b4f4b042d4e7b66aac"
+  },
+  {
+    "path": "pr305-diff-paths.txt",
+    "bytes": 3562,
+    "sha256": "00b06e21519d758d8e159b59f2dd94d912e30f3c017261d0e4d5fc8317242c0c"
+  },
+  {
+    "path": "pr305-git.txt",
+    "bytes": 204,
+    "sha256": "fa0390d7186a770906e49908dfb30d2079e63790db886c2618068e53b29faf4e"
+  },
+  {
+    "path": "pr306-diff-paths.txt",
+    "bytes": 8138,
+    "sha256": "90e68542f23708f77e484669eb629e2f21e16b5fa99534ade2f218e37a8d5463"
+  },
+  {
+    "path": "pr306-git.txt",
+    "bytes": 204,
+    "sha256": "2fa98078d88d2068ff559286422e463e1bbdbbe2c684300d62dc479a3bcfd30f"
+  },
+  {
+    "path": "pr307-diff-paths.txt",
+    "bytes": 10885,
+    "sha256": "1a6bdd9cf98cfb5f9a0706d975b19a9c2209d9a92f55c0c0b9dc3134d5e45741"
+  },
+  {
+    "path": "pr307-git.txt",
+    "bytes": 203,
+    "sha256": "21a093001ba9c0001ce20e960dd8a6c7dc9cdcfbdea85caa90558c8f89174d8c"
+  },
+  {
+    "path": "report.json",
+    "bytes": 4644,
+    "sha256": "506b4ab09a9114ffec8221dc00604ce64e55e0da4e8549b0072c4ae5a7dc457b"
+  },
+  {
+    "path": "report.md",
+    "bytes": 631,
+    "sha256": "71d7f3ef1d38c6dcf2f37ae8f5dd37055c5364a4702ded4f007ef663a212a021"
+  }
+]

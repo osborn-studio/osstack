@@ -1,0 +1,7 @@
+{
+  "head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
+  "base": "main",
+  "run_id": "40979169462",
+  "superseded_run": 40977980388,
+  "note": "A cancellation of old head is supersession, not test failure"
+}

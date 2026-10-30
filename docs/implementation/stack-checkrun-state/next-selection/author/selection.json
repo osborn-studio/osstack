@@ -1,0 +1,145 @@
+{
+  "kind": "read_only_selection_not_implementation",
+  "created_at": "2026-10-30T00:32:09.053414+00:00",
+  "baseline": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+  "upstream": "99b609a72323b70204eab407c622f436e858e112",
+  "recommended": {
+    "name": "One-shot explicit stack candidate report",
+    "classification": "new_feature_not_confirmed_bug",
+    "primary_capability": "PS17",
+    "supporting": [
+      "PS18",
+      "PS13"
+    ],
+    "input": {
+      "repo": "OWNER/REPO",
+      "ordered_prs": "1–3 unique positive PR numbers, caller supplied bottom-to-top; never sort by PR number",
+      "target_base": "caller-supplied target branch name, e.g. main",
+      "requirements": "per-PR optional explicit expected SHA pair and required check names; unspecified remains unknown"
+    },
+    "api": "inspectPrStackCandidate(input, runner?, clock?) -> {report, observations[]}; reuse inspectPrCandidate unchanged",
+    "cli": "node scripts/report-pr-stack-candidate.mjs --plan /owned/stack-plan.json --output /owned/scratch/runtime/stack-NEW",
+    "output": [
+      "report.json",
+      "report.md",
+      "per-PR snapshot/queries/raw evidence",
+      "manifest with retained bytes and hashes"
+    ],
+    "states": [
+      "frontier_observed",
+      "frontier_unknown",
+      "closed_unmerged",
+      "observed_all_merged"
+    ],
+    "max_prs": 3,
+    "max_requests": 24,
+    "collection_budget_ms": 270000,
+    "authority": {
+      "read_only_forge": true,
+      "db_access": false,
+      "watch": false,
+      "retry": false,
+      "merge_authorized": false
+    },
+    "exclusive_paths": [
+      "packages/github/src/pr-stack-candidate.ts",
+      "packages/github/src/pr-stack-candidate.test.ts",
+      "scripts/report-pr-stack-candidate.mjs",
+      "scripts/report-pr-stack-candidate.test.mjs",
+      "docs/implementation/pr-stack-candidate/README.md"
+    ]
+  },
+  "alternative": {
+    "name": "Human-readable single-candidate report",
+    "classification": "new_feature",
+    "scope": "Pure Markdown rendering in existing report-pr-candidate artifact, preserving every blocker/wait/unknown facet and query links",
+    "reason_not_recommended": "Lower effort but does not reconcile the user’s lower/upper PR dependency; risks another presentation-only increment."
+  },
+  "sources": [
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md",
+      "bytes": 11679,
+      "sha256": "86256275b1c69e1c779b65310988a71035bccfa23ac1ceb0c32651d30605cebb"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "osstack-methods-skill/references/host-usage.md",
+      "bytes": 7313,
+      "sha256": "69434a9c293fb76ae97004588817b4a756e9b63bfdaecfe5af58d40dc60bb1c5"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "scripts/report-pr-candidate.mjs",
+      "bytes": 5848,
+      "sha256": "3c0a5c7cad064a21291f80c7a6a2eb3d522f1f895ad25b24c4ac4d1c572f8093"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/github/src/pr-candidate-snapshot.ts",
+      "bytes": 16281,
+      "sha256": "f9df94098c9367bc520c9eb0710845be216de0d1994f51a24f7f2254f25d4fca"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/github/src/stack.ts",
+      "bytes": 8516,
+      "sha256": "f6a2435f10c3a400c6b58bf6c5ee0cc41c61ff7f7c64b0287919ba86017b2c98"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "packages/cli/src/stack-cli.ts",
+      "bytes": 22759,
+      "sha256": "054644260f339f9c40c714731d4e2dc92be69cc49fb138ade4d90a12a9d61a71"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/osstack",
+      "commit": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+      "path": "docs/implementation/skills-check-map-maintenance/README.md",
+      "bytes": 7517,
+      "sha256": "ac68ef207a9dde76b95ce6d2f0be7541b260973d3c0f7837f2f0aee173df4125"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/playbooks/babysit.md",
+      "bytes": 7619,
+      "sha256": "e261c1ff5581e0f8fc6c686f34de4b535f87473e77beabea7dd8323021214610"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/poteto-mode/scripts/watch-pr/policy.ts",
+      "bytes": 25407,
+      "sha256": "2d4823aeea788acab258ec60eb52e7b9e3a23a6649850af128d6ada5c33d7778"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+      "bytes": 4922,
+      "sha256": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8"
+    },
+    {
+      "repo": "/Volumes/AIMATE_WORK/Developer/CodeX/cursor-plugins",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "path": "pstack/LICENSE",
+      "bytes": 1067,
+      "sha256": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e"
+    }
+  ],
+  "executed": {
+    "source_reads": true,
+    "tests": false,
+    "models": false,
+    "forge": false,
+    "db": false,
+    "implementation": false
+  }
+}

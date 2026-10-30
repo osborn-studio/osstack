@@ -1,0 +1,149 @@
+{
+  "checked_at": "2026-10-30T01:48:41.387229+00:00",
+  "result": "all_archive_member_and_requested_binding_checks_match",
+  "archive_sha256": "6fc0e7a39ad2503f22ea6275aa6e60ed78ec72c5cf6f3a1a3a8b93047ec62642",
+  "manifest_sha256": "7a98dfd4de14acff7b037681cb2ba514338b75d744beb78b30e63e6bad17a7f4",
+  "archive_bytes": 7194563,
+  "members": 151,
+  "member_types": {
+    "directory": 22,
+    "file": 129
+  },
+  "file_bytes": 10196188,
+  "final_report_input": {
+    "cases": 48,
+    "work_items": 19,
+    "complete_unique_ids": true,
+    "new_tests_run": false,
+    "formal_gate_pass": false
+  },
+  "upstream": [
+    {
+      "label": "original",
+      "commit": "99b609a72323b70204eab407c622f436e858e112",
+      "sha256": "69eca48b6f4a807537c63ae2866dba6d494316982d20ee3399cfef114b6095de",
+      "bytes": 3099120,
+      "regular_files": 200
+    },
+    {
+      "label": "current",
+      "commit": "4dd1d05818d19792e7cd6e818f1667f95f7e1dbe",
+      "sha256": "6fdae824b5c316277d3d239ceb8e67d33e0dab28e5c8e16ca5a2b6c1e521e619",
+      "bytes": 3240833,
+      "regular_files": 573
+    }
+  ],
+  "audits": [
+    {
+      "label": "audit",
+      "verdict_line": "# Verdict: PASS_WITH_CORRECTIONS (report accuracy only)",
+      "input_sha256": "346173513ecb535335dab6f05c9f737043f621de3ec942fcfcb151799ebada16",
+      "response_sha256": "1b7feff32b1ad455983f492ddbba2d11714265f63c44a727e32c8a465552b159",
+      "report_sha256": "1c4b13f3773a202238b3cf6e9b3afe766b1b48016321f83d70477451d3f09d94",
+      "input_member_bindings": [
+        {
+          "path": "docs/implementation/pstack-stage-acceptance/README.md",
+          "bytes": 7557,
+          "sha256": "7907bf1321e22479811746f5d1e8c63219e1f9eaceb2729ec18bf087ec68b48a"
+        },
+        {
+          "path": "docs/implementation/pstack-stage-acceptance/CAPABILITIES.md",
+          "bytes": 9025,
+          "sha256": "e2d789147a97c961d60b33a66eb216660324c6d6d794ca617db024cd8cca8e51"
+        },
+        {
+          "path": "docs/implementation/pstack-stage-acceptance/ORIGINAL-ACCEPTANCE.md",
+          "bytes": 20421,
+          "sha256": "840c338c1c1133de6db106ddabe66051d18e9764375617cc4ccea9665edc8a54"
+        },
+        {
+          "path": "docs/implementation/pstack-stage-acceptance/SOURCE-COMPARISON.md",
+          "bytes": 8547,
+          "sha256": "8bca6a33cbd47af60d4016a4ac563e3cbde39cb22daf77657c86c385d2c9c162"
+        },
+        {
+          "path": "docs/implementation/pstack-stage-acceptance/AUDIT-TRACE.md",
+          "bytes": 8887,
+          "sha256": "bb1ae084c59c61d14d1c338f6bdd8caa0068dcbf2d241dc165931840bb0baab1"
+        },
+        {
+          "path": "docs/reports/2026-10-26-pstack/integration-spec.md",
+          "bytes": 54282,
+          "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5"
+        },
+        {
+          "path": "docs/reports/2026-10-26-pstack/acceptance-cases.json",
+          "bytes": 24725,
+          "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d"
+        }
+      ],
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ]
+    },
+    {
+      "label": "audit-closure",
+      "verdict_line": "# Verdict: PASS (report corrections R1–R7 only)",
+      "input_sha256": "ea6ee7676f12e9950baa1e5691a18c802a7a7bcc0639c693e9838995bff56375",
+      "response_sha256": "951aec26061a6489bafee950bd77f4ed24517fa9a4a14431f2b6b980b39ac08d",
+      "report_sha256": "973c937372585f034dce0e90344f35bb5a052dde1e1619ee4bdb324834c10900",
+      "input_member_bindings": [
+        {
+          "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/audit/report.md",
+          "bytes": 4954,
+          "sha256": "1c4b13f3773a202238b3cf6e9b3afe766b1b48016321f83d70477451d3f09d94"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/README.md",
+          "bytes": 8626,
+          "sha256": "2741c0335609776c95df0e22839272efd0419111be2fe8be1e3652bdf7093f21"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/CAPABILITIES.md",
+          "bytes": 9326,
+          "sha256": "5bf5b84c8028c1da8a1203015ed64af300ccc7788464c1dfa3404f9ad19b10d5"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/ORIGINAL-ACCEPTANCE.md",
+          "bytes": 21147,
+          "sha256": "4a90010ff304bed849d9d6f7d704ada5dc04f502fb8a67ef5e44cebea85b2bb4"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/SOURCE-COMPARISON.md",
+          "bytes": 8617,
+          "sha256": "9554e5588a8e6ad2ff984f6753635926bd7151fa0fe5596be228d0c2ba68cb43"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/AUDIT-TRACE.md",
+          "bytes": 9057,
+          "sha256": "0c889a1f22371314f02f2445544d11c9d88704e50e47937e304cdb60abca3d3d"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/JOINT-DEPENDENCIES.md",
+          "bytes": 1809,
+          "sha256": "52f812b120f3804d98e5ed9ac3817f747656a5fde117080ad414819da6dc6a32"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/REVIEW-CORRECTIONS.md",
+          "bytes": 2491,
+          "sha256": "150074224fb114825842e899b99bac2c0bd480c496ba9f9716efa0e8c67fa864"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/c-closure/source-proof.json",
+          "bytes": 8847,
+          "sha256": "a5424cf0b9ae528e022171957af847ff4d7317d2b3c0edd641ed54cb244d0030"
+        },
+        {
+          "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/root-review-a2/supplement.json",
+          "bytes": 9004,
+          "sha256": "5197249d10251134942de447976d71f3b82b7ffbbc693b7538f6dcd7f7b75f24"
+        }
+      ],
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ]
+    }
+  ],
+  "scope": "Independent archive bytes/types/modes/hash/size and embedded input binding verification only; no extraction, upstream execution, model/product tests or semantic product acceptance. Sonnet initial PASS_WITH_CORRECTIONS is report accuracy only; closure PASS covers report R1–R7 only.",
+  "source_directory_untouched": true
+}

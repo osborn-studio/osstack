@@ -1,0 +1,9 @@
+# PR309 actual-main revalidation
+
+User merged PR308 at a250ad88163132675d33dfe163c2e7e409443846 (tree735612bc, equal to published4a7). Root retargeted PR309 to main with fc272c631885fe39049c488dbfd60c708d2a6bdb. Its tree afb6c366 equals prior f31e; all16 changed paths and complete binary delta against actual main equal the former parent-based delta (SHA256 1cedb90157fe2be78c7ad5e56e5c55185d5dd45c8e62a2ce345f4310bb24a79e).
+
+Fresh Node22 frozen install/build and exact-candidate validation passed:195 GitHub tests,14 candidate CLI tests,241 docs and1 hygiene; lint/typecheck/inventory/changeset coverage. Independently frozen57 vectors were replayed through the freshly compiled public package, plus a separate undefined control and injected three-PR downstream scenario. No live forge/DB writes, host model calls, historical RED rerun or local full suite rerun. Prior actual Sonnet5.5 product PASS remains bound to unchanged source; this is not a new audit. Final actual-main CI40982097784 is evaluated separately before Ready.
+
+Worker58-payload manifest was verified by root. Full66-member archive (64files/2directories,4815861bytes) was independently matched to original scratch by name/type/mode/hash/size. Archive SHA256 0fbbc5a39c3aa5372fe3dab02a30da23a0b9532a2608d29785ba7d9417ccf7f5. Four fresh generated knowledge/dist files were saved with bytes/hash/patch after all validation, then restored; owned clean worktree removed and branch retained. Cleanup and independent receipt are separate postarchive records.
+
+Historical parentCI40979844215 remains f31e onto parent4a7, synthetic3906863b:22packages7230pass7skip0fail. Historical local full d5ee7232pass5skip remains separately bound, with initial generated dist changes explicitly disclosed. Neither is relabeled as this main candidate. Original failures, audit comments and limits remain in the earlier delivery record. No formal PS/J gate or whole-capability qualification is granted.

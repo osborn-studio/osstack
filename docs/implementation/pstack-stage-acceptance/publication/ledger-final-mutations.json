@@ -1,0 +1,55 @@
+[
+  {
+    "comment_id": 720,
+    "card_id": "card_676712c1",
+    "author": "joint-entry",
+    "body": "原范围对账已完成：fresh clone原99b/新4dd1与main e464分开，24PS/19W/48A及12+22+47审计索引保留。48证据分类4直接/31部分/10未实现/3未知，不是通过率。实际Sonnet报告准确性首PASS_WITH_CORRECTIONS，R1–R7限定闭环PASS。S1–S3仅已交付工具可独立验收，原C0/C1/C2仍有效，用户尚未签收。当前先收口原pstack缺口，不再扩新方法；Firstmate深runtime后排。docs/implementation/pstack-stage-acceptance；归档6fc0e7a39ad2。",
+    "created_at": 1793324979.762
+  },
+  {
+    "comment_id": 721,
+    "card_id": "card_2b7cc24a",
+    "author": "joint-entry",
+    "body": "交付对账更正：PR304/306固定full5旅程和持久地图维护已合并，不能再写只有两行图。原W17冷读者/有限原型、W18相关叶子检索及规定repro/wait/cancel图尚未完成。J06 formal不变，仍false。见pstack-stage-acceptance原48A/19W对照。",
+    "created_at": 1793324979.763
+  },
+  {
+    "comment_id": 722,
+    "card_id": "card_63ad0321",
+    "author": "joint-entry",
+    "body": "原W08/C2未闭合：历史宿主RED→fix→GREEN与真实driver不等于recipe→proposal→admission→实际执行→独立join→local_verified。最小队列先W01/W02与C0，再W03/C1及既有J08 local限定依赖；不能把pstack自身接入欠账转给Firstmate，也不新增全量远端runtime前置。",
+    "created_at": 1793324979.764
+  },
+  {
+    "comment_id": 723,
+    "card_id": "card_f3e74cf6",
+    "author": "joint-entry",
+    "body": "当前汇总更正：307单PR快照、308 StatusContext、309 CheckRun已merged；有序1–3 PR frontier8e830为已验证待发布候选。原W13/A27/A28只读classifier核心已有直接证据，可单独验收，持续watcher不是该slice前置。W10计划连接与JA41/57完整门槛另列，J30 formal仍false。",
+    "created_at": 1793324979.764
+  },
+  {
+    "comment_id": 724,
+    "card_id": "card_6962ab52",
+    "author": "joint-entry",
+    "body": "在途frontier最终代码/guide8e830，actualmain e464定向224github+29CLI+94export通过；540历史full7261/5/0不重标后续CLI修复。实际Sonnet初PASS含显示缺陷→同29tests RED17pass12fail/GREEN29，C10Pandoc反例闭环，limitedclosurePASS。归档2a26d78c，独立全核；只完成在途发布，不以新工具替代pstack原C2。",
+    "created_at": 1793324979.764
+  },
+  {
+    "card_id": "card_676712c1",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PSTACK-P1 阶段交付验收：现有方法与工具，剩余能力单列",
+    "body": "用户要求先验收pstack，再推进Firstmate。暂停新功能扩展；原24PS全部能力未完成、32J最终门槛仍false。root收口已实现PR顺序核对候选；A核PS01–12、B核PS13–24、C独立验收边界与缺口。产出主线已可用/候选未合入/待实现/待验证/后排矩阵、证据与可执行验收步骤；机器证据通过和用户正式验收分开。不能把pstack未实现能力简单归Firstmate，不新建重复小开发卡替代汇总。root唯一中央入口；不调用新host模型，不启未验收runtime。",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793323188.142,
+    "updated_at": 1793324979.765,
+    "started_at": 1793323188.142,
+    "completed_at": null
+  }
+]

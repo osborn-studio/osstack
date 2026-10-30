@@ -1,0 +1,84 @@
+{
+  "observed_after_validation_at": "2026-10-30T01:51:28.223396+00:00",
+  "head_before_docs_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+  "command": "python -m unittest discover -s docs/design/2026-10-27-joint-engineering -p test_validate_*.py",
+  "result": "241 passed",
+  "scope": "design validators on uncommitted final central/doc changes; not product/full or48acceptance execution; file hashes measured after command",
+  "document_hashes": [
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/AUDIT-TRACE.md",
+      "bytes": 9057,
+      "sha256": "0c889a1f22371314f02f2445544d11c9d88704e50e47937e304cdb60abca3d3d"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/CAPABILITIES.md",
+      "bytes": 9326,
+      "sha256": "5bf5b84c8028c1da8a1203015ed64af300ccc7788464c1dfa3404f9ad19b10d5"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/EVIDENCE.md",
+      "bytes": 2648,
+      "sha256": "9d2c3f9aed131e9238e4ef0026d9359ade1428c1013d102236bdd06f3fb74f4e"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/JOINT-DEPENDENCIES.md",
+      "bytes": 1948,
+      "sha256": "6026282f7d68b291193057ece20e2f7511515f72b297e2bf80bdee984fa402cf"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/ORIGINAL-ACCEPTANCE.md",
+      "bytes": 21180,
+      "sha256": "78c2a28966ca786da8175a3fd0d58dd94c148041c1808ca37db2446cc537d3da"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/README.md",
+      "bytes": 9032,
+      "sha256": "1dc3fc4c19ad79a10d342dfad34b4f74e2e41a5a2a5185324d67fcab00044ff3"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/REVIEW-CORRECTIONS.md",
+      "bytes": 2687,
+      "sha256": "f0e9d78e03650670e3765e7d1b1df38d18cbdd2c5ec2cf81e7cf9f7fbb8cab78"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/SOURCE-COMPARISON.md",
+      "bytes": 8617,
+      "sha256": "9554e5588a8e6ad2ff984f6753635926bd7151fa0fe5596be228d0c2ba68cb43"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/audit-trace.json",
+      "bytes": 68741,
+      "sha256": "b0b33224e552cc8ae70091cbed9a1d0af2aafd048236d3d7ef3365d859648134"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/capability-reconciliation.json",
+      "bytes": 16339,
+      "sha256": "6970e8527a241b00dc97de07c5d147c6d57ff05f7e8ef9bea2705cfcaae1dfe0"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/joint-dependency-scope.json",
+      "bytes": 9004,
+      "sha256": "5197249d10251134942de447976d71f3b82b7ffbbc693b7538f6dcd7f7b75f24"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/original-acceptance.json",
+      "bytes": 78673,
+      "sha256": "9204cb9945f28b1cb97a3961d2531552b0fbd7435c4fa04d7e0374c3e7917733"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/original-source-bindings.json",
+      "bytes": 25928,
+      "sha256": "0e2b9f44db484afa66509ec6fa854ec3ca3db81f9a5478f31b4227a93004d503"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/scope-clarification.json",
+      "bytes": 5472,
+      "sha256": "023a6a67b4d7de2facdee17bb2b6c182c54741212abe945fffa9f06071aa77a0"
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/source-comparison.json",
+      "bytes": 11786,
+      "sha256": "25bd00f1bf95c93ad6587fa0870b3ef08b249873bfc2812e77d27edbeae7614f"
+    }
+  ]
+}

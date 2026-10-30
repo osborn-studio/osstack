@@ -1,0 +1,7 @@
+# Next implementation choice — proposal only
+
+Root selects one bounded, explicit ordered 1–3 PR stack-frontier report for the next implementation wave. Reuse the merged single-PR collector and its conservative unknown policy. Only pass a stable observed merged prefix; an upper green PR must not hide an unresolved lower PR. Preserve per-PR head/base/time and raw records, report stale parent branch relations for human review, and always keep merge_authorized false.
+
+The author and independent proposals below are source-grounded selection work, not implementation, frozen acceptance, runtime validation or a new model-host budget. Before code, independently freeze exact plan schema, query/time caps and holdouts, assign exclusive paths, then validate new output against fixed old/new observations. Historical-state comparison is deferred from the first slice to keep this user loop bounded. Explicit stored-card refresh is also deferred until identity, concurrency and preservation of human checks are specified.
+
+Existing create-only ingest is intentional; unknown CI producing no enumerated drift issue is not established as a merge-authority regression. Do not silently change either policy. This proposal adds no method, watcher, automatic retarget, merge action or formal milestone pass. pstack source attribution remains Lauren Tan / MIT, pinned source commit 99b609a72323b70204eab407c622f436e858e112; retained excerpts are source evidence, not newly authored implementation.

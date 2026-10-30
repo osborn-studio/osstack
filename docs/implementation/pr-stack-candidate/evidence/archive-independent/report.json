@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-30T01:25:19.029957+00:00",
+  "result": "all_declared_archive_members_match",
+  "archive": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pr-stack-candidate/evidence/raw-verification.tar.gz",
+  "archive_sha256": "2a26d78cafcedc9befbc7eead73150fc610674fc4caf716bd6286d0099c43fe6",
+  "archive_bytes": 10215436,
+  "manifest_sha256": "9427827db90e0105ae5f76d91e9045e1c643705760f4b4e14d8b0932caae467b",
+  "members": 1124,
+  "counts": {
+    "directory": 185,
+    "file": 936,
+    "symlink": 3
+  },
+  "file_bytes": 19356574,
+  "symlinks": [
+    {
+      "path": "independent/validation/cli-owned/inside/link",
+      "type": "symlink",
+      "mode": 493,
+      "matches": true,
+      "target": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr-stack-frontier-20261030/independent/validation/cli-owned/outside"
+    },
+    {
+      "path": "independent/validation/cli-owned/inside/terminal-link",
+      "type": "symlink",
+      "mode": 493,
+      "matches": true,
+      "target": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr-stack-frontier-20261030/independent/validation/cli-owned/outside/no-target"
+    },
+    {
+      "path": "markdown-repair-independent/old-layout/packages",
+      "type": "symlink",
+      "mode": 493,
+      "matches": true,
+      "target": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pr-stack-frontier-author/packages"
+    }
+  ],
+  "limitations": [
+    "No extraction or symlink dereference; literal link targets checked only. Historical missing target is not an archive defect.",
+    "This is independent archive byte/type/mode/member verification, not re-execution of tests or audit and not authenticity or correctness certification.",
+    "No repository, ledger, PR, product or original evidence writes."
+  ],
+  "issues": []
+}

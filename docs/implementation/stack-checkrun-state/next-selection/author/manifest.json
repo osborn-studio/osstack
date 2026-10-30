@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "selection.json",
+      "bytes": 5773,
+      "sha256": "1b1d3c6e64cbe01d345329cfd1626caf055be78f00cd345243ab4b68b23b09ad"
+    },
+    {
+      "path": "selection.md",
+      "bytes": 7595,
+      "sha256": "dc8f4ee63be4677df3e42c68c1b0052e344904d585799b445dd271b7cc6565e0"
+    }
+  ]
+}

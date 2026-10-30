@@ -1,0 +1,120 @@
+[
+  {
+    "pr": 305,
+    "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "mergedSHA": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "state": "merged_in_snapshot",
+    "primary_j": "J07",
+    "primaryJ": "J07",
+    "supporting_j": [
+      "J03",
+      "J23"
+    ],
+    "supportingJ": [
+      "J03",
+      "J23"
+    ],
+    "pstack_groups": [
+      "PS08",
+      "PS13",
+      "PS20"
+    ],
+    "delivered_capability": "完整五案例安全证据投影及passed stderr一致性修复",
+    "primary_artifacts": [
+      "scripts/project-method-journey-evidence.mjs"
+    ],
+    "evidence_readme": "docs/implementation/method-full-projection/README.md",
+    "acceptance_limit": "有界工具贡献；历史验证保持各自SHA，不证明全能力、宿主效果、身份或正式J资格",
+    "formal_joint_gate_pass_asserted": false,
+    "scope_relation": "bounded_tool_contribution_not_formal_gate",
+    "design_associations": [],
+    "merge_diff_inventory": {
+      "path_count": 51,
+      "sha256_of_git_diff_name_only_utf8": "00b06e21519d758d8e159b59f2dd94d912e30f3c017261d0e4d5fc8317242c0c",
+      "reproduce": [
+        "git",
+        "diff",
+        "--name-only",
+        "e79fc92687c144969ad91242a979d904f2b2acdf^1",
+        "e79fc92687c144969ad91242a979d904f2b2acdf"
+      ]
+    }
+  },
+  {
+    "pr": 306,
+    "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "mergedSHA": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "state": "merged_in_snapshot",
+    "primary_j": "J06",
+    "primaryJ": "J06",
+    "supporting_j": [
+      "J03",
+      "J09"
+    ],
+    "supportingJ": [
+      "J03",
+      "J09"
+    ],
+    "pstack_groups": [
+      "PS09",
+      "PS08"
+    ],
+    "delivered_capability": "固定五案例持久验证地图维护",
+    "primary_artifacts": [
+      "scripts/maintain-skills-check-map.mjs"
+    ],
+    "evidence_readme": "docs/implementation/skills-check-map-maintenance/README.md",
+    "acceptance_limit": "有界工具贡献；历史验证保持各自SHA，不证明全能力、宿主效果、身份或正式J资格",
+    "formal_joint_gate_pass_asserted": false,
+    "scope_relation": "bounded_tool_contribution_not_formal_gate",
+    "design_associations": [],
+    "merge_diff_inventory": {
+      "path_count": 115,
+      "sha256_of_git_diff_name_only_utf8": "90e68542f23708f77e484669eb629e2f21e16b5fa99534ade2f218e37a8d5463",
+      "reproduce": [
+        "git",
+        "diff",
+        "--name-only",
+        "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b^1",
+        "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b"
+      ]
+    }
+  },
+  {
+    "pr": 307,
+    "merge_commit": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "mergedSHA": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "state": "merged_in_snapshot",
+    "primary_j": "J07",
+    "primaryJ": "J07",
+    "supporting_j": [],
+    "supportingJ": [],
+    "pstack_groups": [
+      "PS17",
+      "PS18",
+      "PS13"
+    ],
+    "delivered_capability": "单次有界只读PR候选快照",
+    "primary_artifacts": [
+      "packages/github/src/pr-candidate-snapshot.ts"
+    ],
+    "evidence_readme": "docs/implementation/pr-candidate-snapshot/README.md",
+    "acceptance_limit": "有界工具贡献；历史验证保持各自SHA，不证明全能力、宿主效果、身份或正式J资格",
+    "formal_joint_gate_pass_asserted": false,
+    "scope_relation": "bounded_tool_contribution_not_formal_gate",
+    "design_associations": [
+      "J20"
+    ],
+    "merge_diff_inventory": {
+      "path_count": 148,
+      "sha256_of_git_diff_name_only_utf8": "1a6bdd9cf98cfb5f9a0706d975b19a9c2209d9a92f55c0c0b9dc3134d5e45741",
+      "reproduce": [
+        "git",
+        "diff",
+        "--name-only",
+        "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c^1",
+        "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c"
+      ]
+    }
+  }
+]

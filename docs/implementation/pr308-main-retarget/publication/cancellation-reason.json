@@ -1,0 +1,8 @@
+{
+  "observed_at": "2026-10-30T00:23:54.322946+00:00",
+  "superseded_run": 40977980388,
+  "superseded_head": "6d97897325efdeea47d86f3ae169c72907b74d6e",
+  "current_run": 40979169462,
+  "current_head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
+  "reason": "New final documentation candidate supersedes old candidate. Ordinary cancellation left check running. Force-cancel releases obsolete CI; no failure rerun, no assertion that old check failed."
+}

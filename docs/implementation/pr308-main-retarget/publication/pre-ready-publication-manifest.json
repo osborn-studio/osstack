@@ -1,0 +1,46 @@
+{
+  "observed_at": "2026-10-30T00:38:24.669230+00:00",
+  "scope": "before final CI/Ready; cancelled superseded run is not failure retry",
+  "files": [
+    {
+      "path": "cancellation-reason.json",
+      "bytes": 451,
+      "sha256": "bfb7d5128fa9cd6679951727cb1cbf02a7b3294c1ef9a4a4203288b7b7309f7a"
+    },
+    {
+      "path": "superseded-ci-cancel.stdout",
+      "bytes": 54,
+      "sha256": "db2c809a83005d7abc0e3b65df907e64ef61d3cb07e27385e54fcc8e28acc4a6"
+    },
+    {
+      "path": "superseded-ci-cancel.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "superseded-ci-force-cancel.stdout",
+      "bytes": 2,
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "path": "superseded-ci-force-cancel.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "worktree-cleanup.json",
+      "bytes": 3626,
+      "sha256": "822257b0c95eda77ae64ee76792cef38eac815ce7f34165160e570c9dd6e8067"
+    },
+    {
+      "path": "pr308-pre-ready-refresh.json",
+      "bytes": 2078,
+      "sha256": "ef9a7b1bf8d709d64bcc15b6492376a2a169c41583278b7399ab808428eb9644"
+    },
+    {
+      "path": "pr308-body-final.md",
+      "bytes": 2019,
+      "sha256": "4742541df8403db788bfe342fa18641709b57d7218f009c95ccdad351c1af6f2"
+    }
+  ]
+}

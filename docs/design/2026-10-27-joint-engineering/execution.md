@@ -1,5 +1,9 @@
 # 联合执行与交接
 
+## 当前执行优先：pstack原范围验收对账
+
+实际main e4643324，PR309已合并。有序PR前沿候选8e830只完成在途发布；新能力开发暂停。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
+
 目标不变：吸收 Firstmate 的持续负责、监督和恢复能力，以及 pstack 的调查、设计、验证与工程方法，形成 OSStack 的统一能力。不能以完成基础设施代替两条端到端旅程。
 
 ## 单一负责人
@@ -340,3 +344,22 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
 ## CheckRun 分类修复候选（2026-10-30）
 
 PS18/J07支持卡card_14b72dd7已完成作者56同测试RED17→GREEN、独立57预冻向量旧20失败→新全过；root d5eea3e5全仓22包7232通过/5跳过/0失败，8677已跟踪文件字节执行期间不变，初始含4新鲜dist，不称clean committed tree。实际Sonnet5.5静态PASS，原意见与失败保留。只明确完成且SUCCESS/NEUTRAL/SKIPPED可成功，已知失败优先，其他不完整/未知pending。已有卡不自动刷新；snapshot另有政策。待发布依赖308的Draft，308当前4a7ee75d/main新CI40979169462尚未完成；不得合入featurebase。见[修复记录](../../implementation/stack-checkrun-state/README.md)。
+
+
+Publication snapshot 2026-10-30T00:28:26.368600+00:00: PR309 f31e557a is Draft on parent308, CI40979844215 running; PR308 4a7ee75d targets main with CI40979169462 running. Root requires all applicable checks before Ready; user merge308 must precede actual-main retarget/revalidation of309. Original superseded308 run40977980388 was cancelled to release final candidate CI, not retried as a test failure.
+
+
+Next selected slice (proposal only): a one-time explicit ordered 1–3 PR stack-frontier report reusing the merged singleton collector, preserving unknowns and never authorizing merge. Author and independent source-grounded selections are retained in `docs/implementation/stack-checkrun-state/next-selection`. Historical comparison and stored-card refresh are deferred. Implementation and acceptance freeze are not yet dispatched; no inherited host budget or new method.
+
+
+Final PR308 closure 2026-10-30T00:46:39.573481+00:00: head4a7ee75d is Ready on actual main de43 after CI40979169462 five applicable SUCCESS/paid SKIP, root readiness mutation and readback. Actual synthetic25bb08b5 check/Test22packages7207pass7skip0fail, GitHub172/CLI14; exporter94total93pass1skip, projection88/journey43/reader14/maintenance24 and actual fixtures pass. Complete log is retained losslessly, no remote artifact download or rehash claim. Card7e0b1be2 blocked only for user merge. Historical CI/full/REVISE remain separately bound. PR309 stays Draft until parent merge and actual-main retarget/revalidation.
+
+
+User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612bc equals published4a7. Card7e0b1be2 done for the bounded slice. PR309 fc272c63 now targets main, tree equals f31 and complete16path delta unchanged; fresh verification/newCI40982097784 running. Historical parentCI40979844215 remains f31→4a,22packages7230pass7skip0fail (not local7232/5). Three-agent dispatch resumes: A implements ordered1–3 PR stack-frontier report after C independent freeze; C independently verifies; B revalidates309; root uniquely owns PR/ledger/full. New card6962ab52 contributes PS17 with PS18/13/J07 support, J20 design only. No new method/host budget or formal gate.
+
+
+## 2026-10-30：309 已合并，顺序候选核对进入发布
+
+用户于01:13:25Z合并309；actual main e4643324/treeafb6等fc272。309新main CI40982097784五适用SUCCESS/paidSKIP，check/Test22包7230pass7skip0fail；原完整log与Ready→merge回执保留，不重标旧localfull。
+
+新有界工具只读核对显式1–3个PR顺序，不新增method。root540全仓22包7261pass5skip0fail，8784tracked执行期间字节同，初始4freshdistdirty，非clean committed tree；后单独CLI显示修复及docs/main合并不冒充finalfull。最终代码/文档8e830561在actualmain e464上224GitHub/29CLI/94export通过。C42场景58断言；Sonnet初静态PASS附真实autolink/bidi缺陷，作者同29CLI RED17/12→GREEN29，独立Pandoc10例旧7fail→新全过，限定SonnetclosurePASS，原意见和失败保留。一次真实308→309八查询在01:05历史时点识别mergedprefix/frontier且保留draft/checkpending/reviewrequired；不是Ready/merge授权或当前状态。card6962ab52贡献PS17，PS18/13/J07支持、J20设计；32J formalfalse和24PS20partial4deferred0whole不变。下一需求由源驱动选题，不重跑旧宿主失败翻绿。
