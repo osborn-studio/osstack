@@ -47,6 +47,11 @@
       "import": "./dist/source-snapshot.js",
       "default": "./dist/source-snapshot.js"
     },
-    "./*": "./*"
+    "./*": "./*",
+    "./source-adoption": {
+      "types": "./dist/source-adoption.d.ts",
+      "import": "./dist/source-adoption.js",
+      "default": "./dist/source-adoption.js"
+    }
   }
 }

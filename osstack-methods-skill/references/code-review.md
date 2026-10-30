@@ -23,6 +23,14 @@ Choose review lenses from the actual risk: failure propagation, boundaries, comp
 
 Check the tests' claims as well as their results. Would a wrong return value, missing side effect or duplicated effect be detected through the public boundary? Would an internal rearrangement with identical behavior still pass? A test that computes its expectation with the same implementation is weak evidence. A helper test does not establish a CLI, UI or remote integration outcome that it never runs. Keep blocked checks and coverage gaps visible.
 
+## Separate verified findings from unexecuted concerns
+
+The selected pstack 0.15.36 `interrogate` method requires a real run to verify a finding. For that category, preserve the exact command, candidate, input, actual output and output required by the task. Recheck the command when independently assessing a supplied finding, if execution is safe and authorized. Merge findings with the same cause. Record why a proposed finding was dropped. Agreement between reviewers is not the check.
+
+OSStack also retains useful source-supported review when execution is unavailable. Put those items in a separate **static concerns / not run** section. Do not label them run-verified findings or hide a proven static defect merely because a dependency is unavailable. State the missing observation and any blocking risk. “No verified findings” can coexist with unresolved static concerns; it does not mean safe to merge. This is an explicit OSStack adaptation, not a claim to execute upstream Interrogate unchanged.
+
+On the card's current candidate, review the fix against the original trigger and registered checks. Keep the failing baseline, candidate check and final host receipt distinct. A finding from an older candidate stays bound to it until rechecked. Attach the review disposition to the same task/card without inventing a second review queue. No reviewer count, model choice or automatic merge is required by this material.
+
 ## Judge and report
 
 Use the requested review format. Otherwise lead with actionable findings in impact order. Give each finding a short title, location, trigger, expected and observed behavior, consequence, and evidence basis. Distinguish an executed reproduction from a static execution-path argument. Mark a plausible concern with a missing precondition as needing verification, rather than presenting it as an observed failure.
