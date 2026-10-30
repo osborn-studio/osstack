@@ -1,5 +1,8 @@
 # 以 Loop Engineering 和看板为首用入口
 
+> 2026-10-30最新实施：P4单bug_fix编译与P5既有host mandatory接线已形成候选，见[实施记录](../pstack-method-bridge/README.md)和[调用教程](../../verification/bug-fix-method-handoff.md)。固定Git材料已实际准备并通过受控adapter验证，尚无本批原生模型/真实修复/同卡闭环。下一步直接P6；本文较早“拟接线”段落保留为设计起点，不能用来覆盖最新代码事实。
+
+
 用户已经把 Loop Engineering 与看板作为 OSStack 最有用的部分。pstack 首用应增强这条现有路径：**看板明确一个真实问题 → 固定方法帮助 Loop 复现、修复和自验证 → 现有 host 判定候选 → 同一张卡显示结果与原始证据**。不让用户另学第二个任务系统，不另建scheduler，不要求Firstmate深运行。
 
 本文分析者只读本地文章记录、Loop/看板/deliver源码及既有文档；协调者在本轮随后通过CUA in-app browser直接重读两篇X原站文章。没有启动loop/daemon、打开DB、创建卡、执行验证驱动或新模型。

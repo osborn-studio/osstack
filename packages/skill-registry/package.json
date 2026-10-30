@@ -37,6 +37,11 @@
     "node": ">=20"
   },
   "exports": {
+    "./bug-fix-compiler": {
+      "types": "./dist/bug-fix-compiler.d.ts",
+      "import": "./dist/bug-fix-compiler.js",
+      "default": "./dist/bug-fix-compiler.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

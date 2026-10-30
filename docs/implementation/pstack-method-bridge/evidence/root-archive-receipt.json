@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-10-30T10:48:48.632555+00:00",
+  "source_root": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-method-bridge-20261030",
+  "member_count": 1578,
+  "file_count": 1109,
+  "directory_count": 461,
+  "symlink_count": 8,
+  "file_bytes": 16997593,
+  "archive_sha256": "ef0900ac9672c5d7cc0c48ef268bd97510235ad3e58c56dbb981a836f486511e",
+  "manifest_sha256": "dde230cd3c1c09ac79bbb59082ac8524cedcc1810a15a2e49ad7d71e1acdde2f",
+  "root_full_member_verification": true
+}

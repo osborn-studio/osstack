@@ -7,7 +7,7 @@ export default defineConfig({
   // the command surface, then lazily imports bin.ts (emitted as a split
   // chunk) for everything else. The output keeps the dist/bin.js name that
   // package.json#bin points at.
-  entry: { bin: "src/cli-entry.ts", "graph-maintenance": "src/graph-maintenance.ts" },
+  entry: { bin: "src/cli-entry.ts", "graph-maintenance": "src/graph-maintenance.ts", "method-context": "src/method-context.ts" },
   format: ["esm"],
   target: "node20",
   // Managed runtime identity must not be replaceable by a launch environment.

@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "target_repository": "/owned/repo",
+  "intent": {
+    "kind": "material:intent_frame",
+    "schema_version": 1,
+    "task_id": "task-123",
+    "intent_revision": 2,
+    "goals": [
+      "Fix duplicate event"
+    ],
+    "non_goals": [
+      "No publication"
+    ],
+    "observations": [
+      "Two events were observed"
+    ],
+    "hypotheses": [
+      "A retry may bypass deduplication"
+    ],
+    "unknowns": [
+      "Concurrent callers"
+    ],
+    "source_refs": [
+      "card:123"
+    ]
+  },
+  "source_snapshot": {
+    "kind": "source_snapshot",
+    "schema_version": 1,
+    "pin": {
+      "kind": "source_pin",
+      "schema_version": 1,
+      "repository": "https://example.invalid/methods",
+      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "subdir": "methods",
+      "content_sha256": "da4e50acbfa0f7ba9607dd8b540763c37f8dfa24540c7bffd7d63981d2b1b83a",
+      "license_refs": [
+        "license:MIT"
+      ]
+    },
+    "files": [
+      {
+        "path": "methods/bug-fix.md",
+        "mode": "100644",
+        "blob": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "path": "methods/evidence.md",
+        "mode": "100644",
+        "blob": "cccccccccccccccccccccccccccccccccccccccc"
+      }
+    ],
+    "dependencies": []
+  },
+  "source_snapshot_digest": "3fb9db8f6e734ea96eae8eaf9eff1cc9e68023f6f60ba620f70e0ac0642159ab",
+  "materials": [
+    {
+      "role": "builder",
+      "text": "builder method\n",
+      "sha256": "524dfadafa73294e6364a47f2a9b9544943c52e68315788b798ed051672c1331"
+    },
+    {
+      "role": "reviewer",
+      "text": "reviewer method\n",
+      "sha256": "b4c7daf10f3c371aaf9ad720118c1015144541f6fadff40180ce3e6796397f2f"
+    },
+    {
+      "role": "verifier",
+      "text": "verifier method\n",
+      "sha256": "8cb139ba7f99393d572bdbd5b20d90e93602328a44346955bfbba02019b511b2"
+    }
+  ],
+  "required_artifacts": {
+    "kind": "artifact_requirements",
+    "schema_version": 1,
+    "recipe_version": "bug-fix.v1",
+    "requirements": [
+      {
+        "artifact_ref_kind": "intent_frame",
+        "producer_role": "builder",
+        "body_schema_digest": "4ad810652f251285b9672ec4c2412203e32e53fa8fdfdae3a47d0b39f2ed93d6",
+        "verifier_policy_digest": "b9e289d890030119fbf907763a03bca9886cea005ccd837c30ad3e5276c9907e",
+        "required": true
+      },
+      {
+        "artifact_ref_kind": "reproduction",
+        "producer_role": "builder",
+        "body_schema_digest": "b634bf17f5a7a32f31147949ba78735d0833dc9cfa49eee3a54107c1487cb2d5",
+        "verifier_policy_digest": "39040e6479eefcbbb8bebbd60eebb78eabdd8ed77f9609b5345ed02a71de61af",
+        "required": true
+      },
+      {
+        "artifact_ref_kind": "candidate_checks",
+        "producer_role": "builder",
+        "body_schema_digest": "b80c531409a12f221e6223a2bc09fd7d086b6e741a6bfa90d4537172e4a029a8",
+        "verifier_policy_digest": "3e5e29acfe56f42aff61ed35bec8e370bb488061cf5b4c50ccaecf49a84412a3",
+        "required": true
+      },
+      {
+        "artifact_ref_kind": "independent_review",
+        "producer_role": "reviewer",
+        "body_schema_digest": "67b4c467b3c893150bd049ab91a4c300a4f027aa2bd554f2c79ce791d3391987",
+        "verifier_policy_digest": "71fa630d8fdd32531abb969eee84be5d0b8eaffcfedd7057f6d6c36a5174eebf",
+        "required": true
+      },
+      {
+        "artifact_ref_kind": "cleanup_receipt",
+        "producer_role": "verifier",
+        "body_schema_digest": "c4819b52d30c0752975a1c339c88ebd1f66db2b0af32095011196534f8cb957b",
+        "verifier_policy_digest": "0c2b7be0ebc563c123def49676cf983e301ad6a8b8e578f008b3c2f488aead03",
+        "required": true
+      }
+    ]
+  },
+  "required_feature_ids": [
+    "duplicate-event",
+    "same-key-retry"
+  ],
+  "available_feature_ids": [
+    "same-key-retry",
+    "duplicate-event"
+  ],
+  "check_registry": {
+    "kind": "check_registry",
+    "schema_version": 1,
+    "entries": [
+      {
+        "ref": "sha256:2024418289796a41bf5af5dc673e1fb3e86636f87c24be832c5a6cf128530412",
+        "command_bytes_sha256": "2024418289796a41bf5af5dc673e1fb3e86636f87c24be832c5a6cf128530412",
+        "pass_codes": [
+          0
+        ],
+        "fail_codes": [
+          1,
+          2
+        ]
+      },
+      {
+        "ref": "sha256:9fe19a223caedd593716436f7be206114293efb6b239a5c2f403146002eaa9de",
+        "command_bytes_sha256": "9fe19a223caedd593716436f7be206114293efb6b239a5c2f403146002eaa9de",
+        "pass_codes": [
+          0
+        ],
+        "fail_codes": [
+          1,
+          2
+        ]
+      },
+      {
+        "ref": "sha256:b1c4220a1b56a821146670ab4142716dd4c9ea4e16c298775d149add2165b292",
+        "command_bytes_sha256": "b1c4220a1b56a821146670ab4142716dd4c9ea4e16c298775d149add2165b292",
+        "pass_codes": [
+          0
+        ],
+        "fail_codes": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  "check_binding": {
+    "kind": "check_binding",
+    "schema_version": 1,
+    "repository": "/owned/repo",
+    "primary_id": "accept",
+    "checks": [
+      {
+        "id": "repro",
+        "role": "reproduce",
+        "registry_ref": "sha256:2024418289796a41bf5af5dc673e1fb3e86636f87c24be832c5a6cf128530412",
+        "required": true
+      },
+      {
+        "id": "regress",
+        "role": "regression",
+        "registry_ref": "sha256:9fe19a223caedd593716436f7be206114293efb6b239a5c2f403146002eaa9de",
+        "required": true
+      },
+      {
+        "id": "accept",
+        "role": "acceptance",
+        "registry_ref": "sha256:b1c4220a1b56a821146670ab4142716dd4c9ea4e16c298775d149add2165b292",
+        "required": true
+      }
+    ]
+  }
+}

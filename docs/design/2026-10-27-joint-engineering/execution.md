@@ -1,6 +1,13 @@
 # 联合执行与交接
 
-最新发布：PR312 Ready/main，head `418ffe02929845e73ef56372c8920b51a64b772d`，CI41030888483五适用SUCCESS/paidSKIP，已Ready回读；只等gilberthello审批合并。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。新P2/P3候选已实现显式组件采用、五份固定版本材料与局部导出；尚无真实host首用/Loop同卡链。下一步P4纯编译→P5既有调用材料接入→P6当前真实缺陷同卡收据。Firstmate深运行禁止，正式资格不升级。
+最新发布：PR312仍Ready/main，等待gilberthello合并；PR313最新head f6d7c09a 的CI41036945434已五适用SUCCESS/paidSKIP，但仍Draft/base312，需parent合并后actualmain核对、retarget及复验。本批P4/P5已实现并验证，正在整理依赖313的Draft；下一项是P6真实模型与同卡闭环。实际main仍abcd9edf，禁止Firstmate深运行。
+
+## 最新执行：固定方法接入既有调用边界（2026-10-30）
+
+[本批实现与证据](../../implementation/pstack-method-bridge/README.md)提供单bug_fix纯编译、全新局部准备入口、完整compiled重编核验和调用前mandatory方法材料/预算/收据。编译34、宿主76、准备16定向通过；精确ac9全仓22包7420pass5skip0fail、9106tracked字节同，后off-mode入口修复单列定向/独立，不重标最终full。实际固定Git51文件复核和三角色受控adapter/六收据成立，尚非原生模型修复或local_verified。
+
+下一轮直接一张当前真实卡走既有V2 deliver/Loop，不再扩维护平台或只加材料。显式卡/合同与收据回写可先assisted；检查必须与目标仓库现有host policy一致。原失败、协议反例处置与静态审计保留；4入口14方法、24PS/19W/48A及32J正式状态不升级。
+
 
 ## 最新执行：固定 v0.15.36，接通 Loop Engineering 与看板首用（2026-10-30）
 
@@ -11,7 +18,7 @@
 
 ## 当前执行优先：pstack原范围验收对账
 
-实际main abcd9edf，PR311已合并，PR312 Ready等待人类merge。当前P2/P3采用与局部导出候选完成代码/材料/独立验证，下一步P4单bugfix编译、P5既有Loop调用接入、P6当前真实缺陷同卡闭环。三槽负责源码、材料和独立验证，root独占中央/PR/full。未启动本批真实host任务；Firstmate深运行禁止。
+实际main abcd9edf，PR311已合并，PR312 Ready等待人类merge。P2/P3与P4/P5候选已具备组件验证，下一步P6当前真实缺陷的实际host与同卡闭环。三槽负责源码、材料和独立验证，root独占中央/PR/full。未启动本批真实host任务；Firstmate深运行禁止。
 
 目标不变：吸收 Firstmate 的持续负责、监督和恢复能力，以及 pstack 的调查、设计、验证与工程方法，形成 OSStack 的统一能力。不能以完成基础设施代替两条端到端旅程。
 

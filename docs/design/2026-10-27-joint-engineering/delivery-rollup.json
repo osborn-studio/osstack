@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-30T09:49:34.877334+00:00",
+  "observed_at": "2026-10-30T10:46:16.940076+00:00",
   "main_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
   "main_tree": "88ea7afcc6f03ba7c63755c306f5814899101820",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
   "candidate_named_methods": null,
-  "candidate_status": "PR312 Ready/main only human merge pending; P2/P3 adoption/export validated candidate, actual Loop/card first use pending",
+  "candidate_status": "P4/P5 bug-fix compiler and mandatory method host boundary implemented; Draft publication pending on PR313, real native-model P6 same-card acceptance still pending",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -1825,6 +1825,12 @@
         "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
         "record": "docs/implementation/pstack-stage-acceptance/capability-reconciliation.json#PS01",
         "historical_nested_evidence": "Earlier candidate/task fields remain historical snapshots; current state is this field plus delivery/latest_merged_slice. Original FAILED/LIMITED outcomes unchanged."
+      },
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2007,6 +2013,12 @@
         "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
         "record": "docs/implementation/pstack-stage-acceptance/capability-reconciliation.json#PS06",
         "historical_nested_evidence": "Earlier candidate/task fields remain historical snapshots; current state is this field plus delivery/latest_merged_slice. Original FAILED/LIMITED outcomes unchanged."
+      },
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2136,6 +2148,12 @@
         "record": "docs/implementation/pstack-feature-map/README.md",
         "whole_capability_complete": false,
         "pr": 311
+      },
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2363,7 +2381,13 @@
         "record": "docs/implementation/pstack-stage-acceptance/capability-reconciliation.json#PS13",
         "historical_nested_evidence": "Earlier candidate/task fields remain historical snapshots; current state is this field plus delivery/latest_merged_slice. Original FAILED/LIMITED outcomes unchanged."
       },
-      "historical_delivery_before_stage_reconciliation": "原始回执/manifest/hash/错误保留及安全投影已可用；证据完整性不认证身份/历史真实性；#301紧凑证据及PR候选报告材料已合并，不新增运行时。"
+      "historical_delivery_before_stage_reconciliation": "原始回执/manifest/hash/错误保留及安全投影已可用；证据完整性不认证身份/历史真实性；#301紧凑证据及PR候选报告材料已合并，不新增运行时。",
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS14",
@@ -2674,6 +2698,12 @@
         "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
         "record": "docs/implementation/pstack-stage-acceptance/capability-reconciliation.json#PS20",
         "historical_nested_evidence": "Earlier candidate/task fields remain historical snapshots; current state is this field plus delivery/latest_merged_slice. Original FAILED/LIMITED outcomes unchanged."
+      },
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2733,6 +2763,12 @@
         "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
         "record": "docs/implementation/pstack-stage-acceptance/capability-reconciliation.json#PS21",
         "historical_nested_evidence": "Earlier candidate/task fields remain historical snapshots; current state is this field plus delivery/latest_merged_slice. Original FAILED/LIMITED outcomes unchanged."
+      },
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2806,6 +2842,12 @@
         "record": "docs/implementation/pstack-feature-map/README.md",
         "whole_capability_complete": false,
         "pr": 311
+      },
+      "method_bridge_candidate": {
+        "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+        "record": "docs/implementation/pstack-method-bridge/README.md",
+        "scope": "P4 pure compilation / P5 mandatory method context; controlled adapter evidence, native model P6 pending",
+        "whole_capability_complete": false
       }
     },
     {
@@ -11928,10 +11970,10 @@
     "docs_tests": 241
   },
   "next_pstack_implementation": {
-    "observed_at": "2026-10-30T09:49:34.877334+00:00",
-    "status": "fixed_material_adoption_export_candidate",
+    "observed_at": "2026-10-30T10:46:16.940076+00:00",
+    "status": "method_bridge_implemented_native_task_next",
     "plan": "docs/implementation/pstack-fixed-release/PLAN.md",
-    "next_action": "P4 single bug_fix pure compiler binds registered checks; P5 mandatory material preinvoke wiring in existing deliver/Loop; P6 fresh real defect with durable receipt before same-card idempotent projection. No new maintenance platform or method-count target.",
+    "next_action": "P6: one fresh real defect, explicit card/board/tenant/task, frozen reproduction/regression/primary and path/tool budgets; existing V2 deliver/Loop local consumes fixed mandatory materials, real RED/fix/GREEN, independently verified final candidate, durable receipt before same-card projection. Assisted manual card/contract and evidence linking is permitted; no invented admission/qualification or new scheduler.",
     "firstmate_deep_runtime": "prohibited",
     "formal_gate_pass": false
   },
@@ -12024,7 +12066,7 @@
     "board_status": "done"
   },
   "maintenance_health_slice": {
-    "status": "ready_human_merge_pending",
+    "status": "ready_pr312_waiting_human_merge",
     "card_id": "card_00892d6e",
     "work_package": "W19",
     "record": "docs/implementation/pstack-maintenance-health/README.md",
@@ -12100,16 +12142,16 @@
     "independent_tests": "47 passed; old same vectors45 failures; mocked watcher",
     "plan": "docs/implementation/pstack-fixed-release/PLAN.md",
     "user_outcomes": {
-      "U1_fixed_method_bundle": "partial: five materials adopted and both local layouts exported; actual host task pending",
+      "U1_fixed_method_bundle": "partial: fixed local bundle, pure preparation and mandatory host boundary implemented; actual native model task still pending",
       "U2_actual_bugfix_chain": "pending",
       "U3_formal_statechart": "pending"
     },
     "formal_gate_pass": false,
     "delivery_pr": 312,
-    "next_action": "P4 single bug_fix pure compiler binds registered checks; P5 mandatory material preinvoke wiring in existing deliver/Loop; P6 fresh real defect with durable receipt before same-card idempotent projection. No new maintenance platform or method-count target."
+    "next_action": "P6: one fresh real defect, explicit card/board/tenant/task, frozen reproduction/regression/primary and path/tool budgets; existing V2 deliver/Loop local consumes fixed mandatory materials, real RED/fix/GREEN, independently verified final candidate, durable receipt before same-card projection. Assisted manual card/contract and evidence linking is permitted; no invented admission/qualification or new scheduler."
   },
   "pstack_adoption_bundle": {
-    "status": "validated_candidate_prepublication",
+    "status": "draft_parent_merge_and_main_revalidation_pending",
     "card_id": "card_7c5152bc",
     "record": "docs/implementation/pstack-adoption-bundle/README.md",
     "source_commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
@@ -12148,6 +12190,92 @@
     "formal_gate_pass": false,
     "whole_capability_complete": false,
     "firstmate_deep_runtime": "prohibited",
-    "original_failures_preserved": true
+    "original_failures_preserved": true,
+    "pr": 313,
+    "head_sha": "f6d7c09a487249a9973783912adb117e1df4333c",
+    "base_branch": "codex/pstack-maintenance-health-delivery",
+    "ci_run": 41036945434,
+    "ready": false,
+    "final_code_sha": "b36d97567d6ad0b3ab7458649583079512bf4dce",
+    "archive_sha256": "f38dbe9453ec706a77f6122409c86beb74a4ed446a100ebbc9481b400f120d60",
+    "archive_manifest_sha256": "0fb426034573a4f14c09888b06ce8a377792ee3e7dcd686b7888df7f8438b752",
+    "archive_members": 1286,
+    "archive_file_bytes": 30450418,
+    "independent_archive_manifest_sha256": "3e18aed8f740aa11e833a8961e97122dfb7b48ad3faffd60e07fa43060b736c1",
+    "audit": "Actual Sonnet5.5 PASS_WITH_CONCERNS then limited closure PASS; static only",
+    "post_audit_independent": "Six vectors old4pass2fail to new6pass; two fresh export layouts verified; original harness errors retained",
+    "current_head_ci": {
+      "run": 41036945434,
+      "five_applicable": "SUCCESS",
+      "paid": "SKIPPED",
+      "synthetic_checkout": "9c04d35686e22c344fe6492d3c84823eb1863001",
+      "packages": 22,
+      "passed": 7337,
+      "skipped": 7,
+      "failed": 0,
+      "base_is_main": false,
+      "log_sha256": "41c6ad86e298bf54d649d8117b5f4a7f388100e854b1ae4a1be18a7fbc9ed670"
+    }
+  },
+  "pstack_method_bridge": {
+    "status": "implemented_pending_draft_publication",
+    "card_id": "card_93efbff1",
+    "record": "docs/implementation/pstack-method-bridge/README.md",
+    "tutorial": "docs/verification/bug-fix-method-handoff.md",
+    "code_sha": "b3fa2962c675bcfe10b6938613d5df4cb0d9d042",
+    "version": "0.15.36",
+    "source_commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
+    "pure_recipe": "bug_fix",
+    "executable": false,
+    "compiled_artifact_recompiled": true,
+    "required_method_context": "local only; missing, changed, oversize, invalid compiled artifact rejects before invoke",
+    "focused": {
+      "compiler": 34,
+      "host": 76,
+      "preparer": 16
+    },
+    "full": {
+      "code_sha": "ac9e67c6b2d5c2063bc525b5265ea432234d3a56",
+      "packages": 22,
+      "passed": 7420,
+      "skipped": 5,
+      "failed": 0,
+      "tracked_files": 9106,
+      "changed_files": [],
+      "initial_dirty": "4 fresh knowledge/dist; untracked tutorial; not clean committed tree",
+      "before_final_off_mode_guard": true,
+      "final_code_full_claim": false
+    },
+    "controlled_actual_materials": {
+      "components": 11,
+      "files": 51,
+      "bytes": 174474,
+      "role_bytes": [
+        32286,
+        32303,
+        32309
+      ],
+      "adapter_calls": 3,
+      "durable_receipts": 6,
+      "native_model": false
+    },
+    "independent_off_guard": {
+      "same_probe_before_pass": 3,
+      "same_probe_before_fail": 2,
+      "after_pass": 5
+    },
+    "actual_host_task": false,
+    "automatic_card_projection": false,
+    "runtime_enabled": false,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "firstmate_deep_runtime": "prohibited",
+    "next_action": "P6: one fresh real defect, explicit card/board/tenant/task, frozen reproduction/regression/primary and path/tool budgets; existing V2 deliver/Loop local consumes fixed mandatory materials, real RED/fix/GREEN, independently verified final candidate, durable receipt before same-card projection. Assisted manual card/contract and evidence linking is permitted; no invented admission/qualification or new scheduler.",
+    "audit": "Actual Sonnet5.5 static PASS_WITH_CONCERNS then bounded closure PASS_WITH_CONCERNS; confirmed mode bypass repaired, protocol and PR313-history concerns disproved by retained evidence; limits remain",
+    "archive_sha256": "ef0900ac9672c5d7cc0c48ef268bd97510235ad3e58c56dbb981a836f486511e",
+    "archive_manifest_sha256": "dde230cd3c1c09ac79bbb59082ac8524cedcc1810a15a2e49ad7d71e1acdde2f",
+    "archive_members": 1578,
+    "archive_file_bytes": 16997593,
+    "independent_archive_receipt_sha256": "2953b9e26433af64e76c6cb78cfb23db09f4882c96b446a7a87d6df777cdc352"
   }
 }

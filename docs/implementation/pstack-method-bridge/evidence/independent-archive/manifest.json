@@ -1,0 +1,35 @@
+{
+  "files": [
+    {
+      "path": "receipt.json",
+      "mode": 420,
+      "bytes": 221886,
+      "sha256": "2953b9e26433af64e76c6cb78cfb23db09f4882c96b446a7a87d6df777cdc352"
+    },
+    {
+      "path": "receipt.md",
+      "mode": 420,
+      "bytes": 1045,
+      "sha256": "75c5642adbaff0e6c409098f817c7c4ddf0fc3f4eb06c434f78cd533b8b82a73"
+    },
+    {
+      "path": "verify.py",
+      "mode": 420,
+      "bytes": 9157,
+      "sha256": "dc2fc058a016d173d0558e6702da4c8b946259c9fc40ba6fe3885021f6677cbd"
+    },
+    {
+      "path": "verify.stderr",
+      "mode": 420,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verify.stdout",
+      "mode": 420,
+      "bytes": 1278,
+      "sha256": "f8b4897c2166da88962a19ad1cc6f631aec569aa348f4beeee2c7bcf1d1b340e"
+    }
+  ],
+  "self_excluded": true
+}
