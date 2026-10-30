@@ -1,5 +1,12 @@
 # Firstmate × pstack 联合项目推进规则
 
+## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
+
+PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。
+
+本批W19健康查询及来源登记候选已通过199脚本定向检查；完整22包回归结果见JSON与原日志，绑定e82adca9，初始4fresh dist脏、执行期间8981 tracked字节不变。整合typecheck旧CLI mock缺字段的原失败与修复保留。health45、作者manifest/watcher52、独立47不可混为全方法资格。S1–S3阶段卡只等用户签收，不阻授权开发；其他板275/277过期merge原因已纠正，局部Done不升级runtime资格。原24PS/19W/48A及32J正式结果保持。
+
+
 ## 当前执行优先：pstack原范围验收对账
 
 实际main 01ec1852，PR310已合并。有序PR前沿工具已交付；原C0/W17有限后验调用体验已记录，下一步实施W18相关叶子读取，不扩张方法数量。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
@@ -213,3 +220,9 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 ## 2026-10-30 W18 implementation publication
 
 [Bounded feature reader](../../implementation/pstack-feature-map/README.md) now selects metadata using the existing public BM25 API and reads only selected/required local leaves. Three workers split code, independent inputs and actual command documentation; root owns integration, ledger, PR and full queue. Final 40 focused checks pass. Full9e37bfa0 has22 packages/7261passed/5skipped/0failed,8914tracked bytes unchanged during execution with four initial fresh-dist changes; later small unavailable-export repair has its own RED/GREEN and independent old/new controls, not a relabelled full run. Publication CI remains separate. Card_9a676553 contributes PS08, supports PS23/J03/J06; no formal gate or whole capability completion. W19 configured ownership/health and original C1/C2 remain next, Firstmate deep runtime prohibited.
+
+
+2026-10-30 publication: [PR311](https://github.com/osborn-studio/osstack/pull/311) is Draft/main at `f70f40265ddfb1e419d6b8f5145d46c71060b9bc`; CI41014856944 is running. Five applicable successes and final readback are required before Ready. No approval/merge is performed by agents. Current bounded W18 implementation is separate from remaining W19/C0/C1/C2.
+
+
+2026-10-30 final CI closeout: PR311 head `f70f4026` is Ready/main after CI41014856944 five applicable SUCCESS/paid SKIP and root readback (`isDraft=false`, `MERGEABLE`). Actual synthetic checkout `7aec62e116a37788b283e0634f4e0163f9755c81`: 22 packages7259pass7skip0fail; feature-map40, export93pass1skip, reader14/journey43/map24/projection88. Original full log and independent checks are retained in [CI closeout](../../implementation/pstack-feature-map/ci-final/README.md); no remote artifact rehash claim. Card9a676553 blocked only for gilberthello merge, not whole W18/C0 qualification. Next W19 remains authorized; Firstmate deep runtime prohibited.

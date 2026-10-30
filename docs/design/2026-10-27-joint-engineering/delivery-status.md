@@ -1,10 +1,17 @@
 # pstack 优先：能力与交付对账
 
+## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
+
+PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。
+
+本批W19健康查询及来源登记候选已通过199脚本定向检查；完整22包回归结果见JSON与原日志，绑定e82adca9，初始4fresh dist脏、执行期间8981 tracked字节不变。整合typecheck旧CLI mock缺字段的原失败与修复保留。health45、作者manifest/watcher52、独立47不可混为全方法资格。S1–S3阶段卡只等用户签收，不阻授权开发；其他板275/277过期merge原因已纠正，局部Done不升级runtime资格。原24PS/19W/48A及32J正式结果保持。
+
+
 ## 当前优先：原范围阶段验收（2026-10-30）
 
 [完整对账与建议](../../implementation/pstack-stage-acceptance/README.md)保留原24PS/19W/48A和C0/C1/C2。S1–S3只供已交付工具单独验收；S4历史宿主结果仍受限。没有用户签收或范围删减。W13只读分类不额外要求持续watcher；原端到端集成仍未闭合。
 
-当前合并快照：`01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211`。PR307–310已由用户合并；主线4入口14方法。固定五case维护、证据投影、单PR/有序栈观察与CI分类可按有限范围使用。原C0→C1→C2仍未完成，W17/A39有限后验教程已收口；W18相关叶子读取已实现并本地验证，正在发布；不是完整W18/C0验收。历史证据保留原SHA；合并不等于阶段签收。
+当前合并快照：`01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211`。PR307–310已由用户合并；主线4入口14方法。固定五case维护、证据投影、单PR/有序栈观察与CI分类可按有限范围使用。原C0→C1→C2仍未完成，W17/A39有限后验教程已收口；W18相关叶子读取已实现并本地验证，PR311 Ready等待用户合并；不是完整W18/C0验收。历史证据保留原SHA；合并不等于阶段签收。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -47,7 +54,7 @@
 | PS05 覆盖式并行与预先声明的竞赛 | 部分已交付 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 独立评审与意见裁决 | 部分已交付 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 影响面与关键前提验证 | 部分已交付 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，待发布；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
+| PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311 Ready等待用户合并；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
 | PS09 验证基础设施的健康、归属与漂移维护 | 部分已交付 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 形式化验证生命周期 | 暂缓/未实现 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 状态图与反例解释 | 暂缓/未实现 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
@@ -236,3 +243,9 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 ## C0/W17 有限教程观察收口（2026-10-30）
 
 [教程与证据](../../implementation/pstack-c0-usage/README.md)：已构建环境中实际输入拒绝exit2/no output→仅自有地图补empty→同入口新output consistent0，五例产品0/1/2/1/0、driver均0，原错误与语义保留。独立核case145+journey32成员及source1065/build2352；1493产品/脚本/清单字节未变，运行初始4freshdist脏。冻结CU中8有限pass、CU01排他上下文unknown、CU08全局资源观察limited；无完整A39/W17/C0或用户阶段验收。原A39首次冻结前接口推导不能由本后验观察替代。仅控制分支发布待下批吸收，card_039f599c done只此有界记录；W18/W19及原C1→C2继续，先不要进入Firstmate深运行。
+
+
+2026-10-30 publication: [PR311](https://github.com/osborn-studio/osstack/pull/311) is Draft/main at `f70f40265ddfb1e419d6b8f5145d46c71060b9bc`; CI41014856944 is running. Five applicable successes and final readback are required before Ready. No approval/merge is performed by agents. Current bounded W18 implementation is separate from remaining W19/C0/C1/C2.
+
+
+2026-10-30 final CI closeout: PR311 head `f70f4026` is Ready/main after CI41014856944 five applicable SUCCESS/paid SKIP and root readback (`isDraft=false`, `MERGEABLE`). Actual synthetic checkout `7aec62e116a37788b283e0634f4e0163f9755c81`: 22 packages7259pass7skip0fail; feature-map40, export93pass1skip, reader14/journey43/map24/projection88. Original full log and independent checks are retained in [CI closeout](../../implementation/pstack-feature-map/ci-final/README.md); no remote artifact rehash claim. Card9a676553 blocked only for gilberthello merge, not whole W18/C0 qualification. Next W19 remains authorized; Firstmate deep runtime prohibited.

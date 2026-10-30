@@ -1,0 +1,72 @@
+[
+  {
+    "step": "Project and check actual method evidence",
+    "receipts": [
+      {
+        "line": 11717,
+        "end_line": 11717,
+        "value": {
+          "status": "projected",
+          "packet_sha256": "745f051703abfa4e27e982f03d9670d0ce93c7210e09631f8dc7819616291b33",
+          "input_opened_read_only": true,
+          "formal_gate_pass": false
+        }
+      },
+      {
+        "line": 11719,
+        "end_line": 11719,
+        "value": {
+          "status": "valid",
+          "packet_sha256": "745f051703abfa4e27e982f03d9670d0ce93c7210e09631f8dc7819616291b33",
+          "original_evidence_revalidated": false,
+          "formal_gate_pass": false
+        }
+      }
+    ],
+    "commands": [
+      {
+        "line": 11716,
+        "text": "$ node scripts/project-method-journey-evidence.mjs --input /home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence --output /home/runner/work/_temp/osstack/runtime/method-packet-ci-evidence"
+      },
+      {
+        "line": 11718,
+        "text": "$ node scripts/project-method-journey-evidence.mjs --check /home/runner/work/_temp/osstack/runtime/method-packet-ci-evidence"
+      }
+    ]
+  },
+  {
+    "step": "Project and check full five-case method evidence",
+    "receipts": [
+      {
+        "line": 11755,
+        "end_line": 11755,
+        "value": {
+          "status": "projected",
+          "packet_sha256": "28153ca601f84c3e4698c8416040efa68a9823168cf7c144d587a23b0e99a137",
+          "input_opened_read_only": true,
+          "formal_gate_pass": false
+        }
+      },
+      {
+        "line": 11757,
+        "end_line": 11757,
+        "value": {
+          "status": "valid",
+          "packet_sha256": "28153ca601f84c3e4698c8416040efa68a9823168cf7c144d587a23b0e99a137",
+          "original_evidence_revalidated": false,
+          "formal_gate_pass": false
+        }
+      }
+    ],
+    "commands": [
+      {
+        "line": 11754,
+        "text": "$ node scripts/project-method-journey-evidence.mjs --input /home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence --output /home/runner/work/_temp/osstack/runtime/method-full-packet-ci-evidence --scope full"
+      },
+      {
+        "line": 11756,
+        "text": "$ node scripts/project-method-journey-evidence.mjs --check /home/runner/work/_temp/osstack/runtime/method-full-packet-ci-evidence"
+      }
+    ]
+  }
+]

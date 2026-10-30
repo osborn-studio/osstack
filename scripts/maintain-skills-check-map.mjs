@@ -57,6 +57,7 @@ function validateMap(bytes) {
 export async function runMaintenance({ map: mapPath, output }, seams = {}) {
   check(typeof mapPath === 'string' && isAbsolute(mapPath) && typeof output === 'string' && isAbsolute(output), 'absolute_paths_required');
   const before = await mapBytes(mapPath); const map = validateMap(before);
+  const toolBefore = await readFile(fileURLToPath(import.meta.url));
   output = resolve(output);
   const parent = await realpath(dirname(output)); const root = await realpath(scratchRoot());
   output = join(parent, output.split(sep).at(-1));
@@ -68,6 +69,7 @@ export async function runMaintenance({ map: mapPath, output }, seams = {}) {
   const result = {
     schema_version: 1, status: 'blocked', exit_code: 2, started_at: new Date().toISOString(),
     map: { before_sha256: sha256(before), bytes: before.length, after_sha256: null, unchanged: false },
+    tool: { before_sha256: sha256(toolBefore), after_sha256: null, unchanged: false },
     journey: null, rows: [], failure: null, subsequent_failures: [], model_calls: 0, formal_gate_pass: false,
     execution_path: seams.journey ? 'injected_journey' : seams.invoke ? 'runJourney_with_injected_driver' : 'runJourney',
     limitations: [
@@ -117,6 +119,11 @@ export async function runMaintenance({ map: mapPath, output }, seams = {}) {
       await writeFile(join(output, 'map-after.json'), after, { flag: 'wx', mode: 0o600 });
     }
   } catch (error) { fail(`map_after:${error.code ?? error.message}`); }
+  try {
+    const toolAfter = await readFile(fileURLToPath(import.meta.url));
+    result.tool.after_sha256 = sha256(toolAfter); result.tool.unchanged = toolBefore.equals(toolAfter);
+    if (!result.tool.unchanged) fail('tool_changed');
+  } catch (error) { fail(`tool_after:${error.code ?? error.message}`); }
   result.ended_at = new Date().toISOString();
   await writeFile(join(output, 'maintenance.json'), json(result), { flag: 'wx', mode: 0o600 });
   return result;

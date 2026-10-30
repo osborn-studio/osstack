@@ -1,0 +1,107 @@
+{
+  "line": 10102,
+  "end_line": 10204,
+  "value": {
+    "schema_version": 1,
+    "status": "passed",
+    "started_at": "2026-10-30T06:53:27.757Z",
+    "features": [
+      {
+        "case_id": "healthy",
+        "verification": "passed",
+        "product_exit": 0,
+        "product_status": "healthy",
+        "driver_exit": 0,
+        "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/cases/healthy",
+        "manifest_sha256": "59fbdbc43ec501ed1ad7cdf077d4fa3f8ce2984db034afa8e21bae32d157d6dc",
+        "verified_files": 29,
+        "bindings": {
+          "source_digest": "ea28fc4599b7533ba298a7b2aeb7181d650a21beccfd4295712b9e5213928b4b",
+          "build_digest": "9c173d4b3c62f490f70c25c755145b5790b12d74f4a4bf80f7fcc6266fd847c5"
+        },
+        "cleanup": {
+          "status": "passed",
+          "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-4q7pPL",
+          "fixture_removed": true,
+          "descendant_termination": "not_attested"
+        },
+        "evidence_state": "sealed",
+        "journey_status": "passed"
+      },
+      {
+        "case_id": "missing-ref",
+        "verification": "passed",
+        "product_exit": 1,
+        "product_status": "failed",
+        "driver_exit": 0,
+        "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/cases/missing-ref",
+        "manifest_sha256": "655d78b82dcc988847671fe22c43b2681457982f18321a94ff8c67b532051b05",
+        "verified_files": 29,
+        "bindings": {
+          "source_digest": "ea28fc4599b7533ba298a7b2aeb7181d650a21beccfd4295712b9e5213928b4b",
+          "build_digest": "9c173d4b3c62f490f70c25c755145b5790b12d74f4a4bf80f7fcc6266fd847c5"
+        },
+        "cleanup": {
+          "status": "passed",
+          "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-lk4Cbn",
+          "fixture_removed": true,
+          "descendant_termination": "not_attested"
+        },
+        "evidence_state": "sealed",
+        "journey_status": "passed"
+      }
+    ],
+    "host_execution": "not_run",
+    "native_skill_selection": "not_observed",
+    "model_calls": 0,
+    "provider_qualified": false,
+    "formal_gate_pass": false,
+    "scope": "Fixed local skills-check healthy/missing-ref journey; omitted drift/mixed/empty; no model or native-host claim",
+    "limitations": [
+      "Manifest hashes establish retained-file consistency, not an authenticated source.",
+      "Binding digests check driver-declared records and cross-case consistency; they do not independently hash all live source/build files after closeout. Build hashes are not proof of a compiler invocation.",
+      "Direct child exit and fixture removal do not attest all descendants."
+    ],
+    "output": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence",
+    "tool_files": {
+      "scripts/method-verification-journey.mjs": "b030e182adaf06db6a7941afeb0a79ec5a74e3101aaab36a56475a6de92025ab",
+      "scripts/lib/scratch.mjs": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af",
+      "scripts/smoke-skills-check.mjs": "306bf661a3f6057027b11242182c0a58d149660ba17677dc013f26f5477d592f",
+      "scripts/lib/skills-check-verification.mjs": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+    },
+    "ended_at": "2026-10-30T06:53:31.635Z",
+    "retained": {
+      "case_manifests": [
+        {
+          "case_id": "healthy",
+          "sha256": "59fbdbc43ec501ed1ad7cdf077d4fa3f8ce2984db034afa8e21bae32d157d6dc",
+          "verified": true
+        },
+        {
+          "case_id": "missing-ref",
+          "sha256": "655d78b82dcc988847671fe22c43b2681457982f18321a94ff8c67b532051b05",
+          "verified": true
+        }
+      ],
+      "shallow_listings": {
+        "cases": [
+          {
+            "name": "healthy",
+            "type": "directory"
+          },
+          {
+            "name": "missing-ref",
+            "type": "directory"
+          }
+        ],
+        "scratch": [
+          {
+            "name": "smoke",
+            "type": "directory"
+          }
+        ]
+      },
+      "stability": "snapshot only; interrupted descendants may still write retained files"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "created_at": "2026-10-30T07:12:26.990105+00:00",
+  "files": [
+    {
+      "path": "default-receipt.json",
+      "bytes": 4274,
+      "sha256": "a12ed7878bcc28dae017d517476daaae0d056d1354177dfaf638b363d656afe4"
+    },
+    {
+      "path": "full-receipt.json",
+      "bytes": 7969,
+      "sha256": "66557a7c16197772be4b6c9b64273f17c9daa9c2253c6b1718b2f49790442573"
+    },
+    {
+      "path": "input-hashes.json",
+      "bytes": 428,
+      "sha256": "6f8214da158c77a9000a2d3eb8d178057d381b7b0334e6e25a931f8d58a7bbfb"
+    },
+    {
+      "path": "map-receipt.json",
+      "bytes": 8396,
+      "sha256": "9d54ede22d78bcecfa483f5d7d42a02daec0adfd6aad8a2252775227b7707f23"
+    },
+    {
+      "path": "package-summaries.json",
+      "bytes": 4425,
+      "sha256": "9e77180b76aa5e36d16782df7fa4454a9dabe1b0a1575e5d2592e7934b203447"
+    },
+    {
+      "path": "parse.py",
+      "bytes": 7804,
+      "sha256": "0a1263b3d8ba956d20b17d73bb985a103ef66af16a55991200248995b97cfc24"
+    },
+    {
+      "path": "parser.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "parser.stdout",
+      "bytes": 1314,
+      "sha256": "23b88755090d6dd17709bb8d8c10e4aea9f47b6d8c002b3118cd93bbe11f2d57"
+    },
+    {
+      "path": "projection-receipts.json",
+      "bytes": 2363,
+      "sha256": "25cd142f1eb3336a97ee1d07cc39230416ffa89071d6fe2ba75303b2c84348e6"
+    },
+    {
+      "path": "report.json",
+      "bytes": 17433,
+      "sha256": "217e15665ce695136104c4231597608b266ba46097df7218c70b7de77f76c39a"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3127,
+      "sha256": "909621eae5857cde64ae3474aef45c1eb9de3ae52baa5a85581638e5fda48d6d"
+    },
+    {
+      "path": "targeted.json",
+      "bytes": 5170,
+      "sha256": "2c79153ac17c01f45af2ecdd7027ba2ac8bf9b65af6b96e4cb858dd793fe4860"
+    }
+  ],
+  "external_inputs": [
+    {
+      "path": "metadata.stdout",
+      "bytes": 21087,
+      "sha256": "db53bb38808a1ac52b67b98a34fa26b3d862fa18cfba58a5a26a80ae75141752"
+    },
+    {
+      "path": "full-log.stdout",
+      "bytes": 2244074,
+      "sha256": "242f965083a5a545ef24bf5715f90fc29343480b01b59d70884fec71ad124e41"
+    },
+    {
+      "path": "pr-before.stdout",
+      "bytes": 1988,
+      "sha256": "be587d4c57d82a2477566bc48198c033942a13183f22c9874ad1b0e92fccb5ce"
+    }
+  ],
+  "read_only_no_artifact_download": true
+}

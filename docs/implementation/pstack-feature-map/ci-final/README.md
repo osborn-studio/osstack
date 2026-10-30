@@ -1,0 +1,9 @@
+# PR311 current-head CI closeout
+
+PR311 is Ready/main at `f70f40265ddfb1e419d6b8f5145d46c71060b9bc`. All five applicable checks succeeded in run41014856944; paid semantic smoke was skipped. Root performed ready and read back isDraft=false/main/MERGEABLE. This is not human approval, merge or original W18/C0 acceptance.
+
+The actual checkout was synthetic merge `7aec62e116a37788b283e0634f4e0163f9755c81`, merging this head into actual main01ec1852. The check/Test step has22 unique packages:7259passed/7skipped/0failed. Standalone feature selection40/40, exporter94total=93passed+1skip (global Codex home absent), reader14, journey43, map24, projection88. Actual default product exits0/1, full/map0/1/2/1/0 and driver0, mapconsistent with original map unchanged and all matches, and both projection/check logged bindings agree. These CI facts are separate from earlier local full9e37 and its dirty fresh-dist disclosure.
+
+[Independent report](independent/report.md) includes parser, original inputs' hashes, exact package/targeted summaries and extracted logged receipts. Root verified all12 independent payloads and3 original inputs against their size/hash manifest. The complete original log (2,244,074bytes, SHA256 `242f965083a5a545ef24bf5715f90fc29343480b01b59d70884fec71ad124e41`) is preserved in lossless full-log.gz. No remote artifact was downloaded; logged digests are not independently rehashed artifacts. Original product failures, earlier model limits and audit concerns remain unchanged in the parent evidence archive.
+
+The six central records and three installed-home board readbacks record card9a676553 blocked only for user approval/merge. This control-only publication does not modify PR311's candidate or rerun its unchanged source audit/product suite. W19 configured ownership/health remains next; Firstmate deep runtime is prohibited.

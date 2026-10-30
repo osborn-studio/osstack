@@ -1,0 +1,27 @@
+{
+  "comment": {
+    "comment_id": 743,
+    "card_id": "card_9a161476",
+    "author": "root",
+    "body": "PR277已合并4924d224ab9e6e2d7f801d68faea389fedf3751e；本卡applied/duplicate/uncertain结果保全切片完成。不自动解锁/重发，跨进程恢复资格仍未过。纠正过期等待#277合并字段。",
+    "created_at": 1793349455.856
+  },
+  "move": {
+    "card_id": "card_9a161476",
+    "board": "session-pilot-debt",
+    "task_id": null,
+    "title": "DEBT03 Preserve applied receipt on manual session.send cleanup failure",
+    "body": "Pre-existing path: transport error after an applied receipt must remain distinguishable from failed delivery; preserve idempotent receipt and never resend automatically.",
+    "status": "done",
+    "priority": 3,
+    "assignee": "future-runtime",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793010548.833,
+    "updated_at": 1793349455.857,
+    "started_at": 1793079096.074,
+    "completed_at": 1793349455.857
+  }
+}

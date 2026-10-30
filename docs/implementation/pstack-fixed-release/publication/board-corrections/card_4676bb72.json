@@ -1,0 +1,27 @@
+{
+  "comment": {
+    "comment_id": 742,
+    "card_id": "card_4676bb72",
+    "author": "root",
+    "body": "核对纠正：PR277已合并4924d224ab9e6e2d7f801d68faea389fedf3751e，DEBT03已应用回执保全局部实现完成，真实SQLite/socket/锁故障回归；重启仅同进程close/boot。跨进程恢复/OS重启/Provider故障仍归DEBT02/J11/J12，不升级资格。本次只清除过期merge阻塞。",
+    "created_at": 1793349455.856
+  },
+  "move": {
+    "card_id": "card_4676bb72",
+    "board": "firstmate-upgrade-roadmap",
+    "task_id": null,
+    "title": "[DEBT03] 已应用手工发送回执保全",
+    "body": "roadmap_id: firstmate-upgrade-20261026\nwork_item_id: DEBT03\nscope_profile: future_integration_or_qualification\nslice: S2\nowner_role: Session/恢复开发者\nbaseline_main: c1cfccf18df97fa4b8bc2ed1752071feda9c3670\nmanifest_sha256: 0f25524ed0660facb6d38c83c643ecc889dbe9963afb6bf0e81bf3f4d5f234b6\nsource: docs/design/2026-10-26-firstmate-upgrade/work-packages.json\ndependency_ids: none\n依赖保存在规划正文，当前 RPC 不自动执行依赖门禁。\n原任务: 已应用手工发送回执保全\n原验收: 见新增验收\n新增验收: session.send 已应用后即使 cleanup 失败仍保留 applied 回执；未知不能降格为未发送\n验证方法: 真实 DB/故障注入：应用成功+清理失败、重启、重复调用保持原回执并阻止重复发送\n建议文件: packages/cli/src/daemon.ts, packages/core/src/state/session-continuations.ts\n当前范围: planned\n局部 done 仅表示 adopt_session 的实现；不证明全量能力资格或默认启用。\n证据: \n基线 CI: https://github.com/osborn-studio/osstack/actions/runs/40332791896\n阻断: 无额外环境阻断；按依赖与范围推进\n已有债务卡: session-pilot-debt/card_9a161476\n本卡是 roadmap 投影，不创建新的执行义务，不授予副作用权限。",
+    "status": "done",
+    "priority": 0,
+    "assignee": "Session/恢复开发者",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793032277.973,
+    "updated_at": 1793349455.856,
+    "started_at": 1793079096.073,
+    "completed_at": 1793349455.856
+  }
+}

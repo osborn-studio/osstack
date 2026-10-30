@@ -1,6 +1,6 @@
 # Offline feature-map selector: bounded W18 delivery
 
-Implemented and locally validated; publication CI is evaluated separately. Final code commit `5b730756` follows full-regression candidate `9e37bfa0`. No full W18/C0 acceptance or user stage sign-off is asserted.
+Implemented and locally validated; [PR311](https://github.com/osborn-studio/osstack/pull/311) is Ready/main after current-head CI success; see [final CI records](ci-final/README.md). Human approval and merge remain pending. Final code commit `5b730756` follows full-regression candidate `9e37bfa0`. No full W18/C0 acceptance or user stage sign-off is asserted.
 
 ## What this delivers
 

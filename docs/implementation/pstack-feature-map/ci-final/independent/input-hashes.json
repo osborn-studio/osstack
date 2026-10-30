@@ -1,0 +1,17 @@
+[
+  {
+    "path": "metadata.stdout",
+    "bytes": 21087,
+    "sha256": "db53bb38808a1ac52b67b98a34fa26b3d862fa18cfba58a5a26a80ae75141752"
+  },
+  {
+    "path": "full-log.stdout",
+    "bytes": 2244074,
+    "sha256": "242f965083a5a545ef24bf5715f90fc29343480b01b59d70884fec71ad124e41"
+  },
+  {
+    "path": "pr-before.stdout",
+    "bytes": 1988,
+    "sha256": "be587d4c57d82a2477566bc48198c033942a13183f22c9874ad1b0e92fccb5ce"
+  }
+]

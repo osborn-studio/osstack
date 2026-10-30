@@ -1,0 +1,7 @@
+{
+  "raw_log_sha256": "242f965083a5a545ef24bf5715f90fc29343480b01b59d70884fec71ad124e41",
+  "raw_bytes": 2244074,
+  "gzip_sha256": "9b2a2d5d55d699b2411f92c81cb5c79f6887af6e00b8bd01b0a57721aa0d85e0",
+  "lossless_roundtrip": true,
+  "remote_artifact_downloaded": false
+}

@@ -1,0 +1,536 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-30T08:38:11.491105+00:00",
+  "archive": "raw-verification.tar.gz",
+  "archive_sha256": "46dbd806d0b52b33dbaae9d141e4421769c3429a21d446640b51e143ce2d74ba",
+  "originals_not_modified": true,
+  "excluded": [
+    "node_modules",
+    "upstream.git object store",
+    "unrelated historical board snapshots"
+  ],
+  "members": [
+    {
+      "path": "source/source-lock.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/source-lock.json",
+      "type": "file",
+      "mode": 420,
+      "size": 174759,
+      "sha256": "1edd7cdc1c796116932f18f4e8bd07dff63c9110357278084a59ad1c534db6ee"
+    },
+    {
+      "path": "source/source-inspector-probe-wrong-binary.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/source-inspector-probe-wrong-binary.json",
+      "type": "file",
+      "mode": 420,
+      "size": 416,
+      "sha256": "8e2f1da9b3b90501388250307eaa2da1308f9541c3a78db77b205bc9259dcb85"
+    },
+    {
+      "path": "source/source-inspector-probe-partial-store.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/source-inspector-probe-partial-store.json",
+      "type": "file",
+      "mode": 420,
+      "size": 416,
+      "sha256": "5e82dd2dd14d579f1c60eacfee6cdc31665a632095e2e33451abe379569043f0"
+    },
+    {
+      "path": "source/source-inspector-probe.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/source-inspector-probe.json",
+      "type": "file",
+      "mode": 420,
+      "size": 139488,
+      "sha256": "8f7261e7ac3fabaf3d56b1608d7edcee7cf717799d115c25b28ebc75474505b5"
+    },
+    {
+      "path": "source/probe-source.mjs",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/probe-source.mjs",
+      "type": "file",
+      "mode": 420,
+      "size": 1033,
+      "sha256": "844c859efa694607c70f3119b46e4b83cb849265ae10ef14f8159a33d3825ff1"
+    },
+    {
+      "path": "source/probe-source-v2.mjs",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/probe-source-v2.mjs",
+      "type": "file",
+      "mode": 420,
+      "size": 1024,
+      "sha256": "15c6cfdeecaf6d35e335c4b4512d1c0889d6dcd6fc50dd575a2e9a8a7cae4a0b"
+    },
+    {
+      "path": "source/probe-source-v3.mjs",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/probe-source-v3.mjs",
+      "type": "file",
+      "mode": 420,
+      "size": 1007,
+      "sha256": "570482e3608bbf69437ef08eb2cf42d4c014677c986e674411cb39a645666bb3"
+    },
+    {
+      "path": "source/pstack-v0.15.36.tar",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/pstack-v0.15.36.tar",
+      "type": "file",
+      "mode": 420,
+      "size": 6840320,
+      "sha256": "1cd236f1c6d2b142903e56cb145bb3e85f99a64ec0de1850aad5959e76af9345"
+    },
+    {
+      "path": "source/minimal-product-chain.md",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-fixed-release-plan-20261030/minimal-product-chain.md",
+      "type": "file",
+      "mode": 420,
+      "size": 16680,
+      "sha256": "22f85c15ed5791fdbf30f5aba2af16754313cb503ac773502964d4272cddc41c"
+    },
+    {
+      "path": "w01/contract.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/contract.json",
+      "type": "file",
+      "mode": 420,
+      "size": 1187,
+      "sha256": "c561d9586442690165d828aa81934417765f21a1f3812e2b1e9806ca7bb3ff50"
+    },
+    {
+      "path": "w01/author",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author",
+      "type": "directory",
+      "mode": 493,
+      "size": 0
+    },
+    {
+      "path": "w01/author/README.md",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/README.md",
+      "type": "file",
+      "mode": 420,
+      "size": 1539,
+      "sha256": "032d152406dacbd6e1eb8f2def3df166bcbce8cae2cdd6b99707adefaca0e147"
+    },
+    {
+      "path": "w01/author/binding.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/binding.json",
+      "type": "file",
+      "mode": 420,
+      "size": 793,
+      "sha256": "15408d51ced8be1fd2dace827e75edab45926ece5a103dc75b9a299567cd1eed"
+    },
+    {
+      "path": "w01/author/contract.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/contract.json",
+      "type": "file",
+      "mode": 420,
+      "size": 1187,
+      "sha256": "c561d9586442690165d828aa81934417765f21a1f3812e2b1e9806ca7bb3ff50"
+    },
+    {
+      "path": "w01/author/dependency-build.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/dependency-build.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 125,
+      "sha256": "c06a042f0a7826574c7afd168aa883027d9d98029d024b801629476279e6a810"
+    },
+    {
+      "path": "w01/author/dependency-build.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/dependency-build.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "w01/author/dependency-build.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/dependency-build.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 154,
+      "sha256": "880238159ccf61e3e0808a59ffba1c2e16d5ba8247e4103a64ccf3c547446074"
+    },
+    {
+      "path": "w01/author/green-focused.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/green-focused.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 372,
+      "sha256": "fcfb0c901cff0cf3c4a0203c3b0ecdf3f685c88443b1bfc1edf6bbad19530d79"
+    },
+    {
+      "path": "w01/author/green-focused.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/green-focused.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "w01/author/green-focused.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/green-focused.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 382,
+      "sha256": "885272f59f6de167dab6b7dbfc03c7d1cd7324df48caec1b97ae172d1e508f96"
+    },
+    {
+      "path": "w01/author/install.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/install.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 79,
+      "sha256": "108adc7323e4b7b0a7e95c8fd580ed2f297a9f95815a484a3e720638705e2af7"
+    },
+    {
+      "path": "w01/author/install.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/install.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "w01/author/install.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/install.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 2597,
+      "sha256": "b97cf6035b42921e6bd9ad192116accfe64c9f3e9c0166019aa8a10747ae87dc"
+    },
+    {
+      "path": "w01/author/manifest.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/manifest.json",
+      "type": "file",
+      "mode": 420,
+      "size": 4631,
+      "sha256": "bf64af00352f3a3388ee3372058bb6eed80869d913e3839b79d83084aea19ead"
+    },
+    {
+      "path": "w01/author/manifest.test.ts",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/manifest.test.ts",
+      "type": "file",
+      "mode": 420,
+      "size": 5623,
+      "sha256": "269db5bd88083d5cb045822e109969b656df307564df6864ef1f367f524110c2"
+    },
+    {
+      "path": "w01/author/manifest.ts",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/manifest.ts",
+      "type": "file",
+      "mode": 420,
+      "size": 5236,
+      "sha256": "d775042ab6befbb09b4e2c363bd8e1240b6ad1cf89a1891072bfd5acf5024795"
+    },
+    {
+      "path": "w01/author/old-manifest.test.ts",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/old-manifest.test.ts",
+      "type": "file",
+      "mode": 420,
+      "size": 2284,
+      "sha256": "fbc6da2f76d4e3a0e83c1a92c984c68702d357e692160f5fe6710ff40e3995fc"
+    },
+    {
+      "path": "w01/author/old-manifest.ts",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/old-manifest.ts",
+      "type": "file",
+      "mode": 420,
+      "size": 3978,
+      "sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6"
+    },
+    {
+      "path": "w01/author/red-focused.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/red-focused.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 372,
+      "sha256": "a4ca7aa810e86245abfcfdc23ea15502be6ffc91dcee41fd26565c6986e096d1"
+    },
+    {
+      "path": "w01/author/red-focused.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/red-focused.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 19670,
+      "sha256": "69a169957184e5767229b6b521655f5e42d5103f1f881e3fbdf2de6e8e6798f7"
+    },
+    {
+      "path": "w01/author/red-focused.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/red-focused.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 11539,
+      "sha256": "a9d5abb4325f2eb1a0301ee57302c56cc9f30f44de846c48138e031cf5b2cea3"
+    },
+    {
+      "path": "w01/author/red.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/red.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 357,
+      "sha256": "5095ee8bd9b546fd2aa102528dc2a07fbd6e50299178c3fe301528a6230e0892"
+    },
+    {
+      "path": "w01/author/red.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/red.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 21893,
+      "sha256": "916479944e8dbbf1005c76877b324e5f1eac776b57ccfbc91fb17af662acf609"
+    },
+    {
+      "path": "w01/author/red.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/red.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 11570,
+      "sha256": "3b8a77f341d4eecfb3b63ff9492c568380edf2fc88e57087c8a17d1d6230c825"
+    },
+    {
+      "path": "w01/author/source.patch",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/source.patch",
+      "type": "file",
+      "mode": 420,
+      "size": 6697,
+      "sha256": "67cdcb0b12b035cc004ae7112e2b870e20997c3cb91074ff0ce76f45eb41c987"
+    },
+    {
+      "path": "w01/author/status.txt",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/status.txt",
+      "type": "file",
+      "mode": 420,
+      "size": 91,
+      "sha256": "041a1b7e04b3b8dadf3f1f184e8f8b728a9c36148b220a963c577cd52feea99f"
+    },
+    {
+      "path": "w01/author/typecheck-1.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/typecheck-1.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 125,
+      "sha256": "4fa8ef5b72823006d9a716837dd7b7d30cbbe4bf760090d1e1f0e6fd0f11b1b9"
+    },
+    {
+      "path": "w01/author/typecheck-1.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/typecheck-1.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 15,
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "path": "w01/author/typecheck-1.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/typecheck-1.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 598,
+      "sha256": "353e2a0fa068fc3affa053d6334540b27c72227a4822c3688d70e9a823ddd317"
+    },
+    {
+      "path": "w01/author/typecheck-final.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/typecheck-final.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 125,
+      "sha256": "e2b22a2c977a1a9615df48d5b09390164dd130aa1fe68b8b515289f562ad116b"
+    },
+    {
+      "path": "w01/author/typecheck-final.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/typecheck-final.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 15,
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "path": "w01/author/typecheck-final.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/author/typecheck-final.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "w01/independent",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent",
+      "type": "directory",
+      "mode": 493,
+      "size": 0
+    },
+    {
+      "path": "w01/independent/README.md",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/README.md",
+      "type": "file",
+      "mode": 420,
+      "size": 1855,
+      "sha256": "f70ba81ef81ca8f8c608255af18263915510982ad122fc6d61d2631391d4c000"
+    },
+    {
+      "path": "w01/independent/check.cjs",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/check.cjs",
+      "type": "file",
+      "mode": 420,
+      "size": 5478,
+      "sha256": "788f5d761689b9c41f0d3390020d6fac04ce19788b08e13ec6516e9202a680e3"
+    },
+    {
+      "path": "w01/independent/freeze.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/freeze.json",
+      "type": "file",
+      "mode": 420,
+      "size": 744,
+      "sha256": "a0c2ef3a6960b7c7fd01713a8f357ea35628291cd0aeb322691e2c25cc260bca"
+    },
+    {
+      "path": "w01/independent/new",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new",
+      "type": "directory",
+      "mode": 493,
+      "size": 0
+    },
+    {
+      "path": "w01/independent/new/nested",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new/nested",
+      "type": "directory",
+      "mode": 493,
+      "size": 0
+    },
+    {
+      "path": "w01/independent/new/nested/skills.yaml",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new/nested/skills.yaml",
+      "type": "file",
+      "mode": 420,
+      "size": 391,
+      "sha256": "5d0c54767f3a5b535fc6f394e132dcec6243aef865c26186612f5aa42e10c92e"
+    },
+    {
+      "path": "w01/independent/new/old.yaml",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new/old.yaml",
+      "type": "file",
+      "mode": 420,
+      "size": 73,
+      "sha256": "d445b95ff8e675a305f3d8020612396a2fdef5c3b1dc8d1b9eade396abd1f903"
+    },
+    {
+      "path": "w01/independent/new/results.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new/results.json",
+      "type": "file",
+      "mode": 420,
+      "size": 5377,
+      "sha256": "b3cbfaaa61d1ac65150785caf1261e3f5e1a4867addb2c0c0418030e83fde5d0"
+    },
+    {
+      "path": "w01/independent/new.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 871,
+      "sha256": "31872cd3ecf8b436458e365758120d3dcd53e08b586a1b493bb2ce0784fb5db6"
+    },
+    {
+      "path": "w01/independent/new.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "w01/independent/new.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/new.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 5377,
+      "sha256": "b3cbfaaa61d1ac65150785caf1261e3f5e1a4867addb2c0c0418030e83fde5d0"
+    },
+    {
+      "path": "w01/independent/old",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old",
+      "type": "directory",
+      "mode": 493,
+      "size": 0
+    },
+    {
+      "path": "w01/independent/old/nested",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old/nested",
+      "type": "directory",
+      "mode": 493,
+      "size": 0
+    },
+    {
+      "path": "w01/independent/old/nested/skills.yaml",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old/nested/skills.yaml",
+      "type": "file",
+      "mode": 420,
+      "size": 343,
+      "sha256": "3cab44071954a6cd459ca69087449edbd01cbcf78e64bc1d25e4ae67e46df195"
+    },
+    {
+      "path": "w01/independent/old/old.yaml",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old/old.yaml",
+      "type": "file",
+      "mode": 420,
+      "size": 73,
+      "sha256": "d445b95ff8e675a305f3d8020612396a2fdef5c3b1dc8d1b9eade396abd1f903"
+    },
+    {
+      "path": "w01/independent/old/results.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old/results.json",
+      "type": "file",
+      "mode": 420,
+      "size": 7085,
+      "sha256": "e3d101d4d4b8bb4ace8be63bc95b2f7c87f3dc86abbcf8d226a0993ef52425fb"
+    },
+    {
+      "path": "w01/independent/old-manifest.ts",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old-manifest.ts",
+      "type": "file",
+      "mode": 420,
+      "size": 3978,
+      "sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6"
+    },
+    {
+      "path": "w01/independent/old-watcher.ts",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old-watcher.ts",
+      "type": "file",
+      "mode": 420,
+      "size": 2763,
+      "sha256": "11daab03681975fafcfda232d8baadf23cde984d4589bc4df2f33e503be531f6"
+    },
+    {
+      "path": "w01/independent/old.command.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old.command.json",
+      "type": "file",
+      "mode": 420,
+      "size": 871,
+      "sha256": "a62f7057699907ad294f605fba215e42eb8269ee6cb7ee2df9b507eb57f9560f"
+    },
+    {
+      "path": "w01/independent/old.stderr",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old.stderr",
+      "type": "file",
+      "mode": 420,
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "w01/independent/old.stdout",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/old.stdout",
+      "type": "file",
+      "mode": 420,
+      "size": 7085,
+      "sha256": "e3d101d4d4b8bb4ace8be63bc95b2f7c87f3dc86abbcf8d226a0993ef52425fb"
+    },
+    {
+      "path": "w01/independent/receipt.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/receipt.json",
+      "type": "file",
+      "mode": 420,
+      "size": 1454,
+      "sha256": "9c166991c601fd61e750ebcf68a2197f5efb427006c3f35eee369efb2678bd99"
+    },
+    {
+      "path": "w01/independent/vectors.json",
+      "original_path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-source-manifest-20261030/independent/vectors.json",
+      "type": "file",
+      "mode": 420,
+      "size": 17874,
+      "sha256": "0b11f4347cae12f98a41ad1c66d668f306d84e09864983c62f772df3508c74c3"
+    }
+  ]
+}

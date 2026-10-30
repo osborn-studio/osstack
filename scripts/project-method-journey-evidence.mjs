@@ -271,6 +271,14 @@ export async function checkPacket(path) {
   const packet = JSON.parse(bytes); check(bytes.equals(Buffer.from(jsonBytes(packet))), 'packet_canonical');
   validatePacket(packet); return { status: 'valid', packet_sha256: sha256(bytes), original_evidence_revalidated: false, formal_gate_pass: false };
 }
+// Read retained originals through the same bounded validator as publication.
+// Consistency is checked; producer identity and current live state are not attested.
+export async function inspectRetainedJourney({ input, scope }) {
+  check(scope === undefined || scope === 'full', 'invalid_scope');
+  check(typeof input === 'string' && isAbsolute(input), 'absolute_paths_required');
+  await directory(input);
+  return buildProjection(await realpath(input), scope === 'full');
+}
 export async function projectJourney({ input, output, scope }) {
   check(scope === undefined || scope === 'full', 'invalid_scope');
   check(typeof input === 'string' && typeof output === 'string' && isAbsolute(input) && isAbsolute(output), 'absolute_paths_required');

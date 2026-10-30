@@ -153,3 +153,11 @@ test('programmatic test seams are declared, not represented as normal CLI execut
   const next = await runMaintenance({ map: f.map, output: join(f.root, 'injected-driver') }, { invoke: async () => ({ stdout: '', stderr: '', exit_code: 1 }) });
   assert.equal(next.execution_path, 'runJourney_with_injected_driver');
 });
+
+
+test('maintenance binds its wrapper bytes across a recorded attempt', async t => {
+  const f = await setup(t);
+  const bytes = await readFile(new URL('./maintain-skills-check-map.mjs', import.meta.url));
+  const result = await runMaintenance(f, seam);
+  assert.deepEqual(result.tool, { before_sha256: sha256(bytes), after_sha256: sha256(bytes), unchanged: true });
+});

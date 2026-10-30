@@ -1,0 +1,41 @@
+[
+  {
+    "card_id": "card_9a676553",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "W18：三个实际CLI场景的相关叶子选择与读取",
+    "body": "main01ec1852/control0294c2dc；PS08主、PS23支持/J03/J06支持。作者独占reader/test，B三叶与索引，C预冻独立反例；root唯一共享接线/PR/full。材料读取不等产品验证/真实跨入口A35/主机A48，原C0未完成。禁止Firstmate深运行。PLAN docs/implementation/pstack-feature-map/PLAN.md。",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "PR311 Ready/main, five applicable CI success; waiting only for gilberthello approval/merge, not formal W18/C0 acceptance",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793340470.719,
+    "updated_at": 1793344403.68,
+    "started_at": 1793340470.719,
+    "completed_at": null
+  },
+  {
+    "comment_id": 737,
+    "card_id": "card_9a676553",
+    "author": "root",
+    "body": "PR311已Ready/main，headf70f4026，CI41014856944五适用SUCCESS/paidSKIP，root回读false/main/MERGEABLE；仅等gilberthello审批合并。实际CI checkout7aec62e1，22包7259pass7skip0fail，feature-map40、exports93pass1skip，reader14/journey43/map24/projection88通过；真实default/full/map/projection/check日志独立核，未下载artifact。该切片仅W18有界读取，PS08主/PS23/J03/J06支持；原C0/C1/C2未全过，下一W19维护归属/健康，不进入Firstmate深运行。",
+    "created_at": 1793344403.681
+  },
+  {
+    "comment_id": 738,
+    "card_id": "card_7d169d5f",
+    "author": "root",
+    "body": "PR311已Ready/main，headf70f4026，CI41014856944五适用SUCCESS/paidSKIP，root回读false/main/MERGEABLE；仅等gilberthello审批合并。实际CI checkout7aec62e1，22包7259pass7skip0fail，feature-map40、exports93pass1skip，reader14/journey43/map24/projection88通过；真实default/full/map/projection/check日志独立核，未下载artifact。该切片仅W18有界读取，PS08主/PS23/J03/J06支持；原C0/C1/C2未全过，下一W19维护归属/健康，不进入Firstmate深运行。",
+    "created_at": 1793344403.681
+  },
+  {
+    "comment_id": 739,
+    "card_id": "card_2b7cc24a",
+    "author": "root",
+    "body": "PR311已Ready/main，headf70f4026，CI41014856944五适用SUCCESS/paidSKIP，root回读false/main/MERGEABLE；仅等gilberthello审批合并。实际CI checkout7aec62e1，22包7259pass7skip0fail，feature-map40、exports93pass1skip，reader14/journey43/map24/projection88通过；真实default/full/map/projection/check日志独立核，未下载artifact。该切片仅W18有界读取，PS08主/PS23/J03/J06支持；原C0/C1/C2未全过，下一W19维护归属/健康，不进入Firstmate深运行。",
+    "created_at": 1793344403.681
+  }
+]

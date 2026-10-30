@@ -1,0 +1,222 @@
+[
+  {
+    "package": "contracts",
+    "pass": 15,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 15,
+    "line": 4739,
+    "text": "packages/contracts test:       Tests  15 passed (15)"
+  },
+  {
+    "package": "compliance",
+    "pass": 17,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 17,
+    "line": 4744,
+    "text": "packages/compliance test:       Tests  17 passed (17)"
+  },
+  {
+    "package": "github",
+    "pass": 224,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 224,
+    "line": 4772,
+    "text": "packages/github test:       Tests  224 passed (224)"
+  },
+  {
+    "package": "knowledge",
+    "pass": 44,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 44,
+    "line": 4779,
+    "text": "packages/knowledge test:       Tests  44 passed (44)"
+  },
+  {
+    "package": "neat-eval",
+    "pass": 16,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 16,
+    "line": 4801,
+    "text": "packages/neat-eval test:       Tests  16 passed (16)"
+  },
+  {
+    "package": "runtime",
+    "pass": 1,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 1,
+    "line": 4808,
+    "text": "packages/runtime test:       Tests  1 passed (1)"
+  },
+  {
+    "package": "protocol",
+    "pass": 1012,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 1012,
+    "line": 4867,
+    "text": "packages/protocol test:       Tests  1012 passed (1012)"
+  },
+  {
+    "package": "governance",
+    "pass": 301,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 301,
+    "line": 4880,
+    "text": "packages/governance test:       Tests  301 passed (301)"
+  },
+  {
+    "package": "knowledge-cloud",
+    "pass": 36,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 36,
+    "line": 4893,
+    "text": "packages/knowledge-cloud test:       Tests  36 passed (36)"
+  },
+  {
+    "package": "graph",
+    "pass": 257,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 257,
+    "line": 4940,
+    "text": "packages/graph test:       Tests  257 passed (257)"
+  },
+  {
+    "package": "core",
+    "pass": 1301,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 1301,
+    "line": 5085,
+    "text": "packages/core test:       Tests  1301 passed (1301)"
+  },
+  {
+    "package": "plugins",
+    "pass": 1,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 1,
+    "line": 5099,
+    "text": "packages/plugins test:       Tests  1 passed (1)"
+  },
+  {
+    "package": "hermes-adapter",
+    "pass": 22,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 22,
+    "line": 5106,
+    "text": "packages/hermes-adapter test:       Tests  22 passed (22)"
+  },
+  {
+    "package": "skills",
+    "pass": 2,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 2,
+    "line": 5117,
+    "text": "packages/skills test:       Tests  2 passed (2)"
+  },
+  {
+    "package": "autonomy",
+    "pass": 201,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 201,
+    "line": 5246,
+    "text": "packages/autonomy test:       Tests  201 passed (201)"
+  },
+  {
+    "package": "skill-registry",
+    "pass": 43,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 43,
+    "line": 5261,
+    "text": "packages/skill-registry test:       Tests  43 passed (43)"
+  },
+  {
+    "package": "agents",
+    "pass": 361,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 361,
+    "line": 5324,
+    "text": "packages/agents test:       Tests  361 passed (361)"
+  },
+  {
+    "package": "config",
+    "pass": 30,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 30,
+    "line": 5336,
+    "text": "packages/config test:       Tests  30 passed (30)"
+  },
+  {
+    "package": "loop",
+    "pass": 514,
+    "skip": 1,
+    "fail": 0,
+    "todo": 0,
+    "total": 515,
+    "line": 5783,
+    "text": "packages/loop test:       Tests  514 passed | 1 skipped (515)"
+  },
+  {
+    "package": "conformance",
+    "pass": 9,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 9,
+    "line": 5810,
+    "text": "packages/conformance test:       Tests  9 passed (9)"
+  },
+  {
+    "package": "supervisor",
+    "pass": 88,
+    "skip": 0,
+    "fail": 0,
+    "todo": 0,
+    "total": 88,
+    "line": 5824,
+    "text": "packages/supervisor test:       Tests  88 passed (88)"
+  },
+  {
+    "package": "cli",
+    "pass": 2764,
+    "skip": 6,
+    "fail": 0,
+    "todo": 0,
+    "total": 2770,
+    "line": 8327,
+    "text": "packages/cli test:       Tests  2764 passed | 6 skipped (2770)"
+  }
+]

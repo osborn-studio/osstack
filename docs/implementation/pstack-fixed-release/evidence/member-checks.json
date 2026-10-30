@@ -1,0 +1,530 @@
+[
+  {
+    "path": "source/source-lock.json",
+    "type": "file",
+    "mode": 420,
+    "size": 174759,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/source-inspector-probe-wrong-binary.json",
+    "type": "file",
+    "mode": 420,
+    "size": 416,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/source-inspector-probe-partial-store.json",
+    "type": "file",
+    "mode": 420,
+    "size": 416,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/source-inspector-probe.json",
+    "type": "file",
+    "mode": 420,
+    "size": 139488,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/probe-source.mjs",
+    "type": "file",
+    "mode": 420,
+    "size": 1033,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/probe-source-v2.mjs",
+    "type": "file",
+    "mode": 420,
+    "size": 1024,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/probe-source-v3.mjs",
+    "type": "file",
+    "mode": 420,
+    "size": 1007,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/pstack-v0.15.36.tar",
+    "type": "file",
+    "mode": 420,
+    "size": 6840320,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "source/minimal-product-chain.md",
+    "type": "file",
+    "mode": 420,
+    "size": 16680,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/contract.json",
+    "type": "file",
+    "mode": 420,
+    "size": 1187,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author",
+    "type": "directory",
+    "mode": 493,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/README.md",
+    "type": "file",
+    "mode": 420,
+    "size": 1539,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/binding.json",
+    "type": "file",
+    "mode": 420,
+    "size": 793,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/contract.json",
+    "type": "file",
+    "mode": 420,
+    "size": 1187,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/dependency-build.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 125,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/dependency-build.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/dependency-build.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 154,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/green-focused.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 372,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/green-focused.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/green-focused.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 382,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/install.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 79,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/install.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/install.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 2597,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/manifest.json",
+    "type": "file",
+    "mode": 420,
+    "size": 4631,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/manifest.test.ts",
+    "type": "file",
+    "mode": 420,
+    "size": 5623,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/manifest.ts",
+    "type": "file",
+    "mode": 420,
+    "size": 5236,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/old-manifest.test.ts",
+    "type": "file",
+    "mode": 420,
+    "size": 2284,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/old-manifest.ts",
+    "type": "file",
+    "mode": 420,
+    "size": 3978,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/red-focused.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 372,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/red-focused.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 19670,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/red-focused.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 11539,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/red.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 357,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/red.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 21893,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/red.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 11570,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/source.patch",
+    "type": "file",
+    "mode": 420,
+    "size": 6697,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/status.txt",
+    "type": "file",
+    "mode": 420,
+    "size": 91,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/typecheck-1.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 125,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/typecheck-1.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 15,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/typecheck-1.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 598,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/typecheck-final.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 125,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/typecheck-final.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 15,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/author/typecheck-final.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent",
+    "type": "directory",
+    "mode": 493,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/README.md",
+    "type": "file",
+    "mode": 420,
+    "size": 1855,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/check.cjs",
+    "type": "file",
+    "mode": 420,
+    "size": 5478,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/freeze.json",
+    "type": "file",
+    "mode": 420,
+    "size": 744,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new",
+    "type": "directory",
+    "mode": 493,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new/nested",
+    "type": "directory",
+    "mode": 493,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new/nested/skills.yaml",
+    "type": "file",
+    "mode": 420,
+    "size": 391,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new/old.yaml",
+    "type": "file",
+    "mode": 420,
+    "size": 73,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new/results.json",
+    "type": "file",
+    "mode": 420,
+    "size": 5377,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 871,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/new.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 5377,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old",
+    "type": "directory",
+    "mode": 493,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old/nested",
+    "type": "directory",
+    "mode": 493,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old/nested/skills.yaml",
+    "type": "file",
+    "mode": 420,
+    "size": 343,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old/old.yaml",
+    "type": "file",
+    "mode": 420,
+    "size": 73,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old/results.json",
+    "type": "file",
+    "mode": 420,
+    "size": 7085,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old-manifest.ts",
+    "type": "file",
+    "mode": 420,
+    "size": 3978,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old-watcher.ts",
+    "type": "file",
+    "mode": 420,
+    "size": 2763,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old.command.json",
+    "type": "file",
+    "mode": 420,
+    "size": 871,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old.stderr",
+    "type": "file",
+    "mode": 420,
+    "size": 0,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/old.stdout",
+    "type": "file",
+    "mode": 420,
+    "size": 7085,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/receipt.json",
+    "type": "file",
+    "mode": 420,
+    "size": 1454,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  },
+  {
+    "path": "w01/independent/vectors.json",
+    "type": "file",
+    "mode": 420,
+    "size": 17874,
+    "tar_matches_manifest": true,
+    "original_matches": true
+  }
+]

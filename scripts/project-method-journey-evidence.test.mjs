@@ -391,3 +391,20 @@ for (const full of [false, true]) {
     assert.equal(p.features[0].cleanup.status, 'unknown');
   });
 }
+
+
+test('read-only retained inspection validates full evidence without acquiring output', async t => {
+  const { inspectRetainedJourney } = await import('./project-method-journey-evidence.mjs');
+  for (const doctorFailure of [false, true]) {
+    const f = await fixture(t, { full: true, doctorFailure });
+    const before = await readFile(join(f.input, 'journey.json'));
+    const result = await inspectRetainedJourney({ input: f.input, scope: 'full' });
+    assert.equal(result.journey_status, doctorFailure ? 'failed' : 'passed');
+    assert.equal((await readdir(f.root)).includes('packet'), false);
+    assert.deepEqual(await readFile(join(f.input, 'journey.json')), before);
+    await writeFile(join(f.input, 'journey.json'), '{}');
+    await assert.rejects(inspectRetainedJourney({ input: f.input, scope: 'full' }));
+  }
+  await assert.rejects(inspectRetainedJourney({ input: 'relative', scope: 'full' }));
+  await assert.rejects(inspectRetainedJourney({ input: '/unused', scope: 'all' }));
+});

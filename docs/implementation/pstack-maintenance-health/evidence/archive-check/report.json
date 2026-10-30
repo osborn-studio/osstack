@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-30T08:58:18.479908+00:00",
+  "status": "passed",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-maintenance-health/docs/implementation/pstack-maintenance-health/evidence/raw-verification.tar.gz",
+  "archive_sha256": "abec101cbe7795973b403041e2c119a40b6e6efef6a451430672a30ee744dbc1",
+  "manifest_sha256": "35a0583c72cc1c4300d088f901ffff7d4d8066a52cb16eba723431f991789fe1",
+  "members": 4155,
+  "types": {
+    "directory": 312,
+    "file": 3841,
+    "symlink": 2
+  },
+  "file_bytes": 86889274,
+  "errors": [],
+  "source_root": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-maintenance-health-20261030",
+  "required_evidence_present": [
+    "docs/actual-tool-repair/attempt-01/maintenance.json",
+    "docs/actual-tool-repair/attempt-02/maintenance.json",
+    "docs/actual-tool-repair/records/repair.json",
+    "independent/criteria-v1.json",
+    "independent/report-initial.json",
+    "independent/remaining-retained-run/01-raw.json",
+    "independent/post-inspection/results.json",
+    "independent/closure/report.json",
+    "independent/final-manifest.json",
+    "independent-audit-check/report.json",
+    "closure-check/report.json",
+    "audit/report.md",
+    "audit/response.json",
+    "audit-closure/report.md",
+    "audit-closure/response.json"
+  ],
+  "root_full_bindings_present": [
+    "root/final-validation/receipt.json",
+    "root/final-validation/1.stdout",
+    "root/final-validation/1.stderr",
+    "root/final-validation/before.json",
+    "root/final-validation/after.json"
+  ],
+  "audit_first_lines": {
+    "audit/report.md": "## Verdict: PASS_WITH_CONCERNS",
+    "audit-closure/report.md": "# Verdict: PASS_WITH_CONCERNS"
+  },
+  "scope": [
+    "Every listed archive member matched source type/mode/file size+SHA256 or symlink target.",
+    "Exact archive/member name set; no extraction or symlink dereference.",
+    "Absolute symlink targets preserved as original data, not a portable/extraction-safe runtime claim.",
+    "No product/test/model execution; raw contents retained does not recertify every prior claim."
+  ]
+}
