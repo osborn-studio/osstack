@@ -8,12 +8,15 @@ import {
   AttentionActions,
   attentionDigest,
   readAttentionRecovery,
+  type AttentionReminderPolicy,
   type AttentionSender,
 } from "@osstack/core";
 type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
 export interface SupervisionOptions {
   loopReader?: (input: LoopReadInput) => Promise<unknown>;
   readTimeoutMs?: number;
+  /** Opt-in overdue-decision reminders; only scheduled when a sender exists. */
+  reminders?: AttentionReminderPolicy;
 }
 type ReadFailure = "timeout" | "aborted" | "invalid_payload" | "read_failed" | "read_capacity_exceeded";
 type LoopFacts = Record<string, unknown> & { state: string; reason?: string };
@@ -149,6 +152,10 @@ export class SupervisionService {
     for (const scope of this.store.listScopes()) {
       try { this.experience.enqueue(scope.scope_id); }
       catch { /* Keep observed items; one unavailable scope must not block other notices. */ }
+    }
+    if (this.sender && this.options.reminders) {
+      try { this.experience.scheduleReminders(this.options.reminders); }
+      catch { /* A stale owner or busy DB skips this pass; the schedule is persisted. */ }
     }
     if (this.sender && !this.delivering) {
       // Only this service owns the local idempotent sender. A failed receipt

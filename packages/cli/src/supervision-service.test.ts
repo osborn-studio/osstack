@@ -287,6 +287,26 @@ it("recovers a failed local delivery receipt on the next scan without restart", 
   expect(sent.size).toBe(1);
 });
 
+it("sends opt-in overdue reminders after the first notice, and none without a policy", async () => {
+  for (const reminders of [{ overdueMs: 1, backoffMaxMs: 1 }, undefined]) {
+    const { service, scope } = setup(reminders ? { reminders } : {});
+    const sent: { delivery_id: string; reminder?: { sequence: number } }[] = [];
+    Object.defineProperty(service, "sender", { value: async (message: (typeof sent)[number]) => { sent.push(message); } });
+    service.store.projectDecision(service.observer.owner, {scopeId:scope.scope_id,sessionId:"s",turnId:"turn",sourceVersion:1,decision:{decision_id:"d",question:"Choose",choices:[]},now:1});
+    await vi.waitFor(async () => {
+      await service.requestScan();
+      expect(sent.filter((m) => m.reminder).length).toBeGreaterThanOrEqual(reminders ? 2 : 0);
+      expect(sent.filter((m) => !m.reminder)).toHaveLength(1);
+    });
+    if (!reminders) {
+      await service.requestScan();
+      expect(sent.filter((m) => m.reminder)).toEqual([]);
+    } else {
+      expect(sent.filter((m) => m.reminder).map((m) => m.reminder!.sequence).slice(0, 2)).toEqual([1, 2]);
+    }
+  }
+});
+
 it("aborts and joins a real hung notification batch before database close", async () => {
   const { service, scope, db } = setup();
   const late = deferred<void>();

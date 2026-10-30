@@ -228,9 +228,10 @@ export function readAttentionStatus(
     const source = db;
     return source.transaction(() => {
       const schema = source.pragma("user_version", { simple: true });
-      // Reviewed migrations 25–47 preserve the v24 read projection. Migration 47
-      // adds engineering tables; future migrations still need review.
-      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 47)
+      // Reviewed migrations 25–48 preserve the v24 read projection. Migration 47
+      // adds engineering tables and 48 the reminder outbox, which this view does
+      // not read; future migrations still need review.
+      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 48)
         throw new Error("unsupported_schema");
       const task = source
         .prepare(

@@ -1,5 +1,6 @@
 import { SOURCE_OBSERVATIONS_DDL } from "./source-observations-ddl.js";
 import { ENGINEERING_DDL } from "./engineering-ddl.js";
+import { ATTENTION_REMINDERS_DDL } from "./attention-reminders-ddl.js";
 import { FOLLOW_UP_DELIVERY_DDL } from "./follow-up-delivery-ddl.js";
 // SQLite migrations. Each migration is idempotent (CREATE ... IF NOT EXISTS)
 // or guarded by user_version pragma so it runs exactly once.
@@ -1872,6 +1873,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 45, name: "public_follow_up_delivery_attempts", sql: FOLLOW_UP_DELIVERY_DDL },
   { id: 46, name: "local_source_observation_ledger", sql: SOURCE_OBSERVATIONS_DDL },
   { id: 47, name: "engineering_session_adoption", sql: ENGINEERING_DDL },
+  { id: 48, name: "attention_overdue_reminders", sql: ATTENTION_REMINDERS_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;
