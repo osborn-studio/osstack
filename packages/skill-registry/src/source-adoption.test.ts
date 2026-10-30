@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { createScratchDir } from '@osstack/core';
 import { canonicalJointJson, jointDigest, SourceSnapshot } from '@osstack/protocol/joint';
 import { inspectGitSource, type GitSourceInspection, type InspectedSourceFile } from './source-snapshot.js';
-import { assembleDeclaredAdoption } from './source-adoption.js';
+import { assembleDeclaredAdoption, SourceAdoptionError } from './source-adoption.js';
 
 const repo = 'https://example.invalid/skills';
 const commit = 'a'.repeat(40);
@@ -36,7 +36,79 @@ function example() {
 }
 function assemble(x = example()) { return assembleDeclaredAdoption(x.declaration, x.inspections); }
 
+
+// Each source file is shared by every nested component. Per-inspection input stays
+// bounded; only the aggregate component_ids/roles expansion grows quadratically.
+function nestedExample(componentCount: number, sharedFileCount: number) {
+  const subdirs = Array.from({ length: componentCount }, (_, n) => Array(n + 1).fill('nested').join('/'));
+  const leaf = subdirs.at(-1)!;
+  const shared: InspectedSourceFile[] = Array.from({ length: sharedFileCount }, (_, n) => ({
+    path: leaf + '/file-' + String(n).padStart(3, '0') + '.md', mode: '100644',
+    blob: hash('shared-' + n).slice(0, 40), bytes: 1, sha256: hash('shared-' + n), role: 'source',
+  }));
+  const inspections = subdirs.map(subdir => {
+    const i = inspection(subdir);
+    i.files = [i.files.find(f => f.role === 'license')!, ...shared.map(f => ({ ...f }))];
+    return resign(i);
+  });
+  const ids = subdirs.map((_, n) => 'c' + String(n).padStart(2, '0') + 'x'.repeat(61));
+  return {
+    declaration: { schema_version: 1, repository: repo, commit, package_version: '0.15.36',
+      roots: ids, components: inspections.map((i, n) => ({
+        id: ids[n]!, subdir: i.pin.subdir, expectedContentSha256: i.pin.content_sha256,
+        requires: [], external_requires: [],
+      })), external_requirements: [],
+    },
+    inspections,
+  };
+}
+
 describe('declared candidate closure, not semantic discovery or activation', () => {
+
+  it('labels package version as caller asserted even when its label changes at the same commit', () => {
+    const x = example(), first = assemble(x);
+    x.declaration.package_version = '9.9.9';
+    const changed = assemble(x);
+    expect(first.package_version_identity).toBe('caller_asserted');
+    expect(changed.package_version_identity).toBe('caller_asserted');
+    expect(changed.package_version).toBe('9.9.9');
+    expect(changed.commit).toBe(first.commit);
+    expect(changed.candidate_digest).not.toBe(first.candidate_digest);
+  });
+  it('accepts a small legal nested-component overlap and retains both roles', () => {
+    const x = nestedExample(3, 4), out = assemble(x);
+    expect(out.files).toHaveLength(5);
+    expect(out.total_bytes).toBe(11);
+    expect(out.files.every(f => f.component_ids.length === 3 && f.roles.length === 3)).toBe(true);
+    expect(out.components).toHaveLength(3);
+  });
+  it('maps only oversized final candidate serialization to typed RESOURCE_LIMIT', () => {
+    const x = nestedExample(32, 500);
+    // Unique files (501) and bytes (507) are small. Two 64-byte IDs per
+    // component/file alone exceed 1 MiB before JSON keys or any other metadata.
+    expect(500 * 32 * 2 * 64).toBeGreaterThan(1_048_576);
+    expect(x.inspections.every(i => Buffer.byteLength(canonicalJointJson(i)) < 1_048_576)).toBe(true);
+    let failure: unknown;
+    try { assemble(x); } catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(SourceAdoptionError);
+    expect(failure).toMatchObject({ code: 'RESOURCE_LIMIT', message: 'RESOURCE_LIMIT' });
+  });
+  it.each([
+    ['docs/license', false],
+    ['docs/NOTICE', true],
+  ] as const)('checks cross-component license path %s (allowed=%s)', (otherPath, allowed) => {
+    const x = example();
+    for (const [index, path] of ['docs/LICENSE', otherPath].entries()) {
+      const i = x.inspections[index]!;
+      i.files.find(f => f.role === 'license')!.path = path;
+      i.files.sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+      resign(i);
+      x.declaration.components[index]!.expectedContentSha256 = i.pin.content_sha256;
+    }
+    if (allowed) expect(assemble(x).files).toHaveLength(4);
+    else expect(() => assemble(x)).toThrowError(new SourceAdoptionError('FILE_CONFLICT'));
+  });
+
   it('deduplicates a shared license, binds dependencies and stays candidate-only', () => {
     const x=example(), before=JSON.stringify(x), out=assemble(x);
     expect(out.kind).toBe('declared_adoption_candidate'); expect(out.dependency_order).toEqual(['principle','method']);

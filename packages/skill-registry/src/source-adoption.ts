@@ -112,14 +112,19 @@ export function assembleDeclaredAdoption(declaration: unknown, inspections: unkn
     files:resultFiles.map(({path,mode,blob})=>({path,mode,blob})),dependencies:[]}).success,'FILE_CONFLICT');
   const result = {kind:'declared_adoption_candidate' as const,schema_version:1 as const,repository:d.repository,commit:d.commit,package_version:d.package_version,
     declared_closure:'verified' as const,semantic_completeness:'not_assessed' as const,repository_identity:'caller_asserted' as const,
+    package_version_identity:'caller_asserted' as const,
     activation:false as const,installation:'not_performed' as const,formal_snapshot:false as const,roots:[...d.roots].sort(),dependency_order:order,
     components:resultComponents,files:resultFiles,total_bytes:totalBytes,
     external_requirements:[...d.external_requirements].sort((a,b)=>a.id < b.id ? -1 : a.id > b.id ? 1 : 0).map(e=>({...e,status:'not_checked' as const})),
     limitations:['Declared dependencies only; semantic completeness and source discovery are not assessed.',
       'Digest consistency is not authenticated provenance; original Git blob bytes are not re-read.',
+      'Package version is caller-asserted; package metadata is not read or authenticated.',
       'No fetch, installation, execution, registry mutation, permission grant or activation.']};
   // Candidate-only domain: do not register it as a formal joint contract.
-  const candidate_digest = createHash('sha256').update('osstack.joint.declared-adoption.v1\n' + canonicalJointJson(result), 'utf8').digest('hex');
+  let canonicalResult: string;
+  try { canonicalResult = canonicalJointJson(result); }
+  catch { throw new SourceAdoptionError('RESOURCE_LIMIT'); }
+  const candidate_digest = createHash('sha256').update('osstack.joint.declared-adoption.v1\n' + canonicalResult, 'utf8').digest('hex');
   return {...result,candidate_digest};
 }
 export type DeclaredAdoption = ReturnType<typeof assembleDeclaredAdoption>;

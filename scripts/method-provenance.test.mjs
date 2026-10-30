@@ -24,7 +24,7 @@ async function fixture(t) {
     kind: 'declared_method_provenance', schema_version: 1,
     upstream: { repository: 'https://github.com/cursor/plugins', commit: 'a'.repeat(40), subdir: 'pstack', package_version: '0.15.36' },
     adoption_candidate_digest: 'b'.repeat(64),
-    bindings: [{ material: 'references/bug-fix.md', sha256: sha(material), source_refs: [{ path: 'pstack/skills/tdd/SKILL.md', sha256: 'c'.repeat(64) }] }],
+    bindings: [{ material: 'references/bug-fix.md', sha256: sha(material), source_refs: [{ path: 'pstack/skills/tdd/SKILL.md', sha256: 'c'.repeat(64), role: 'adopted_guidance' }] }],
   };
   const save = async () => writeFile(join(sourceRoot, 'provenance.json'), JSON.stringify(declaration) + '\n');
   await save();
@@ -77,4 +77,26 @@ test('refuses provenance symlink', async t => {
 test('refuses oversized provenance before output', async t => {
   const f = await fixture(t); await writeFile(join(f.sourceRoot, 'provenance.json'), ' '.repeat(65537));
   await assert.rejects(exportMethods({ ...f, host: 'codex' }), /provenance_limit/);
+});
+
+ test('rejects contradictory hashes for one source path across material bindings', async t => {
+  const f=await fixture(t); const material=await readFile(join(f.sourceRoot,'references/legacy.md'));
+  f.declaration.bindings.push({material:'references/legacy.md',sha256:sha(material),source_refs:[{...f.declaration.bindings[0].source_refs[0],sha256:'d'.repeat(64)}]});await f.save();
+  await assert.rejects(exportMethods({...f,host:'codex'}),/provenance_source_conflict/);assert.equal(existsSync(f.output),false);
+ });
+
+for(const [name,role] of [['unknown','certified'],['missing',undefined]]) test(`rejects ${name} source-reference role`,async t=>{
+ const f=await fixture(t);if(role===undefined)delete f.declaration.bindings[0].source_refs[0].role;else f.declaration.bindings[0].source_refs[0].role=role;await f.save();
+ await assert.rejects(exportMethods({...f,host:'codex'}),/provenance_/);assert.equal(existsSync(f.output),false);
+});
+test('real export returns the same provenance status as its saved manifest',async t=>{
+ const f=await fixture(t);const result=await exportMethods({...f,host:'codex'});const manifest=JSON.parse(await readFile(join(f.output,'manifest.json'),'utf8'));
+ assert.deepEqual(result.provenance,manifest.provenance);assert.match(result.provenance.limitation,/duplicate keys use last-value/);
+});
+test('canonical package retains its reviewed five bindings and fixed version',async t=>{
+ const f=await fixture(t);const sourceRoot=new URL('../osstack-methods-skill/',import.meta.url).pathname;
+ const result=await exportMethods({sourceRoot,host:'codex',output:f.output,dryRun:true});
+ assert.deepEqual(result.provenance.bound_materials,['references/bug-fix.md','references/code-review.md','references/evidence.md','references/investigation.md','references/sources.md']);
+ assert.equal(result.provenance.upstream.commit,'c742dd61706fbacc1b95f1a20b7b988cf096ce6c');assert.equal(result.provenance.upstream.package_version,'0.15.36');
+ assert.equal(result.provenance.adoption_candidate_digest,'699ffdbbdd848f4e55dc0f7466d6bf21807b87306f2ff45ee436dc26ab26d7d3');
 });

@@ -35,11 +35,11 @@ async function sourceDirectory(path) {
   if (info.isSymbolicLink()) throw Error(`source_symlink: ${path}`);
   if (!info.isDirectory()) throw Error(`source_not_directory: ${path}`);
 }
-async function boundedRead(path, budget, maxBytes = limits.file_bytes) {
+async function boundedRead(path, budget, maxBytes = limits.file_bytes, limitLabel = 'source_limit') {
   const info = await lstat(path);
   if (info.isSymbolicLink()) throw Error(`source_symlink: ${path}`);
   if (!info.isFile()) throw Error(`source_not_regular: ${path}`);
-  if (info.size > maxBytes) throw Error(`${maxBytes === 65536 ? 'provenance_limit' : 'source_limit'}: file bytes ${path}`);
+  if (info.size > maxBytes) throw Error(`${limitLabel}: file bytes ${path}`);
   // NOFOLLOW closes the final-component link race; NONBLOCK avoids a raced FIFO open.
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
@@ -51,7 +51,8 @@ async function boundedRead(path, budget, maxBytes = limits.file_bytes) {
       if (read.bytesRead === 0) break;
       length += read.bytesRead;
     }
-    if (length > maxBytes || (budget.bytes += length) > limits.source_bytes) throw Error(`source_limit: bytes ${path}`);
+    if (length > maxBytes) throw Error(`${limitLabel}: bytes ${path}`);
+    if ((budget.bytes += length) > limits.source_bytes) throw Error(`source_limit: bytes ${path}`);
     const after = await handle.stat();
     if (length !== current.size || after.size !== current.size || after.mtimeMs !== current.mtimeMs) throw Error(`source_changed: ${path}`);
     return Buffer.from(buffer.subarray(0, length));
@@ -84,7 +85,7 @@ async function collectSources(sourceRoot) {
   }
   await walk('references', 0);
   if (await present(join(sourceRoot, 'provenance.json'))) {
-    count(); files.set('provenance.json', await boundedRead(join(sourceRoot, 'provenance.json'), budget, 65536));
+    count(); files.set('provenance.json', await boundedRead(join(sourceRoot, 'provenance.json'), budget, 65536, 'provenance_limit'));
   }
   const folded = new Set();
   for (const path of files.keys()) { const key = path.toLowerCase(); if (folded.has(key)) throw Error(`source_case_collision: ${path}`); folded.add(key); }
@@ -251,7 +252,7 @@ async function plan({ sourceRoot, host, output, dryRun = false }) {
 }
 export async function exportMethods(options) {
   const prepared = await plan(options);
-  const result = { status: options.dryRun ? 'planned' : 'exported', host: options.host, output: prepared.destination, exported: !options.dryRun, installed: false, host_discovery_verified: false, namespace: prepared.manifest.namespace };
+  const result = { status: options.dryRun ? 'planned' : 'exported', host: options.host, output: prepared.destination, exported: !options.dryRun, installed: false, host_discovery_verified: false, namespace: prepared.manifest.namespace, ...(prepared.manifest.provenance ? { provenance: prepared.manifest.provenance } : {}) };
   if (options.dryRun) return { ...result, ...(prepared.manifest.provenance ? { provenance: prepared.manifest.provenance } : {}), files: prepared.manifest.files, source_digest: prepared.manifest.source_digest, limits };
   let owned = false;
   try {
