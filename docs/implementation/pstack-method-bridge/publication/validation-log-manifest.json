@@ -1,0 +1,20 @@
+[
+  {
+    "file": "docs-control.log.gz",
+    "raw_bytes": 341,
+    "raw_sha256": "a939ee09dd92ac90a568f50eb8d1020a659bf0a83d388aab664e3fbb43d500a0",
+    "compressed_sha256": "997b30e4649abbc608ffe1cfb8f6bccef1d7dbf1f06037e8a0e988583c864762"
+  },
+  {
+    "file": "docs-prepublication.log.gz",
+    "raw_bytes": 341,
+    "raw_sha256": "757b3fc6246378b5c1958b87fd2c6d19971acf929679962550022af2d920f08b",
+    "compressed_sha256": "e7fd982c4ab1088bde7f701126c2ef1754f38df969b4260ab19977aecfd0d720"
+  },
+  {
+    "file": "docs-archive-final.log.gz",
+    "raw_bytes": 341,
+    "raw_sha256": "cf7cd5b8effc82ee8019c22b6e731358d518e322bff4bab56e1441d31a2347d9",
+    "compressed_sha256": "1264c2e127b84fe9fd05e55fe615dc619d331d9a6dd91093cfa705a7b6c4eb2a"
+  }
+]
