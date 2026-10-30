@@ -1,0 +1,15 @@
+{
+  "recorded_at": "2026-10-29T18:18:05.717433+00:00",
+  "execution_tree": "0e3a5553f49f793728cc2b7f1edf14662d15b089",
+  "repair_base": "24bed464c321c5396f59adecaf72c116569ca768",
+  "note": "Generator run using built stack integration checkout; all generator inputs except stack implementation/test/changeset are equal to PR307; generator reads package.json/index.ts and built CLI --help. Only PUBLIC_EXPORTS changed; no manual edit. Existing line-oriented generator emits export { for multiline exports. This sync does not improve inventory symbol fidelity.",
+  "changed_inventory": [
+    "docs/inventory/PUBLIC_EXPORTS.md"
+  ],
+  "checks": {
+    "scripts/generate-inventory.mjs": "1c3be1dd272d5975f40bb064627a4509f3fd31ec4fbe8996629ee9ee6d19e9fa",
+    "packages/github/src/index.ts": "744c03b822de61eff55f183a344cfa2b55062ceaf8d92499009af28bd8ef47bf",
+    "packages/github/package.json": "9571ffcd26f983f7fd27cac8d08b7c4d50e609c3a3862a7ce379cc7f083e65c1",
+    "packages/cli/package.json": "8138ca74c9399aa2da2c789046950f28a47225d286b2c8f1b340e10ec56cca57"
+  }
+}

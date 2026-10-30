@@ -1,0 +1,257 @@
+{
+  "at": "2026-10-29T18:19:25.445422+00:00",
+  "result": "verified bounded generated synchronization",
+  "repair_base": "24bed464c321c5396f59adecaf72c116569ca768",
+  "execution_tree": "0e3a5553f49f793728cc2b7f1edf14662d15b089",
+  "tracked_change": [
+    "docs/inventory/PUBLIC_EXPORTS.md"
+  ],
+  "only_added_line": "export {",
+  "equal_input_files": [
+    {
+      "path": "packages/agents/package.json",
+      "sha256": "51f458dd585998c9f7d957e733a8586a50fb14c9c20e226a641ddef52ed7ec69"
+    },
+    {
+      "path": "packages/agents/src/index.ts",
+      "sha256": "69c9ccf925e8829a7f415c18c3d93e0827b47e0dd256e95dc4c2ddba01c31028"
+    },
+    {
+      "path": "packages/autonomy/package.json",
+      "sha256": "aa86fb25f0a8e5e7a9b7014d5405ee36667900521fa21727e53fa196a1c53412"
+    },
+    {
+      "path": "packages/autonomy/src/index.ts",
+      "sha256": "cbfe32edc97385f6bfe3d152350617b35605d6b86ae87af25eb96a2f5ff1d7ef"
+    },
+    {
+      "path": "packages/cli/package.json",
+      "sha256": "8138ca74c9399aa2da2c789046950f28a47225d286b2c8f1b340e10ec56cca57"
+    },
+    {
+      "path": "packages/compliance/package.json",
+      "sha256": "94f7c8448c1fdb103c2ab644b324172d408a6b47c4c1ec3d928a7b372671793e"
+    },
+    {
+      "path": "packages/compliance/src/index.ts",
+      "sha256": "5306bf1f16deab985d2a71c6307cb6a4408e1e21bc749cf8c3347715e284795f"
+    },
+    {
+      "path": "packages/config/package.json",
+      "sha256": "1afd2ef982ad81bc91a639790a11209ab3d27310f5683ed63cd9524333556353"
+    },
+    {
+      "path": "packages/config/src/index.ts",
+      "sha256": "2e8e011d46e2c289732b9a867105df269aaf3c0c1e9b0c2cff8f8327a197b611"
+    },
+    {
+      "path": "packages/conformance/package.json",
+      "sha256": "423662b569153be1fb06054dc53ab42485093f3a900e7c9b444ecf59b735b01a"
+    },
+    {
+      "path": "packages/conformance/src/index.ts",
+      "sha256": "571683452cd1d1e7a410a3a220b7547752ef6051f7ddef221a2efc04df8624d5"
+    },
+    {
+      "path": "packages/contracts/package.json",
+      "sha256": "8330e3381782f0ab1c309e2ee1fd84f95a8a17161c8def3a6db520c51a0b3606"
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "sha256": "d3f3a95f422c204743fb6a5cd9c8a0cd61c4d0fc7ab882eed52fa6835a7b3e84"
+    },
+    {
+      "path": "packages/core/package.json",
+      "sha256": "ba3edd11c4482b6898c3ece8b754f2d78e84df4ce9688553a49c99c0bc774a37"
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "sha256": "317a4397f74a8fb4654e91fceeb1e4b670c8536b3fce37f8cbffe6cf93f01a31"
+    },
+    {
+      "path": "packages/github/package.json",
+      "sha256": "9571ffcd26f983f7fd27cac8d08b7c4d50e609c3a3862a7ce379cc7f083e65c1"
+    },
+    {
+      "path": "packages/github/src/index.ts",
+      "sha256": "744c03b822de61eff55f183a344cfa2b55062ceaf8d92499009af28bd8ef47bf"
+    },
+    {
+      "path": "packages/governance/package.json",
+      "sha256": "3a9a1e1fd6ffaf04b450f9bad0fca41d99be0b91e64cd43235e99f1d7d905433"
+    },
+    {
+      "path": "packages/governance/src/index.ts",
+      "sha256": "0ffed53a4ddb0041bc8437ae9f0fa3aeca6560481e8e8a2abea1617d22e23257"
+    },
+    {
+      "path": "packages/graph/package.json",
+      "sha256": "7a8855ef3b7e68c49ce023d155e46f5a4899d3b9b52820347d5f1dab0c237f7d"
+    },
+    {
+      "path": "packages/graph/src/index.ts",
+      "sha256": "3a2d854f9cf9322b05ac82804c1a38e1167287bf9c00d3d3c7fb93e6df8abc42"
+    },
+    {
+      "path": "packages/hermes-adapter/package.json",
+      "sha256": "33839467960c0ae308e3b3573232d9db64bb47299a494329bff58fa9a0eb3eab"
+    },
+    {
+      "path": "packages/hermes-adapter/src/index.ts",
+      "sha256": "f09ab8595afdf6f277ec81b5b680397c9609c0f329f0d2877627ceafc6a39337"
+    },
+    {
+      "path": "packages/knowledge-cloud/package.json",
+      "sha256": "02cf728c784351c7f13c3ea075b0957f6044818a86a5b45772072b1efbe3cdf2"
+    },
+    {
+      "path": "packages/knowledge-cloud/src/index.ts",
+      "sha256": "5a7f215f4a8f2ccb0b0b3295dbc4802e8285bb606a7cf52711061a05559c5a3d"
+    },
+    {
+      "path": "packages/knowledge/package.json",
+      "sha256": "11c64058c65e755d54c554d5a210a04036bb71bf32ea26c6c64fbec512f5bce8"
+    },
+    {
+      "path": "packages/knowledge/src/index.ts",
+      "sha256": "6988b87ec82069365e29145859c8cd2ca0bdd69eb152b8f647adf61751d4f9ca"
+    },
+    {
+      "path": "packages/loop/package.json",
+      "sha256": "5723c9bc7903005a631baa8be9645b1a20de61a89e644ef6babfa828d75a57f0"
+    },
+    {
+      "path": "packages/loop/src/index.ts",
+      "sha256": "af33b4693b8369931d20cb9d81d06d8e8507cbd66c1a44f1bdf8afc61d7a5f07"
+    },
+    {
+      "path": "packages/neat-eval/package.json",
+      "sha256": "d309ddb4f59eeef55dccfd37ea166ded713367ad3fc16ed03338af00daaa4388"
+    },
+    {
+      "path": "packages/neat-eval/src/index.ts",
+      "sha256": "0f8e2b457e0136e1d01f03575480dba6b4804d51dd84a175b70ae23dd39dd8bb"
+    },
+    {
+      "path": "packages/plugins/package.json",
+      "sha256": "e314b08b728edd3885ea10a46a7b2881b0c037f48ebb5998f510e5228a40ab0f"
+    },
+    {
+      "path": "packages/plugins/src/index.ts",
+      "sha256": "fa1c7d874c2eb5597e469f86e7888eb8c3b4db59e09ff71dd40368bb0a0afd1a"
+    },
+    {
+      "path": "packages/protocol/package.json",
+      "sha256": "ceca39adb9025281d784a13d75030812ea78f4984d35213766273cd88cbdb6e8"
+    },
+    {
+      "path": "packages/protocol/src/index.ts",
+      "sha256": "db201457a045b99a08a8cb941d29201cb04dcbf6bd03a29eb2ef21a68a4cb88d"
+    },
+    {
+      "path": "packages/runtime/package.json",
+      "sha256": "f5a7bb137829bed649a01f32334cd9fce3cb71414e33df10c9c97e32f220ee37"
+    },
+    {
+      "path": "packages/runtime/src/index.ts",
+      "sha256": "181a4771c3e85ac6156bdcb2155ab4bd3b86889bc52e13c04f347d7cd00513de"
+    },
+    {
+      "path": "packages/skill-registry/package.json",
+      "sha256": "124e47fa09d7a81e0f08660ef0943cbbffd8ee627a34862527cbfd8999381ab3"
+    },
+    {
+      "path": "packages/skill-registry/src/index.ts",
+      "sha256": "fc46fd55269a52cd50a4313525e59fece718e92353f747b95c07fff44dffd648"
+    },
+    {
+      "path": "packages/skills/package.json",
+      "sha256": "1c745aea9b1ee2b3d1abe773e29cbf3e8e1818641cc0e8abd1a9e68a2f6feac2"
+    },
+    {
+      "path": "packages/skills/src/index.ts",
+      "sha256": "2564afc97ee342f5ef0086aff87a04b9969358f30c576c3cc496c6e7ec5a7aef"
+    },
+    {
+      "path": "packages/supervisor/package.json",
+      "sha256": "6126e9a21580a60d9a5c1b4f4ce8f7953c6cbc2abcfa657c0cf3767bcc29ff0f"
+    },
+    {
+      "path": "packages/supervisor/src/index.ts",
+      "sha256": "fe61de40d8151caafe59c9873ad849d03444a76f2c77f27ac808d8b60eb13da5"
+    },
+    {
+      "path": "scripts/generate-inventory.mjs",
+      "sha256": "1c3be1dd272d5975f40bb064627a4509f3fd31ec4fbe8996629ee9ee6d19e9fa"
+    }
+  ],
+  "root_run": {
+    "before_check_exit": 1,
+    "after_check_exit": 0,
+    "generated_stdout": "unchanged docs/inventory/PACKAGE_GRAPH.md\nwrote docs/inventory/PUBLIC_EXPORTS.md\nunchanged docs/inventory/CLI_COMMANDS.md\n"
+  },
+  "ci_original": {
+    "source": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr-candidate-ci307-repair-20261030",
+    "manifest_sha256": "91715000540db13c5b5d2809de084f57bacce0bedf3a6606ec958468d9664e92",
+    "members_verified": 11,
+    "decompressed_log_sha256": "7788ebe508cc4c1a2a70552d9a0b4cc3066dd68560844e79669c00107761c995",
+    "run": 40928407347,
+    "head": "24bed464c321c5396f59adecaf72c116569ca768"
+  },
+  "evidence": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/after.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/after.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/after.stdout",
+      "sha256": "a59b7d9a6d962ccf0d22d13d2cc0f8acbb9e3653a63cce339211a5dfb3cd56e9"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/before.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/before.stderr",
+      "sha256": "dbc8a1dd07809d194c85dcb3ceacb5fb6e46ece60969639d5f9df0c4a4159d83"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/before.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/binding.json",
+      "sha256": "22aceaf64dc2481c0fe0618e9a13788f372cbddc40505bfb59b9a0d7f6c12ef9"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/generate.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/generate.stdout",
+      "sha256": "c7bf1b7c0951db961b539513fcf55613da45467c9caa30ee92324caaac2f8dfb"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/typecheck.exit",
+      "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/typecheck.stderr",
+      "sha256": "c30349cfc97c6b3a6ef62e2ec6233293076c612b712bb8571f4cb31a30de128b"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pr307-inventory-20261030/root/typecheck.stdout",
+      "sha256": "5c982fe634e13275c48c4d3485f5f52bd79798d7594b3dda58c091eca6cbc961"
+    }
+  ],
+  "limits": [
+    "Line-oriented existing generator intentionally records only export { for multiline block; this does not improve symbol fidelity or generator behavior.",
+    "All Git package manifest/index inputs and generator match across repair and execution bases; CLI source/package also unchanged. No independent rebuilt CLI binary/help attestation performed.",
+    "Root logs demonstrate RED1 then generation then GREEN0; no C execution/full/model/forge. Untracked evidence directory is publication material, not part of sole generated tracked diff."
+  ],
+  "issues": []
+}

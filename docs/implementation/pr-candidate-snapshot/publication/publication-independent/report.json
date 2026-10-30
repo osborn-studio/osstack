@@ -1,0 +1,129 @@
+{
+  "at": "2026-10-29T17:55:39.596722+00:00",
+  "base": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+  "head": "5744e8999da71d181b3cdd0bd339a47a95c04c6f",
+  "head_tree": "7641d9ba388651672f57d543f5eb09a6f919682e",
+  "files_changed": 65,
+  "source_ci_paths": [
+    ".github/workflows/ci.yml",
+    "package.json",
+    "packages/github/src/index.ts",
+    "packages/github/src/pr-candidate-snapshot.ts",
+    "packages/github/src/pr-candidate-snapshot.test.ts",
+    "scripts/report-pr-candidate.mjs",
+    "scripts/report-pr-candidate.test.mjs",
+    "osstack-methods-skill/references/pr-readiness.md"
+  ],
+  "documentation_paths": [
+    "docs/design/2026-10-27-joint-engineering/delivery-rollup.json",
+    "docs/design/2026-10-27-joint-engineering/delivery-status.md",
+    "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+    "docs/design/2026-10-27-joint-engineering/execution.md",
+    "docs/design/2026-10-27-joint-engineering/project-operations.md",
+    "docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md",
+    "docs/implementation/pr-candidate-snapshot/README.md",
+    "docs/implementation/pr305-main-retarget/README.md",
+    "docs/implementation/pr305-main-retarget/ci-final/complete-log.command.json",
+    "docs/implementation/pr305-main-retarget/ci-final/complete-log.log.gz",
+    "docs/implementation/pr305-main-retarget/ci-final/complete-log.stderr",
+    "docs/implementation/pr305-main-retarget/ci-final/final-manifest.json",
+    "docs/implementation/pr305-main-retarget/ci-final/jobs.json",
+    "docs/implementation/pr305-main-retarget/ci-final/parse.py",
+    "docs/implementation/pr305-main-retarget/ci-final/pr-final.command.json",
+    "docs/implementation/pr305-main-retarget/ci-final/pr-final.json",
+    "docs/implementation/pr305-main-retarget/ci-final/pr-final.stderr",
+    "docs/implementation/pr305-main-retarget/ci-final/report.json",
+    "docs/implementation/pr305-main-retarget/ci-final/report.md",
+    "docs/implementation/pr305-main-retarget/ci-final/root-verification.json",
+    "docs/implementation/pr305-main-retarget/ci-final/run.json",
+    "docs/implementation/pr305-main-retarget/ready-boards.json",
+    "docs/implementation/pr305-main-retarget/ready-guard.json",
+    "docs/implementation/pr305-main-retarget/ready-receipt.json",
+    "docs/implementation/pr306-main-retarget/README.md",
+    "docs/implementation/pr306-main-retarget/ci-final/958eb722-git.txt",
+    "docs/implementation/pr306-main-retarget/ci-final/b0ea4e78-git.txt",
+    "docs/implementation/pr306-main-retarget/ci-final/complete-log.command.json",
+    "docs/implementation/pr306-main-retarget/ci-final/complete-log.log.gz",
+    "docs/implementation/pr306-main-retarget/ci-final/complete-log.stderr",
+    "docs/implementation/pr306-main-retarget/ci-final/e79fc926-git.txt",
+    "docs/implementation/pr306-main-retarget/ci-final/final-manifest.json",
+    "docs/implementation/pr306-main-retarget/ci-final/finalize.py",
+    "docs/implementation/pr306-main-retarget/ci-final/jobs.json",
+    "docs/implementation/pr306-main-retarget/ci-final/osstack-receipts.json",
+    "docs/implementation/pr306-main-retarget/ci-final/parse.py",
+    "docs/implementation/pr306-main-retarget/ci-final/pr-final.command.json",
+    "docs/implementation/pr306-main-retarget/ci-final/pr-final.json",
+    "docs/implementation/pr306-main-retarget/ci-final/pr-final.stderr",
+    "docs/implementation/pr306-main-retarget/ci-final/ready-guard.json",
+    "docs/implementation/pr306-main-retarget/ci-final/ready-readback.json",
+    "docs/implementation/pr306-main-retarget/ci-final/ready.stderr",
+    "docs/implementation/pr306-main-retarget/ci-final/ready.stdout",
+    "docs/implementation/pr306-main-retarget/ci-final/report.json",
+    "docs/implementation/pr306-main-retarget/ci-final/report.md",
+    "docs/implementation/pr306-main-retarget/ci-final/run.json",
+    "docs/implementation/pr306-main-retarget/ci-final/synthetic-commit.command.json",
+    "docs/implementation/pr306-main-retarget/ci-final/synthetic-commit.json",
+    "docs/implementation/pr306-main-retarget/ci-final/synthetic-commit.stderr",
+    "docs/implementation/pr306-main-retarget/evidence/archive-receipt.json",
+    "docs/implementation/pr306-main-retarget/evidence/independent-receipt.json",
+    "docs/implementation/pr306-main-retarget/evidence/raw-verification.tar.gz",
+    "docs/implementation/skills-map-maintenance-publication/README.md",
+    "docs/implementation/skills-map-maintenance-publication/docs-final-control.txt",
+    "docs/implementation/skills-map-maintenance-publication/docs-pre-publication.txt",
+    "docs/implementation/skills-map-maintenance-publication/pr-created.json",
+    "docs/implementation/skills-map-maintenance-publication/publication-boards.json"
+  ],
+  "dependency_delta": {
+    "root_non_scripts_fields_changed": false,
+    "lockfile_changed": false,
+    "workspace_or_package_manifests_changed": false,
+    "new_scripts": {
+      "inspect:pr-candidate": "node scripts/report-pr-candidate.mjs",
+      "test:pr-candidate": "node --test scripts/report-pr-candidate.test.mjs"
+    }
+  },
+  "release_coverage": {
+    "public_package": "@osstack/github",
+    "matching_existing_changesets": [],
+    "finding": "Missing changeset at this pinned head; release-sensitive src/index export changes meet existing coverage rule. Static code inspection, not executed CI."
+  },
+  "working_tree_status_at_read": " M docs/design/2026-10-27-joint-engineering/delivery-rollup.json\n M docs/design/2026-10-27-joint-engineering/delivery-status.md\n M docs/design/2026-10-27-joint-engineering/execution-ledger.json\n M docs/design/2026-10-27-joint-engineering/execution.md\n M docs/design/2026-10-27-joint-engineering/project-operations.md\n M docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md\n M docs/implementation/pr306-main-retarget/README.md\n?? .changeset/bounded-pr-candidate-snapshot.md\n?? docs/implementation/pr-candidate-snapshot/evidence/\n?? docs/implementation/pr-candidate-snapshot/verification.md\n?? docs/implementation/pr306-main-retarget/ci-final/merge-osstack.json\n?? docs/implementation/pr306-main-retarget/ci-final/merge306-proof.txt\n?? docs/implementation/pr306-main-retarget/ci-final/merge306.json\n",
+  "scope": "Pinned committed diff plus separately preserved pending control-doc snapshot; not a final published-head verification.",
+  "no_execution": [
+    "No full/targeted tests, model calls, forge writes, repository edits."
+  ],
+  "source_hashes": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "61411a7d245f916b68b05097d407eedf71a75dea260d07ebb7fd418412027fe9"
+    },
+    {
+      "path": "package.json",
+      "sha256": "70c57f8a38c8d37a294515add6443a2be01c93dba82673efd2dc71e4bcf26ced"
+    },
+    {
+      "path": "packages/github/src/index.ts",
+      "sha256": "744c03b822de61eff55f183a344cfa2b55062ceaf8d92499009af28bd8ef47bf"
+    },
+    {
+      "path": "packages/github/src/pr-candidate-snapshot.ts",
+      "sha256": "121b0c6afbc2c81874398f00628a9c2d7e0ac1de11453b002d6461cabe30da7a"
+    },
+    {
+      "path": "packages/github/src/pr-candidate-snapshot.test.ts",
+      "sha256": "2c4b47daa7cb9d9922cfc27a8a6ef21ea697fed71f4df582e949e5b5e2770d6e"
+    },
+    {
+      "path": "scripts/report-pr-candidate.mjs",
+      "sha256": "3c0a5c7cad064a21291f80c7a6a2eb3d522f1f895ad25b24c4ac4d1c572f8093"
+    },
+    {
+      "path": "scripts/report-pr-candidate.test.mjs",
+      "sha256": "1330aea542d8841ffeb3643d6b4ca48679dd97e962273f66e7a827e0b1162b66"
+    },
+    {
+      "path": "osstack-methods-skill/references/pr-readiness.md",
+      "sha256": "2e6b4a81c632cd339d7fcbe59b246282be2b14184f4ca35bf4fec3f27867f653"
+    }
+  ]
+}

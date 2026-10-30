@@ -81,7 +81,9 @@
     "test:method-projection": "node --test scripts/project-method-journey-evidence.test.mjs",
     "method:project-evidence": "node scripts/project-method-journey-evidence.mjs",
     "test:method-read": "node --test scripts/read-method-material.test.mjs",
-    "read:method": "node scripts/read-method-material.mjs"
+    "read:method": "node scripts/read-method-material.mjs",
+    "test:pr-candidate": "node --test scripts/report-pr-candidate.test.mjs",
+    "inspect:pr-candidate": "node scripts/report-pr-candidate.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

@@ -1,0 +1,11 @@
+{
+  "archive_sha256": "2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff",
+  "payload_paths": 482,
+  "original_file_bytes": 175530656,
+  "archive_bytes": 68017164,
+  "deduplicated_hardlink_paths": [
+    "independent/old-diff.stdout"
+  ],
+  "manifest_sha256": "e9980309a3377bd14a267513dd6cdd6ab2adac3d6cd6d6b462a0de9ea4de0c5f",
+  "all_original_paths_bytes_modes_verified": true
+}

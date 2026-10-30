@@ -2,8 +2,8 @@
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
   "observed_at": "2026-10-29T05:24:40.943500+00:00",
-  "main_sha": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
-  "main_tree": "dbe85299ac39ca9126110eb4f1c564f442844f05",
+  "main_sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+  "main_tree": "356296e4949c15e08a65696f6d7d5ced796a2693",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
@@ -1805,7 +1805,8 @@
         289,
         291,
         294,
-        304
+        304,
+        306
       ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false,
@@ -1840,16 +1841,18 @@
         "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
       },
       "latest_merged_slice": {
-        "pr": 304,
-        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
-        "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
+        "pr": 306,
+        "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+        "boundary": "fixed-five persistent map correspondence, injected drift correction; no general discovery",
         "whole_capability_complete": false
       },
       "maintenance_map_candidate": {
         "code_sha": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
-        "status": "validated_waiting_publication",
+        "status": "draft_waiting_ci_and_parent305_main_revalidation",
         "record": "docs/implementation/skills-check-map-maintenance",
-        "whole_capability_complete": false
+        "whole_capability_complete": false,
+        "pr": 306,
+        "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9"
       }
     },
     {
@@ -1878,7 +1881,8 @@
         289,
         291,
         294,
-        304
+        304,
+        306
       ],
       "whole_capability_complete": false,
       "runtime_gate_pass_asserted": false,
@@ -1904,16 +1908,18 @@
         "whole_capability_complete": false
       },
       "latest_merged_slice": {
-        "pr": 304,
-        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
-        "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
+        "pr": 306,
+        "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+        "boundary": "fixed-five persistent map correspondence, injected drift correction; no general discovery",
         "whole_capability_complete": false
       },
       "maintenance_map_candidate": {
         "code_sha": "4cc8ff7e25a80e6193bb83db2ac93c1b16e9c57f",
-        "status": "validated_waiting_publication",
+        "status": "draft_waiting_ci_and_parent305_main_revalidation",
         "record": "docs/implementation/skills-check-map-maintenance",
-        "whole_capability_complete": false
+        "whole_capability_complete": false,
+        "pr": 306,
+        "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9"
       }
     },
     {
@@ -2036,6 +2042,12 @@
       "latest_bounded_delivery": {
         "evidence": "docs/implementation/pstack-current-repair/README.md",
         "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
+      },
+      "pr_candidate_snapshot_slice": {
+        "status": "validated_pending_publication",
+        "record": "docs/implementation/pr-candidate-snapshot/verification.md",
+        "boundary": "one bounded read-only snapshot, no watcher or policy completeness",
+        "whole_capability_complete": false
       }
     },
     {
@@ -2156,7 +2168,13 @@
         301
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "pr_candidate_snapshot_slice": {
+        "status": "validated_pending_publication",
+        "record": "docs/implementation/pr-candidate-snapshot/verification.md",
+        "boundary": "one bounded read-only snapshot, no watcher or policy completeness",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS18",
@@ -2183,7 +2201,13 @@
         301
       ],
       "whole_capability_complete": false,
-      "runtime_gate_pass_asserted": false
+      "runtime_gate_pass_asserted": false,
+      "pr_candidate_snapshot_slice": {
+        "status": "validated_pending_publication",
+        "record": "docs/implementation/pr-candidate-snapshot/verification.md",
+        "boundary": "one bounded read-only snapshot, no watcher or policy completeness",
+        "whole_capability_complete": false
+      }
     },
     {
       "id": "PS19",
@@ -7049,7 +7073,7 @@
       "acceptance": "确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。",
       "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。",
       "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial",
-      "remaining": "PR304 all five applicable CI successful; awaiting303merge and main retarget. Broader map drift discovery remains unproven."
+      "remaining": "PR304/306 merged; fixed-five journey and persistent map correspondence available. General map/source drift discovery remains incomplete."
     },
     {
       "rank": 2,
@@ -7061,8 +7085,8 @@
       "goal": "完整五case安全证据投影",
       "deliverable": "在明确full范围下投影五case；保留默认两case严格契约与失败/未知语义，不复制原环境字段到模型包。",
       "acceptance": "五case完整性、错误/未运行/清理状态、原件不变和旧接口兼容独立验证。",
-      "state": "published_draft_waiting_ci_parent304",
-      "depends_on": "full five-case journey integration",
+      "state": "merged",
+      "depends_on": "304 merged;305 merged at e79fc926",
       "formal_gate_pass": false,
       "card": "card_522ee55d",
       "latest_result": "Explicitfullv2/defaultv1, confirmed cleanup identity fix, independent recheck, actualSonnet closurePASS; no whole PS/J qualification.",
@@ -10224,10 +10248,12 @@
     "all_workers_handed_off": true,
     "followup": "User merge303, root retarget/revalidate304; user merge304, root retarget/revalidate305; no feature-base merge or independent readiness inference.",
     "current_publication": {
-      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
-      "base": "main",
-      "state": "draft_final_docs_ci_pending",
-      "ci_run": 40912894527
+      "status": "merged",
+      "pr": 305,
+      "published_head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "merge_tree_equals_published": true,
+      "historical_bindings_unchanged": true
     }
   },
   "current_packet_repair": {
@@ -10325,13 +10351,15 @@
       "artifacts_rehashed": false
     },
     "current_publication": {
-      "head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
-      "base": "main",
-      "state": "draft_final_docs_ci_pending",
-      "ci_run": 40912894527
+      "status": "merged",
+      "pr": 305,
+      "published_head": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+      "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "merge_tree_equals_published": true,
+      "historical_bindings_unchanged": true
     }
   },
-  "main_observed_at": "2026-10-29T16:28:33.165608+00:00",
+  "main_observed_at": "2026-10-29T17:51:25.186183+00:00",
   "pr304_main_retarget": {
     "observed_at": "2026-10-29T10:09:34.304403+00:00",
     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
@@ -10390,7 +10418,7 @@
       "PS13",
       "PS20"
     ],
-    "status": "local_validated_audit_passed_waiting_final_ci",
+    "status": "merged",
     "ci_run": 40912894527,
     "formal_gate_pass": false,
     "record": "docs/implementation/pr305-main-retarget/README.md",
@@ -10402,10 +10430,34 @@
     "post_docs_export_passed": 94,
     "review_status": "actual claude-sonnet-5-5 static PASS; doc closure REVISE for accidental grammar splice then limited closure PASS atb0",
     "actual_default_full": "journey/project/check all0; product0/1 and0/1/2/1/0; v1/v2 passed-stderr conflicts rejected and failed controls retained; original hashes unchanged",
-    "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c"
+    "archive_sha256": "f09333bf83781bd5c563289ec921b867e03f31b9ef2a3b3aa5d49bc541cfc63c",
+    "head_sha": "b0ea4e7836dd4be640b4f7c140befba73977837d",
+    "ci_applicable_success": 5,
+    "ci_paid_skipped": true,
+    "ready_receipt": "docs/implementation/pr305-main-retarget/ready-receipt.json",
+    "ci_summary": {
+      "checkout_sha": "84046a712d524800d0f4e764523a9a6df049255f",
+      "checkout_kind": "synthetic merge of b0 into524",
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1
+      },
+      "projection_passed": 88,
+      "journey_passed": 43,
+      "reader_passed": 14,
+      "record": "docs/implementation/pr305-main-retarget/ci-final",
+      "remote_artifact_rehashed": false
+    },
+    "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "merged_at": "2026-10-29T17:11:47Z"
   },
   "maintenance_map_slice": {
-    "status": "validated_waiting_publication",
+    "status": "merged",
     "card": "card_b8d97bff",
     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
     "primary_j": "J06",
@@ -10665,6 +10717,139 @@
       "manifest_sha256": "6a2db6a1fc86c76255b67d7eb16b9fcc88199dff111024fe3b892a30af6f136f",
       "verification": "all members type/mode/hash/size or symlink target matched"
     },
-    "whole_capability_complete": false
+    "whole_capability_complete": false,
+    "pr": 306,
+    "head_sha": "958eb72295937b96ee8affc32fa87910bbdde512",
+    "base_branch": "main",
+    "ci_run": 40920378111,
+    "publication_dependency": "306 merged by user at6c9a3e8f; published958 tree equals actualmain",
+    "historical_pre_retarget": {
+      "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
+      "base_branch": "codex/method-full-projection-delivery",
+      "ci_run": 40917058847
+    }
+  },
+  "pr306_main_retarget": {
+    "observed_at": "2026-10-29T17:21:57.052243+00:00",
+    "main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "head": "958eb72295937b96ee8affc32fa87910bbdde512",
+    "status": "merged",
+    "same_tree_as_38a6": true,
+    "complete_delta_identical": true,
+    "record": "docs/implementation/pr306-main-retarget",
+    "primary_j": "J06",
+    "supports": [
+      "J03",
+      "J09"
+    ],
+    "capabilities": [
+      "PS09",
+      "PS08"
+    ],
+    "formal_gate_pass": false,
+    "ci_run": 40920378111,
+    "targeted_passed": 263,
+    "docs_passed": 241,
+    "hygiene_passed": 1,
+    "actual_map_red_green": true,
+    "review_status": "actual Sonnet5.5 static PASS; optional observations retained",
+    "archive_sha256": "2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff",
+    "archive_independent_receipt_sha256": "e21d4981736e0642726f165852f0ac4ae713e9e0c60fffb82f16d75559278bd1",
+    "ready_observed_at": "2026-10-29T17:50:10.346526+00:00",
+    "ci_applicable_success": 5,
+    "ci_paid_skipped": true,
+    "ready_receipt": "docs/implementation/pr306-main-retarget/ci-final/ready-readback.json",
+    "ci_summary": {
+      "packages": 22,
+      "passed": 7142,
+      "skipped": 7,
+      "failed": 0,
+      "export_passed": 93,
+      "export_skipped": 1,
+      "checkout_sha": "057f32d4620d71bec8d26a4fe0f074cc9e921855",
+      "checkout_parents": "b0ea4e78 and958eb722; tree equals958; b0 tree equals actualmain e79",
+      "remote_artifact_rehashed": false
+    },
+    "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "merged_at": "2026-10-29T17:49:32Z"
+  },
+  "pr_candidate_snapshot_slice": {
+    "status": "validated_pending_pr",
+    "card": "card_55808960",
+    "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+    "capabilities": [
+      "PS17",
+      "PS18",
+      "PS13"
+    ],
+    "supports": [
+      "J07"
+    ],
+    "design_context": [
+      "J20"
+    ],
+    "scope": "one bounded read-only PR snapshot; no watcher/approval/merge",
+    "author": "loader_adversarial",
+    "independent": {
+      "frozen_vectors": 25,
+      "cli_cases": 17
+    },
+    "root_owned": [
+      "shared exports",
+      "CI",
+      "PR",
+      "ledger"
+    ],
+    "new_methods": 0,
+    "model_host_calls": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "source_pin": "99b609a72323b70204eab407c622f436e858e112",
+    "proposal": "pr306-main-retarget-20261030/next-candidate/contract.json",
+    "author_sha": "c8f3aa11fc007171c23c64e09b402351174c834c",
+    "author_test_revision": "8a89e670cfbee62fa667b41e448107b2cc8eb26b",
+    "root_code_sha": "622ead838ccdeaef2fa6f38a4cb8373027d129cd",
+    "main_integration_sha": "5744e8999da71d181b3cdd0bd339a47a95c04c6f",
+    "main_integration_delta_empty": true,
+    "record": "docs/implementation/pr-candidate-snapshot/verification.md",
+    "targeted": {
+      "github": 152,
+      "cli": 14,
+      "exports": 94
+    },
+    "full": {
+      "head": "8a711bd1b42c8f6282000b06e880f64dda7f566c",
+      "packages": 22,
+      "passed": 7171,
+      "skipped": 5,
+      "failed": 0,
+      "tracked_files": 8509,
+      "tracked_bytes_unchanged": true,
+      "initial_dirty": "four fresh knowledge/dist files; not clean committed tree; later tests/docs only"
+    },
+    "live": {
+      "calls": 1,
+      "requests": 4,
+      "candidate_pr": 306,
+      "head": "958eb72295937b96ee8affc32fa87910bbdde512",
+      "base": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "observed_summary": "blocked",
+      "exit_code": 0,
+      "merge_authorized": false,
+      "interpretation": "successful read-only report acquisition; dated state not current readiness; no model-host experiment"
+    },
+    "audit": "actual Sonnet5.5 initial REVISE for R1-R4 test gaps; production unchanged, additional tests/docs and cosmetic package description; limited static closure PASS; original opinions and reporting proof retained",
+    "archive": {
+      "archive_sha256": "15a3324dabc84aa9275dbb48b003a8b766729172f3411c8cd49668d51ac01788",
+      "manifest_sha256": "c83efa60621c65ad5b3236ffb719d384e37a6cb4cd08a1e39785fbd8e27084bd",
+      "members": 278,
+      "files": 236,
+      "symlinks": 1,
+      "file_bytes": 5258202,
+      "archive_bytes": 1120496,
+      "verification": "root all names/type/mode/hash/size/target verified"
+    },
+    "docs_passed": 241,
+    "hygiene_passed": 1
   }
 }

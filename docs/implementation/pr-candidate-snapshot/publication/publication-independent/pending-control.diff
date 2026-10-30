@@ -1,0 +1,479 @@
+diff --git a/docs/design/2026-10-27-joint-engineering/delivery-rollup.json b/docs/design/2026-10-27-joint-engineering/delivery-rollup.json
+index e164ce81..4db18729 100644
+--- a/docs/design/2026-10-27-joint-engineering/delivery-rollup.json
++++ b/docs/design/2026-10-27-joint-engineering/delivery-rollup.json
+@@ -2,8 +2,8 @@
+   "schema_version": 1,
+   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
+   "observed_at": "2026-10-29T05:24:40.943500+00:00",
+-  "main_sha": "e79fc92687c144969ad91242a979d904f2b2acdf",
+-  "main_tree": "31a72ebdb5777ce7d90e54a501bd4ad52083b10e",
++  "main_sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
++  "main_tree": "356296e4949c15e08a65696f6d7d5ced796a2693",
+   "priority": "pstack_first",
+   "merged_named_methods": 14,
+   "merged_entries": 4,
+@@ -1805,7 +1805,8 @@
+         289,
+         291,
+         294,
+-        304
++        304,
++        306
+       ],
+       "whole_capability_complete": false,
+       "runtime_gate_pass_asserted": false,
+@@ -1840,9 +1841,9 @@
+         "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
+       },
+       "latest_merged_slice": {
+-        "pr": 304,
+-        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+-        "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
++        "pr": 306,
++        "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
++        "boundary": "fixed-five persistent map correspondence, injected drift correction; no general discovery",
+         "whole_capability_complete": false
+       },
+       "maintenance_map_candidate": {
+@@ -1880,7 +1881,8 @@
+         289,
+         291,
+         294,
+-        304
++        304,
++        306
+       ],
+       "whole_capability_complete": false,
+       "runtime_gate_pass_asserted": false,
+@@ -1906,9 +1908,9 @@
+         "whole_capability_complete": false
+       },
+       "latest_merged_slice": {
+-        "pr": 304,
+-        "merge_commit": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+-        "boundary": "仅固定本地五案例，不是任意项目地图维护、完整宿主效果或正式J03资格",
++        "pr": 306,
++        "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
++        "boundary": "fixed-five persistent map correspondence, injected drift correction; no general discovery",
+         "whole_capability_complete": false
+       },
+       "maintenance_map_candidate": {
+@@ -2040,6 +2042,12 @@
+       "latest_bounded_delivery": {
+         "evidence": "docs/implementation/pstack-current-repair/README.md",
+         "summary": "Currentpacket check fix; Codex actualrepair, Claude incomplete; both requiredpages delivered; publication pending; no wholecapability qualification"
++      },
++      "pr_candidate_snapshot_slice": {
++        "status": "validated_pending_publication",
++        "record": "docs/implementation/pr-candidate-snapshot/verification.md",
++        "boundary": "one bounded read-only snapshot, no watcher or policy completeness",
++        "whole_capability_complete": false
+       }
+     },
+     {
+@@ -2160,7 +2168,13 @@
+         301
+       ],
+       "whole_capability_complete": false,
+-      "runtime_gate_pass_asserted": false
++      "runtime_gate_pass_asserted": false,
++      "pr_candidate_snapshot_slice": {
++        "status": "validated_pending_publication",
++        "record": "docs/implementation/pr-candidate-snapshot/verification.md",
++        "boundary": "one bounded read-only snapshot, no watcher or policy completeness",
++        "whole_capability_complete": false
++      }
+     },
+     {
+       "id": "PS18",
+@@ -2187,7 +2201,13 @@
+         301
+       ],
+       "whole_capability_complete": false,
+-      "runtime_gate_pass_asserted": false
++      "runtime_gate_pass_asserted": false,
++      "pr_candidate_snapshot_slice": {
++        "status": "validated_pending_publication",
++        "record": "docs/implementation/pr-candidate-snapshot/verification.md",
++        "boundary": "one bounded read-only snapshot, no watcher or policy completeness",
++        "whole_capability_complete": false
++      }
+     },
+     {
+       "id": "PS19",
+@@ -7053,7 +7073,7 @@
+       "acceptance": "确认新candidate与验证绑定；任务正确性、修复前失败/修复后通过、未授权副作用分别报告。",
+       "gate": "普通D2a工具切片不等于J05/J06/J10完整运行时放行。",
+       "latest_result": "bounded maintenance exercise complete; intentionally introduced map drift, not spontaneous production bug; general capability remains partial",
+-      "remaining": "PR304 all five applicable CI successful; awaiting303merge and main retarget. Broader map drift discovery remains unproven."
++      "remaining": "PR304/306 merged; fixed-five journey and persistent map correspondence available. General map/source drift discovery remains incomplete."
+     },
+     {
+       "rank": 2,
+@@ -7065,8 +7085,8 @@
+       "goal": "完整五case安全证据投影",
+       "deliverable": "在明确full范围下投影五case；保留默认两case严格契约与失败/未知语义，不复制原环境字段到模型包。",
+       "acceptance": "五case完整性、错误/未运行/清理状态、原件不变和旧接口兼容独立验证。",
+-      "state": "published_draft_waiting_ci_parent304",
+-      "depends_on": "full five-case journey integration",
++      "state": "merged",
++      "depends_on": "304 merged;305 merged at e79fc926",
+       "formal_gate_pass": false,
+       "card": "card_522ee55d",
+       "latest_result": "Explicitfullv2/defaultv1, confirmed cleanup identity fix, independent recheck, actualSonnet closurePASS; no whole PS/J qualification.",
+@@ -10339,7 +10359,7 @@
+       "historical_bindings_unchanged": true
+     }
+   },
+-  "main_observed_at": "2026-10-29T17:21:57.052243+00:00",
++  "main_observed_at": "2026-10-29T17:51:25.186183+00:00",
+   "pr304_main_retarget": {
+     "observed_at": "2026-10-29T10:09:34.304403+00:00",
+     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+@@ -10437,7 +10457,7 @@
+     "merged_at": "2026-10-29T17:11:47Z"
+   },
+   "maintenance_map_slice": {
+-    "status": "ready_waiting_user_merge",
++    "status": "merged",
+     "card": "card_b8d97bff",
+     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+     "primary_j": "J06",
+@@ -10702,7 +10722,7 @@
+     "head_sha": "958eb72295937b96ee8affc32fa87910bbdde512",
+     "base_branch": "main",
+     "ci_run": 40920378111,
+-    "publication_dependency": "305 merged; main retarget and validation completed; waiting user approval/merge of306",
++    "publication_dependency": "306 merged by user at6c9a3e8f; published958 tree equals actualmain",
+     "historical_pre_retarget": {
+       "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
+       "base_branch": "codex/method-full-projection-delivery",
+@@ -10713,7 +10733,7 @@
+     "observed_at": "2026-10-29T17:21:57.052243+00:00",
+     "main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+     "head": "958eb72295937b96ee8affc32fa87910bbdde512",
+-    "status": "ready_waiting_user_merge",
++    "status": "merged",
+     "same_tree_as_38a6": true,
+     "complete_delta_identical": true,
+     "record": "docs/implementation/pr306-main-retarget",
+@@ -10749,10 +10769,12 @@
+       "checkout_sha": "057f32d4620d71bec8d26a4fe0f074cc9e921855",
+       "checkout_parents": "b0ea4e78 and958eb722; tree equals958; b0 tree equals actualmain e79",
+       "remote_artifact_rehashed": false
+-    }
++    },
++    "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
++    "merged_at": "2026-10-29T17:49:32Z"
+   },
+   "pr_candidate_snapshot_slice": {
+-    "status": "implementation_in_progress",
++    "status": "validated_pending_pr",
+     "card": "card_55808960",
+     "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+     "capabilities": [
+@@ -10768,7 +10790,10 @@
+     ],
+     "scope": "one bounded read-only PR snapshot; no watcher/approval/merge",
+     "author": "loader_adversarial",
+-    "independent": "cleanup_regression",
++    "independent": {
++      "frozen_vectors": 25,
++      "cli_cases": 17
++    },
+     "root_owned": [
+       "shared exports",
+       "CI",
+@@ -10780,6 +10805,51 @@
+     "formal_gate_pass": false,
+     "whole_capability_complete": false,
+     "source_pin": "99b609a72323b70204eab407c622f436e858e112",
+-    "proposal": "pr306-main-retarget-20261030/next-candidate/contract.json"
++    "proposal": "pr306-main-retarget-20261030/next-candidate/contract.json",
++    "author_sha": "c8f3aa11fc007171c23c64e09b402351174c834c",
++    "author_test_revision": "8a89e670cfbee62fa667b41e448107b2cc8eb26b",
++    "root_code_sha": "622ead838ccdeaef2fa6f38a4cb8373027d129cd",
++    "main_integration_sha": "5744e8999da71d181b3cdd0bd339a47a95c04c6f",
++    "main_integration_delta_empty": true,
++    "record": "docs/implementation/pr-candidate-snapshot/verification.md",
++    "targeted": {
++      "github": 152,
++      "cli": 14,
++      "exports": 94
++    },
++    "full": {
++      "head": "8a711bd1b42c8f6282000b06e880f64dda7f566c",
++      "packages": 22,
++      "passed": 7171,
++      "skipped": 5,
++      "failed": 0,
++      "tracked_files": 8509,
++      "tracked_bytes_unchanged": true,
++      "initial_dirty": "four fresh knowledge/dist files; not clean committed tree; later tests/docs only"
++    },
++    "live": {
++      "calls": 1,
++      "requests": 4,
++      "candidate_pr": 306,
++      "head": "958eb72295937b96ee8affc32fa87910bbdde512",
++      "base": "e79fc92687c144969ad91242a979d904f2b2acdf",
++      "observed_summary": "blocked",
++      "exit_code": 0,
++      "merge_authorized": false,
++      "interpretation": "successful read-only report acquisition; dated state not current readiness; no model-host experiment"
++    },
++    "audit": "actual Sonnet5.5 initial REVISE for R1-R4 test gaps; production unchanged, additional tests/docs and cosmetic package description; limited static closure PASS; original opinions and reporting proof retained",
++    "archive": {
++      "archive_sha256": "15a3324dabc84aa9275dbb48b003a8b766729172f3411c8cd49668d51ac01788",
++      "manifest_sha256": "c83efa60621c65ad5b3236ffb719d384e37a6cb4cd08a1e39785fbd8e27084bd",
++      "members": 278,
++      "files": 236,
++      "symlinks": 1,
++      "file_bytes": 5258202,
++      "archive_bytes": 1120496,
++      "verification": "root all names/type/mode/hash/size/target verified"
++    },
++    "docs_passed": 241,
++    "hygiene_passed": 1
+   }
+ }
+diff --git a/docs/design/2026-10-27-joint-engineering/delivery-status.md b/docs/design/2026-10-27-joint-engineering/delivery-status.md
+index fd350684..07ecdca9 100644
+--- a/docs/design/2026-10-27-joint-engineering/delivery-status.md
++++ b/docs/design/2026-10-27-joint-engineering/delivery-status.md
+@@ -1,6 +1,6 @@
+ # pstack 优先：能力与交付对账
+ 
+-当前合并快照：`e79fc92687c144969ad91242a979d904f2b2acdf`。#305已合并；主线为 **4 个 OSStack 入口、14 个共享方法**。历史宿主实验保留各自材料SHA；PR306已转main并完成263定向/241docs/1hygiene和真实地图RED→GREEN复验，Sonnet5.5静态PASS，等待最终CI。
++当前合并快照：`6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b`。#305/#306已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；下一候选状态只读工具已完成实现、实际读取及限定审计，正在发布。历史宿主实验与CI保留各自原始SHA。
+ 
+ **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
+ 
+@@ -28,7 +28,7 @@
+ 1. PR303已合并：完整材料分页工具；工具字节送达不证明模型完整消费。
+ 2. PR304已合并：完整五案例旅程，默认两例兼容；合并树等原已验证候选，不重标历史测试。
+ 3. PR305已合并：完整五案例安全证据投影和passed stderr一致性修复，默认兼容与原件保持；旧宿主实验成绩不变。
+-4. PR306已面向main：固定五case地图维护，本地实际RED→仅改地图→GREEN已通过，等待新head CI后转Ready。
++4. PR306已合并：固定五case地图维护，实际RED→仅改地图→GREEN、最终CI通过，树等验证候选。
+ 5. 下一项是只读候选状态核对，按明确head/base、检查、评审线程和前后快照报告缺口；不自动审批/合并。Firstmate深运行时后排。
+ 
+ ## pstack能力清单
+@@ -178,3 +178,6 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
+ 
+ 
+ 2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
++
++
++2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.
+diff --git a/docs/design/2026-10-27-joint-engineering/execution-ledger.json b/docs/design/2026-10-27-joint-engineering/execution-ledger.json
+index 7f85c905..096b3c1e 100644
+--- a/docs/design/2026-10-27-joint-engineering/execution-ledger.json
++++ b/docs/design/2026-10-27-joint-engineering/execution-ledger.json
+@@ -25,7 +25,7 @@
+   "schema_version": 1,
+   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
+   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
+-  "main_sha": "e79fc92687c144969ad91242a979d904f2b2acdf",
++  "main_sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+   "observed_at": "2026-10-29T05:24:40.943500+00:00",
+   "runtime_enabled": false,
+   "named_method_entries_update": {
+@@ -4824,7 +4824,7 @@
+       "historical_bindings_unchanged": true
+     }
+   },
+-  "main_observed_at": "2026-10-29T17:21:57.052243+00:00",
++  "main_observed_at": "2026-10-29T17:51:25.186183+00:00",
+   "pr304_main_retarget": {
+     "observed_at": "2026-10-29T10:09:34.304403+00:00",
+     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
+@@ -4922,7 +4922,7 @@
+     "merged_at": "2026-10-29T17:11:47Z"
+   },
+   "maintenance_map_slice": {
+-    "status": "ready_waiting_user_merge",
++    "status": "merged",
+     "card": "card_b8d97bff",
+     "base_main": "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+     "primary_j": "J06",
+@@ -5187,7 +5187,7 @@
+     "head_sha": "958eb72295937b96ee8affc32fa87910bbdde512",
+     "base_branch": "main",
+     "ci_run": 40920378111,
+-    "publication_dependency": "305 merged; main retarget and validation completed; waiting user approval/merge of306",
++    "publication_dependency": "306 merged by user at6c9a3e8f; published958 tree equals actualmain",
+     "historical_pre_retarget": {
+       "head_sha": "38a6f358a3143a447c30e87f70f5ac8553dae6c9",
+       "base_branch": "codex/method-full-projection-delivery",
+@@ -5198,7 +5198,7 @@
+     "observed_at": "2026-10-29T17:21:57.052243+00:00",
+     "main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+     "head": "958eb72295937b96ee8affc32fa87910bbdde512",
+-    "status": "ready_waiting_user_merge",
++    "status": "merged",
+     "same_tree_as_38a6": true,
+     "complete_delta_identical": true,
+     "record": "docs/implementation/pr306-main-retarget",
+@@ -5234,10 +5234,12 @@
+       "checkout_sha": "057f32d4620d71bec8d26a4fe0f074cc9e921855",
+       "checkout_parents": "b0ea4e78 and958eb722; tree equals958; b0 tree equals actualmain e79",
+       "remote_artifact_rehashed": false
+-    }
++    },
++    "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
++    "merged_at": "2026-10-29T17:49:32Z"
+   },
+   "pr_candidate_snapshot_slice": {
+-    "status": "implementation_in_progress",
++    "status": "validated_pending_pr",
+     "card": "card_55808960",
+     "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
+     "capabilities": [
+@@ -5253,7 +5255,10 @@
+     ],
+     "scope": "one bounded read-only PR snapshot; no watcher/approval/merge",
+     "author": "loader_adversarial",
+-    "independent": "cleanup_regression",
++    "independent": {
++      "frozen_vectors": 25,
++      "cli_cases": 17
++    },
+     "root_owned": [
+       "shared exports",
+       "CI",
+@@ -5265,6 +5270,51 @@
+     "formal_gate_pass": false,
+     "whole_capability_complete": false,
+     "source_pin": "99b609a72323b70204eab407c622f436e858e112",
+-    "proposal": "pr306-main-retarget-20261030/next-candidate/contract.json"
++    "proposal": "pr306-main-retarget-20261030/next-candidate/contract.json",
++    "author_sha": "c8f3aa11fc007171c23c64e09b402351174c834c",
++    "author_test_revision": "8a89e670cfbee62fa667b41e448107b2cc8eb26b",
++    "root_code_sha": "622ead838ccdeaef2fa6f38a4cb8373027d129cd",
++    "main_integration_sha": "5744e8999da71d181b3cdd0bd339a47a95c04c6f",
++    "main_integration_delta_empty": true,
++    "record": "docs/implementation/pr-candidate-snapshot/verification.md",
++    "targeted": {
++      "github": 152,
++      "cli": 14,
++      "exports": 94
++    },
++    "full": {
++      "head": "8a711bd1b42c8f6282000b06e880f64dda7f566c",
++      "packages": 22,
++      "passed": 7171,
++      "skipped": 5,
++      "failed": 0,
++      "tracked_files": 8509,
++      "tracked_bytes_unchanged": true,
++      "initial_dirty": "four fresh knowledge/dist files; not clean committed tree; later tests/docs only"
++    },
++    "live": {
++      "calls": 1,
++      "requests": 4,
++      "candidate_pr": 306,
++      "head": "958eb72295937b96ee8affc32fa87910bbdde512",
++      "base": "e79fc92687c144969ad91242a979d904f2b2acdf",
++      "observed_summary": "blocked",
++      "exit_code": 0,
++      "merge_authorized": false,
++      "interpretation": "successful read-only report acquisition; dated state not current readiness; no model-host experiment"
++    },
++    "audit": "actual Sonnet5.5 initial REVISE for R1-R4 test gaps; production unchanged, additional tests/docs and cosmetic package description; limited static closure PASS; original opinions and reporting proof retained",
++    "archive": {
++      "archive_sha256": "15a3324dabc84aa9275dbb48b003a8b766729172f3411c8cd49668d51ac01788",
++      "manifest_sha256": "c83efa60621c65ad5b3236ffb719d384e37a6cb4cd08a1e39785fbd8e27084bd",
++      "members": 278,
++      "files": 236,
++      "symlinks": 1,
++      "file_bytes": 5258202,
++      "archive_bytes": 1120496,
++      "verification": "root all names/type/mode/hash/size/target verified"
++    },
++    "docs_passed": 241,
++    "hygiene_passed": 1
+   }
+ }
+diff --git a/docs/design/2026-10-27-joint-engineering/execution.md b/docs/design/2026-10-27-joint-engineering/execution.md
+index 182d72ed..fe488d11 100644
+--- a/docs/design/2026-10-27-joint-engineering/execution.md
++++ b/docs/design/2026-10-27-joint-engineering/execution.md
+@@ -321,3 +321,6 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
+ 
+ 
+ 2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
++
++
++2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.
+diff --git a/docs/design/2026-10-27-joint-engineering/project-operations.md b/docs/design/2026-10-27-joint-engineering/project-operations.md
+index cc30324c..d07c7968 100644
+--- a/docs/design/2026-10-27-joint-engineering/project-operations.md
++++ b/docs/design/2026-10-27-joint-engineering/project-operations.md
+@@ -148,3 +148,6 @@ PR302由root在五项适用CI成功后转Ready，用户审批合并。root中央
+ 
+ 
+ 2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
++
++
++2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.
+diff --git a/docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md b/docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md
+index 78260311..6ba5a0f6 100644
+--- a/docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md
++++ b/docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md
+@@ -10,8 +10,8 @@ This is the delivery queue, separate from activity counts and the 32 formal join
+ | 2 | Run the full five-case skills-check journey and maintain all mapped cases | PR304 merged at5248195b; merge tree equals verified7ef051ff; historical tests keep their original SHA: optional `--scope full`; retain default two-case compatibility | Actual five outcomes 0/1/2/1/0, semantic receipts, cleanup limits, default projection compatibility and failure-path verification |
+ | 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 merged e79fc926; tree equals published b0ea4e78, original CI/audit bindings retained | All five cases and failed/not_run/unknown states preserved; original records unchanged |
+ | 4 | Use current method materials to complete a fresh actual host task | Current packet defect: Codex actual RED/fix/GREEN complete; Claude stopped after permission denial, unrepaired; both16pages delivered; fix published in305 | Separate actual host outcomes and fix delivery from whole capability claims; retain Claude failure and old results, no retries for a better grade |
+-| 5 | Compare and repair a persistent fixed-five verification map | PR306 Draft/main958eb722; fresh263 focused/241docs/hygiene, actual map RED1→correction→GREEN0 and Sonnet5.5 static PASS; newCI40920378111 running | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
+-| 6 | Make PR candidate status easier to assess | Later bounded read-only forge/candidate reconciliation | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
++| 5 | Compare and repair a persistent fixed-five verification map | PR306 merged at6c9a3e8f; actualmain tree equals validated958. Fixed-five map command and CI hook available | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
++| 6 | Make PR candidate status easier to assess | Implemented bounded snapshot:152 github/14 CLI/94 export checks,25 independent vectors and17 CLI cases; one actual read retained blocked state; publishing next PR | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
+ 
+ Firstmate deep recovery/supervision is deferred behind these pstack paths except for necessary dependencies. Formal identity issue287 does not block ordinary bounded D2a tools.
+ 
+@@ -27,7 +27,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
+ | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
+ | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
+ | PS08 | 可操控的验证基础设施与功能地图 | create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明 |
+-| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case地图比较候选已验证待交付；广义漂移发现仍未闭合。 |
++| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case地图比较已随PR306合入；广义漂移发现仍未闭合。 |
+ | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
+ | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
+ | PS12 | 反思转结构化约束 | skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。 |
+@@ -35,8 +35,8 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
+ | PS14 | 性能结论审查 | 性能审查方法与合成数例可用；无因果性能提升结果 |
+ | PS15 | 有预算的 hillclimb 与盲评 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
+ | PS16 | 自包含单元与协调者边界 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
+-| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；栈前沿自动校验服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
+-| PS18 | forge 观察器分类 | 一次forge状态分类方法；未移植watch-pr观察器，不把既有github组件当本批新增；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
++| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；单次候选快照工具已完成待PR，自动栈前沿服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
++| PS18 | forge 观察器分类 | 一次forge状态分类方法；新单次只读观察工具待PR，未移植持续watch-pr观察器；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
+ | PS19 | 暂停与恢复对账 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
+ | PS20 | 跨宿主方法适配 | 四入口双host导出；历史Codex和Claude各一次有界实际修复已记录；新当前packet任务Codex修复完成，Claude材料完整送达但未修复。历史材料60/64与失败不改；全方法等价/强制context/资格未通过 |
+ | PS21 | 来源快照与能力资格验证 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
+@@ -50,9 +50,12 @@ One implementation owner for journey code/tests, one documentation owner, one in
+ 
+ Historical Codex/Claude LIMITED/FAILED observations remain unchanged. New model calls require a fresh task protocol, resource boundary and budget; this queue is not an inherited experiment authorization.
+ 
+-## PR305 merge / PR306 actual-main revalidation
++## Historical PR305 merge / PR306 actual-main revalidation
+ 
+ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals published `b0ea4e78`. PR306 now targets main with head `958eb72295937b96ee8affc32fa87910bbdde512`, tree unchanged from `38a6f358` and complete delta identical. Fresh validation, actual map RED→GREEN, independent checks and Sonnet 5.5 review are running. New CI40920378111 must succeed before Ready. Historical tests retain their original SHA and formal PS/J gates remain false.
+ 
+ 
+ 2026-10-29 actual-main publication: PR305 merged at e79fc926; PR306 head958eb722 is Ready on main after CI40920378111 five applicable SUCCESS/paid SKIP. Card_b8d97bff blocked only for user merge. No formal gate or whole capability promoted. See `docs/implementation/pr306-main-retarget/ci-final`.
++
++
++2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.
+diff --git a/docs/implementation/pr306-main-retarget/README.md b/docs/implementation/pr306-main-retarget/README.md
+index 111fb464..52bce685 100644
+--- a/docs/implementation/pr306-main-retarget/README.md
++++ b/docs/implementation/pr306-main-retarget/README.md
+@@ -19,3 +19,6 @@ New CI `40920378111` is the actual-main head run; five applicable jobs succeeded
+ [Raw archive](evidence/raw-verification.tar.gz) and [receipt](evidence/archive-receipt.json) preserve482 original paths and175530656 original file bytes. Archive SHA256: `2d16d2acc0112d58e19d7fae35746263357febb0988932701a7f938a9cc45eff`. The two identical83MB binary diff files share tar storage using an explicitly recorded hardlink; both original names, bytes, mode and hashes were verified after resolving the link. This does not alter the original scratch files.
+ 
+ OSStack marks the two PR305 activity cards done for their merged slices and marks PR306 card_b8d97bff blocked only while waiting for user approval and merge. PS09/J06 primary and PS08/J03/J09 support remain partial; no formal gate, runtime activation, approval or merge is performed by root.
++
++
++User subsequently merged306 at17:49:32Z. Actualmain6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b has the same tree356296e4 as published958. The activity card is done for that merged slice; the prior Ready and CI observations retain their original timestamps and bindings.

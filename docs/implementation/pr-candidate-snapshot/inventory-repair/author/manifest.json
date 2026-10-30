@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "path": "ci-inventory-excerpt.txt",
+      "bytes": 785,
+      "sha256": "9631ee3b0339278dde840f23dfff75f0dc631d3ca4d1ed72a80c51ebbf34cb31"
+    },
+    {
+      "path": "expected-public-exports.diff",
+      "bytes": 278,
+      "sha256": "7bf39df5876470b8be7a1c69a60bd6f2de1f72acd1146aee59a2cfc4fa2f5ed7"
+    },
+    {
+      "path": "input-delta.txt",
+      "bytes": 82,
+      "sha256": "b3b7497484f7045be91bd0b9ebd3ef63d6241896b487552747e292b120867209"
+    },
+    {
+      "path": "report.json",
+      "bytes": 2457,
+      "sha256": "6dfeb44f653c6e151ccced15781fcd8a04461beea5edfb572539f616f5f0d599"
+    },
+    {
+      "path": "report.md",
+      "bytes": 1731,
+      "sha256": "470b99bec141f63f861c03ad3686f302eaef9d7ce191f104144938d2fc96f2c2"
+    }
+  ]
+}

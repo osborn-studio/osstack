@@ -1,0 +1,66 @@
+ .github/workflows/ci.yml                           |    3 +
+ .../delivery-rollup.json                           |  153 +-
+ .../delivery-status.md                             |   14 +-
+ .../execution-ledger.json                          |  139 +-
+ .../2026-10-27-joint-engineering/execution.md      |    7 +
+ .../project-operations.md                          |    3 +
+ .../pstack-feature-queue.md                        |   11 +-
+ .../implementation/pr-candidate-snapshot/README.md |   54 +
+ docs/implementation/pr305-main-retarget/README.md  |    6 +
+ .../ci-final/complete-log.command.json             |   14 +
+ .../ci-final/complete-log.log.gz                   |  Bin 0 -> 272316 bytes
+ .../ci-final/complete-log.stderr                   |    0
+ .../ci-final/final-manifest.json                   |   61 +
+ .../pr305-main-retarget/ci-final/jobs.json         |    1 +
+ .../pr305-main-retarget/ci-final/parse.py          |   52 +
+ .../ci-final/pr-final.command.json                 |   14 +
+ .../pr305-main-retarget/ci-final/pr-final.json     |    1 +
+ .../pr305-main-retarget/ci-final/pr-final.stderr   |    0
+ .../pr305-main-retarget/ci-final/report.json       |  745 ++++
+ .../pr305-main-retarget/ci-final/report.md         |   15 +
+ .../ci-final/root-verification.json                |    7 +
+ .../pr305-main-retarget/ci-final/run.json          |    1 +
+ .../pr305-main-retarget/ready-boards.json          | 3658 +++++++++++++++++++
+ .../pr305-main-retarget/ready-guard.json           |   74 +
+ .../pr305-main-retarget/ready-receipt.json         |    1 +
+ docs/implementation/pr306-main-retarget/README.md  |   21 +
+ .../pr306-main-retarget/ci-final/958eb722-git.txt  |    1 +
+ .../pr306-main-retarget/ci-final/b0ea4e78-git.txt  |    1 +
+ .../ci-final/complete-log.command.json             |   14 +
+ .../ci-final/complete-log.log.gz                   |  Bin 0 -> 278663 bytes
+ .../ci-final/complete-log.stderr                   |    0
+ .../pr306-main-retarget/ci-final/e79fc926-git.txt  |    1 +
+ .../ci-final/final-manifest.json                   |   94 +
+ .../pr306-main-retarget/ci-final/finalize.py       |   47 +
+ .../pr306-main-retarget/ci-final/jobs.json         |    1 +
+ .../ci-final/osstack-receipts.json                 | 3662 ++++++++++++++++++++
+ .../pr306-main-retarget/ci-final/parse.py          |   52 +
+ .../ci-final/pr-final.command.json                 |   14 +
+ .../pr306-main-retarget/ci-final/pr-final.json     |    1 +
+ .../pr306-main-retarget/ci-final/pr-final.stderr   |    0
+ .../pr306-main-retarget/ci-final/ready-guard.json  |    1 +
+ .../ci-final/ready-readback.json                   |    1 +
+ .../pr306-main-retarget/ci-final/ready.stderr      |    1 +
+ .../pr306-main-retarget/ci-final/ready.stdout      |    0
+ .../pr306-main-retarget/ci-final/report.json       |  989 ++++++
+ .../pr306-main-retarget/ci-final/report.md         |   15 +
+ .../pr306-main-retarget/ci-final/run.json          |    1 +
+ .../ci-final/synthetic-commit.command.json         |    9 +
+ .../ci-final/synthetic-commit.json                 |    1 +
+ .../ci-final/synthetic-commit.stderr               |    0
+ .../evidence/archive-receipt.json                  |   11 +
+ .../evidence/independent-receipt.json              |   33 +
+ .../evidence/raw-verification.tar.gz               |  Bin 0 -> 68017164 bytes
+ .../skills-map-maintenance-publication/README.md   |    7 +
+ .../docs-final-control.txt                         |    5 +
+ .../docs-pre-publication.txt                       |    5 +
+ .../pr-created.json                                |    1 +
+ .../publication-boards.json                        | 3620 +++++++++++++++++++
+ osstack-methods-skill/references/pr-readiness.md   |    6 +
+ package.json                                       |    4 +-
+ packages/github/src/index.ts                       |   12 +
+ packages/github/src/pr-candidate-snapshot.test.ts  |  210 ++
+ packages/github/src/pr-candidate-snapshot.ts       |  222 ++
+ scripts/report-pr-candidate.mjs                    |   89 +
+ scripts/report-pr-candidate.test.mjs               |  103 +
+ 65 files changed, 14250 insertions(+), 39 deletions(-)
