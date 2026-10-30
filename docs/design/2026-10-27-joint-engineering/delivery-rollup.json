@@ -8,7 +8,7 @@
   "merged_named_methods": 14,
   "merged_entries": 4,
   "candidate_named_methods": null,
-  "candidate_status": "PR307/308/309 merged in main e4643324; ordered1–3 PR frontier candidate8e830 validated, not yet published/merged. New capability expansion paused for original pstack scope reconciliation; no formal gate issued.",
+  "candidate_status": "PR307/308/309 merged maine464; PR310 orderedfrontier+originalpstackreconciliation Draft/main headdb0652dd CI40988439592 running. OriginalC0–C3 and whole24/formal32 gates not passed.",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -11538,7 +11538,7 @@
     "formal_gate_pass": false
   },
   "stack_frontier_slice": {
-    "status": "validated_actual_main_preparing_publication",
+    "status": "published_draft_main_ci_running",
     "card": "card_6962ab52",
     "base_main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
     "primary_capability": "PS17",
@@ -11615,7 +11615,14 @@
       "file_bytes": 19356574,
       "archive_bytes": 10215436,
       "verification": "root all names/type/mode/hash/size/target verified"
-    }
+    },
+    "pr": 310,
+    "url": "https://github.com/osborn-studio/osstack/pull/310",
+    "published_head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e",
+    "base": "main",
+    "ci_run": 40988439592,
+    "ready": false,
+    "user_merge_required": true
   },
   "pstack_stage_acceptance": {
     "status": "reconciliation_complete_scoped_user_acceptance_pending",
@@ -11645,7 +11652,9 @@
     "archive_sha256": "6fc0e7a39ad2503f22ea6275aa6e60ed78ec72c5cf6f3a1a3a8b93047ec62642",
     "next_scope": "原C0→C1→C2必要收口；不新增方法/广义扩展，不先铺开Firstmate深runtime。具体新实现须按既有门槛冻结独占范围与验证。",
     "board_status": "blocked",
-    "blocked_meaning": "仅等待用户对现有工具范围的验收；不表示原集成已完成或撤回持续开发授权。"
+    "blocked_meaning": "仅等待用户对现有工具范围的验收；不表示原集成已完成或撤回持续开发授权。",
+    "publication_pr": 310,
+    "publication_head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e"
   },
   "current_reconciliation_observed_at": "2026-10-30T01:33:41.090802+00:00",
   "historical_source_snapshot_limit": "Three independent reports used e26f6d2. Current projection adds confirmed merge301 at1bf1f6ca. Original reports are retained unchanged."

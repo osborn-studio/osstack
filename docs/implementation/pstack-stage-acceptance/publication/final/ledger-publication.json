@@ -1,0 +1,16 @@
+[
+  {
+    "comment_id": 725,
+    "card_id": "card_6962ab52",
+    "author": "joint-entry",
+    "body": "PR310已创建Draft/main，headdb0652dd，CI40988439592运行；含frontier在途工具及原pstack验收对账。五适用CI成功后才Ready+通知；不批准合并。https://github.com/osborn-studio/osstack/pull/310",
+    "created_at": 1793325262.671
+  },
+  {
+    "comment_id": 726,
+    "card_id": "card_676712c1",
+    "author": "joint-entry",
+    "body": "对账成果已随PR310发布供审阅，目录docs/implementation/pstack-stage-acceptance；blocked仅表示现有工具范围待用户验收，不表示原集成完成或撤回持续开发授权。原C0→C1→C2收口为下一优先，Firstmate深runtime后排。",
+    "created_at": 1793325262.673
+  }
+]
