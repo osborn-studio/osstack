@@ -4,7 +4,7 @@
 
 [完整对账与建议](../../implementation/pstack-stage-acceptance/README.md)保留原24PS/19W/48A和C0/C1/C2。S1–S3只供已交付工具单独验收；S4历史宿主结果仍受限。没有用户签收或范围删减。W13只读分类不额外要求持续watcher；原端到端集成仍未闭合。
 
-当前合并快照：`01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211`。PR307–310已由用户合并；主线4入口14方法。固定五case维护、证据投影、单PR/有序栈观察与CI分类可按有限范围使用。原C0→C1→C2仍未完成，W17/A39有限后验教程已收口；W18相关叶子读取已实现并本地验证，PR311 Draft等待CI；不是完整W18/C0验收。历史证据保留原SHA；合并不等于阶段签收。
+当前合并快照：`01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211`。PR307–310已由用户合并；主线4入口14方法。固定五case维护、证据投影、单PR/有序栈观察与CI分类可按有限范围使用。原C0→C1→C2仍未完成，W17/A39有限后验教程已收口；W18相关叶子读取已实现并本地验证，PR311 Ready等待用户合并；不是完整W18/C0验收。历史证据保留原SHA；合并不等于阶段签收。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -47,7 +47,7 @@
 | PS05 覆盖式并行与预先声明的竞赛 | 部分已交付 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 独立评审与意见裁决 | 部分已交付 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 影响面与关键前提验证 | 部分已交付 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311 Draft等待CI；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
+| PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311 Ready等待用户合并；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
 | PS09 验证基础设施的健康、归属与漂移维护 | 部分已交付 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 形式化验证生命周期 | 暂缓/未实现 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 状态图与反例解释 | 暂缓/未实现 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
@@ -239,3 +239,6 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 
 
 2026-10-30 publication: [PR311](https://github.com/osborn-studio/osstack/pull/311) is Draft/main at `f70f40265ddfb1e419d6b8f5145d46c71060b9bc`; CI41014856944 is running. Five applicable successes and final readback are required before Ready. No approval/merge is performed by agents. Current bounded W18 implementation is separate from remaining W19/C0/C1/C2.
+
+
+2026-10-30 final CI closeout: PR311 head `f70f4026` is Ready/main after CI41014856944 five applicable SUCCESS/paid SKIP and root readback (`isDraft=false`, `MERGEABLE`). Actual synthetic checkout `7aec62e116a37788b283e0634f4e0163f9755c81`: 22 packages7259pass7skip0fail; feature-map40, export93pass1skip, reader14/journey43/map24/projection88. Original full log and independent checks are retained in [CI closeout](../../implementation/pstack-feature-map/ci-final/README.md); no remote artifact rehash claim. Card9a676553 blocked only for gilberthello merge, not whole W18/C0 qualification. Next W19 remains authorized; Firstmate deep runtime prohibited.

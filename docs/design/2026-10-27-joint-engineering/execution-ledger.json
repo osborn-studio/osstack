@@ -5983,7 +5983,7 @@
   },
   "feature_map_reader_slice": {
     "observed_at": "2026-10-30T06:35:21.716739+00:00",
-    "status": "draft_on_main_waiting_current_head_CI",
+    "status": "ready_on_main_waiting_user_merge",
     "code_sha": "5b730756b70209eea240144677a0ed302230a32f",
     "card_id": "card_9a676553",
     "work_package": "W18",
@@ -6013,6 +6013,40 @@
     "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete",
     "pr": 311,
     "head_sha": "f70f40265ddfb1e419d6b8f5145d46c71060b9bc",
-    "ci_run": 41014856944
+    "ci_run": 41014856944,
+    "current_head_ci": {
+      "observed_at": "2026-10-30T07:11:25.797813+00:00",
+      "run": 41014856944,
+      "status": "completed_success",
+      "head_sha": "f70f40265ddfb1e419d6b8f5145d46c71060b9bc",
+      "synthetic_checkout": "7aec62e116a37788b283e0634f4e0163f9755c81",
+      "base_main": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+      "applicable_checks": 5,
+      "applicable_conclusion": "SUCCESS",
+      "paid_smoke": "SKIPPED",
+      "package_suite": {
+        "packages": 22,
+        "passed": 7259,
+        "skipped": 7,
+        "failed": 0
+      },
+      "feature_map": {
+        "passed": 40,
+        "skipped": 0,
+        "failed": 0
+      },
+      "exports": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1,
+        "failed": 0
+      },
+      "log_sha256": "242f965083a5a545ef24bf5715f90fc29343480b01b59d70884fec71ad124e41",
+      "remote_artifacts_downloaded": false,
+      "evidence": "docs/implementation/pstack-feature-map/ci-final",
+      "independent_report": "docs/implementation/pstack-feature-map/ci-final/independent/report.md",
+      "independent_manifest_sha256": "d83b18f4c9057f64d22fb80295662af27896679ab2527f6f831f996308500cbf"
+    },
+    "ready_observed_at": "2026-10-30T07:14:13.074136+00:00"
   }
 }

@@ -1,0 +1,295 @@
+[
+  {
+    "step": "Method export contracts",
+    "tests": 94,
+    "pass": 93,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 1,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 8907,
+        "text": "# tests 94"
+      },
+      {
+        "line": 8909,
+        "text": "# pass 93"
+      },
+      {
+        "line": 8910,
+        "text": "# fail 0"
+      },
+      {
+        "line": 8911,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 8912,
+        "text": "# skipped 1"
+      },
+      {
+        "line": 8913,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": [
+      {
+        "line": 8484,
+        "text": "ok 25 - refuses a new output inside the current global Codex home even in dry-run # SKIP global Codex home absent; do not create it for testing"
+      }
+    ]
+  },
+  {
+    "step": "Relevant feature-map selection contracts",
+    "tests": 40,
+    "pass": 40,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 9164,
+        "text": "# tests 40"
+      },
+      {
+        "line": 9166,
+        "text": "# pass 40"
+      },
+      {
+        "line": 9167,
+        "text": "# fail 0"
+      },
+      {
+        "line": 9168,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 9169,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 9170,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  },
+  {
+    "step": "Method material pagination contracts",
+    "tests": 14,
+    "pass": 14,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 9265,
+        "text": "# tests 14"
+      },
+      {
+        "line": 9267,
+        "text": "# pass 14"
+      },
+      {
+        "line": 9268,
+        "text": "# fail 0"
+      },
+      {
+        "line": 9269,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 9270,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 9271,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  },
+  {
+    "step": "Method verification journey contracts",
+    "tests": 43,
+    "pass": 43,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 10085,
+        "text": "# tests 43"
+      },
+      {
+        "line": 10087,
+        "text": "# pass 43"
+      },
+      {
+        "line": 10088,
+        "text": "# fail 0"
+      },
+      {
+        "line": 10089,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 10090,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 10091,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  },
+  {
+    "step": "Skills map maintenance contracts",
+    "tests": 24,
+    "pass": 24,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 10907,
+        "text": "# tests 24"
+      },
+      {
+        "line": 10909,
+        "text": "# pass 24"
+      },
+      {
+        "line": 10910,
+        "text": "# fail 0"
+      },
+      {
+        "line": 10911,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 10912,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 10913,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  },
+  {
+    "step": "Model evidence projection contracts",
+    "tests": 88,
+    "pass": 88,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 11700,
+        "text": "# tests 88"
+      },
+      {
+        "line": 11702,
+        "text": "# pass 88"
+      },
+      {
+        "line": 11703,
+        "text": "# fail 0"
+      },
+      {
+        "line": 11704,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 11705,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 11706,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  },
+  {
+    "step": "Session adoption decision smoke (local fixture)",
+    "tests": 27,
+    "pass": 27,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 9444,
+        "text": "# tests 27"
+      },
+      {
+        "line": 9446,
+        "text": "# pass 27"
+      },
+      {
+        "line": 9447,
+        "text": "# fail 0"
+      },
+      {
+        "line": 9448,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 9449,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 9450,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  },
+  {
+    "step": "Skills check verification (local Git fixtures)",
+    "tests": 25,
+    "pass": 25,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "line_refs": [
+      {
+        "line": 9701,
+        "text": "# tests 25"
+      },
+      {
+        "line": 9703,
+        "text": "# pass 25"
+      },
+      {
+        "line": 9704,
+        "text": "# fail 0"
+      },
+      {
+        "line": 9705,
+        "text": "# cancelled 0"
+      },
+      {
+        "line": 9706,
+        "text": "# skipped 0"
+      },
+      {
+        "line": 9707,
+        "text": "# todo 0"
+      }
+    ],
+    "skip_details": []
+  }
+]

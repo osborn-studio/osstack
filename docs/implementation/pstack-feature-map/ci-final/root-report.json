@@ -1,0 +1,201 @@
+{
+  "run": 41014856944,
+  "head": "f70f40265ddfb1e419d6b8f5145d46c71060b9bc",
+  "actual_checkout_log_values": [
+    "actions/checkout@v7\t2026-10-30T06:37:02.0066891Z 7aec62e116a37788b283e0634f4e0163f9755c81"
+  ],
+  "packages": [
+    {
+      "package": "packages/contracts",
+      "passed": 15,
+      "skipped": 0
+    },
+    {
+      "package": "packages/compliance",
+      "passed": 17,
+      "skipped": 0
+    },
+    {
+      "package": "packages/github",
+      "passed": 224,
+      "skipped": 0
+    },
+    {
+      "package": "packages/knowledge",
+      "passed": 44,
+      "skipped": 0
+    },
+    {
+      "package": "packages/neat-eval",
+      "passed": 16,
+      "skipped": 0
+    },
+    {
+      "package": "packages/runtime",
+      "passed": 1,
+      "skipped": 0
+    },
+    {
+      "package": "packages/protocol",
+      "passed": 1012,
+      "skipped": 0
+    },
+    {
+      "package": "packages/governance",
+      "passed": 301,
+      "skipped": 0
+    },
+    {
+      "package": "packages/knowledge-cloud",
+      "passed": 36,
+      "skipped": 0
+    },
+    {
+      "package": "packages/graph",
+      "passed": 257,
+      "skipped": 0
+    },
+    {
+      "package": "packages/core",
+      "passed": 1301,
+      "skipped": 0
+    },
+    {
+      "package": "packages/plugins",
+      "passed": 1,
+      "skipped": 0
+    },
+    {
+      "package": "packages/hermes-adapter",
+      "passed": 22,
+      "skipped": 0
+    },
+    {
+      "package": "packages/skills",
+      "passed": 2,
+      "skipped": 0
+    },
+    {
+      "package": "packages/autonomy",
+      "passed": 201,
+      "skipped": 0
+    },
+    {
+      "package": "packages/skill-registry",
+      "passed": 43,
+      "skipped": 0
+    },
+    {
+      "package": "packages/agents",
+      "passed": 361,
+      "skipped": 0
+    },
+    {
+      "package": "packages/config",
+      "passed": 30,
+      "skipped": 0
+    },
+    {
+      "package": "packages/loop",
+      "passed": 514,
+      "skipped": 1
+    },
+    {
+      "package": "packages/conformance",
+      "passed": 9,
+      "skipped": 0
+    },
+    {
+      "package": "packages/supervisor",
+      "passed": 88,
+      "skipped": 0
+    },
+    {
+      "package": "packages/cli",
+      "passed": 2764,
+      "skipped": 6
+    }
+  ],
+  "passed": 7259,
+  "skipped": 7,
+  "failed": 0,
+  "standalone_step_summaries": {
+    "Method export contracts": {
+      "tests": 94,
+      "pass": 93,
+      "fail": 0,
+      "skipped": 1
+    },
+    "Relevant feature-map selection contracts": {
+      "tests": 40,
+      "pass": 40,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Method material pagination contracts": {
+      "tests": 14,
+      "pass": 14,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Session adoption decision smoke (local fixture)": {
+      "tests": 27,
+      "pass": 27,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Skills check verification (local Git fixtures)": {
+      "tests": 25,
+      "pass": 25,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Method verification journey contracts": {
+      "tests": 43,
+      "pass": 43,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Read-only PR snapshot contracts (offline)": {
+      "tests": 14,
+      "pass": 14,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Ordered PR stack snapshot contracts (offline)": {
+      "tests": 29,
+      "pass": 29,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Skills map maintenance contracts": {
+      "tests": 24,
+      "pass": 24,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Model evidence projection contracts": {
+      "tests": 88,
+      "pass": 88,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Neat semantic live diagnostic tests": {
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "skipped": 0
+    },
+    "Real repo deliver smoke": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "log_sha256": "242f965083a5a545ef24bf5715f90fc29343480b01b59d70884fec71ad124e41",
+  "remote_artifacts_downloaded": false,
+  "actual_checkout_shas": [
+    "7aec62e116a37788b283e0634f4e0163f9755c81"
+  ]
+}
