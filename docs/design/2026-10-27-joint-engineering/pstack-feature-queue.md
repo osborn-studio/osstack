@@ -11,7 +11,7 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 | 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 merged e79fc926; tree equals published b0ea4e78, original CI/audit bindings retained | All five cases and failed/not_run/unknown states preserved; original records unchanged |
 | 4 | Use current method materials to complete a fresh actual host task | Current packet defect: Codex actual RED/fix/GREEN complete; Claude stopped after permission denial, unrepaired; both16pages delivered; fix published in305 | Separate actual host outcomes and fix delivery from whole capability claims; retain Claude failure and old results, no retries for a better grade |
 | 5 | Compare and repair a persistent fixed-five verification map | PR306 merged at6c9a3e8f; actualmain tree equals validated958. Fixed-five map command and CI hook available | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
-| 6 | Make PR candidate status easier to assess | Implemented bounded snapshot:152 github/14 CLI/94 export checks,25 independent vectors and17 CLI cases; one actual read retained blocked state; publishing next PR | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
+| 6 | Make PR candidate status easier to assess | PR307 merged at de43f47c; bounded read-only snapshot is available. PR308 legacy-context classification awaits final main CI; exceptional CheckRun repair is the next validated candidate | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
 
 Firstmate deep recovery/supervision is deferred behind these pstack paths except for necessary dependencies. Formal identity issue287 does not block ordinary bounded D2a tools.
 
@@ -35,8 +35,8 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS14 | 性能结论审查 | 性能审查方法与合成数例可用；无因果性能提升结果 |
 | PS15 | 有预算的 hillclimb 与盲评 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
 | PS16 | 自包含单元与协调者边界 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
-| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；单次候选快照工具已完成待PR，自动栈前沿服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
-| PS18 | forge 观察器分类 | 一次forge状态分类方法；新单次只读观察工具待PR，未移植持续watch-pr观察器；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
+| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；单次只读候选快照工具已随PR307合并，自动栈前沿服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
+| PS18 | forge 观察器分类 | 一次forge状态分类方法；单次只读观察工具已随PR307合并，legacy StatusContext/CheckRun分类修复候选另列，未移植持续watch-pr观察器；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS19 | 暂停与恢复对账 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS20 | 跨宿主方法适配 | 四入口双host导出；历史Codex和Claude各一次有界实际修复已记录；新当前packet任务Codex修复完成，Claude材料完整送达但未修复。历史材料60/64与失败不改；全方法等价/强制context/资格未通过 |
 | PS21 | 来源快照与能力资格验证 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
@@ -72,3 +72,8 @@ PR308 b4a2fc30 publishes the scoped legacy StatusContext repair, Draft on PR307 
 ## 2026-10-30：307 合并后的执行窗口
 
 #307 已由用户合入 main `de43f47c29d5c08ae6e6c5eb366767320ffcdd0c`，合并树等已发布8fd。#308 已以 `6d978973` 改为main，树等原b4a，CI40977980388与新鲜定向复验进行中，保持Draft。三个子代理分别承担主线复验、CheckRun异常状态修复、预冻结独立反例验证；OSStack新卡card_14b72dd7贡献PS18并支持PS17/J07，root独占PR/中央账本/full队列。异常或不完整CheckRun不能误判成功，neutral/skipped既有显式政策保留。没有新增方法或正式资格通过，历史失败/CI不改写。
+
+
+## CheckRun 分类修复候选（2026-10-30）
+
+PS18/J07支持卡card_14b72dd7已完成作者56同测试RED17→GREEN、独立57预冻向量旧20失败→新全过；root d5eea3e5全仓22包7232通过/5跳过/0失败，8677已跟踪文件字节执行期间不变，初始含4新鲜dist，不称clean committed tree。实际Sonnet5.5静态PASS，原意见与失败保留。只明确完成且SUCCESS/NEUTRAL/SKIPPED可成功，已知失败优先，其他不完整/未知pending。已有卡不自动刷新；snapshot另有政策。待发布依赖308的Draft，308当前4a7ee75d/main新CI40979169462尚未完成；不得合入featurebase。见[修复记录](../../implementation/stack-checkrun-state/README.md)。

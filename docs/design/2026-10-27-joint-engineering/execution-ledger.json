@@ -5368,7 +5368,7 @@
     "merged_at": "2026-10-30T00:05:05Z"
   },
   "stack_status_context_slice": {
-    "status": "draft_actual_main_revalidation",
+    "status": "draft_final_documentation_head_ci_pending",
     "card": "card_7e0b1be2",
     "base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
     "primary_capability": "PS18",
@@ -5437,7 +5437,7 @@
     },
     "archive_independent_sha256": "150f646eee40cd0ffac891bd3bfa28897f54da6f9c3623258248bb65dd22e8ad",
     "pr": 308,
-    "head_sha": "6d97897325efdeea47d86f3ae169c72907b74d6e",
+    "head_sha": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
     "base_branch": "main",
     "parent_based_ci": {
       "head_sha": "b4a2fc30711d9c3ad5cddbc846839948f1810c56",
@@ -5454,10 +5454,11 @@
       }
     },
     "current_ci": {
-      "run": 40977980388,
-      "head_sha": "6d97897325efdeea47d86f3ae169c72907b74d6e",
+      "run": 40979169462,
+      "head_sha": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
       "base": "main",
-      "status": "in_progress; final documentation head will require its own CI"
+      "status": "pending_current_head_CI",
+      "observed_at": "2026-10-30T00:25:03.449316+00:00"
     }
   },
   "post307_dispatch": {
@@ -5485,5 +5486,69 @@
       "new_methods": 0,
       "host_model_calls": 0
     }
+  },
+  "stack_checkrun_state_slice": {
+    "observed_at": "2026-10-30T00:25:03.449316+00:00",
+    "card": "card_14b72dd7",
+    "status": "validated_prepublication",
+    "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "parent_pr": 308,
+    "parent_head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
+    "author_sha": "7b7916eac56d654891018204b11f3a00daffdc3f",
+    "root_full_sha": "d5eea3e5730588c144472defd15ee52bf3b36b4f",
+    "primary_capability": "PS18",
+    "supports": [
+      "PS17",
+      "J07"
+    ],
+    "scope": "CheckRun outcome classification only; no watcher or auto merge; existing cards not refreshed",
+    "author_red": {
+      "passed": 39,
+      "failed": 17
+    },
+    "author_green": 56,
+    "author_package_passed": 195,
+    "independent": {
+      "criteria_sha256": "ade3c10ff8b185da9fa24c7babca8906d8d4a3b8e1f45c5a40f0e5cef508f9f3",
+      "vectors": 57,
+      "old_passed": 37,
+      "old_failed": 20,
+      "new_passed": 57,
+      "mode": "synthetic injected public ingest/drift/topology; no live forge/DB"
+    },
+    "full": {
+      "head": "d5eea3e5730588c144472defd15ee52bf3b36b4f",
+      "started_at": "2026-10-30T00:14:41.972094+00:00",
+      "finished_at": "2026-10-30T00:23:14.903511+00:00",
+      "exit_code": 0,
+      "tracked_files": 8677,
+      "tracked_bytes_unchanged": true,
+      "initial_dirty": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+      "changed": []
+    },
+    "full_counts": {
+      "packages": 22,
+      "passed": 7232,
+      "skipped": 5,
+      "failed": 0
+    },
+    "audit": "actual Sonnet5.5 static PASS; optional suggestions preserved; changeset wording corrected; frozen vectors CRV34/35 cover non-completed failure priority",
+    "post_full": "merged only PR308 docs; changeset wording only; lint 21 warnings/no errors, typecheck and inventory fresh passed",
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "new_methods": 0,
+    "new_host_model_calls": 0,
+    "record": "docs/implementation/stack-checkrun-state",
+    "archive": {
+      "archive_sha256": "f73a4488a7734af35905595c3e73982c113ba020153b592c321ad88d80786204",
+      "manifest_sha256": "5aad3470a576a2e5bad7b3026fa6b08e174a31cefe22bee27e662b506c6f27fd",
+      "members": 90,
+      "files": 83,
+      "symlinks": 0,
+      "file_bytes": 6344835,
+      "archive_bytes": 3085382,
+      "verification": "root all names/type/mode/hash/size/target verified"
+    },
+    "archive_independent_sha256": "7801d9655ebf6bcf5167fe58c1e684fbd35e611f3eef481d98860926e8f09e0c"
   }
 }
