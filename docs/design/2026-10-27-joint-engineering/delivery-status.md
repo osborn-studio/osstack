@@ -1,6 +1,6 @@
 # pstack 优先：能力与交付对账
 
-当前合并快照：`6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b`。#305/#306已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；下一候选状态只读工具已完成实现、实际读取及限定审计，正在发布。历史宿主实验与CI保留各自原始SHA。
+当前合并快照：`de43f47c29d5c08ae6e6c5eb366767320ffcdd0c`。#305/#306/#307已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；下一候选状态只读工具已完成实现、实际读取及限定审计，正在发布。历史宿主实验与CI保留各自原始SHA。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -181,3 +181,14 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
 
 
 2026-10-29T17:49:32Z: user merged PR306; actual main6c9a3e8f tree356296e4 equals published958. Maintenance card done for that slice. Next bounded PR candidate snapshot supports PS17/18 and PS13/J07; J20 is design context only. Current integration5744 adds actualmain with empty tree delta. No new method or formal milestone completion.
+
+
+2026-10-29 latest delivery: actual main6c9a3e8f includes user-merged305/306. PR307 read-only candidate snapshot is Draft/main at8fd28911 with CI40929858660 running; original lint failure and subsequent inventory failure are preserved, repaired without relaxing gates. PR308 legacy StatusContext ingestion repair is Draft atb4a2fc30, based on307, CI40930144304 running. Same-test RED→GREEN, independently frozen36 vectors and Sonnet5.5 static PASS support the scoped repair; fullbda7207/5/0 and later172/14 focused receipts retain separate bindings. Root alone owns PR/ledger/full queue; A implementation, B downstream/CI, C independent checks have separate evidence. No new methods, no whole PS capability or formal J milestone completion. After user merges307, verify actualmain/tree/diff and retarget/revalidate308 before Ready; never merge into feature base.
+
+
+2026-10-29 18:56UTC update: PR307 head8fd28911 now Ready/main after CI40929858660 five applicable SUCCESS/paid SKIP, root readiness mutation and readback confirmed. User approval/merge still required. PR308 headb4a2fc30 CI40930144304 also has five applicable SUCCESS/paid SKIP but remains Draft on parent307; actual-main retarget/revalidation is still required after user merge307. Both activity cards are blocked solely on their stated merge dependency, not formal qualification. Original lint/inventory failures remain preserved.
+
+
+## 2026-10-30：307 合并后的执行窗口
+
+#307 已由用户合入 main `de43f47c29d5c08ae6e6c5eb366767320ffcdd0c`，合并树等已发布8fd。#308 已以 `6d978973` 改为main，树等原b4a，CI40977980388与新鲜定向复验进行中，保持Draft。三个子代理分别承担主线复验、CheckRun异常状态修复、预冻结独立反例验证；OSStack新卡card_14b72dd7贡献PS18并支持PS17/J07，root独占PR/中央账本/full队列。异常或不完整CheckRun不能误判成功，neutral/skipped既有显式政策保留。没有新增方法或正式资格通过，历史失败/CI不改写。
