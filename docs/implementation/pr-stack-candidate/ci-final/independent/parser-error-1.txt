@@ -1,0 +1,1 @@
+First parser attempt asserted map status == passed and stopped. Actual map status must be read from original JSON; no CI failure inferred. Trace: verify.py line 52 AssertionError.

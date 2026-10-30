@@ -1,0 +1,125 @@
+{
+  "head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e",
+  "run": 40988439592,
+  "synthetic_checkout": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+  "base": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+  "packages": [
+    {
+      "package": "contracts",
+      "passed": 15,
+      "skipped": 0
+    },
+    {
+      "package": "compliance",
+      "passed": 17,
+      "skipped": 0
+    },
+    {
+      "package": "github",
+      "passed": 224,
+      "skipped": 0
+    },
+    {
+      "package": "knowledge",
+      "passed": 44,
+      "skipped": 0
+    },
+    {
+      "package": "runtime",
+      "passed": 1,
+      "skipped": 0
+    },
+    {
+      "package": "neat-eval",
+      "passed": 16,
+      "skipped": 0
+    },
+    {
+      "package": "protocol",
+      "passed": 1012,
+      "skipped": 0
+    },
+    {
+      "package": "governance",
+      "passed": 301,
+      "skipped": 0
+    },
+    {
+      "package": "knowledge-cloud",
+      "passed": 36,
+      "skipped": 0
+    },
+    {
+      "package": "graph",
+      "passed": 257,
+      "skipped": 0
+    },
+    {
+      "package": "core",
+      "passed": 1301,
+      "skipped": 0
+    },
+    {
+      "package": "plugins",
+      "passed": 1,
+      "skipped": 0
+    },
+    {
+      "package": "hermes-adapter",
+      "passed": 22,
+      "skipped": 0
+    },
+    {
+      "package": "skills",
+      "passed": 2,
+      "skipped": 0
+    },
+    {
+      "package": "autonomy",
+      "passed": 201,
+      "skipped": 0
+    },
+    {
+      "package": "skill-registry",
+      "passed": 43,
+      "skipped": 0
+    },
+    {
+      "package": "agents",
+      "passed": 361,
+      "skipped": 0
+    },
+    {
+      "package": "config",
+      "passed": 30,
+      "skipped": 0
+    },
+    {
+      "package": "loop",
+      "passed": 514,
+      "skipped": 1
+    },
+    {
+      "package": "conformance",
+      "passed": 9,
+      "skipped": 0
+    },
+    {
+      "package": "supervisor",
+      "passed": 88,
+      "skipped": 0
+    },
+    {
+      "package": "cli",
+      "passed": 2764,
+      "skipped": 6
+    }
+  ],
+  "passed": 7259,
+  "skipped": 7,
+  "failed": 0,
+  "five_applicable_success": true,
+  "paid_skipped": true,
+  "remote_artifacts_downloaded": false,
+  "full_log_sha256": "0361f4149fe00eaa5ae78c2f8236587efff2156679fa2e6f9fd2aa9234f45b81"
+}

@@ -104,3 +104,7 @@ User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612b
 ## 发布回执：PR310 / pstack原范围对账
 
 PR310 Draft/main，head `db0652dde3ec4695ef592b0d7f1c14a14a30917e`，CI40988439592运行。收口有序PR前沿在途工具和原24PS/19W/48A对账；用户验收及原C0–C3未签发，原失败保留。接下来优先原C0→C1→C2，Firstmate深runtime后排。
+
+## PR310 最终 CI 与 Ready（2026-10-30）
+
+PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI40988439592五适用SUCCESS/paidSKIP，实际synthetic db37d26669d6bcb155cd9b99d08859d5d32c9777，22包7259pass7skip0fail；export94total93pass1skip，github224/stackCLI29。仅等gilberthello审批合并；不代表原pstack C0–C3或32J正式验收，S1–S3签收仍未发生。原失败和旧SHA证据保持。 完整原日志losslessgzip、metadata、Ready回读和三板见 `docs/implementation/pr-stack-candidate/ci-final`；未下载远程artifact，不声称重hash。未修改候选产品或重复代码审计。

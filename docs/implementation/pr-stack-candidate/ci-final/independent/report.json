@@ -1,0 +1,1065 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T02:34:15.335417+00:00",
+  "scope": "Independent parsing of supplied immutable CI metadata/log bytes only; no product/test/model execution or remote artifact download.",
+  "run": 40988439592,
+  "head_sha": "db0652dde3ec4695ef592b0d7f1c14a14a30917e",
+  "base_sha_from_checkout_merge_message": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+  "base_branch": "not independently present in these two inputs",
+  "synthetic_checkout": [
+    {
+      "job": "graph-runtime-matrix (22.23.1)",
+      "sha": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+      "line": 133
+    },
+    {
+      "job": "graph-macos-fixtures (24)",
+      "sha": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+      "line": 1089
+    },
+    {
+      "job": "graph-macos-fixtures (22)",
+      "sha": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+      "line": 1793
+    },
+    {
+      "job": "graph-runtime-matrix (20.6.0)",
+      "sha": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+      "line": 2457
+    },
+    {
+      "job": "check",
+      "sha": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+      "line": 3740
+    }
+  ],
+  "jobs": [
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "databaseId": 123844812827,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-30T01:53:05Z",
+      "completedAt": "2026-10-30T01:56:20Z",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40988439592/job/123844812827"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "databaseId": 123844812973,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-30T01:53:05Z",
+      "completedAt": "2026-10-30T01:55:28Z",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40988439592/job/123844812973"
+    },
+    {
+      "name": "graph-macos-fixtures (22)",
+      "databaseId": 123844813061,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-30T01:53:06Z",
+      "completedAt": "2026-10-30T01:55:22Z",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40988439592/job/123844813061"
+    },
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "databaseId": 123844813126,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-30T01:53:05Z",
+      "completedAt": "2026-10-30T01:55:55Z",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40988439592/job/123844813126"
+    },
+    {
+      "name": "Paid DeepSeek semantic smoke",
+      "databaseId": 123844813891,
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-30T01:53:03Z",
+      "completedAt": "2026-10-30T01:53:03Z",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40988439592/job/123844813891"
+    },
+    {
+      "name": "check",
+      "databaseId": 123845537465,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-30T01:55:31Z",
+      "completedAt": "2026-10-30T02:14:23Z",
+      "url": "https://github.com/osborn-studio/osstack/actions/runs/40988439592/job/123845537465"
+    }
+  ],
+  "check_steps": [
+    {
+      "name": "Set up job",
+      "number": 1,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Require macOS Graph fixture success",
+      "number": 2,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@v7",
+      "number": 3,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Classify changed paths",
+      "number": 4,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Changeset coverage",
+      "number": 5,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run pnpm/action-setup@v6",
+      "number": 6,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/setup-node@v6",
+      "number": 7,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run oven-sh/setup-bun@v2",
+      "number": 8,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install",
+      "number": 9,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Lint (Biome)",
+      "number": 10,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Release facts",
+      "number": 11,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Clean typecheck contract",
+      "number": 12,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build",
+      "number": 13,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Inventory freshness",
+      "number": 14,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Typecheck",
+      "number": 15,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Test",
+      "number": 16,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Method export contracts",
+      "number": 17,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Method material pagination contracts",
+      "number": 18,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Session adoption decision smoke (local fixture)",
+      "number": 19,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Skills check verification (local Git fixtures)",
+      "number": 20,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve skills check evidence",
+      "number": 21,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Method verification journey contracts",
+      "number": 22,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Method verification journey (two real local cases)",
+      "number": 23,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve method journey evidence",
+      "number": 24,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Full method verification journey (five real local cases)",
+      "number": 25,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve full method journey evidence",
+      "number": 26,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Read-only PR snapshot contracts (offline)",
+      "number": 27,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Ordered PR stack snapshot contracts (offline)",
+      "number": 28,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Skills map maintenance contracts",
+      "number": 29,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Maintain fixed skills map (five real local cases)",
+      "number": 30,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve skills map maintenance evidence",
+      "number": 31,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Model evidence projection contracts",
+      "number": 32,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Project and check actual method evidence",
+      "number": 33,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve model evidence packet",
+      "number": 34,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Project and check full five-case method evidence",
+      "number": 35,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Preserve full model evidence packet",
+      "number": 36,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "CLI startup budget",
+      "number": 37,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Neat semantic live diagnostic tests",
+      "number": 38,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Neat semantic beta contract gates",
+      "number": 39,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Python protocol tests",
+      "number": 40,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Release plan smoke",
+      "number": 41,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Knowledge Cloud smoke",
+      "number": 42,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Knowledge Cloud deploy asset smoke",
+      "number": 43,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Deliver proof smoke",
+      "number": 44,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Real repo deliver smoke",
+      "number": 45,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM preflight smoke",
+      "number": 46,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM Trusted Publisher preflight smoke",
+      "number": 47,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM broken release deprecation smoke",
+      "number": 48,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM install smoke",
+      "number": 49,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM package artifact smoke",
+      "number": 50,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM publish ordering smoke",
+      "number": 51,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "NPM registry skew smoke",
+      "number": 52,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Run oven-sh/setup-bun@v2",
+      "number": 101,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Run actions/setup-node@v6",
+      "number": 102,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Run pnpm/action-setup@v6",
+      "number": 103,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Post Run actions/checkout@v7",
+      "number": 104,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "number": 105,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "package_counts": [
+    {
+      "package": "contracts",
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "total": 15,
+      "line": 4731,
+      "raw": "check\tTest\t2026-10-30T01:57:09.1679906Z packages/contracts test: ^[[2m      Tests ^[[22m ^[[1m^[[32m15 passed^[[39m^[[22m^[[90m (15)^[[39m"
+    },
+    {
+      "package": "compliance",
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0,
+      "total": 17,
+      "line": 4740,
+      "raw": "check\tTest\t2026-10-30T01:57:09.6380083Z packages/compliance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m17 passed^[[39m^[[22m^[[90m (17)^[[39m"
+    },
+    {
+      "package": "github",
+      "passed": 224,
+      "skipped": 0,
+      "failed": 0,
+      "total": 224,
+      "line": 4763,
+      "raw": "check\tTest\t2026-10-30T01:57:11.9100758Z packages/github test: ^[[2m      Tests ^[[22m ^[[1m^[[32m224 passed^[[39m^[[22m^[[90m (224)^[[39m"
+    },
+    {
+      "package": "knowledge",
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0,
+      "total": 44,
+      "line": 4772,
+      "raw": "check\tTest\t2026-10-30T01:57:12.5289829Z packages/knowledge test: ^[[2m      Tests ^[[22m ^[[1m^[[32m44 passed^[[39m^[[22m^[[90m (44)^[[39m"
+    },
+    {
+      "package": "runtime",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1,
+      "line": 4793,
+      "raw": "check\tTest\t2026-10-30T01:57:15.2442329Z packages/runtime test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m"
+    },
+    {
+      "package": "neat-eval",
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0,
+      "total": 16,
+      "line": 4804,
+      "raw": "check\tTest\t2026-10-30T01:57:15.4519911Z packages/neat-eval test: ^[[2m      Tests ^[[22m ^[[1m^[[32m16 passed^[[39m^[[22m^[[90m (16)^[[39m"
+    },
+    {
+      "package": "protocol",
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1012,
+      "line": 4859,
+      "raw": "check\tTest\t2026-10-30T01:57:22.1727271Z packages/protocol test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1012 passed^[[39m^[[22m^[[90m (1012)^[[39m"
+    },
+    {
+      "package": "governance",
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0,
+      "total": 301,
+      "line": 4873,
+      "raw": "check\tTest\t2026-10-30T01:57:23.4456717Z packages/governance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m301 passed^[[39m^[[22m^[[90m (301)^[[39m"
+    },
+    {
+      "package": "knowledge-cloud",
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0,
+      "total": 36,
+      "line": 4886,
+      "raw": "check\tTest\t2026-10-30T01:57:25.5647772Z packages/knowledge-cloud test: ^[[2m      Tests ^[[22m ^[[1m^[[32m36 passed^[[39m^[[22m^[[90m (36)^[[39m"
+    },
+    {
+      "package": "graph",
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0,
+      "total": 257,
+      "line": 4930,
+      "raw": "check\tTest\t2026-10-30T01:57:37.0459562Z packages/graph test: ^[[2m      Tests ^[[22m ^[[1m^[[32m257 passed^[[39m^[[22m^[[90m (257)^[[39m"
+    },
+    {
+      "package": "core",
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1301,
+      "line": 5097,
+      "raw": "check\tTest\t2026-10-30T01:58:27.9169848Z packages/core test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1301 passed^[[39m^[[22m^[[90m (1301)^[[39m"
+    },
+    {
+      "package": "plugins",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "total": 1,
+      "line": 5111,
+      "raw": "check\tTest\t2026-10-30T01:58:29.7819671Z packages/plugins test: ^[[2m      Tests ^[[22m ^[[1m^[[32m1 passed^[[39m^[[22m^[[90m (1)^[[39m"
+    },
+    {
+      "package": "hermes-adapter",
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0,
+      "total": 22,
+      "line": 5118,
+      "raw": "check\tTest\t2026-10-30T01:58:30.0204306Z packages/hermes-adapter test: ^[[2m      Tests ^[[22m ^[[1m^[[32m22 passed^[[39m^[[22m^[[90m (22)^[[39m"
+    },
+    {
+      "package": "skills",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "total": 2,
+      "line": 5129,
+      "raw": "check\tTest\t2026-10-30T01:58:31.3921057Z packages/skills test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m"
+    },
+    {
+      "package": "autonomy",
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0,
+      "total": 201,
+      "line": 5260,
+      "raw": "check\tTest\t2026-10-30T01:58:37.4463469Z packages/autonomy test: ^[[2m      Tests ^[[22m ^[[1m^[[32m201 passed^[[39m^[[22m^[[90m (201)^[[39m"
+    },
+    {
+      "package": "skill-registry",
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0,
+      "total": 43,
+      "line": 5275,
+      "raw": "check\tTest\t2026-10-30T01:58:42.3971535Z packages/skill-registry test: ^[[2m      Tests ^[[22m ^[[1m^[[32m43 passed^[[39m^[[22m^[[90m (43)^[[39m"
+    },
+    {
+      "package": "agents",
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0,
+      "total": 361,
+      "line": 5338,
+      "raw": "check\tTest\t2026-10-30T01:58:55.7204229Z packages/agents test: ^[[2m      Tests ^[[22m ^[[1m^[[32m361 passed^[[39m^[[22m^[[90m (361)^[[39m"
+    },
+    {
+      "package": "config",
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0,
+      "total": 30,
+      "line": 5350,
+      "raw": "check\tTest\t2026-10-30T01:58:59.2045746Z packages/config test: ^[[2m      Tests ^[[22m ^[[1m^[[32m30 passed^[[39m^[[22m^[[90m (30)^[[39m"
+    },
+    {
+      "package": "loop",
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0,
+      "total": 515,
+      "line": 5797,
+      "raw": "check\tTest\t2026-10-30T01:59:20.2657397Z packages/loop test: ^[[2m      Tests ^[[22m ^[[1m^[[32m514 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m1 skipped^[[39m^[[90m (515)^[[39m"
+    },
+    {
+      "package": "conformance",
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0,
+      "total": 9,
+      "line": 5825,
+      "raw": "check\tTest\t2026-10-30T01:59:26.2281694Z packages/conformance test: ^[[2m      Tests ^[[22m ^[[1m^[[32m9 passed^[[39m^[[22m^[[90m (9)^[[39m"
+    },
+    {
+      "package": "supervisor",
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0,
+      "total": 88,
+      "line": 5838,
+      "raw": "check\tTest\t2026-10-30T01:59:27.5909611Z packages/supervisor test: ^[[2m      Tests ^[[22m ^[[1m^[[32m88 passed^[[39m^[[22m^[[90m (88)^[[39m"
+    },
+    {
+      "package": "cli",
+      "passed": 2764,
+      "skipped": 6,
+      "failed": 0,
+      "total": 2770,
+      "line": 8386,
+      "raw": "check\tTest\t2026-10-30T02:09:46.5168740Z packages/cli test: ^[[2m      Tests ^[[22m ^[[1m^[[32m2764 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m6 skipped^[[39m^[[90m (2770)^[[39m"
+    }
+  ],
+  "totals": {
+    "passed": 7259,
+    "skipped": 7,
+    "failed": 0,
+    "total": 7266
+  },
+  "unique_packages": 22,
+  "individual_github_files": [
+    {
+      "line": 4735,
+      "text": "packages/github test:  ✓ src/pr-candidate-snapshot.test.ts (47 tests) 165ms"
+    },
+    {
+      "line": 4751,
+      "text": "packages/github test:  ✓ src/pr-stack-candidate.test.ts (29 tests) 83ms"
+    }
+  ],
+  "standalone_contract_counts": {
+    "Method export contracts": {
+      "counts": {
+        "tests": 94,
+        "pass": 93,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 1
+      },
+      "lines": [
+        8966,
+        8968,
+        8969,
+        8970,
+        8971
+      ]
+    },
+    "Method material pagination contracts": {
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        9067,
+        9069,
+        9070,
+        9071,
+        9072
+      ]
+    },
+    "Session adoption decision smoke (local fixture)": {
+      "counts": {
+        "tests": 27,
+        "pass": 27,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        9246,
+        9248,
+        9249,
+        9250,
+        9251
+      ]
+    },
+    "Skills check verification (local Git fixtures)": {
+      "counts": {
+        "tests": 25,
+        "pass": 25,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        9503,
+        9505,
+        9506,
+        9507,
+        9508
+      ]
+    },
+    "Method verification journey contracts": {
+      "counts": {
+        "tests": 43,
+        "pass": 43,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        9887,
+        9889,
+        9890,
+        9891,
+        9892
+      ]
+    },
+    "Read-only PR snapshot contracts (offline)": {
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        10357,
+        10359,
+        10360,
+        10361,
+        10362
+      ]
+    },
+    "Ordered PR stack snapshot contracts (offline)": {
+      "counts": {
+        "tests": 29,
+        "pass": 29,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        10548,
+        10550,
+        10551,
+        10552,
+        10553
+      ]
+    },
+    "Skills map maintenance contracts": {
+      "counts": {
+        "tests": 24,
+        "pass": 24,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        10709,
+        10711,
+        10712,
+        10713,
+        10714
+      ]
+    },
+    "Model evidence projection contracts": {
+      "counts": {
+        "tests": 88,
+        "pass": 88,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        11502,
+        11504,
+        11505,
+        11506,
+        11507
+      ]
+    },
+    "Neat semantic live diagnostic tests": {
+      "counts": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        11635,
+        11637,
+        11638,
+        11639,
+        11640
+      ]
+    },
+    "Real repo deliver smoke": {
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "lines": [
+        13977,
+        13979,
+        13980,
+        13981,
+        13982
+      ]
+    }
+  },
+  "actual_step_summary": {
+    "Method verification journey (two real local cases)": {
+      "status": "passed",
+      "cases": [
+        {
+          "case_id": "healthy",
+          "verification": "passed",
+          "product_exit": 0,
+          "product_status": "healthy",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-9b1UHu",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        },
+        {
+          "case_id": "missing-ref",
+          "verification": "passed",
+          "product_exit": 1,
+          "product_status": "failed",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-VFrAy0",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        }
+      ],
+      "line": 9904
+    },
+    "Full method verification journey (five real local cases)": {
+      "status": "passed",
+      "cases": [
+        {
+          "case_id": "healthy",
+          "verification": "passed",
+          "product_exit": 0,
+          "product_status": "healthy",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-vmGQ0l",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        },
+        {
+          "case_id": "missing-ref",
+          "verification": "passed",
+          "product_exit": 1,
+          "product_status": "failed",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-YTzSxO",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        },
+        {
+          "case_id": "drift",
+          "verification": "passed",
+          "product_exit": 2,
+          "product_status": "drift",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-nHLlE8",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        },
+        {
+          "case_id": "mixed",
+          "verification": "passed",
+          "product_exit": 1,
+          "product_status": "failed",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-LsTTWN",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        },
+        {
+          "case_id": "empty",
+          "verification": "passed",
+          "product_exit": 0,
+          "product_status": "empty",
+          "driver_exit": 0,
+          "cleanup": {
+            "status": "passed",
+            "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-peWI9r",
+            "fixture_removed": true,
+            "descendant_termination": "not_attested"
+          }
+        }
+      ],
+      "line": 10042
+    },
+    "Maintain fixed skills map (five real local cases)": {
+      "status": "consistent",
+      "rows": [
+        {
+          "case_id": "healthy",
+          "expected": {
+            "product_exit": 0,
+            "product_status": "healthy"
+          },
+          "actual": {
+            "product_exit": 0,
+            "product_status": "healthy"
+          },
+          "matches": true
+        },
+        {
+          "case_id": "missing-ref",
+          "expected": {
+            "product_exit": 1,
+            "product_status": "failed"
+          },
+          "actual": {
+            "product_exit": 1,
+            "product_status": "failed"
+          },
+          "matches": true
+        },
+        {
+          "case_id": "drift",
+          "expected": {
+            "product_exit": 2,
+            "product_status": "drift"
+          },
+          "actual": {
+            "product_exit": 2,
+            "product_status": "drift"
+          },
+          "matches": true
+        },
+        {
+          "case_id": "mixed",
+          "expected": {
+            "product_exit": 1,
+            "product_status": "failed"
+          },
+          "actual": {
+            "product_exit": 1,
+            "product_status": "failed"
+          },
+          "matches": true
+        },
+        {
+          "case_id": "empty",
+          "expected": {
+            "product_exit": 0,
+            "product_status": "empty"
+          },
+          "actual": {
+            "product_exit": 0,
+            "product_status": "empty"
+          },
+          "matches": true
+        }
+      ],
+      "line": 10726
+    },
+    "Project and check actual method evidence": [
+      {
+        "start_line": 11519,
+        "end_line": 11519,
+        "value": {
+          "status": "projected",
+          "packet_sha256": "70ff81d6dbfecbf7870ba81b32aef5c779799c56139a53dd88b4f0e33d9cffd6",
+          "input_opened_read_only": true,
+          "formal_gate_pass": false
+        }
+      },
+      {
+        "start_line": 11521,
+        "end_line": 11521,
+        "value": {
+          "status": "valid",
+          "packet_sha256": "70ff81d6dbfecbf7870ba81b32aef5c779799c56139a53dd88b4f0e33d9cffd6",
+          "original_evidence_revalidated": false,
+          "formal_gate_pass": false
+        }
+      }
+    ],
+    "Project and check full five-case method evidence": [
+      {
+        "start_line": 11557,
+        "end_line": 11557,
+        "value": {
+          "status": "projected",
+          "packet_sha256": "9c0a5a5f0d9fce4f328279d4167559d5d781924056a45bc78e71c182827fcdd2",
+          "input_opened_read_only": true,
+          "formal_gate_pass": false
+        }
+      },
+      {
+        "start_line": 11559,
+        "end_line": 11559,
+        "value": {
+          "status": "valid",
+          "packet_sha256": "9c0a5a5f0d9fce4f328279d4167559d5d781924056a45bc78e71c182827fcdd2",
+          "original_evidence_revalidated": false,
+          "formal_gate_pass": false
+        }
+      }
+    ]
+  },
+  "input_bindings": [
+    {
+      "path": "metadata.stdout",
+      "bytes": 20837,
+      "sha256": "79b9852ff9efc885c1d96a5fb528d9619c7d81a5da00e7416b7e37171c6fa350"
+    },
+    {
+      "path": "full-log.stdout",
+      "bytes": 2231695,
+      "sha256": "0361f4149fe00eaa5ae78c2f8236587efff2156679fa2e6f9fd2aa9234f45b81"
+    }
+  ],
+  "limitations": [
+    "CI stdout summaries and reported manifest/packet hashes were inspected, but remote artifacts were not downloaded or independently rehashed.",
+    "Synthetic merge checkout is distinct from PR head and base.",
+    "Package aggregate counts include package tests only; standalone contracts and matrix repeats are not added.",
+    "Expected negative product exits 1/2 are distinct from successful driver/verification outcomes.",
+    "No new source audit, host execution, formal qualification, PR mutation or ledger mutation."
+  ]
+}

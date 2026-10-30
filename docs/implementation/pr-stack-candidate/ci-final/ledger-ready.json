@@ -1,0 +1,27 @@
+{
+  "comment": {
+    "comment_id": 727,
+    "card_id": "card_6962ab52",
+    "author": "joint-entry",
+    "body": "PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI40988439592五适用SUCCESS/paidSKIP，实际synthetic db37d26669d6bcb155cd9b99d08859d5d32c9777，22包7259pass7skip0fail；export94total93pass1skip，github224/stackCLI29。仅等gilberthello审批合并；不代表原pstack C0–C3或32J正式验收，S1–S3签收仍未发生。原失败和旧SHA证据保持。",
+    "created_at": 1793327612.186
+  },
+  "move": {
+    "card_id": "card_6962ab52",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PS17 一次有界PR栈前沿报告：有序依赖与未知状态",
+    "body": "当前真实需求：一次显式1–3PR顺序观察，稳定merged前缀才越过，低层unknown/closed不晋升高层；保留原单PR证据，branchname不是ancestry，merge_authorized始终false。复用已合307collector。PS17主PS18/PS13支持，J07有限支持/J20设计。A独占5新source/test/doc路径，C独立预冻与holdouts，root整合/PR/中央/full；B负责309main复验。历史比较、DB刷新、watcher和自动merge不在本批；无新增method/host实验，formalfalse。",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "blocked",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793321414.137,
+    "updated_at": 1793327612.187,
+    "started_at": 1793321414.137,
+    "completed_at": null
+  }
+}

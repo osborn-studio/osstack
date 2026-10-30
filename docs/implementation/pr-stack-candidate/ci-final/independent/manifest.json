@@ -1,0 +1,37 @@
+[
+  {
+    "path": "actual-logged-json.json",
+    "bytes": 24213,
+    "sha256": "a6ee7010cad6988df81cde7dff41be6a873e55087bb9ba7b83524079827f30cc"
+  },
+  {
+    "path": "input-hashes.json",
+    "bytes": 287,
+    "sha256": "5652b5513bc45f96e4794c745f28c17a6b47f7971751877b36c19b30e78d185e"
+  },
+  {
+    "path": "parser-error-1.txt",
+    "bytes": 180,
+    "sha256": "cd5bc7cc5425bc3140da534712de9ee5fe6a70caf64ed30fd5cabd8b1a69313d"
+  },
+  {
+    "path": "report.json",
+    "bytes": 28689,
+    "sha256": "147d26f5d9388063ceeed5a2097b892a318ccadd7bc27b455c26fe754dc11143"
+  },
+  {
+    "path": "report.md",
+    "bytes": 1488,
+    "sha256": "f7cf032013c71c7ac62af66eb4b1c8b468bc6bfd5b5fe27041b10d1e4db163cc"
+  },
+  {
+    "path": "verify-attempt-1.py",
+    "bytes": 7304,
+    "sha256": "3842b12eb1c8bd7c5c795ff3225fc26a9b4053e4a8aee4fb31e1140960b9e8ee"
+  },
+  {
+    "path": "verify.py",
+    "bytes": 7364,
+    "sha256": "4981eae9d55c47fa37425baa3489cb648ffb192990af1b249df5d7621a090295"
+  }
+]
