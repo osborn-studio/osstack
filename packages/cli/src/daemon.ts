@@ -620,6 +620,7 @@ async function handleSessionStart(
   let lease: ExecutionLease | undefined;
   let started = false;
   let settled = false;
+  let terminalCompleted = false;
   try {
     lease = await acquireSessionAdmission(ctx, adapter.id, p.repo_path, runId, controller.signal);
     started = true;
@@ -659,10 +660,13 @@ async function handleSessionStart(
         choices: event.choices,
         ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
       };
-      if (event.type === "session.terminal" && event.state !== "completed") {
-        throw new Error("adapter terminated while starting the session");
+      if (event.type === "session.terminal") {
+        if (event.state !== "completed") throw new Error("adapter terminated while starting the session");
+        terminalCompleted = true;
       }
     }
+    // Iterator exhaustion alone does not prove completion or external exit.
+    if (!terminalCompleted) throw new Error("adapter ended without completing the session");
     settled = true;
     if (nativeSessionId === undefined) throw new Error("adapter did not return a native session id");
 
@@ -1036,13 +1040,13 @@ async function executeReservedSessionTurn(
           ...(event.continuation === undefined ? {} : { continuation: event.continuation }),
         };
       }
-      settled = true;
       if (!terminalCompleted) {
         return failReservedMessage(
           "agent_failed",
           "agent ended without completing the instruction",
         );
       }
+      settled = true;
     } catch {
       return failReservedMessage(
         "agent_failed",
