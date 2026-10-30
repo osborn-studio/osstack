@@ -1,0 +1,1861 @@
+{
+  "at": "2026-10-29T18:59:16.191735+00:00",
+  "run_id": 40929858660,
+  "head": "8fd2891174964bb539f5ca9b094549a090517d5e",
+  "base": {
+    "ref": "main",
+    "sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "repo": {
+      "id": 1255570742,
+      "url": "https://api.github.com/repos/osborn-studio/osstack",
+      "name": "osstack"
+    }
+  },
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 123645091958,
+      "name": "graph-runtime-matrix (20.6.0)",
+      "conclusion": "success"
+    },
+    {
+      "id": 123645092390,
+      "name": "graph-macos-fixtures (24)",
+      "conclusion": "success"
+    },
+    {
+      "id": 123645092426,
+      "name": "graph-runtime-matrix (22.23.1)",
+      "conclusion": "success"
+    },
+    {
+      "id": 123645092551,
+      "name": "graph-macos-fixtures (22)",
+      "conclusion": "success"
+    },
+    {
+      "id": 123645095138,
+      "name": "Paid DeepSeek semantic smoke",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 123646426741,
+      "name": "check",
+      "conclusion": "success"
+    }
+  ],
+  "checkout": [
+    {
+      "line": 3708,
+      "text": "HEAD is now at f98544d7 Merge 8fd2891174964bb539f5ca9b094549a090517d5e into 6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b"
+    },
+    {
+      "line": 3711,
+      "text": "f98544d70774082c1e747b960a0148ec35563a94"
+    }
+  ],
+  "check_steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-10-29T18:22:52Z",
+      "completed_at": "2026-10-29T18:22:53Z"
+    },
+    {
+      "name": "Require macOS Graph fixture success",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-10-29T18:22:53Z",
+      "completed_at": "2026-10-29T18:22:54Z"
+    },
+    {
+      "name": "Run actions/checkout@v7",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-10-29T18:22:54Z",
+      "completed_at": "2026-10-29T18:23:01Z"
+    },
+    {
+      "name": "Classify changed paths",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-10-29T18:23:01Z",
+      "completed_at": "2026-10-29T18:23:01Z"
+    },
+    {
+      "name": "Changeset coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-10-29T18:23:01Z",
+      "completed_at": "2026-10-29T18:23:01Z"
+    },
+    {
+      "name": "Run pnpm/action-setup@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-10-29T18:23:01Z",
+      "completed_at": "2026-10-29T18:23:05Z"
+    },
+    {
+      "name": "Run actions/setup-node@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-10-29T18:23:05Z",
+      "completed_at": "2026-10-29T18:23:09Z"
+    },
+    {
+      "name": "Run oven-sh/setup-bun@v2",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-10-29T18:23:09Z",
+      "completed_at": "2026-10-29T18:23:10Z"
+    },
+    {
+      "name": "Install",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-10-29T18:23:10Z",
+      "completed_at": "2026-10-29T18:23:15Z"
+    },
+    {
+      "name": "Lint (Biome)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-10-29T18:23:15Z",
+      "completed_at": "2026-10-29T18:23:18Z"
+    },
+    {
+      "name": "Release facts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-10-29T18:23:18Z",
+      "completed_at": "2026-10-29T18:23:19Z"
+    },
+    {
+      "name": "Clean typecheck contract",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-10-29T18:23:19Z",
+      "completed_at": "2026-10-29T18:23:19Z"
+    },
+    {
+      "name": "Build",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-10-29T18:23:19Z",
+      "completed_at": "2026-10-29T18:24:08Z"
+    },
+    {
+      "name": "Inventory freshness",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-10-29T18:24:08Z",
+      "completed_at": "2026-10-29T18:24:08Z"
+    },
+    {
+      "name": "Typecheck",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-10-29T18:24:08Z",
+      "completed_at": "2026-10-29T18:24:40Z"
+    },
+    {
+      "name": "Test",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-10-29T18:24:40Z",
+      "completed_at": "2026-10-29T18:36:50Z"
+    },
+    {
+      "name": "Method export contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-10-29T18:36:50Z",
+      "completed_at": "2026-10-29T18:36:55Z"
+    },
+    {
+      "name": "Method material pagination contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-10-29T18:36:55Z",
+      "completed_at": "2026-10-29T18:36:58Z"
+    },
+    {
+      "name": "Session adoption decision smoke (local fixture)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-10-29T18:36:58Z",
+      "completed_at": "2026-10-29T18:37:11Z"
+    },
+    {
+      "name": "Skills check verification (local Git fixtures)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 20,
+      "started_at": "2026-10-29T18:37:11Z",
+      "completed_at": "2026-10-29T18:37:25Z"
+    },
+    {
+      "name": "Preserve skills check evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 21,
+      "started_at": "2026-10-29T18:37:25Z",
+      "completed_at": "2026-10-29T18:37:27Z"
+    },
+    {
+      "name": "Method verification journey contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 22,
+      "started_at": "2026-10-29T18:37:27Z",
+      "completed_at": "2026-10-29T18:37:30Z"
+    },
+    {
+      "name": "Method verification journey (two real local cases)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-10-29T18:37:30Z",
+      "completed_at": "2026-10-29T18:37:34Z"
+    },
+    {
+      "name": "Preserve method journey evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-10-29T18:37:34Z",
+      "completed_at": "2026-10-29T18:37:35Z"
+    },
+    {
+      "name": "Full method verification journey (five real local cases)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-10-29T18:37:35Z",
+      "completed_at": "2026-10-29T18:37:45Z"
+    },
+    {
+      "name": "Preserve full method journey evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 26,
+      "started_at": "2026-10-29T18:37:45Z",
+      "completed_at": "2026-10-29T18:37:46Z"
+    },
+    {
+      "name": "Read-only PR snapshot contracts (offline)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27,
+      "started_at": "2026-10-29T18:37:46Z",
+      "completed_at": "2026-10-29T18:37:47Z"
+    },
+    {
+      "name": "Skills map maintenance contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 28,
+      "started_at": "2026-10-29T18:37:47Z",
+      "completed_at": "2026-10-29T18:37:48Z"
+    },
+    {
+      "name": "Maintain fixed skills map (five real local cases)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 29,
+      "started_at": "2026-10-29T18:37:48Z",
+      "completed_at": "2026-10-29T18:37:58Z"
+    },
+    {
+      "name": "Preserve skills map maintenance evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 30,
+      "started_at": "2026-10-29T18:37:58Z",
+      "completed_at": "2026-10-29T18:37:59Z"
+    },
+    {
+      "name": "Model evidence projection contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 31,
+      "started_at": "2026-10-29T18:37:59Z",
+      "completed_at": "2026-10-29T18:38:03Z"
+    },
+    {
+      "name": "Project and check actual method evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32,
+      "started_at": "2026-10-29T18:38:03Z",
+      "completed_at": "2026-10-29T18:38:04Z"
+    },
+    {
+      "name": "Preserve model evidence packet",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33,
+      "started_at": "2026-10-29T18:38:04Z",
+      "completed_at": "2026-10-29T18:38:05Z"
+    },
+    {
+      "name": "Project and check full five-case method evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 34,
+      "started_at": "2026-10-29T18:38:05Z",
+      "completed_at": "2026-10-29T18:38:06Z"
+    },
+    {
+      "name": "Preserve full model evidence packet",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 35,
+      "started_at": "2026-10-29T18:38:06Z",
+      "completed_at": "2026-10-29T18:38:07Z"
+    },
+    {
+      "name": "CLI startup budget",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 36,
+      "started_at": "2026-10-29T18:38:07Z",
+      "completed_at": "2026-10-29T18:38:08Z"
+    },
+    {
+      "name": "Neat semantic live diagnostic tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 37,
+      "started_at": "2026-10-29T18:38:08Z",
+      "completed_at": "2026-10-29T18:38:09Z"
+    },
+    {
+      "name": "Neat semantic beta contract gates",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 38,
+      "started_at": "2026-10-29T18:38:09Z",
+      "completed_at": "2026-10-29T18:39:36Z"
+    },
+    {
+      "name": "Python protocol tests",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 39,
+      "started_at": "2026-10-29T18:39:36Z",
+      "completed_at": "2026-10-29T18:39:37Z"
+    },
+    {
+      "name": "Release plan smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 40,
+      "started_at": "2026-10-29T18:39:37Z",
+      "completed_at": "2026-10-29T18:39:56Z"
+    },
+    {
+      "name": "Knowledge Cloud smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 41,
+      "started_at": "2026-10-29T18:39:56Z",
+      "completed_at": "2026-10-29T18:40:17Z"
+    },
+    {
+      "name": "Knowledge Cloud deploy asset smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 42,
+      "started_at": "2026-10-29T18:40:17Z",
+      "completed_at": "2026-10-29T18:40:18Z"
+    },
+    {
+      "name": "Deliver proof smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 43,
+      "started_at": "2026-10-29T18:40:18Z",
+      "completed_at": "2026-10-29T18:40:40Z"
+    },
+    {
+      "name": "Real repo deliver smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 44,
+      "started_at": "2026-10-29T18:40:40Z",
+      "completed_at": "2026-10-29T18:41:02Z"
+    },
+    {
+      "name": "NPM preflight smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 45,
+      "started_at": "2026-10-29T18:41:02Z",
+      "completed_at": "2026-10-29T18:41:03Z"
+    },
+    {
+      "name": "NPM Trusted Publisher preflight smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 46,
+      "started_at": "2026-10-29T18:41:03Z",
+      "completed_at": "2026-10-29T18:41:05Z"
+    },
+    {
+      "name": "NPM broken release deprecation smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 47,
+      "started_at": "2026-10-29T18:41:05Z",
+      "completed_at": "2026-10-29T18:41:06Z"
+    },
+    {
+      "name": "NPM install smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 48,
+      "started_at": "2026-10-29T18:41:06Z",
+      "completed_at": "2026-10-29T18:42:00Z"
+    },
+    {
+      "name": "NPM package artifact smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 49,
+      "started_at": "2026-10-29T18:42:00Z",
+      "completed_at": "2026-10-29T18:42:01Z"
+    },
+    {
+      "name": "NPM publish ordering smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 50,
+      "started_at": "2026-10-29T18:42:01Z",
+      "completed_at": "2026-10-29T18:42:01Z"
+    },
+    {
+      "name": "NPM registry skew smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 51,
+      "started_at": "2026-10-29T18:42:01Z",
+      "completed_at": "2026-10-29T18:42:14Z"
+    },
+    {
+      "name": "Post Run oven-sh/setup-bun@v2",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 99,
+      "started_at": "2026-10-29T18:42:14Z",
+      "completed_at": "2026-10-29T18:42:14Z"
+    },
+    {
+      "name": "Post Run actions/setup-node@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 100,
+      "started_at": "2026-10-29T18:42:14Z",
+      "completed_at": "2026-10-29T18:42:14Z"
+    },
+    {
+      "name": "Post Run pnpm/action-setup@v6",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 101,
+      "started_at": "2026-10-29T18:42:14Z",
+      "completed_at": "2026-10-29T18:42:14Z"
+    },
+    {
+      "name": "Post Run actions/checkout@v7",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 102,
+      "started_at": "2026-10-29T18:42:14Z",
+      "completed_at": "2026-10-29T18:42:14Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 103,
+      "started_at": "2026-10-29T18:42:15Z",
+      "completed_at": "2026-10-29T18:42:15Z"
+    }
+  ],
+  "package_count": 22,
+  "totals": {
+    "passed": 7189,
+    "skipped": 7,
+    "failed": 0
+  },
+  "packages": [
+    {
+      "package": "contracts",
+      "line": 4702,
+      "passed": 15,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/contracts test:       Tests  15 passed (15)"
+    },
+    {
+      "package": "compliance",
+      "line": 4711,
+      "passed": 17,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/compliance test:       Tests  17 passed (17)"
+    },
+    {
+      "package": "github",
+      "line": 4732,
+      "passed": 154,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/github test:       Tests  154 passed (154)"
+    },
+    {
+      "package": "knowledge",
+      "line": 4742,
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/knowledge test:       Tests  44 passed (44)"
+    },
+    {
+      "package": "neat-eval",
+      "line": 4765,
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/neat-eval test:       Tests  16 passed (16)"
+    },
+    {
+      "package": "runtime",
+      "line": 4775,
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/runtime test:       Tests  1 passed (1)"
+    },
+    {
+      "package": "protocol",
+      "line": 4829,
+      "passed": 1012,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/protocol test:       Tests  1012 passed (1012)"
+    },
+    {
+      "package": "governance",
+      "line": 4840,
+      "passed": 301,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/governance test:       Tests  301 passed (301)"
+    },
+    {
+      "package": "knowledge-cloud",
+      "line": 4853,
+      "passed": 36,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/knowledge-cloud test:       Tests  36 passed (36)"
+    },
+    {
+      "package": "graph",
+      "line": 4899,
+      "passed": 257,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/graph test:       Tests  257 passed (257)"
+    },
+    {
+      "package": "core",
+      "line": 5041,
+      "passed": 1301,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/core test:       Tests  1301 passed (1301)"
+    },
+    {
+      "package": "plugins",
+      "line": 5055,
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/plugins test:       Tests  1 passed (1)"
+    },
+    {
+      "package": "hermes-adapter",
+      "line": 5062,
+      "passed": 22,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/hermes-adapter test:       Tests  22 passed (22)"
+    },
+    {
+      "package": "skills",
+      "line": 5073,
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/skills test:       Tests  2 passed (2)"
+    },
+    {
+      "package": "autonomy",
+      "line": 5201,
+      "passed": 201,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/autonomy test:       Tests  201 passed (201)"
+    },
+    {
+      "package": "skill-registry",
+      "line": 5211,
+      "passed": 43,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/skill-registry test:       Tests  43 passed (43)"
+    },
+    {
+      "package": "agents",
+      "line": 5274,
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/agents test:       Tests  361 passed (361)"
+    },
+    {
+      "package": "config",
+      "line": 5286,
+      "passed": 30,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/config test:       Tests  30 passed (30)"
+    },
+    {
+      "package": "loop",
+      "line": 5729,
+      "passed": 514,
+      "skipped": 1,
+      "failed": 0,
+      "raw_summary": "packages/loop test:       Tests  514 passed | 1 skipped (515)"
+    },
+    {
+      "package": "conformance",
+      "line": 5757,
+      "passed": 9,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/conformance test:       Tests  9 passed (9)"
+    },
+    {
+      "package": "supervisor",
+      "line": 5770,
+      "passed": 88,
+      "skipped": 0,
+      "failed": 0,
+      "raw_summary": "packages/supervisor test:       Tests  88 passed (88)"
+    },
+    {
+      "package": "cli",
+      "line": 8261,
+      "passed": 2764,
+      "skipped": 6,
+      "failed": 0,
+      "raw_summary": "packages/cli test:       Tests  2764 passed | 6 skipped (2770)"
+    }
+  ],
+  "standalone": {
+    "Method export contracts": {
+      "counts": {
+        "tests": 94,
+        "pass": 93,
+        "fail": 0,
+        "skipped": 1
+      },
+      "lines": [
+        8841,
+        8843,
+        8844,
+        8846
+      ]
+    },
+    "Model evidence projection contracts": {
+      "counts": {
+        "tests": 88,
+        "pass": 88,
+        "fail": 0,
+        "skipped": 0
+      },
+      "lines": [
+        11186,
+        11188,
+        11189,
+        11191
+      ]
+    },
+    "Method verification journey contracts": {
+      "counts": {
+        "tests": 43,
+        "pass": 43,
+        "fail": 0,
+        "skipped": 0
+      },
+      "lines": [
+        9762,
+        9764,
+        9765,
+        9767
+      ]
+    },
+    "Method material pagination contracts": {
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "skipped": 0
+      },
+      "lines": [
+        8942,
+        8944,
+        8945,
+        8947
+      ]
+    },
+    "Skills map maintenance contracts": {
+      "counts": {
+        "tests": 24,
+        "pass": 24,
+        "fail": 0,
+        "skipped": 0
+      },
+      "lines": [
+        10393,
+        10395,
+        10396,
+        10398
+      ]
+    },
+    "Read-only PR snapshot contracts (offline)": {
+      "counts": {
+        "tests": 14,
+        "pass": 14,
+        "fail": 0,
+        "skipped": 0
+      },
+      "lines": [
+        10232,
+        10234,
+        10235,
+        10237
+      ]
+    }
+  },
+  "export_skip": [
+    {
+      "line": 8417,
+      "text": "# Subtest: refuses a new output inside the current global Codex home even in dry-run"
+    },
+    {
+      "line": 8418,
+      "text": "ok 25 - refuses a new output inside the current global Codex home even in dry-run # SKIP global Codex home absent; do not create it for testing"
+    }
+  ],
+  "actual_steps": {
+    "Method verification journey (two real local cases)": {
+      "commands": [
+        {
+          "line": 9772,
+          "text": "pnpm smoke:method-journey --output \"$OSSTACK_SCRATCH_ROOT/runtime/method-journey-ci-evidence\""
+        }
+      ],
+      "json_records": [
+        {
+          "line": 9779,
+          "value": {
+            "schema_version": 1,
+            "status": "passed",
+            "started_at": "2026-10-29T18:37:30.992Z",
+            "features": [
+              {
+                "case_id": "healthy",
+                "verification": "passed",
+                "product_exit": 0,
+                "product_status": "healthy",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/cases/healthy",
+                "manifest_sha256": "707b898d90cd6dc47de64919810e8490c0faebd6aab90be92b97e2175ea5b30a",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-VcUeOj",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              },
+              {
+                "case_id": "missing-ref",
+                "verification": "passed",
+                "product_exit": 1,
+                "product_status": "failed",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/cases/missing-ref",
+                "manifest_sha256": "9745d81734515659aa54484a068d48b8bf0275ab046cc80e47a4b40b6ae8c60f",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence/scratch/smoke/skills-check-2FaTB5",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              }
+            ],
+            "host_execution": "not_run",
+            "native_skill_selection": "not_observed",
+            "model_calls": 0,
+            "provider_qualified": false,
+            "formal_gate_pass": false,
+            "scope": "Fixed local skills-check healthy/missing-ref journey; omitted drift/mixed/empty; no model or native-host claim",
+            "limitations": [
+              "Manifest hashes establish retained-file consistency, not an authenticated source.",
+              "Binding digests check driver-declared records and cross-case consistency; they do not independently hash all live source/build files after closeout. Build hashes are not proof of a compiler invocation.",
+              "Direct child exit and fixture removal do not attest all descendants."
+            ],
+            "output": "/home/runner/work/_temp/osstack/runtime/method-journey-ci-evidence",
+            "tool_files": {
+              "scripts/method-verification-journey.mjs": "b030e182adaf06db6a7941afeb0a79ec5a74e3101aaab36a56475a6de92025ab",
+              "scripts/lib/scratch.mjs": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af",
+              "scripts/smoke-skills-check.mjs": "306bf661a3f6057027b11242182c0a58d149660ba17677dc013f26f5477d592f",
+              "scripts/lib/skills-check-verification.mjs": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+            },
+            "ended_at": "2026-10-29T18:37:34.394Z",
+            "retained": {
+              "case_manifests": [
+                {
+                  "case_id": "healthy",
+                  "sha256": "707b898d90cd6dc47de64919810e8490c0faebd6aab90be92b97e2175ea5b30a",
+                  "verified": true
+                },
+                {
+                  "case_id": "missing-ref",
+                  "sha256": "9745d81734515659aa54484a068d48b8bf0275ab046cc80e47a4b40b6ae8c60f",
+                  "verified": true
+                }
+              ],
+              "shallow_listings": {
+                "cases": [
+                  {
+                    "name": "healthy",
+                    "type": "directory"
+                  },
+                  {
+                    "name": "missing-ref",
+                    "type": "directory"
+                  }
+                ],
+                "scratch": [
+                  {
+                    "name": "smoke",
+                    "type": "directory"
+                  }
+                ]
+              },
+              "stability": "snapshot only; interrupted descendants may still write retained files"
+            }
+          }
+        }
+      ]
+    },
+    "Full method verification journey (five real local cases)": {
+      "commands": [
+        {
+          "line": 9910,
+          "text": "pnpm smoke:method-journey --output \"$OSSTACK_SCRATCH_ROOT/runtime/method-journey-full-ci-evidence\" --scope full"
+        }
+      ],
+      "json_records": [
+        {
+          "line": 9917,
+          "value": {
+            "schema_version": 1,
+            "status": "passed",
+            "started_at": "2026-10-29T18:37:36.251Z",
+            "features": [
+              {
+                "case_id": "healthy",
+                "verification": "passed",
+                "product_exit": 0,
+                "product_status": "healthy",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/cases/healthy",
+                "manifest_sha256": "6e7aabac2a30ba6eb9714eb099833b4a83b0e334cc775fefb681b3a0463afc56",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-1tfeRV",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              },
+              {
+                "case_id": "missing-ref",
+                "verification": "passed",
+                "product_exit": 1,
+                "product_status": "failed",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/cases/missing-ref",
+                "manifest_sha256": "3739798f0bb8a528874cbc68071d13cde9301f74c881ea20015731e985b7ae26",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-52z9Yh",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              },
+              {
+                "case_id": "drift",
+                "verification": "passed",
+                "product_exit": 2,
+                "product_status": "drift",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/cases/drift",
+                "manifest_sha256": "1c8f0fc690c7b1d8b4b0198fb93b5489831446d54a582bd9feedcc38fe02a3fe",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-5LiFZL",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              },
+              {
+                "case_id": "mixed",
+                "verification": "passed",
+                "product_exit": 1,
+                "product_status": "failed",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/cases/mixed",
+                "manifest_sha256": "51bdd22f75ce59c0857914a9a90c70de2f003bf456ca7b376832983962b225d9",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-uw2Wxl",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              },
+              {
+                "case_id": "empty",
+                "verification": "passed",
+                "product_exit": 0,
+                "product_status": "empty",
+                "driver_exit": 0,
+                "evidence": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/cases/empty",
+                "manifest_sha256": "a26a58c2848fc6c9f5135821f69959acb0de82fa99e79dcc6316144384e55f15",
+                "verified_files": 29,
+                "bindings": {
+                  "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                  "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                },
+                "cleanup": {
+                  "status": "passed",
+                  "fixture_path": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence/scratch/smoke/skills-check-kU8GvS",
+                  "fixture_removed": true,
+                  "descendant_termination": "not_attested"
+                },
+                "evidence_state": "sealed",
+                "journey_status": "passed"
+              }
+            ],
+            "host_execution": "not_run",
+            "native_skill_selection": "not_observed",
+            "model_calls": 0,
+            "provider_qualified": false,
+            "formal_gate_pass": false,
+            "scope": "Fixed local skills-check healthy/missing-ref/drift/mixed/empty journey; no model or native-host claim",
+            "limitations": [
+              "Manifest hashes establish retained-file consistency, not an authenticated source.",
+              "Binding digests check driver-declared records and cross-case consistency; they do not independently hash all live source/build files after closeout. Build hashes are not proof of a compiler invocation.",
+              "Direct child exit and fixture removal do not attest all descendants."
+            ],
+            "output": "/home/runner/work/_temp/osstack/runtime/method-journey-full-ci-evidence",
+            "tool_files": {
+              "scripts/method-verification-journey.mjs": "b030e182adaf06db6a7941afeb0a79ec5a74e3101aaab36a56475a6de92025ab",
+              "scripts/lib/scratch.mjs": "e1c1da399f61af481620363b02413e77782bce5ab75be28677ac14514dc499af",
+              "scripts/smoke-skills-check.mjs": "306bf661a3f6057027b11242182c0a58d149660ba17677dc013f26f5477d592f",
+              "scripts/lib/skills-check-verification.mjs": "d0c585f5769a67e8839fa0f183529ad87919ed919389120f453a8789dbc623aa"
+            },
+            "ended_at": "2026-10-29T18:37:45.242Z",
+            "retained": {
+              "case_manifests": [
+                {
+                  "case_id": "healthy",
+                  "sha256": "6e7aabac2a30ba6eb9714eb099833b4a83b0e334cc775fefb681b3a0463afc56",
+                  "verified": true
+                },
+                {
+                  "case_id": "missing-ref",
+                  "sha256": "3739798f0bb8a528874cbc68071d13cde9301f74c881ea20015731e985b7ae26",
+                  "verified": true
+                },
+                {
+                  "case_id": "drift",
+                  "sha256": "1c8f0fc690c7b1d8b4b0198fb93b5489831446d54a582bd9feedcc38fe02a3fe",
+                  "verified": true
+                },
+                {
+                  "case_id": "mixed",
+                  "sha256": "51bdd22f75ce59c0857914a9a90c70de2f003bf456ca7b376832983962b225d9",
+                  "verified": true
+                },
+                {
+                  "case_id": "empty",
+                  "sha256": "a26a58c2848fc6c9f5135821f69959acb0de82fa99e79dcc6316144384e55f15",
+                  "verified": true
+                }
+              ],
+              "shallow_listings": {
+                "cases": [
+                  {
+                    "name": "drift",
+                    "type": "directory"
+                  },
+                  {
+                    "name": "empty",
+                    "type": "directory"
+                  },
+                  {
+                    "name": "healthy",
+                    "type": "directory"
+                  },
+                  {
+                    "name": "missing-ref",
+                    "type": "directory"
+                  },
+                  {
+                    "name": "mixed",
+                    "type": "directory"
+                  }
+                ],
+                "scratch": [
+                  {
+                    "name": "smoke",
+                    "type": "directory"
+                  }
+                ]
+              },
+              "stability": "snapshot only; interrupted descendants may still write retained files"
+            }
+          }
+        }
+      ]
+    },
+    "Project and check actual method evidence": {
+      "commands": [
+        {
+          "line": 11194,
+          "text": "##[group]Run pnpm method:project-evidence --input \"$OSSTACK_SCRATCH_ROOT/runtime/method-journey-ci-evidence\" --output \"$OSSTACK_SCRATCH_ROOT/runtime/method-packet-ci-evidence\""
+        },
+        {
+          "line": 11195,
+          "text": "pnpm method:project-evidence --input \"$OSSTACK_SCRATCH_ROOT/runtime/method-journey-ci-evidence\" --output \"$OSSTACK_SCRATCH_ROOT/runtime/method-packet-ci-evidence\""
+        },
+        {
+          "line": 11196,
+          "text": "pnpm method:project-evidence --check \"$OSSTACK_SCRATCH_ROOT/runtime/method-packet-ci-evidence\""
+        }
+      ],
+      "json_records": [
+        {
+          "line": 11203,
+          "value": {
+            "status": "projected",
+            "packet_sha256": "8d31e58baad1eb0de361e258107665cc25e0432ac9e7adc7a69c9debea06437d",
+            "input_opened_read_only": true,
+            "formal_gate_pass": false
+          }
+        },
+        {
+          "line": 11205,
+          "value": {
+            "status": "valid",
+            "packet_sha256": "8d31e58baad1eb0de361e258107665cc25e0432ac9e7adc7a69c9debea06437d",
+            "original_evidence_revalidated": false,
+            "formal_gate_pass": false
+          }
+        }
+      ]
+    },
+    "Project and check full five-case method evidence": {
+      "commands": [
+        {
+          "line": 11232,
+          "text": "##[group]Run pnpm method:project-evidence --input \"$OSSTACK_SCRATCH_ROOT/runtime/method-journey-full-ci-evidence\" --output \"$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence\" --scope full"
+        },
+        {
+          "line": 11233,
+          "text": "pnpm method:project-evidence --input \"$OSSTACK_SCRATCH_ROOT/runtime/method-journey-full-ci-evidence\" --output \"$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence\" --scope full"
+        },
+        {
+          "line": 11234,
+          "text": "pnpm method:project-evidence --check \"$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence\""
+        }
+      ],
+      "json_records": [
+        {
+          "line": 11241,
+          "value": {
+            "status": "projected",
+            "packet_sha256": "255fc0b2892c1edbaaa0e22abc4b7bc9ce85ce2634d8ad097a8e35ff40deee8e",
+            "input_opened_read_only": true,
+            "formal_gate_pass": false
+          }
+        },
+        {
+          "line": 11243,
+          "value": {
+            "status": "valid",
+            "packet_sha256": "255fc0b2892c1edbaaa0e22abc4b7bc9ce85ce2634d8ad097a8e35ff40deee8e",
+            "original_evidence_revalidated": false,
+            "formal_gate_pass": false
+          }
+        }
+      ]
+    },
+    "Maintain fixed skills map (five real local cases)": {
+      "commands": [
+        {
+          "line": 10403,
+          "text": "pnpm smoke:skills-map --map \"$GITHUB_WORKSPACE/docs/implementation/skills-check-map-maintenance/map.json\" --output \"$OSSTACK_SCRATCH_ROOT/runtime/skills-map-ci-evidence\""
+        }
+      ],
+      "json_records": [
+        {
+          "line": 10410,
+          "value": {
+            "schema_version": 1,
+            "status": "consistent",
+            "exit_code": 0,
+            "started_at": "2026-10-29T18:37:48.888Z",
+            "map": {
+              "before_sha256": "c1ab436209c3857822b74aebadf914761524f9de645177b20f502cac560e96d8",
+              "bytes": 551,
+              "after_sha256": "c1ab436209c3857822b74aebadf914761524f9de645177b20f502cac560e96d8",
+              "unchanged": true
+            },
+            "journey": {
+              "status": "passed",
+              "failure": null,
+              "receipt": "journey/journey.json",
+              "receipt_sha256": "06184af6aaa8480e1dc17e4d541a0163b8db39b96a231aba669d43fbe7fdd808",
+              "receipt_matches_returned": true,
+              "manifest": "journey/journey-manifest.json",
+              "manifest_sha256": "e7672ae27325b1a32480cbdf37aecec4586a53f3948a38cde49cd517e29af706",
+              "features": [
+                {
+                  "case_id": "healthy",
+                  "verification": "passed",
+                  "product_exit": 0,
+                  "product_status": "healthy",
+                  "driver_exit": 0,
+                  "evidence": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/cases/healthy",
+                  "manifest_sha256": "0c72d78a5779342b9ede6a71ea2881b417c9f43176d77b4492c92a9dbe6b8780",
+                  "verified_files": 29,
+                  "bindings": {
+                    "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                    "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                  },
+                  "cleanup": {
+                    "status": "passed",
+                    "fixture_path": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/scratch/smoke/skills-check-zMqUr7",
+                    "fixture_removed": true,
+                    "descendant_termination": "not_attested"
+                  },
+                  "evidence_state": "sealed",
+                  "journey_status": "passed"
+                },
+                {
+                  "case_id": "missing-ref",
+                  "verification": "passed",
+                  "product_exit": 1,
+                  "product_status": "failed",
+                  "driver_exit": 0,
+                  "evidence": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/cases/missing-ref",
+                  "manifest_sha256": "23f64da91d562caab08602945ca1a696ec73cae43305bdfda2999698a01b52a1",
+                  "verified_files": 29,
+                  "bindings": {
+                    "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                    "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                  },
+                  "cleanup": {
+                    "status": "passed",
+                    "fixture_path": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/scratch/smoke/skills-check-nzDFaU",
+                    "fixture_removed": true,
+                    "descendant_termination": "not_attested"
+                  },
+                  "evidence_state": "sealed",
+                  "journey_status": "passed"
+                },
+                {
+                  "case_id": "drift",
+                  "verification": "passed",
+                  "product_exit": 2,
+                  "product_status": "drift",
+                  "driver_exit": 0,
+                  "evidence": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/cases/drift",
+                  "manifest_sha256": "29075774fa089f4c540eed4f1f9ea55d723087f1a7f621cc4c371cc4a140b6be",
+                  "verified_files": 29,
+                  "bindings": {
+                    "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                    "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                  },
+                  "cleanup": {
+                    "status": "passed",
+                    "fixture_path": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/scratch/smoke/skills-check-6Rrb6V",
+                    "fixture_removed": true,
+                    "descendant_termination": "not_attested"
+                  },
+                  "evidence_state": "sealed",
+                  "journey_status": "passed"
+                },
+                {
+                  "case_id": "mixed",
+                  "verification": "passed",
+                  "product_exit": 1,
+                  "product_status": "failed",
+                  "driver_exit": 0,
+                  "evidence": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/cases/mixed",
+                  "manifest_sha256": "0ffb9fdd68aaf18d16d6f6c80785a294f9aa985e0d8ebbf6ec20cfb69ff8032c",
+                  "verified_files": 29,
+                  "bindings": {
+                    "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                    "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                  },
+                  "cleanup": {
+                    "status": "passed",
+                    "fixture_path": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/scratch/smoke/skills-check-iR9l1S",
+                    "fixture_removed": true,
+                    "descendant_termination": "not_attested"
+                  },
+                  "evidence_state": "sealed",
+                  "journey_status": "passed"
+                },
+                {
+                  "case_id": "empty",
+                  "verification": "passed",
+                  "product_exit": 0,
+                  "product_status": "empty",
+                  "driver_exit": 0,
+                  "evidence": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/cases/empty",
+                  "manifest_sha256": "533cd9a798ed7edc90652b6dc288683b7f1a56212b38b92536294d88368f9b17",
+                  "verified_files": 29,
+                  "bindings": {
+                    "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+                    "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+                  },
+                  "cleanup": {
+                    "status": "passed",
+                    "fixture_path": "/home/runner/work/_temp/osstack/runtime/skills-map-ci-evidence/journey/scratch/smoke/skills-check-sojexI",
+                    "fixture_removed": true,
+                    "descendant_termination": "not_attested"
+                  },
+                  "evidence_state": "sealed",
+                  "journey_status": "passed"
+                }
+              ],
+              "limitations": [
+                "Manifest hashes establish retained-file consistency, not an authenticated source.",
+                "Binding digests check driver-declared records and cross-case consistency; they do not independently hash all live source/build files after closeout. Build hashes are not proof of a compiler invocation.",
+                "Direct child exit and fixture removal do not attest all descendants."
+              ]
+            },
+            "rows": [
+              {
+                "case_id": "healthy",
+                "expected": {
+                  "product_exit": 0,
+                  "product_status": "healthy"
+                },
+                "actual": {
+                  "product_exit": 0,
+                  "product_status": "healthy"
+                },
+                "matches": true
+              },
+              {
+                "case_id": "missing-ref",
+                "expected": {
+                  "product_exit": 1,
+                  "product_status": "failed"
+                },
+                "actual": {
+                  "product_exit": 1,
+                  "product_status": "failed"
+                },
+                "matches": true
+              },
+              {
+                "case_id": "drift",
+                "expected": {
+                  "product_exit": 2,
+                  "product_status": "drift"
+                },
+                "actual": {
+                  "product_exit": 2,
+                  "product_status": "drift"
+                },
+                "matches": true
+              },
+              {
+                "case_id": "mixed",
+                "expected": {
+                  "product_exit": 1,
+                  "product_status": "failed"
+                },
+                "actual": {
+                  "product_exit": 1,
+                  "product_status": "failed"
+                },
+                "matches": true
+              },
+              {
+                "case_id": "empty",
+                "expected": {
+                  "product_exit": 0,
+                  "product_status": "empty"
+                },
+                "actual": {
+                  "product_exit": 0,
+                  "product_status": "empty"
+                },
+                "matches": true
+              }
+            ],
+            "failure": null,
+            "subsequent_failures": [],
+            "model_calls": 0,
+            "formal_gate_pass": false,
+            "execution_path": "runJourney",
+            "limitations": [
+              "Map agreement covers only the five fixed local cases. It does not establish source-review completion or classify a discrepancy as documentation drift or a product regression.",
+              "Source/build bindings and cleanup retain the existing journey claims and limits. They do not authenticate an independent producer or attest every descendant.",
+              "Map hashes compare before/after snapshots, not concurrent-writer fencing. No map or product correction is automatic."
+            ],
+            "ended_at": "2026-10-29T18:37:58.099Z"
+          }
+        }
+      ]
+    },
+    "Session adoption decision smoke (local fixture)": {
+      "commands": [
+        {
+          "line": 8950,
+          "text": "##[group]Run pnpm smoke:engineering-decision"
+        },
+        {
+          "line": 8951,
+          "text": "pnpm smoke:engineering-decision"
+        }
+      ],
+      "json_records": [
+        {
+          "line": 9129,
+          "value": {
+            "schema_version": 1,
+            "status": "passed",
+            "profile": "local_deterministic_fixture",
+            "compiled_cli": true,
+            "independent_daemon": true,
+            "commands": [
+              {
+                "command": "attention watch",
+                "state": null,
+                "replay": null
+              },
+              {
+                "command": "engineering adopt",
+                "state": "awaiting_decision",
+                "replay": false
+              },
+              {
+                "command": "engineering observe",
+                "state": "awaiting_decision",
+                "replay": null
+              },
+              {
+                "command": "engineering defer",
+                "state": "awaiting_decision",
+                "replay": false
+              },
+              {
+                "command": "engineering observe",
+                "state": "awaiting_decision",
+                "replay": null
+              },
+              {
+                "command": "engineering decide",
+                "state": "answer_recorded",
+                "replay": false
+              },
+              {
+                "command": "engineering observe",
+                "state": "completed",
+                "replay": null
+              },
+              {
+                "command": "engineering decide",
+                "state": "completed",
+                "replay": true
+              },
+              {
+                "command": "engineering reconcile",
+                "state": "completed",
+                "replay": true
+              }
+            ],
+            "invocations": 1,
+            "completion_level": "observed_turn",
+            "action_receipt": "applied",
+            "same_key_replay": true,
+            "provider_qualified": false,
+            "drain": {
+              "drained": true,
+              "execution_lease_holds": 0,
+              "active_runs": 0,
+              "graph_holds": 0,
+              "attention_dispatch_holds": 0
+            },
+            "unverified": [
+              "live_provider",
+              "physical_power_loss",
+              "hostile_same_uid_isolation",
+              "process_domain_termination",
+              "nondefault_tenant",
+              "remote_host"
+            ],
+            "cleanup": {
+              "pid": 91981,
+              "process_started": true,
+              "process_exit_confirmed": true,
+              "exit_code": 0,
+              "signal": null,
+              "forced": false,
+              "scratch_removed": true
+            },
+            "evidence": {
+              "directory": "/tmp/osstack/smoke/engineering-evidence-ddb29d39-8bfd-46e8-abff-f84dbdc5a941",
+              "run_id": "ddb29d39-8bfd-46e8-abff-f84dbdc5a941",
+              "manifest": "manifest.json"
+            }
+          }
+        }
+      ]
+    },
+    "Skills check verification (local Git fixtures)": {
+      "commands": [
+        {
+          "line": 9219,
+          "text": "pnpm smoke:skills-check --evidence-dir \"$OSSTACK_SCRATCH_ROOT/runtime/skills-check-ci-evidence\""
+        }
+      ],
+      "json_records": [
+        {
+          "line": 9386,
+          "value": {
+            "schema_version": 1,
+            "run_id": "e67b5579-21fb-4b36-820a-f73131f9ced6",
+            "status": "passed",
+            "driver_exit": 0,
+            "selected_cases": [
+              "healthy",
+              "missing-ref",
+              "drift",
+              "mixed",
+              "empty"
+            ],
+            "cases": [
+              {
+                "case_id": "healthy",
+                "verification_status": "passed",
+                "actual_exit": 0,
+                "expected_exit": 0,
+                "source_check_status": "healthy",
+                "input_unchanged": true,
+                "errors": []
+              },
+              {
+                "case_id": "missing-ref",
+                "verification_status": "passed",
+                "actual_exit": 1,
+                "expected_exit": 1,
+                "source_check_status": "failed",
+                "input_unchanged": true,
+                "errors": []
+              },
+              {
+                "case_id": "drift",
+                "verification_status": "passed",
+                "actual_exit": 2,
+                "expected_exit": 2,
+                "source_check_status": "drift",
+                "input_unchanged": true,
+                "errors": []
+              },
+              {
+                "case_id": "mixed",
+                "verification_status": "passed",
+                "actual_exit": 1,
+                "expected_exit": 1,
+                "source_check_status": "failed",
+                "input_unchanged": true,
+                "errors": []
+              },
+              {
+                "case_id": "empty",
+                "verification_status": "passed",
+                "actual_exit": 0,
+                "expected_exit": 0,
+                "source_check_status": "empty",
+                "input_unchanged": true,
+                "errors": []
+              }
+            ],
+            "behavior": "passed",
+            "cleanup": {
+              "status": "passed",
+              "fixture_path": "/home/runner/work/_temp/osstack/smoke/skills-check-QUB2Qe",
+              "fixture_removed": true,
+              "descendant_termination": "not_attested"
+            },
+            "failure": null,
+            "provider_qualified": false,
+            "evidence": {
+              "directory": "/home/runner/work/_temp/osstack/runtime/skills-check-ci-evidence",
+              "manifest": "manifest.json",
+              "bindings": "bindings.json"
+            },
+            "binding_digests": {
+              "source_digest": "54d31e9f1f558fc1b20ad32253f877a5fe5082678b48f1595ae409cbaad55303",
+              "build_digest": "9f80d18f4dd874c4cd09027b7c724f65378d62bedcf4e108116bcdf351733792"
+            },
+            "limitations": [
+              "local deterministic file:// sources only",
+              "direct owned child exit observed; descendant termination not attested",
+              "not skill installation, live provider, dependency closure or formal gate qualification"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "raw_bindings": [
+    {
+      "path": "run.stdout",
+      "bytes": 12953,
+      "sha256": "e749c3be0b43e7cac07aa8f67ca79d3c0540ffc76fc882519e6b01bb38b8cfb8"
+    },
+    {
+      "path": "jobs.stdout",
+      "bytes": 24566,
+      "sha256": "b573a53a1d2b4bb8e08efc4cb87c6f50852fef835b521ffc167db00e0cf76256"
+    },
+    {
+      "path": "complete-log.stdout",
+      "bytes": 2184831,
+      "sha256": "f3291f96d350f42d6eb28e02816d1d52e95c4dec8fdafbeaf5f20cde430c11e7"
+    },
+    {
+      "path": "complete-log.log.gz",
+      "bytes": 277724,
+      "sha256": "9e7bb6181eef2321d6f5498c959c5ea3411f4eaca5c5c75f71f025bcbd5d7ffa"
+    }
+  ],
+  "limits": [
+    "Read-only verification of CI records, not independent test re-execution.",
+    "Raw GH CLI log bytes preserved without ANSI transformations; parser strips ANSI only in memory.",
+    "Actual command success inferred from successful bash-e CI step and result records; no separate numeric shell exit footer expected.",
+    "No artifact downloaded or independently rehashed. No model/native/runtime qualification, full-descendant cleanup or PR Ready inferred."
+  ],
+  "actual_summary": {
+    "Method verification journey (two real local cases)": {
+      "line": 9779,
+      "status": "passed",
+      "product_exits": [
+        0,
+        1
+      ],
+      "driver_exits": [
+        0,
+        0
+      ],
+      "fixture_removed": true,
+      "descendants": "not_attested"
+    },
+    "Full method verification journey (five real local cases)": {
+      "line": 9917,
+      "status": "passed",
+      "product_exits": [
+        0,
+        1,
+        2,
+        1,
+        0
+      ],
+      "driver_exits": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "fixture_removed": true,
+      "descendants": "not_attested"
+    },
+    "Project and check actual method evidence": {
+      "lines": [
+        11203,
+        11205
+      ],
+      "statuses": [
+        "projected",
+        "valid"
+      ],
+      "logged_packet_sha256": "8d31e58baad1eb0de361e258107665cc25e0432ac9e7adc7a69c9debea06437d",
+      "independently_rehashed_artifact": false
+    },
+    "Project and check full five-case method evidence": {
+      "lines": [
+        11241,
+        11243
+      ],
+      "statuses": [
+        "projected",
+        "valid"
+      ],
+      "logged_packet_sha256": "255fc0b2892c1edbaaa0e22abc4b7bc9ce85ce2634d8ad097a8e35ff40deee8e",
+      "independently_rehashed_artifact": false
+    },
+    "Maintain fixed skills map (five real local cases)": {
+      "line": 10410,
+      "status": "consistent",
+      "exit_code": 0,
+      "map_unchanged": true,
+      "map_sha256": "c1ab436209c3857822b74aebadf914761524f9de645177b20f502cac560e96d8",
+      "product_exits": [
+        0,
+        1,
+        2,
+        1,
+        0
+      ]
+    },
+    "Session adoption decision smoke (local fixture)": {
+      "line": 9129,
+      "status": "passed",
+      "provider_qualified": false,
+      "cleanup": {
+        "pid": 91981,
+        "process_started": true,
+        "process_exit_confirmed": true,
+        "exit_code": 0,
+        "signal": null,
+        "forced": false,
+        "scratch_removed": true
+      }
+    },
+    "Skills check verification (local Git fixtures)": {
+      "line": 9386,
+      "status": "passed",
+      "provider_qualified": false,
+      "cleanup": {
+        "status": "passed",
+        "fixture_path": "/home/runner/work/_temp/osstack/smoke/skills-check-QUB2Qe",
+        "fixture_removed": true,
+        "descendant_termination": "not_attested"
+      }
+    }
+  },
+  "lint_inventory_raw_lines": [
+    {
+      "line": 3874,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7357725Z   > 1316 \u2502         if(!p||p.acknowledge_unknown_effects!==true)throw new Error(\"explicit_unknown_effects_ack_required\");"
+    },
+    {
+      "line": 3876,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7359566Z     1317 \u2502         if(ctx.activeSessionSends.has(p.session_id))throw new Error(\"delivery_in_flight\");"
+    },
+    {
+      "line": 3883,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7429007Z     1316      \u2502 - \u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7if(!p||p.acknowledge_unknown_effects!==true)throw\u00b7new\u00b7Error(\"explicit_unknown_effects_ack_required\");"
+    },
+    {
+      "line": 3884,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7430498Z          1316 \u2502 + \u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7if(p?.acknowledge_unknown_effects!==true)throw\u00b7new\u00b7Error(\"explicit_unknown_effects_ack_required\");"
+    },
+    {
+      "line": 3885,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7431758Z     1317 1317 \u2502           if(ctx.activeSessionSends.has(p.session_id))throw new Error(\"delivery_in_flight\");"
+    },
+    {
+      "line": 3987,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7509405Z   > 39 \u2502     if (!entry || entry.action.generation !== 1 || entry.action.effect.epoch !== 0 || entry.action.effect.logicalAttempt !== 1) throw Error('PREPARATION_RECOVERY_SCOPE');"
+    },
+    {
+      "line": 3996,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7516574Z      39     \u2502 - \u00b7\u00b7\u00b7\u00b7if\u00b7(!entry\u00b7||\u00b7entry.action.generation\u00b7!==\u00b71\u00b7||\u00b7entry.action.effect.epoch\u00b7!==\u00b70\u00b7||\u00b7entry.action.effect.logicalAttempt\u00b7!==\u00b71)\u00b7throw\u00b7Error('PREPARATION_RECOVERY_SCOPE');"
+    },
+    {
+      "line": 3997,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7518597Z          39 \u2502 + \u00b7\u00b7\u00b7\u00b7if\u00b7(entry?.action.generation\u00b7!==\u00b71\u00b7||\u00b7entry.action.effect.epoch\u00b7!==\u00b70\u00b7||\u00b7entry.action.effect.logicalAttempt\u00b7!==\u00b71)\u00b7throw\u00b7Error('PREPARATION_RECOVERY_SCOPE');"
+    },
+    {
+      "line": 4006,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7523606Z     54 \u2502   const err = io.stderr ?? console.error;"
+    },
+    {
+      "line": 4039,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7546150Z     55 \u2502           error?: { code?: unknown };"
+    },
+    {
+      "line": 4043,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7549253Z     58 \u2502           throw Error(\"invalid_worker_response\");"
+    },
+    {
+      "line": 4048,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7551494Z     55 55 \u2502             error?: { code?: unknown };"
+    },
+    {
+      "line": 4052,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7554667Z     58 58 \u2502             throw Error(\"invalid_worker_response\");"
+    },
+    {
+      "line": 4198,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7645097Z   > 216 \u2502       if (!session || !session.resume_supported || !session.native_session_id) throw Error(\"executor_not_qualified\");"
+    },
+    {
+      "line": 4201,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7647770Z     218 \u2502       if (!scope || scope.task_id !== input.task_id) throw Error(\"scope_mismatch\");"
+    },
+    {
+      "line": 4207,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7652833Z     216     \u2502 - \u00b7\u00b7\u00b7\u00b7\u00b7\u00b7if\u00b7(!session\u00b7||\u00b7!session.resume_supported\u00b7||\u00b7!session.native_session_id)\u00b7throw\u00b7Error(\"executor_not_qualified\");"
+    },
+    {
+      "line": 4208,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7654369Z         216 \u2502 + \u00b7\u00b7\u00b7\u00b7\u00b7\u00b7if\u00b7(!session?.resume_supported\u00b7||\u00b7!session.native_session_id)\u00b7throw\u00b7Error(\"executor_not_qualified\");"
+    },
+    {
+      "line": 4210,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7656330Z     218 218 \u2502         if (!scope || scope.task_id !== input.task_id) throw Error(\"scope_mismatch\");"
+    },
+    {
+      "line": 4260,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7707600Z     55 \u2502     throw new ExecutionContextBudgetError(\"invalid_context_budget\");"
+    },
+    {
+      "line": 4264,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7712552Z     58 \u2502     throw new ExecutionContextBudgetError(\"invalid_context_source\");"
+    },
+    {
+      "line": 4269,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7717945Z      55  55 \u2502       throw new ExecutionContextBudgetError(\"invalid_context_budget\");"
+    },
+    {
+      "line": 4273,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7724067Z      58  58 \u2502       throw new ExecutionContextBudgetError(\"invalid_context_source\");"
+    },
+    {
+      "line": 4278,
+      "text": "check\tLint (Biome)\t2026-10-29T18:23:18.7726440Z Checked 1028 files in 2s. No fixes applied."
+    },
+    {
+      "line": 4625,
+      "text": "check\tInventory freshness\t\ufeff2026-10-29T18:24:08.0936825Z ##[group]Run node scripts/generate-inventory.mjs --check"
+    },
+    {
+      "line": 4626,
+      "text": "check\tInventory freshness\t2026-10-29T18:24:08.0937688Z ^[[36;1mnode scripts/generate-inventory.mjs --check^[[0m"
+    },
+    {
+      "line": 4627,
+      "text": "check\tInventory freshness\t2026-10-29T18:24:08.0953407Z shell: /usr/bin/bash -e {0}"
+    },
+    {
+      "line": 4628,
+      "text": "check\tInventory freshness\t2026-10-29T18:24:08.0954141Z env:"
+    },
+    {
+      "line": 4629,
+      "text": "check\tInventory freshness\t2026-10-29T18:24:08.0954664Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin"
+    },
+    {
+      "line": 4630,
+      "text": "check\tInventory freshness\t2026-10-29T18:24:08.0955098Z ##[endgroup]"
+    },
+    {
+      "line": 4631,
+      "text": "check\tInventory freshness\t2026-10-29T18:24:08.3204983Z inventory: fresh"
+    }
+  ]
+}

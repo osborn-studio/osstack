@@ -1,0 +1,70 @@
+{
+  "at": "2026-10-29T19:00:02.689214+00:00",
+  "reports": [
+    {
+      "pr": 307,
+      "run_id": 40929858660,
+      "head": "8fd2891174964bb539f5ca9b094549a090517d5e",
+      "base": {
+        "ref": "main",
+        "sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+        "repo": {
+          "id": 1255570742,
+          "url": "https://api.github.com/repos/osborn-studio/osstack",
+          "name": "osstack"
+        }
+      },
+      "checkout": [
+        {
+          "line": 3708,
+          "text": "HEAD is now at f98544d7 Merge 8fd2891174964bb539f5ca9b094549a090517d5e into 6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b"
+        },
+        {
+          "line": 3711,
+          "text": "f98544d70774082c1e747b960a0148ec35563a94"
+        }
+      ],
+      "totals": {
+        "passed": 7189,
+        "skipped": 7,
+        "failed": 0
+      },
+      "github_passed": 154,
+      "candidate_cli_passed": 14,
+      "report_sha256": "ca34da7d9bef59542b18d17770399e2a5c6b2a8e8ed1bab1e1016d2f763c17ec"
+    },
+    {
+      "pr": 308,
+      "run_id": 40930144304,
+      "head": "b4a2fc30711d9c3ad5cddbc846839948f1810c56",
+      "base": {
+        "ref": "codex/pr-candidate-snapshot-delivery",
+        "sha": "8fd2891174964bb539f5ca9b094549a090517d5e",
+        "repo": {
+          "id": 1255570742,
+          "url": "https://api.github.com/repos/osborn-studio/osstack",
+          "name": "osstack"
+        }
+      },
+      "checkout": [
+        {
+          "line": 3733,
+          "text": "HEAD is now at c323e040 Merge b4a2fc30711d9c3ad5cddbc846839948f1810c56 into 8fd2891174964bb539f5ca9b094549a090517d5e"
+        },
+        {
+          "line": 3736,
+          "text": "c323e040a627a3e97f67e39987e061ca7e6852a0"
+        }
+      ],
+      "totals": {
+        "passed": 7207,
+        "skipped": 7,
+        "failed": 0
+      },
+      "github_passed": 172,
+      "candidate_cli_passed": 14,
+      "report_sha256": "b9486dd0514fab826c04284d3d6f7625f9050edd4dcb8f986762e7ad6250ca55"
+    }
+  ],
+  "scope": "Read-only CI record verification; no artifact downloads or test re-execution"
+}

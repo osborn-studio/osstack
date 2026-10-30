@@ -1,0 +1,40 @@
+{
+  "verified_at": "2026-10-30T00:20:50.223683+00:00",
+  "archive_snapshot_members": 135,
+  "archive_unchanged_sha256": "83f112d625c243e28df9d3f0b02dab58138c7129b5835b7109d3aeb10294f476",
+  "separate_postarchive_files": [
+    {
+      "path": "ci-final/poller-stop.json",
+      "bytes": 330,
+      "sha256": "bec9999937aab2a6caeffdbefda620e11dad2ee53e3d7cbd2930a9f798189b8f",
+      "source_same_bytes": true,
+      "regular_file": true,
+      "same_mode": true
+    },
+    {
+      "path": "closure-v2/manifest.json",
+      "bytes": 1638,
+      "sha256": "b93aa02a025b63122262c94f0fe50bf25a9df8f2cc8181f94b2709ce83524900",
+      "source_same_bytes": true,
+      "regular_file": true,
+      "same_mode": true
+    },
+    {
+      "path": "freeze-receipt.json",
+      "bytes": 378,
+      "sha256": "4d5eb698f3e4340eb6a7679ed7a472d69d0dd71d640774150a0a78051f4e36e0",
+      "source_same_bytes": true,
+      "regular_file": true,
+      "same_mode": true
+    },
+    {
+      "path": "frozen-manifest.json",
+      "bytes": 24514,
+      "sha256": "d9a3f4d69510e4a540eb77e1a22c658d756a41dedd55679ea897ddf64c5f0559",
+      "source_same_bytes": true,
+      "regular_file": true,
+      "same_mode": true
+    }
+  ],
+  "scope": "Four later closure records separately published; not claimed to be inside the 135-member archive. Original receipt remains unchanged."
+}

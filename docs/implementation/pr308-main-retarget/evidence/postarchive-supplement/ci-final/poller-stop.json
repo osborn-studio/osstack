@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-30T00:19:55.984296+00:00",
+  "stopped_only_local_collectors": [
+    {
+      "pid": 29127,
+      "command": "python3 /Volumes/AIMATE_WORK/tmp/osstack/runtime/pr308-main-retarget-20261030/ci-final/collect.py"
+    }
+  ],
+  "reason": "Parent requested source directory freeze; no GitHub cancellation or mutation"
+}

@@ -30,3 +30,6 @@ Archive SHA256 `15a3324dabc84aa9275dbb48b003a8b766729172f3411c8cd49668d51ac01788
 A pre-publication check confirmed a missing changeset for the new public API. The original failing coverage output is retained; adding the minor @osstack/github changeset made the same coverage command pass. This is release metadata, not a production-code change.
 
 Independent archive verification matched all278 members and complete scratch inventory (excluding the declared separate publication report); receipt SHA2562ba87364a1ae094784727bdfc3a80676a386b27330e688913473765f0034a18a.
+
+
+Published PR307 targets actual main directly at9d54cfdc658ac137ae9e95d08499aad77ec529f0; CI40926150260 is running. Draft until five applicable checks succeed. This publication note does not rebind the earlier full test or actual snapshot.
