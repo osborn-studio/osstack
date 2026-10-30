@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,6 +50,43 @@ describe("discover scanners", () => {
       source: "git_diff",
     });
     expect(tasks[0]!.priority).toBeGreaterThan(tasks[1]!.priority);
+  });
+
+  it("GitDiffScanner preserves full long ASCII paths", async () => {
+    const repo = makeRepo();
+    try {
+      const directory = Array(7).fill("ordinary-directory-abcdefghij").join("/");
+      const file = `${directory}/target.ts`;
+      expect(file).toHaveLength(219);
+      mkdirSync(join(repo, directory), { recursive: true });
+      writeFileSync(join(repo, file), "export const before = 1;\n");
+      writeFileSync(join(repo, "short.ts"), "export const short = 1;\n");
+      git(["add", "."], repo);
+      git(["commit", "-m", "add path fixtures"], repo);
+
+      const changedContent = "export const after = 1;\nexport const added = 2;\n";
+      writeFileSync(join(repo, file), changedContent);
+      writeFileSync(join(repo, "short.ts"), "export const short = 1;\nexport const next = 2;\n");
+
+      const tasks = await new GitDiffScanner(repo).scan();
+
+      expect(tasks.map((task) => task.context?.["file"])).toEqual([file, "short.ts"]);
+      expect(tasks[0]).toMatchObject({
+        capability: "code.review",
+        source: "git_diff",
+        priority: 15,
+        context: { file, change_lines: 3 },
+      });
+      expect(tasks[0]!.prompt).toContain(`Review changes in ${file} (3 lines modified)`);
+      expect(readFileSync(join(repo, tasks[0]!.context!["file"] as string), "utf-8"))
+        .toBe(changedContent);
+      expect(tasks[1]).toMatchObject({
+        priority: 5,
+        context: { file: "short.ts", change_lines: 1 },
+      });
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   });
 
   it("createScanner should create known scanners and noop unsupported sources", async () => {
