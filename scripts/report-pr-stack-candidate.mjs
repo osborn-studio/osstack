@@ -47,7 +47,9 @@ async function readPlan(path) {
 // Forge strings are display data. Do not let them add Markdown structure or links.
 const escape = value => [...String(value ?? 'unknown')].map(c => {
   const code = c.codePointAt(0);
-  return code < 32 || code === 127 || '&<>"\'`\\[]()#*_|!'.includes(c) ? `&#${code};` : c;
+  // HTML entities for controls would decode back into invisible/reordering characters.
+  if (/[\p{Cc}\p{Cf}]/u.test(c)) return `\\u{${code.toString(16).toUpperCase()}}`;
+  return /^[A-Za-z0-9 -]$/.test(c) ? c : `&#${code};`;
 }).join('');
 function markdown(report) {
   const lines = [

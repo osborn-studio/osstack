@@ -8,7 +8,7 @@ import { createScratchDir } from './lib/scratch.mjs';
 import { runPrStackCandidateReport } from './report-pr-stack-candidate.mjs';
 const plan = { schema_version: 1, repo: 'owner/repo', target_base: 'main', prs: [{ pr: 20, requiredChecks: ['test'] }, { pr: 7, requiredChecks: ['test'] }] };
 const oid = pr => pr.toString(16).padStart(40, '0');
-function runner(unavailable = false) {
+function runner(unavailable = false, branch = null) {
   const calls = [];
   return { calls, async run(command, args, options) {
     calls.push({ command, args, timeoutMs: options.timeoutMs });
@@ -17,6 +17,11 @@ function runner(unavailable = false) {
     const query = get('query='), pr = Number(get('number=') ?? Number.parseInt(get('oid='), 16));
     const page = nodes => ({ nodes, pageInfo: { hasNextPage: false, endCursor: null } });
     let repository = { nameWithOwner: 'owner/repo', pullRequest: { number: pr, url: `https://github.com/owner/repo/pull/${pr}`, state: pr === 20 ? 'MERGED' : 'OPEN', isDraft: false, headRefOid: oid(pr), baseRefOid: 'b'.repeat(40), headRefName: `feature-${pr}`, baseRefName: 'main', mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', reviewDecision: 'APPROVED' } };
+    if (branch !== null) {
+      repository.pullRequest.state = 'OPEN';
+      if (pr === 20) repository.pullRequest.headRefName = branch;
+      if (pr === 7) repository.pullRequest.baseRefName = branch;
+    }
     if (query.includes('CandidateChecks')) repository = { nameWithOwner: 'owner/repo', object: { oid: oid(pr), statusCheckRollup: { contexts: page([{ __typename: 'CheckRun', id: `check-${pr}`, name: 'test', status: 'COMPLETED', conclusion: 'NEUTRAL', detailsUrl: null }]) } } };
     if (query.includes('CandidateThreads')) repository = { nameWithOwner: 'owner/repo', pullRequest: { number: pr, reviewThreads: page([]) } };
     return { stdout: JSON.stringify({ data: { repository } }), stderr: '', exitCode: 0 };
@@ -97,3 +102,30 @@ test('CLI help executes without a build or a forge request', () => {
   const p = spawnSync(process.execPath, ['scripts/report-pr-stack-candidate.mjs', '--help'], { encoding: 'utf8' });
   assert.equal(p.status, 0); assert.match(p.stdout, /--plan/); assert.match(p.stdout, /not a merge authorization/);
 });
+
+for (const branch of ['www.example.test/login', 'a@b.example', 'https://example.test/path', 'release_~[text](https://example.test)']) {
+  test(`forge branch cannot create a bare link or formatting token: ${branch}`, () => fixture(async (root, file) => {
+    const output = join(root, 'out');
+    assert.equal((await runPrStackCandidateReport(args(file, output), { runner: runner(false, branch) })).exitCode, 0);
+    const report = JSON.parse(await readFile(join(output, 'report.json'), 'utf8'));
+    assert.equal(report.rows[1].relation.expected_base, branch);
+    assert.equal(report.rows[1].relation.observed_base, branch);
+    assert.equal(report.rows[1].relation.status, 'parent_matches');
+    const md = await readFile(join(output, 'report.md'), 'utf8');
+    assert.ok(!md.includes(branch)); assert.ok(!md.includes('www.')); assert.ok(!md.includes('@'));
+    const line = md.split('\n').find(l => l.includes('Relation: parent_matches'));
+    assert.equal(line.replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code))), `Relation: parent_matches; expected base: ${branch}; observed base: ${branch}.`);
+  }));
+}
+for (const code of [0x202e, 0x2066, 0x2067, 0x2068, 0x2069, 0x85, 0x9b, 0x200b, 0xfeff]) {
+  test(`forge display control U+${code.toString(16)} becomes a visible escape, never a decoded control`, () => fixture(async (root, file) => {
+    const control = String.fromCodePoint(code), branch = `safe${control}suffix`, output = join(root, 'out');
+    assert.equal((await runPrStackCandidateReport(args(file, output), { runner: runner(false, branch) })).exitCode, 0);
+    const raw = JSON.parse(await readFile(join(output, 'prs/20/snapshot.json'), 'utf8'));
+    assert.equal(raw.final.headRefName, branch);
+    const md = await readFile(join(output, 'report.md'), 'utf8');
+    const decoded = md.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+    assert.ok(!md.includes(control)); assert.ok(!decoded.includes(control));
+    assert.ok(decoded.includes(`safe\\u{${code.toString(16).toUpperCase()}}suffix`));
+  }));
+}

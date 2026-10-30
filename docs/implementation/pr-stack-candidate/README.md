@@ -44,6 +44,10 @@ The original snapshot policy remains unchanged. Neutral/skipped checks are not u
 
 ## Evidence and exit codes
 
+Collection finishes before any evidence file is written. During that window, the acquired output directory can be empty. An interruption or process failure can lose the in-memory observations. The collection budget does not promise incremental persistence. Keep an incomplete directory as incomplete evidence; do not infer that a missing response means the forge returned no data.
+
+Raw responses and JSON snapshots can contain private repository metadata. Retain them within the authorized task. `report.md` escapes display text to prevent branch names from adding Markdown structure or automatic links. Control and format characters use visible Unicode escapes instead of entities that decode back into invisible or reordering characters. The original characters remain unchanged in JSON and raw evidence; display escaping is not redaction.
+
 Output includes the original plan bytes, `report.json`, a readable `report.md`, `dispatches.json`, and `prs/<number>/snapshot.json`, `queries.json`, and fixed-label `raw/` responses for each collected observation. Unstarted rows are explicit in the report and have no fabricated per-PR data. The manifest records every retained member's hash, length and mode. Files use 0600; directories use 0700.
 
 Per-PR query receipts retain the collector's requested timeout. `dispatches.json` records the effective timeout passed to the runner, which can be shorter near the stack deadline, and identifies the PR and zero-based query index. Raw output is the UTF-8-decoded stdout/stderr returned by the runner, not arbitrary original wire bytes. A failure after output acquisition keeps the files already written; absent manifest means the output is incomplete. Hashes bind bytes, not forge authenticity.
