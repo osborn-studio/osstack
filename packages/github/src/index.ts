@@ -19,3 +19,15 @@ export {
   type PrCandidateSnapshot,
   type PrCandidateObservation,
 } from "./pr-candidate-snapshot.js";
+
+export {
+  inspectPrStackCandidate,
+  validatePrStackCandidateInput,
+  type PrStackCandidateInput,
+  type PrStackObservation,
+  type PrStackRelation,
+  type PrStackCandidateRow,
+  type PrStackCandidateReport,
+  type PrStackCandidateResult,
+  type PrStackCandidateDispatch,
+} from "./pr-stack-candidate.js";

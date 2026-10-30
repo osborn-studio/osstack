@@ -22,6 +22,12 @@ For an authorized read in an OSStack source checkout, build `@osstack/github`, t
 
 Exit 0 means a report was written, including blocked or unknown observations. It is not a passing readiness gate. The report preserves current-head checks and paged review threads, brackets head/base, and explicitly leaves branch protection, rulesets, merge-queue policy and approval-commit binding uncollected. It never watches, retries, marks Ready, approves or merges. Use those limits when reporting the actual blocker below.
 
+## One bounded observation of an explicitly ordered stack
+
+In an OSStack source checkout, `pnpm inspect:pr-stack-candidate --plan ABSOLUTE_PLAN_JSON --output ABSOLUTE_NEW_SCRATCH_DIRECTORY` observes one to three PRs in the supplied bottom-to-top order. Build `@osstack/github` first. The closed plan contains `schema_version: 1`, one `repo`, an intended `target_base`, and `prs` entries with `pr` plus optional paired `expectedHead`/`expectedBase` and caller-declared `requiredChecks`. The plan is limited to 64 KiB; the output parent must already exist under `OSSTACK_SCRATCH_ROOT`.
+
+Read every constituent snapshot and its reason axes. Only a stable observed merged prefix can be passed over; a green upper PR cannot replace an unresolved lower one. A base-branch mismatch calls for owner review, not automatic retargeting. Sequential observations do not form an atomic stack snapshot, branch-name relationships do not prove ancestry, and exit 0 means a report was written rather than Ready or merge permission. Keep earlier reports as dated evidence and use a new output directory for a later authorized observation. This checkout command is not installed by exporting method materials.
+
 ## Handle the actual blocker
 
 Identify the owning PR and real dependency order. Work on the blocked dependency that prevents the requested delivery, while allowing independent authorized work to continue in separate write boundaries. Do not run a second coordinator on the same stack. A changed base, conflict or merged parent can require a topology update, but this method does not authorize retargeting, rebasing or force-pushing. Perform those only when the actual owner and existing task scope cover them; otherwise report the exact dependency and continue independent work. Preserve other workers' edits. If the owning PR has already merged, keep its history intact and put an authorized correction on a follow-up branch/PR, subject to publication authority.

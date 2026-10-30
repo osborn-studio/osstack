@@ -194,6 +194,9 @@ jobs:
       - name: Read-only PR snapshot contracts (offline)
         run: pnpm test:pr-candidate
 
+      - name: Ordered PR stack snapshot contracts (offline)
+        run: pnpm test:pr-stack-candidate
+
       - name: Skills map maintenance contracts
         run: pnpm test:skills-map
 

@@ -83,7 +83,9 @@
     "test:method-read": "node --test scripts/read-method-material.test.mjs",
     "read:method": "node scripts/read-method-material.mjs",
     "test:pr-candidate": "node --test scripts/report-pr-candidate.test.mjs",
-    "inspect:pr-candidate": "node scripts/report-pr-candidate.mjs"
+    "inspect:pr-candidate": "node scripts/report-pr-candidate.mjs",
+    "test:pr-stack-candidate": "node --test scripts/report-pr-stack-candidate.test.mjs",
+    "inspect:pr-stack-candidate": "node scripts/report-pr-stack-candidate.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
