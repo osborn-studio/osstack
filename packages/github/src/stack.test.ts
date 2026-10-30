@@ -62,6 +62,61 @@ describe("mapRollupToCheckState", () => {
   });
 });
 
+describe("CheckRun rollups require an explicit completed outcome", () => {
+  const checkRun = (status: string | undefined, conclusion: string | null | undefined) => ({ __typename: "CheckRun", status, conclusion });
+
+  it.each(["ACTION_REQUIRED", "STALE", "STARTUP_FAILURE"])("reports completed %s as failure", conclusion => {
+    expect(mapRollupToCheckState([checkRun("COMPLETED", conclusion)])).toBe("failure");
+  });
+
+  it.each(["WAITING", "REQUESTED"])("does not turn %s into success, even with a premature success conclusion", status => {
+    expect(mapRollupToCheckState([checkRun(status, "SUCCESS")])).toBe("pending");
+    expect(mapRollupToCheckState([checkRun(status, null)])).toBe("pending");
+  });
+
+  it.each(["FUTURE_STATUS", "", undefined])("does not infer completion from status %s", status => {
+    expect(mapRollupToCheckState([checkRun(status, "SUCCESS")])).toBe("pending");
+  });
+
+  it.each(["FUTURE_CONCLUSION", "", null, undefined])("does not treat completed conclusion %s as success", conclusion => {
+    expect(mapRollupToCheckState([checkRun("COMPLETED", conclusion)])).toBe("pending");
+  });
+
+  it.each(["SUCCESS", "NEUTRAL", "SKIPPED"])("retains the explicit completed %s policy", conclusion => {
+    expect(mapRollupToCheckState([checkRun("COMPLETED", conclusion)])).toBe("success");
+  });
+
+  it("keeps missing check fields non-successful", () => {
+    expect(mapRollupToCheckState([{}])).toBe("pending");
+    expect(mapRollupToCheckState([{ __typename: "CheckRun" }])).toBe("pending");
+  });
+
+  it("failure wins over pending and successful legacy contexts", () => {
+    expect(mapRollupToCheckState([
+      { __typename: "StatusContext", state: "SUCCESS" }, checkRun("WAITING", null), checkRun("COMPLETED", "ACTION_REQUIRED"),
+    ])).toBe("failure");
+  });
+
+  it.each([
+    ["COMPLETED", "ACTION_REQUIRED", "failure", "ci_failing"],
+    ["COMPLETED", "STALE", "failure", "ci_failing"],
+    ["COMPLETED", "STARTUP_FAILURE", "failure", "ci_failing"],
+    ["WAITING", "SUCCESS", "pending", "ci_pending"],
+    ["REQUESTED", "SUCCESS", "pending", "ci_pending"],
+    ["COMPLETED", "FUTURE_CONCLUSION", "pending", "ci_pending"],
+  ])("propagates %s/%s through stack ingestion", async (status, conclusion, expected, issue) => {
+    const calls: string[][] = [];
+    const model = await ingestStack({ repo: "fixture/repo", prNumbers: [11] }, { run: async (command, args) => {
+      calls.push([command, ...args]);
+      return prViewJson({ number: 11, baseRefName: "main", headRefName: "feature", statusCheckRollup: [checkRun(status, conclusion)] });
+    } });
+    expect(model.nodes[0]?.ciState).toBe(expected);
+    expect(detectDrift(model)).toMatchObject({ clean: false, issues: [{ number: 11, kind: issue }] });
+    expect(model.order).toEqual([11]); expect(model.edges).toEqual([]);
+    expect(calls).toHaveLength(1); expect(calls[0]?.slice(0, 4)).toEqual(["gh", "pr", "view", "11"]);
+  });
+});
+
 describe("StatusContext rollups", () => {
   const context = (state: unknown) => ({ __typename: "StatusContext", context: "legacy-ci", state, targetUrl: "https://example.invalid/build" });
 

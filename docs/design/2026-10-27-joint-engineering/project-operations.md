@@ -162,3 +162,8 @@ PR302由root在五项适用CI成功后转Ready，用户审批合并。root中央
 ## 2026-10-30：307 合并后的执行窗口
 
 #307 已由用户合入 main `de43f47c29d5c08ae6e6c5eb366767320ffcdd0c`，合并树等已发布8fd。#308 已以 `6d978973` 改为main，树等原b4a，CI40977980388与新鲜定向复验进行中，保持Draft。三个子代理分别承担主线复验、CheckRun异常状态修复、预冻结独立反例验证；OSStack新卡card_14b72dd7贡献PS18并支持PS17/J07，root独占PR/中央账本/full队列。异常或不完整CheckRun不能误判成功，neutral/skipped既有显式政策保留。没有新增方法或正式资格通过，历史失败/CI不改写。
+
+
+## CheckRun 分类修复候选（2026-10-30）
+
+PS18/J07支持卡card_14b72dd7已完成作者56同测试RED17→GREEN、独立57预冻向量旧20失败→新全过；root d5eea3e5全仓22包7232通过/5跳过/0失败，8677已跟踪文件字节执行期间不变，初始含4新鲜dist，不称clean committed tree。实际Sonnet5.5静态PASS，原意见与失败保留。只明确完成且SUCCESS/NEUTRAL/SKIPPED可成功，已知失败优先，其他不完整/未知pending。已有卡不自动刷新；snapshot另有政策。待发布依赖308的Draft，308当前4a7ee75d/main新CI40979169462尚未完成；不得合入featurebase。见[修复记录](../../implementation/stack-checkrun-state/README.md)。

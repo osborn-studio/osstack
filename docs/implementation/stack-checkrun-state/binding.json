@@ -1,0 +1,53 @@
+{
+  "observed_at": "2026-10-30T00:25:03.449316+00:00",
+  "card": "card_14b72dd7",
+  "status": "validated_prepublication",
+  "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+  "parent_pr": 308,
+  "parent_head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
+  "author_sha": "7b7916eac56d654891018204b11f3a00daffdc3f",
+  "root_full_sha": "d5eea3e5730588c144472defd15ee52bf3b36b4f",
+  "primary_capability": "PS18",
+  "supports": [
+    "PS17",
+    "J07"
+  ],
+  "scope": "CheckRun outcome classification only; no watcher or auto merge; existing cards not refreshed",
+  "author_red": {
+    "passed": 39,
+    "failed": 17
+  },
+  "author_green": 56,
+  "author_package_passed": 195,
+  "independent": {
+    "criteria_sha256": "ade3c10ff8b185da9fa24c7babca8906d8d4a3b8e1f45c5a40f0e5cef508f9f3",
+    "vectors": 57,
+    "old_passed": 37,
+    "old_failed": 20,
+    "new_passed": 57,
+    "mode": "synthetic injected public ingest/drift/topology; no live forge/DB"
+  },
+  "full": {
+    "head": "d5eea3e5730588c144472defd15ee52bf3b36b4f",
+    "started_at": "2026-10-30T00:14:41.972094+00:00",
+    "finished_at": "2026-10-30T00:23:14.903511+00:00",
+    "exit_code": 0,
+    "tracked_files": 8677,
+    "tracked_bytes_unchanged": true,
+    "initial_dirty": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+    "changed": []
+  },
+  "full_counts": {
+    "packages": 22,
+    "passed": 7232,
+    "skipped": 5,
+    "failed": 0
+  },
+  "audit": "actual Sonnet5.5 static PASS; optional suggestions preserved; changeset wording corrected; frozen vectors CRV34/35 cover non-completed failure priority",
+  "post_full": "merged only PR308 docs; changeset wording only; lint 21 warnings/no errors, typecheck and inventory fresh passed",
+  "formal_gate_pass": false,
+  "whole_capability_complete": false,
+  "new_methods": 0,
+  "new_host_model_calls": 0,
+  "record": "docs/implementation/stack-checkrun-state"
+}

@@ -1,0 +1,226 @@
+{
+  "verified_at": "2026-10-30T00:26:23.020169+00:00",
+  "archive_sha256": "f73a4488a7734af35905595c3e73982c113ba020153b592c321ad88d80786204",
+  "manifest_sha256": "5aad3470a576a2e5bad7b3026fa6b08e174a31cefe22bee27e662b506c6f27fd",
+  "members": 90,
+  "files": 83,
+  "directories": 7,
+  "file_bytes": 6344835,
+  "all_members_match_original": true,
+  "issues": [],
+  "full": {
+    "head": "d5eea3e5730588c144472defd15ee52bf3b36b4f",
+    "log_sha256": "4c01c11cc0d35613a208fb101930081bc0097994c6856b954b4cd0648b983b72",
+    "packages": [
+      {
+        "package": "packages/contracts",
+        "line": 16,
+        "raw": "packages/contracts test:       Tests  15 passed (15)",
+        "passed": 15,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/compliance",
+        "line": 28,
+        "raw": "packages/compliance test:       Tests  17 passed (17)",
+        "passed": 17,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/github",
+        "line": 40,
+        "raw": "packages/github test:       Tests  195 passed (195)",
+        "passed": 195,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/knowledge",
+        "line": 75,
+        "raw": "packages/knowledge test:       Tests  44 passed (44)",
+        "passed": 44,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/runtime",
+        "line": 126,
+        "raw": "packages/runtime test:       Tests  1 passed (1)",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/protocol",
+        "line": 135,
+        "raw": "packages/protocol test:       Tests  1012 passed (1012)",
+        "passed": 1012,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/neat-eval",
+        "line": 144,
+        "raw": "packages/neat-eval test:       Tests  16 passed (16)",
+        "passed": 16,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/governance",
+        "line": 152,
+        "raw": "packages/governance test:       Tests  301 passed (301)",
+        "passed": 301,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/knowledge-cloud",
+        "line": 165,
+        "raw": "packages/knowledge-cloud test:       Tests  36 passed (36)",
+        "passed": 36,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/graph",
+        "line": 248,
+        "raw": "packages/graph test:       Tests  257 passed (257)",
+        "passed": 257,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/core",
+        "line": 335,
+        "raw": "packages/core test:       Tests  1301 passed (1301)",
+        "passed": 1301,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/hermes-adapter",
+        "line": 351,
+        "raw": "packages/hermes-adapter test:       Tests  22 passed (22)",
+        "passed": 22,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/plugins",
+        "line": 356,
+        "raw": "packages/plugins test:       Tests  1 passed (1)",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/skills",
+        "line": 376,
+        "raw": "packages/skills test:       Tests  2 passed (2)",
+        "passed": 2,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/autonomy",
+        "line": 405,
+        "raw": "packages/autonomy test:       Tests  201 passed (201)",
+        "passed": 201,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/skill-registry",
+        "line": 420,
+        "raw": "packages/skill-registry test:       Tests  43 passed (43)",
+        "passed": 43,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/agents",
+        "line": 480,
+        "raw": "packages/agents test:       Tests  361 passed (361)",
+        "passed": 361,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/config",
+        "line": 493,
+        "raw": "packages/config test:       Tests  30 passed (30)",
+        "passed": 30,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/loop",
+        "line": 968,
+        "raw": "packages/loop test:       Tests  515 passed (515)",
+        "passed": 515,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/conformance",
+        "line": 1003,
+        "raw": "packages/conformance test:       Tests  9 passed (9)",
+        "passed": 9,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/supervisor",
+        "line": 1008,
+        "raw": "packages/supervisor test:       Tests  88 passed (88)",
+        "passed": 88,
+        "skipped": 0,
+        "failed": 0
+      },
+      {
+        "package": "packages/cli",
+        "line": 2708,
+        "raw": "packages/cli test:       Tests  2765 passed | 5 skipped (2770)",
+        "passed": 2765,
+        "skipped": 5,
+        "failed": 0
+      }
+    ],
+    "totals": {
+      "passed": 7232,
+      "skipped": 5,
+      "failed": 0
+    },
+    "exit_code": 0,
+    "tracked_files": 8677,
+    "tracked_before_after_equal": true,
+    "tracked_path_set_matches_Git": true,
+    "initial_dirty_generated_files": [
+      "packages/knowledge/dist/index.d.ts",
+      "packages/knowledge/dist/index.d.ts.map",
+      "packages/knowledge/dist/index.js",
+      "packages/knowledge/dist/index.js.map"
+    ],
+    "scope": "Local root pnpm full run, not a new CI execution or clean committed-tree run. Later docs/changeset are not relabeled as this full SHA."
+  },
+  "audit": {
+    "modelUsage_keys": [
+      "claude-sonnet-5-5"
+    ],
+    "original_static_PASS_and_optional_suggestions_retained": true,
+    "report_matches_response": true
+  },
+  "readme": {
+    "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/checkrun-state-control/docs/implementation/stack-checkrun-state/README.md",
+    "sha256": "b2bee0132685d4befaad4694910f23444344cd2aae4ecec0a6f0fcb0911afeee",
+    "assessment": "No confirmed overclaim in stated RED/vector/static-audit/full binding scope. 57 frozen vectors exclude separate undefined control; ingest uses synthetic read-only runner; dirty generated dist explicitly disclosed. Downstream stored-state/ready placement statements are not newly runtime-tested by this receipt."
+  },
+  "limits": [
+    "Snapshot manifest membership only; not all later source additions required.",
+    "No product tests, models, CI or forge calls rerun.",
+    "Archive preserves original failures and static reviewer limitations."
+  ]
+}
