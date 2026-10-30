@@ -137,6 +137,9 @@ jobs:
       - name: Read-only maintenance health contracts
         run: pnpm test:method-health
 
+      - name: Fixed bug-fix preparation contracts
+        run: pnpm test:bug-fix-method
+
       - name: Method material pagination contracts
         run: pnpm test:method-read
 

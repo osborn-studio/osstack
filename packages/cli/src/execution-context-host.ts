@@ -57,10 +57,12 @@ export async function createHostExecutionContext(
   const { createHostSourceContext } = await import("./source-context.js");
   const sources = createHostSourceContext(home);
   const knowledge = createPinnedLocalContextLoader(config);
+  const methodContext = config.methods === undefined ? undefined : (await import("./method-context.js")).createMethodContext(config.methods);
   return createExecutionContextAdapters({
     adapters: input.adapters,
     workspacePath: input.workspacePath,
     mode: "local",
+    ...(methodContext === undefined ? {} : { methodContext }),
     loadContext: async (task, scope) => [...await knowledge(task, scope), ...await sources.load(task, scope)],
     validateContext: sources.validate,
     validateContextSync: sources.validateSync,

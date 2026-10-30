@@ -5,6 +5,7 @@ import { createScratchDirSync } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { executionContextDigest, type ExecutionContextEntry } from "@osstack/knowledge";
 import { afterEach, expect, it, vi } from "vitest";
+import { createMethodContext } from "./method-context.js";
 import { createExecutionContextAdapters, createPinnedLocalContextLoader, loadExecutionContextConfig, type ExecutionContextReceipt } from "./execution-context.js";
 
 const roots: string[] = [];
@@ -249,4 +250,22 @@ it("attests adapter admission rather than claiming a later provider-wire authori
   } }).adapters[0]!);
   expect(f.captured).toHaveLength(1);
   expect(f.receipts.every(receipt => receipt.evidence_boundary === "agent_task_prompt_not_provider_wire")).toBe(true);
+});
+
+
+it("rechecks required method bytes after receipt persistence without losing existing source validators", async () => {
+  const f = fixture(); const body = "Required method"; writeFileSync(join(f.root, "method.md"), body);
+  const methodContext = createMethodContext({ schema_version: 1, task_id: task.task_id, package_version: "0.15.36", proposal_digest: "a".repeat(64), max_bytes: 4096,
+    roles: [{ role: "builder", capability_id: task.capability_id, materials: [{ path: "method.md", sha256: executionContextDigest(body) }] }] });
+  const validateContext = vi.fn(async () => {}); const validateContextSync = vi.fn(() => {});
+  f.recordReceipt.mockImplementationOnce(async receipt => { f.receipts.push(receipt); writeFileSync(join(f.root, "method.md"), "Changed during receipt"); return { path: join(f.root, "prepared.json"), digest: "a".repeat(64) }; });
+  await expect(consume(createExecutionContextAdapters({ ...f.options, methodContext, validateContext, validateContextSync }).adapters[0]!)).rejects.toThrow("method_context_pin_mismatch");
+  expect(f.captured).toEqual([]); expect(validateContext).toHaveBeenCalledOnce(); expect(validateContextSync).toHaveBeenCalledOnce();
+});
+it("charges escaped mandatory framing to final prompt budget before optional selection", async () => {
+  const f = fixture(); const body = "<".repeat(200); writeFileSync(join(f.root, "method.md"), body);
+  const methodContext = createMethodContext({ schema_version: 1, task_id: task.task_id, package_version: "0.15.36", proposal_digest: "a".repeat(64), max_bytes: 4096,
+    roles: [{ role: "builder", capability_id: task.capability_id, materials: [{ path: "method.md", sha256: executionContextDigest(body) }] }] });
+  await expect(consume(createExecutionContextAdapters({ ...f.options, methodContext, maxPromptBytes: 1000 }).adapters[0]!)).rejects.toThrow("mandatory_budget_exceeded");
+  expect(f.captured).toEqual([]); expect(f.recordReceipt).not.toHaveBeenCalled();
 });
