@@ -18,10 +18,12 @@ function setup(opened = [10, 20]) {
   const store = new AttentionStore(db, path);
   const owner = store.claimOwner("a");
   const scope = store.registerScope(owner, "t", root).scope_id;
-  opened.forEach((now, i) => store.projectDecision(owner, {
-    scopeId: scope, sessionId: "s", turnId: `turn${i}`, sourceVersion: 1,
-    decision: { decision_id: "d", question: `Q${i}`, choices: [] }, now,
-  }));
+  opened.forEach((now, i) => {
+    store.projectDecision(owner, {
+      scopeId: scope, sessionId: "s", turnId: `turn${i}`, sourceVersion: 1,
+      decision: { decision_id: "d", question: `Q${i}`, choices: [] }, now,
+    });
+  });
   const items = store.listItems(scope).sort((a, b) => a.created_at - b.created_at);
   return { db, store, owner, scope, items, ux: new AttentionExperience(store, owner) };
 }
