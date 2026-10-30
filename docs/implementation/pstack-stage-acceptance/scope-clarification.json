@@ -1,0 +1,95 @@
+{
+  "at": "2026-10-30T01:38:01.365406+00:00",
+  "kind": "append_only_scope_clarification",
+  "frozen_original_unchanged": true,
+  "original_w13": {
+    "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/original-baseline/docs/reports/2026-10-26-pstack/integration-spec.md",
+    "lines": "507–513",
+    "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5",
+    "verbatim": "验收：①复现本报告 BLOCKED/UNKNOWN 探针并改为非许可结果；②缺页/超时标 unknown；③观察没有 push/merge 接口依赖。测试 A27、A28。"
+  },
+  "cases": [
+    {
+      "id": "A27",
+      "work_packages": [
+        "W13"
+      ],
+      "title": "watcher 阻塞与未知语义",
+      "given": "checks passed + BLOCKED/REVIEW_REQUIRED；或 UNKNOWN mergeability。",
+      "when": "纯 observation classifier。",
+      "then": "只输出阻塞/不确定观察，绝不产出 merge permit。",
+      "test_level": "negative",
+      "status": "specified_not_implemented",
+      "design_delta_ids": []
+    },
+    {
+      "id": "A28",
+      "work_packages": [
+        "W13"
+      ],
+      "title": "forge 不完整读回",
+      "given": "API 超时、分页缺失、部分检查不可见或 readback 失败。",
+      "when": "读取并分类。",
+      "then": "unknown 原因和 freshness 可见；没有 merge/push 调用。",
+      "test_level": "negative",
+      "status": "specified_not_implemented",
+      "design_delta_ids": []
+    }
+  ],
+  "cases_source": {
+    "git": "8e830561",
+    "path": "docs/reports/2026-10-26-pstack/acceptance-cases.json",
+    "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d"
+  },
+  "reviewed_root_files": [
+    {
+      "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/README.md",
+      "sha256": "887e4b240a714ce1497e400b2201388b3d7adb22e4f0c1e523dd21fad6006d1a",
+      "bytes": 7166,
+      "version": "uncommitted worktree snapshot, not published HEAD"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/post307-ci-close/docs/implementation/pstack-stage-acceptance/CAPABILITIES.md",
+      "sha256": "0521b7de16c802a167fa3f22327ad392534236f17b3a5863a138c2bb45be2977",
+      "bytes": 8707,
+      "version": "uncommitted worktree snapshot, not published HEAD"
+    }
+  ],
+  "findings": [
+    {
+      "id": "B-W13",
+      "priority": "clarification",
+      "location": "b-source-comparison/report.json comparisons[watch-pr].original_scope (frozen)",
+      "finding": "“子集，持续watcher完整范围未交付”仅指广义PS18/上游工具，容易误读成W13未完成的原因。",
+      "replacement": "W13按原只读classifier门槛验收：BLOCKED/REVIEW_REQUIRED/UNKNOWN不产merge permit，缺页/超时/部分读回保留unknown与freshness，无push/merge调用。持续轮询、rearm、自动修复不是W13/A27/A28门槛。现有单PR实现可直接按此原门槛提交验收证据；是否正式PASS仍依据逐项记录，不由本次只读复核签发。"
+    },
+    {
+      "id": "B-ROOT-1",
+      "priority": "wording",
+      "location": "CAPABILITIES.md PS17/PS18 未实现栏",
+      "finding": "“不持续观察/自动重试/rearm”等是真实界限，但栏名为尚缺实现/验证，未说明它们不挡W13，存在同类误读。README S3本身已允许一次观察单独验收，无实质矛盾。",
+      "recommendation": "PS18末尾加“以上持续运行功能为较广PS18范围，不是原W13/A27/A28前置；W13按只读classifier证据单独判定。”PS17保持未发布候选与自主服务分开。"
+    },
+    {
+      "id": "B-ROOT-2",
+      "priority": "wording",
+      "location": "CAPABILITIES.md PS14，PS16，PS19，PS23；表头",
+      "finding": "列出通用benchmark服务、持久调度/租约、真实broker、全API消费者等，会把能力扩展或实现限界读成方法材料验收新增条件；尤其PS14原测量审查方法不要求开发通用benchmark服务，也不以获得性能提升为成功判据。",
+      "recommendation": "将该列解释为“原范围欠账与未覆盖边界（非统一前置）”，逐项区分原验收未满足 vs 刻意未移植/更广后续。PS14明确按测量正确性与结论纪律验收，不强制出现速度提升或新服务。"
+    },
+    {
+      "id": "B-ROOT-3",
+      "priority": "no_defect",
+      "location": "README C0/C1/C2、待用户确认与完整能力边界",
+      "finding": "未发现把持续watcher列入C0/C1/C2前置。保留原W08真实集成、材料必需性/admission条件合理；不能用本补充删除这些原义务。",
+      "recommendation": "保持原正式集成欠账和当前有限交付分层；无需为W13重跑全量或造持续服务。"
+    }
+  ],
+  "source_support": [
+    "e464:packages/github/src/pr-candidate-snapshot.ts:200–224（review_required/forge_blocked/unknown/merge_authorized=false）",
+    "e464:packages/github/src/pr-candidate-snapshot.test.ts:46–57（只读GraphQL，无mutation/watch）",
+    "e464:packages/github/src/pr-candidate-snapshot.test.ts:98–124（分页不全/transport failure保持unknown）"
+  ],
+  "execution": "仅Git/文件阅读，无产品/模型/测试执行",
+  "read_attempt_note": "第一次尝试original-baseline acceptance-cases.json文件不存在；随后读取固定Git8e830原文件。无内容重建或执行重试。"
+}

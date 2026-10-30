@@ -1,5 +1,9 @@
 # Firstmate × pstack 联合项目推进规则
 
+## 当前执行优先：pstack原范围验收对账
+
+实际main e4643324，PR309已合并。有序PR前沿候选8e830只完成在途发布；新能力开发暂停。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
+
 > 当前排期与交付见 [delivery-status.md](delivery-status.md) 和 [delivery-rollup.json](delivery-rollup.json)。下方旧批次记录按历史SHA解释，不覆盖最新观察。
 
 本会话是唯一项目与 PR 主入口。OSStack 保存任务进度、阻塞与证据；本会话负责解释依赖、分配子代理、核验结果和管理 PR。用户只需处理已经整理好的审批合并批次，以及确实需要其决定的范围或权限问题。用户已明确授权主入口修改 PR 的目标分支（retarget base，不直接推送 main）、准备和提交 PR、转 Ready、分配子代理与执行验证；审批合并仍由用户负责。
@@ -179,3 +183,10 @@ Final PR308 closure 2026-10-30T00:46:39.573481+00:00: head4a7ee75d is Ready on a
 
 
 User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612bc equals published4a7. Card7e0b1be2 done for the bounded slice. PR309 fc272c63 now targets main, tree equals f31 and complete16path delta unchanged; fresh verification/newCI40982097784 running. Historical parentCI40979844215 remains f31→4a,22packages7230pass7skip0fail (not local7232/5). Three-agent dispatch resumes: A implements ordered1–3 PR stack-frontier report after C independent freeze; C independently verifies; B revalidates309; root uniquely owns PR/ledger/full. New card6962ab52 contributes PS17 with PS18/13/J07 support, J20 design only. No new method/host budget or formal gate.
+
+
+## 2026-10-30：309 已合并，顺序候选核对进入发布
+
+用户于01:13:25Z合并309；actual main e4643324/treeafb6等fc272。309新main CI40982097784五适用SUCCESS/paidSKIP，check/Test22包7230pass7skip0fail；原完整log与Ready→merge回执保留，不重标旧localfull。
+
+新有界工具只读核对显式1–3个PR顺序，不新增method。root540全仓22包7261pass5skip0fail，8784tracked执行期间字节同，初始4freshdistdirty，非clean committed tree；后单独CLI显示修复及docs/main合并不冒充finalfull。最终代码/文档8e830561在actualmain e464上224GitHub/29CLI/94export通过。C42场景58断言；Sonnet初静态PASS附真实autolink/bidi缺陷，作者同29CLI RED17/12→GREEN29，独立Pandoc10例旧7fail→新全过，限定SonnetclosurePASS，原意见和失败保留。一次真实308→309八查询在01:05历史时点识别mergedprefix/frontier且保留draft/checkpending/reviewrequired；不是Ready/merge授权或当前状态。card6962ab52贡献PS17，PS18/13/J07支持、J20设计；32J formalfalse和24PS20partial4deferred0whole不变。下一需求由源驱动选题，不重跑旧宿主失败翻绿。

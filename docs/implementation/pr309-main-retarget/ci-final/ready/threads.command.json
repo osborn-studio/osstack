@@ -1,0 +1,11 @@
+{
+  "args": [
+    "gh",
+    "api",
+    "graphql",
+    "-f",
+    "query=query { repository(owner:\"osborn-studio\",name:\"osstack\") { pullRequest(number:309) { reviewThreads(first:100) { nodes { isResolved isOutdated comments(first:1) { nodes { body } } } pageInfo { hasNextPage } } } } }"
+  ],
+  "exit_code": 0,
+  "at": "2026-10-30T01:12:26.295480+00:00"
+}

@@ -1,0 +1,2207 @@
+{
+  "kind": "read_only_original_acceptance_trace_not_test_run",
+  "generated_utc": "2026-10-30T01:38:41.957410+00:00",
+  "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+  "candidate": "8e830561e09f4754d3410003c24216d8db49aa6c",
+  "source_document_executed": false,
+  "new_tests_run": false,
+  "counts": {
+    "未实现": 10,
+    "部分": 31,
+    "有直接证据": 4,
+    "未知": 3
+  },
+  "status_meaning": {
+    "有直接证据": "对该场景核心要求有具体产品组件/历史执行证据；不自动补齐依赖或正式gate。",
+    "部分": "有实际交付或材料证据，但原场景至少一个必要断言尚未覆盖。",
+    "未实现": "本阶段明确未交付该原能力链；不是全仓不存在相似模块的证明。",
+    "未知": "现有证据不能判定原要求是否完成；不得改写为未实现或通过。"
+  },
+  "formal_gate_pass": false,
+  "cases": [
+    {
+      "id": "A01",
+      "original": {
+        "id": "A01",
+        "work_packages": [
+          "W01"
+        ],
+        "title": "旧 manifest 兼容",
+        "given": "manifest 没有 subdir，来源为合法 Git URL。",
+        "when": "读取，再按默认规范表示。",
+        "then": "subdir 为 .；其他旧字段语义不变。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W01"
+      ],
+      "joint_work_items": [
+        "J02"
+      ],
+      "assessment": "未实现",
+      "observed": "旧 manifest 仍无 subdir 字段；现有读取兼容不等于规范表示补默认 .。",
+      "remaining_gap": "W01 兼容表示与未知字段策略未交付。",
+      "evidence_groups": [
+        "source"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A02",
+      "original": {
+        "id": "A02",
+        "work_packages": [
+          "W01",
+          "W02"
+        ],
+        "title": "来源路径与身份拒绝",
+        "given": "subdir/path 含 ../、绝对路径、反斜杠、控制字符，或 commit 为 not-a-commit。",
+        "when": "解析与构建快照。",
+        "then": "拒绝；不读取快照根外文件，不把任意字符串当 Git 身份。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W01",
+        "W02"
+      ],
+      "joint_work_items": [
+        "J02"
+      ],
+      "assessment": "部分",
+      "observed": "固定 Git SourceSnapshot 对路径、对象身份、链接与上限有实际拒绝组件证据。",
+      "remaining_gap": "W01 manifest 接线与完整原入口尚未具备，不把 inspector 单独通过升级整场景。",
+      "evidence_groups": [
+        "source"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A03",
+      "original": {
+        "id": "A03",
+        "work_packages": [
+          "W02"
+        ],
+        "title": "确定性且无执行的快照",
+        "given": "同一固定 Git tree 两次构建，checkout 含额外未跟踪文件和上游 install script。",
+        "when": "离线读取 blobs。",
+        "then": "摘要一致；未跟踪文件不进入快照，脚本不执行。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W02"
+      ],
+      "joint_work_items": [
+        "J02"
+      ],
+      "assessment": "有直接证据",
+      "observed": "固定对象快照有确定性、未跟踪文件排除和无脚本执行的真实 Git fixture/来源复算证据。",
+      "remaining_gap": "证据限 source inspector；不认证调用者 repo identity，不构成 W02 candidate 激活全链路。",
+      "evidence_groups": [
+        "source"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A04",
+      "original": {
+        "id": "A04",
+        "work_packages": [
+          "W02"
+        ],
+        "title": "来源更新不自动激活",
+        "given": "active 固定旧 commit；远端 ref 变化，包括仅其他插件变化。",
+        "when": "运行显式来源检查。",
+        "then": "相关子树变更产生 candidate；无自动安装/active 更新；无关变化可标无方法内容变化。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W02"
+      ],
+      "joint_work_items": [
+        "J02"
+      ],
+      "assessment": "部分",
+      "observed": "来源检查和 watcher 已能比较 pin/远端 SHA，检查器不安装或执行来源。",
+      "remaining_gap": "相关子树内容变化→candidate、无关子树不变及 active 生命周期没有该链路证据。",
+      "evidence_groups": [
+        "source"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A05",
+      "original": {
+        "id": "A05",
+        "work_packages": [
+          "W03",
+          "W09"
+        ],
+        "title": "纯编译与 recipe 区分",
+        "given": "已审查 candidate recipe、固定输入和 check catalog；分别选择四类 intent。",
+        "when": "多次离线编译。",
+        "then": "同输入同 digest；不同 recipe 的材料要求不同；candidate 输出不能直接运行。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W03",
+        "W09"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J10"
+      ],
+      "assessment": "未实现",
+      "observed": "已有 recipe/proposal 协议组件及四种方法文稿。",
+      "remaining_gap": "未发现接入实际四 recipe 的纯编译器；schema/digest 测试不能替代确定性编译。",
+      "evidence_groups": [
+        "contracts",
+        "methods"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A06",
+      "original": {
+        "id": "A06",
+        "work_packages": [
+          "W03"
+        ],
+        "title": "拒绝未知检查与命令注入",
+        "given": "recipe 指定不存在的 check；引用文字含 shell 命令。",
+        "when": "解析编译输入与 registry 映射。",
+        "then": "未知 check 拒绝；引用文字不被当命令执行；未知字段失败。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W03"
+      ],
+      "joint_work_items": [
+        "J05"
+      ],
+      "assessment": "未实现",
+      "observed": "严格字段/摘要组件有负例。",
+      "remaining_gap": "原场景需要 recipe 编译入口拒绝未知检查和引用命令，尚无该执行入口证据。",
+      "evidence_groups": [
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A07",
+      "original": {
+        "id": "A07",
+        "work_packages": [
+          "W03"
+        ],
+        "title": "宿主兼容性",
+        "given": "required feature 不可用；另一个样例仅 optional feature 不可用。",
+        "when": "编译/兼容性检查。",
+        "then": "前者 unsupported；后者显式记录降级；required 不能改 optional。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W03"
+      ],
+      "joint_work_items": [
+        "J05"
+      ],
+      "assessment": "未实现",
+      "observed": "SupportProfile 有组件表示。",
+      "remaining_gap": "required unsupported 与 optional 降级尚未由 recipe 编译器实际判定。",
+      "evidence_groups": [
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A08",
+      "original": {
+        "id": "A08",
+        "work_packages": [
+          "W04",
+          "W09"
+        ],
+        "title": "禁止权限扩张",
+        "given": "已有合同只允许范围内 build/verify，proposal 请求额外路径或 merge。",
+        "when": "admission。",
+        "then": "拒绝，不写新授权，不调用外部服务。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W04",
+        "W09"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J08",
+        "J10"
+      ],
+      "assessment": "部分",
+      "observed": "旧 Graph admission/授权边界有既有实现和回归。",
+      "remaining_gap": "方法 proposal→admission 的新权限不扩张通路尚未接通。",
+      "evidence_groups": [
+        "graph",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A09",
+      "original": {
+        "id": "A09",
+        "work_packages": [
+          "W04"
+        ],
+        "title": "冻结之前完成检查绑定",
+        "given": "合法 proposal 与主机 check registry；另设冻结后更改 checks 的样例。",
+        "when": "构造合同并 freeze，再尝试改写。",
+        "then": "合法身份一致；冻结后变更必须新 proposal/contract，旧记录不覆盖。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W04"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J08"
+      ],
+      "assessment": "部分",
+      "observed": "旧 Graph 冻结合同和新 Binding/Recipe schema 均存在。",
+      "remaining_gap": "新方法 check registry 映射先于 freeze 的实际链路未证明。",
+      "evidence_groups": [
+        "graph",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A10",
+      "original": {
+        "id": "A10",
+        "work_packages": [
+          "W04"
+        ],
+        "title": "Graph 既有边界",
+        "given": "17 个 required checks、超主机命令字节预算，或 requested_completion=merged。",
+        "when": "现有 Graph contract host admission。",
+        "then": "按现有边界失败，不拼接多个 shell 绕过限制，不修改 frozen v4。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W04"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J08"
+      ],
+      "assessment": "部分",
+      "observed": "现有 Graph 检查数量、命令预算、primary 和 local_verified 边界仍在源码中。",
+      "remaining_gap": "没有新 recipe admission 通过该入口的对应17项/超预算/merged终态完整反例执行记录。",
+      "evidence_groups": [
+        "graph"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A11",
+      "original": {
+        "id": "A11",
+        "work_packages": [
+          "W05"
+        ],
+        "title": "必需上下文不能被静默裁剪",
+        "given": "小上下文预算使必需方法 artifact 未被 assembly 选中。",
+        "when": "通过真实 wrapper 走 invoke 前 fence。",
+        "then": "METHOD_CONTEXT_OMITTED；adapter invoke 计数为零；保留失败原因。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W05"
+      ],
+      "joint_work_items": [
+        "J04"
+      ],
+      "assessment": "未实现",
+      "observed": "材料 reader 可逐页返回完整字节；协议能表示材料绑定。",
+      "remaining_gap": "没有方法上下文遗漏时 METHOD_CONTEXT_OMITTED 且 adapter invoke=0 的实际 wrapper。",
+      "evidence_groups": [
+        "reader",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A12",
+      "original": {
+        "id": "A12",
+        "work_packages": [
+          "W05"
+        ],
+        "title": "真实 adapter 输入与来源信任",
+        "given": "包含诱导越权文字的 upstream reference；测试 adapter 捕获真实 task。",
+        "when": "组装、调用、收集 prepared/adapter_observed。",
+        "then": "原文为 untrusted data；摘要对应实际 task；不声称 provider wire/model compliance。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W05"
+      ],
+      "joint_work_items": [
+        "J04"
+      ],
+      "assessment": "部分",
+      "observed": "实际宿主实验有原材料分页送达、输入哈希与工具 trace，原文权限限制明确。",
+      "remaining_gap": "宿主显式读取不等于注册 adapter 的 prepared/observed 双阶段 task receipt 与 trust enforcement。",
+      "evidence_groups": [
+        "hostrepair",
+        "reader"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A13",
+      "original": {
+        "id": "A13",
+        "work_packages": [
+          "W06"
+        ],
+        "title": "空环境真实表面验证",
+        "given": "空 fixture、独立 OSSTACK_HOME、scratch API 分配的工作区。",
+        "when": "运行注册 CLI/RPC 场景并检查实际最终状态。",
+        "then": "通过指定行为谓词，而非只检查退出零/--help；不碰默认控制面 DB。",
+        "test_level": "live-local",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W06"
+      ],
+      "joint_work_items": [
+        "J03"
+      ],
+      "assessment": "有直接证据",
+      "observed": "真实 CLI→daemon/SQLite smoke 及隔离 skills-check 五例有行为谓词、明确 scratch home 和证据/清理。",
+      "remaining_gap": "仅命名 fixture 和确定性适配器；不外推真实 provider、正式 gate 或所有功能。",
+      "evidence_groups": [
+        "driver"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A14",
+      "original": {
+        "id": "A14",
+        "work_packages": [
+          "W06"
+        ],
+        "title": "失败与资源清理",
+        "given": "场景启动后失败、产生证据，并有无关进程/目录。",
+        "when": "执行 cleanup。",
+        "then": "只清理自己拥有资源；无关资源不变；失败证据存留且不会标通过。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W06"
+      ],
+      "joint_work_items": [
+        "J03"
+      ],
+      "assessment": "部分",
+      "observed": "预检、timeout、清理错误、owned 路径拒绝和失败留存已有实际记录。",
+      "remaining_gap": "不声称穷尽无关进程保持/所有后代终止；完整原故障交叉场景未作为 A14 整体验收。",
+      "evidence_groups": [
+        "driver"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A15",
+      "original": {
+        "id": "A15",
+        "work_packages": [
+          "W07"
+        ],
+        "title": "旧候选证据失效",
+        "given": "head/base/env/check/contract 任一身份变化，patch-id 可以保持相同。",
+        "when": "验证 receipt。",
+        "then": "旧证据不能用于新候选；重新验证或报 stale。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W07"
+      ],
+      "joint_work_items": [
+        "J07"
+      ],
+      "assessment": "部分",
+      "observed": "快照检查 head/base bracket；驱动/投影记录源码构建绑定和一致性。",
+      "remaining_gap": "方法验证票据对 head/base/env/check/contract 所有维度的 stale consumer 尚未闭合。",
+      "evidence_groups": [
+        "pr",
+        "projection",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A16",
+      "original": {
+        "id": "A16",
+        "work_packages": [
+          "W07"
+        ],
+        "title": "worker 不能伪造 verifier",
+        "given": "先有可信 failed，再提交 worker 自报 pass、伪造 verifier 字符串或缺失 artifact。",
+        "when": "主机消费证据并 join。",
+        "then": "不覆盖可信裁决；拒绝不可信证据；仅写出字符串不产生批准。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W07"
+      ],
+      "joint_work_items": [
+        "J07"
+      ],
+      "assessment": "部分",
+      "observed": "既有验证 host 与新组件区分角色/身份；raw report 未签发正式通过。",
+      "remaining_gap": "新方法可信 verifier producer/consumer join 及伪造 worker 的拒绝链路未完成。",
+      "evidence_groups": [
+        "contracts",
+        "graph"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A17",
+      "original": {
+        "id": "A17",
+        "work_packages": [
+          "W07"
+        ],
+        "title": "逐条 review disposition",
+        "given": "blocking finding 未处理或 dismissed 没有证据。",
+        "when": "评审结案检查。",
+        "then": "不产生 approved；记录未解决发现；多数赞成不能消除阻塞事实。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W07"
+      ],
+      "joint_work_items": [
+        "J07"
+      ],
+      "assessment": "部分",
+      "observed": "真实审计保留阻塞意见与处置；只读 PR 报告不产生 merge permit。",
+      "remaining_gap": "不等于 method review 产物消费者拒无依据 dismiss/阻止 approved 的原场景。",
+      "evidence_groups": [
+        "hostreview",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A18",
+      "original": {
+        "id": "A18",
+        "work_packages": [
+          "W08"
+        ],
+        "title": "端到端能力接入",
+        "given": "单仓库 fixture，active bug-fix recipe，已授权 local_verified。",
+        "when": "proposal→admission→真实执行→freeze→review/tests→join。",
+        "then": "结果绑定当前候选与方法版本；独立验证通过；无 push/PR/merge。",
+        "test_level": "live-local",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W08"
+      ],
+      "joint_work_items": [
+        "J09"
+      ],
+      "assessment": "未实现",
+      "observed": "真实宿主修复已执行同测试 RED→fix→GREEN。",
+      "remaining_gap": "缺 recipe→proposal→合同→执行→独立验证→local_verified 的方法接入链；宿主修复不能替代 W08。",
+      "evidence_groups": [
+        "hostrepair",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A19",
+      "original": {
+        "id": "A19",
+        "work_packages": [
+          "W08"
+        ],
+        "title": "默认关闭与性能兼容",
+        "given": "配置缺失或 enabled=false；对照已有 CLI 启动基线。",
+        "when": "运行既有任务与启动基准。",
+        "then": "旧路径保持；--version/--help 不突破仓库预算；无新常驻服务。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W08"
+      ],
+      "joint_work_items": [
+        "J09"
+      ],
+      "assessment": "部分",
+      "observed": "现有默认 CLI/启动预算 CI 和无新增常驻服务有历史工程证据。",
+      "remaining_gap": "没有 W08 新 recipe 开关的关闭兼容对照，因此不证明原可选能力开关契约。",
+      "evidence_groups": [
+        "driver",
+        "graph"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A20",
+      "original": {
+        "id": "A20",
+        "work_packages": [
+          "W09"
+        ],
+        "title": "调查不假装交付",
+        "given": "investigation recipe 生成报告后，尝试绑定当前 Graph implement host。",
+        "when": "离线编译后尝试执行 admission。",
+        "then": "调查材料可用；不支持的 scout 路径明确拒绝；不返回代码已交付。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W09"
+      ],
+      "joint_work_items": [
+        "J10"
+      ],
+      "assessment": "部分",
+      "observed": "investigation 文稿明确调查不等于交付。",
+      "remaining_gap": "recipe 的 Graph scout unsupported 运行拒绝未实现。",
+      "evidence_groups": [
+        "methods",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A21",
+      "original": {
+        "id": "A21",
+        "work_packages": [
+          "W10"
+        ],
+        "title": "决策记录追加纠错",
+        "given": "存在一条事实错误的旧 decision；新增 supersedes。",
+        "when": "导出并读取记录。",
+        "then": "旧记录保留、更正可追踪；导出文件编辑不改变权威状态。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W10"
+      ],
+      "joint_work_items": [
+        "J16",
+        "J19"
+      ],
+      "assessment": "未知",
+      "observed": "历史报告/纠正/审计原文被保留。",
+      "remaining_gap": "本次未取得 method 决策权威 supersedes 与编辑导出不改权威状态的实际端到端证据；不以文件留存代替。",
+      "evidence_groups": [
+        "continuity"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A22",
+      "original": {
+        "id": "A22",
+        "work_packages": [
+          "W10"
+        ],
+        "title": "恢复与停止未知状态",
+        "given": "进程重启，原 recipe 不再 active，外部效果/取消状态尚未知。",
+        "when": "按原 run identity 对账。",
+        "then": "保留旧 pin；未知不作完成或盲目重试；缺停止证明不称 cancelled。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W10"
+      ],
+      "joint_work_items": [
+        "J16",
+        "J19"
+      ],
+      "assessment": "部分",
+      "observed": "连续性文稿与恢复离线规格保持 unknown/hold、旧 pin、停止证明边界。",
+      "remaining_gap": "新方法进程/恢复运行时没有实际完成；会话结束不等于 fencing。",
+      "evidence_groups": [
+        "continuity"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A23",
+      "original": {
+        "id": "A23",
+        "work_packages": [
+          "W11"
+        ],
+        "title": "验证漂移分类",
+        "given": "同一 feature 分别出现文档过时、harness 不支持、产品真实回归。",
+        "when": "资格维护流程。",
+        "then": "正确区分原因；不得删除 feature 或降低 predicate 自动晋升。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W11"
+      ],
+      "joint_work_items": [
+        "J10"
+      ],
+      "assessment": "部分",
+      "observed": "固定地图维护有真实 docs drift RED→单格修正→同入口 GREEN；工具失败与产品状态分轴。",
+      "remaining_gap": "未闭合 recipe qualification 对全部 doc/harness/product 分类及自动晋升拒绝。",
+      "evidence_groups": [
+        "map",
+        "hostrepair"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A24",
+      "original": {
+        "id": "A24",
+        "work_packages": [
+          "W11"
+        ],
+        "title": "升级隔离与回退",
+        "given": "新 candidate 测试失败；旧 active 有运行中任务。",
+        "when": "资格检查/回退。",
+        "then": "新版本不 active；旧 run 继续绑定原记录；隔离停止新任务而非伪称旧任务已停。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W11"
+      ],
+      "joint_work_items": [
+        "J10"
+      ],
+      "assessment": "未实现",
+      "observed": "来源/方法材料未自动激活，旧实验独立保留。",
+      "remaining_gap": "新 candidate 测量失败→禁止 active、旧 in-flight run 保持身份的运行时资格系统未实现。",
+      "evidence_groups": [
+        "source",
+        "continuity"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A25",
+      "original": {
+        "id": "A25",
+        "work_packages": [
+          "W12"
+        ],
+        "title": "覆盖缺口与竞赛规则",
+        "given": "coverage 中一个必需 lane 缺失；race 的规则事先冻结。",
+        "when": "聚合结果，尝试事后切换选胜规则。",
+        "then": "缺口明确且阻止覆盖完成；竞赛不事后改变规则来接受结果。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W12"
+      ],
+      "joint_work_items": [
+        "J18"
+      ],
+      "assessment": "部分",
+      "observed": "parallel-work 材料区分竞争/覆盖；协议可表示候选。",
+      "remaining_gap": "method-candidate 聚合与冻结竞赛规则的实际拒绝消费者尚未验证。",
+      "evidence_groups": [
+        "methods",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A26",
+      "original": {
+        "id": "A26",
+        "work_packages": [
+          "W12"
+        ],
+        "title": "候选合成重新验证",
+        "given": "两个隔离候选各有通过证据，合成一个新 artifact。",
+        "when": "选择并合成。",
+        "then": "新 artifact 有新身份；不能沿用任一旧通过结果；必需重新验证。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W12"
+      ],
+      "joint_work_items": [
+        "J18"
+      ],
+      "assessment": "部分",
+      "observed": "已合入main的既有PR/worktree合成报告有tree/检查重新绑定，是工程流程证据，不是arena消费者。未合并frontier不用于本项完成证明。",
+      "remaining_gap": "不等于 arena artifact 合成的新身份/旧票据拒用完整实现。",
+      "evidence_groups": [
+        "contracts",
+        "frontier"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false,
+      "historical_observed_before_scope_clarification": "实际 PR/worktree 合成验证曾重新绑定 tree 与检查；frontier 当前为候选。",
+      "root_main_evidence": {
+        "path": "docs/implementation/joint-final-ci-composition/verification.json",
+        "executed_candidate": "d31dc0b6",
+        "scope": "historical seven-command combined-candidate revalidation; not arena artifact consumer",
+        "source_proof": "evidence archive c-closure/source-proof.json"
+      }
+    },
+    {
+      "id": "A27",
+      "original": {
+        "id": "A27",
+        "work_packages": [
+          "W13"
+        ],
+        "title": "watcher 阻塞与未知语义",
+        "given": "checks passed + BLOCKED/REVIEW_REQUIRED；或 UNKNOWN mergeability。",
+        "when": "纯 observation classifier。",
+        "then": "只输出阻塞/不确定观察，绝不产出 merge permit。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W13"
+      ],
+      "joint_work_items": [
+        "J30"
+      ],
+      "assessment": "有直接证据",
+      "observed": "已合并只读 PR snapshot 对 BLOCKED/REVIEW_REQUIRED/unknown 保守输出，merge_authorized 恒 false。",
+      "remaining_gap": "只读一次性 observation；不证明 watcher、merge policy 全发现或 W13 所有依赖完成。",
+      "evidence_groups": [
+        "pr"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A28",
+      "original": {
+        "id": "A28",
+        "work_packages": [
+          "W13"
+        ],
+        "title": "forge 不完整读回",
+        "given": "API 超时、分页缺失、部分检查不可见或 readback 失败。",
+        "when": "读取并分类。",
+        "then": "unknown 原因和 freshness 可见；没有 merge/push 调用。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W13"
+      ],
+      "joint_work_items": [
+        "J30"
+      ],
+      "assessment": "有直接证据",
+      "observed": "分页/timeout/错误/partial GraphQL/缺失结果离线反例及一次真实只读调用留 raw、query 时间、unknown。",
+      "remaining_gap": "没有 push/merge；非原子读取，forge 权限/规则集覆盖与身份认证未声称。",
+      "evidence_groups": [
+        "pr"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A29",
+      "original": {
+        "id": "A29",
+        "work_packages": [
+          "W14"
+        ],
+        "title": "历史教训晋升",
+        "given": "重复失败有历史坏例与正常对照；模型建议修改全局 rule。",
+        "when": "生成 improvement draft 与回放检查。",
+        "then": "检查抓坏例且不过度误伤；draft 不自动成为策略；保留评价版本。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W14"
+      ],
+      "joint_work_items": [
+        "J19"
+      ],
+      "assessment": "部分",
+      "observed": "skill-authoring 方法与有限单文件维护试用有材料/写边界证据。",
+      "remaining_gap": "历史坏例/合法例校准的 lesson draft→gate 晋升完整运行流程未交付。",
+      "evidence_groups": [
+        "lessons"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A30",
+      "original": {
+        "id": "A30",
+        "work_packages": [
+          "W15"
+        ],
+        "title": "评测公平性与预算",
+        "given": "固定任务/模型/预算、盲化标签；混入失败样本和不等价基线；预算耗尽。",
+        "when": "执行有限试点与结果汇总。",
+        "then": "失败不从分母删除；拒绝不等价比例；预算耗尽停止；gate 改变用新 epoch。",
+        "test_level": "experiment",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W15"
+      ],
+      "joint_work_items": [
+        "J29"
+      ],
+      "assessment": "未实现",
+      "observed": "性能方法保留样本/失败/分母规则；宿主实验保留失败。",
+      "remaining_gap": "没有同任务/模型/预算的盲化公平价值对照和 gate epoch 试点，不能推导收益。",
+      "evidence_groups": [
+        "performance",
+        "hostrepair"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A31",
+      "original": {
+        "id": "A31",
+        "work_packages": [
+          "W16"
+        ],
+        "title": "形式化敏感性与边界",
+        "given": "单个不变量、代码映射、完整 checker 环境、故意破坏的不变量变体。",
+        "when": "运行模型与坏变体，再尝试代码反例重放。",
+        "then": "正常模型结果带边界；坏变体被发现；超时为 unknown；图不冒充证明。",
+        "test_level": "formal-pilot",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W16"
+      ],
+      "joint_work_items": [
+        "J22",
+        "J28"
+      ],
+      "assessment": "未实现",
+      "observed": "协议形式约束和组件摘要测试已存在。",
+      "remaining_gap": "原要求的单不变量 formal 工具链、源码映射、坏模型与超时 unknown 试点未交付；schema 测试不是形式化试点。",
+      "evidence_groups": [
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A32",
+      "original": {
+        "id": "A32",
+        "work_packages": [
+          "W16"
+        ],
+        "title": "事件幂等与部分成功补偿",
+        "given": "fake connector 中同事件重复，外部对象已创建但回信失败。",
+        "when": "重放 intake 并查询外部事实。",
+        "then": "不重复创建副作用；按事实补偿或记录 unresolved；不接真实发信权限。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": []
+      },
+      "work_packages": [
+        "W16"
+      ],
+      "joint_work_items": [
+        "J22",
+        "J28"
+      ],
+      "assessment": "未知",
+      "observed": "本阶段未新增外部通知/事件权限。",
+      "remaining_gap": "未取得 W16 固定事件 fake connector 幂等/readback/部分成功补偿试点；不能据此断言全仓无通用事件能力。",
+      "evidence_groups": [
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A33",
+      "original": {
+        "id": "A33",
+        "work_packages": [
+          "W06"
+        ],
+        "title": "可组合的验证控制接口",
+        "given": "冷启动调用方只知道一个命名场景；工具提供结构化输出、基础 help 与子命令帮助。",
+        "when": "执行 doctor/setup/drive/observe；故意制造一个可恢复错误。",
+        "then": "真实用户终点可观察；JSON 与诊断分开；错误指出可用的登记恢复动作；不要求临时写任意脚本。",
+        "test_level": "live-local",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD01"
+        ]
+      },
+      "work_packages": [
+        "W06"
+      ],
+      "joint_work_items": [
+        "J03"
+      ],
+      "assessment": "部分",
+      "observed": "固定 doctor/drive/observe 结果、JSON 回执与地图工具可用。",
+      "remaining_gap": "完整登记恢复动作、渐进 help、cold caller 恢复闭环只在有限命名工具体现，未整体验收原接口。",
+      "evidence_groups": [
+        "driver",
+        "map"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A34",
+      "original": {
+        "id": "A34",
+        "work_packages": [
+          "W06"
+        ],
+        "title": "dry-run 与 doctor 的实际副作用",
+        "given": "记录隔离目标文件、git refs、子进程与外部业务请求计数。",
+        "when": "运行 setup/cleanup 的 dry-run 及 doctor。",
+        "then": "目标资源无写入、服务未被隐式启动、无外部业务调用；必要只读访问范围明确。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD01"
+        ]
+      },
+      "work_packages": [
+        "W06"
+      ],
+      "joint_work_items": [
+        "J03"
+      ],
+      "assessment": "部分",
+      "observed": "doctor/dry-run 有不建 fixture/证据、不启动子进程的实际负例。",
+      "remaining_gap": "不把该结果扩展到所有 setup/cleanup、Git refs/网络资源组合；原完整场景未统一实测。",
+      "evidence_groups": [
+        "driver"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A35",
+      "original": {
+        "id": "A35",
+        "work_packages": [
+          "W18",
+          "W05"
+        ],
+        "title": "功能地图按用户路径检索",
+        "given": "一个任务涉及两条入口和一段跨表面旅程；地图另有多个无关功能叶子。",
+        "when": "检索并驱动相关路径。",
+        "then": "只加载相关叶子与必要旅程；实际入口/动作/终点有记录；单入口成功不冒充双入口覆盖。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD02"
+        ]
+      },
+      "work_packages": [
+        "W18",
+        "W05"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J06"
+      ],
+      "assessment": "未实现",
+      "observed": "固定五行地图和四入口链接图存在。",
+      "remaining_gap": "按用户路径检索相关叶子、跨两个真实产品入口的功能地图加载器尚未交付。",
+      "evidence_groups": [
+        "map",
+        "methods"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A36",
+      "original": {
+        "id": "A36",
+        "work_packages": [
+          "W18"
+        ],
+        "title": "地图过期与前提不足",
+        "given": "地图版本落后、控制动作已改名，或缺数据/auth/entitlement。",
+        "when": "检查并尝试所需场景。",
+        "then": "标记漂移或 blocked；required 场景不静默跳过；不删除功能或降低谓词恢复绿色。",
+        "test_level": "negative",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD02"
+        ]
+      },
+      "work_packages": [
+        "W18"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "assessment": "部分",
+      "observed": "固定地图 invalid/漂移 mismatch/unknown 保留、禁止删行降谓词，有实际两次 full drive。",
+      "remaining_gap": "地图路径检索和数据/授权不足跨表面阻断未覆盖。",
+      "evidence_groups": [
+        "map"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A37",
+      "original": {
+        "id": "A37",
+        "work_packages": [
+          "W17",
+          "W03"
+        ],
+        "title": "意图与根因假设分离",
+        "given": "用户给出一个真实症状，同时提出可能错误的根因猜测。",
+        "when": "独立重述并构造问题模型，之后用户纠正目标。",
+        "then": "观察、目标、假设、非目标分别表示；纠正改变材料但不扩权；已充分说明的可逆工作无需反复确认。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD03"
+        ]
+      },
+      "work_packages": [
+        "W17",
+        "W03"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J06"
+      ],
+      "assessment": "部分",
+      "observed": "task-framing 有实际两宿主 prompt-only 观察，目标/假设/授权区分可读。",
+      "remaining_gap": "两宿主原结论均 LIMITED；没有 recipe intent frame 与纠正后重新编译/材料变更的完整证明。",
+      "evidence_groups": [
+        "hostframing",
+        "methods"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A38",
+      "original": {
+        "id": "A38",
+        "work_packages": [
+          "W17",
+          "W03"
+        ],
+        "title": "有限历史与当前证据",
+        "given": "历史聊天包含曾成立但已过期的假设，当前源码与其冲突。",
+        "when": "执行任务范围内的 recall/how/why/teach 数据流程。",
+        "then": "当前事实优先；历史动机保留来源和不确定性；不扫描无关会话；解释不把 inference 改写为 fact。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD03"
+        ]
+      },
+      "work_packages": [
+        "W17",
+        "W03"
+      ],
+      "joint_work_items": [
+        "J05",
+        "J06"
+      ],
+      "assessment": "部分",
+      "observed": "连续性/调查材料要求当前事实优先、授权核实。",
+      "remaining_gap": "没有原场景有限历史检索→当前源码校准的完整执行记录，不称支持任意会话回忆。",
+      "evidence_groups": [
+        "continuity",
+        "methods"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A39",
+      "original": {
+        "id": "A39",
+        "work_packages": [
+          "W17"
+        ],
+        "title": "调用体验先于接口冻结",
+        "given": "给冷读者一份最小教程和候选接口，包含正常与错误路径。",
+        "when": "从空场景照教程调用并观察用户终点。",
+        "then": "教程能产生目标结果和可理解恢复；签名与模块由调用需要推导，不能只验证类型编译。",
+        "test_level": "experiment",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD04"
+        ]
+      },
+      "work_packages": [
+        "W17"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "assessment": "部分",
+      "observed": "已有可运行教程、真实命令和错误回执。",
+      "remaining_gap": "作者/协调者运行不能代替指定冷读者只看教程完成成功与错误恢复的验收。",
+      "evidence_groups": [
+        "driver",
+        "map"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A40",
+      "original": {
+        "id": "A40",
+        "work_packages": [
+          "W17"
+        ],
+        "title": "技术未知的有限原型",
+        "given": "一个会改变实现的未知、一组结构不同的选择、固定实验预算。",
+        "when": "用最小可丢弃程序观察比较，并生成决定。",
+        "then": "结论带方法/环境/观察/边界；未解决保持 unknown；预算耗尽停止；没有生产交付票据。",
+        "test_level": "experiment",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD05"
+        ]
+      },
+      "work_packages": [
+        "W17"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "assessment": "部分",
+      "observed": "architecture-design 有两个结构方案、caller/lifecycle 合成 walkthrough；不产生正式票据。",
+      "remaining_gap": "原要求两个实现影响未知的有预算可运行原型与实际环境观察尚未验收。",
+      "evidence_groups": [
+        "methods",
+        "performance"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A41",
+      "original": {
+        "id": "A41",
+        "work_packages": [
+          "W17"
+        ],
+        "title": "实现偏差触发设计重审",
+        "given": "多个无关调用点需要同形态 workaround、额外状态或类型逃生口。",
+        "when": "对照使用草图归因并审查设计。",
+        "then": "显式记录偏差和原因；必要时重新设计，不静默追加补丁；有根据的复杂性不被机械否定。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD05"
+        ]
+      },
+      "work_packages": [
+        "W17"
+      ],
+      "joint_work_items": [
+        "J06"
+      ],
+      "assessment": "部分",
+      "observed": "设计/审查方法要求偏差重审；实际审计后修订留存。",
+      "remaining_gap": "未针对原重复workaround/type逃逸场景执行完整行为验收，文稿不能证明自动遵守。",
+      "evidence_groups": [
+        "methods",
+        "hostreview"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A42",
+      "original": {
+        "id": "A42",
+        "work_packages": [
+          "W07",
+          "W17"
+        ],
+        "title": "评审依据与未知分流",
+        "given": "评审同时包含具体源码缺陷、明确安全不变量和无依据的抽象猜测。",
+        "when": "分流与裁决。",
+        "then": "真实缺陷/不变量仍可阻塞；猜测形成待检验问题而非自动扩张实现；不靠多数票关闭问题。",
+        "test_level": "unit",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD06"
+        ]
+      },
+      "work_packages": [
+        "W07",
+        "W17"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J07"
+      ],
+      "assessment": "部分",
+      "observed": "小 Git A/B 代码审查识别可触发 bug/拒风格问题有实际观察，过度断言/漏读保留。",
+      "remaining_gap": "两宿主 LIMITED；不证明一般评审质量或可信 method review consumer。",
+      "evidence_groups": [
+        "hostreview"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A43",
+      "original": {
+        "id": "A43",
+        "work_packages": [
+          "W06",
+          "W07",
+          "W08"
+        ],
+        "title": "开发自验证与正式验收分离",
+        "given": "开发者多轮 drive/observe 后自报 pass；正式独立 review 尚缺失。",
+        "when": "聚合方法产物与交付状态。",
+        "then": "允许预算内持续试改；self-check 保留上下文但不能产生 local_verified、覆盖失败或弱化 gate。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD07"
+        ]
+      },
+      "work_packages": [
+        "W06",
+        "W07",
+        "W08"
+      ],
+      "joint_work_items": [
+        "J03",
+        "J07",
+        "J09"
+      ],
+      "assessment": "部分",
+      "observed": "工程 self-check、driver 与 formal gate 明确分离，真实修复没有自签 local_verified。",
+      "remaining_gap": "没有新方法接入后 self-check 冒充正式receipt被consumer拒绝的端到端负例。",
+      "evidence_groups": [
+        "hostrepair",
+        "contracts"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A44",
+      "original": {
+        "id": "A44",
+        "work_packages": [
+          "W06",
+          "W12"
+        ],
+        "title": "文件隔离不等于运行隔离",
+        "given": "两个 worktree 共享端口/DB/账号或资源额度；另有本地 stand-in 成功。",
+        "when": "做环境就绪与容量检查再尝试并行。",
+        "then": "冲突时隔离或限并发；记录 environment identity；不把本地成功标成云/远端已验证。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD08"
+        ]
+      },
+      "work_packages": [
+        "W06",
+        "W12"
+      ],
+      "joint_work_items": [
+        "J03",
+        "J18"
+      ],
+      "assessment": "部分",
+      "observed": "scratch ownership、限并发材料与真实隔离fixture已有。",
+      "remaining_gap": "worktree/路径隔离不证明共享端口、DB、账号、全进程/远端容量隔离的完整矩阵。",
+      "evidence_groups": [
+        "driver",
+        "methods"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A45",
+      "original": {
+        "id": "A45",
+        "work_packages": [
+          "W19",
+          "W11"
+        ],
+        "title": "基础设施维护与未启用周期",
+        "given": "验证工具故障、地图漂移、产品回归分别出现，未配置任何 schedule。",
+        "when": "读取健康、owner、版本和维护状态，并修复一个工具问题。",
+        "then": "三类原因分开，修复后真实重驱；工具坏不能产成功；未创建定时任务/通知；证据留存。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD09"
+        ]
+      },
+      "work_packages": [
+        "W19",
+        "W11"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J10",
+        "J23"
+      ],
+      "assessment": "部分",
+      "observed": "实际 fixed-map 维护两次五例、三轴状态/源码构建哈希留存；未启用周期任务。",
+      "remaining_gap": "跨工具 health/owner/version/last-drive 可查询服务与完整三类自动分诊未实现；固定工具不等于 W19 全部。",
+      "evidence_groups": [
+        "map",
+        "driver"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A46",
+      "original": {
+        "id": "A46",
+        "work_packages": [
+          "W10",
+          "W17"
+        ],
+        "title": "文档用途与结束计划",
+        "given": "教程、接口参考、解释和战术计划分别存在；计划已经 completed 或 superseded。",
+        "when": "构建新任务默认上下文，再显式查历史。",
+        "then": "当前检索不注入旧计划为指令，历史/决定/回执可查；不会删除原始报告或冻结合同。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD10"
+        ]
+      },
+      "work_packages": [
+        "W10",
+        "W17"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J16",
+        "J19"
+      ],
+      "assessment": "部分",
+      "observed": "方法材料禁止旧计划作为当前授权，历史及纠正报告保留。",
+      "remaining_gap": "当前检索自动过滤 completed/superseded 战术计划的真实机制未验证。",
+      "evidence_groups": [
+        "continuity"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A47",
+      "original": {
+        "id": "A47",
+        "work_packages": [
+          "W17",
+          "W15"
+        ],
+        "title": "以可复现价值衡量结果",
+        "given": "试点包含新使用者、人工介入记录、工具故障与活动量指标。",
+        "when": "汇总成功率、首次环境就绪、恢复时间与成本。",
+        "then": "工具失败与产品失败分开；不将 PR 数或作者个人倍数当 ROI；教程成功有真实终点。",
+        "test_level": "experiment",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD04",
+          "AD11"
+        ]
+      },
+      "work_packages": [
+        "W17",
+        "W15"
+      ],
+      "joint_work_items": [
+        "J06",
+        "J29"
+      ],
+      "assessment": "未知",
+      "observed": "有真实终点与工具/产品失败分开，报告没有 PR 数当 ROI。",
+      "remaining_gap": "未完成固定冷用户、介入成本、首次就绪时间/恢复成本的价值基线测量；收益未知。",
+      "evidence_groups": [
+        "performance",
+        "driver"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    },
+    {
+      "id": "A48",
+      "original": {
+        "id": "A48",
+        "work_packages": [
+          "W05",
+          "W09",
+          "W18"
+        ],
+        "title": "一个入口与透明渐进路由",
+        "given": "相同目标入口可触发不同 recipe；存在 58 个技能，用户只给具体任务。",
+        "when": "路由并选择上下文，随后纠正任务类型。",
+        "then": "仅相关方法/地图被加载；理由与缺口可见；纠正形成新材料，不依赖用户记全部命令，不静默省略必需验证。",
+        "test_level": "integration",
+        "status": "specified_not_implemented",
+        "design_delta_ids": [
+          "AD12"
+        ]
+      },
+      "work_packages": [
+        "W05",
+        "W09",
+        "W18"
+      ],
+      "joint_work_items": [
+        "J04",
+        "J06",
+        "J10"
+      ],
+      "assessment": "部分",
+      "observed": "四入口、14方法与导出图可用；实际显式/native材料送达有 trace。",
+      "remaining_gap": "透明纠正→新的 recipe/相关地图检索→必需验证不遗漏的运行合同尚未完成；不能将链接可达当路由效果。",
+      "evidence_groups": [
+        "methods",
+        "reader",
+        "hostframing"
+      ],
+      "original_gate_pass_claimed": false,
+      "current_owner": "pstack 方法接入/工具责任方；跨主机权威环节与联合 host 对接，不自动转交 Firstmate",
+      "candidate_only_evidence": false
+    }
+  ],
+  "work_items": {
+    "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+    "candidate": "8e830561e09f4754d3410003c24216d8db49aa6c",
+    "work_items": [
+      {
+        "id": "W01",
+        "original_crosswalk": {
+          "id": "PS:W01",
+          "source_state": "specified_not_implemented",
+          "source_requires": [],
+          "joint_work_items": [
+            "J02"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "未实现",
+        "acceptance_cases": [
+          "A01",
+          "A02"
+        ],
+        "capabilities": [
+          "PS21"
+        ],
+        "note": "manifest 缺 subdir 默认表示；inspector 的新对象不是旧manifest接线。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W02",
+        "original_crosswalk": {
+          "id": "PS:W02",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W01"
+          ],
+          "joint_work_items": [
+            "J02"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A02",
+          "A03",
+          "A04"
+        ],
+        "capabilities": [
+          "PS21"
+        ],
+        "note": "固定Git快照可用；subtree candidate/activation记录仍缺。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W03",
+        "original_crosswalk": {
+          "id": "PS:W03",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W02",
+            "PS:W17",
+            "PS:W18"
+          ],
+          "joint_work_items": [
+            "J05"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "未实现",
+        "acceptance_cases": [
+          "A05",
+          "A06",
+          "A07",
+          "A37",
+          "A38"
+        ],
+        "capabilities": [
+          "PS01",
+          "PS02",
+          "PS03",
+          "PS04",
+          "PS07"
+        ],
+        "note": "协议组件/方法文稿不等于纯 recipe compiler。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W04",
+        "original_crosswalk": {
+          "id": "PS:W04",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W03"
+          ],
+          "joint_work_items": [
+            "J05",
+            "J08"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "capabilities": [
+          "PS01"
+        ],
+        "note": "旧Graph可复用，新proposal→admission未闭合。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W05",
+        "original_crosswalk": {
+          "id": "PS:W05",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W04"
+          ],
+          "joint_work_items": [
+            "J04"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A11",
+          "A12",
+          "A35",
+          "A48"
+        ],
+        "capabilities": [
+          "PS01",
+          "PS20"
+        ],
+        "note": "材料读工具与宿主trace可复用，invoke前遗漏拒绝未实现。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W06",
+        "original_crosswalk": {
+          "id": "PS:W06",
+          "source_state": "specified_not_implemented",
+          "source_requires": [],
+          "joint_work_items": [
+            "J03"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A13",
+          "A14",
+          "A33",
+          "A34",
+          "A43",
+          "A44"
+        ],
+        "capabilities": [
+          "PS08",
+          "PS23"
+        ],
+        "note": "真实命名隔离工具可用；完整恢复接口/故障矩阵/冷用户验收仍缺。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W07",
+        "original_crosswalk": {
+          "id": "PS:W07",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W05",
+            "PS:W06",
+            "PS:W17"
+          ],
+          "joint_work_items": [
+            "J07"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A15",
+          "A16",
+          "A17",
+          "A42",
+          "A43"
+        ],
+        "capabilities": [
+          "PS06",
+          "PS07",
+          "PS13",
+          "PS17"
+        ],
+        "note": "旧host/协议/实际审计可复用；新candidate review artifact可信join未闭合。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W08",
+        "original_crosswalk": {
+          "id": "PS:W08",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W07"
+          ],
+          "joint_work_items": [
+            "J09"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "未实现",
+        "acceptance_cases": [
+          "A18",
+          "A19",
+          "A43"
+        ],
+        "capabilities": [
+          "PS06",
+          "PS08"
+        ],
+        "note": "尚无原recipe到local_verified的实际接入试点。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W09",
+        "original_crosswalk": {
+          "id": "PS:W09",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W08"
+          ],
+          "joint_work_items": [
+            "J10"
+          ],
+          "disposition": "rescope",
+          "note": "W09 四类方法不是首次资格前置；W11 拆首次受限试验/测量/激活；W16 的形式化与渠道分别交付"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A05",
+          "A08",
+          "A20",
+          "A48"
+        ],
+        "capabilities": [
+          "PS01"
+        ],
+        "note": "四种方法材料存在，四类可编译可准入recipes未实现。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W10",
+        "original_crosswalk": {
+          "id": "PS:W10",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W08"
+          ],
+          "joint_work_items": [
+            "J16",
+            "J19"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A21",
+          "A22",
+          "A46"
+        ],
+        "capabilities": [
+          "PS13",
+          "PS16",
+          "PS19",
+          "PS24"
+        ],
+        "note": "连续性文稿/离线恢复规格不等于方法权威轨迹与恢复服务。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W11",
+        "original_crosswalk": {
+          "id": "PS:W11",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W09",
+            "PS:W10",
+            "PS:W19"
+          ],
+          "joint_work_items": [
+            "J10"
+          ],
+          "disposition": "rescope",
+          "note": "W09 四类方法不是首次资格前置；W11 拆首次受限试验/测量/激活；W16 的形式化与渠道分别交付"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A23",
+          "A24",
+          "A45"
+        ],
+        "capabilities": [
+          "PS09",
+          "PS20",
+          "PS21"
+        ],
+        "note": "固定地图漂移维护可用；recipe资格/激活/旧run隔离未实现。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W12",
+        "original_crosswalk": {
+          "id": "PS:W12",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W11"
+          ],
+          "joint_work_items": [
+            "J18"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A25",
+          "A26",
+          "A44"
+        ],
+        "capabilities": [
+          "PS04",
+          "PS05",
+          "PS16",
+          "PS17"
+        ],
+        "note": "并行方法及协议组件存在；候选聚合消费者/运行级调度未交付。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W13",
+        "original_crosswalk": {
+          "id": "PS:W13",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W10"
+          ],
+          "joint_work_items": [
+            "J30"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "有直接证据",
+        "acceptance_cases": [
+          "A27",
+          "A28"
+        ],
+        "capabilities": [
+          "PS17",
+          "PS18"
+        ],
+        "note": "A27/A28核心已有直接证据，可独立验收；W10依赖另列，不挡组件场景验收，不签发完整W13计划连接。持续watcher不是原门槛。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W14",
+        "original_crosswalk": {
+          "id": "PS:W14",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W11"
+          ],
+          "joint_work_items": [
+            "J19"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A29"
+        ],
+        "capabilities": [
+          "PS12",
+          "PS24"
+        ],
+        "note": "技能编写维护有材料与有限试用；结构化lesson晋升链未交付。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W15",
+        "original_crosswalk": {
+          "id": "PS:W15",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W14"
+          ],
+          "joint_work_items": [
+            "J29"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "未实现",
+        "acceptance_cases": [
+          "A30",
+          "A47"
+        ],
+        "capabilities": [
+          "PS14",
+          "PS15"
+        ],
+        "note": "仅方法和合成算术，盲评/价值/预算试点未交付。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W16",
+        "original_crosswalk": {
+          "id": "PS:W16",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W11"
+          ],
+          "joint_work_items": [
+            "J28",
+            "J22"
+          ],
+          "disposition": "rescope",
+          "note": "W09 四类方法不是首次资格前置；W11 拆首次受限试验/测量/激活；W16 的形式化与渠道分别交付"
+        },
+        "assessment": "未知",
+        "acceptance_cases": [
+          "A31",
+          "A32"
+        ],
+        "capabilities": [
+          "PS10",
+          "PS11",
+          "PS22"
+        ],
+        "note": "两个独立专项试点无直接验收；不把现有全仓其他formal/intake模块宣告不存在。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W17",
+        "original_crosswalk": {
+          "id": "PS:W17",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W06"
+          ],
+          "joint_work_items": [
+            "J06"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A37",
+          "A38",
+          "A39",
+          "A40",
+          "A41",
+          "A42",
+          "A46",
+          "A47"
+        ],
+        "capabilities": [
+          "PS01",
+          "PS02",
+          "PS03",
+          "PS04",
+          "PS06",
+          "PS07",
+          "PS11",
+          "PS23",
+          "PS24"
+        ],
+        "note": "问题/设计材料和有限宿主试用存在；冷用户、有限原型及价值验证未完整。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W18",
+        "original_crosswalk": {
+          "id": "PS:W18",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W06"
+          ],
+          "joint_work_items": [
+            "J06"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A35",
+          "A36",
+          "A48"
+        ],
+        "capabilities": [
+          "PS08",
+          "PS23"
+        ],
+        "note": "固定五场景地图可用；按相关叶子检索与跨入口覆盖未实现。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      },
+      {
+        "id": "W19",
+        "original_crosswalk": {
+          "id": "PS:W19",
+          "source_state": "specified_not_implemented",
+          "source_requires": [
+            "PS:W06",
+            "PS:W18"
+          ],
+          "joint_work_items": [
+            "J06",
+            "J23"
+          ],
+          "disposition": "retain_and_scope",
+          "note": "联合计划补齐前置和验收，不宣告实现"
+        },
+        "assessment": "部分",
+        "acceptance_cases": [
+          "A45"
+        ],
+        "capabilities": [
+          "PS09"
+        ],
+        "note": "固定维护工具已真实闭环；通用健康/owner/version/lastdrive查询未全交付。",
+        "formal_pass": false,
+        "owner": "pstack（联合 host 接线属于协作依赖，不是 Firstmate 自动接盘）"
+      }
+    ],
+    "checkpoints": {
+      "C0": "部分具备：W06固定工具、W17材料/有限试用、W18固定地图、W19固定维护可用；原冷使用/检索/维护全门槛未闭合。",
+      "C1": "未闭合：尚无W03真实确定性proposal及原recipe编译负例链。",
+      "C2": "未实现：无W08原方法端到端local_verified试点。",
+      "C3": "未闭合：四类文稿不等于四类recipe资格、激活和回退。"
+    },
+    "rollup_rule": "Manual scoped engineering judgment, not worst-case/minimum or pass percentage. partial means reusable delivered components plus missing assertions; unimplemented means central entry/chain absent; W16 unknown preserves separate formal unimplemented and intake unknown."
+  },
+  "source_bindings_file": "original-source-bindings.json",
+  "root_clarification": "Displayed report clarifies W-level manual engineering judgments, W13 independent component acceptance versus W10 planned dependency, and excludes unpublished frontier as A26 completion evidence. Frozen original c-report remains in archive."
+}

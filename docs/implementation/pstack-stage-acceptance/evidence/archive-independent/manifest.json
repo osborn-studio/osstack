@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "members-verified.json",
+      "bytes": 26543,
+      "sha256": "9b0807124a3d64267c92a16684b9315e69effb52d8605b51bedeaeb4a4b43a5f"
+    },
+    {
+      "path": "report.json",
+      "bytes": 6709,
+      "sha256": "5440aa7ab5887b78142d1756b77075fe5242869352da81903b4dcc7a099a3293"
+    },
+    {
+      "path": "report.md",
+      "bytes": 748,
+      "sha256": "ea38fafb646e4c0a0eb4d15ed0acc14af998bc951a41c4b5b47ec6841fba4d9a"
+    },
+    {
+      "path": "verify.py",
+      "bytes": 5811,
+      "sha256": "d56329c30ec334ad892f63800eef0801619efb33e832a19701c1669a635cda67"
+    }
+  ]
+}

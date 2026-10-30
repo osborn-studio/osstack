@@ -1,0 +1,617 @@
+{
+  "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+  "candidate": "8e830561e09f4754d3410003c24216d8db49aa6c",
+  "files": [
+    {
+      "group": "source",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/skill-registry/src/manifest.ts",
+      "bytes": 3978,
+      "sha256": "dc70df8caa70530a6d9714fa4ea6418770c36f16fdd2535a64535bf4649f3cb6",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "source",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/skill-registry/src/source-snapshot.ts",
+      "bytes": 12393,
+      "sha256": "20424f25582f3b944116530906548aa110dcde0d9e9fb0d0e492116fab75b033",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "source",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/skill-registry/src/source-snapshot.test.ts",
+      "bytes": 20727,
+      "sha256": "f6c832867ada2a28a29e6ae957f71e4447a9cdbcfc4d10ec3c3ae7e255567f92",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "source",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/skill-registry/src/watcher.ts",
+      "bytes": 2763,
+      "sha256": "11daab03681975fafcfda232d8baadf23cde984d4589bc4df2f33e503be531f6",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "source",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/joint-source-inspection/README.md",
+      "bytes": 9290,
+      "sha256": "060ce7ee7cbee2ae3529bad657d211e5ec21e8ec17507371fdb26da1278c239a",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "source",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/joint-source-inspection/validation.md",
+      "bytes": 2976,
+      "sha256": "7d5158165c572f2617a0bee44266e00ec4f28909a924a5df3136a387644f5266",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "contracts",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/joint-contract-acceptance/README.md",
+      "bytes": 3616,
+      "sha256": "870c285486feab4f4daea4a62c69d80c3bd2ff113d66b7f34a572ef9694da74f",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "contracts",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/joint-foundation/README.md",
+      "bytes": 9880,
+      "sha256": "e656484b3461c3c2098c5ab3f25e93830f0735488b3b99bba155035884756af9",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "graph",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/cli/src/graph-delivery-contract.ts",
+      "bytes": 7848,
+      "sha256": "530f0be149817440e53c7b5303c9ada1ba9300a40be81407696ee2b964cfef86",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "graph",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/graph-admission-evidence/README.md",
+      "bytes": 4740,
+      "sha256": "70c64b9df9c952cf39bd5fb3bb2534fb4965402b3bb15362ae4483aad7b8a4e8",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "graph",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/graph-verification-evidence/README.md",
+      "bytes": 1693,
+      "sha256": "de85b03a0068c0a13f0a86d5e04a5a0fb1fea9d06b389057c15584af84586ee1",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "driver",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "scripts/smoke-engineering-decision.test.mjs",
+      "bytes": 21897,
+      "sha256": "fe138468651c0ca1d12f1e4fc485d497f59c75d061b0869dde0137d78a4cc3da",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "driver",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "scripts/smoke-skills-check.test.mjs",
+      "bytes": 16365,
+      "sha256": "98120fc4a2427751445ef16c5ccf8cd466d99c8c7210d9bdb25469f85f9b2ad5",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "driver",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/verification-kit/README.md",
+      "bytes": 3161,
+      "sha256": "00e4e4fa1626a4f45ae062bfed53a063280f5c644cf89d895dc3ec5bdff9215a",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "driver",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/skills-check-verification/README.md",
+      "bytes": 3940,
+      "sha256": "2907119d2bbb8736b36fc80bdd1896e18239ed39eb20a030353cedc6b28a127d",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "driver",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-full-journey/README.md",
+      "bytes": 3675,
+      "sha256": "11e3b760827bbe61f65876b361dc6d3be1c9ec9ff1f13aef76065811c3d39b87",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "map",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "scripts/maintain-skills-check-map.mjs",
+      "bytes": 8136,
+      "sha256": "b95ddd7ce3d2fd1ea25a1e8bb5032944987be778f1d5b82ff29e34b59ccdecf0",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "map",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/skills-check-map-maintenance/README.md",
+      "bytes": 7517,
+      "sha256": "ac68ef207a9dde76b95ce6d2f0be7541b260973d3c0f7837f2f0aee173df4125",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "map",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/skills-check-journey.md",
+      "bytes": 13505,
+      "sha256": "394656665165d6386fd1f4291506e6e28aa142a948d6180a4ef1f038bfb6ce1b",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "projection",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "scripts/project-method-journey-evidence.mjs",
+      "bytes": 28669,
+      "sha256": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "projection",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-full-projection/README.md",
+      "bytes": 8445,
+      "sha256": "5ae7f8781857b9b210ad771b177487d4373e89aaf49cf1aa78232a438951cb0f",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "pr",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/github/src/pr-candidate-snapshot.ts",
+      "bytes": 16281,
+      "sha256": "f9df94098c9367bc520c9eb0710845be216de0d1994f51a24f7f2254f25d4fca",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "pr",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "packages/github/src/pr-candidate-snapshot.test.ts",
+      "bytes": 16116,
+      "sha256": "0e047913be4e887c0993b3c0d1f8f6d0e6b21c28b6ab66b2b7e8526ef533054a",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "pr",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/pr-candidate-snapshot/README.md",
+      "bytes": 7170,
+      "sha256": "46bda330eecb498df2cf0a1fd192477365b59ca5ff97a300507f9031f33bdd67",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "pr",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/stack-checkrun-state/README.md",
+      "bytes": 3247,
+      "sha256": "1ba1b6e0bbee1b0bb09cefa3bff38bab29bfa8e5ff43facc1b6013e42c624a64",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "frontier",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "packages/github/src/pr-stack-candidate.ts",
+      "bytes": 8160,
+      "sha256": "45b18dedb6bc3bed065d8785863a4ace071a181efb26af41c17de1e0884ace54",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "frontier",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/implementation/pr-stack-candidate/README.md",
+      "bytes": 9058,
+      "sha256": "4b4cd6e651539bed4f7f19760459cca524086f8a6369ebd5a3634381093f7db1",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "methods",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/SKILL.md",
+      "bytes": 5182,
+      "sha256": "9a93c95120c8c1e8f37404335f0fc647fe8dd0eecd2f5e730a60b6451d183727",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "methods",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/entries/osstack-mode/SKILL.md",
+      "bytes": 5750,
+      "sha256": "2e92e1852be1d4bfd74418f76e402c579236f61f888f85ef2174091775da5a9b",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "methods",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/sources.md",
+      "bytes": 18512,
+      "sha256": "d0915084c7cca52d4d34564c6ac86c60df1f6e1467a634e8cc7f637267129f9f",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "methods",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/parallel-work.md",
+      "bytes": 6917,
+      "sha256": "522198e4a959874db021dbe1f68489542e88a0d21ab6fa2274b455f006ad60e2",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "methods",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/architecture-design.md",
+      "bytes": 10992,
+      "sha256": "3b3e7bc242cdbe97231cce1e007e963bb764e63bffcbacd540132bae88c0802d",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "methods",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/task-framing.md",
+      "bytes": 5623,
+      "sha256": "b1ffb495c17e08d2978a08f6cf6a2f21c6b2900cc4362c57abb8ec1cb525d0be",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "reader",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "scripts/read-method-material.mjs",
+      "bytes": 5023,
+      "sha256": "452e8624a07bd39d60b5ed7dd3b3647e1fd30674ccf1a761a39ad08d3a641ba2",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "reader",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-material-reader/README.md",
+      "bytes": 4467,
+      "sha256": "f86a8d0ba23b654a228e9a5cea21775f4dc8c6b8a1b3dc18106c4a4793d9a0c9",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "hostrepair",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/pstack-current-repair/README.md",
+      "bytes": 7385,
+      "sha256": "e442960b69f01fc61bc78ae20604a9ec0bf442d40ef3238c5a700cb0018e4dd3",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "hostrepair",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/pstack-export-repair/README.md",
+      "bytes": 7816,
+      "sha256": "62353994e28185a5f09a4e8f879f2dcd9874a494f83432726fb42d3030b58afb",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "hostreview",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-review-behavior/README.md",
+      "bytes": 4772,
+      "sha256": "8e342d8051915adbb3ae2de63a17e8fec62c420a9bea9317cca15b3cf42198d0",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "hostreview",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-pr-readiness-delivery/host-report.md",
+      "bytes": 4385,
+      "sha256": "4d27723d8cc08ce4902871dad45141c23870e4fe734d16bc16a11a77ff139a97",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "hostframing",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-continuity-delivery/host-report.md",
+      "bytes": 8315,
+      "sha256": "4b7f24616ddd99bfa4f0ef4d4fc2fdd2f6893b1bcd7d3109e33ac80d0e35aff6",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "continuity",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/session-continuity.md",
+      "bytes": 7170,
+      "sha256": "47f4aab431b273fd3ba7e378e8a79812f6cad21c46edec1effb4394430ef81f1",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "continuity",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/joint-recovery-composition/README.md",
+      "bytes": 5969,
+      "sha256": "a0fa639953ad4757f2b3bcc31ab9055706fa7bead045da24bf5f9317cf8b792e",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "continuity",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/joint-broker-spec/README.md",
+      "bytes": 3827,
+      "sha256": "4cae784f72d7622493e7f3c963ca4f558e7c3b278c9d290da423190aa5a5ffca",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "lessons",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/skill-authoring.md",
+      "bytes": 5863,
+      "sha256": "f30a90fd2cb9ac117e5737a105b5f68a66e041d138df0eb4d75be74c3632b0fc",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "lessons",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-skill-authoring/README.md",
+      "bytes": 6736,
+      "sha256": "ced579160cc7a8586256c1a93dcc4f7b98a22a1fb34243e4d6aca8c48e762f80",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "performance",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "osstack-methods-skill/references/performance-measurement.md",
+      "bytes": 9893,
+      "sha256": "7721a8c9ba3fde86ce2b10a0119330b6bbceff427a5e5ebce19cbd2a63d1b538",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "performance",
+      "git_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "path": "docs/implementation/method-impact-performance/README.md",
+      "bytes": 3880,
+      "sha256": "1dd2e6405f1f573f7360a06f5cf6ce4c31bf6a274fe0ce0b286e1ab1d95b8f35",
+      "evidence_kind": "current_source_or_retained_report_read_only",
+      "new_test_execution": false
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/reports/2026-10-26-pstack/acceptance-cases.json",
+      "bytes": 24725,
+      "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d",
+      "same_as_main": true
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/reports/2026-10-26-pstack/integration-spec.md",
+      "bytes": 54282,
+      "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5",
+      "same_as_main": true
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/reports/2026-10-26-pstack/capability-map.json",
+      "bytes": 59354,
+      "sha256": "ca921f4b0af76e5158a6745238f1d91c86b21feb378ee132318284e148781e79",
+      "same_as_main": true
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/reports/2026-10-26-pstack/claude-audit.md",
+      "bytes": 17451,
+      "sha256": "c0f5a592aca0e48e9c8db7fe6e16bee6374943e683c32c198c71381120b51cf5",
+      "same_as_main": true
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "bytes": 14592,
+      "sha256": "6c1db9580309fd8eb703a4a1b42abfe760c129c944edd81639a6498803ba46e6",
+      "same_as_main": true
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-case-map.json",
+      "bytes": 91680,
+      "sha256": "80f1975ca2911e69468e7772bc12d25a495ac70a66cc24bc12f27bed2b206564",
+      "same_as_main": true
+    },
+    {
+      "group": "original_contract",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/design/2026-10-27-joint-engineering/legacy-work-map.json",
+      "bytes": 23674,
+      "sha256": "bb8a4588453f458d33a68af682f08ba0b6d4d9797d928ea66c46a6711830b85e",
+      "same_as_main": true
+    },
+    {
+      "group": "original_audit",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/audit-dispositions.json",
+      "bytes": 4583,
+      "sha256": "349cf4f201c0fabda15bbf71752c02316960d449a7d43dad7a4a9f110adfbddb"
+    },
+    {
+      "group": "original_audit",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/reports/2026-10-26-pstack/evidence/claude-audit-2026-10-27/challenge-dispositions.json",
+      "bytes": 3437,
+      "sha256": "c890c5851998ce3002410960e362267292744cb792f1d86e988b7193e41ff1b3"
+    },
+    {
+      "group": "joint_original_audit",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/dispositions.json",
+      "bytes": 21142,
+      "sha256": "b33cc9fc2d9250d26cdd07938f77d4aeae5a0d0de7ee545526b700dd24e6371d"
+    },
+    {
+      "group": "joint_original_audit",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout-dispositions.json",
+      "bytes": 3648,
+      "sha256": "2d839dda1af35c2d68da4cb24ad2d89730a1b6a60d5d17946ab899ab91896ce3"
+    },
+    {
+      "group": "joint_original_audit",
+      "git_commit": "8e830561e09f4754d3410003c24216d8db49aa6c",
+      "path": "docs/design/2026-10-27-joint-engineering/evidence/sonnet-audit-2026-10-27/closeout2-dispositions.json",
+      "bytes": 896,
+      "sha256": "db95507af14cb41208984f65e633e077b321d8fd015bf13cb85270d44c3a3f8d"
+    }
+  ],
+  "baseline_eight_files": [
+    {
+      "path": "docs/reports/2026-10-26-pstack/author-reading.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "7bdc3c254670dbe7bd20466a3ce199aa61a562d3a4624c896351bdeabe65903f"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/README.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "839c14a3de97f903778c326eaabdb797e9b268343a6d1e81bbb613b90dff4929"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/integration-spec.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/capability-catalog.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "7b1486ed9212ba4161a792032c05a64ca4f89489e82877ed78364693555ff08a"
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/claude-audit.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "c0f5a592aca0e48e9c8db7fe6e16bee6374943e683c32c198c71381120b51cf5"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/claude-audit.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "6c1db9580309fd8eb703a4a1b42abfe760c129c944edd81639a6498803ba46e6"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/closeout-specifications.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "0372fecf3be44148688b8139f4b99494e4dd2dd76ae7ff1dd158df4287be23f3"
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/implementation-plan.md",
+      "matches_manifest": true,
+      "matches_main_git": true,
+      "sha256": "9926fe241a32af47842da628f626837b73531fbbff379e9c838f3d36df1c48e4"
+    }
+  ],
+  "suggested_entry_paths": [
+    {
+      "suggested_path": "packages/skill-registry/src/recipe-compiler.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/cli/src/method-admission.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/cli/src/method-context.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/cli/src/method-review.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/cli/src/method-report.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/skill-registry/src/recipe-qualification.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/skill-registry/src/candidate-selection.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/loop/src/lesson-draft.ts",
+      "present_at_main": true,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    },
+    {
+      "suggested_path": "packages/skill-registry/src/method-improvement.ts",
+      "present_at_main": false,
+      "interpretation": "建议文件名并非强制；判定结合实际source/README明确边界，不仅凭文件名缺失。"
+    }
+  ]
+}

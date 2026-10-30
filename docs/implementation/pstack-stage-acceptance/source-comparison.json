@@ -1,0 +1,149 @@
+{
+  "observed_at": "2026-10-30T01:29:20.687997+00:00",
+  "scope": "read-only source comparison; no upstream install/execution, model, product test, host or DB",
+  "identity": {
+    "original_commit": "99b609a72323b70204eab407c622f436e858e112",
+    "original_tree": "880564357e051d7c7802da1cb5d8df1d0b008299",
+    "current_commit": "4dd1d05818d19792e7cd6e818f1667f95f7e1dbe",
+    "current_tree": "4719e1c4b4c43bac85d4206a8b41dd2899769c1c",
+    "original_tracked_paths": 200,
+    "current_tracked_paths": 573,
+    "change_counts_no_rename_detection": {
+      "M": 25,
+      "D": 33,
+      "A": 406
+    },
+    "watch_pr_all_members_byte_equal": true,
+    "watch_pr_member_count": 12,
+    "check_plan_code_byte_equal": true,
+    "main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+    "candidate": "8e830561e09f4754d3410003c24216d8db49aa6c"
+  },
+  "original_reports": [
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/original-baseline/docs/reports/2026-10-26-pstack/README.md",
+      "bytes": 35722,
+      "sha256": "839c14a3de97f903778c326eaabdb797e9b268343a6d1e81bbb613b90dff4929"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/original-baseline/docs/reports/2026-10-26-pstack/capability-catalog.md",
+      "bytes": 28793,
+      "sha256": "7b1486ed9212ba4161a792032c05a64ca4f89489e82877ed78364693555ff08a"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/original-baseline/docs/reports/2026-10-26-pstack/integration-spec.md",
+      "bytes": 54282,
+      "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5"
+    },
+    {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-stage-acceptance-20261030/original-baseline/docs/reports/2026-10-26-pstack/claude-audit.md",
+      "bytes": 17451,
+      "sha256": "c0f5a592aca0e48e9c8db7fe6e16bee6374943e683c32c198c71381120b51cf5"
+    }
+  ],
+  "comparisons": [
+    {
+      "area": "orch / coordination",
+      "original_actual": "旧orch是可执行文件资料库：units增改查、ledger按PR/SHA记裁决、inbox push/drain、gates、standing、status；atomicWrite+目录锁串行写。frontier从当前branch/forge沿base向下和open-child向上发现线性栈，拒循环/分叉，并可核显式PR列表。它不spawn/wait/wake代理。",
+      "source_anchors": [
+        "old:pstack/skills/poteto-mode/scripts/orch/store.ts:184",
+        "old:pstack/skills/poteto-mode/scripts/orch/store.ts:337",
+        "old:pstack/skills/poteto-mode/scripts/orch/store.ts:1188",
+        "old:pstack/skills/poteto-mode/scripts/orch/orch.ts:256"
+      ],
+      "osstack_actual": "parallel-work指导自包含brief与单写者，沿既有OSStack看板/版本化账本；候选inspectPrStackCandidate及report-pr-stack-candidate对用户显式1–3 PR列表一次读取、区分merged前缀/frontier/upstack。",
+      "osstack_anchors": [
+        "candidate:packages/github/src/pr-stack-candidate.ts:5",
+        "candidate:packages/github/src/pr-stack-candidate.ts:88",
+        "main:osstack-methods-skill/references/parallel-work.md:1"
+      ],
+      "not_ported": "刻意不复制第二个TSV权威控制平面；未提供上游orch等价inbox/gates状态机及自动栈发现。候选工具不是调度器或完整栈发现器。",
+      "current_delta": "新4dd1删除orch三个文件，orchestrate改为宿主Task、Project tracker/store与事件订阅，明确不运行脚本或轮询。这是宿主依赖转变，不是旧工具被OSStack完整移植。",
+      "original_scope": "原capability-catalog第140行明确不作为第二权威状态；这些没有移植并非全是遗漏。新宿主事件订阅不能倒推为旧验收必需。"
+    },
+    {
+      "area": "watch-pr / forge observation",
+      "original_actual": "watch-pr CLI接单PR/stack/queued-stack，默认60s轮询/300s全栈sweep、timeout0无截止、错误预算5，status-only单次；policy读取checks/threads/merge facts并分类READY/BLOCKER/WAITING/ADVANCE/COMPLETE。它观察并发出裁决，不是合并执行器。",
+      "source_anchors": [
+        "old:pstack/skills/poteto-mode/scripts/watch-pr/cli.ts:82",
+        "old:pstack/skills/poteto-mode/scripts/watch-pr/cli.ts:110",
+        "old:pstack/skills/poteto-mode/scripts/watch-pr/cli.ts:173",
+        "old:pstack/skills/poteto-mode/scripts/watch-pr/policy.ts:8",
+        "old:pstack/skills/poteto-mode/scripts/watch-pr/policy.ts:311"
+      ],
+      "osstack_actual": "main inspectPrCandidate/report-pr-candidate是8请求/90s、head/base前后绑定、失败/等待/未知分轴及原始查询输出的一次报告，merge_authorized恒false；308/309修复导入StatusContext/CheckRun分类。候选stack报告复用同collector，限制3 PR/24请求/270s。",
+      "osstack_anchors": [
+        "main:packages/github/src/pr-candidate-snapshot.ts:1",
+        "main:scripts/report-pr-candidate.mjs:1",
+        "main:packages/github/src/stack.ts:1",
+        "candidate:packages/github/src/pr-stack-candidate.ts:88"
+      ],
+      "not_ported": "没有polling/rearm/自动修CI/自动retarget/merge；不发现全部rulesets、merge queue与approval身份。故意不照抄上游assessGitHubMerge的宽松allowed分类。stack导入NEUTRAL/SKIPPED与snapshot严格政策仍不同，报告不等于Ready。",
+      "current_delta": "watch-pr目录全部12个成员逐字节相同；babysit说明有变化（如Origin分支和drive到merge-ready），不能推断工具已支持Origin。",
+      "original_scope": "原W13要求只读classifier并约束ready不是许可；本批实际完成的是有界观察/分类子集，持续watcher完整范围未交付。"
+    },
+    {
+      "area": "check-plan / plan semantics",
+      "original_actual": "一个读取Markdown的确定性校验脚本：固定H2/H3顺序、9类PR子块、十条live lanes、截图/Pass when、perf四项及英文标点禁则；通过只说明模板匹配，不执行所列验证。",
+      "source_anchors": [
+        "old:pstack/skills/poteto-mode/scripts/check-plan.mjs:5",
+        "old:pstack/skills/poteto-mode/scripts/check-plan.mjs:91",
+        "old:pstack/skills/poteto-mode/scripts/check-plan.mjs:151"
+      ],
+      "osstack_actual": "架构/task-framing/parallel方法保留使用者与验收约束；联合validate-design.py/validate-execution.py校验本项目设计/账本及集合关系，协议MethodMaterial包含verification_plan等严格结构。",
+      "osstack_anchors": [
+        "main:docs/design/2026-10-27-joint-engineering/validate-design.py:1",
+        "main:docs/design/2026-10-27-joint-engineering/validate-execution.py:1",
+        "main:packages/protocol/src/method-materials.ts:10"
+      ],
+      "not_ported": "不存在同名通用check-plan替代入口，也没有所有用户计划的自动语义真实性判定。未照搬固定十lane、截图要求和英文标点是刻意适配。联合文档检查不能冒充通用语义计划验证。",
+      "current_delta": "check-plan源码及其test均不变；multi-phase-plan方法文案已变，未执行兼容性测试，不能仅凭脚本不变认新文案自动相容。",
+      "original_scope": "原catalog第142行写改为结构化语义检查；目前有项目专用结构校验及材料shape，完整通用语义目标仍是缺口，不应标done。"
+    },
+    {
+      "area": "statechart / formal verification",
+      "original_actual": "旧statechart.mjs提供from-spec、from-chart、render：调用TLC/辅助脚本，把模型、反例与图互转、对照fix/against、渲染PNG，要求模型bug路径回放真实代码；需要TLC/Java/renderer，不是仅Markdown。",
+      "source_anchors": [
+        "old:pstack/skills/statechart/scripts/statechart.mjs:35",
+        "old:pstack/skills/statechart/SKILL.md:1"
+      ],
+      "osstack_actual": "目前方法有状态/所有权/反例推理，恢复规范有SQL/协议负例；不是该TLA/TLC/图形工具链。检查main及candidate的packages/scripts未找到statechart或check-plan移植入口。",
+      "osstack_anchors": [
+        "main:osstack-methods-skill/references/architecture-design.md:1",
+        "main:packages/protocol/src/method-materials.ts:1"
+      ],
+      "not_ported": "完整形式化建模工具链、坏变体TLC证明与代码回放资格均未实施；现有SQL/spec测试不等于形式化验证。此专门工具原为独立可行性试点，需另验。",
+      "current_delta": "旧mjs工具群删除，新增TypeScript frontend/IR/pass/backend、worker、statechart入口与大量静态corpus。新入口SPEC.tla --config --view --out，>500 states限制图形，保留TLC自身结果和未检查规则；不再是原from-chart接口。",
+      "original_scope": "原W16只选一个高后果不变量做独立可行性试点；不能将最新重写的全工具链追加为原先完成门槛。"
+    },
+    {
+      "area": "qualification / source and host adoption",
+      "original_actual": "上游setup-pstack检测模型并写Cursor规则；create/maintain verification指导实际驱动/观察/清理与覆盖维护。指定代码目录中没有对应OSStack candidate→qualified→active recipe服务；资格状态及admission是我们的集成设计，不是上游现成可复制工具。",
+      "source_anchors": [
+        "old:pstack/skills/setup-pstack/SKILL.md:9",
+        "old:pstack/skills/create-verification-skill/SKILL.md:1",
+        "old:pstack/skills/maintain-verification-skill/SKILL.md:1"
+      ],
+      "osstack_actual": "inspectGitSource是实际Git单源检查subpath API，固定对象/许可/hash/限额，明确dependency_resolution=not_performed；协议MethodBinding/TrialPermit/SupportProfile/ContextReceipt实现纯结构及digest联结，trialBudgetIssues始终含adapter_invocations_unattested。普通export/journey/map/projection已是可用有限入口。",
+      "osstack_anchors": [
+        "main:packages/skill-registry/src/source-snapshot.ts:1",
+        "main:packages/skill-registry/src/source-snapshot.ts:41",
+        "main:packages/protocol/src/method-binding.ts:50",
+        "main:packages/protocol/src/method-binding.ts:78",
+        "main:scripts/method-verification-journey.mjs:1",
+        "main:scripts/maintain-skills-check-map.mjs:1"
+      ],
+      "not_ported": "没有完成采用依赖闭包、正式recipe注册/编译到运行admission、首次trial实际生产授权及后续qualification激活；纯协议存在不等于host消费。不能把旧W08 local_verified或J08/J10承诺转记为全完成。",
+      "current_delta": "setup模型偏好和formal-verification文稿有变；不是新增一个可直接替代OSStack资格系统的上游服务。",
+      "original_scope": "原审计D03–D05要求真实材料通道、检查绑定和无active状态首次资格；D02先验证命名工具价值，D08结构/语义/收益分开。有限D2a工具可先验收，但这不注销正式集成欠账。"
+    }
+  ],
+  "decision": "可以交付方法/有限工程工具阶段验收，但不能宣称完成原W08 local_verified与全资格集成。新的4dd1变化作为独立升级候选，不扩大99b已接受范围，也不抹掉原设计未完成义务。",
+  "limitations": [
+    "源码阅读不证明任何上游命令在本机能运行。",
+    "文件数含测试/corpus，不是能力覆盖率。",
+    "未逐行审计全部新增statechart测试语义；仅核入口/管道与文件变化。",
+    "main e464和候选8e830分别绑定，不把未发布候选称已main。"
+  ],
+  "root_scope_clarification": "原冻结B报告见归档。W13/A27/A28只读classifier可单独验收，持续watcher不挡该slice；check-plan通用语义目标是catalog层边界，不追加为48A/19W验收条件。"
+}

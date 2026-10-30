@@ -1,6 +1,10 @@
 # pstack 优先：能力与交付对账
 
-当前合并快照：`a250ad88163132675d33dfe163c2e7e409443846`。#305/#306/#307/#308已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；候选状态只读工具已随PR307合并；当前正收口旧式StatusContext与CheckRun状态分类修复。历史宿主实验与CI保留各自原始SHA。
+## 当前优先：原范围阶段验收（2026-10-30）
+
+[完整对账与建议](../../implementation/pstack-stage-acceptance/README.md)保留原24PS/19W/48A和C0/C1/C2。S1–S3只供已交付工具单独验收；S4历史宿主结果仍受限。没有用户签收或范围删减。W13只读分类不额外要求持续watcher；原端到端集成仍未闭合。
+
+当前合并快照：`e4643324b9de1d2db51c744e59ccd7c05146b0a6`。PR307/308/309均已由用户合并；主线4入口14方法。固定五case维护、单PR快照与两类CI分类已可用；有序1–3 PR前沿报告8e830已验证，待发布。当前优先按原24PS/19W/48A收口pstack阶段验收，暂停新增功能扩张。历史宿主和CI保持原始SHA。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -30,7 +34,7 @@
 3. PR305已合并：完整五案例安全证据投影和passed stderr一致性修复，默认兼容与原件保持；旧宿主实验成绩不变。
 4. PR306已合并：固定五case地图维护，实际RED→仅改地图→GREEN、最终CI通过，树等验证候选。
 5. PR307已合并：单次只读候选快照绑定head/base、检查、评审线程和前后观察；不自动审批/合并。
-6. PR308已合并legacy StatusContext分类；PR309正对齐main复验CheckRun状态分类；明确排序的1–3 PR栈前沿报告已派发实施，尚未交付。Firstmate深运行时后排。
+6. PR308/309均已合并两类CI状态分类；有序1–3 PR前沿报告已验证待发布。先对原24PS/19W/48A及C0/C1/C2做阶段验收对账，新增功能扩张暂停，Firstmate深运行时后排。
 
 ## pstack能力清单
 
@@ -43,19 +47,19 @@
 | PS05 覆盖式并行与预先声明的竞赛 | 部分已交付 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 独立评审与意见裁决 | 部分已交付 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 影响面与关键前提验证 | 部分已交付 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明 |
-| PS09 验证基础设施的健康、归属与漂移维护 | 部分已交付 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case维护路径与广义漂移发现仍未闭合。 |
+| PS08 可操控的验证基础设施与功能地图 | 部分已交付 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；任意项目地图生成、相关叶子检索和完整使用场景仍未闭合。 |
+| PS09 验证基础设施的健康、归属与漂移维护 | 部分已交付 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 形式化验证生命周期 | 暂缓/未实现 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 状态图与反例解释 | 暂缓/未实现 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
 | PS12 反思转结构化约束 | 部分已交付 | skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。 |
-| PS13 决策轨迹与证据归因 | 部分已交付 | 原始回执/manifest/hash/错误保留及安全投影已可用；证据完整性不认证身份/历史真实性；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
+| PS13 决策轨迹与证据归因 | 部分已交付 | 默认两例v1/完整五例v2安全证据投影与check、原始失败/manifest/回执保留已合入；不是运行真实性或身份认证，持久决策检索仍欠缺。 |
 | PS14 性能结论审查 | 部分已交付 | 性能审查方法与合成数例可用；无因果性能提升结果 |
 | PS15 有预算的 hillclimb 与盲评 | 暂缓/未实现 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
 | PS16 自包含单元与协调者边界 | 部分已交付 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
-| PS17 栈前沿与候选绑定验证 | 部分已交付 | PR readiness材料+候选绑定实践；栈前沿自动校验服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
-| PS18 forge 观察器分类 | 部分已交付 | 一次forge状态分类方法；未移植watch-pr观察器，不把既有github组件当本批新增；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
+| PS17 栈前沿与候选绑定验证 | 部分已交付 | PR307单PR稳定候选快照已合入；1–3 PR有序前沿报告候选8e830已实现验证但未发布；自动发现、持续watch、变更/合并授权均未提供。 |
+| PS18 forge 观察器分类 | 部分已交付 | PR307有界只读PR观察已合入，308修StatusContext、309修CheckRun分类；缺失/未知不误绿，既有neutral/skipped政策单列。持续watcher/自动重置未实现。 |
 | PS19 暂停与恢复对账 | 部分已交付 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
-| PS20 跨宿主方法适配 | 部分已交付 | 四入口双host导出；Codex和Claude各一次有界实际修复已记录，Claude必读材料不全、旧失败保留；全方法等价/强制context/资格未通过 |
+| PS20 跨宿主方法适配 | 部分已交付 | 四入口双host导出；Codex历史checker与Claude历史exporter各有一次有界真实修复闭环，Claude材料读取不全，旧失败保留；尚无全方法等价/强制context/资格激活。 |
 | PS21 来源快照与能力资格验证 | 部分已交付 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
 | PS22 事件 intake 与补偿模式 | 暂缓/未实现 | Benny/外部事件intake补偿未启用或移植 |
 | PS23 使用方式驱动的接口与文档设计 | 部分已交付 | caller-first architecture、验证材料与文档；三条冻结地图和冷用户验收未全通过 |
@@ -69,11 +73,11 @@
 |---|---|---|---|---|---|
 | J01 共享身份、完成与资格契约 | 严格身份/完成/资格/恢复契约及原始JSON、canonical、交叉字段和变异回归已交付。 | 已交付严格契约/回归仍待原JA59/70可信oracle流程与JA01/02真实宿主验收。 | 计划中的无副作用可信宿主准入入口尚未交付，不能由schema检查代替。 | 现有工程作者/审查者的证据是否满足原principal职责及独立性尚未正式确定。 | pstack或必要基础 |
 | J02 共用来源快照与分型注册 | typed registry、v1兼容和opt-in source inspector可用；固定Git对象/路径/预算检查已有实现。 | source inspector和typed registry组件尚未完成原JA03/04整体验收。 | 采用依赖闭包及相应图/漂移失效消费链尚未交付。 | 调用方声明的repository identity是否有足够外部映射证据未确定。 | pstack或必要基础 |
-| J03 session-answer-receipt 驱动夹具 | 现有CLI/daemon验证工具和固定两case旅程提供真实原始回执与证据。 | 现有真实CLI/daemon回执工具可复用，但未取得JA05/06/44对应资格。 | 计划中的method-control和session-answer-receipt统一驱动尚未交付。 | 现有工具迁入正式驱动需要多少新增接线，尚未按真实调用面验证。 | pstack或必要基础 |
+| J03 session-answer-receipt 驱动夹具 | 现有CLI/daemon验证工具、默认两case/完整五case旅程提供真实原始回执、0/1/2/1/0语义与清理证据。 | 现有真实CLI/daemon回执工具可复用，但未取得JA05/06/44对应资格。 | 计划中的method-control和session-answer-receipt统一驱动尚未交付。 | 现有工具迁入正式驱动需要多少新增接线，尚未按真实调用面验证。 | pstack或必要基础 |
 | J04 必需方法材料与 v2 调用回执 | 14共享方法材料与现有execution-context基础可用。 | 共享材料和既有context基础尚未验证强制通道的实际adapter证据。 | MethodBinding必需材料装载、方法快照与完整v2调用回执链尚未交付。 | 各实际adapter可提供的版本/读取/预算证据能力尚未全量核定。 | pstack或必要基础 |
 | J05 检查映射与单方法纯编译 | 共享方法含验证编写指导；尚无本计划recipe compiler交付证据。 | 暂无本计划recipe compiler候选可供正式JA10/11验收。 | 单方法纯编译与check映射输出尚未交付。 | J25.e0尚无决定，允许的完整方法链投资范围仍待真实可行性结果。 | pstack或必要基础 |
-| J06 使用草图与三条功能地图 | feature-map模板、五case source验证及固定healthy/missing-ref两行图已交付。 | 现有feature-map模板、五case验证器和两case旅程尚未证明规定三图与冷调用者验收。 | 复现/等待/取消三图及统一usage-sketch回执交付尚未完成。 | 现有冷调用者使用观察能覆盖多少原V05要求尚未逐项认定。 | pstack或必要基础 |
-| J07 产物消费与同候选评审 | 真实driver归档、严格两文件证据投影与输入完整性检查可用。 | 已交付证据投影与归档一致性工具尚未获得同候选产物消费正式验收。 | host-authoritative method artifacts及其资格消费链尚未交付。 | 保留证据的producer身份与历史真实性不能仅由hash/manifest确定。 | pstack或必要基础 |
+| J06 使用草图与三条功能地图 | feature-map模板、默认两case/full五case旅程及PR306固定五case持久地图维护已交付。 | 现有固定五case地图/维护/旅程尚未证明原规定三图、相关叶子检索与冷调用者验收。 | 复现/等待/取消三图及统一usage-sketch回执交付尚未完成。 | 现有冷调用者使用观察能覆盖多少原V05要求尚未逐项认定。 | pstack或必要基础 |
+| J07 产物消费与同候选评审 | 真实driver归档、默认两例v1/完整五例v2证据投影与输入一致性检查可用。 | 已交付证据投影与归档一致性工具尚未获得同候选产物消费正式验收。 | host-authoritative method artifacts及其资格消费链尚未交付。 | 保留证据的producer身份与历史真实性不能仅由hash/manifest确定。 | pstack或必要基础 |
 | J08 首次受限试验准入 | 分层准入设计已明确无副作用host边界、正控制和真实入口复用。 | 已交付门槛设计及校验器尚无真实host准入/完整trial验收证据。 | method-host-admission入口及计划的首次受限trial链尚未交付。 | 各宿主可信调用边界与支持单元能力尚未完成资格核定。 | pstack或必要基础 |
 | J09 首个本地 bug-fix 方法旅程 | bug-fix方法及真实CLI缺陷修复/回归工作流有交付。 | 已有bug-fix材料和实际产品缺陷回归尚未满足指定JA18方法旅程验收。 | recipe驱动的本地bug-fix旅程与method report尚未交付。 | 实际宿主完成该全链的稳定性和收益尚未证明。 | pstack或必要基础 |
 | J10 方法资格与激活漂移管理 | 方法资格相关严格契约已有基础。 | 已有严格资格契约组件尚未完成持久资格/失效全链验收。 | 持久qualification、active漂移失效和方法改进晋升链尚未交付。 | E1价值决定、method-context测量及支持范围尚未确定。 | pstack或必要基础 |
@@ -96,7 +100,7 @@
 | J27 灰度与支持范围内启用 | 设计runtime_enabled=false；无新联合support-cell启用证据。 | 没有已签发的新联合support-cell启用资格候选。 | 原计划分阶段release验证入口与联合运行手册尚未交付。 | local/default/full各支持范围的安全性与收益均尚未判定。 | 后排 |
 | J28 高后果状态不变量形式化试点 | 有限形式状态验证已有计划。 | 已有形式化试点设计没有JA39已执行模型证据。 | 指定joint-effect TLA模型与检查入口尚未交付。 | 模型抽象对实际实现的覆盖与反例对应关系仍未知。 | 后排 |
 | J29 性能与有预算的改进循环 | performance-measurement指导及明确标注的合成算术例已交付。 | 性能方法与合成算术验证尚无真实JA40预算改进验收。 | 指定性能eval入口和真实预算改进循环尚未交付。 | 端到端成本/性能收益、噪声与泛化效果未测定。 | pstack或必要基础 |
-| J30 Forge 观察与栈前沿验证 | PR-readiness方法和本项目人工forge/CI取证流程已交付，当前head/base与review/integration分轴。 | PR-readiness材料/有限合成分类及人工forge取证尚未满足JA41/57运行验收。 | 新Forge observer、stack frontier与method report运行接线尚未交付。 | 实际不同forge/拓扑/权限条件下的覆盖与持续观察可靠性仍未知。 | pstack或必要基础 |
+| J30 Forge 观察与栈前沿验证 | PR307单PR稳定候选快照已合入；1–3 PR有序前沿报告候选8e830已实现验证但未发布；自动发现、持续watch、变更/合并授权均未提供。 PR307有界只读PR观察已合入，308修StatusContext、309修CheckRun分类；缺失/未知不误绿，既有neutral/skipped政策单列。持续watcher/自动重置未实现。 | frontier发布CI/用户合并；原JA41/57正式链另验。 | 持续watcher、全栈发现与正式method-report/admission链。 | 跨forge覆盖、长时观察和全局资格仍未知。 | pstack或必要基础 |
 | J31 清理前保全与应用回执修复 | 真实Session finally/held admission/terminal fence/confirmed stop及applied evidence cleanup相关产品切片已合入。 | 真实cleanup/terminal产品切片仍未完成JA42/56全部保全与恢复验收。 | DEBT02跨进程unknown producer恢复与全保全清理链尚未交付。 | 所有dirty/unlanded资源类型及真实宿主进程树停止能力尚未充分验证。 | pstack或必要基础 |
 | J32 联合四组对照与冷用户验收 | 已有少量宿主观察，可帮助冻结未来任务集。 | 有限宿主观察尚无JA43四组对照/独立冷用户结果。 | 指定联合四臂eval执行入口与完整实验交付尚未完成。 | Firstmate/pstack各自及组合因果贡献、真实成本和用户收益仍未知。 | 后排 |
 
@@ -207,3 +211,10 @@ Final PR308 closure 2026-10-30T00:46:39.573481+00:00: head4a7ee75d is Ready on a
 
 
 User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612bc equals published4a7. Card7e0b1be2 done for the bounded slice. PR309 fc272c63 now targets main, tree equals f31 and complete16path delta unchanged; fresh verification/newCI40982097784 running. Historical parentCI40979844215 remains f31→4a,22packages7230pass7skip0fail (not local7232/5). Three-agent dispatch resumes: A implements ordered1–3 PR stack-frontier report after C independent freeze; C independently verifies; B revalidates309; root uniquely owns PR/ledger/full. New card6962ab52 contributes PS17 with PS18/13/J07 support, J20 design only. No new method/host budget or formal gate.
+
+
+## 2026-10-30：309 已合并，顺序候选核对进入发布
+
+用户于01:13:25Z合并309；actual main e4643324/treeafb6等fc272。309新main CI40982097784五适用SUCCESS/paidSKIP，check/Test22包7230pass7skip0fail；原完整log与Ready→merge回执保留，不重标旧localfull。
+
+新有界工具只读核对显式1–3个PR顺序，不新增method。root540全仓22包7261pass5skip0fail，8784tracked执行期间字节同，初始4freshdistdirty，非clean committed tree；后单独CLI显示修复及docs/main合并不冒充finalfull。最终代码/文档8e830561在actualmain e464上224GitHub/29CLI/94export通过。C42场景58断言；Sonnet初静态PASS附真实autolink/bidi缺陷，作者同29CLI RED17/12→GREEN29，独立Pandoc10例旧7fail→新全过，限定SonnetclosurePASS，原意见和失败保留。一次真实308→309八查询在01:05历史时点识别mergedprefix/frontier且保留draft/checkpending/reviewrequired；不是Ready/merge授权或当前状态。card6962ab52贡献PS17，PS18/13/J07支持、J20设计；32J formalfalse和24PS20partial4deferred0whole不变。下一需求由源驱动选题，不重跑旧宿主失败翻绿。

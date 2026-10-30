@@ -1,5 +1,9 @@
 # pstack-first feature queue
 
+## 当前优先：原范围阶段验收（2026-10-30）
+
+[完整对账与建议](../../implementation/pstack-stage-acceptance/README.md)保留原24PS/19W/48A和C0/C1/C2。S1–S3只供已交付工具单独验收；S4历史宿主结果仍受限。没有用户签收或范围删减。W13只读分类不额外要求持续watcher；原端到端集成仍未闭合。
+
 This is the delivery queue, separate from activity counts and the 32 formal joint milestones. Main has four entry points and fourteen method materials; those counts are not completed capability counts. The 24 source capability groups currently contain 20 partially delivered and four deferred groups. No whole-capability completion is inferred.
 
 ## Active delivery
@@ -11,7 +15,7 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 | 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 merged e79fc926; tree equals published b0ea4e78, original CI/audit bindings retained | All five cases and failed/not_run/unknown states preserved; original records unchanged |
 | 4 | Use current method materials to complete a fresh actual host task | Current packet defect: Codex actual RED/fix/GREEN complete; Claude stopped after permission denial, unrepaired; both16pages delivered; fix published in305 | Separate actual host outcomes and fix delivery from whole capability claims; retain Claude failure and old results, no retries for a better grade |
 | 5 | Compare and repair a persistent fixed-five verification map | PR306 merged at6c9a3e8f; actualmain tree equals validated958. Fixed-five map command and CI hook available | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
-| 6 | Make PR candidate status easier to assess | PR307 merged at de43f47c; bounded read-only snapshot is available. PR308 merged at a250ad88; PR309 exceptional CheckRun repair is Draft/main at fc272 awaiting fresh verification/CI; ordered stack-frontier report implementation dispatched | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
+| 6 | Make PR candidate status easier to assess | PR307 merged at de43f47c; bounded read-only snapshot is available. PR308 merged at a250ad88; PR309 merged at e4643324 after actual-main verification/CI; ordered stack-frontier report validated and preparing publication | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
 
 Firstmate deep recovery/supervision is deferred behind these pstack paths except for necessary dependencies. Formal identity issue287 does not block ordinary bounded D2a tools.
 
@@ -26,19 +30,19 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS05 | 覆盖式并行与预先声明的竞赛 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明 |
-| PS09 | 验证基础设施的健康、归属与漂移维护 | 维护方法、健康/归属/清理工具及一次注入地图漂移→修复→同路径复验已交付；可复用全五case地图比较已随PR306合入；广义漂移发现仍未闭合。 |
+| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；任意项目地图生成、相关叶子检索和完整使用场景仍未闭合。 |
+| PS09 | 验证基础设施的健康、归属与漂移维护 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
 | PS12 | 反思转结构化约束 | skill-authoring第14方法已随PR302合入；反思到技能约束仅材料切片，不是受控经验晋升运行时。 |
-| PS13 | 决策轨迹与证据归因 | 原始回执/manifest/hash/错误保留及安全投影已可用；证据完整性不认证身份/历史真实性；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
+| PS13 | 决策轨迹与证据归因 | 默认两例v1/完整五例v2安全证据投影与check、原始失败/manifest/回执保留已合入；不是运行真实性或身份认证，持久决策检索仍欠缺。 |
 | PS14 | 性能结论审查 | 性能审查方法与合成数例可用；无因果性能提升结果 |
 | PS15 | 有预算的 hillclimb 与盲评 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
 | PS16 | 自包含单元与协调者边界 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
-| PS17 | 栈前沿与候选绑定验证 | PR readiness材料+候选绑定实践；单次只读候选快照工具已随PR307合并，自动栈前沿服务未接线；#301紧凑证据及PR候选报告材料已合并，不新增运行时。 |
-| PS18 | forge 观察器分类 | 一次forge状态分类方法；单次只读观察工具已随PR307合并，legacy StatusContext/CheckRun分类修复候选另列，未移植持续watch-pr观察器；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
+| PS17 | 栈前沿与候选绑定验证 | PR307单PR稳定候选快照已合入；1–3 PR有序前沿报告候选8e830已实现验证但未发布；自动发现、持续watch、变更/合并授权均未提供。 |
+| PS18 | forge 观察器分类 | PR307有界只读PR观察已合入，308修StatusContext、309修CheckRun分类；缺失/未知不误绿，既有neutral/skipped政策单列。持续watcher/自动重置未实现。 |
 | PS19 | 暂停与恢复对账 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
-| PS20 | 跨宿主方法适配 | 四入口双host导出；历史Codex和Claude各一次有界实际修复已记录；新当前packet任务Codex修复完成，Claude材料完整送达但未修复。历史材料60/64与失败不改；全方法等价/强制context/资格未通过 |
+| PS20 | 跨宿主方法适配 | 四入口双host导出；Codex历史checker与Claude历史exporter各有一次有界真实修复闭环，Claude材料读取不全，旧失败保留；尚无全方法等价/强制context/资格激活。 |
 | PS21 | 来源快照与能力资格验证 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
 | PS22 | 事件 intake 与补偿模式 | Benny/外部事件intake补偿未启用或移植 |
 | PS23 | 使用方式驱动的接口与文档设计 | caller-first architecture、验证材料与文档；三条冻结地图和冷用户验收未全通过 |
@@ -89,3 +93,10 @@ Final PR308 closure 2026-10-30T00:46:39.573481+00:00: head4a7ee75d is Ready on a
 
 
 User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612bc equals published4a7. Card7e0b1be2 done for the bounded slice. PR309 fc272c63 now targets main, tree equals f31 and complete16path delta unchanged; fresh verification/newCI40982097784 running. Historical parentCI40979844215 remains f31→4a,22packages7230pass7skip0fail (not local7232/5). Three-agent dispatch resumes: A implements ordered1–3 PR stack-frontier report after C independent freeze; C independently verifies; B revalidates309; root uniquely owns PR/ledger/full. New card6962ab52 contributes PS17 with PS18/13/J07 support, J20 design only. No new method/host budget or formal gate.
+
+
+## 2026-10-30：309 已合并，顺序候选核对进入发布
+
+用户于01:13:25Z合并309；actual main e4643324/treeafb6等fc272。309新main CI40982097784五适用SUCCESS/paidSKIP，check/Test22包7230pass7skip0fail；原完整log与Ready→merge回执保留，不重标旧localfull。
+
+新有界工具只读核对显式1–3个PR顺序，不新增method。root540全仓22包7261pass5skip0fail，8784tracked执行期间字节同，初始4freshdistdirty，非clean committed tree；后单独CLI显示修复及docs/main合并不冒充finalfull。最终代码/文档8e830561在actualmain e464上224GitHub/29CLI/94export通过。C42场景58断言；Sonnet初静态PASS附真实autolink/bidi缺陷，作者同29CLI RED17/12→GREEN29，独立Pandoc10例旧7fail→新全过，限定SonnetclosurePASS，原意见和失败保留。一次真实308→309八查询在01:05历史时点识别mergedprefix/frontier且保留draft/checkpending/reviewrequired；不是Ready/merge授权或当前状态。card6962ab52贡献PS17，PS18/13/J07支持、J20设计；32J formalfalse和24PS20partial4deferred0whole不变。下一需求由源驱动选题，不重跑旧宿主失败翻绿。

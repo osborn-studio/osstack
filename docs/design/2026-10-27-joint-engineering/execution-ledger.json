@@ -25,7 +25,7 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "a250ad88163132675d33dfe163c2e7e409443846",
+  "main_sha": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
   "observed_at": "2026-10-30T00:51:07.891452+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
@@ -4824,7 +4824,7 @@
       "historical_bindings_unchanged": true
     }
   },
-  "main_observed_at": "2026-10-30T00:51:07.891452+00:00",
+  "main_observed_at": "2026-10-30T01:17:00.042885+00:00",
   "pr304_main_retarget": {
     "observed_at": "2026-10-29T10:09:34.304403+00:00",
     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
@@ -5515,7 +5515,7 @@
   "stack_checkrun_state_slice": {
     "observed_at": "2026-10-30T00:25:03.449316+00:00",
     "card": "card_14b72dd7",
-    "status": "draft_actual_main_revalidation",
+    "status": "merged_by_user",
     "main_sha": "a250ad88163132675d33dfe163c2e7e409443846",
     "parent_pr": 308,
     "parent_head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
@@ -5598,8 +5598,19 @@
       "head_sha": "fc272c631885fe39049c488dbfd60c708d2a6bdb",
       "base": "main",
       "base_sha": "a250ad88163132675d33dfe163c2e7e409443846",
-      "status": "in_progress",
-      "observed_at": "2026-10-30T00:51:07.891452+00:00"
+      "status": "completed",
+      "applicable_success": 5,
+      "paid": "SKIPPED",
+      "actual_checkout": "4e51a4048b30281e54ffc9534a8456c9ff726f34",
+      "packages": 22,
+      "passed": 7230,
+      "skipped": 7,
+      "failed": 0,
+      "export_total": 94,
+      "export_passed": 93,
+      "export_skipped": 1,
+      "record": "docs/implementation/pr309-main-retarget/ci-final",
+      "remote_artifacts_downloaded": false
     },
     "retarget_tree_equals_previous": true,
     "actual_main_validation": {
@@ -5614,10 +5625,15 @@
       "new_local_full": false,
       "new_audit": false,
       "prior_product_audit_source_unchanged": true
-    }
+    },
+    "merge_commit": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+    "merged_at": "2026-10-30T01:13:25Z",
+    "merged_by": "gilberthello",
+    "merge_tree_equals_published": true,
+    "card_status": "done"
   },
   "next_stack_frontier_proposal": {
-    "status": "implementation_in_progress_after_freeze",
+    "status": "implemented_in_candidate_not_yet_merged",
     "record": "docs/implementation/stack-checkrun-state/next-selection",
     "scope": "one-shot explicit ordered 1-3 PR report; only stable merged prefix advances observed frontier; all unknowns and merge_authorized:false retained",
     "deferred": [
@@ -5630,9 +5646,9 @@
     "formal_gate_pass": false
   },
   "stack_frontier_slice": {
-    "status": "implementing_after_independent_freeze",
+    "status": "validated_actual_main_preparing_publication",
     "card": "card_6962ab52",
-    "base_main": "a250ad88163132675d33dfe163c2e7e409443846",
+    "base_main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
     "primary_capability": "PS17",
     "supports": [
       "PS18",
@@ -5644,12 +5660,99 @@
     ],
     "scope": "one-shot explicit ordered 1-3 PR report; no historical comparison/DB refresh/watcher/retarget/merge",
     "author": "loader_adversarial",
-    "independent": "cleanup_regression",
+    "independent": {
+      "criteria_sha256": "aa5bc3155f15c3d7a97ca11de1746dd84465c8668e18cb1148e242901fb4a492",
+      "scenarios": 42,
+      "assertions": 58,
+      "post_audit_markdown_cases": 10,
+      "old_failed": 7,
+      "repaired_passed": 10,
+      "renderer": "Pandoc 3.9.0.1 GFM HTML; not all renderers"
+    },
     "root": "PR/shared ledger/full queue",
     "formal_gate_pass": false,
     "new_methods": 0,
     "new_host_model_calls": 0,
     "criteria_sha256": "aa5bc3155f15c3d7a97ca11de1746dd84465c8668e18cb1148e242901fb4a492",
-    "criteria_frozen_at": "2026-10-30T00:50:35.243530+00:00"
+    "criteria_frozen_at": "2026-10-30T00:50:35.243530+00:00",
+    "author_sha": "ad38b017876a84b6333c67a47acc98ebb8b5b848",
+    "markdown_repair_author_sha": "2348c82522030c63e4d0c1125dd0c361cda3fca4",
+    "root_code_docs_sha": "8e830561e09f4754d3410003c24216d8db49aa6c",
+    "root_full": {
+      "head": "540cd7a50fd044aa3c5b39f2f0ea62bfcec6ebe9",
+      "started_at": "2026-10-30T01:05:37.149443+00:00",
+      "finished_at": "2026-10-30T01:13:59.860952+00:00",
+      "exit_code": 0,
+      "tracked_files": 8784,
+      "tracked_bytes_unchanged": true,
+      "initial_dirty": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n",
+      "changed": []
+    },
+    "root_full_counts": {
+      "packages": 22,
+      "passed": 7261,
+      "skipped": 5,
+      "failed": 0
+    },
+    "actual_main_focused": {
+      "github": 224,
+      "stack_cli": 29,
+      "method_export": 94
+    },
+    "live_observation": {
+      "source_sha": "540cd7a50fd044aa3c5b39f2f0ea62bfcec6ebe9",
+      "order": [
+        308,
+        309
+      ],
+      "requests": 8,
+      "result": "308 stable merged prefix,309 open frontier with draft/checks_pending/review_required retained",
+      "at": "2026-10-30T01:05:49.542Z",
+      "retries": 0,
+      "historical_not_current_status": true
+    },
+    "audit": "Actual Sonnet5.5 initial static PASS with confirmed low-severity Markdown defect; original suggestion itself retained with correction; repaired CLI RED17pass12fail then GREEN29, limited closure PASS. No host experiment.",
+    "record": "docs/implementation/pr-stack-candidate",
+    "whole_capability_complete": false,
+    "archive": {
+      "archive_sha256": "2a26d78cafcedc9befbc7eead73150fc610674fc4caf716bd6286d0099c43fe6",
+      "manifest_sha256": "9427827db90e0105ae5f76d91e9045e1c643705760f4b4e14d8b0932caae467b",
+      "members": 1124,
+      "files": 936,
+      "symlinks": 3,
+      "file_bytes": 19356574,
+      "archive_bytes": 10215436,
+      "verification": "root all names/type/mode/hash/size/target verified"
+    }
+  },
+  "pstack_stage_acceptance": {
+    "status": "reconciliation_complete_scoped_user_acceptance_pending",
+    "card": "card_676712c1",
+    "new_feature_expansion": "paused_for_stage_acceptance",
+    "record": "docs/implementation/pstack-stage-acceptance/README.md",
+    "original_scope": {
+      "capabilities": 24,
+      "work_packages": 19,
+      "acceptance_cases": 48
+    },
+    "scope": "原C0/C1/C2仍有效；S1–S3仅现有工具可独立验收建议，S4为受限宿主观察清单，不替换原集成范围。",
+    "all_pstack_complete": false,
+    "user_accepted": false,
+    "scope_change_approved": false,
+    "firstmate_started": false,
+    "formal_joint_gate_pass": false,
+    "new_upstream_policy": "4dd1单列升级评估，不追加旧验收门槛也不删除原欠账。",
+    "coverage_counts": {
+      "direct_component_evidence": 4,
+      "partial": 31,
+      "unimplemented": 10,
+      "unknown": 3,
+      "is_test_pass_rate": false
+    },
+    "actual_audit": "Sonnet5.5 report accuracy PASS_WITH_CORRECTIONS, R1–R7 limited closure PASS; not product/host/user acceptance",
+    "archive_sha256": "6fc0e7a39ad2503f22ea6275aa6e60ed78ec72c5cf6f3a1a3a8b93047ec62642",
+    "next_scope": "原C0→C1→C2必要收口；不新增方法/广义扩展，不先铺开Firstmate深runtime。具体新实现须按既有门槛冻结独占范围与验证。",
+    "board_status": "blocked",
+    "blocked_meaning": "仅等待用户对现有工具范围的验收；不表示原集成已完成或撤回持续开发授权。"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "args": [
+    "gh",
+    "pr",
+    "ready",
+    "309",
+    "--repo",
+    "osborn-studio/osstack"
+  ],
+  "exit_code": 0,
+  "at": "2026-10-30T01:12:28.043109+00:00"
+}
