@@ -54,6 +54,8 @@ Per-PR query receipts retain the collector's requested timeout. `dispatches.json
 
 Exit **0** means the report was written, even when it contains failures, unknown check policy, changed candidates or a closed PR. Exit **2** means preflight refused the plan/output/build; no forge calls occur. Exit **3** means at least one candidate's identity/observation was unavailable, or writing failed. Retain a partial output and inspect it. Do not use the process exit as a Ready verdict.
 
+Rendered Markdown encodes punctuation and non-ASCII text; the raw `.md` is less readable in a terminal. A literal escape-looking branch name can display like a visible control escape, so use the retained JSON for exact identity. This is limited display hardening, not a general confusable-character defense. The independent renderer observation applies to the tested Pandoc GFM version, not all host renderers.
+
 ## Bounds and reuse
 
 The closed plan requires `schema_version: 1`, one repository, a nonempty target base of at most 256 characters without ASCII controls/DEL, and one to three unique PR rows. Unknown keys are rejected. The plan reader rejects a terminal symlink, directory, invalid UTF-8 and oversized file. It preserves the bytes read, not a concurrent-writer lock. Parent-directory symlinks in output paths are resolved for containment; this is not an OS sandbox or a defense against concurrent parent replacement.
