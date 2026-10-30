@@ -10,6 +10,22 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import * as yaml from "js-yaml";
 
+// Keep the registration boundary aligned with source-snapshot's Git path rules.
+// Registration does not cause watcher or normalization consumers to adopt a subtree.
+function validSubdir(path: string): boolean {
+  if (path === ".") return true;
+  const segments = path.split("/");
+  return path.length > 0 && Buffer.byteLength(path) <= 512 && segments.length <= 64
+    && !/[\\:]/.test(path) && ![...path].some(c => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
+    && !path.startsWith("/")
+    && segments.every(part => part !== "" && part !== "." && part !== ".." && !/[. ]$/.test(part) && part.toLowerCase() !== ".git");
+}
+
+function validVersionLabel(value: string): boolean {
+  return value.length > 0 && value.trim() === value && Buffer.byteLength(value) <= 128
+    && ![...value].some(c => c.charCodeAt(0) < 32 || (c.charCodeAt(0) >= 127 && c.charCodeAt(0) <= 159));
+}
+
 export const SkillSource = z.object({
   /** Stable identifier (e.g. "gstack", "everything-claude-code", "anthropic-skills"). */
   id: z.string().min(1),
@@ -20,6 +36,10 @@ export const SkillSource = z.object({
   /** Branch or tag pin. Use a tag when you want stability; branch when you
    *  trust the upstream. Default "main". */
   ref: z.string().default("main"),
+  /** Registered repository-relative subtree. No consumer activation is implied. */
+  subdir: z.string().refine(validSubdir, "Expected a relative Git subtree").default("."),
+  /** Package label, independent of the Git ref and blessed commit. */
+  package_version: z.string().refine(validVersionLabel, "Invalid package version label").nullable().default(null),
   /** SHA we currently consider blessed. Null until the first ingest. */
   blessed_sha: z.string().nullable().default(null),
   /** Last time we successfully checked the origin (ISO 8601). */
@@ -28,14 +48,14 @@ export const SkillSource = z.object({
   auto_minor: z.boolean().default(false),
   /** Optional notes the user keeps about why this skill is tracked. */
   notes: z.string().default(""),
-});
+}).strict();
 
 export type SkillSource = z.infer<typeof SkillSource>;
 
 export const SkillManifest = z.object({
   version: z.literal(1).default(1),
   sources: z.array(SkillSource).default([]),
-});
+}).strict();
 
 export type SkillManifest = z.infer<typeof SkillManifest>;
 

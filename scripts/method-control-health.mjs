@@ -84,6 +84,7 @@ async function classifyFailure(journeyDir, manifest, j, packet, onRead) {
   for (const f of j.features) {
     if (f.verification !== 'failed') continue;
     const phase = f.driver_exit === null ? 'doctor' : 'drive';
+    let ordinaryDriveFailure = false;
     try {
       const command = parse(await boundMember(journeyDir, manifest, `${f.case_id}-${phase}.command.json`, onRead));
       const stdout = await boundMember(journeyDir, manifest, `${f.case_id}-${phase}.stdout`, onRead);
@@ -92,7 +93,11 @@ async function classifyFailure(journeyDir, manifest, j, packet, onRead) {
         let doctor; try { doctor = parse(stdout); } catch { /* Unknown diagnostic shape stays unknown below. */ }
         if (doctor?.ready === false && doctor.executed === false && equal(doctor.cases, [f.case_id]) && Array.isArray(doctor.checks) && doctor.checks.some(x => typeof x.id === 'string' && x.ok === false)) return 'environment_blocked';
       }
-      if (command.timed_out === true || command.output_limited === true || command.interrupted === true || command.signal || command.killed === true || command.error || (Number.isInteger(command.exit_code) && command.exit_code !== 0)) return 'tool_failure';
+      if (command.timed_out === true || command.output_limited === true || command.interrupted === true || command.signal || command.killed === true || command.error) return 'tool_failure';
+      if (Number.isInteger(command.exit_code) && command.exit_code !== 0) {
+        if (phase === 'doctor') return 'tool_failure';
+        ordinaryDriveFailure = true;
+      }
     } catch { /* An unverified phase cannot justify a category. */ }
     // For a retained failed case, inspect the exact original files already sealed by the common verifier.
     if (f.evidence_state === 'sealed') {
@@ -112,6 +117,8 @@ async function classifyFailure(journeyDir, manifest, j, packet, onRead) {
         if (result.verification_status === 'failed' && result.errors.some(x => x === 'exit_mismatch' || x === 'summary_mismatch' || x === 'unexpected_stderr' || x.startsWith('source_output_mismatch:'))) return 'observed_product_deviation';
       } catch { /* Unsupported failed case shapes are not guessed into product failures. */ }
     }
+    // The driver also exits nonzero when its sealed observation detects product deviation.
+    if (ordinaryDriveFailure) return 'tool_failure';
   }
   return 'unknown';
 }
@@ -222,7 +229,7 @@ export async function inspectMethodControlHealth(input, { onRead } = {}) {
     const attempts = [];
     for (const attempt of f.attempts) attempts.push(await inspectAttempt(root, f, attempt, asOf, onRead));
     features.push({ feature_id: f.feature_id, owner: { status: f.owner_ref === null ? 'unassigned' : 'configured', ref: f.owner_ref, configuration_sha256: sha256(bytes) }, selection_reasons: reasons.get(f.feature_id), attempts,
-      ...summarize(attempts, asOf, config.max_age_seconds), limitations: ['Only fixed five skills-check maintenance; feature mapping is project-declared.', 'Retained hashes and caller-configured versions are not authentication or live freshness.', 'Owner declaration grants no permissions. Unknown owner remains unassigned.'] });
+      ...summarize(attempts, asOf, config.max_age_seconds), limitations: ['Only fixed five skills-check maintenance; feature mapping is project-declared.', 'Retained hashes and caller-configured versions are not authentication or live freshness.', 'Owner declaration grants no permissions. Unknown owner remains unassigned.', 'Attempt history is caller-declared; omitted attempts cannot be detected.', 'Driver digest covers the wrapper file, not transitive imports.', 'Failure diagnostics are untrusted retained producer strings.', 'Required-feature links select affected reports; they do not propagate health.'] });
   }
   return { schema_version: 1, project: config.project, config_sha256: sha256(bytes), as_of: input.asOf, schedule: 'not_configured', notifications: 'none', execution: 'not_run', mapping_basis: 'project_declared', features,
     omitted: config.features.filter(f => !selected.has(f.feature_id)).map(f => ({ feature_id: f.feature_id, reason: 'not_affected' })), unmapped_changed_paths: changed.filter(path => !config.features.some(f => f.changed_paths.includes(path))), qualification: 'none' };
@@ -245,4 +252,4 @@ export async function main(args) {
     const report = await inspectMethodControlHealth(input); process.stdout.write(`${JSON.stringify(report, null, 2)}\n`); return 0;
   } catch (error) { process.stderr.write(`${JSON.stringify({ schema_version: 1, error: safeError(error) })}\n`); return 2; }
 }
-if (process.argv[1] && await realpath(process.argv[1]).catch(() => null) === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
+if (process.argv[1] && await realpath(process.argv[1]).catch(() => null) === await realpath(fileURLToPath(import.meta.url)).catch(() => null)) process.exitCode = await main(process.argv.slice(2));

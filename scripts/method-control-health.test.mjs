@@ -8,6 +8,14 @@ import { spawnSync } from 'node:child_process';
 import { createScratchDir } from './lib/scratch.mjs';
 import { sha256, jsonBytes, sealEvidence, evaluateCase, caseDefinition } from './lib/skills-check-verification.mjs';
 import { inspectMethodControlHealth } from './method-control-health.mjs';
+test('CLI help remains observable through a preserved symlink main', async t => {
+  const root = await setup(t);
+  await symlink(resolve('scripts'), join(root, 'scripts'), 'dir');
+  const result = spawnSync(process.execPath, ['--preserve-symlinks-main', join(root, 'scripts', 'method-control-health.mjs'), '--help'], { encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Usage: node scripts\/method-control-health.mjs/);
+  assert.equal(result.stderr, '');
+});
 async function setup(t) {
   const root = await createScratchDir('tests', 'method-projection');
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -199,4 +207,45 @@ test('verified primary and subsequent diagnostics survive without changing class
 for (const [label,change] of [['primary bytes',r=>{r.failure='é'.repeat(2049);}],['subsequent bytes',r=>{r.subsequent_failures=['é'.repeat(2049)];}],['subsequent count',r=>{r.subsequent_failures=Array(33).fill('EIO');}]]) test(`oversized retained diagnostics stay unknown: ${label}`,async t=>{
  const f=await healthFixture(t);await f.changeReceipt(r=>{r.status='blocked';r.exit_code=2;r.failure='ENOENT';r.rows=[];r.journey.receipt_sha256=null;r.journey.receipt_matches_returned=null;r.journey.manifest_sha256=null;change(r);});
  const row=(await inspectMethodControlHealth(f.options)).features[0];assert.equal(row.health,'unknown');assert.ok(row.attempts[0].issues.includes('failure_shape'));
+});
+
+
+async function sealedFailedHealthFixture(t, { deviation = true, outerTimeout = false } = {}) {
+ const f=await healthFixture(t), dir=join(f.input,'cases/healthy');
+ const command=JSON.parse(await readFile(join(dir,'healthy.command.json')));
+ command.exit_code=deviation?1:0;
+ const definition=JSON.parse(await readFile(join(dir,'expectations.json'))).definitions[0];
+ const stdout=await readFile(join(dir,'healthy.stdout'),'utf8');
+ const observed=evaluateCase(definition,{...command,stdout,stderr:''},true);
+ await put(join(dir,'healthy.command.json'),command);
+ await edit(join(dir,'healthy.json'),r=>Object.assign(r,command,observed));
+ await edit(join(dir,'receipt.json'),r=>{r.status='failed';r.driver_exit=1;r.failure='case_failed';r.behavior=deviation?'failed':'passed';r.cases=[observed];});
+ await edit(join(dir,'run.json'),r=>{r.status='failed';});
+ await rm(join(dir,'manifest.json'));await sealEvidence(dir,'00000000-0000-4000-8000-000000000000');
+ f.journey.status='failed';f.journey.failure='driver_failed';
+ Object.assign(f.journey.features[0],{verification:'failed',product_exit:null,reported_product_exit:command.exit_code,product_status:'unknown',driver_exit:1,cleanup:{status:'unknown',descendant_termination:'not_attested'}});
+ for(const row of f.journey.features)row.journey_status='failed';
+ await put(join(f.input,'healthy-drive.command.json'),{exit_code:1,timed_out:outerTimeout,output_limited:false,interrupted:false,signal:null,killed:false,error:null});
+ await writeFile(join(f.input,'healthy-drive.stdout'),await readFile(join(dir,'receipt.json')));await writeFile(join(f.input,'healthy-drive.stderr'),'');
+ await put(join(f.input,'journey.json'),f.journey);await sealRoot(f.input);
+ const journeyHash=sha256(await readFile(join(f.input,'journey.json'))), manifestHash=sha256(await readFile(join(f.input,'journey-manifest.json')));
+ await f.changeReceipt(r=>{r.status='blocked';r.exit_code=2;r.failure='journey_failed';r.rows=[];r.journey.status='failed';r.journey.failure=f.journey.failure;r.journey.features=f.journey.features;r.journey.receipt_sha256=journeyHash;r.journey.manifest_sha256=manifestHash;});
+ return f;
+}
+test('sealed observed product deviation takes precedence over ordinary drive failure exit',async t=>{
+ const f=await sealedFailedHealthFixture(t),row=(await inspectMethodControlHealth(f.options)).features[0];
+ assert.equal(row.attempts[0].integrity,'verified_retained');assert.equal(row.health,'observed_product_deviation');assert.equal(row.attempts[0].cause,'unknown');assert.equal(row.last_success,null);
+});
+test('outer process timeout remains tool failure despite retained product deviation',async t=>{
+ const f=await sealedFailedHealthFixture(t,{outerTimeout:true});assert.equal((await inspectMethodControlHealth(f.options)).features[0].health,'tool_failure');
+});
+test('ordinary drive failure without observed product deviation remains tool failure',async t=>{
+ const f=await sealedFailedHealthFixture(t,{deviation:false});assert.equal((await inspectMethodControlHealth(f.options)).features[0].health,'tool_failure');
+});
+test('doctor command failure without valid unmet prerequisites remains tool failure',async t=>{
+ const f=await healthFixture(t,{doctorFailure:true});
+ await put(join(f.input,'healthy-doctor.command.json'),{exit_code:1,timed_out:false,output_limited:false,interrupted:false,signal:null,killed:false,error:null});
+ await writeFile(join(f.input,'healthy-doctor.stdout'),'not a doctor report');await sealRoot(f.input);
+ const manifestHash=sha256(await readFile(join(f.input,'journey-manifest.json')));await f.changeReceipt(r=>{r.journey.manifest_sha256=manifestHash;});
+ assert.equal((await inspectMethodControlHealth(f.options)).features[0].health,'tool_failure');
 });
