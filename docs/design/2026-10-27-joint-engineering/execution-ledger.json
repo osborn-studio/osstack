@@ -25,7 +25,7 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+  "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
   "observed_at": "2026-10-29T05:24:40.943500+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
@@ -4824,7 +4824,7 @@
       "historical_bindings_unchanged": true
     }
   },
-  "main_observed_at": "2026-10-29T17:51:25.186183+00:00",
+  "main_observed_at": "2026-10-30T00:10:59.539925+00:00",
   "pr304_main_retarget": {
     "observed_at": "2026-10-29T10:09:34.304403+00:00",
     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
@@ -5239,7 +5239,7 @@
     "merged_at": "2026-10-29T17:49:32Z"
   },
   "pr_candidate_snapshot_slice": {
-    "status": "ready_waiting_user_merge",
+    "status": "merged_scoped_slice",
     "card": "card_55808960",
     "base_main": "e79fc92687c144969ad91242a979d904f2b2acdf",
     "capabilities": [
@@ -5363,10 +5363,12 @@
       "skipped": 7,
       "failed": 0
     },
-    "ci_actual_checkout": "f98544d70774082c1e747b960a0148ec35563a94"
+    "ci_actual_checkout": "f98544d70774082c1e747b960a0148ec35563a94",
+    "merge_commit": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "merged_at": "2026-10-30T00:05:05Z"
   },
   "stack_status_context_slice": {
-    "status": "draft_waiting_parent307_merge_main_validation",
+    "status": "draft_actual_main_revalidation",
     "card": "card_7e0b1be2",
     "base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
     "primary_capability": "PS18",
@@ -5435,8 +5437,8 @@
     },
     "archive_independent_sha256": "150f646eee40cd0ffac891bd3bfa28897f54da6f9c3623258248bb65dd22e8ad",
     "pr": 308,
-    "head_sha": "b4a2fc30711d9c3ad5cddbc846839948f1810c56",
-    "base_branch": "codex/pr-candidate-snapshot-delivery",
+    "head_sha": "6d97897325efdeea47d86f3ae169c72907b74d6e",
+    "base_branch": "main",
     "ci_run": 40930144304,
     "ci_applicable_success": 5,
     "ci_paid": "SKIPPED",
@@ -5447,5 +5449,31 @@
       "failed": 0
     },
     "ci_actual_checkout": "c323e040a627a3e97f67e39987e061ca7e6852a0"
+  },
+  "post307_dispatch": {
+    "observed_at": "2026-10-30T00:10:59.539925+00:00",
+    "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "main_tree": "78d30c84714205fff903b9f23b249c230e3f3b08",
+    "pr307_merged_at": "2026-10-30T00:05:05Z",
+    "pr307_tree_equals_published": true,
+    "pr308": {
+      "head": "6d97897325efdeea47d86f3ae169c72907b74d6e",
+      "base": "main",
+      "tree_equals_old_b4a": true,
+      "draft": true,
+      "ci_run": 40977980388,
+      "validation": "running; historical CI not relabeled"
+    },
+    "next_slice": {
+      "card": "card_14b72dd7",
+      "scope": "CheckRun exceptional and incomplete states cannot be successful; preserve explicit neutral/skipped policy and legacy StatusContext",
+      "author": "loader_adversarial",
+      "independent": "cleanup_regression",
+      "retarget_validation": "terminal_preflight",
+      "status": "criteria/RED implementation in progress",
+      "formal_gate_pass": false,
+      "new_methods": 0,
+      "host_model_calls": 0
+    }
   }
 }

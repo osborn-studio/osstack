@@ -157,3 +157,8 @@ PR302由root在五项适用CI成功后转Ready，用户审批合并。root中央
 
 
 2026-10-29 18:56UTC update: PR307 head8fd28911 now Ready/main after CI40929858660 five applicable SUCCESS/paid SKIP, root readiness mutation and readback confirmed. User approval/merge still required. PR308 headb4a2fc30 CI40930144304 also has five applicable SUCCESS/paid SKIP but remains Draft on parent307; actual-main retarget/revalidation is still required after user merge307. Both activity cards are blocked solely on their stated merge dependency, not formal qualification. Original lint/inventory failures remain preserved.
+
+
+## 2026-10-30：307 合并后的执行窗口
+
+#307 已由用户合入 main `de43f47c29d5c08ae6e6c5eb366767320ffcdd0c`，合并树等已发布8fd。#308 已以 `6d978973` 改为main，树等原b4a，CI40977980388与新鲜定向复验进行中，保持Draft。三个子代理分别承担主线复验、CheckRun异常状态修复、预冻结独立反例验证；OSStack新卡card_14b72dd7贡献PS18并支持PS17/J07，root独占PR/中央账本/full队列。异常或不完整CheckRun不能误判成功，neutral/skipped既有显式政策保留。没有新增方法或正式资格通过，历史失败/CI不改写。
