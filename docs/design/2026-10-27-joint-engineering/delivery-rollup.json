@@ -11290,10 +11290,23 @@
       "status": "in_progress",
       "observed_at": "2026-10-30T00:51:07.891452+00:00"
     },
-    "retarget_tree_equals_previous": true
+    "retarget_tree_equals_previous": true,
+    "actual_main_validation": {
+      "head": "fc272c631885fe39049c488dbfd60c708d2a6bdb",
+      "github_passed": 195,
+      "candidate_cli_passed": 14,
+      "frozen_vectors_passed": 57,
+      "undefined_control": "separate passed",
+      "docs_passed": 241,
+      "hygiene_passed": 1,
+      "record": "docs/implementation/pr309-main-retarget",
+      "new_local_full": false,
+      "new_audit": false,
+      "prior_product_audit_source_unchanged": true
+    }
   },
   "next_stack_frontier_proposal": {
-    "status": "selected_implementation_dispatched_awaiting_independent_freeze",
+    "status": "implementation_in_progress_after_freeze",
     "record": "docs/implementation/stack-checkrun-state/next-selection",
     "scope": "one-shot explicit ordered 1-3 PR report; only stable merged prefix advances observed frontier; all unknowns and merge_authorized:false retained",
     "deferred": [
@@ -11306,7 +11319,7 @@
     "formal_gate_pass": false
   },
   "stack_frontier_slice": {
-    "status": "implementation_dispatched_awaiting_independent_freeze",
+    "status": "implementing_after_independent_freeze",
     "card": "card_6962ab52",
     "base_main": "a250ad88163132675d33dfe163c2e7e409443846",
     "primary_capability": "PS17",
@@ -11324,6 +11337,8 @@
     "root": "PR/shared ledger/full queue",
     "formal_gate_pass": false,
     "new_methods": 0,
-    "new_host_model_calls": 0
+    "new_host_model_calls": 0,
+    "criteria_sha256": "aa5bc3155f15c3d7a97ca11de1746dd84465c8668e18cb1148e242901fb4a492",
+    "criteria_frozen_at": "2026-10-30T00:50:35.243530+00:00"
   }
 }
