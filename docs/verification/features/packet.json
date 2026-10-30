@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "feature_id": "packet",
+  "user_outcome": "Project and check a retained journey packet / 投影并检查留存旅程证据包",
+  "source_revision": "scripts/method-verification-journey.mjs@sha256:b030e182adaf06db6a7941afeb0a79ec5a74e3101aaab36a56475a6de92025ab",
+  "driver_version": "scripts/project-method-journey-evidence.mjs@sha256:f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+  "entries": [
+    {
+      "id": "project-full-packet",
+      "surface": "cli",
+      "user_route": "node scripts/project-method-journey-evidence.mjs --input \"$journey_output\" --output \"$feature_root/packet-01\" --scope full"
+    },
+    {
+      "id": "check-packet",
+      "surface": "cli",
+      "user_route": "node scripts/project-method-journey-evidence.mjs --check \"$feature_root/packet-01\""
+    }
+  ],
+  "preconditions": [
+    {
+      "id": "checkout",
+      "kind": "runtime",
+      "description": "Use the actual OSStack checkout with the projector script and supported Node (Node 22 in this recipe). Projection/check reads files and does not require rebuilding or running a new product journey."
+    },
+    {
+      "id": "owned-scratch",
+      "kind": "runtime",
+      "description": "Set an explicit absolute owned OSSTACK_SCRATCH_ROOT, create its runtime parent and a fresh feature_root as described in README.md. Do not use a repository, bare volume root or serving home. The output directory must not exist; its parent must exist."
+    },
+    {
+      "id": "retained-full-journey",
+      "kind": "data",
+      "description": "Set journey_output to an absolute retained full five-case journey directory. Its manifest, journey record and declared case evidence must be closed, readable and consistent. Coherent failed journeys may be represented; unsealed/unreadable/inconsistent evidence is refused."
+    },
+    {
+      "id": "separate-packet",
+      "kind": "data",
+      "description": "The packet output must be new under the owned scratch root, with an existing parent, and neither contain nor be contained by the input journey. Keep invocation logs outside both input and packet directories."
+    }
+  ],
+  "drive_refs": [
+    "Read the required journey leaf to understand scope, original product/driver states and retained evidence. Selection of this dependency does not execute a new journey.",
+    "Run project-full-packet with sibling stdout/stderr/exit records. Only after projection exits 0 run check-packet and separately retain its stdout/stderr/exit.",
+    "Read packet.json and manifest.json, retaining original journey evidence unchanged. The packet contains all five rows at schema_version 2; the manifest envelope remains version 1."
+  ],
+  "observations": [
+    {
+      "predicate_id": "projection-result",
+      "observable": "Projection exit 0 returns status projected, input_opened_read_only true and formal_gate_pass false. Check exit 0 returns status valid, original_evidence_revalidated false and formal_gate_pass false. Either command exits 1 on rejection and 2 on invalid usage.",
+      "side_effects": [
+        "Projection reads the retained input and writes only a new packet directory plus separately captured logs. Check reads packet files only. Neither command executes the driver, product, model or provider."
+      ]
+    },
+    {
+      "predicate_id": "packet-scope",
+      "observable": "The full packet keeps failed/not_run/unknown rows and cleanup limits. It reports retained bytes and recorded claims, not live revalidation. Hash consistency does not authenticate the producer, prove consumer understanding or turn historic observations into a new product run.",
+      "side_effects": []
+    },
+    {
+      "predicate_id": "packet-inventory",
+      "observable": "The packet directory contains exactly packet.json and manifest.json. Keep check logs as siblings, since extra packet files fail inventory checking. Retain the original audit bundle separately.",
+      "side_effects": []
+    }
+  ],
+  "gotchas": [
+    "README.md gives shell preparation and variable meanings; do not execute command strings merely because the selector returns them.",
+    "source_revision binds one named source file and driver_version binds one named entry script by current SHA-256. These local pins do not cover every helper, dependency or compiled file; they are not build provenance.",
+    "Material selection and caller-reported bindings do not drive the product, resolve evidence authority or establish runtime coverage.",
+    "Projecting a full input requires --scope full. The default projection is the two-case version 1 path and refuses five-case input. Do not drop rows or rewrite scope to force acceptance.",
+    "--check accepts only the packet path and no --scope option; it infers supported packet version. A version-1-only consumer cannot silently discard the extra version-2 rows.",
+    "Projection can preserve a coherent failed journey; projected/valid does not mean the product passed. Some stricter projection checks, including nonempty retained Git SHA stderr, can reject evidence previously accepted by the journey verifier.",
+    "The packet omits raw environment and raw stderr rather than providing a generic redaction guarantee. Check task-specific input authorization before sharing; no external sharing is implied."
+  ],
+  "recovery_refs": [
+    "On projection rejection preserve the original bundle and sibling error/exit logs. Do not run check on a failed or partial projection, strip stderr, drop cases or rewrite old manifests to force acceptance.",
+    "If an authorized input/tool correction is established, retain earlier failure evidence and project to a different fresh packet directory. Missing/inconsistent evidence is not proof of a product failure or success.",
+    "On check rejection keep the packet and exact diagnostic. Inspect inventory, schema and hash mismatch; do not treat packet checking as a new live journey."
+  ],
+  "covered_entry_ids": [],
+  "known_gaps": [
+    "No new live evidence is attached; covered_entry_ids is empty and all entries remain unverified. Historical runs are not relabeled as this candidate.",
+    "Only local CLI routes are described; no UI/RPC, remote installation, host/model execution or complete A35/A48 qualification.",
+    "Maintenance owner is unassigned until project configuration names one. No health service, periodic scheduler, notification or automatic repair is configured.",
+    "Single-file source/driver pins do not attest transitive helpers, dependencies or compiled artifacts. Use retained run bindings when executing a separately authorized journey.",
+    "No evidence-authority resolver, authenticated producer, model delivery/understanding or original-evidence revalidation is supplied by packet checking."
+  ],
+  "last_live_evidence": []
+}

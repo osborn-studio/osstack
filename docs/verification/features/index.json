@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "feature_id": "maintenance",
+      "user_outcome": "Maintain the fixed-five expectation map / 核对并维护五案例期望地图",
+      "keywords": [
+        "maintenance",
+        "maintain",
+        "expectation",
+        "map",
+        "mismatch",
+        "repair-map",
+        "维护",
+        "期望",
+        "地图",
+        "修正"
+      ],
+      "surfaces": [
+        "cli"
+      ],
+      "leaf_ref": "maintenance.json",
+      "sha256": "39259707725c5f56f93d8d88cdd097bbee044de9a7862fc9676d3f0a88f9dc4f",
+      "required_feature_ids": [],
+      "maintenance_owner_ref": null
+    },
+    {
+      "feature_id": "journey",
+      "user_outcome": "Run the full skills-check journey / 实际驱动完整五案例验证旅程",
+      "keywords": [
+        "journey",
+        "full",
+        "drive",
+        "verify",
+        "fixtures",
+        "doctor",
+        "五案例",
+        "旅程",
+        "驱动",
+        "验证"
+      ],
+      "surfaces": [
+        "cli"
+      ],
+      "leaf_ref": "journey.json",
+      "sha256": "45625f70d75bfcc6f5dbfb474a4d341b0c8b0ff9a1cee8e08bedfbf5c3df7a1d",
+      "required_feature_ids": [],
+      "maintenance_owner_ref": null
+    },
+    {
+      "feature_id": "packet",
+      "user_outcome": "Project and check a retained journey packet / 投影并检查留存旅程证据包",
+      "keywords": [
+        "packet",
+        "project",
+        "projection",
+        "retained",
+        "inspect",
+        "evidence",
+        "check-packet",
+        "投影",
+        "证据包",
+        "留存"
+      ],
+      "surfaces": [
+        "cli"
+      ],
+      "leaf_ref": "packet.json",
+      "sha256": "905d490a741b15cb03ad09f5e6be34c9a617dcc82e4717d5bfac1a6b21ec18b0",
+      "required_feature_ids": [
+        "journey"
+      ],
+      "maintenance_owner_ref": null
+    }
+  ]
+}
