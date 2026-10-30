@@ -1,0 +1,7 @@
+{
+  "comment_id": 745,
+  "card_id": "card_00892d6e",
+  "author": "root",
+  "body": "本批已发布PR312 Draft/main，head418ffe02929845e73ef56372c8920b51a64b772d，https://github.com/osborn-studio/osstack/pull/312 。PR311已合main abcd9edf，不再依赖未合父分支。W19有界健康查询及P1来源登记已实现；e82adca9组合22包7304pass5skip0fail、199脚本定向、241文档通过。GitHub CI待终态，未Ready/未全W19验收。原失败、两实际静态审计和全归档均保留。下一步固定pstack0.15.36 c742dd61，把采用闭包/项目方法包接现有Loop与看板；不进入Firstmate深运行。",
+  "created_at": 1793351210.493
+}

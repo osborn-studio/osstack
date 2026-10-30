@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "members": [
+    {
+      "path": "README.md",
+      "bytes": 1635,
+      "mode": "0o644",
+      "sha256": "8d73af56ececd8a8af7a97d50517cb0e7eea9c4c6620c982a62ab0f7e832ed50"
+    },
+    {
+      "path": "actual-smoke-receipts.json",
+      "bytes": 22149,
+      "mode": "0o644",
+      "sha256": "f5248bc658339db2c0202edfdd1d8382c84567c2e73d071d4e8fa3193426e9ec"
+    },
+    {
+      "path": "full-log.command.json",
+      "bytes": 216,
+      "mode": "0o644",
+      "sha256": "5f1448df09ae991ede03aa932b6b8da398b7e5c8ce00cc518146423385708e90"
+    },
+    {
+      "path": "full-log.log",
+      "bytes": 2282664,
+      "mode": "0o644",
+      "sha256": "bca2d272c4c79e94d1f669d431353ce01635feb94764b4c616d96080b572106e"
+    },
+    {
+      "path": "full-log.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "key-excerpts.json",
+      "bytes": 3016,
+      "mode": "0o644",
+      "sha256": "90ad853ed9fe95e654f6987c5e3fcb1305394bb88231121aceceb6d02f4a1f0a"
+    },
+    {
+      "path": "package-results.json",
+      "bytes": 5239,
+      "mode": "0o644",
+      "sha256": "67a27650489fa931da8acdcb9d719204ec4d68347e1d9d78ddfe58f1ea236a97"
+    },
+    {
+      "path": "report.json",
+      "bytes": 8570,
+      "mode": "0o644",
+      "sha256": "8eea3c918eb8d936a019d5726ba208c04cd38754e2231f64ba09df3cf5afa866"
+    },
+    {
+      "path": "run-metadata.command.json",
+      "bytes": 318,
+      "mode": "0o644",
+      "sha256": "d6277b616461af44392081f17ffcb1dd06b40b9ce2bbb1828b37f3f4e28602f0"
+    },
+    {
+      "path": "run-metadata.json",
+      "bytes": 21382,
+      "mode": "0o644",
+      "sha256": "6152c917299cb6000c928a4dafffdba431a71f5b3caf092fec768342305b468d"
+    },
+    {
+      "path": "run-metadata.stderr",
+      "bytes": 0,
+      "mode": "0o644",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "script-results.json",
+      "bytes": 3759,
+      "mode": "0o644",
+      "sha256": "12909c307f5e2b7df91413f6c4d0935ad9f76a7f6d3fc50d873c14b91a0529df"
+    }
+  ],
+  "member_count": 12,
+  "total_bytes": 2348948
+}

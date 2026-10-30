@@ -1,6 +1,38 @@
-# Pinned sources and adaptation
+# Scoped sources and adaptation
 
-These instructions are independently worded OSStack adaptations of engineering practices in pstack, authored by poteto and distributed in `cursor/plugins`. The source consulted is pinned to commit `99b609a72323b70204eab407c622f436e858e112`, pstack version `0.15.32`. This pin identifies the material studied, not an installed dependency or a promise about later upstream versions.
+## Selected 0.15.36 material adoption
+
+The first repair slice updates only `bug-fix.md`, `investigation.md`, `code-review.md` and the shared `evidence.md`, plus this source declaration. The source is pstack **0.15.36**, commit `c742dd61706fbacc1b95f1a20b7b988cf096ce6c` in `cursor/plugins`. Upstream author: **Lauren Tan (poteto)**; license: **MIT, Copyright (c) 2026 Lauren Tan**. The exact Git blobs and file hashes were read locally and are recorded in the repository report `docs/implementation/pstack-adoption-bundle/MATERIAL-ADOPTION.md`. No upstream script ran.
+
+These are independently worded adaptations. They do not make the fourteen-method catalog a 0.15.36 port. All other method bodies and their old source attribution remain at the historical pin below. Shared evidence guidance can be used by those methods without claiming their own source was re-adopted.
+
+Selected original paths at the new commit:
+
+- [`pstack/LICENSE`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/LICENSE)
+- [`pstack/plugin.json`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/plugin.json)
+- [`pstack/skills/arena/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/arena/SKILL.md)
+- [`pstack/skills/create-verification-skill/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/create-verification-skill/SKILL.md)
+- [`pstack/skills/how/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/how/SKILL.md)
+- [`pstack/skills/interrogate/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/interrogate/SKILL.md)
+- [`pstack/skills/maintain-verification-skill/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/maintain-verification-skill/SKILL.md)
+- [`pstack/skills/poteto-mode/playbooks/bug-fix.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/poteto-mode/playbooks/bug-fix.md)
+- [`pstack/skills/poteto-mode/playbooks/investigation.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/poteto-mode/playbooks/investigation.md)
+- [`pstack/skills/principle-prove-it-works/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/principle-prove-it-works/SKILL.md)
+- [`pstack/skills/principle-sequence-verifiable-units/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/principle-sequence-verifiable-units/SKILL.md)
+- [`pstack/skills/principle-test-behavior-not-implementation/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/principle-test-behavior-not-implementation/SKILL.md)
+- [`pstack/skills/tdd/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/tdd/SKILL.md)
+- [`pstack/skills/why/SKILL.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/why/SKILL.md)
+- [`pstack/skills/how/references/explainer-prompt.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/how/references/explainer-prompt.md)
+- [`pstack/skills/how/references/explorer-prompt.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/how/references/explorer-prompt.md)
+- [`pstack/skills/why/references/epistemics.md`](https://github.com/cursor/plugins/blob/c742dd61706fbacc1b95f1a20b7b988cf096ce6c/pstack/skills/why/references/epistemics.md)
+
+`how` and its two reference prompts supply architecture explanation structure. `why` and `epistemics.md` supply source/confidence separation. `arena` was read to resolve the new Interrogate dependency; its model selection, spawning and phases are **not** adopted. The old Interrogate rubric, lead-judgment and code-quality reference files are absent at this new pin; their historical links below stay bound to 0.15.32. Current review separates actual run-verified findings from OSStack static concerns instead of relabeling old text as the new workflow.
+
+External host dependencies are conditional: an authorized checkout, an existing controllable surface, available local checks and a configured OSStack execution profile/policy when using deliver. Source history and relevant external records can inform an investigation when accessible. No Grok, cloud agent, Cursor rule file, mandatory subagent fan-out, automatic PR, automatic merge, `/loop`, Firstmate runtime, new scheduler or periodic task is installed or assumed. Current user limits and human merge remain authoritative. References to other upstream skills are design context, not automatic imports; the precise exclusions are in Material adoption.
+
+## Historical 0.15.32 attribution for retained material
+
+These instructions are independently worded OSStack adaptations of engineering practices in pstack, authored by poteto and distributed in `cursor/plugins`. The original source consulted was pinned to commit `99b609a72323b70204eab407c622f436e858e112`, pstack version `0.15.32`. This pin identifies the material studied, not an installed dependency or a promise about later upstream versions.
 
 - [Feature playbook](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/feature.md): explicit behavior, domain shape, owned work decomposition and matching-surface verification.
 - [Refactoring playbook](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/poteto-mode/playbooks/refactoring.md): baseline behavior pin, smaller structural steps, caller migration and equivalence evidence.

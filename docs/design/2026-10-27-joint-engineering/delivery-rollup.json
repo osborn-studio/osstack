@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-30T08:53:54.524018+00:00",
+  "observed_at": "2026-10-30T09:49:34.877334+00:00",
   "main_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
   "main_tree": "88ea7afcc6f03ba7c63755c306f5814899101820",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
   "candidate_named_methods": null,
-  "candidate_status": "PR311 Ready/main; current-head CI complete; only human merge pending, original W18/C0/C1/C2 remain incomplete",
+  "candidate_status": "PR312 Ready/main only human merge pending; P2/P3 adoption/export validated candidate, actual Loop/card first use pending",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -8489,7 +8489,7 @@
     "board-mechanics.json": "7bb226703a077ddb0730c0520cee20a71564ce3f84da6fb62273e432cb8d957d",
     "pr301-current.json": "8cd7901845e6f46e987501b70a378c1fbd9ea92d244e92d88c3fb2beec82aa4f"
   },
-  "source_snapshot_limit": "Original reconciliation source windows and prior projections are retained in historical_source_snapshot_limit. Current main e464 and candidate8e830 are separately bound in pstack_stage_acceptance and stack_frontier_slice; old task observations and FAILED/LIMITED remain historical.",
+  "source_snapshot_limit": "Current main abcd9edf (PR311 merged); PR312 head418ffe02 is a Draft candidate. Current source baseline pstack0.15.36 c742dd61 is candidate-only. Prior source windows, task observations and FAILED/LIMITED are historical; separate bindings remain preserved.",
   "activity_relations": [
     {
       "card_id": "card_b504ee89",
@@ -11928,10 +11928,10 @@
     "docs_tests": 241
   },
   "next_pstack_implementation": {
-    "observed_at": "2026-10-30T08:53:54.524018+00:00",
-    "status": "fixed_version_source_registration_candidate",
+    "observed_at": "2026-10-30T09:49:34.877334+00:00",
+    "status": "fixed_material_adoption_export_candidate",
     "plan": "docs/implementation/pstack-fixed-release/PLAN.md",
-    "next_action": "P2 adoption closure at fixed0.15.36 then P3 one-host project-local use; P4 bug_fix compiler in parallel. Prefer existing Loop Engineering and kanban. W19 finite closeout, no new maintenance platform.",
+    "next_action": "P4 single bug_fix pure compiler binds registered checks; P5 mandatory material preinvoke wiring in existing deliver/Loop; P6 fresh real defect with durable receipt before same-card idempotent projection. No new maintenance platform or method-count target.",
     "firstmate_deep_runtime": "prohibited",
     "formal_gate_pass": false
   },
@@ -11981,7 +11981,7 @@
     "whole_capability_complete": false,
     "runtime_enabled": false,
     "firstmate_deep_runtime": "prohibited",
-    "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete",
+    "remaining": "W18 cross-entry actual host delivery; W19 bounded candidate in Ready PR312; original W17/C0 and C1/C2 incomplete",
     "pr": 311,
     "head_sha": "f70f40265ddfb1e419d6b8f5145d46c71060b9bc",
     "ci_run": 41014856944,
@@ -12024,7 +12024,7 @@
     "board_status": "done"
   },
   "maintenance_health_slice": {
-    "status": "validated_candidate_pending_publication_ci",
+    "status": "ready_human_merge_pending",
     "card_id": "card_00892d6e",
     "work_package": "W19",
     "record": "docs/implementation/pstack-maintenance-health/README.md",
@@ -12051,7 +12051,40 @@
     "original_failures_preserved": true,
     "formal_gate_pass": false,
     "runtime_enabled": false,
-    "whole_capability_complete": false
+    "whole_capability_complete": false,
+    "pr": 312,
+    "head_sha": "418ffe02929845e73ef56372c8920b51a64b772d",
+    "base_branch": "main",
+    "base_main": "abcd9edf008568d3c3d869df4afd9143b079ee64",
+    "ready": true,
+    "ci_run": 41030888483,
+    "current_head_ci": {
+      "run": 41030888483,
+      "status": "completed_success",
+      "head_sha": "418ffe02929845e73ef56372c8920b51a64b772d",
+      "synthetic_checkout": "084b291bb466caac718c41273c3045348948a548",
+      "base_main": "abcd9edf008568d3c3d869df4afd9143b079ee64",
+      "applicable_checks": 5,
+      "applicable_conclusion": "SUCCESS",
+      "paid_smoke": "SKIPPED",
+      "package_suite": {
+        "packages": 22,
+        "passed": 7302,
+        "skipped": 7,
+        "failed": 0
+      },
+      "health": 45,
+      "exports": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1
+      },
+      "log_sha256": "bca2d272c4c79e94d1f669d431353ce01635feb94764b4c616d96080b572106e",
+      "evidence": "docs/implementation/pstack-maintenance-health/ci-final",
+      "remote_artifacts_downloaded": false
+    },
+    "board_status": "blocked",
+    "blocked_reason": "Only gilberthello approval/merge of PR312"
   },
   "pstack_fixed_release": {
     "version": "0.15.36",
@@ -12062,15 +12095,59 @@
     "auto_upgrade": false,
     "source_files": 573,
     "source_inspection": "complete subtree resource_limit; statechart component408 inspected; dependency resolution and runtime not performed",
-    "registration": "subdir/package_version preserved with strict manifest; consumer adoption not implemented",
+    "registration": "subdir/package_version preserved; bounded declared component adoption implemented as candidate, not formal snapshot or semantic closure",
     "author_tests": "52 passed; old same suite43 failures",
     "independent_tests": "47 passed; old same vectors45 failures; mocked watcher",
     "plan": "docs/implementation/pstack-fixed-release/PLAN.md",
     "user_outcomes": {
-      "U1_fixed_method_bundle": "pending",
+      "U1_fixed_method_bundle": "partial: five materials adopted and both local layouts exported; actual host task pending",
       "U2_actual_bugfix_chain": "pending",
       "U3_formal_statechart": "pending"
     },
-    "formal_gate_pass": false
+    "formal_gate_pass": false,
+    "delivery_pr": 312,
+    "next_action": "P4 single bug_fix pure compiler binds registered checks; P5 mandatory material preinvoke wiring in existing deliver/Loop; P6 fresh real defect with durable receipt before same-card idempotent projection. No new maintenance platform or method-count target."
+  },
+  "pstack_adoption_bundle": {
+    "status": "validated_candidate_prepublication",
+    "card_id": "card_7c5152bc",
+    "record": "docs/implementation/pstack-adoption-bundle/README.md",
+    "source_commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
+    "version": "0.15.36",
+    "components": 11,
+    "unique_files": 51,
+    "unique_file_bytes": 174474,
+    "candidate_digest": "699ffdbbdd848f4e55dc0f7466d6bf21807b87306f2ff45ee436dc26ab26d7d3",
+    "declared_closure": "verified",
+    "semantic_completeness": "not_assessed",
+    "repository_identity": "caller_asserted",
+    "package_version_identity": "caller_asserted",
+    "updated_materials": 5,
+    "source_tests": 35,
+    "export_tests": 115,
+    "source_role_enum": [
+      "adopted_guidance",
+      "context_only",
+      "identity_license"
+    ],
+    "full": {
+      "code_sha": "2389dcd9f9f556df4c79e419bdc3e68561cba128",
+      "packages": 22,
+      "passed": 7334,
+      "skipped": 5,
+      "failed": 0,
+      "tracked_files": 9033,
+      "changed_files": [],
+      "initial_dirty": "four fresh knowledge/dist files plus untracked documentation; not clean committed tree",
+      "before_audit_fixes": true,
+      "final_code_full_claim": false
+    },
+    "actual_host_use": false,
+    "installation": "not_performed",
+    "runtime_enabled": false,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "firstmate_deep_runtime": "prohibited",
+    "original_failures_preserved": true
   }
 }

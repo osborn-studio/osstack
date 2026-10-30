@@ -1,15 +1,17 @@
 # 联合执行与交接
 
-## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
+最新发布：PR312 Ready/main，head `418ffe02929845e73ef56372c8920b51a64b772d`，CI41030888483五适用SUCCESS/paidSKIP，已Ready回读；只等gilberthello审批合并。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。新P2/P3候选已实现显式组件采用、五份固定版本材料与局部导出；尚无真实host首用/Loop同卡链。下一步P4纯编译→P5既有调用材料接入→P6当前真实缺陷同卡收据。Firstmate深运行禁止，正式资格不升级。
 
-PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。
+## 最新执行：固定 v0.15.36，接通 Loop Engineering 与看板首用（2026-10-30）
 
-本批W19健康查询及来源登记候选已通过199脚本定向检查；完整22包回归结果见JSON与原日志，绑定e82adca9，初始4fresh dist脏、执行期间8981 tracked字节不变。整合typecheck旧CLI mock缺字段的原失败与修复保留。health45、作者manifest/watcher52、独立47不可混为全方法资格。S1–S3阶段卡只等用户签收，不阻授权开发；其他板275/277过期merge原因已纠正，局部Done不升级runtime资格。原24PS/19W/48A及32J正式结果保持。
+固定 pstack0.15.36/c742dd61，不追上游main。本批[采用与导出](../../implementation/pstack-adoption-bundle/README.md)实际核11组件、51唯一文件174474bytes，更新五份bugfix/调查/评审/证据/来源材料；两种项目局部bundle可导出，来源角色及材料hash可检查。声明依赖闭包不等自动语义完整、认证或host送达；外部host/check仍not_checked。
+
+修订后来源35、export/provenance115定向通过，独立控制与实际两布局导出保留原件。full在审计小修前精确2389dcd9为22包7334pass5skip0fail，9033tracked字节前后同、初始4fresh dist脏；不重标最终whole-tree。Node26 transform与首次Node22 ABI环境失败、审计发现和修复均保留。W19到312有限收口，不扩健康平台。S1–S3只等用户签收，不阻开发；原24PS/19W/48A及32J正式状态不升级。
 
 
 ## 当前执行优先：pstack原范围验收对账
 
-实际main 01ec1852，PR310已合并。有序PR前沿工具已交付；当前推进原C0/W17有限调用体验，不扩张方法数量。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
+实际main abcd9edf，PR311已合并，PR312 Ready等待人类merge。当前P2/P3采用与局部导出候选完成代码/材料/独立验证，下一步P4单bugfix编译、P5既有Loop调用接入、P6当前真实缺陷同卡闭环。三槽负责源码、材料和独立验证，root独占中央/PR/full。未启动本批真实host任务；Firstmate深运行禁止。
 
 目标不变：吸收 Firstmate 的持续负责、监督和恢复能力，以及 pstack 的调查、设计、验证与工程方法，形成 OSStack 的统一能力。不能以完成基础设施代替两条端到端旅程。
 

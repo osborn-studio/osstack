@@ -4,6 +4,7 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, opendir, realpath, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
+import { inspectMethodProvenance } from './method-provenance.mjs';
 
 const names = ['osstack-mode', 'osstack-help', 'setup-osstack', 'osstack-agent'];
 const namespaces = { codex: '.agents/skills', claude: '.claude/skills' };
@@ -34,23 +35,24 @@ async function sourceDirectory(path) {
   if (info.isSymbolicLink()) throw Error(`source_symlink: ${path}`);
   if (!info.isDirectory()) throw Error(`source_not_directory: ${path}`);
 }
-async function boundedRead(path, budget) {
+async function boundedRead(path, budget, maxBytes = limits.file_bytes, limitLabel = 'source_limit') {
   const info = await lstat(path);
   if (info.isSymbolicLink()) throw Error(`source_symlink: ${path}`);
   if (!info.isFile()) throw Error(`source_not_regular: ${path}`);
-  if (info.size > limits.file_bytes) throw Error(`source_limit: file bytes ${path}`);
+  if (info.size > maxBytes) throw Error(`${limitLabel}: file bytes ${path}`);
   // NOFOLLOW closes the final-component link race; NONBLOCK avoids a raced FIFO open.
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     const current = await handle.stat();
     if (!current.isFile() || current.ino !== info.ino || current.dev !== info.dev) throw Error(`source_changed: ${path}`);
-    const buffer = Buffer.alloc(limits.file_bytes + 1); let length = 0;
+    const buffer = Buffer.alloc(maxBytes + 1); let length = 0;
     while (length < buffer.length) {
       const read = await handle.read(buffer, length, buffer.length - length, length);
       if (read.bytesRead === 0) break;
       length += read.bytesRead;
     }
-    if (length > limits.file_bytes || (budget.bytes += length) > limits.source_bytes) throw Error(`source_limit: bytes ${path}`);
+    if (length > maxBytes) throw Error(`${limitLabel}: bytes ${path}`);
+    if ((budget.bytes += length) > limits.source_bytes) throw Error(`source_limit: bytes ${path}`);
     const after = await handle.stat();
     if (length !== current.size || after.size !== current.size || after.mtimeMs !== current.mtimeMs) throw Error(`source_changed: ${path}`);
     return Buffer.from(buffer.subarray(0, length));
@@ -82,6 +84,9 @@ async function collectSources(sourceRoot) {
     }
   }
   await walk('references', 0);
+  if (await present(join(sourceRoot, 'provenance.json'))) {
+    count(); files.set('provenance.json', await boundedRead(join(sourceRoot, 'provenance.json'), budget, 65536, 'provenance_limit'));
+  }
   const folded = new Set();
   for (const path of files.keys()) { const key = path.toLowerCase(); if (folded.has(key)) throw Error(`source_case_collision: ${path}`); folded.add(key); }
   return files;
@@ -233,6 +238,8 @@ async function plan({ sourceRoot, host, output, dryRun = false }) {
     outputs.push({ path: `${namespace}/${name}/SKILL.md`, sourcePath, bytes: transform(sourcePath, sources.get(sourcePath), sources) });
     for (const [path, bytes] of sources) if (path.startsWith('references/')) outputs.push({ path: `${namespace}/${name}/${path}`, sourcePath: path, bytes: transform(path, bytes, sources) });
   }
+  const provenance = inspectMethodProvenance(sources);
+  if (provenance) outputs.push({ path: 'provenance.json', sourcePath: 'provenance.json', bytes: sources.get('provenance.json') });
   outputs.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const outputPaths = new Set(outputs.map(file => file.path));
   for (const file of outputs) if (file.path.endsWith('.md')) for (const { target } of destinations(file.bytes.toString('utf8'), file.path)) {
@@ -241,12 +248,12 @@ async function plan({ sourceRoot, host, output, dryRun = false }) {
   }
   const sourceFiles = [...sources].map(([path, bytes]) => ({ path, bytes: bytes.length, sha256: digest(bytes) })).sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const files = outputs.map(file => ({ path: file.path, bytes: file.bytes.length, sha256: digest(file.bytes), source_path: file.sourcePath, source_sha256: digest(sources.get(file.sourcePath)) }));
-  return { destination, outputs, manifest: { schema_version: 1, host, namespace, layout: 'project-local skills with private reference copies', exported: true, installed: false, global_registration: false, host_discovery_verified: false, source_digest: digest(JSON.stringify(sourceFiles)), source_files: sourceFiles, files, limits, link_scope: 'simple single-line unnested Markdown labels and reference definitions, without titles; unsupported navigation rejected; file existence checked, fragment anchors not qualified', limitations: ['material export is not host discovery or execution', 'no provider, runtime or formal gate qualification', 'source and output trees must not be concurrently mutated during export'] } };
+  return { destination, outputs, manifest: { schema_version: 1, host, namespace, layout: 'project-local skills with private reference copies', exported: true, installed: false, global_registration: false, host_discovery_verified: false, ...(provenance ? { provenance } : {}), source_digest: digest(JSON.stringify(sourceFiles)), source_files: sourceFiles, files, limits, link_scope: 'simple single-line unnested Markdown labels and reference definitions, without titles; unsupported navigation rejected; file existence checked, fragment anchors not qualified', limitations: ['material export is not host discovery or execution', 'no provider, runtime or formal gate qualification', 'source and output trees must not be concurrently mutated during export'] } };
 }
 export async function exportMethods(options) {
   const prepared = await plan(options);
-  const result = { status: options.dryRun ? 'planned' : 'exported', host: options.host, output: prepared.destination, exported: !options.dryRun, installed: false, host_discovery_verified: false, namespace: prepared.manifest.namespace };
-  if (options.dryRun) return { ...result, files: prepared.manifest.files, source_digest: prepared.manifest.source_digest, limits };
+  const result = { status: options.dryRun ? 'planned' : 'exported', host: options.host, output: prepared.destination, exported: !options.dryRun, installed: false, host_discovery_verified: false, namespace: prepared.manifest.namespace, ...(prepared.manifest.provenance ? { provenance: prepared.manifest.provenance } : {}) };
+  if (options.dryRun) return { ...result, ...(prepared.manifest.provenance ? { provenance: prepared.manifest.provenance } : {}), files: prepared.manifest.files, source_digest: prepared.manifest.source_digest, limits };
   let owned = false;
   try {
     // Non-recursive reservation must succeed before any output writes. Never remove an output.

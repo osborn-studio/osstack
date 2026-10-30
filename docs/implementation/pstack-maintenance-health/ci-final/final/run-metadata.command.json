@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "/opt/homebrew/bin/gh",
+    "run",
+    "view",
+    "41030888483",
+    "--repo",
+    "osborn-studio/osstack",
+    "--json",
+    "status,conclusion,headSha,headBranch,event,name,number,url,createdAt,updatedAt,startedAt,jobs"
+  ],
+  "exit_code": 0,
+  "observed_at": "2026-10-30T09:33:10.100948+00:00"
+}

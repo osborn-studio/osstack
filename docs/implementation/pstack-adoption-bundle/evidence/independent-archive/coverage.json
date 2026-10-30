@@ -1,0 +1,180 @@
+{
+  "首审及限定复审": [
+    {
+      "path": "audit/audit-input.txt",
+      "present": true,
+      "sha256": "b84837f3885ed2501acc60eb0a2e9064175a264303311806cb1868f5a1febc82"
+    },
+    {
+      "path": "audit/response.json",
+      "present": true,
+      "sha256": "2e8558b0184d055bc5de749faf87e1328396ca3212640032b7ec11d53ea81aa6"
+    },
+    {
+      "path": "audit/report.md",
+      "present": true,
+      "sha256": "b8d718ab7acaba02068ae03b21dfd64fc4904f555b79d0194560cc870a2069a0"
+    },
+    {
+      "path": "audit/binding.json",
+      "present": true,
+      "sha256": "385a5bcbccd18ac97f964ea2eaaed35617ef117ee2c70598ca12cf3f9350f445"
+    },
+    {
+      "path": "audit-closure/audit-input.txt",
+      "present": true,
+      "sha256": "7e993c043cbd5c3002e55c994c9dd8967d0ffd412afa4428abf0b0981cd6223b"
+    },
+    {
+      "path": "audit-closure/response.json",
+      "present": true,
+      "sha256": "ff7d58116e37ed5d4f406389ccfcc54ef4e422070b067cb90ef5d64842d0d297"
+    },
+    {
+      "path": "audit-closure/report.md",
+      "present": true,
+      "sha256": "2a9cfbd0dd753706ce769e93937c23f93fc9739b022ad0f860fc55ae29f3063b"
+    },
+    {
+      "path": "audit-closure/binding.json",
+      "present": true,
+      "sha256": "278fa9dee305ee151d86e0e2ab26beafdc04c1b54dce0efd6aeb76b430465605"
+    }
+  ],
+  "作者原始失败与后续修复": [
+    {
+      "path": "author/red.stdout",
+      "present": true,
+      "sha256": "b631477d362a59cd2e192c36c526dfdbef8bd546c91284ac04fbdc259a67d967"
+    },
+    {
+      "path": "author/red.stderr",
+      "present": true,
+      "sha256": "3bb6845fa8af0386156ac3c8a5ad9f8bfc6598f1bd9d9582e66e23b9314eda9c"
+    },
+    {
+      "path": "author/green-1.stdout",
+      "present": true,
+      "sha256": "7f743f130c0b637334a850c32d2159b30f8b8cbec3ed905987cd0dd146de4313"
+    },
+    {
+      "path": "author/green-2.stdout",
+      "present": true,
+      "sha256": "7497d0884c3e1eba461b9946ef2b5f0a43de86d859839be91e3e53e960e9756d"
+    },
+    {
+      "path": "author/contract-amendment-1.json",
+      "present": true,
+      "sha256": "8fa0e335a37489f79ef26386b07ab109490b2d98a1cc6fbde847ff9c1d33b8bc"
+    },
+    {
+      "path": "materials/audit-repair/red.stdout",
+      "present": true,
+      "sha256": "34e3765c70b2801625fc8e6d1f9dad071987f24597e28f6c7973942aa06b18f9"
+    },
+    {
+      "path": "materials/audit-repair/green.stdout",
+      "present": true,
+      "sha256": "ecac4d587bb093dcac2f90d3a2bba962798a320464c0ee07207a2f707efd3daf"
+    },
+    {
+      "path": "root/provenance-repair/red.stdout",
+      "present": true,
+      "sha256": "401ed57e7fef9a23bc662f0447d8678fcd2277666b713d39e2d94928c4e89426"
+    },
+    {
+      "path": "root/provenance-repair/green.stdout",
+      "present": true,
+      "sha256": "d61237f73dd714de691e0790d171c61ee090d5becd4e5c9b28fe13b3fa60dfca"
+    }
+  ],
+  "独立预冻与旧新反例": [
+    {
+      "path": "independent/criteria-v1.json",
+      "present": true,
+      "sha256": "d9309cc77a50d433b212fcfbb2b393d49a5a61cdc7afa0714932f38485be01b2"
+    },
+    {
+      "path": "independent/wire-freeze-v2.json",
+      "present": true,
+      "sha256": "0146f19324f9cff87281634926c3f826aaab80e71bbf2ce30de9bf897863d0cb"
+    },
+    {
+      "path": "independent/final-report.json",
+      "present": true,
+      "sha256": "2303232bb2b2c6c4a4882403cbf1b84c46e78172fb71f4b7fc28374fac7bcc32"
+    },
+    {
+      "path": "audit-independent/freeze.json",
+      "present": true,
+      "sha256": "acccf67c46b4e8bb11d49bdbf5999e8b82766c41211ced0e59ad8793d97d3d4e"
+    },
+    {
+      "path": "audit-independent/old/summary.json",
+      "present": true,
+      "sha256": "eda914adcbc53af759076b03dcb2da9b8ded32222e943ffc1141c4e292e1ef6a"
+    },
+    {
+      "path": "audit-independent/new/summary.json",
+      "present": true,
+      "sha256": "255d0b659f8b5608e848e268d20a0614ae413c109dc483b5ac79ee5f1729a6a2"
+    },
+    {
+      "path": "audit-independent/candidate-harness-correction.json",
+      "present": true,
+      "sha256": "278f9e35f8a5ff48a73efe72f2457549ddff25ceaa9a883fa757d149bbc51dbb"
+    },
+    {
+      "path": "audit-independent/closure-report.json",
+      "present": true,
+      "sha256": "c5308a21fc67a6902df889f306533e4d48c5b9b407f7a40d074543a037e1ccbe"
+    }
+  ],
+  "最终源码与验证绑定": [
+    {
+      "path": "root/final-source-binding.json",
+      "present": true,
+      "sha256": "76679fd0bec890b2eec82046627f41c141029b4ed340522ae0eed75bd4675808"
+    },
+    {
+      "path": "root/final-checks/results.json",
+      "present": true,
+      "sha256": "4c80782caa8ea607dbb0f0ae65b5901f47936c6a391e4c03efdfbebd6cf9d369"
+    },
+    {
+      "path": "root/adoption-candidate-final.json",
+      "present": true,
+      "sha256": "e2338cc7b5fdfa4cb6f056db683d57388579ba66218bb391411ad266e89cff6b"
+    },
+    {
+      "path": "root/final-provenance-proof.json",
+      "present": true,
+      "sha256": "9e19230ff3ac715bdb9c9602ed5a4519f8ffeb2924741115380016879b18d312"
+    },
+    {
+      "path": "root/full-result.json",
+      "present": true,
+      "sha256": "ec45e605784f2a9614163885c8bf94abbbc842119ac71bf34e03d11128d29a21"
+    },
+    {
+      "path": "root/full-node22/full-result.json",
+      "present": true,
+      "sha256": "d26a7c34439413cc381a8636387608b6148f4df851761b4c64135f22b58ad59a"
+    },
+    {
+      "path": "root/full-node22-native/full-result.json",
+      "present": true,
+      "sha256": "55d2762818fa22e6a9ac6d927e4516efb05f0af65e9802d3cc8ff2a5b95ae492"
+    },
+    {
+      "path": "root/full-node22-native/counts.json",
+      "present": true,
+      "sha256": "2c23e64544604c384c8ec78d786248f6a39cb796b7a9ce318c79d163b5a873f0"
+    },
+    {
+      "path": "root/runtime-diagnosis/report.json",
+      "present": true,
+      "sha256": "4d8679935d40dfde68ac7f10a0d749f6d0a969beb2bbcb4ea251d2c49ec6e423"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-10-30T09:51:44.499109+00:00",
+  "source_root": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-adoption-bundle-20261030",
+  "member_count": 1286,
+  "file_count": 1064,
+  "directory_count": 222,
+  "symlink_count": 0,
+  "file_bytes": 30450418,
+  "archive_sha256": "f38dbe9453ec706a77f6122409c86beb74a4ed446a100ebbc9481b400f120d60",
+  "manifest_sha256": "0fb426034573a4f14c09888b06ce8a377792ee3e7dcd686b7888df7f8438b752",
+  "root_full_member_verification": true
+}

@@ -1,0 +1,125 @@
+{
+  "files": [
+    {
+      "path": "final/README.md",
+      "bytes": 1635,
+      "sha256": "8d73af56ececd8a8af7a97d50517cb0e7eea9c4c6620c982a62ab0f7e832ed50"
+    },
+    {
+      "path": "final/actual-smoke-receipts.json",
+      "bytes": 22149,
+      "sha256": "f5248bc658339db2c0202edfdd1d8382c84567c2e73d071d4e8fa3193426e9ec"
+    },
+    {
+      "path": "final/full-log.command.json",
+      "bytes": 216,
+      "sha256": "5f1448df09ae991ede03aa932b6b8da398b7e5c8ce00cc518146423385708e90"
+    },
+    {
+      "path": "final/full-log.log.gz",
+      "bytes": 288918,
+      "sha256": "65284b49778a86ba89920a2b4c692f1c430d927af371d82d60ad02528a223fb1"
+    },
+    {
+      "path": "final/full-log.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final/key-excerpts.json",
+      "bytes": 3016,
+      "sha256": "90ad853ed9fe95e654f6987c5e3fcb1305394bb88231121aceceb6d02f4a1f0a"
+    },
+    {
+      "path": "final/manifest-verification.json",
+      "bytes": 256,
+      "sha256": "73f00ca3f18bc572f9f0cbac2433a8843455e62f1eb10eee04c75e7348744ce3"
+    },
+    {
+      "path": "final/manifest.json",
+      "bytes": 2197,
+      "sha256": "232c4784232c218624a3bdec67c5170c6594db16241d4f6782a9eca134d35445"
+    },
+    {
+      "path": "final/package-results.json",
+      "bytes": 5239,
+      "sha256": "67a27650489fa931da8acdcb9d719204ec4d68347e1d9d78ddfe58f1ea236a97"
+    },
+    {
+      "path": "final/report.json",
+      "bytes": 8570,
+      "sha256": "8eea3c918eb8d936a019d5726ba208c04cd38754e2231f64ba09df3cf5afa866"
+    },
+    {
+      "path": "final/run-metadata.command.json",
+      "bytes": 318,
+      "sha256": "d6277b616461af44392081f17ffcb1dd06b40b9ce2bbb1828b37f3f4e28602f0"
+    },
+    {
+      "path": "final/run-metadata.json",
+      "bytes": 21382,
+      "sha256": "6152c917299cb6000c928a4dafffdba431a71f5b3caf092fec768342305b468d"
+    },
+    {
+      "path": "final/run-metadata.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "final/script-results.json",
+      "bytes": 3759,
+      "sha256": "12909c307f5e2b7df91413f6c4d0935ad9f76a7f6d3fc50d873c14b91a0529df"
+    },
+    {
+      "path": "root-close/after-ready.json",
+      "bytes": 216,
+      "sha256": "91fd60117c39fcbb4132c7159fb18f73704bd734bd3031fc6eef3fbc8f6e69f6"
+    },
+    {
+      "path": "root-close/before-ready.json",
+      "bytes": 2360,
+      "sha256": "8997bce2958c8f2556900b36b67856c4a59d7411a54bd8678aba69e398581ee2"
+    },
+    {
+      "path": "root-close/boards/comment.json",
+      "bytes": 560,
+      "sha256": "033575648ecc3130fe2d04bac5f54be8f22b48c8067858ca18b12c2f83bedcdf"
+    },
+    {
+      "path": "root-close/boards/firstmate-upgrade-roadmap.json",
+      "bytes": 101686,
+      "sha256": "60c2361bb856982c4558a008278ed18b586e00b6260f88cd73b445948c67153c"
+    },
+    {
+      "path": "root-close/boards/joint-firstmate-pstack.json",
+      "bytes": 100806,
+      "sha256": "13b16ecd08d6b0c4d31435f3c8f9f675ebc21f89d753222ecba2c532a30c5689"
+    },
+    {
+      "path": "root-close/boards/move.json",
+      "bytes": 1020,
+      "sha256": "e165fd220967518896dcd9667ef74a135d74ce0c02f44891e82a8058d7d92369"
+    },
+    {
+      "path": "root-close/boards/session-pilot-debt.json",
+      "bytes": 14275,
+      "sha256": "27c25e31f5883bea8ed9bbac0dd549c556ea061c9a6841b5aed9922f4ddca30f"
+    },
+    {
+      "path": "root-close/ready.stderr",
+      "bytes": 75,
+      "sha256": "ebddd71daa39557e567bb40449cc9ada1adf8e788a9e44f016282e095b0c3e90"
+    },
+    {
+      "path": "root-close/ready.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "root-close/root-verification.json",
+      "bytes": 353,
+      "sha256": "00d7014bd1ca59758c6a83f1719f8ed4523dc26af7e47c418193e902491cd7cb"
+    }
+  ],
+  "note": "final/manifest.json describes original uncompressed log; full-log.log.gz is verified lossless, other original payloads unchanged; no remote artifact downloaded."
+}

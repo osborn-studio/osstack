@@ -8,6 +8,20 @@ Record the requested outcome and its observable predicate, repository and candid
 
 Use an isolated `OSSTACK_HOME`, socket and fixture. Never run a development CLI against the default control-plane home. Establish ownership before cleanup; do not kill by process name or sweep unrelated directories. Do not collect credentials or raw sensitive application data just to make evidence more complete. Record redaction and its effect on what can be concluded.
 
+## Doctor, recover, then drive
+
+Before the first drive, check the actual target identity, build and owned instance using the project's existing read-only doctor or equivalent checks. For short-lived commands, check each new session's prerequisites. After a surprising failure, run the relevant doctor again. If the process is healthy but application state is stuck, restore a known state or relaunch the owned instance before driving again. Do not invent a generic doctor command or assume every application has one.
+
+Separate a broken observation tool from broken product behavior. If repairing the owned harness is authorized, preserve the failed attempt and tool bytes, make the bounded correction, then re-drive the affected path with a fresh output location. A map-only correction does not prove a tool repair. If the cause remains unknown, report it; empty stderr is not a universal success condition. Confirm prior evidence survives every cleanup, including failed attempts.
+
+Where practical, keep a deterministic comparison script and its actual output. Inspect resulting user-visible state and side effects, not just a successful exit or an agent's report. Label fixture boundaries and any behavior a dry run skips. Do not expand one tested feature into full map coverage or a source lock into runtime qualification.
+
+## Bind the same card to the real result
+
+Record card ID and board scope, task/run IDs, method file hashes, registered check identity, baseline/candidate and the host receipt path/hash. These are evidence fields, not a new runtime schema. Retain the raw receipt before projecting a short result to the card. If projection fails, preserve the receipt and report the card as unsynchronized; retrying a projection must not rerun the repair. The current material does not implement that projection or authenticate card ownership.
+
+A card can report a verified local candidate while merge remains a human action. Neither PR count nor a completed card proves that the user-visible defect was corrected. The decisive observation is the original trigger on the checked candidate, plus the required controls and explicit remaining limits.
+
 ## Reading existing evidence
 
 Read the input index, manifest and summary first, then inspect the specific fields or raw log sections needed for the claim. Avoid dumping large result files or thousands of build bindings into context. Keep the original file path and hash with any selected projection; a summary or projection does not establish that omitted content was verified. Expand the read when the claim requires it, and state the remaining coverage.

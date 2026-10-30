@@ -1,0 +1,13 @@
+{
+  "members_verified": 12,
+  "bytes": 2348948,
+  "observed_at": "2026-10-30T09:37:50.081860+00:00",
+  "ready_readback": {
+    "baseRefName": "main",
+    "headRefOid": "418ffe02929845e73ef56372c8920b51a64b772d",
+    "isDraft": false,
+    "mergeable": "MERGEABLE",
+    "state": "OPEN",
+    "url": "https://github.com/osborn-studio/osstack/pull/312"
+  }
+}

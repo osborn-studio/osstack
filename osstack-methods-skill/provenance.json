@@ -1,0 +1,133 @@
+{
+  "kind": "declared_method_provenance",
+  "schema_version": 1,
+  "upstream": {
+    "repository": "https://github.com/cursor/plugins",
+    "commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
+    "subdir": "pstack",
+    "package_version": "0.15.36"
+  },
+  "adoption_candidate_digest": "699ffdbbdd848f4e55dc0f7466d6bf21807b87306f2ff45ee436dc26ab26d7d3",
+  "bindings": [
+    {
+      "material": "references/bug-fix.md",
+      "sha256": "7bd8727f01f636ccb1b6c0d6b841afa86da6aeed6babd6e0fd90ef921ba9b5e2",
+      "source_refs": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/bug-fix.md",
+          "sha256": "66e26542dad131cfd7df80ac0cdf81ed4d85e7b5e3f0eb65b933888760c4831f",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/tdd/SKILL.md",
+          "sha256": "eeb868e2dfebee528d730a67d7b17498fac4bb85dec2e38bc5c5176aca4d5d2f",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+          "sha256": "2ccbbacc56ace5afdfb8670cef19d7bd009fb2a0033b9a741cbdf2b6baf72187",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+          "sha256": "f7223698623b6a26fea49c751e466b38e6691b1f32ce841d3983e7ffbe2b74a6",
+          "role": "adopted_guidance"
+        }
+      ]
+    },
+    {
+      "material": "references/investigation.md",
+      "sha256": "25175c8cb1c8d62d14aab9491418fd9ad4e1aad6b7cd4de672177eaceb7c001e",
+      "source_refs": [
+        {
+          "path": "pstack/skills/poteto-mode/playbooks/investigation.md",
+          "sha256": "dc66bcf6af3a074fc7f67aa5e12b93ef571a4fb4d8e17f2f1af5ae5359f42e46",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/how/SKILL.md",
+          "sha256": "08a00079bb15b4258874ac3ff62d4ca7e94350ffedb521d0fd296dc9dd21904e",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/how/references/explorer-prompt.md",
+          "sha256": "6300128385ee940fd42ecb84b0e623435440a2dc283eae54ee4a52ba56947ba1",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/how/references/explainer-prompt.md",
+          "sha256": "ddb89cebefc24e2b54517a331aedfe045b6971e101f45c71b8cef4cccff45bff",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/why/SKILL.md",
+          "sha256": "144d42e7712723d763e607bc0a969e5f1cdf83ec7228519d87677cc534571bed",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/why/references/epistemics.md",
+          "sha256": "d54a2361b2d5973bc3fe2edf62f446d87935974d4b40d47f23b9529f956ca758",
+          "role": "adopted_guidance"
+        }
+      ]
+    },
+    {
+      "material": "references/code-review.md",
+      "sha256": "431b1916222d0a601f14987e16067bddfd76ce8286aa58a95f1f8fa9c53abc9c",
+      "source_refs": [
+        {
+          "path": "pstack/skills/interrogate/SKILL.md",
+          "sha256": "3f3c2e9b8cf6b180dba9f32a4aff85e5691b09805232468e37a0ba45437a9984",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/arena/SKILL.md",
+          "sha256": "d0adeca6c9b19d43d90ed8f0484f0ddd362f05006d628b8f4cc6c9b55fa4d2b3",
+          "role": "context_only"
+        },
+        {
+          "path": "pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+          "sha256": "f7223698623b6a26fea49c751e466b38e6691b1f32ce841d3983e7ffbe2b74a6",
+          "role": "adopted_guidance"
+        }
+      ]
+    },
+    {
+      "material": "references/evidence.md",
+      "sha256": "82f48b1f76a6d0ad25e9939a9b2a17a421b2f44befa2ecb98939ef5829cac005",
+      "source_refs": [
+        {
+          "path": "pstack/skills/create-verification-skill/SKILL.md",
+          "sha256": "d353973547bf8ad8977eca645f4cd4feaed0d32f4b43d1448f906b0a76c4d694",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+          "sha256": "515c0eaa054b3f6be1b1fb06f2c2f173c80fddb58bbcac57576f89c479bc68e8",
+          "role": "adopted_guidance"
+        },
+        {
+          "path": "pstack/skills/principle-prove-it-works/SKILL.md",
+          "sha256": "ec79a15025bac8d33d62011c54f3b612733fd2a024e623b531b3637aa75070e2",
+          "role": "adopted_guidance"
+        }
+      ]
+    },
+    {
+      "material": "references/sources.md",
+      "sha256": "d05ef4db01530c227a13726f73badeab487349cb0733a4fa26340eb6e1717922",
+      "source_refs": [
+        {
+          "path": "pstack/plugin.json",
+          "sha256": "ebc3ee08ceff88b13521cabd714d92b972fbe9c5b77116f94872ee848b225b31",
+          "role": "identity_license"
+        },
+        {
+          "path": "pstack/LICENSE",
+          "sha256": "bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e",
+          "role": "identity_license"
+        }
+      ]
+    }
+  ]
+}
