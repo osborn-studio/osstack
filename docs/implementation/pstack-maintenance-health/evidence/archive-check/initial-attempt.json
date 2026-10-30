@@ -1,0 +1,6 @@
+{
+  "status": "harness_assertion_failed",
+  "line": 40,
+  "assertion": "assert full",
+  "reason": "Assumed full suite evidence filenames contain full. Actual declared receipt is root/final-validation/receipt.json with results[1].argv pnpm test, raw 1.stdout. All member comparisons had run before this extra presence assertion; no archive defect inferred."
+}

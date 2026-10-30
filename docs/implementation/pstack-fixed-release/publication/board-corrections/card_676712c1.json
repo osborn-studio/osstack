@@ -1,0 +1,27 @@
+{
+  "comment": {
+    "comment_id": 744,
+    "card_id": "card_676712c1",
+    "author": "root",
+    "body": "最新用户方向取代旧正文“暂停新功能扩展”：继续pstack v0.15.36固定范围首用；Firstmate深运行禁止。stage只等待S1–S3签收，不要求持续watcher，不代表全pstack完成，也不撤回开发授权。方案docs/implementation/pstack-fixed-release/PLAN.md，U1方法包首用→U2真实bugfix链；U3formal/statechart独立验收。",
+    "created_at": 1793349455.857
+  },
+  "move": {
+    "card_id": "card_676712c1",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "PSTACK-P1 阶段交付验收：现有方法与工具，剩余能力单列",
+    "body": "用户要求先验收pstack，再推进Firstmate。暂停新功能扩展；原24PS全部能力未完成、32J最终门槛仍false。root收口已实现PR顺序核对候选；A核PS01–12、B核PS13–24、C独立验收边界与缺口。产出主线已可用/候选未合入/待实现/待验证/后排矩阵、证据与可执行验收步骤；机器证据通过和用户正式验收分开。不能把pstack未实现能力简单归Firstmate，不新建重复小开发卡替代汇总。root唯一中央入口；不调用新host模型，不启未验收runtime。",
+    "status": "blocked",
+    "priority": 0,
+    "assignee": "joint-entry",
+    "blocked_reason": "仅等待用户对已交付S1–S3有界工具范围签收；不阻塞已授权pstack固定版本首用开发。全部pstack集成及C0/C1/C2尚未完成。",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793323188.142,
+    "updated_at": 1793349455.857,
+    "started_at": 1793323188.142,
+    "completed_at": null
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "comment": {
+    "comment_id": 741,
+    "card_id": "card_126c8bc6",
+    "author": "root",
+    "body": "核对纠正：PR275已合并a5fef9c4488edde29c6afe95c19d37344ab30a71；R01版本化schema数据契约切片完成。移除过期等待合并原因。schema不授执行权限，不证明全宿主资格；R03/R05/V06及Firstmate深运行仍未启用，本次仅账本纠正。",
+    "created_at": 1793349455.854
+  },
+  "move": {
+    "card_id": "card_126c8bc6",
+    "board": "firstmate-upgrade-roadmap",
+    "task_id": null,
+    "title": "[R01] 将本设计注册表升级为运行时协议",
+    "body": "roadmap_id: firstmate-upgrade-20261026\nwork_item_id: R01\nscope_profile: future_integration_or_qualification\nslice: S0\nowner_role: 契约/来源维护者\nbaseline_main: c1cfccf18df97fa4b8bc2ed1752071feda9c3670\nmanifest_sha256: 0f25524ed0660facb6d38c83c643ecc889dbe9963afb6bf0e81bf3f4d5f234b6\nsource: docs/design/2026-10-26-firstmate-upgrade/work-packages.json\ndependency_ids: none\n依赖保存在规划正文，当前 RPC 不自动执行依赖门禁。\n原任务: 将本设计注册表升级为运行时协议；`packages/protocol/src/behavior-capability.ts`\n原验收: 严格 schema；稳定 ID；独立版本；无任意命令字段\n新增验收: 协议区分行为契约、宿主资格与当前交付记录；稳定 ID 不携带命令或权限\n验证方法: schema 正负例、旧版本兼容与无任意命令测试\n建议文件: \n当前范围: planned\n局部 done 仅表示 adopt_session 的实现；不证明全量能力资格或默认启用。\n证据: \n基线 CI: https://github.com/osborn-studio/osstack/actions/runs/40332791896\n阻断: 无额外环境阻断；按依赖与范围推进\n已有债务卡: 不适用\n本卡是 roadmap 投影，不创建新的执行义务，不授予副作用权限。",
+    "status": "done",
+    "priority": 0,
+    "assignee": "契约/来源维护者",
+    "blocked_reason": null,
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793032277.961,
+    "updated_at": 1793349455.855,
+    "started_at": 1793079096.072,
+    "completed_at": 1793349455.855
+  }
+}

@@ -1,5 +1,12 @@
 # pstack 优先：能力与交付对账
 
+## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
+
+PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。
+
+本批W19健康查询及来源登记候选已通过199脚本定向检查；完整22包回归结果见JSON与原日志，绑定e82adca9，初始4fresh dist脏、执行期间8981 tracked字节不变。整合typecheck旧CLI mock缺字段的原失败与修复保留。health45、作者manifest/watcher52、独立47不可混为全方法资格。S1–S3阶段卡只等用户签收，不阻授权开发；其他板275/277过期merge原因已纠正，局部Done不升级runtime资格。原24PS/19W/48A及32J正式结果保持。
+
+
 ## 当前优先：原范围阶段验收（2026-10-30）
 
 [完整对账与建议](../../implementation/pstack-stage-acceptance/README.md)保留原24PS/19W/48A和C0/C1/C2。S1–S3只供已交付工具单独验收；S4历史宿主结果仍受限。没有用户签收或范围删减。W13只读分类不额外要求持续watcher；原端到端集成仍未闭合。

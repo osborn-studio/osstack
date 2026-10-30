@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-10-30T08:38:40.127360+00:00",
+  "archive_sha256": "46dbd806d0b52b33dbaae9d141e4421769c3429a21d446640b51e143ce2d74ba",
+  "members": 66,
+  "types": {
+    "file": 60,
+    "directory": 6
+  },
+  "file_bytes": 7340069,
+  "originals_checked": true,
+  "all_match": true,
+  "source_archive_files_verified": 573,
+  "source_archive_mode_note": "Git tar 0664/0775 regular modes retain executable bit; normalized to lock 100644/100755. No extraction, source execution or symlink dereference.",
+  "qualification": "none"
+}

@@ -1,5 +1,12 @@
 # pstack-first feature queue
 
+## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
+
+PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。
+
+本批W19健康查询及来源登记候选已通过199脚本定向检查；完整22包回归结果见JSON与原日志，绑定e82adca9，初始4fresh dist脏、执行期间8981 tracked字节不变。整合typecheck旧CLI mock缺字段的原失败与修复保留。health45、作者manifest/watcher52、独立47不可混为全方法资格。S1–S3阶段卡只等用户签收，不阻授权开发；其他板275/277过期merge原因已纠正，局部Done不升级runtime资格。原24PS/19W/48A及32J正式结果保持。
+
+
 ## 当前优先：原范围阶段验收（2026-10-30）
 
 [完整对账与建议](../../implementation/pstack-stage-acceptance/README.md)保留原24PS/19W/48A和C0/C1/C2。S1–S3只供已交付工具单独验收；S4历史宿主结果仍受限。没有用户签收或范围删减。W13只读分类不额外要求持续watcher；原端到端集成仍未闭合。
@@ -8,7 +15,7 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 
 ## Current implementation: W18 relevant leaves
 
-[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. PR311 is Ready/main after five applicable CI successes; human approval/merge is pending. W19 configured ownership/health is next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
+[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. PR311 merged into actual main abcd9edf after five applicable CI successes. W19 configured ownership/health is next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
 
 ## Active delivery
 
@@ -34,7 +41,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS05 | 覆盖式并行与预先声明的竞赛 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311 Ready等待用户合并；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
+| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311已合并actualmain abcd9edf；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
 | PS09 | 验证基础设施的健康、归属与漂移维护 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |

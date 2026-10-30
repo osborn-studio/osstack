@@ -1,0 +1,18 @@
+{
+  "command": "uv run --with jsonschema python -m unittest discover -s docs/design/2026-10-27-joint-engineering -p 'test_*.py'",
+  "exit_code": 0,
+  "tests": 241,
+  "scope": "documentation only; no product rerun",
+  "files": [
+    {
+      "path": "docs.stderr",
+      "sha256": "ddc726182d3e5dd28173e78d2483056249f110f46058f0cd346f925f589f69e3",
+      "bytes": 341
+    },
+    {
+      "path": "docs.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ]
+}
