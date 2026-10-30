@@ -2,7 +2,7 @@
 
 ## 当前执行优先：pstack原范围验收对账
 
-实际main e4643324，PR309已合并。有序PR前沿候选8e830只完成在途发布；新能力开发暂停。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
+实际main 01ec1852，PR310已合并。有序PR前沿工具已交付；当前推进原C0/W17有限调用体验，不扩张方法数量。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
 
 > 当前排期与交付见 [delivery-status.md](delivery-status.md) 和 [delivery-rollup.json](delivery-rollup.json)。下方旧批次记录按历史SHA解释，不覆盖最新观察。
 
@@ -198,3 +198,13 @@ PR310 Draft/main，head `db0652dde3ec4695ef592b0d7f1c14a14a30917e`，CI409884395
 ## PR310 最终 CI 与 Ready（2026-10-30）
 
 PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI40988439592五适用SUCCESS/paidSKIP，实际synthetic db37d26669d6bcb155cd9b99d08859d5d32c9777，22包7259pass7skip0fail；export94total93pass1skip，github224/stackCLI29。仅等gilberthello审批合并；不代表原pstack C0–C3或32J正式验收，S1–S3签收仍未发生。原失败和旧SHA证据保持。 完整原日志losslessgzip、metadata、Ready回读和三板见 `docs/implementation/pr-stack-candidate/ci-final`；未下载远程artifact，不声称重hash。未修改候选产品或重复代码审计。
+
+## PR310 已合并与原 C0 调用体验（2026-10-30）
+
+用户gilberthello合并310，actual main01ec1852/tree98584660等已发布db065；有序前沿卡done仅该切片。下一card_039f599c贡献PS23/PS08，J03/J06支持：复用固定五案例地图维护入口，冻结准则、最小教程、请求无继承历史的子代理实际正常/错误/恢复（上下文排他性另记限制）、独立核验。无新方法或生产runtime，不签发整个W17/C0或用户阶段验收。
+
+用户明确约束：先不要进入Firstmate深运行。本轮只限pstack C0调用体验；任何Firstmate深运行实施或启用均未派发。
+
+## C0/W17 有限教程观察收口（2026-10-30）
+
+[教程与证据](../../implementation/pstack-c0-usage/README.md)：已构建环境中实际输入拒绝exit2/no output→仅自有地图补empty→同入口新output consistent0，五例产品0/1/2/1/0、driver均0，原错误与语义保留。独立核case145+journey32成员及source1065/build2352；1493产品/脚本/清单字节未变，运行初始4freshdist脏。冻结CU中8有限pass、CU01排他上下文unknown、CU08全局资源观察limited；无完整A39/W17/C0或用户阶段验收。原A39首次冻结前接口推导不能由本后验观察替代。仅控制分支发布待下批吸收，card_039f599c done只此有界记录；W18/W19及原C1→C2继续，先不要进入Firstmate深运行。

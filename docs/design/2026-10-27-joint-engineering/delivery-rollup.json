@@ -2,13 +2,13 @@
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
   "observed_at": "2026-10-30T00:51:07.891452+00:00",
-  "main_sha": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
-  "main_tree": "afb6c366769e4a976823adfc89144efef81eb79b",
+  "main_sha": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+  "main_tree": "985846601a8fbb0ac44b64e8423b083fbbdbc048",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
   "candidate_named_methods": null,
-  "candidate_status": "PR310 Ready/main headdb0652dd CI40988439592 five applicable SUCCESS/paidSKIP; awaiting human merge. Original pstack C0–C3 and formal32 remain unaccepted.",
+  "candidate_status": "PR310 merged; C0 bounded tutorial recovery observed with CU01 unknown/CU08 limited, control-branch delivery; original C0/C1/C2 and user stage acceptance remain open",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -1708,6 +1708,43 @@
           "--name-only",
           "e4643324b9de1d2db51c744e59ccd7c05146b0a6^1",
           "e4643324b9de1d2db51c744e59ccd7c05146b0a6"
+        ]
+      }
+    },
+    {
+      "pr": 310,
+      "merge_commit": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+      "mergedSHA": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+      "state": "merged_in_snapshot",
+      "primary_j": "J07",
+      "primaryJ": "J07",
+      "supporting_j": [],
+      "supportingJ": [],
+      "pstack_groups": [
+        "PS17",
+        "PS18",
+        "PS13"
+      ],
+      "delivered_capability": "有序1–3PR只读栈前沿和原pstack范围对账",
+      "primary_artifacts": [
+        "packages/github/src/pr-stack-candidate.ts"
+      ],
+      "evidence_readme": "docs/implementation/pr-stack-candidate/README.md",
+      "acceptance_limit": "有界只读工具及文档对账；无连续watcher、自动merge、正式阶段或全pstack验收",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [
+        "J20"
+      ],
+      "merge_diff_inventory": {
+        "path_count": 178,
+        "sha256_of_git_diff_name_only_utf8": "74fa3d8ae1d7e4ea52f5ccb2eebd95b0f8aa4bf4c86c105d8aa18052601df32d",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211^1",
+          "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211"
         ]
       }
     }
@@ -11538,7 +11575,7 @@
     "formal_gate_pass": false
   },
   "stack_frontier_slice": {
-    "status": "ready_main_waiting_human_merge",
+    "status": "merged",
     "card": "card_6962ab52",
     "base_main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
     "primary_capability": "PS17",
@@ -11622,8 +11659,8 @@
     "base": "main",
     "ci_run": 40988439592,
     "ready": true,
-    "user_merge_required": true,
-    "board_status": "blocked",
+    "user_merge_required": false,
+    "board_status": "done",
     "blocked_meaning": "only gilberthello approval/merge",
     "final_ci": {
       "head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e",
@@ -11756,7 +11793,9 @@
         "skipped": 1
       },
       "stack_cli_passed": 29
-    }
+    },
+    "merged_sha": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+    "merged_at": "2026-10-30T05:09:51Z"
   },
   "pstack_stage_acceptance": {
     "status": "reconciliation_complete_scoped_user_acceptance_pending",
@@ -11791,5 +11830,60 @@
     "publication_head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e"
   },
   "current_reconciliation_observed_at": "2026-10-30T01:33:41.090802+00:00",
-  "historical_source_snapshot_limit": "Three independent reports used e26f6d2. Current projection adds confirmed merge301 at1bf1f6ca. Original reports are retained unchanged."
+  "historical_source_snapshot_limit": "Three independent reports used e26f6d2. Current projection adds confirmed merge301 at1bf1f6ca. Original reports are retained unchanged.",
+  "c0_usage_slice": {
+    "status": "bounded_usage_observed_with_limits",
+    "card": "card_039f599c",
+    "source_main": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+    "scope": "Post hoc fixed-five tutorial/input recovery; not whole A39/W17/C0",
+    "new_methods": 0,
+    "new_runtime": false,
+    "acceptance_passed": false,
+    "observed_at": "2026-10-30T05:26:55.124084+00:00",
+    "tutorial": "docs/verification/method-control-tutorial.md",
+    "evidence": "docs/implementation/pstack-c0-usage/README.md",
+    "actual_attempts": [
+      {
+        "exit": 2,
+        "error": "map_case_set",
+        "output_created": false
+      },
+      {
+        "exit": 0,
+        "status": "consistent",
+        "execution_path": "runJourney",
+        "product_exits": [
+          0,
+          1,
+          2,
+          1,
+          0
+        ]
+      }
+    ],
+    "independent_criteria": {
+      "bounded_pass": 8,
+      "CU01": "unknown",
+      "CU08": "limited"
+    },
+    "product_tracked_bytes": {
+      "count": 1493,
+      "changed": 0,
+      "four_fresh_dist_initially_dirty": true
+    },
+    "formal_A39_pass": false,
+    "formal_C0_pass": false,
+    "user_stage_acceptance": false,
+    "native_host_qualification": false,
+    "publication": "control branch; absorb next implementation PR",
+    "firstmate_deep_runtime": false,
+    "audit": {
+      "first": "PASS_WITH_CONCERNS",
+      "limited_review": "PASS_WITH_CONCERNS",
+      "final_documentation_clarifications_by_root": true,
+      "third_audit_performed": false
+    },
+    "evidence_archive_sha256": "64f9c081d1a370627fb6798918299a40b23f568eb91ee39801c31a847ebe35e7",
+    "docs_tests": 241
+  }
 }

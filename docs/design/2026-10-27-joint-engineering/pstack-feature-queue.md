@@ -39,7 +39,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS14 | 性能结论审查 | 性能审查方法与合成数例可用；无因果性能提升结果 |
 | PS15 | 有预算的 hillclimb 与盲评 | 有预算hillclimb/盲评尚未实现；当前有限host probe不是效果benchmark |
 | PS16 | 自包含单元与协调者边界 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
-| PS17 | 栈前沿与候选绑定验证 | PR307单PR稳定候选快照已合入；1–3 PR有序前沿报告候选8e830已实现验证但未发布；自动发现、持续watch、变更/合并授权均未提供。 |
+| PS17 | 栈前沿与候选绑定验证 | PR307单PR稳定候选快照已合入；PR310已合入1–3 PR有序前沿报告；自动发现、持续watch、变更/合并授权均未提供。 |
 | PS18 | forge 观察器分类 | PR307有界只读PR观察已合入，308修StatusContext、309修CheckRun分类；缺失/未知不误绿，既有neutral/skipped政策单列。持续watcher/自动重置未实现。 |
 | PS19 | 暂停与恢复对账 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS20 | 跨宿主方法适配 | 四入口双host导出；Codex历史checker与Claude历史exporter各有一次有界真实修复闭环，Claude材料读取不全，旧失败保留；尚无全方法等价/强制context/资格激活。 |
@@ -108,3 +108,13 @@ PR310 Draft/main，head `db0652dde3ec4695ef592b0d7f1c14a14a30917e`，CI409884395
 ## PR310 最终 CI 与 Ready（2026-10-30）
 
 PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI40988439592五适用SUCCESS/paidSKIP，实际synthetic db37d26669d6bcb155cd9b99d08859d5d32c9777，22包7259pass7skip0fail；export94total93pass1skip，github224/stackCLI29。仅等gilberthello审批合并；不代表原pstack C0–C3或32J正式验收，S1–S3签收仍未发生。原失败和旧SHA证据保持。 完整原日志losslessgzip、metadata、Ready回读和三板见 `docs/implementation/pr-stack-candidate/ci-final`；未下载远程artifact，不声称重hash。未修改候选产品或重复代码审计。
+
+## PR310 已合并与原 C0 调用体验（2026-10-30）
+
+用户gilberthello合并310，actual main01ec1852/tree98584660等已发布db065；有序前沿卡done仅该切片。下一card_039f599c贡献PS23/PS08，J03/J06支持：复用固定五案例地图维护入口，冻结准则、最小教程、请求无继承历史的子代理实际正常/错误/恢复（上下文排他性另记限制）、独立核验。无新方法或生产runtime，不签发整个W17/C0或用户阶段验收。
+
+用户明确约束：先不要进入Firstmate深运行。本轮只限pstack C0调用体验；任何Firstmate深运行实施或启用均未派发。
+
+## C0/W17 有限教程观察收口（2026-10-30）
+
+[教程与证据](../../implementation/pstack-c0-usage/README.md)：已构建环境中实际输入拒绝exit2/no output→仅自有地图补empty→同入口新output consistent0，五例产品0/1/2/1/0、driver均0，原错误与语义保留。独立核case145+journey32成员及source1065/build2352；1493产品/脚本/清单字节未变，运行初始4freshdist脏。冻结CU中8有限pass、CU01排他上下文unknown、CU08全局资源观察limited；无完整A39/W17/C0或用户阶段验收。原A39首次冻结前接口推导不能由本后验观察替代。仅控制分支发布待下批吸收，card_039f599c done只此有界记录；W18/W19及原C1→C2继续，先不要进入Firstmate深运行。
