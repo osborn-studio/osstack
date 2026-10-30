@@ -45,6 +45,8 @@ export function createExecutionContextAdapters(options: ExecutionContextAdapterO
   // This wrapper is scoped to one host delivery/Graph invocation, not the daemon.
   // Keep both receipt phases until that owner has collected its final evidence.
   const refs: { ref: ExecutionContextReceiptReference; run_id: string; task_id: string; session_id: string }[] = [];
+  if (options.methodContext !== undefined && options.mode !== "local")
+    throw new ExecutionContextError("invalid_execution_context_options");
   if (options.mode === undefined || options.mode === "off") return { adapters: options.adapters, receiptRefs: () => [] };
   if (options.mode !== "local" || !options.loadContext || !options.recordReceipt || !isAbsolute(options.workspacePath))
     throw new ExecutionContextError("invalid_execution_context_options");

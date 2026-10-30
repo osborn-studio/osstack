@@ -46,6 +46,14 @@ it("defaults off with original adapter identity and zero loaders or receipts", a
   await consume(wrapped.adapters[0]!);
   expect(f.loadContext).not.toHaveBeenCalled(); expect(f.recordReceipt).not.toHaveBeenCalled(); expect(f.captured[0]).toBe(task);
 });
+it.each(["off", undefined] as const)("rejects mandatory methods when context mode is %s", mode => {
+  const f = fixture(); const { mode: _mode, ...base } = f.options;
+  const methodContext = { load: vi.fn(() => { throw new Error("must not load"); }), validateSync: vi.fn() };
+  expect(() => createExecutionContextAdapters({ ...base, ...(mode === undefined ? {} : { mode }), methodContext }))
+    .toThrow("invalid_execution_context_options");
+  expect(methodContext.load).not.toHaveBeenCalled(); expect(methodContext.validateSync).not.toHaveBeenCalled();
+  expect(f.captured).toHaveLength(0); expect(f.recordReceipt).not.toHaveBeenCalled();
+});
 it("passes the actual augmented prompt and preserves this-bound methods and stop uncertainty", async () => {
   const f = fixture(); const wrapped = createExecutionContextAdapters({ ...f.options, contractDigest: "b".repeat(64), contractBrief: "local verification only" });
   const adapter = wrapped.adapters[0]!;
