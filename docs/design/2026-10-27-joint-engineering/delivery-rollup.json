@@ -11025,7 +11025,7 @@
   "stack_checkrun_state_slice": {
     "observed_at": "2026-10-30T00:25:03.449316+00:00",
     "card": "card_14b72dd7",
-    "status": "validated_prepublication",
+    "status": "draft_ci_pending_parent308",
     "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
     "parent_pr": 308,
     "parent_head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
@@ -11084,6 +11084,11 @@
       "archive_bytes": 3085382,
       "verification": "root all names/type/mode/hash/size/target verified"
     },
-    "archive_independent_sha256": "7801d9655ebf6bcf5167fe58c1e684fbd35e611f3eef481d98860926e8f09e0c"
+    "archive_independent_sha256": "7801d9655ebf6bcf5167fe58c1e684fbd35e611f3eef481d98860926e8f09e0c",
+    "pr": 309,
+    "head_sha": "f31e557a7d208815eeabd37d8dc9b4b7e3e352d1",
+    "base_branch": "codex/stack-status-context-delivery",
+    "ci_run": 40979844215,
+    "publication_docs_passed": 241
   }
 }

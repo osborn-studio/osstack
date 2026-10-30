@@ -340,3 +340,6 @@ PR305 merged at `e79fc92687c144969ad91242a979d904f2b2acdf`; its tree equals publ
 ## CheckRun 分类修复候选（2026-10-30）
 
 PS18/J07支持卡card_14b72dd7已完成作者56同测试RED17→GREEN、独立57预冻向量旧20失败→新全过；root d5eea3e5全仓22包7232通过/5跳过/0失败，8677已跟踪文件字节执行期间不变，初始含4新鲜dist，不称clean committed tree。实际Sonnet5.5静态PASS，原意见与失败保留。只明确完成且SUCCESS/NEUTRAL/SKIPPED可成功，已知失败优先，其他不完整/未知pending。已有卡不自动刷新；snapshot另有政策。待发布依赖308的Draft，308当前4a7ee75d/main新CI40979169462尚未完成；不得合入featurebase。见[修复记录](../../implementation/stack-checkrun-state/README.md)。
+
+
+Publication snapshot 2026-10-30T00:28:26.368600+00:00: PR309 f31e557a is Draft on parent308, CI40979844215 running; PR308 4a7ee75d targets main with CI40979169462 running. Root requires all applicable checks before Ready; user merge308 must precede actual-main retarget/revalidation of309. Original superseded308 run40977980388 was cancelled to release final candidate CI, not retried as a test failure.
