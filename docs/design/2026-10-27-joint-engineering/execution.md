@@ -381,3 +381,8 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 ## C0/W17 有限教程观察收口（2026-10-30）
 
 [教程与证据](../../implementation/pstack-c0-usage/README.md)：已构建环境中实际输入拒绝exit2/no output→仅自有地图补empty→同入口新output consistent0，五例产品0/1/2/1/0、driver均0，原错误与语义保留。独立核case145+journey32成员及source1065/build2352；1493产品/脚本/清单字节未变，运行初始4freshdist脏。冻结CU中8有限pass、CU01排他上下文unknown、CU08全局资源观察limited；无完整A39/W17/C0或用户阶段验收。原A39首次冻结前接口推导不能由本后验观察替代。仅控制分支发布待下批吸收，card_039f599c done只此有界记录；W18/W19及原C1→C2继续，先不要进入Firstmate深运行。
+
+
+## 2026-10-30 W18 next implementation
+
+Three read-only workers completed source/scope analysis; [the decision](../../implementation/pstack-feature-map/PLAN.md) assigns the next product boundary. No code or product tests ran in this scope round, no activity card or acceptance was completed. Next dispatch implements the bounded reader and freezes independent cases. PR310 remains merged; no Firstmate deep runtime.

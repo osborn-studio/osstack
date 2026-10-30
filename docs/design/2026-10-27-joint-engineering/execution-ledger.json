@@ -5955,5 +5955,22 @@
     },
     "evidence_archive_sha256": "64f9c081d1a370627fb6798918299a40b23f568eb91ee39801c31a847ebe35e7",
     "docs_tests": 241
+  },
+  "next_pstack_implementation": {
+    "observed_at": "2026-10-30T05:44:58.818267+00:00",
+    "main_sha": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+    "status": "ready_to_implement_not_implemented",
+    "work_package": "W18",
+    "plan": "docs/implementation/pstack-feature-map/PLAN.md",
+    "scope": "Offline metadata selection, required closure and bounded relevant leaf reading for three existing CLI scenarios",
+    "implementation_owner": "next assigned author; root owns shared integration",
+    "product_executions_this_scope_round": 0,
+    "new_activity_cards": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "firstmate_deep_runtime": "prohibited",
+    "next_action": "Implement first vertical reader slice and independent frozen vectors; do not repeat scope-only planning or the closed C0 packet",
+    "external_host_model_calls_this_scope_round": 0,
+    "collaboration_analysis_workers": 3
   }
 }

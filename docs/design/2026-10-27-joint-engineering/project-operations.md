@@ -2,7 +2,7 @@
 
 ## 当前执行优先：pstack原范围验收对账
 
-实际main 01ec1852，PR310已合并。有序PR前沿工具已交付；当前推进原C0/W17有限调用体验，不扩张方法数量。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
+实际main 01ec1852，PR310已合并。有序PR前沿工具已交付；原C0/W17有限后验调用体验已记录，下一步实施W18相关叶子读取，不扩张方法数量。原24PS/19W/48A与C0/C1/C2保持，S1–S3工具验收不替代W08真实集成，剩余pstack责任不自动转交Firstmate。详情见[阶段对账](../../implementation/pstack-stage-acceptance/README.md)。root统一账本/PR，三个代理本轮只做源码与原验收追溯；未启动新宿主实验。
 
 > 当前排期与交付见 [delivery-status.md](delivery-status.md) 和 [delivery-rollup.json](delivery-rollup.json)。下方旧批次记录按历史SHA解释，不覆盖最新观察。
 

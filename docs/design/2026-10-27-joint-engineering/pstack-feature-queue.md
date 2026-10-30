@@ -6,6 +6,10 @@
 
 This is the delivery queue, separate from activity counts and the 32 formal joint milestones. Main has four entry points and fourteen method materials; those counts are not completed capability counts. The 24 source capability groups currently contain 20 partially delivered and four deferred groups. No whole-capability completion is inferred.
 
+## Next implementation: W18 relevant leaves
+
+[Implementation decision](../../implementation/pstack-feature-map/PLAN.md): three existing CLI scenarios, index-only BM25, required closure and bounded selected-leaf reads. The next action is product implementation with independent frozen cases. Scope analysis has run no product tests and completes no W18/C0 gate. W19 ownership/health and actual cross-entry coverage remain separate obligations. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
+
 ## Active delivery
 
 | Order | User-visible outcome | Current action | Completion boundary |
@@ -15,7 +19,7 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 | 3 | Give a host the complete five-case result without unrelated fixture fields | PR305 merged e79fc926; tree equals published b0ea4e78, original CI/audit bindings retained | All five cases and failed/not_run/unknown states preserved; original records unchanged |
 | 4 | Use current method materials to complete a fresh actual host task | Current packet defect: Codex actual RED/fix/GREEN complete; Claude stopped after permission denial, unrepaired; both16pages delivered; fix published in305 | Separate actual host outcomes and fix delivery from whole capability claims; retain Claude failure and old results, no retries for a better grade |
 | 5 | Compare and repair a persistent fixed-five verification map | PR306 merged at6c9a3e8f; actualmain tree equals validated958. Fixed-five map command and CI hook available | Fixed local map only; no automatic bless, new methods, general drift discovery or formal gate |
-| 6 | Make PR candidate status easier to assess | PR307 merged at de43f47c; bounded read-only snapshot is available. PR308 merged at a250ad88; PR309 merged at e4643324 after actual-main verification/CI; ordered stack-frontier report validated and preparing publication | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
+| 6 | Make PR candidate status easier to assess | PR307 merged at de43f47c; bounded read-only snapshot is available. PR308 merged at a250ad88; PR309 merged at e4643324 after actual-main verification/CI; PR310 ordered stack-frontier report merged at01ec1852 | Head/base/CI/review observations explicitly bound and refreshed; no automatic approval or merge |
 
 Firstmate deep recovery/supervision is deferred behind these pstack paths except for necessary dependencies. Formal identity issue287 does not block ordinary bounded D2a tools.
 
