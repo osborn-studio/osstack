@@ -343,3 +343,12 @@ PS18/J07支持卡card_14b72dd7已完成作者56同测试RED17→GREEN、独立57
 
 
 Publication snapshot 2026-10-30T00:28:26.368600+00:00: PR309 f31e557a is Draft on parent308, CI40979844215 running; PR308 4a7ee75d targets main with CI40979169462 running. Root requires all applicable checks before Ready; user merge308 must precede actual-main retarget/revalidation of309. Original superseded308 run40977980388 was cancelled to release final candidate CI, not retried as a test failure.
+
+
+Next selected slice (proposal only): a one-time explicit ordered 1–3 PR stack-frontier report reusing the merged singleton collector, preserving unknowns and never authorizing merge. Author and independent source-grounded selections are retained in `docs/implementation/stack-checkrun-state/next-selection`. Historical comparison and stored-card refresh are deferred. Implementation and acceptance freeze are not yet dispatched; no inherited host budget or new method.
+
+
+Final PR308 closure 2026-10-30T00:46:39.573481+00:00: head4a7ee75d is Ready on actual main de43 after CI40979169462 five applicable SUCCESS/paid SKIP, root readiness mutation and readback. Actual synthetic25bb08b5 check/Test22packages7207pass7skip0fail, GitHub172/CLI14; exporter94total93pass1skip, projection88/journey43/reader14/maintenance24 and actual fixtures pass. Complete log is retained losslessly, no remote artifact download or rehash claim. Card7e0b1be2 blocked only for user merge. Historical CI/full/REVISE remain separately bound. PR309 stays Draft until parent merge and actual-main retarget/revalidation.
+
+
+User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612bc equals published4a7. Card7e0b1be2 done for the bounded slice. PR309 fc272c63 now targets main, tree equals f31 and complete16path delta unchanged; fresh verification/newCI40982097784 running. Historical parentCI40979844215 remains f31→4a,22packages7230pass7skip0fail (not local7232/5). Three-agent dispatch resumes: A implements ordered1–3 PR stack-frontier report after C independent freeze; C independently verifies; B revalidates309; root uniquely owns PR/ledger/full. New card6962ab52 contributes PS17 with PS18/13/J07 support, J20 design only. No new method/host budget or formal gate.

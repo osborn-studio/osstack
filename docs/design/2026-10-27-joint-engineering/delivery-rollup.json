@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-29T05:24:40.943500+00:00",
-  "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
-  "main_tree": "78d30c84714205fff903b9f23b249c230e3f3b08",
+  "observed_at": "2026-10-30T00:51:07.891452+00:00",
+  "main_sha": "a250ad88163132675d33dfe163c2e7e409443846",
+  "main_tree": "735612bc896359cc6f6114ea524b40a3aaba0131",
   "priority": "pstack_first",
   "merged_named_methods": 14,
   "merged_entries": 4,
@@ -1518,6 +1518,160 @@
           "--name-only",
           "5248195bd2611cc21a98a0ef3e39d229cdf9b681^1",
           "5248195bd2611cc21a98a0ef3e39d229cdf9b681"
+        ]
+      }
+    },
+    {
+      "pr": 305,
+      "merge_commit": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "mergedSHA": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "state": "merged_in_snapshot",
+      "primary_j": "J07",
+      "primaryJ": "J07",
+      "supporting_j": [
+        "J03",
+        "J23"
+      ],
+      "supportingJ": [
+        "J03",
+        "J23"
+      ],
+      "pstack_groups": [
+        "PS08",
+        "PS13",
+        "PS20"
+      ],
+      "delivered_capability": "完整五案例安全证据投影及passed stderr一致性修复",
+      "primary_artifacts": [
+        "scripts/project-method-journey-evidence.mjs"
+      ],
+      "evidence_readme": "docs/implementation/method-full-projection/README.md",
+      "acceptance_limit": "有界工具贡献；历史验证保持各自SHA，不证明全能力、宿主效果、身份或正式J资格",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [],
+      "merge_diff_inventory": {
+        "path_count": 51,
+        "sha256_of_git_diff_name_only_utf8": "00b06e21519d758d8e159b59f2dd94d912e30f3c017261d0e4d5fc8317242c0c",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "e79fc92687c144969ad91242a979d904f2b2acdf^1",
+          "e79fc92687c144969ad91242a979d904f2b2acdf"
+        ]
+      }
+    },
+    {
+      "pr": 306,
+      "merge_commit": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+      "mergedSHA": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+      "state": "merged_in_snapshot",
+      "primary_j": "J06",
+      "primaryJ": "J06",
+      "supporting_j": [
+        "J03",
+        "J09"
+      ],
+      "supportingJ": [
+        "J03",
+        "J09"
+      ],
+      "pstack_groups": [
+        "PS09",
+        "PS08"
+      ],
+      "delivered_capability": "固定五案例持久验证地图维护",
+      "primary_artifacts": [
+        "scripts/maintain-skills-check-map.mjs"
+      ],
+      "evidence_readme": "docs/implementation/skills-check-map-maintenance/README.md",
+      "acceptance_limit": "有界工具贡献；历史验证保持各自SHA，不证明全能力、宿主效果、身份或正式J资格",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [],
+      "merge_diff_inventory": {
+        "path_count": 115,
+        "sha256_of_git_diff_name_only_utf8": "90e68542f23708f77e484669eb629e2f21e16b5fa99534ade2f218e37a8d5463",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b^1",
+          "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b"
+        ]
+      }
+    },
+    {
+      "pr": 307,
+      "merge_commit": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+      "mergedSHA": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+      "state": "merged_in_snapshot",
+      "primary_j": "J07",
+      "primaryJ": "J07",
+      "supporting_j": [],
+      "supportingJ": [],
+      "pstack_groups": [
+        "PS17",
+        "PS18",
+        "PS13"
+      ],
+      "delivered_capability": "单次有界只读PR候选快照",
+      "primary_artifacts": [
+        "packages/github/src/pr-candidate-snapshot.ts"
+      ],
+      "evidence_readme": "docs/implementation/pr-candidate-snapshot/README.md",
+      "acceptance_limit": "有界工具贡献；历史验证保持各自SHA，不证明全能力、宿主效果、身份或正式J资格",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [
+        "J20"
+      ],
+      "merge_diff_inventory": {
+        "path_count": 148,
+        "sha256_of_git_diff_name_only_utf8": "1a6bdd9cf98cfb5f9a0706d975b19a9c2209d9a92f55c0c0b9dc3134d5e45741",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c^1",
+          "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c"
+        ]
+      }
+    },
+    {
+      "pr": 308,
+      "merge_commit": "a250ad88163132675d33dfe163c2e7e409443846",
+      "mergedSHA": "a250ad88163132675d33dfe163c2e7e409443846",
+      "state": "merged_in_snapshot",
+      "primary_j": "J07",
+      "primaryJ": "J07",
+      "supporting_j": [],
+      "supportingJ": [],
+      "pstack_groups": [
+        "PS18",
+        "PS17"
+      ],
+      "delivered_capability": "legacy StatusContext状态保留，支持既有stack ingest分类",
+      "primary_artifacts": [
+        "packages/github/src/stack.ts"
+      ],
+      "evidence_readme": "docs/implementation/stack-status-context/README.md",
+      "acceptance_limit": "有界分类修复；已有卡不刷新，非全能力/完整宿主效果/正式资格",
+      "formal_joint_gate_pass_asserted": false,
+      "scope_relation": "bounded_tool_contribution_not_formal_gate",
+      "design_associations": [
+        "J20"
+      ],
+      "merge_diff_inventory": {
+        "path_count": 79,
+        "sha256_of_git_diff_name_only_utf8": "da37ff7eeee3cebfd61095cf37b305c2262028fd3fe55e20d72eaa83f9e3fd84",
+        "reproduce": [
+          "git",
+          "diff",
+          "--name-only",
+          "a250ad88163132675d33dfe163c2e7e409443846^1",
+          "a250ad88163132675d33dfe163c2e7e409443846"
         ]
       }
     }
@@ -10359,7 +10513,7 @@
       "historical_bindings_unchanged": true
     }
   },
-  "main_observed_at": "2026-10-30T00:10:59.539925+00:00",
+  "main_observed_at": "2026-10-30T00:51:07.891452+00:00",
   "pr304_main_retarget": {
     "observed_at": "2026-10-29T10:09:34.304403+00:00",
     "main": "a0ecd79dce9c215a19cadc9b6ccb0c6fa7331db7",
@@ -10903,9 +11057,8 @@
     "merged_at": "2026-10-30T00:05:05Z"
   },
   "stack_status_context_slice": {
-    "status": "draft_final_documentation_head_ci_pending",
+    "status": "merged_by_user",
     "card": "card_7e0b1be2",
-    "base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
     "primary_capability": "PS18",
     "supports": [
       "PS17",
@@ -10992,9 +11145,35 @@
       "run": 40979169462,
       "head_sha": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
       "base": "main",
-      "status": "pending_current_head_CI",
-      "observed_at": "2026-10-30T00:25:03.449316+00:00"
-    }
+      "base_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+      "status": "completed",
+      "conclusion": "SUCCESS",
+      "applicable_success": 5,
+      "paid": "SKIPPED",
+      "actual_checkout": "25bb08b59939d7573d73cbe6594ce7e12a6af89b",
+      "packages": 22,
+      "tests": {
+        "passed": 7207,
+        "skipped": 7,
+        "failed": 0
+      },
+      "observed_at": "2026-10-30T00:45:30.962273+00:00",
+      "record": "docs/implementation/pr308-main-retarget/ci-final"
+    },
+    "current_main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "ready_readback": {
+      "head_sha": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
+      "isDraft": false,
+      "base": "main",
+      "mergeable": "MERGEABLE",
+      "human_merge_required": true,
+      "observed_at": "2026-10-30T00:46:39.573481+00:00"
+    },
+    "original_base_main": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+    "merge_commit": "a250ad88163132675d33dfe163c2e7e409443846",
+    "merged_at": "2026-10-30T00:47:11Z",
+    "merge_tree_equals_published_head": true,
+    "card_status": "done_bounded_slice_only"
   },
   "post307_dispatch": {
     "observed_at": "2026-10-30T00:10:59.539925+00:00",
@@ -11025,8 +11204,8 @@
   "stack_checkrun_state_slice": {
     "observed_at": "2026-10-30T00:25:03.449316+00:00",
     "card": "card_14b72dd7",
-    "status": "draft_ci_pending_parent308",
-    "main_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+    "status": "draft_actual_main_revalidation",
+    "main_sha": "a250ad88163132675d33dfe163c2e7e409443846",
     "parent_pr": 308,
     "parent_head": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
     "author_sha": "7b7916eac56d654891018204b11f3a00daffdc3f",
@@ -11086,9 +11265,65 @@
     },
     "archive_independent_sha256": "7801d9655ebf6bcf5167fe58c1e684fbd35e611f3eef481d98860926e8f09e0c",
     "pr": 309,
-    "head_sha": "f31e557a7d208815eeabd37d8dc9b4b7e3e352d1",
-    "base_branch": "codex/stack-status-context-delivery",
-    "ci_run": 40979844215,
-    "publication_docs_passed": 241
+    "head_sha": "fc272c631885fe39049c488dbfd60c708d2a6bdb",
+    "base_branch": "main",
+    "publication_docs_passed": 241,
+    "parent_based_ci": {
+      "run": 40979844215,
+      "head_sha": "f31e557a7d208815eeabd37d8dc9b4b7e3e352d1",
+      "base": "codex/stack-status-context-delivery",
+      "base_sha": "4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3",
+      "applicable_success": 5,
+      "paid": "SKIPPED",
+      "actual_checkout": "3906863badafbdf30cd3248e9a6a9882d3ec0249",
+      "packages": 22,
+      "passed": 7230,
+      "skipped": 7,
+      "failed": 0,
+      "record": "docs/implementation/stack-checkrun-state/parent-ci"
+    },
+    "current_ci": {
+      "run": 40982097784,
+      "head_sha": "fc272c631885fe39049c488dbfd60c708d2a6bdb",
+      "base": "main",
+      "base_sha": "a250ad88163132675d33dfe163c2e7e409443846",
+      "status": "in_progress",
+      "observed_at": "2026-10-30T00:51:07.891452+00:00"
+    },
+    "retarget_tree_equals_previous": true
+  },
+  "next_stack_frontier_proposal": {
+    "status": "selected_implementation_dispatched_awaiting_independent_freeze",
+    "record": "docs/implementation/stack-checkrun-state/next-selection",
+    "scope": "one-shot explicit ordered 1-3 PR report; only stable merged prefix advances observed frontier; all unknowns and merge_authorized:false retained",
+    "deferred": [
+      "historical snapshot comparison",
+      "stored-card refresh"
+    ],
+    "implementation_dispatched": true,
+    "new_host_budget": false,
+    "new_methods": 0,
+    "formal_gate_pass": false
+  },
+  "stack_frontier_slice": {
+    "status": "implementation_dispatched_awaiting_independent_freeze",
+    "card": "card_6962ab52",
+    "base_main": "a250ad88163132675d33dfe163c2e7e409443846",
+    "primary_capability": "PS17",
+    "supports": [
+      "PS18",
+      "PS13",
+      "J07"
+    ],
+    "design_context": [
+      "J20"
+    ],
+    "scope": "one-shot explicit ordered 1-3 PR report; no historical comparison/DB refresh/watcher/retarget/merge",
+    "author": "loader_adversarial",
+    "independent": "cleanup_regression",
+    "root": "PR/shared ledger/full queue",
+    "formal_gate_pass": false,
+    "new_methods": 0,
+    "new_host_model_calls": 0
   }
 }

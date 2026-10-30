@@ -1,0 +1,3 @@
+e79fc92687c144969ad91242a979d904f2b2acdf
+5248195bd2611cc21a98a0ef3e39d229cdf9b681 b0ea4e7836dd4be640b4f7c140befba73977837d
+Merge pull request #305 from osborn-studio/codex/method-full-projection-delivery

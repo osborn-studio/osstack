@@ -1,0 +1,22 @@
+{
+  "observed_at": "2026-10-30T00:36:05.399450+00:00",
+  "verified_files": [
+    "author/selection.json",
+    "author/selection.md",
+    "independent/detect-drift-callers.txt",
+    "independent/selection.json",
+    "independent/selection.md",
+    "independent/source-0.txt",
+    "independent/source-1.txt",
+    "independent/source-2.txt",
+    "independent/source-3.txt",
+    "independent/source-4.txt",
+    "independent/source-5.txt",
+    "independent/source-6.txt",
+    "independent/source-7.txt",
+    "independent/source-8.txt",
+    "independent/source-9.txt"
+  ],
+  "count": 15,
+  "method": "exact size and SHA256 against each original worker manifest"
+}

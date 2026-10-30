@@ -1,6 +1,6 @@
 # pstack 优先：能力与交付对账
 
-当前合并快照：`de43f47c29d5c08ae6e6c5eb366767320ffcdd0c`。#305/#306/#307已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；候选状态只读工具已随PR307合并；当前正收口旧式StatusContext与CheckRun状态分类修复。历史宿主实验与CI保留各自原始SHA。
+当前合并快照：`a250ad88163132675d33dfe163c2e7e409443846`。#305/#306/#307/#308已由用户合并；主线 **4个入口、14个共享方法**。完整五case投影与持久地图维护已可用；候选状态只读工具已随PR307合并；当前正收口旧式StatusContext与CheckRun状态分类修复。历史宿主实验与CI保留各自原始SHA。
 
 **近期目标是把 pstack 方法变成可在 Codex、Claude 中完成实际任务的能力。** Firstmate 的已有组件继续复用；远端主管、事件入口、长期监督等深层联合运行时后排，只有必要依赖提前。
 
@@ -29,7 +29,8 @@
 2. PR304已合并：完整五案例旅程，默认两例兼容；合并树等原已验证候选，不重标历史测试。
 3. PR305已合并：完整五案例安全证据投影和passed stderr一致性修复，默认兼容与原件保持；旧宿主实验成绩不变。
 4. PR306已合并：固定五case地图维护，实际RED→仅改地图→GREEN、最终CI通过，树等验证候选。
-5. 下一项是只读候选状态核对，按明确head/base、检查、评审线程和前后快照报告缺口；不自动审批/合并。Firstmate深运行时后排。
+5. PR307已合并：单次只读候选快照绑定head/base、检查、评审线程和前后观察；不自动审批/合并。
+6. PR308已合并legacy StatusContext分类；PR309正对齐main复验CheckRun状态分类；明确排序的1–3 PR栈前沿报告已派发实施，尚未交付。Firstmate深运行时后排。
 
 ## pstack能力清单
 
@@ -200,3 +201,9 @@ PS18/J07支持卡card_14b72dd7已完成作者56同测试RED17→GREEN、独立57
 
 
 Publication snapshot 2026-10-30T00:28:26.368600+00:00: PR309 f31e557a is Draft on parent308, CI40979844215 running; PR308 4a7ee75d targets main with CI40979169462 running. Root requires all applicable checks before Ready; user merge308 must precede actual-main retarget/revalidation of309. Original superseded308 run40977980388 was cancelled to release final candidate CI, not retried as a test failure.
+
+
+Final PR308 closure 2026-10-30T00:46:39.573481+00:00: head4a7ee75d is Ready on actual main de43 after CI40979169462 five applicable SUCCESS/paid SKIP, root readiness mutation and readback. Actual synthetic25bb08b5 check/Test22packages7207pass7skip0fail, GitHub172/CLI14; exporter94total93pass1skip, projection88/journey43/reader14/maintenance24 and actual fixtures pass. Complete log is retained losslessly, no remote artifact download or rehash claim. Card7e0b1be2 blocked only for user merge. Historical CI/full/REVISE remain separately bound. PR309 stays Draft until parent merge and actual-main retarget/revalidation.
+
+
+User merge308 2026-10-30T00:51:07.891452+00:00: actual main a250ad88/tree735612bc equals published4a7. Card7e0b1be2 done for the bounded slice. PR309 fc272c63 now targets main, tree equals f31 and complete16path delta unchanged; fresh verification/newCI40982097784 running. Historical parentCI40979844215 remains f31→4a,22packages7230pass7skip0fail (not local7232/5). Three-agent dispatch resumes: A implements ordered1–3 PR stack-frontier report after C independent freeze; C independently verifies; B revalidates309; root uniquely owns PR/ledger/full. New card6962ab52 contributes PS17 with PS18/13/J07 support, J20 design only. No new method/host budget or formal gate.

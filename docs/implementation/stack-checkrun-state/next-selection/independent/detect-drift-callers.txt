@@ -1,0 +1,9 @@
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:114:    expect(detectDrift(model)).toMatchObject({ clean: false, issues: [{ number: 11, kind: issue }] });
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:173:    const drift = detectDrift(model);
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:233:    expect(detectDrift(stack)).toEqual({ clean: true, issues: [] });
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:313:    expect(detectDrift(baseStack())).toEqual({ clean: true, issues: [] });
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:320:    const report = detectDrift(stack);
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:331:    const report = detectDrift(stack);
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:342:    const report = detectDrift(stack);
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.test.ts:391:    const report = detectDrift(stack);
+4afffbb150d0e106db08f7b4ed64ed07af8861d2:packages/github/src/stack.ts:219:export function detectDrift(stack: StackModel): DriftReport {

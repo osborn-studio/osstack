@@ -1,0 +1,98 @@
+{
+  "observed_at": "2026-10-30T00:43:53.634146+00:00",
+  "source_rollup_sha256": "aac5c57baf9515b991cce5563cf4eb8ccfb70a01b001204afe9bfe5cc1ea7ec5",
+  "source_status_sha256": "0432260c2008a6058a4500fa072d6ff4e1d43876e7d81191ee4ffbaa297cdb5d",
+  "source_work_packages_sha256": "ff2403b1813b42f2a7adac93bd2ede70ea2ac7b654ec27880e2cfd6738bfa750",
+  "source_head": "4afffbb150d0e106db08f7b4ed64ed07af8861d2",
+  "scope": "Only added PR305/306/307 rows and updated front status; no candidate re-review. Working-tree snapshot identified by file hashes.",
+  "row_checks": [
+    {
+      "pr": 305,
+      "merge_sha": "e79fc92687c144969ad91242a979d904f2b2acdf",
+      "parents": [
+        "5248195bd2611cc21a98a0ef3e39d229cdf9b681",
+        "b0ea4e7836dd4be640b4f7c140befba73977837d"
+      ],
+      "diff_paths": 51,
+      "diff_name_bytes_sha256": "00b06e21519d758d8e159b59f2dd94d912e30f3c017261d0e4d5fc8317242c0c",
+      "artifacts": {
+        "scripts/project-method-journey-evidence.mjs": {
+          "exists_at_merge": true,
+          "sha256": "f248053814670113de6aafeed3f5660db930bbdbdf8d635d8a9ea006cbf89684",
+          "in_merge_delta": true
+        },
+        "docs/implementation/method-full-projection/README.md": {
+          "exists_at_merge": true,
+          "sha256": "5ae7f8781857b9b210ad771b177487d4373e89aaf49cf1aa78232a438951cb0f",
+          "in_merge_delta": true
+        }
+      },
+      "structural_checks_pass": true,
+      "formal_gate_asserted": false
+    },
+    {
+      "pr": 306,
+      "merge_sha": "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+      "parents": [
+        "e79fc92687c144969ad91242a979d904f2b2acdf",
+        "958eb72295937b96ee8affc32fa87910bbdde512"
+      ],
+      "diff_paths": 115,
+      "diff_name_bytes_sha256": "90e68542f23708f77e484669eb629e2f21e16b5fa99534ade2f218e37a8d5463",
+      "artifacts": {
+        "scripts/maintain-skills-check-map.mjs": {
+          "exists_at_merge": true,
+          "sha256": "b95ddd7ce3d2fd1ea25a1e8bb5032944987be778f1d5b82ff29e34b59ccdecf0",
+          "in_merge_delta": true
+        },
+        "docs/implementation/skills-check-map-maintenance/README.md": {
+          "exists_at_merge": true,
+          "sha256": "ac68ef207a9dde76b95ce6d2f0be7541b260973d3c0f7837f2f0aee173df4125",
+          "in_merge_delta": true
+        }
+      },
+      "structural_checks_pass": true,
+      "formal_gate_asserted": false
+    },
+    {
+      "pr": 307,
+      "merge_sha": "de43f47c29d5c08ae6e6c5eb366767320ffcdd0c",
+      "parents": [
+        "6c9a3e8f11f2664f15b4ce4a26c5014d68fdcd4b",
+        "8fd2891174964bb539f5ca9b094549a090517d5e"
+      ],
+      "diff_paths": 148,
+      "diff_name_bytes_sha256": "1a6bdd9cf98cfb5f9a0706d975b19a9c2209d9a92f55c0c0b9dc3134d5e45741",
+      "artifacts": {
+        "packages/github/src/pr-candidate-snapshot.ts": {
+          "exists_at_merge": true,
+          "sha256": "f9df94098c9367bc520c9eb0710845be216de0d1994f51a24f7f2254f25d4fca",
+          "in_merge_delta": true
+        },
+        "docs/implementation/pr-candidate-snapshot/README.md": {
+          "exists_at_merge": true,
+          "sha256": "46bda330eecb498df2cf0a1fd192477365b59ca5ff97a300507f9031f33bdd67",
+          "in_merge_delta": true
+        }
+      },
+      "structural_checks_pass": true,
+      "formal_gate_asserted": false
+    }
+  ],
+  "mapping_assessment": {
+    "305": "J07 primary is appropriate for retained artifact integrity/consumption; J03/J23 supporting and PS08/13/20 are bounded driver/evidence/host-consumable-tool contributions, not host execution qualification.",
+    "306": "J06 primary for persistent fixed-five map; J03 driver reuse and J09 repair/reverification are supporting contributions. PS08/09 matches map maintenance. Does not satisfy prescribed repro/wait/cancel maps or actual product bug-fix journey.",
+    "307": "J07 primary for candidate-bound evidence; PS17/18/13 match one-shot forge observation, candidate binding and retained evidence. J20 remains design association only, not event supervision runtime."
+  },
+  "formal_flags": {
+    "three_pr_rows_false": true,
+    "all32_milestone_formal_flags_false": true
+  },
+  "front_status": "Updated introductory list correctly states merged305/306/307; does not promote 308/309 or claim new stack-frontier implementation.",
+  "issues": [],
+  "limits": [
+    "No live GitHub query; merge objects/parents/messages and immutable Git blobs checked locally.",
+    "Associations justify bounded engineering contribution only; no gate completion or production test was inferred.",
+    "Historical sections and reciprocal milestone indexes were not exhaustively refreshed/re-audited in this bounded task."
+  ]
+}

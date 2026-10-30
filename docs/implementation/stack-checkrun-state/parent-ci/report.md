@@ -1,0 +1,9 @@
+# PR309 parent-based CI independent record review
+
+Run 40979844215, head `f31e557a7d208815eeabd37d8dc9b4b7e3e352d1`, base `codex/stack-status-context-delivery` / `4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3`. Actual synthetic checkout `3906863badafbdf30cd3248e9a6a9882d3ec0249`; `HEAD is now at 3906863b Merge f31e557a7d208815eeabd37d8dc9b4b7e3e352d1 into 4a7ee75de6394a6dd8c3fdb24ecf8700be5e0bf3`. This is not a bare-head checkout claim.
+
+Five applicable jobs succeeded; paid smoke skipped. Lint, Inventory freshness, Build, Typecheck, Test and subsequent applicable smoke steps succeeded. check/Test contains 22 unique packages: 7230 passed / 7 skipped / 0 failed. GitHub package 195 passed; CLI package 2764 passed / 6 skipped. The separate offline candidate CLI step passed 14. Export contracts:94 total/93 passed/1 skipped; projection88, journey43, pagination14, maintenance24 passed.
+
+Logged actual two- and five-case journeys passed with expected product exits 0/1 and 0/1/2/1/0; driver exits all0, fixture removal recorded. Default/full projection and check each emitted matching logged packet SHA and valid status. Five-case maintenance was consistent, exit0, with unchanged map. Engineering decision and local Git skills-check smokes passed. Full structured values and source log line numbers are in report.json.
+
+PR309 remains Draft against its parent; this parent-based CI does not establish actual-main readiness. The final run was not re-run or modified by this reviewer. Raw full logs plus lossless gzip and command/metadata records are retained. No artifacts were downloaded or independently rehashed. This is evidence parsing, not independent product test execution; no native-host, formal-gate or full-process-tree qualification is implied. PR metadata is a collection-time snapshot; only root changes Ready.

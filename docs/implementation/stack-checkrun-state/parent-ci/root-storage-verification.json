@@ -1,0 +1,5 @@
+{
+  "verified_payloads": 14,
+  "raw_log_storage": "lossless gzip exact original bytes verified",
+  "scope": "historical parent CI f31e onto4a; not actualmain"
+}

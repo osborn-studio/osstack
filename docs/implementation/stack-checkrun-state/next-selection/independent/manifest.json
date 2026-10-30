@@ -1,0 +1,67 @@
+[
+  {
+    "path": "detect-drift-callers.txt",
+    "bytes": 1209,
+    "sha256": "82dc04252673fc3b40af3e3c7beccae3df43cadb5421a70d3e8457f010a69e22"
+  },
+  {
+    "path": "selection.json",
+    "bytes": 9028,
+    "sha256": "2d7214de2825a59710ab312b34647d1297c021c69d02827f0b39b2b125e9ec9b"
+  },
+  {
+    "path": "selection.md",
+    "bytes": 1265,
+    "sha256": "812c1a5a1114e98ba721729abf110b6431e3f0fe040d71ecd2ee41008d4e1993"
+  },
+  {
+    "path": "source-0.txt",
+    "bytes": 11679,
+    "sha256": "86256275b1c69e1c779b65310988a71035bccfa23ac1ceb0c32651d30605cebb"
+  },
+  {
+    "path": "source-1.txt",
+    "bytes": 22759,
+    "sha256": "054644260f339f9c40c714731d4e2dc92be69cc49fb138ade4d90a12a9d61a71"
+  },
+  {
+    "path": "source-2.txt",
+    "bytes": 31892,
+    "sha256": "4b0edb58e91d3616f44a8f3eeb3ce883e1c1ca99feb349fde759ae989d0c5d56"
+  },
+  {
+    "path": "source-3.txt",
+    "bytes": 8516,
+    "sha256": "f6a2435f10c3a400c6b58bf6c5ee0cc41c61ff7f7c64b0287919ba86017b2c98"
+  },
+  {
+    "path": "source-4.txt",
+    "bytes": 15018,
+    "sha256": "b649798d453799c0ca3d176260390ad5ef6ad2f110c610cd7bcba95e3549df22"
+  },
+  {
+    "path": "source-5.txt",
+    "bytes": 16281,
+    "sha256": "f9df94098c9367bc520c9eb0710845be216de0d1994f51a24f7f2254f25d4fca"
+  },
+  {
+    "path": "source-6.txt",
+    "bytes": 5848,
+    "sha256": "3c0a5c7cad064a21291f80c7a6a2eb3d522f1f895ad25b24c4ac4d1c572f8093"
+  },
+  {
+    "path": "source-7.txt",
+    "bytes": 25602,
+    "sha256": "f9fe5bedddc488bfb0fbcc218ced364ca11f3e3362438b8f3cf6c3a3429c0ecb"
+  },
+  {
+    "path": "source-8.txt",
+    "bytes": 7619,
+    "sha256": "e261c1ff5581e0f8fc6c686f34de4b535f87473e77beabea7dd8323021214610"
+  },
+  {
+    "path": "source-9.txt",
+    "bytes": 25407,
+    "sha256": "2d4823aeea788acab258ec60eb52e7b9e3a23a6649850af128d6ada5c33d7778"
+  }
+]
