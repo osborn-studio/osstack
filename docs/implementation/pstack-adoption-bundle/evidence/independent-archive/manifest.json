@@ -1,0 +1,39 @@
+{
+  "members": [
+    {
+      "path": "bindings.json",
+      "bytes": 9293,
+      "sha256": "69c9e326f59005a3619c4e575ae8f131ae3f3c31999666b8d251c20b2786d170"
+    },
+    {
+      "path": "check-bindings.py",
+      "bytes": 4142,
+      "sha256": "d6e56b3d3dffdff0d448183b3ee18ca459a7ad636fbc53ab6e722bcc2a20c91a"
+    },
+    {
+      "path": "coverage.json",
+      "bytes": 5801,
+      "sha256": "0caadebb9ca86c1f251442c34329d9fff31288fef65237a05c600a9225864156"
+    },
+    {
+      "path": "report.md",
+      "bytes": 1784,
+      "sha256": "da01262a594897715591e8af070cdc00784aae87050faf8273a46e06fca0d2f3"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 424,
+      "sha256": "b301591d0cd6ced59206d3823a8d344001475805197bbd688e70905692bec8b2"
+    },
+    {
+      "path": "verified-members.json",
+      "bytes": 273682,
+      "sha256": "f84d219d2ef296b0c2cb8bbf79e0a3b68ec3aa88868c03c824e578573488a8c4"
+    },
+    {
+      "path": "verify.py",
+      "bytes": 3007,
+      "sha256": "01a31d444faf94a91d59b82768eeb9e13d2d169ab449f295efd0af7560df7dce"
+    }
+  ]
+}

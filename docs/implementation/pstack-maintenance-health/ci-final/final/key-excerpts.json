@@ -1,0 +1,54 @@
+[
+  {
+    "line": 3795,
+    "text": "check\tRun actions/checkout@v7\t2026-10-30T09:07:57.3067288Z HEAD is now at 084b291b Merge 418ffe02929845e73ef56372c8920b51a64b772d into abcd9edf008568d3c3d869df4afd9143b079ee64"
+  },
+  {
+    "line": 3797,
+    "text": "check\tRun actions/checkout@v7\t2026-10-30T09:07:57.3260829Z [command]/usr/bin/git log -1 --format=%H"
+  },
+  {
+    "line": 3798,
+    "text": "check\tRun actions/checkout@v7\t2026-10-30T09:07:57.3307077Z 084b291bb466caac718c41273c3045348948a548"
+  },
+  {
+    "line": 5150,
+    "text": "check\tTest\t2026-10-30T09:11:09.7264557Z packages/skill-registry test:  ^[[32m✓^[[39m src/watcher.test.ts ^[[2m(^[[22m^[[2m6 tests^[[22m^[[2m)^[[22m^[[32m 51^[[2mms^[[22m^[[39m"
+  },
+  {
+    "line": 5151,
+    "text": "check\tTest\t2026-10-30T09:11:09.8019708Z packages/skill-registry test:  ^[[32m✓^[[39m src/manifest.test.ts ^[[2m(^[[22m^[[2m46 tests^[[22m^[[2m)^[[22m^[[32m 85^[[2mms^[[22m^[[39m"
+  },
+  {
+    "line": 5291,
+    "text": "check\tTest\t2026-10-30T09:11:22.7898765Z packages/skill-registry test:  ^[[32m✓^[[39m src/source-snapshot.test.ts ^[[2m(^[[22m^[[2m34 tests^[[22m^[[2m)^[[22m^[[33m 11065^[[2mms^[[22m^[[39m"
+  },
+  {
+    "line": 8529,
+    "text": "check\tMethod export contracts\t2026-10-30T09:23:26.8342490Z ok 25 - refuses a new output inside the current global Codex home even in dry-run # SKIP global Codex home absent; do not create it for testing"
+  },
+  {
+    "line": 12066,
+    "text": "check\tProject and check actual method evidence\t2026-10-30T09:24:46.9197716Z {\"status\":\"projected\",\"packet_sha256\":\"45f49bfeab759ace2462b3a2cb403383e48eccdbafcd31e3f3268f5ac786fa37\",\"input_opened_read_only\":true,\"formal_gate_pass\":false}"
+  },
+  {
+    "line": 12068,
+    "text": "check\tProject and check actual method evidence\t2026-10-30T09:24:47.4273791Z {\"status\":\"valid\",\"packet_sha256\":\"45f49bfeab759ace2462b3a2cb403383e48eccdbafcd31e3f3268f5ac786fa37\",\"original_evidence_revalidated\":false,\"formal_gate_pass\":false}"
+  },
+  {
+    "line": 12104,
+    "text": "check\tProject and check full five-case method evidence\t2026-10-30T09:24:49.3163557Z {\"status\":\"projected\",\"packet_sha256\":\"c48c9367ff60c7256712723aeef361cf96dbc8ef075437360939b5446347fcad\",\"input_opened_read_only\":true,\"formal_gate_pass\":false}"
+  },
+  {
+    "line": 12106,
+    "text": "check\tProject and check full five-case method evidence\t2026-10-30T09:24:49.8399885Z {\"status\":\"valid\",\"packet_sha256\":\"c48c9367ff60c7256712723aeef361cf96dbc8ef075437360939b5446347fcad\",\"original_evidence_revalidated\":false,\"formal_gate_pass\":false}"
+  },
+  {
+    "line": 12141,
+    "text": "check\tCLI startup budget\t2026-10-30T09:24:51.3404715Z ok   osstack --version (fast path): median 38ms over 5 runs (budget 250ms; min 35, max 38)"
+  },
+  {
+    "line": 12142,
+    "text": "check\tCLI startup budget\t2026-10-30T09:24:52.4099045Z ok   osstack --help (full command surface): median 212ms over 5 runs (budget 900ms; min 210, max 218)"
+  }
+]

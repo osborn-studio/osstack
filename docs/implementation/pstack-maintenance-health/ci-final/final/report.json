@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T09:36:54.559155+00:00",
+  "scope": "read-only final CI log and metadata verification; no test rerun or artifact download",
+  "run": 41030888483,
+  "url": "https://github.com/osborn-studio/osstack/actions/runs/41030888483",
+  "pr_head": "418ffe02929845e73ef56372c8920b51a64b772d",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "graph-runtime-matrix (20.6.0)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-runtime-matrix (22.23.1)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-macos-fixtures (22)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "graph-macos-fixtures (24)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Paid DeepSeek semantic smoke",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "check",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "checkout": {
+    "synthetic_merge_sha": "084b291bb466caac718c41273c3045348948a548",
+    "pr_head": "418ffe02929845e73ef56372c8920b51a64b772d",
+    "base_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
+    "log_lines": [
+      3795,
+      3797,
+      3798
+    ],
+    "binding": "checkout log only; no local tree equality assertion"
+  },
+  "package_results": {
+    "packages": [
+      {
+        "package": "contracts",
+        "passed": 15,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4789,
+        "raw": "check\tTest\t2026-10-30T09:09:47.5449368Z packages/contracts test:       Tests  15 passed (15)"
+      },
+      {
+        "package": "compliance",
+        "passed": 17,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4795,
+        "raw": "check\tTest\t2026-10-30T09:09:47.9637999Z packages/compliance test:       Tests  17 passed (17)"
+      },
+      {
+        "package": "github",
+        "passed": 224,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4821,
+        "raw": "check\tTest\t2026-10-30T09:09:50.9097738Z packages/github test:       Tests  224 passed (224)"
+      },
+      {
+        "package": "knowledge",
+        "passed": 44,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4830,
+        "raw": "check\tTest\t2026-10-30T09:09:52.1167336Z packages/knowledge test:       Tests  44 passed (44)"
+      },
+      {
+        "package": "neat-eval",
+        "passed": 16,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4854,
+        "raw": "check\tTest\t2026-10-30T09:09:54.8027567Z packages/neat-eval test:       Tests  16 passed (16)"
+      },
+      {
+        "package": "runtime",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4861,
+        "raw": "check\tTest\t2026-10-30T09:09:55.4448517Z packages/runtime test:       Tests  1 passed (1)"
+      },
+      {
+        "package": "protocol",
+        "passed": 1012,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4919,
+        "raw": "check\tTest\t2026-10-30T09:10:04.5167627Z packages/protocol test:       Tests  1012 passed (1012)"
+      },
+      {
+        "package": "governance",
+        "passed": 301,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4930,
+        "raw": "check\tTest\t2026-10-30T09:10:05.6082674Z packages/governance test:       Tests  301 passed (301)"
+      },
+      {
+        "package": "knowledge-cloud",
+        "passed": 36,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4943,
+        "raw": "check\tTest\t2026-10-30T09:10:08.4627647Z packages/knowledge-cloud test:       Tests  36 passed (36)"
+      },
+      {
+        "package": "graph",
+        "passed": 257,
+        "skipped": 0,
+        "failed": 0,
+        "line": 4988,
+        "raw": "check\tTest\t2026-10-30T09:10:25.0630465Z packages/graph test:       Tests  257 passed (257)"
+      },
+      {
+        "package": "core",
+        "passed": 1301,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5124,
+        "raw": "check\tTest\t2026-10-30T09:11:06.8883352Z packages/core test:       Tests  1301 passed (1301)"
+      },
+      {
+        "package": "plugins",
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5141,
+        "raw": "check\tTest\t2026-10-30T09:11:09.2207313Z packages/plugins test:       Tests  1 passed (1)"
+      },
+      {
+        "package": "hermes-adapter",
+        "passed": 22,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5145,
+        "raw": "check\tTest\t2026-10-30T09:11:09.3047417Z packages/hermes-adapter test:       Tests  22 passed (22)"
+      },
+      {
+        "package": "skills",
+        "passed": 2,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5156,
+        "raw": "check\tTest\t2026-10-30T09:11:11.3537618Z packages/skills test:       Tests  2 passed (2)"
+      },
+      {
+        "package": "autonomy",
+        "passed": 201,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5285,
+        "raw": "check\tTest\t2026-10-30T09:11:18.0974748Z packages/autonomy test:       Tests  201 passed (201)"
+      },
+      {
+        "package": "skill-registry",
+        "passed": 86,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5301,
+        "raw": "check\tTest\t2026-10-30T09:11:22.8136245Z packages/skill-registry test:       Tests  86 passed (86)"
+      },
+      {
+        "package": "agents",
+        "passed": 361,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5364,
+        "raw": "check\tTest\t2026-10-30T09:11:39.3441994Z packages/agents test:       Tests  361 passed (361)"
+      },
+      {
+        "package": "config",
+        "passed": 30,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5376,
+        "raw": "check\tTest\t2026-10-30T09:11:43.5096291Z packages/config test:       Tests  30 passed (30)"
+      },
+      {
+        "package": "loop",
+        "passed": 514,
+        "skipped": 1,
+        "failed": 0,
+        "line": 5823,
+        "raw": "check\tTest\t2026-10-30T09:12:08.8020736Z packages/loop test:       Tests  514 passed | 1 skipped (515)"
+      },
+      {
+        "package": "conformance",
+        "passed": 9,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5851,
+        "raw": "check\tTest\t2026-10-30T09:12:16.2296790Z packages/conformance test:       Tests  9 passed (9)"
+      },
+      {
+        "package": "supervisor",
+        "passed": 88,
+        "skipped": 0,
+        "failed": 0,
+        "line": 5864,
+        "raw": "check\tTest\t2026-10-30T09:12:17.9157326Z packages/supervisor test:       Tests  88 passed (88)"
+      },
+      {
+        "package": "cli",
+        "passed": 2764,
+        "skipped": 6,
+        "failed": 0,
+        "line": 8372,
+        "raw": "check\tTest\t2026-10-30T09:23:25.7080634Z packages/cli test:       Tests  2764 passed | 6 skipped (2770)"
+      }
+    ],
+    "unique_packages": 22,
+    "totals": {
+      "passed": 7302,
+      "skipped": 7,
+      "failed": 0
+    }
+  },
+  "script_results_file": "script-results.json",
+  "source_package": {
+    "manifest": 46,
+    "watcher": 6,
+    "source_snapshot": 34,
+    "total": 86,
+    "log_lines": [
+      5150,
+      5151,
+      5291
+    ],
+    "does_not_include_next_adoption_candidate": true
+  },
+  "actual_smokes": {
+    "default2": "passed; product exits 0/1, driver exits all 0",
+    "full5": "passed; product exits 0/1/2/1/0, driver exits all 0",
+    "maintenance": "consistent exit0; five rows match; map/tool before-after unchanged",
+    "default_projection": "projected then valid; logged packet SHA agrees",
+    "full_projection": "projected then valid; logged packet SHA agrees",
+    "startup": "version median38ms/250ms budget; help212ms/900ms"
+  },
+  "export_skip": {
+    "tests": 94,
+    "pass": 93,
+    "skip": 1,
+    "reason": "global Codex home absent; test intentionally does not create it",
+    "line": 8529
+  },
+  "limits": [
+    "Paid DeepSeek semantic smoke skipped, not passed.",
+    "No CI artifact downloaded, extracted, or independently member-rehashed. Logged manifest and cleanup fields are retained runner claims.",
+    "Synthetic checkout differs from PR head; no local exact-tree equivalence claim.",
+    "Local historical full counts are not substituted for CI counts.",
+    "No model calls or native-host behavior established; formal gate remains false in smoke receipts.",
+    "Read-only observer did not change PR readiness, approvals, merge, board, or source."
+  ],
+  "previous_snapshot_preserved": true
+}

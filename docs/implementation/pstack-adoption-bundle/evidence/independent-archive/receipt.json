@@ -1,0 +1,9 @@
+{
+  "result": "PASS_BOUNDED_ARCHIVE_INTEGRITY",
+  "verified_archive_members": 1286,
+  "verified_source_bindings": 42,
+  "confirmed_findings": [],
+  "report_manifest_sha256": "3e18aed8f740aa11e833a8961e97122dfb7b48ad3faffd60e07fa43060b736c1",
+  "report_members": 7,
+  "originals_modified": false
+}

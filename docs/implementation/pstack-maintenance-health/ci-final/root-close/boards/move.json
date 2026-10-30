@@ -1,0 +1,18 @@
+{
+  "card_id": "card_00892d6e",
+  "board": "joint-firstmate-pstack",
+  "task_id": null,
+  "title": "[PS09/W19] Query bounded maintenance health, ownership and relevant drift",
+  "body": "Implement original W19/A45 bounded fixed-five maintenance health: explicit configured owner, versions/latest attempt vs prior success, relevant changed paths, evidence-based fault categories, real tool repair and fresh re-drive. No scheduler/notifications, no Firstmate deep runtime, no whole-C0 or formal qualification claim. Root owns PR/central/full queue; 3 local workers author/independent/docs. Depends on PR311 W18; if parent remains open publish Draft stacked only, human merges.",
+  "status": "blocked",
+  "priority": 0,
+  "assignee": "root",
+  "blocked_reason": "仅等待gilberthello审批合并PR312；CI与有界验证已完成",
+  "tenant_id": null,
+  "card_type": "implementation",
+  "meta": null,
+  "created_at": 1793346341.851,
+  "updated_at": 1793353086.968,
+  "started_at": 1793346341.851,
+  "completed_at": null
+}

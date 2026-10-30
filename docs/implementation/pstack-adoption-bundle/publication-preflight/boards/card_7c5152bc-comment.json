@@ -1,0 +1,7 @@
+{
+  "comment_id": 748,
+  "card_id": "card_7c5152bc",
+  "author": "root",
+  "body": "固定pstack0.15.36/c742dd61首批采用候选已实现：11组件51唯一文件174474bytes，五份bugfix/调查/评审/证据/来源材料与明确source_refs角色，导出前核材料hash，两种全新项目布局实际导出。35source/115export定向、独立旧4pass2fail→新6pass、限定Sonnet静态PASS。full7334/5/0仅绑定审计前2389，原Node26/ABI失败保留。最终代码b36d9756；并非实际host首用/Loop同卡闭环，不升级PS/J正式资格。P4编译、P5调用材料接入、P6真实缺陷同卡收据为下步。PR312已Ready等人类merge；本批将Draft堆叠，Firstmate深运行禁止。",
+  "created_at": 1793354016.621
+}

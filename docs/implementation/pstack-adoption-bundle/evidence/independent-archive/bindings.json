@@ -1,0 +1,286 @@
+{
+  "errors": [],
+  "final_code_sha": "b36d97567d6ad0b3ab7458649583079512bf4dce",
+  "bindings": [
+    {
+      "path": ".changeset/pstack-declared-adoption.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/EXPORT.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/provenance.json",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/bug-fix.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/code-review.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/evidence.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/investigation.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/sources.md",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "package.json",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/package.json",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-adoption.test.ts",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-adoption.ts",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "scripts/lib/method-provenance.mjs",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "scripts/lib/osstack-method-export.mjs",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "scripts/method-provenance.test.mjs",
+      "binding": "final-source + Git b36d97567d6ad0b3ab7458649583079512bf4dce",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-adoption.ts",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-adoption.test.ts",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-snapshot.ts",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/lib/osstack-method-export.mjs",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/lib/method-provenance.mjs",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/method-provenance.test.mjs",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/export-osstack-methods.test.mjs",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/provenance.json",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/EXPORT.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "docs/implementation/pstack-adoption-bundle/MATERIAL-ADOPTION.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/bug-fix.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/investigation.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/code-review.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/evidence.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/references/sources.md",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "root/declaration.json",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "root/adoption-candidate.json",
+      "binding": "audit inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-adoption.ts",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "packages/skill-registry/src/source-adoption.test.ts",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/lib/method-provenance.mjs",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/lib/osstack-method-export.mjs",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "scripts/method-provenance.test.mjs",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/provenance.json",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "osstack-methods-skill/EXPORT.md",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "docs/implementation/pstack-adoption-bundle/AUDIT-DISPOSITION.md",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "root/adoption-candidate-final.json",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    },
+    {
+      "path": "root/final-provenance-proof.json",
+      "binding": "audit-closure inputs + exact prompt bytes",
+      "pass": true
+    }
+  ],
+  "audits": [
+    {
+      "path": "audit",
+      "pass": true,
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "is_error": false,
+      "report_first_line": "# Verdict: PASS_WITH_CONCERNS",
+      "model_identity": "CLI reported, no independent provider attestation"
+    },
+    {
+      "path": "audit-closure",
+      "pass": true,
+      "modelUsage_keys": [
+        "claude-sonnet-5-5"
+      ],
+      "exit_code": 0,
+      "is_error": false,
+      "report_first_line": "# Limited closure verdict: PASS",
+      "model_identity": "CLI reported, no independent provider attestation"
+    }
+  ],
+  "full_runs": [
+    {
+      "path": "root/full-result.json",
+      "head": "2389dcd9f9f556df4c79e419bdc3e68561cba128",
+      "start": "2026-10-30T09:29:25.071871+00:00",
+      "end": "2026-10-30T09:29:27.530977+00:00",
+      "initial_status": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n?? docs/implementation/pstack-adoption-bundle/\n",
+      "tracked_count": 9033,
+      "tracked_bytes_equal": true,
+      "exit_code": 1
+    },
+    {
+      "path": "root/full-node22/full-result.json",
+      "head": "2389dcd9f9f556df4c79e419bdc3e68561cba128",
+      "start": "2026-10-30T09:30:37.749610+00:00",
+      "end": "2026-10-30T09:30:52.291456+00:00",
+      "initial_status": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n?? docs/implementation/pstack-adoption-bundle/\n",
+      "tracked_count": 9033,
+      "tracked_bytes_equal": true,
+      "exit_code": 1
+    },
+    {
+      "path": "root/full-node22-native/full-result.json",
+      "head": "2389dcd9f9f556df4c79e419bdc3e68561cba128",
+      "start": "2026-10-30T09:32:09.089305+00:00",
+      "end": "2026-10-30T09:40:31.988501+00:00",
+      "initial_status": " M packages/knowledge/dist/index.d.ts\n M packages/knowledge/dist/index.d.ts.map\n M packages/knowledge/dist/index.js\n M packages/knowledge/dist/index.js.map\n?? docs/implementation/pstack-adoption-bundle/\n",
+      "tracked_count": 9033,
+      "tracked_bytes_equal": true,
+      "exit_code": 0
+    }
+  ],
+  "historical_full_recount": {
+    "unique_packages": 22,
+    "totals": {
+      "passed": 7334,
+      "skipped": 5,
+      "failed": 0
+    },
+    "head": "2389dcd9f9f556df4c79e419bdc3e68561cba128"
+  },
+  "limits": [
+    "No runtime/build/test rerun.",
+    "Historical full does not cover final audit repairs.",
+    "Archive consistency is not provenance authenticity or native host qualification."
+  ]
+}

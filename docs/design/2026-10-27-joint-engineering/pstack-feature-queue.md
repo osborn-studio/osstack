@@ -1,12 +1,12 @@
 # pstack-first feature queue
 
-最新发布：PR312 Draft/main，head `418ffe02929845e73ef56372c8920b51a64b772d`；GitHub CI待终态。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。W19与固定来源登记候选已发布；下一批P2/P3采用闭包与项目首用方法包，P4编译并行，沿现有Loop/看板接线。Firstmate深运行禁止，正式资格不升级。
+最新发布：PR312 Ready/main，head `418ffe02929845e73ef56372c8920b51a64b772d`，CI41030888483五适用SUCCESS/paidSKIP，已Ready回读；只等gilberthello审批合并。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。新P2/P3候选已实现显式组件采用、五份固定版本材料与局部导出；尚无真实host首用/Loop同卡链。下一步P4纯编译→P5既有调用材料接入→P6当前真实缺陷同卡收据。Firstmate深运行禁止，正式资格不升级。
 
-## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
+## 最新执行：固定 v0.15.36，接通 Loop Engineering 与看板首用（2026-10-30）
 
-PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。
+固定 pstack0.15.36/c742dd61，不追上游main。本批[采用与导出](../../implementation/pstack-adoption-bundle/README.md)实际核11组件、51唯一文件174474bytes，更新五份bugfix/调查/评审/证据/来源材料；两种项目局部bundle可导出，来源角色及材料hash可检查。声明依赖闭包不等自动语义完整、认证或host送达；外部host/check仍not_checked。
 
-本批W19健康查询及来源登记候选已通过199脚本定向检查；完整22包回归结果见JSON与原日志，绑定e82adca9，初始4fresh dist脏、执行期间8981 tracked字节不变。整合typecheck旧CLI mock缺字段的原失败与修复保留。health45、作者manifest/watcher52、独立47不可混为全方法资格。S1–S3阶段卡只等用户签收，不阻授权开发；其他板275/277过期merge原因已纠正，局部Done不升级runtime资格。原24PS/19W/48A及32J正式结果保持。
+修订后来源35、export/provenance115定向通过，独立控制与实际两布局导出保留原件。full在审计小修前精确2389dcd9为22包7334pass5skip0fail，9033tracked字节前后同、初始4fresh dist脏；不重标最终whole-tree。Node26 transform与首次Node22 ABI环境失败、审计发现和修复均保留。W19到312有限收口，不扩健康平台。S1–S3只等用户签收，不阻开发；原24PS/19W/48A及32J正式状态不升级。
 
 
 ## 当前优先：原范围阶段验收（2026-10-30）
@@ -17,7 +17,7 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 
 ## Current implementation: W18 relevant leaves
 
-[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. PR311 merged into actual main abcd9edf after five applicable CI successes. W19 configured ownership/health is next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
+[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. PR311 merged into actual main abcd9edf after five applicable CI successes. W19 configured ownership/health is in Ready PR312; P2/P3 material adoption/export is the current candidate, with P4/P5/P6 actual use next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
 
 ## Active delivery
 
@@ -56,7 +56,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS18 | forge 观察器分类 | PR307有界只读PR观察已合入，308修StatusContext、309修CheckRun分类；缺失/未知不误绿，既有neutral/skipped政策单列。持续watcher/自动重置未实现。 |
 | PS19 | 暂停与恢复对账 | session-continuity材料可用；恢复schema/spec不等于J12运行态恢复；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
 | PS20 | 跨宿主方法适配 | 四入口双host导出；Codex历史checker与Claude历史exporter各有一次有界真实修复闭环，Claude材料读取不全，旧失败保留；尚无全方法等价/强制context/资格激活。 |
-| PS21 | 来源快照与能力资格验证 | 更早281来源快照组件与合同、292材料源清单；实际采用闭包/资格/漂移激活未闭合 |
+| PS21 | 来源快照与能力资格验证 | 更早281来源快照组件与合同、292材料源清单；本批显式组件闭包候选已实现，自动语义依赖/资格/漂移激活仍未闭合 |
 | PS22 | 事件 intake 与补偿模式 | Benny/外部事件intake补偿未启用或移植 |
 | PS23 | 使用方式驱动的接口与文档设计 | caller-first architecture、验证材料与文档；三条冻结地图和冷用户验收未全通过 |
 | PS24 | 历史上下文恢复与可理解的决策说明 | continuity/解释+301已合并简报材料；无全局记忆自动化；视频/Bot/个人风格暂缓；PR301已合并紧凑报告/证据归因与协调指南，未提供自动forge观察、检索或恢复运行时。 |
