@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-30T05:39:43.855809+00:00",
+  "control": "147c59cfab63de7cb93d0445c63334a52f5c57a0",
+  "main": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+  "files": [
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/pstack-feature-queue.md",
+      "sha256": "9fd62f19544ebdf9ea7f23e144fd9ba72cea6619b441458094bb472b820dc050",
+      "bytes": 17269
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/delivery-status.md",
+      "sha256": "5a038e060505e2e88e8cff3ed642684fd5749875a0c421589c2dafaf918408c5",
+      "bytes": 39117
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/delivery-rollup.json",
+      "sha256": "f319d32ae73494024dda9a16c1945780ba1b982d590bed3f8febd8730fc84d78",
+      "bytes": 435427
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution-ledger.json",
+      "sha256": "b7207eb3b720df300a1516d80804bfb15e8b8d4b177b2bacd5a4f19802ec4474",
+      "bytes": 287807
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/execution.md",
+      "sha256": "943185380ee2a17bf38bded3b9a201dd1e42371d77baf4fca805c40ed21eb33c",
+      "bytes": 56636
+    },
+    {
+      "path": "docs/design/2026-10-27-joint-engineering/project-operations.md",
+      "sha256": "07eced712aff70f0d634a0234f8eb9a688d92f1258a27870f02a00a70d0b3154",
+      "bytes": 32738
+    },
+    {
+      "path": "docs/implementation/pstack-stage-acceptance/README.md",
+      "sha256": "1dc3fc4c19ad79a10d342dfad34b4f74e2e41a5a2a5185324d67fcab00044ff3",
+      "bytes": 9032
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/integration-spec.md",
+      "sha256": "e2c293dce90793ebcaf360751920050facb71dfd86660f48333415d8ff40ace5",
+      "bytes": 54282
+    },
+    {
+      "path": "docs/reports/2026-10-26-pstack/acceptance-cases.json",
+      "sha256": "ea6555865ac1478c6ebd10157b7b0f350827d4adba02aba680d65c32a112a25d",
+      "bytes": 24725
+    },
+    {
+      "path": "packages/protocol/schemas/joint/material-feature-map.schema.json",
+      "sha256": "c5a64a1aa7a477d23544051db6bbffb3ffdefb9d7ce1cbe69ac39f2961e49e7f",
+      "bytes": 1874
+    },
+    {
+      "path": "packages/knowledge/src/pack.ts",
+      "sha256": "e15d79a049e98ece387bfd96f0531caf5e7ca6da52224df7fc73ed43d9ca2a82",
+      "bytes": 52072
+    },
+    {
+      "path": "packages/knowledge/src/context-budget.ts",
+      "sha256": "3a41933465cb2738c3cef17f401ebab968537fef4a3c80e5457b13cf3ccc0682",
+      "bytes": 7913
+    }
+  ],
+  "scope": "read-only next-slice design; not implementation or acceptance"
+}

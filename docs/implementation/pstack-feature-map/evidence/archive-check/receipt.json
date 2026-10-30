@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "started_at": "2026-10-30T06:32:54.183128+00:00",
+  "finished_at": "2026-10-30T06:32:54.301200+00:00",
+  "argv": [
+    "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-feature-map-archive-check-20261030/verify-archive.py"
+  ],
+  "cwd": "/Volumes/AIMATE_WORK/Developer/CodeX/.worktrees/osstack/pstack-feature-map",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-feature-map/docs/implementation/pstack-feature-map/evidence/raw-verification.tar.gz",
+  "manifest": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-feature-map/docs/implementation/pstack-feature-map/evidence/raw-manifest.json",
+  "source_root": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/pstack-feature-map-20261030",
+  "archive_sha256": "ae8ff3fbaf43af9f40f31f90939f3cb76c76ebc5c59e06b8688589d82f631c2d",
+  "manifest_sha256": "024c4ea062da9b635712470cded1d3bf7f3239938e0bc41da1866a9cc373990b",
+  "archive_and_manifest_unchanged_after_check": true,
+  "source_metadata_unchanged_during_check": true,
+  "member_count": 789,
+  "passed_members": 789,
+  "counts": {
+    "directory": 125,
+    "file": 660,
+    "symlink": 4
+  },
+  "file_bytes": 5239883,
+  "symlinks_not_dereferenced": true,
+  "tar_size_convention": "Directories: zero archive content bytes; original directory stat size is filesystem-specific. Symlinks: tar header size zero, manifest/source size checked against byte length of exact link target. Regular file size/hash compared across all three.",
+  "inventory": {
+    "manifest_count": 789,
+    "tar_count": 789,
+    "source_count": 789,
+    "tar_only": [],
+    "manifest_only_in_tar": [],
+    "source_only": [],
+    "manifest_only_in_source": []
+  },
+  "failures": [],
+  "script_sha256": "f96ef740e94ee165bcb6f77ffd09191e9debcc2d5c25a72b04c2b1debb9358ca",
+  "member_checks_sha256": "695929a59dbba689ae4f963074b9c11eba2086af4c21ab2b6ec106ead3ba477f",
+  "limits": [
+    "Snapshot consistency and complete membership, not authenticity of evidence producers or validation of all underlying test claims.",
+    "No extraction, product execution, model execution, source modification or symlink target reads.",
+    "Original paths may be absolute in preserved symlinks; exact text was compared without accessing destinations."
+  ]
+}

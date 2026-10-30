@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "feature_id": "maintenance",
+  "user_outcome": "Maintain the fixed-five expectation map / 核对并维护五案例期望地图",
+  "source_revision": "packages/cli/src/skills-command.ts@sha256:79a5fcc2a5ad3d29b9503485796175094fdb73792524ac190c7601f22f4be07b",
+  "driver_version": "scripts/maintain-skills-check-map.mjs@sha256:b95ddd7ce3d2fd1ea25a1e8bb5032944987be778f1d5b82ff29e34b59ccdecf0",
+  "entries": [
+    {
+      "id": "compare-map",
+      "surface": "cli",
+      "user_route": "node scripts/maintain-skills-check-map.mjs --map \"$feature_root/map.json\" --output \"$feature_root/maintenance-01\""
+    }
+  ],
+  "preconditions": [
+    {
+      "id": "checkout",
+      "kind": "runtime",
+      "description": "Work from the actual OSStack checkout root with supported Node (this recipe uses Node 22), repository pnpm, installed dependencies, local Git and current compiled artifacts. Retain install/build logs; a successful build is not product verification."
+    },
+    {
+      "id": "owned-scratch",
+      "kind": "runtime",
+      "description": "Set an explicit absolute owned OSSTACK_SCRATCH_ROOT, create its runtime parent and a fresh feature_root as described in README.md. Do not use a repository, bare volume root or serving home. The output directory must not exist; its parent must exist."
+    },
+    {
+      "id": "owned-map",
+      "kind": "data",
+      "description": "Copy docs/implementation/skills-check-map-maintenance/map.json or the specified absolute SOURCE_MAP into feature_root/map.json and preserve map-original.json. Input must be a regular non-symlink UTF-8 JSON file, at most 64 KiB, with exactly the fixed five distinct IDs."
+    }
+  ],
+  "drive_refs": [
+    "Prepare an owned map copy and preserve the original, using README.md and docs/verification/method-control-tutorial.md.",
+    "Run compare-map once with stdout/stderr and exit code retained as sibling files. This entry accepts only --map and --output; runJourney internally performs doctor then drive for all five cases.",
+    "Read maintenance.json if output was acquired, then journey/journey.json, journey-manifest.json and every case manifest/cleanup/raw command record."
+  ],
+  "observations": [
+    {
+      "predicate_id": "maintenance-result",
+      "observable": "Exit 0 / consistent requires five verified observations matching the map, unchanged map bytes and complete retained evidence. Exit 1 / mismatch means a legal map disagrees with a verified journey; it does not classify the cause. Exit 2 / blocked covers input/refusal, prerequisites, execution, evidence or map changes.",
+      "side_effects": [
+        "Creates one new owned maintenance output and isolated local Git fixtures; executes compiled skills check. Does not edit the input map, product or previous evidence."
+      ]
+    },
+    {
+      "predicate_id": "product-semantics",
+      "observable": "Expected verified product exits/statuses are healthy 0/healthy, missing-ref 1/failed, drift 2/drift, mixed 1/failed and empty 0/empty. Driver exit 0 verifies the negative predicate; it does not repair a failed/drifted source. Empty means zero sources, not healthy sources.",
+      "side_effects": []
+    },
+    {
+      "predicate_id": "retention",
+      "observable": "Inspect status, execution_path, map.unchanged, all rows.matches, journey overall status, verification/driver_exit, manifest hashes and cleanup. Cleanup passed/fixture_removed true requires the recorded fixture path absent while evidence remains readable; descendant termination remains not_attested.",
+      "side_effects": [
+        "Disposes only owned fixtures; retains successful and failed output records."
+      ]
+    }
+  ],
+  "gotchas": [
+    "README.md gives shell preparation and variable meanings; do not execute command strings merely because the selector returns them.",
+    "source_revision binds one named source file and driver_version binds one named entry script by current SHA-256. These local pins do not cover every helper, dependency or compiled file; they are not build provenance.",
+    "Material selection and caller-reported bindings do not drive the product, resolve evidence authority or establish runtime coverage.",
+    "A malformed map is refused before output creation; sibling stdout/stderr/exit files are the record. Missing maintenance.json on this path is expected.",
+    "The map is a closed five-row expectation format, not this feature selector index. Missing, duplicate or extra case IDs cannot be silently omitted.",
+    "A mismatch is not proof of a product regression or documentation drift. Do not lower expected behavior to make a broken product agree."
+  ],
+  "recovery_refs": [
+    "Preserve stderr, stdout, exit status, map-original.json and every failed output. On map rejection, compare its exact error to the documented closed contract before editing only the authorized copy.",
+    "For an evidenced map-only correction, keep the earlier snapshot and use the same compare-map entry with a fresh output such as maintenance-02. Do not overwrite maintenance-01 or original source input.",
+    "For an environment, tool or product failure, diagnose the actual cause within the authorized scope. If cleanup is unknown, retain residue and report it; do not delete unrelated paths or keep blindly repeating."
+  ],
+  "covered_entry_ids": [],
+  "known_gaps": [
+    "No new live evidence is attached; covered_entry_ids is empty and all entries remain unverified. Historical runs are not relabeled as this candidate.",
+    "Only local CLI routes are described; no UI/RPC, remote installation, host/model execution or complete A35/A48 qualification.",
+    "Maintenance owner is unassigned until project configuration names one. No health service, periodic scheduler, notification or automatic repair is configured.",
+    "Single-file source/driver pins do not attest transitive helpers, dependencies or compiled artifacts. Use retained run bindings when executing a separately authorized journey.",
+    "This fixed comparison does not perform general source review, discover unmapped features or classify A45 tool/map/product fault causes. W19 owns that broader maintenance closure."
+  ],
+  "last_live_evidence": []
+}

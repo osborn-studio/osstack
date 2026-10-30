@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "check.py",
+      "bytes": 6611,
+      "sha256": "e8787a6b44f021eddecbee336b1568d5ada27bf0dce8a7df6d2008743e6ab7ca"
+    },
+    {
+      "path": "member-checks.json",
+      "bytes": 82687,
+      "sha256": "709b485d0a4646fe73bd548970d235c9bc6e5b732fd3904ed586948985a4c659"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 2697,
+      "sha256": "903d55e49e287d9dd4417f1c69018a4d3be05826fbf03b6d533efd83d98cd420"
+    },
+    {
+      "path": "receipt.md",
+      "bytes": 760,
+      "sha256": "33f81385e80e908974f1443be9d9688210bacaadc6e01f6886150aa452804f8f"
+    }
+  ]
+}

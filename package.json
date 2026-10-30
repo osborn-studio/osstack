@@ -85,7 +85,9 @@
     "test:pr-candidate": "node --test scripts/report-pr-candidate.test.mjs",
     "inspect:pr-candidate": "node scripts/report-pr-candidate.mjs",
     "test:pr-stack-candidate": "node --test scripts/report-pr-stack-candidate.test.mjs",
-    "inspect:pr-stack-candidate": "node scripts/report-pr-stack-candidate.mjs"
+    "inspect:pr-stack-candidate": "node scripts/report-pr-stack-candidate.mjs",
+    "test:method-feature-map": "node --test scripts/method-feature-map.test.mjs",
+    "inspect:method-feature-map": "node scripts/method-feature-map.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",

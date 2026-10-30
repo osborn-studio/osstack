@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "feature_id": "journey",
+  "user_outcome": "Run the full skills-check journey / 实际驱动完整五案例验证旅程",
+  "source_revision": "packages/cli/src/skills-command.ts@sha256:79a5fcc2a5ad3d29b9503485796175094fdb73792524ac190c7601f22f4be07b",
+  "driver_version": "scripts/method-verification-journey.mjs@sha256:b030e182adaf06db6a7941afeb0a79ec5a74e3101aaab36a56475a6de92025ab",
+  "entries": [
+    {
+      "id": "run-full-journey",
+      "surface": "cli",
+      "user_route": "node scripts/method-verification-journey.mjs --output \"$feature_root/journey-01\" --scope full"
+    }
+  ],
+  "preconditions": [
+    {
+      "id": "checkout",
+      "kind": "runtime",
+      "description": "Work from the actual OSStack checkout root with supported Node (this recipe uses Node 22), repository pnpm, installed dependencies, local Git and current compiled artifacts. Retain install/build logs; a successful build is not product verification."
+    },
+    {
+      "id": "owned-scratch",
+      "kind": "runtime",
+      "description": "Set an explicit absolute owned OSSTACK_SCRATCH_ROOT, create its runtime parent and a fresh feature_root as described in README.md. Do not use a repository, bare volume root or serving home. The output directory must not exist; its parent must exist."
+    }
+  ],
+  "drive_refs": [
+    "Prepare the fresh scratch parent using README.md and retain current checkout/install/build observations.",
+    "Run run-full-journey once and retain stdout/stderr and exit code beside its new output. The wrapper performs a read-only doctor before each drive; do not add --doctor, --dry-run, --case or --evidence-dir to the wrapper.",
+    "Inspect journey.json, feature-map.md, journey-manifest.json and cases/<case_id>/ manifest, raw commands, source/build bindings and cleanup. Preserve original times and identities."
+  ],
+  "observations": [
+    {
+      "predicate_id": "journey-result",
+      "observable": "Wrapper exit 0 means every selected case and evidence check passed. Exit 1 means failure/refusal; invalid usage exits 2. Read overall status and per-row journey_status: failure stops later work, leaving later rows not_run rather than passed.",
+      "side_effects": [
+        "Creates a new owned output tree; drives five isolated local Git fixtures with fixture-only HOME/OSSTACK_HOME/scratch and the compiled skills check CLI. No default control-plane database, daemon or remote provider is needed."
+      ]
+    },
+    {
+      "predicate_id": "full-cases",
+      "observable": "Full scope contains healthy, missing-ref, drift, mixed and empty. Verified product exits are 0/1/2/1/0, with statuses healthy/failed/drift/failed/empty. Verify source cardinality, refs, blessed/current SHAs and raw output, not just exits. Each successful driver exits 0 even for expected product negatives.",
+      "side_effects": []
+    },
+    {
+      "predicate_id": "cleanup-evidence",
+      "observable": "Successful cleanup removes each recorded owned fixture and leaves scratch/smoke empty; case evidence and top-level manifests remain. Interrupted or unconfirmed cleanup stays unknown. Fixture absence and direct-child exit do not attest all descendants.",
+      "side_effects": [
+        "Deletes only owned fixtures when cleanup conditions are satisfied; retains evidence independently of those fixtures."
+      ]
+    }
+  ],
+  "gotchas": [
+    "README.md gives shell preparation and variable meanings; do not execute command strings merely because the selector returns them.",
+    "source_revision binds one named source file and driver_version binds one named entry script by current SHA-256. These local pins do not cover every helper, dependency or compiled file; they are not build provenance.",
+    "Material selection and caller-reported bindings do not drive the product, resolve evidence authority or establish runtime coverage.",
+    "Without --scope full the wrapper runs only healthy and missing-ref. A default two-case run does not cover this full journey.",
+    "A doctor ready result checks prerequisites, not product behavior. Failed, unknown and not_run rows cannot borrow the expected full-case table as observations.",
+    "A row may retain an earlier verified observation while the overall journey fails. Source/build hashes preserve declared bytes, not proof of compilation or an authenticated oracle."
+  ],
+  "recovery_refs": [
+    "Keep the failed attempt and inspect its exact doctor/drive stderr and command records. Missing build is a prerequisite blocker; unexpected behavior requires diagnosis, not weakening the predicate.",
+    "After an authorized cause correction use a fresh journey output such as journey-02. Never reuse or overwrite a prior directory, and do not restore generated outputs before validation is complete.",
+    "If termination or cleanup is unknown, preserve owned residue and report it. Do not kill similarly named processes, delete unrelated homes or claim all descendants are gone."
+  ],
+  "covered_entry_ids": [],
+  "known_gaps": [
+    "No new live evidence is attached; covered_entry_ids is empty and all entries remain unverified. Historical runs are not relabeled as this candidate.",
+    "Only local CLI routes are described; no UI/RPC, remote installation, host/model execution or complete A35/A48 qualification.",
+    "Maintenance owner is unassigned until project configuration names one. No health service, periodic scheduler, notification or automatic repair is configured.",
+    "Single-file source/driver pins do not attest transitive helpers, dependencies or compiled artifacts. Use retained run bindings when executing a separately authorized journey.",
+    "The fixed local fixtures do not cover every live source, race, remote provider or global configuration."
+  ],
+  "last_live_evidence": []
+}

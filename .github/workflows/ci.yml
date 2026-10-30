@@ -131,6 +131,9 @@ jobs:
       - name: Method export contracts
         run: pnpm test:method-export
 
+      - name: Relevant feature-map selection contracts
+        run: pnpm test:method-feature-map
+
       - name: Method material pagination contracts
         run: pnpm test:method-read
 

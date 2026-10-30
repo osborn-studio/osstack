@@ -1,0 +1,12 @@
+[
+  {
+    "path": "metadata.stdout",
+    "bytes": 20837,
+    "sha256": "79b9852ff9efc885c1d96a5fb528d9619c7d81a5da00e7416b7e37171c6fa350"
+  },
+  {
+    "path": "full-log.stdout",
+    "bytes": 2231695,
+    "sha256": "0361f4149fe00eaa5ae78c2f8236587efff2156679fa2e6f9fd2aa9234f45b81"
+  }
+]

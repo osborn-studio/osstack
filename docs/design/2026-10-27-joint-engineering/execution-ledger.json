@@ -25,7 +25,7 @@
   "schema_version": 1,
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
-  "main_sha": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+  "main_sha": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
   "observed_at": "2026-10-30T00:51:07.891452+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
@@ -5646,7 +5646,7 @@
     "formal_gate_pass": false
   },
   "stack_frontier_slice": {
-    "status": "validated_actual_main_preparing_publication",
+    "status": "merged",
     "card": "card_6962ab52",
     "base_main": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
     "primary_capability": "PS17",
@@ -5723,7 +5723,150 @@
       "file_bytes": 19356574,
       "archive_bytes": 10215436,
       "verification": "root all names/type/mode/hash/size/target verified"
-    }
+    },
+    "pr": 310,
+    "url": "https://github.com/osborn-studio/osstack/pull/310",
+    "published_head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e",
+    "base": "main",
+    "ci_run": 40988439592,
+    "ready": true,
+    "user_merge_required": false,
+    "board_status": "done",
+    "blocked_meaning": "only gilberthello approval/merge",
+    "final_ci": {
+      "head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e",
+      "run": 40988439592,
+      "synthetic_checkout": "db37d26669d6bcb155cd9b99d08859d5d32c9777",
+      "base": "e4643324b9de1d2db51c744e59ccd7c05146b0a6",
+      "packages": [
+        {
+          "package": "contracts",
+          "passed": 15,
+          "skipped": 0
+        },
+        {
+          "package": "compliance",
+          "passed": 17,
+          "skipped": 0
+        },
+        {
+          "package": "github",
+          "passed": 224,
+          "skipped": 0
+        },
+        {
+          "package": "knowledge",
+          "passed": 44,
+          "skipped": 0
+        },
+        {
+          "package": "runtime",
+          "passed": 1,
+          "skipped": 0
+        },
+        {
+          "package": "neat-eval",
+          "passed": 16,
+          "skipped": 0
+        },
+        {
+          "package": "protocol",
+          "passed": 1012,
+          "skipped": 0
+        },
+        {
+          "package": "governance",
+          "passed": 301,
+          "skipped": 0
+        },
+        {
+          "package": "knowledge-cloud",
+          "passed": 36,
+          "skipped": 0
+        },
+        {
+          "package": "graph",
+          "passed": 257,
+          "skipped": 0
+        },
+        {
+          "package": "core",
+          "passed": 1301,
+          "skipped": 0
+        },
+        {
+          "package": "plugins",
+          "passed": 1,
+          "skipped": 0
+        },
+        {
+          "package": "hermes-adapter",
+          "passed": 22,
+          "skipped": 0
+        },
+        {
+          "package": "skills",
+          "passed": 2,
+          "skipped": 0
+        },
+        {
+          "package": "autonomy",
+          "passed": 201,
+          "skipped": 0
+        },
+        {
+          "package": "skill-registry",
+          "passed": 43,
+          "skipped": 0
+        },
+        {
+          "package": "agents",
+          "passed": 361,
+          "skipped": 0
+        },
+        {
+          "package": "config",
+          "passed": 30,
+          "skipped": 0
+        },
+        {
+          "package": "loop",
+          "passed": 514,
+          "skipped": 1
+        },
+        {
+          "package": "conformance",
+          "passed": 9,
+          "skipped": 0
+        },
+        {
+          "package": "supervisor",
+          "passed": 88,
+          "skipped": 0
+        },
+        {
+          "package": "cli",
+          "passed": 2764,
+          "skipped": 6
+        }
+      ],
+      "passed": 7259,
+      "skipped": 7,
+      "failed": 0,
+      "five_applicable_success": true,
+      "paid_skipped": true,
+      "remote_artifacts_downloaded": false,
+      "full_log_sha256": "0361f4149fe00eaa5ae78c2f8236587efff2156679fa2e6f9fd2aa9234f45b81",
+      "record": "docs/implementation/pr-stack-candidate/ci-final",
+      "method_export": {
+        "total": 94,
+        "passed": 93,
+        "skipped": 1
+      },
+      "stack_cli_passed": 29
+    },
+    "merged_sha": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+    "merged_at": "2026-10-30T05:09:51Z"
   },
   "pstack_stage_acceptance": {
     "status": "reconciliation_complete_scoped_user_acceptance_pending",
@@ -5753,6 +5896,120 @@
     "archive_sha256": "6fc0e7a39ad2503f22ea6275aa6e60ed78ec72c5cf6f3a1a3a8b93047ec62642",
     "next_scope": "原C0→C1→C2必要收口；不新增方法/广义扩展，不先铺开Firstmate深runtime。具体新实现须按既有门槛冻结独占范围与验证。",
     "board_status": "blocked",
-    "blocked_meaning": "仅等待用户对现有工具范围的验收；不表示原集成已完成或撤回持续开发授权。"
+    "blocked_meaning": "仅等待用户对现有工具范围的验收；不表示原集成已完成或撤回持续开发授权。",
+    "publication_pr": 310,
+    "publication_head": "db0652dde3ec4695ef592b0d7f1c14a14a30917e"
+  },
+  "main_tree": "985846601a8fbb0ac44b64e8423b083fbbdbc048",
+  "c0_usage_slice": {
+    "status": "bounded_usage_observed_with_limits",
+    "card": "card_039f599c",
+    "source_main": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+    "scope": "Post hoc fixed-five tutorial/input recovery; not whole A39/W17/C0",
+    "new_methods": 0,
+    "new_runtime": false,
+    "acceptance_passed": false,
+    "observed_at": "2026-10-30T05:26:55.130948+00:00",
+    "tutorial": "docs/verification/method-control-tutorial.md",
+    "evidence": "docs/implementation/pstack-c0-usage/README.md",
+    "actual_attempts": [
+      {
+        "exit": 2,
+        "error": "map_case_set",
+        "output_created": false
+      },
+      {
+        "exit": 0,
+        "status": "consistent",
+        "execution_path": "runJourney",
+        "product_exits": [
+          0,
+          1,
+          2,
+          1,
+          0
+        ]
+      }
+    ],
+    "independent_criteria": {
+      "bounded_pass": 8,
+      "CU01": "unknown",
+      "CU08": "limited"
+    },
+    "product_tracked_bytes": {
+      "count": 1493,
+      "changed": 0,
+      "four_fresh_dist_initially_dirty": true
+    },
+    "formal_A39_pass": false,
+    "formal_C0_pass": false,
+    "user_stage_acceptance": false,
+    "native_host_qualification": false,
+    "publication": "control branch; absorb next implementation PR",
+    "firstmate_deep_runtime": false,
+    "audit": {
+      "first": "PASS_WITH_CONCERNS",
+      "limited_review": "PASS_WITH_CONCERNS",
+      "final_documentation_clarifications_by_root": true,
+      "third_audit_performed": false
+    },
+    "evidence_archive_sha256": "64f9c081d1a370627fb6798918299a40b23f568eb91ee39801c31a847ebe35e7",
+    "docs_tests": 241
+  },
+  "next_pstack_implementation": {
+    "observed_at": "2026-10-30T06:29:24.077295+00:00",
+    "status": "reader_publication_then_W19",
+    "next_action": "Publish bounded W18 reader; next implement W19 configured maintenance ownership and health before original C1/C2",
+    "plan": "docs/implementation/pstack-feature-map/PLAN.md",
+    "firstmate_deep_runtime": "prohibited",
+    "formal_gate_pass": false
+  },
+  "w18_scope_decision_history": {
+    "observed_at": "2026-10-30T05:44:58.818267+00:00",
+    "main_sha": "01ec1852ffcf0cff4f1e4a0632b1ae3a8ddc1211",
+    "status": "ready_to_implement_not_implemented",
+    "work_package": "W18",
+    "plan": "docs/implementation/pstack-feature-map/PLAN.md",
+    "scope": "Offline metadata selection, required closure and bounded relevant leaf reading for three existing CLI scenarios",
+    "implementation_owner": "next assigned author; root owns shared integration",
+    "product_executions_this_scope_round": 0,
+    "new_activity_cards": 0,
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "firstmate_deep_runtime": "prohibited",
+    "next_action": "Implement first vertical reader slice and independent frozen vectors; do not repeat scope-only planning or the closed C0 packet",
+    "external_host_model_calls_this_scope_round": 0,
+    "collaboration_analysis_workers": 3
+  },
+  "feature_map_reader_slice": {
+    "observed_at": "2026-10-30T06:29:24.077295+00:00",
+    "status": "implemented_locally_validated_publication_pending",
+    "code_sha": "5b730756b70209eea240144677a0ed302230a32f",
+    "card_id": "card_9a676553",
+    "work_package": "W18",
+    "scope": "Offline metadata BM25 selection, required closure and bounded selected leaves for three CLI scenarios",
+    "evidence": "docs/implementation/pstack-feature-map/README.md",
+    "targeted": {
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0
+    },
+    "independent": "60 checks after one preserved fixture EEXIST correction; six post-audit old/new CLI controls",
+    "full": {
+      "code_sha": "9e37bfa052f7336aac880b48732bf9436b6f4c78",
+      "packages": 22,
+      "passed": 7261,
+      "skipped": 5,
+      "failed": 0,
+      "tracked_files": 8914,
+      "changed_files": [],
+      "initial_dirty": "four fresh knowledge/dist files; not clean committed tree",
+      "final_code_full_claim": false
+    },
+    "formal_gate_pass": false,
+    "whole_capability_complete": false,
+    "runtime_enabled": false,
+    "firstmate_deep_runtime": "prohibited",
+    "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete"
   }
 }

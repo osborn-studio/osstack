@@ -1,0 +1,53 @@
+{
+  "checked_at": "2026-10-30T05:32:16.957031+00:00",
+  "status": "verified_with_explicit_scope",
+  "archive": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-c0-usage/docs/implementation/pstack-c0-usage/evidence/raw-verification.tar.gz",
+  "archive_sha256": "64f9c081d1a370627fb6798918299a40b23f568eb91ee39801c31a847ebe35e7",
+  "manifest_sha256": "ae63264d7e4f96575310511c6b86d57ff426c45202e084e342c0a1d0918f5716",
+  "member_count": 334,
+  "files": 310,
+  "directories": 24,
+  "file_bytes": 5010452,
+  "member_type_mode_size_hash_target_and_current_source_match": true,
+  "safe_member_paths_and_no_duplicates": true,
+  "independent_7files_and_manifest_unchanged": true,
+  "original_snapshot_relocations": [
+    {
+      "original_path": "product-stability.json",
+      "original_sha256": "600d4da69bf0c7703b9ee32b86d11c0ae057e94268122a9252cd5cbcb9ce3dce",
+      "preserved_at": "product-stability-phase1.json",
+      "current_path_is_later_snapshot": true
+    }
+  ],
+  "audits": [
+    {
+      "folder": "audit",
+      "report_sha256": "31163eb744e5165346c41eee916c13790ba3fc47280b810d8ed14e27dd2018d8",
+      "prompt_sha256": "2f67c49513c958e3f45ffc091b192ff26b2f9acea4e3ef528e2244a01de85f25",
+      "response_sha256": "f661bef6dbafee5ca37e080895bd2d65b43a73d72a664300d5ab7d995380926b",
+      "preserved_verdict": "PASS_WITH_CONCERNS",
+      "scope": "limited static supplied-text review; not product rerun"
+    },
+    {
+      "folder": "audit-closure",
+      "report_sha256": "e15a340e2840ba79f85e861c426234ef3c9143d9fe6c54a6a8b537796abae8d8",
+      "prompt_sha256": "9ac2d449393b6699b439ac826d79328eac23e8d52163f244b941db47598c9151",
+      "response_sha256": "b1d019991bd558c116a79e4d590dd02f888d8022a5d91f41663f28250f7ec921",
+      "preserved_verdict": "PASS_WITH_CONCERNS",
+      "scope": "limited static supplied-text review; not product rerun"
+    }
+  ],
+  "tutorial": {
+    "tested_sha256": "92700fcf1bb6043edcde92e9cb2bc7975ef4dd092d5af867caf4b1512dd8f902",
+    "final_sha256": "57226b50ec22e246b18c52f81d7a68a8335f2cb341407f782aea6e5d417a5906",
+    "stored_diff_exact": true,
+    "post_run_changes": "documentation clarifications only; no third model or product rerun evidenced/claimed"
+  },
+  "limitations": [
+    "Archive integrity is not evidence authenticity or a complete tool trace.",
+    "CU01 unknown and CU08 limited remain unchanged; no full A39/W17/C0 acceptance.",
+    "The two audit verdicts retain concerns; later root clarification is not a third audit PASS.",
+    "No product, model, native host or full test was run for this receipt.",
+    "Only manifest snapshot members are required; later package-external files are not retrospectively in the archive."
+  ]
+}
