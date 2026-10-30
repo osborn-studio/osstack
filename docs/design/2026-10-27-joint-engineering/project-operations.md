@@ -1,5 +1,7 @@
 # Firstmate × pstack 联合项目推进规则
 
+最新发布：PR312 Draft/main，head `418ffe02929845e73ef56372c8920b51a64b772d`；GitHub CI待终态。实际main `abcd9edf008568d3c3d869df4afd9143b079ee64` 已含311。W19与固定来源登记候选已发布；下一批P2/P3采用闭包与项目首用方法包，P4编译并行，沿现有Loop/看板接线。Firstmate深运行禁止，正式资格不升级。
+
 ## 最新执行：固定 v0.15.36，优先 Loop Engineering 与看板首用（2026-10-30）
 
 PR311 已于07:53:24UTC由用户合并，actual main `abcd9edf008568d3c3d869df4afd9143b079ee64`，树等发布候选；不再等待311。用户强调直接使用且现有Loop与看板最好用，后续采用[固定版本首用计划](../../implementation/pstack-fixed-release/PLAN.md)：冻结 `.36` commit `c742dd61`，W19有限收口；P1来源登记已实现，下一步P2显式采用闭包/P3项目局部方法包与P4单bugfix编译，再接既有Loop/deliver与看板证据。formal/statechart单独可用交付，不阻普通首用；Firstmate深运行禁止。

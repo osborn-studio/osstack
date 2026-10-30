@@ -6053,7 +6053,7 @@
     "board_status": "done"
   },
   "maintenance_health_slice": {
-    "status": "validated_candidate_pending_publication_ci",
+    "status": "draft_pr_ci_pending",
     "card_id": "card_00892d6e",
     "work_package": "W19",
     "record": "docs/implementation/pstack-maintenance-health/README.md",
@@ -6080,7 +6080,13 @@
     "original_failures_preserved": true,
     "formal_gate_pass": false,
     "runtime_enabled": false,
-    "whole_capability_complete": false
+    "whole_capability_complete": false,
+    "pr": 312,
+    "head_sha": "418ffe02929845e73ef56372c8920b51a64b772d",
+    "base_branch": "main",
+    "base_main": "abcd9edf008568d3c3d869df4afd9143b079ee64",
+    "ready": false,
+    "ci_run": 41030888483
   },
   "pstack_fixed_release": {
     "version": "0.15.36",
@@ -6100,6 +6106,8 @@
       "U2_actual_bugfix_chain": "pending",
       "U3_formal_statechart": "pending"
     },
-    "formal_gate_pass": false
+    "formal_gate_pass": false,
+    "delivery_pr": 312,
+    "next_action": "P2/P3 fixed component adoption and fresh project method bundle; P4 pure compiler in parallel, existing Loop/deliver plus explicit card linkage next"
   }
 }

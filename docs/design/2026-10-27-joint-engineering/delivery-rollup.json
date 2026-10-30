@@ -8489,7 +8489,7 @@
     "board-mechanics.json": "7bb226703a077ddb0730c0520cee20a71564ce3f84da6fb62273e432cb8d957d",
     "pr301-current.json": "8cd7901845e6f46e987501b70a378c1fbd9ea92d244e92d88c3fb2beec82aa4f"
   },
-  "source_snapshot_limit": "Original reconciliation source windows and prior projections are retained in historical_source_snapshot_limit. Current main e464 and candidate8e830 are separately bound in pstack_stage_acceptance and stack_frontier_slice; old task observations and FAILED/LIMITED remain historical.",
+  "source_snapshot_limit": "Current main abcd9edf (PR311 merged); PR312 head418ffe02 is a Draft candidate. Current source baseline pstack0.15.36 c742dd61 is candidate-only. Prior source windows, task observations and FAILED/LIMITED are historical; separate bindings remain preserved.",
   "activity_relations": [
     {
       "card_id": "card_b504ee89",
@@ -12024,7 +12024,7 @@
     "board_status": "done"
   },
   "maintenance_health_slice": {
-    "status": "validated_candidate_pending_publication_ci",
+    "status": "draft_pr_ci_pending",
     "card_id": "card_00892d6e",
     "work_package": "W19",
     "record": "docs/implementation/pstack-maintenance-health/README.md",
@@ -12051,7 +12051,13 @@
     "original_failures_preserved": true,
     "formal_gate_pass": false,
     "runtime_enabled": false,
-    "whole_capability_complete": false
+    "whole_capability_complete": false,
+    "pr": 312,
+    "head_sha": "418ffe02929845e73ef56372c8920b51a64b772d",
+    "base_branch": "main",
+    "base_main": "abcd9edf008568d3c3d869df4afd9143b079ee64",
+    "ready": false,
+    "ci_run": 41030888483
   },
   "pstack_fixed_release": {
     "version": "0.15.36",
@@ -12071,6 +12077,8 @@
       "U2_actual_bugfix_chain": "pending",
       "U3_formal_statechart": "pending"
     },
-    "formal_gate_pass": false
+    "formal_gate_pass": false,
+    "delivery_pr": 312,
+    "next_action": "P2/P3 fixed component adoption and fresh project method bundle; P4 pure compiler in parallel, existing Loop/deliver plus explicit card linkage next"
   }
 }
