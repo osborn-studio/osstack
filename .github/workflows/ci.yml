@@ -134,6 +134,9 @@ jobs:
       - name: Relevant feature-map selection contracts
         run: pnpm test:method-feature-map
 
+      - name: Read-only maintenance health contracts
+        run: pnpm test:method-health
+
       - name: Method material pagination contracts
         run: pnpm test:method-read
 

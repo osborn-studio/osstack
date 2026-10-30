@@ -3,7 +3,7 @@
   "feature_id": "maintenance",
   "user_outcome": "Maintain the fixed-five expectation map / 核对并维护五案例期望地图",
   "source_revision": "packages/cli/src/skills-command.ts@sha256:79a5fcc2a5ad3d29b9503485796175094fdb73792524ac190c7601f22f4be07b",
-  "driver_version": "scripts/maintain-skills-check-map.mjs@sha256:b95ddd7ce3d2fd1ea25a1e8bb5032944987be778f1d5b82ff29e34b59ccdecf0",
+  "driver_version": "scripts/maintain-skills-check-map.mjs@sha256:f8836e1bb1f22c6fd2b2f971587c044ce4a9ee4f814a0b8c3d4573597c8ce70b",
   "entries": [
     {
       "id": "compare-map",

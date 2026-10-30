@@ -20,7 +20,7 @@
         "cli"
       ],
       "leaf_ref": "maintenance.json",
-      "sha256": "39259707725c5f56f93d8d88cdd097bbee044de9a7862fc9676d3f0a88f9dc4f",
+      "sha256": "f5ee9f5c660f71f1d28b3071e5b8d73d8a8a03653f475e56df1a883891b87676",
       "required_feature_ids": [],
       "maintenance_owner_ref": null
     },
