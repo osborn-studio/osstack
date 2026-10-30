@@ -290,10 +290,17 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm install --prefix "$RUNNER_TEMP/graph-gyp" node-gyp@11.5.0
+      - name: Test bounded Node header preparation
+        run: node --test scripts/prepare-node-headers.test.mjs
+      - name: Prepare verified runtime headers
+        timeout-minutes: 8
+        run: |
+          mkdir -p "$RUNNER_TEMP/osstack/runtime"
+          node scripts/prepare-node-headers.mjs --output "$RUNNER_TEMP/osstack/runtime/graph-node-headers"
       - name: Build SQLite for runtime ABI
         run: |
           cd "$(node -p 'require("node:path").dirname(require.resolve("better-sqlite3/package.json", {paths:["./packages/core"]}))')"
-          node "$RUNNER_TEMP/graph-gyp/node_modules/node-gyp/bin/node-gyp.js" rebuild --release
+          node "$RUNNER_TEMP/graph-gyp/node_modules/node-gyp/bin/node-gyp.js" rebuild --release --nodedir="$RUNNER_TEMP/osstack/runtime/graph-node-headers/node-v$(node -p process.versions.node)"
       - name: Graph worker and durable SQLite runtime
         env:
           OSSTACK_HOME: ${{ runner.temp }}/graph-runtime-home

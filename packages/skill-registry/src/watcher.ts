@@ -55,7 +55,9 @@ function lsRemoteHead(origin: string, ref: string): Promise<{ ok: true; sha: str
       clearTimeout(t);
       resolve({ ok: false, reason: `spawn_failed: ${err.message}` });
     });
-    p.on("exit", (code) => {
+    // Process exit does not imply drained stdio. Parse only after both streams
+    // close, retaining the deadline while a descendant may still hold a pipe.
+    p.on("close", (code) => {
       clearTimeout(t);
       if (code !== 0) {
         resolve({ ok: false, reason: stderr.trim().slice(0, 200) || `git_exit_${code}` });
