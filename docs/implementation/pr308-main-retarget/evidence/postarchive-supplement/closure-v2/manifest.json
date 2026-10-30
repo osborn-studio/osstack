@@ -1,0 +1,60 @@
+{
+  "files": [
+    {
+      "path": "audit-input.txt",
+      "sha256": "fcb5a528213f26af627546b26132a41087104bf888026b61a2213c2aeae69f09",
+      "bytes": 11074
+    },
+    {
+      "path": "binding.json",
+      "sha256": "f72393f5957a44589e6d10c699e4d5d18b2d30bbfacc37e7a7b69758fa630885",
+      "bytes": 773
+    },
+    {
+      "path": "empty-mcp.json",
+      "sha256": "e93fc8db2b1bd77107fe6c758bca9545fa864cf7cce8ab93a7b2b93a1d566a7b",
+      "bytes": 18
+    },
+    {
+      "path": "fix.diff",
+      "sha256": "4ad4b13c26047ffc8b06ba53691ef7e2e4b1fd1ba389b264c4e3cbd16806d033",
+      "bytes": 2974
+    },
+    {
+      "path": "prepare.py",
+      "sha256": "617813bc2360af8599bda823c20a6e4784b2972e9272b044ed8794f06b0b7056",
+      "bytes": 1994
+    },
+    {
+      "path": "proof.json",
+      "sha256": "7c76063f35cb2f14a66f1db9c4418a7e8f9fbb14db8acb487d9a13655b4412db",
+      "bytes": 3626
+    },
+    {
+      "path": "report.md",
+      "sha256": "69bec7891db81714291e1dd994d44e13f5a9bc9063da3e8ceeca9d012cda979b",
+      "bytes": 2400
+    },
+    {
+      "path": "response.json",
+      "sha256": "4a9e3db90cfcfb592761b5f082cbf63d0c31b588ba9f6ed23120a44cb6a148e4",
+      "bytes": 4246
+    },
+    {
+      "path": "run.py",
+      "sha256": "477a4680522c84e6d01c9095eb219368db9750074a7af72377af2955b0827ec3",
+      "bytes": 1448
+    },
+    {
+      "path": "settings.json",
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3
+    },
+    {
+      "path": "stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "verdict": "PASS"
+}
