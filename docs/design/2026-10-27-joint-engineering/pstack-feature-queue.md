@@ -8,7 +8,7 @@ This is the delivery queue, separate from activity counts and the 32 formal join
 
 ## Current implementation: W18 relevant leaves
 
-[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. Publication is pending. W19 configured ownership/health is next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
+[Bounded reader delivery](../../implementation/pstack-feature-map/README.md) implements index-only BM25, required closure and bounded selected-leaf reads for three existing CLI scenarios. Final 40 focused tests and independent controls pass; 22-package full regression remains bound to its documented pre-audit-fix candidate. PR311 is Draft and publication CI is pending. W19 configured ownership/health is next; actual cross-entry coverage, host delivery and original C0/C1/C2 remain incomplete. Do not repeat the closed C0 tutorial or wait on merged PR310. Firstmate deep runtime remains prohibited.
 
 ## Active delivery
 
@@ -34,7 +34,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 | PS05 | 覆盖式并行与预先声明的竞赛 | PR301已合入并行分工指南；运行时派发、竞赛和完整宿主效果尚未验收。 |
 | PS06 | 独立评审与意见裁决 | code-review材料+本项目独立审查审计实践；产品化跨模型评审/资格未闭合 |
 | PS07 | 影响面与关键前提验证 | change-impact材料/关键前提检查；普遍宿主效果未验证 |
-| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，待发布；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
+| PS08 | 可操控的验证基础设施与功能地图 | create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311 Draft等待CI；任意地图生成、跨入口实际使用和宿主送达未闭合。 |
 | PS09 | 验证基础设施的健康、归属与漂移维护 | PR306已合入固定五case持久地图维护：合法地图同值consistent0、漂移mismatch1、非法map拒2，真实注入漂移→只改地图→fresh复验成立；广义源码/地图漂移发现、资格激活仍未闭合。 |
 | PS10 | 形式化验证生命周期 | 形式化生成/维护与代码mutation对应尚未作为pstack能力实现 |
 | PS11 | 状态图与反例解释 | 状态图/反例解释工具未移植，不把普通Mermaid文档当模型检验 |
@@ -122,3 +122,6 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 ## C0/W17 有限教程观察收口（2026-10-30）
 
 [教程与证据](../../implementation/pstack-c0-usage/README.md)：已构建环境中实际输入拒绝exit2/no output→仅自有地图补empty→同入口新output consistent0，五例产品0/1/2/1/0、driver均0，原错误与语义保留。独立核case145+journey32成员及source1065/build2352；1493产品/脚本/清单字节未变，运行初始4freshdist脏。冻结CU中8有限pass、CU01排他上下文unknown、CU08全局资源观察limited；无完整A39/W17/C0或用户阶段验收。原A39首次冻结前接口推导不能由本后验观察替代。仅控制分支发布待下批吸收，card_039f599c done只此有界记录；W18/W19及原C1→C2继续，先不要进入Firstmate深运行。
+
+
+2026-10-30 publication: [PR311](https://github.com/osborn-studio/osstack/pull/311) is Draft/main at `f70f40265ddfb1e419d6b8f5145d46c71060b9bc`; CI41014856944 is running. Five applicable successes and final readback are required before Ready. No approval/merge is performed by agents. Current bounded W18 implementation is separate from remaining W19/C0/C1/C2.

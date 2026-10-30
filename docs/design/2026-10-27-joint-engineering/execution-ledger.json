@@ -5982,8 +5982,8 @@
     "collaboration_analysis_workers": 3
   },
   "feature_map_reader_slice": {
-    "observed_at": "2026-10-30T06:29:24.077295+00:00",
-    "status": "implemented_locally_validated_publication_pending",
+    "observed_at": "2026-10-30T06:35:21.716739+00:00",
+    "status": "draft_on_main_waiting_current_head_CI",
     "code_sha": "5b730756b70209eea240144677a0ed302230a32f",
     "card_id": "card_9a676553",
     "work_package": "W18",
@@ -6010,6 +6010,9 @@
     "whole_capability_complete": false,
     "runtime_enabled": false,
     "firstmate_deep_runtime": "prohibited",
-    "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete"
+    "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete",
+    "pr": 311,
+    "head_sha": "f70f40265ddfb1e419d6b8f5145d46c71060b9bc",
+    "ci_run": 41014856944
   }
 }

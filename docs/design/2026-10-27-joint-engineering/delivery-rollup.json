@@ -8,7 +8,7 @@
   "merged_named_methods": 14,
   "merged_entries": 4,
   "candidate_named_methods": null,
-  "candidate_status": "W18 bounded feature reader locally validated, publication pending; no whole C0 or formal gate acceptance",
+  "candidate_status": "PR311 Draft/main; bounded feature-map reader publication CI running; no complete W18/C0 acceptance",
   "formal_milestones_completed": 0,
   "counting_rule": "milestones, capabilities, delivery activities and verification activities are separate populations; no shared completion percentage; not_run formal gates do not erase component tests",
   "prs": [
@@ -2048,7 +2048,7 @@
       "id": "PS08",
       "title": "可操控的验证基础设施与功能地图",
       "status": "partial_delivered",
-      "delivery": "create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，待发布；任意地图生成、跨入口实际使用和宿主送达未闭合。",
+      "delivery": "create-verification材料、真实隔离CLI driver及默认2/full5旅程已合入；W18三CLI场景相关叶子读取已实现并本地验证，PR311 Draft等待CI；任意地图生成、跨入口实际使用和宿主送达未闭合。",
       "joint_work_items": [
         "J03",
         "J06",
@@ -2132,9 +2132,10 @@
       "historical_delivery_before_stage_reconciliation": "create-verification材料+两种真实CLI例子/五case driver/两行journey；任意项目自动生成完整旅程未证明",
       "feature_map_reader_candidate": {
         "code_sha": "5b730756b70209eea240144677a0ed302230a32f",
-        "status": "implemented_locally_validated_publication_pending",
+        "status": "draft_on_main_waiting_current_head_CI",
         "record": "docs/implementation/pstack-feature-map/README.md",
-        "whole_capability_complete": false
+        "whole_capability_complete": false,
+        "pr": 311
       }
     },
     {
@@ -2801,9 +2802,10 @@
       },
       "feature_map_reader_candidate": {
         "code_sha": "5b730756b70209eea240144677a0ed302230a32f",
-        "status": "implemented_locally_validated_publication_pending",
+        "status": "draft_on_main_waiting_current_head_CI",
         "record": "docs/implementation/pstack-feature-map/README.md",
-        "whole_capability_complete": false
+        "whole_capability_complete": false,
+        "pr": 311
       }
     },
     {
@@ -11948,8 +11950,8 @@
     "collaboration_analysis_workers": 3
   },
   "feature_map_reader_slice": {
-    "observed_at": "2026-10-30T06:29:24.077295+00:00",
-    "status": "implemented_locally_validated_publication_pending",
+    "observed_at": "2026-10-30T06:35:21.716739+00:00",
+    "status": "draft_on_main_waiting_current_head_CI",
     "code_sha": "5b730756b70209eea240144677a0ed302230a32f",
     "card_id": "card_9a676553",
     "work_package": "W18",
@@ -11976,6 +11978,9 @@
     "whole_capability_complete": false,
     "runtime_enabled": false,
     "firstmate_deep_runtime": "prohibited",
-    "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete"
+    "remaining": "W18 actual cross-entry and host delivery; W19 health/ownership; original W17/C0 and C1/C2 remain incomplete",
+    "pr": 311,
+    "head_sha": "f70f40265ddfb1e419d6b8f5145d46c71060b9bc",
+    "ci_run": 41014856944
   }
 }

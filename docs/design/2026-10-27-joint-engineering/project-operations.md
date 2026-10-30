@@ -213,3 +213,6 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 ## 2026-10-30 W18 implementation publication
 
 [Bounded feature reader](../../implementation/pstack-feature-map/README.md) now selects metadata using the existing public BM25 API and reads only selected/required local leaves. Three workers split code, independent inputs and actual command documentation; root owns integration, ledger, PR and full queue. Final 40 focused checks pass. Full9e37bfa0 has22 packages/7261passed/5skipped/0failed,8914tracked bytes unchanged during execution with four initial fresh-dist changes; later small unavailable-export repair has its own RED/GREEN and independent old/new controls, not a relabelled full run. Publication CI remains separate. Card_9a676553 contributes PS08, supports PS23/J03/J06; no formal gate or whole capability completion. W19 configured ownership/health and original C1/C2 remain next, Firstmate deep runtime prohibited.
+
+
+2026-10-30 publication: [PR311](https://github.com/osborn-studio/osstack/pull/311) is Draft/main at `f70f40265ddfb1e419d6b8f5145d46c71060b9bc`; CI41014856944 is running. Five applicable successes and final readback are required before Ready. No approval/merge is performed by agents. Current bounded W18 implementation is separate from remaining W19/C0/C1/C2.
