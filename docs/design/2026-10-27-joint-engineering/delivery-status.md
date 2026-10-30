@@ -269,3 +269,11 @@ PR310 head db0652dde3ec4695ef592b0d7f1c14a14a30917e 已Ready/main/MERGEABLE。CI
 
 
 2026-10-30 final CI closeout: PR311 head `f70f4026` is Ready/main after CI41014856944 five applicable SUCCESS/paid SKIP and root readback (`isDraft=false`, `MERGEABLE`). Actual synthetic checkout `7aec62e116a37788b283e0634f4e0163f9755c81`: 22 packages7259pass7skip0fail; feature-map40, export93pass1skip, reader14/journey43/map24/projection88. Original full log and independent checks are retained in [CI closeout](../../implementation/pstack-feature-map/ci-final/README.md); no remote artifact rehash claim. Card9a676553 blocked only for gilberthello merge, not whole W18/C0 qualification. Next W19 remains authorized; Firstmate deep runtime prohibited.
+
+## 2026-10-30：固定 pstack 首次 assisted Loop 实际成功
+
+新卡 `card_91b23635` / task `pstack-loop-long-path-20261030` 已经一次真实完成：固定0.15.36材料→既有Loop/local host→原生Codex→长路径回归RED→最小修复→同命令GREEN/原优先级控制/PRIMARY9项通过→独立最终4向量通过→2份持久方法收据→同卡人工证据链接。仅两授权源码变化；builder32286B完整进入36405B实际argv prompt。未调用 reviewer/verifier 模型；host命令验证与独立工具验收分开。详见[实际首用记录](../../implementation/pstack-loop-long-path/README.md)。
+
+代码 `cd30b6ccddbd0e02d5607683a97c36d3ba96db11` 全仓22包 7449通过/5跳过/0失败，9172 tracked字节执行前后相同；初始4fresh knowledge/dist与10局部准备文件已存在，不称clean committed tree。实际Sonnet5.5静态PASS_WITH_CONCERNS无确认代码blocker；原始意见、原RED与权限配置失败保留。旧Node26任务仍BLOCKED，不是改名重试或验收升级。assisted U1首用成功不等已发布稳定入口、U2/local_verified、整个C2或32J正式完成。
+
+PR315 CI41048799532终态失败，唯一取消状态断言失败（7445pass/7skip/1fail），后续smoke未执行；保留原日志，不盲rerun。312→313→314→315依赖与人类合并/actual-main重验规则保持。下一步集中解决该发布阻塞，并将已验证接线整理为稳定的用户入口，保留显式卡、任务、检查、路径和预算；不再扩维护平台。Firstmate深运行仍禁止。

@@ -72,3 +72,7 @@
 验收只抓五个用户事实：一张明确卡上的当前缺陷实际RED；Loop中的执行者完成补丁；同入口GREEN且合法控制不退化；host核验最终候选；同一卡可追到原失败/成功/方法版本，投影失败不丢收据且不重跑。先一个支持host，不以多模型、原生slash全发现、61技能全适配、长期scheduler或formal/statechart作为前置。PR数量、抽象计划获批都不能替代这五项用户结果。
 
 方案调整：U1从“另开方法展示流程”改为“用现有卡驱动的Loop任务消费固定材料”；U2只补卡→受控Task→现有deliver/Loop→证据回写四个接点；U3仍独立。作者文章提供方法方向，OSStack既有Loop与看板提供承载能力；两者都不能替代未执行的实际验收。
+
+## 最新实际首用：新长路径卡
+
+已完成一次固定0.15.36 assisted U1实际Loop任务。见[原始证据与边界](../pstack-loop-long-path/README.md)及[距离普通直接使用的待补项](../pstack-loop-long-path/USER-PATH.md)。原Node26首用保持BLOCKED，不替代该失败；完整C2与U2未通过。后续优先稳定入口/父PR实际main落地与已观察CI315取消状态失败诊断，不扩维护平台或Firstmate深运行。

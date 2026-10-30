@@ -1,0 +1,78 @@
+{
+  "created_at": "2026-10-30T12:10:59.394623+00:00",
+  "status": "verified",
+  "archive_sha256": "41375939d745385d3cf64831586e5aee266cc60bed02b65c37b11f19afde2e16",
+  "manifest_sha256": "eb8d2b541fe6d37c8a74057a9e1c6339c4660cae67040502c0f1b3345e6cae15",
+  "members": 688,
+  "counts": {
+    "file": 460,
+    "directory": 228,
+    "symlink": 0
+  },
+  "file_bytes": 10817650,
+  "all_archive_members_match_manifest_and_original_type_mode_size_hash_or_target": true,
+  "original_inventory_covered_except_exact_declared_two": true,
+  "excluded": [
+    {
+      "path": "permission/ci315-diagnosis/run-07755dbbeb/database-0.sqlite",
+      "reason": "generated database retained locally, never committed",
+      "size": 1519616,
+      "sha256": "901cdf8c4bf119da4929f1057edccf4f15aeaf949fa00230b1dda9279f8d75c0",
+      "source_exists_regular": true,
+      "sqlite_header_matches": true,
+      "local_manifest_agrees": true,
+      "archive_absent": true,
+      "database_opened_or_embedded": false
+    },
+    {
+      "path": "permission/ci315-diagnosis/run-07755dbbeb/database-1.sqlite",
+      "reason": "generated database retained locally, never committed",
+      "size": 1519616,
+      "sha256": "901cdf8c4bf119da4929f1057edccf4f15aeaf949fa00230b1dda9279f8d75c0",
+      "source_exists_regular": true,
+      "sqlite_header_matches": true,
+      "local_manifest_agrees": true,
+      "archive_absent": true,
+      "database_opened_or_embedded": false
+    }
+  ],
+  "bindings": {
+    "full_commit": "cd30b6ccddbd0e02d5607683a97c36d3ba96db11",
+    "full_totals": {
+      "passed": 7449,
+      "skipped": 5,
+      "failed": 0
+    },
+    "tracked_unchanged_count": 9172,
+    "initial_dirty_four_dist_preserved": true,
+    "native_audit_source_matches": [
+      {
+        "path": "packages/loop/src/discover.ts",
+        "size": 7260,
+        "sha256": "3f5fa285f338753dfe54d421ba48fe47212ebe47f2024cfa6ca4a92991fabf0c"
+      },
+      {
+        "path": "packages/loop/src/discover.test.ts",
+        "size": 10065,
+        "sha256": "12cac79a44b14d1029361f8281f35c6217de9ab517c67c5a98e12ac521176f06"
+      },
+      {
+        "path": "packages/loop/src/types.ts",
+        "size": 21870,
+        "sha256": "3f6c6a368a9e7ce921c20fb56be4dee27993263101f11482e23f2f57410e326c"
+      }
+    ],
+    "actual_argv_and_two_receipts_match": true,
+    "audit_verdict": "PASS_WITH_CONCERNS",
+    "confirmed_defects_reported": 0,
+    "old_node26": "BLOCKED unchanged",
+    "permission_results": "PP01 config blocked; PP02 named-profile limited success; NP one adapter diagnostic limited success; distinct from native repair"
+  },
+  "limits": [
+    "No extraction or symlink dereference; tar payload read in memory only.",
+    "Excluded databases hashed as ordinary read-only byte streams, not opened with SQLite or embedded; generated/local reason agrees with diagnostic placement and original manifest, not a DB-content authentication claim.",
+    "Archive integrity does not prove provider wire, principal/authorization authenticity, all filesystem effects or general sandbox boundaries.",
+    "Full belongs to cd30b6cc with unchanged recorded 9172 tracked paths; later docs/changeset note not upgraded to whole-tree full.",
+    "No model, product test, build, PR or ledger action performed."
+  ]
+}

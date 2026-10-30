@@ -1,0 +1,70 @@
+{
+  "all_product_checks_ended": true,
+  "fresh_dist_bytes_equal_initial": true,
+  "patch_equal_initial": true,
+  "restored": [
+    {
+      "path": "packages/knowledge/dist/index.d.ts",
+      "bytes": 323,
+      "sha256": "d01b1f07d5eb6a2a4d429935f69db14cd81e03077d439cda3555b4a55cf4cb3a"
+    },
+    {
+      "path": "packages/knowledge/dist/index.d.ts.map",
+      "bytes": 283,
+      "sha256": "a89d70095f1016cb113d9d8028f5771125e564db287212eb2bf82d86397143c7"
+    },
+    {
+      "path": "packages/knowledge/dist/index.js",
+      "bytes": 205,
+      "sha256": "6287a976aa1d03d112e1dd290f043e119fafc60c0f6879e49163a6d18f4ab3d9"
+    },
+    {
+      "path": "packages/knowledge/dist/index.js.map",
+      "bytes": 212,
+      "sha256": "ab5b8ee5996d13f39ebbb6d577c6348ea6485a46428f94464f74928757ee63d5"
+    }
+  ],
+  "removed_archived_method_files": [
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods/builder.md",
+      "sha256": "5f7ed62b3f5202894712c2dcff140b220fbb6ae5d35e71d64724f07ef9a0cdfd"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods/compiled.json",
+      "sha256": "1c637ebb9e0bde8882399d61eb8fe3e168dcab78e5e04877486fd818851bdf4e"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods/context.json",
+      "sha256": "8313740cc96361038bf2747afaaa84d1ee6cd6e68831f38a412a1bd37fe97a7b"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods/reviewer.md",
+      "sha256": "090cab953b380210977a377a2eb820e56c07f0494c8b04a301a228c57acff5d9"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods/verifier.md",
+      "sha256": "1f86ac5b86726a7ef10fdee1b1c3b1e212324a7df97b547f6e10970b8dac691f"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods-v2/builder.md",
+      "sha256": "5f7ed62b3f5202894712c2dcff140b220fbb6ae5d35e71d64724f07ef9a0cdfd"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods-v2/compiled.json",
+      "sha256": "73808eb17bd59fa57b41f4a0ae12b9b022bc71c2cce37fe560dece60fd8de88b"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods-v2/context.json",
+      "sha256": "0a4a1fb83e5b8aee3f509e7af46b9f43ae0827b4e8d00ee25ae39b6d42b5abca"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods-v2/reviewer.md",
+      "sha256": "090cab953b380210977a377a2eb820e56c07f0494c8b04a301a228c57acff5d9"
+    },
+    {
+      "path": "/Users/osborn/Developer/CodeX/.worktrees/osstack/pstack-permission-preflight/pstack-long-path-methods-v2/verifier.md",
+      "sha256": "1f86ac5b86726a7ef10fdee1b1c3b1e212324a7df97b547f6e10970b8dac691f"
+    }
+  ],
+  "no_product_tests_after_restore": true
+}

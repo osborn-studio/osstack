@@ -11970,10 +11970,10 @@
     "docs_tests": 241
   },
   "next_pstack_implementation": {
-    "observed_at": "2026-10-30T11:23:48.841083+00:00",
-    "status": "first_native_attempt_blocked_explicit_scratch_repair",
+    "observed_at": "2026-10-30T12:06:17.067769+00:00",
+    "status": "assisted_first_success_stable_entry_and_ci_failure_remaining",
     "plan": "docs/implementation/pstack-fixed-release/PLAN.md",
-    "next_action": "Validate explicit task-scoped writable directory behavior in installed host before the next genuinely new task; finish one real RED/fix/GREEN with independent final candidate and durable evidence manually linked to same card. Keep original Node26 packet BLOCKED, no retry or regrade. Do not invent runtime identity, remove V2 guards, extend health platform or Firstmate runtime.",
+    "next_action": "Resolve observed PR315 cancellation CI failure from evidence without blind rerun; prepare a stable bounded existing-Loop entry replacing build-hash internal CLI import, preserving explicit task/card/check/path/budget inputs, then actual-main retarget and human merge in order. Reuse this assisted path for genuinely new tasks; do not replay closed Node26 packet, extend health platform or Firstmate runtime.",
     "firstmate_deep_runtime": "prohibited",
     "formal_gate_pass": false
   },
@@ -12289,7 +12289,7 @@
   },
   "pstack_first_use": {
     "observed_at": "2026-10-30T11:23:48.841083+00:00",
-    "status": "draft_ci_and_parent_pending_native_attempt_still_blocked",
+    "status": "draft_parent_pending_ci_cancellation_failure_original_native_packet_blocked",
     "record": "docs/implementation/pstack-first-use/README.md",
     "card_id": "card_ebb91eda",
     "task_id": "pstack-first-use-node26-20261030",
@@ -12336,7 +12336,18 @@
         "product_and_scripts_tracked_unchanged": true,
         "clean_committed_tree": false
       },
-      "other_checks": "fresh build/typecheck/TS lint/inventory/changeset/startup pass; initial wrong inventory filename retained as harness error"
+      "other_checks": "fresh build/typecheck/TS lint/inventory/changeset/startup pass; initial wrong inventory filename retained as harness error",
+      "subsequent_permission_observation": {
+        "record": "docs/implementation/pstack-loop-long-path/README.md",
+        "named_profile_probe_01": "BLOCKED: invalid quoted path key before child execution",
+        "named_profile_probe_02": "bounded success: two exact writes, external control denied",
+        "native_add_dir_probe": "bounded success: one native command, two exact writes, outside EPERM",
+        "native_calls": 1,
+        "global_config_changed": false,
+        "home_overridden": false,
+        "old_packet_regraded": false,
+        "limits": "Current binary and three selected paths only; no full OS fence, independent principal, authentication or runtime identity claim"
+      }
     },
     "native_defect_fixed": false,
     "local_verified": false,
@@ -12355,9 +12366,88 @@
     "head_sha": "08342874b1ffdbdf447f38d5221ffbb9aed8eeda",
     "base_branch": "codex/pstack-method-bridge-delivery",
     "ci_run": 41048799532,
-    "ci_status": "running",
+    "ci_status": "failure",
     "ready": false,
     "publication_docs_tests": 241,
+    "publication_hygiene_tests": 1,
+    "ci_failure": "41048799532: graph-review-findings.test.ts:83 expected cancelled, observed cancel_pending; 7445passed7skipped1failed; later smokes skipped; no CI retry",
+    "ci_diagnosis": "单次受控诊断只运行一次，捕获两次cancel中一个被吞的DECISION_CONFLICT；最终cancelled、0持有admission、journal exited。该局部1pass/6filtered不修复或改写CI315失败；原失败仍需有限barrier交错验证。诊断6源码不变，临时测试已清理，期间root仅整合12项文档/changeset状态差异。"
+  },
+  "pstack_assisted_loop": {
+    "observed_at": "2026-10-30T12:06:17.067769+00:00",
+    "status": "actual_assisted_task_success_publication_pending",
+    "record": "docs/implementation/pstack-loop-long-path/README.md",
+    "card_id": "card_91b23635",
+    "task_id": "pstack-loop-long-path-20261030",
+    "mode": "assisted_U1",
+    "source_version": "0.15.36",
+    "source_commit": "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
+    "native_thread": "01a18ca6-600d-7c93-9926-3e100edbb289",
+    "native_invocations": 1,
+    "native_red_assertion": true,
+    "native_green": true,
+    "native_primary_tests": 9,
+    "host_verifier_commands": 2,
+    "independent_old": {
+      "passed": 1,
+      "failed": 3
+    },
+    "independent_final": {
+      "passed": 4,
+      "failed": 0
+    },
+    "builder_bytes": 32286,
+    "prompt_bytes": 36405,
+    "durable_context_receipts": 2,
+    "changed_product_files": [
+      "packages/loop/src/discover.ts",
+      "packages/loop/src/discover.test.ts"
+    ],
+    "native_task_seconds": 149.635,
+    "code_sha": "cd30b6ccddbd0e02d5607683a97c36d3ba96db11",
+    "full": {
+      "head": "cd30b6ccddbd0e02d5607683a97c36d3ba96db11",
+      "packages": 22,
+      "passed": 7449,
+      "skipped": 5,
+      "failed": 0,
+      "tracked_files": 9172,
+      "tracked_bytes_unchanged": true,
+      "initial_fresh_dist_dirty": 4,
+      "clean_committed_tree": false
+    },
+    "static_audit": "actual tool-less Sonnet5.5 PASS_WITH_CONCERNS; no confirmed code defect",
+    "old_node26_packet": "BLOCKED unchanged, not replayed",
+    "local_verified": false,
+    "formal_gate_pass": false,
+    "automatic_card_consumption": false,
+    "card_linking": "manual explicit mapping; native task_id/tenant_id null",
+    "stable_installed_user_entry": false,
+    "firstmate_deep_runtime": "prohibited",
+    "archive": {
+      "archive_sha256": "41375939d745385d3cf64831586e5aee266cc60bed02b65c37b11f19afde2e16",
+      "manifest_sha256": "eb8d2b541fe6d37c8a74057a9e1c6339c4660cae67040502c0f1b3345e6cae15",
+      "members": 688,
+      "files": 460,
+      "dirs": 228,
+      "symlinks": 0,
+      "file_bytes": 10817650,
+      "excluded": 2,
+      "root_verified": true,
+      "independent_receipt_sha256": "8e41521360c5318e94337ed66795a74741dd7c5317f400794af881a6cd45f582"
+    },
+    "publication_docs_tests": 241,
     "publication_hygiene_tests": 1
+  },
+  "pstack_permission_preflight": {
+    "record": "docs/implementation/pstack-loop-long-path/README.md",
+    "named_profile_probe_01": "BLOCKED: invalid quoted path key before child execution",
+    "named_profile_probe_02": "bounded success: two exact writes, external control denied",
+    "native_add_dir_probe": "bounded success: one native command, two exact writes, outside EPERM",
+    "native_calls": 1,
+    "global_config_changed": false,
+    "home_overridden": false,
+    "old_packet_regraded": false,
+    "limits": "Current binary and three selected paths only; no full OS fence, independent principal, authentication or runtime identity claim"
   }
 }

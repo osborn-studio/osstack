@@ -147,3 +147,7 @@ Engineering-decision 是另一 surface 的可选例，refactoring 是不同意�
 ## 构建兼容与声明边界
 
 编译结果须由匹配的OSStack构建生成；宿主重编比较整个输出，包括limitations说明，因此未来编译器变化后应重新准备新目录，不能只替换hash。无methods的既有路径兼容；公共wrapper若提供methodContext而mode不是local，将拒绝配置。proposal_digest不是整个编译文件摘要，后者由compiled.sha256另行绑定。task_id对应不证明live prompt和intent语义相同，capability/role及检查注册声明仍需调用方与既有host policy正确配置。
+
+## 后续真实首用（独立新任务）
+
+长路径任务已经一次完成真实RED→修复→GREEN与独立最终验证，见[记录](../implementation/pstack-loop-long-path/README.md)。这不改写上面的Node26失败；现有内部chunk的手工assisted接线尚待稳定入口包装。不要把成功报告当U2/local_verified、安装版发布、用户签收或全C2完成。

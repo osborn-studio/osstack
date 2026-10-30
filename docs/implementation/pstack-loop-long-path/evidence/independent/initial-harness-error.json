@@ -1,0 +1,6 @@
+{
+  "error": "AttributeError: list object has no attribute get",
+  "location": "internal permission independent manifest uses list, task independent manifests use object/files",
+  "classification": "verifier harness shape assumption; not archive failure",
+  "members_already_verified": 688
+}

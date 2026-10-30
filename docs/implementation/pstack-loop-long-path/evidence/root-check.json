@@ -1,0 +1,11 @@
+{
+  "archive_sha256": "41375939d745385d3cf64831586e5aee266cc60bed02b65c37b11f19afde2e16",
+  "manifest_sha256": "eb8d2b541fe6d37c8a74057a9e1c6339c4660cae67040502c0f1b3345e6cae15",
+  "members": 688,
+  "files": 460,
+  "dirs": 228,
+  "symlinks": 0,
+  "file_bytes": 10817650,
+  "excluded": 2,
+  "root_verified": true
+}

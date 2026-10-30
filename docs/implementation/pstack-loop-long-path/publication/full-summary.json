@@ -1,0 +1,82 @@
+{
+  "full": {
+    "head": "cd30b6ccddbd0e02d5607683a97c36d3ba96db11",
+    "packages": 22,
+    "passed": 7449,
+    "skipped": 5,
+    "failed": 0,
+    "tracked_files": 9172,
+    "tracked_bytes_unchanged": true,
+    "initial_fresh_dist_dirty": 4,
+    "clean_committed_tree": false
+  },
+  "package_counts": {
+    "compliance": {
+      "passed": 17
+    },
+    "contracts": {
+      "passed": 15
+    },
+    "github": {
+      "passed": 224
+    },
+    "knowledge": {
+      "passed": 44
+    },
+    "runtime": {
+      "passed": 1
+    },
+    "neat-eval": {
+      "passed": 16
+    },
+    "protocol": {
+      "passed": 1012
+    },
+    "governance": {
+      "passed": 301
+    },
+    "knowledge-cloud": {
+      "passed": 36
+    },
+    "graph": {
+      "passed": 257
+    },
+    "core": {
+      "passed": 1301
+    },
+    "plugins": {
+      "passed": 1
+    },
+    "hermes-adapter": {
+      "passed": 22
+    },
+    "skills": {
+      "passed": 2
+    },
+    "autonomy": {
+      "passed": 201
+    },
+    "skill-registry": {
+      "passed": 155
+    },
+    "agents": {
+      "passed": 387
+    },
+    "config": {
+      "passed": 30
+    },
+    "loop": {
+      "passed": 516
+    },
+    "conformance": {
+      "passed": 9
+    },
+    "supervisor": {
+      "passed": 88
+    },
+    "cli": {
+      "passed": 2814,
+      "skipped": 5
+    }
+  }
+}

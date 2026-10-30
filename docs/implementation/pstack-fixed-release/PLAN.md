@@ -120,3 +120,7 @@ P0固定来源检查已执行；P1作者两文件实现已完成并进入本批�
 P2/P3本批已有固定commit的11组件显式闭包、五份采用材料和两种全新项目局部导出；实际host首次任务仍未做。下一实施直接做P4纯编译与P5既有deliver调用接线，再P6当前真实缺陷同卡收据；不要重复范围分析或扩大维护平台。W19不再扩成新的健康平台。statechart来源已成功检查，TLC/Java实际执行尚未做，按F1/F2独立交付。
 
 全部24PS与固定版本61个SKILL候选路径见 [CAPABILITY-ADOPTION.md](CAPABILITY-ADOPTION.md)。用户最新指定Loop Engineering与看板为优先入口，接线核对见 [LOOP-AND-BOARD-FIRST.md](LOOP-AND-BOARD-FIRST.md)：沿现有任务队列/Loop/候选验证/看板记录承载方法能力，不另建调度权威。具体生产插入点须用调用原型验证，不能把现有辅助脚本称统一入口已完成。
+
+## 最新实际首用：新长路径卡
+
+已完成一次固定0.15.36 assisted U1实际Loop任务。见[原始证据与边界](../pstack-loop-long-path/README.md)及[距离普通直接使用的待补项](../pstack-loop-long-path/USER-PATH.md)。原Node26首用保持BLOCKED，不替代该失败；完整C2与U2未通过。后续优先稳定入口/父PR实际main落地与已观察CI315取消状态失败诊断，不扩维护平台或Firstmate深运行。

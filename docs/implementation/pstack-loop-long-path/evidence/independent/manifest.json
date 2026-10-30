@@ -1,0 +1,35 @@
+{
+  "frozen_at": "2026-10-30T12:11:24.664037+00:00",
+  "files": [
+    {
+      "path": "initial-harness-error.json",
+      "bytes": 292,
+      "sha256": "0e90c978de100a99f095e9bf8074f74abdab1f2a7ea57ecda79a9ecad246fb52"
+    },
+    {
+      "path": "members-verified.json",
+      "bytes": 157138,
+      "sha256": "c5c253c86a6eebcb1c30ae885c8357b2243d8117e04094cf6c527deca1938873"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 3269,
+      "sha256": "8e41521360c5318e94337ed66795a74741dd7c5317f400794af881a6cd45f582"
+    },
+    {
+      "path": "receipt.md",
+      "bytes": 1979,
+      "sha256": "b826f7f76685de90b20e28ca217b2cf17fed0a8e49d073ca984184eb4880b51d"
+    },
+    {
+      "path": "verify-initial.py",
+      "bytes": 6889,
+      "sha256": "3624c269a64dc097b1ffff397f4367eed9632ad3a3b952a26e732a1fd8d8ef16"
+    },
+    {
+      "path": "verify.py",
+      "bytes": 6920,
+      "sha256": "df0769f7035d32e98ee8dcb458d5bc6cc6842ae4e53a4d9b47dd297764eb8579"
+    }
+  ]
+}
