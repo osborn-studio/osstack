@@ -1,6 +1,6 @@
 # 联合执行与交接
 
-最新发布：PR312仍Ready/main，等待gilberthello合并；PR313最新head f6d7c09a 的CI41036945434已五适用SUCCESS/paidSKIP，但仍Draft/base312，需parent合并后actualmain核对、retarget及复验。本批P4/P5已实现并验证，正在整理依赖313的Draft；下一项是P6真实模型与同卡闭环。实际main仍abcd9edf，禁止Firstmate深运行。
+最新发布：PR312仍Ready/main待gilberthello合并；PR313 headf6d7 CI41036945434五适用SUCCESS/paidSKIP但保持Draft/base312。新PR314 Draft/base codex/pstack-adoption-bundle-delivery，head b161223bb3d2a3574a3ce9797ae07cbcd63c3fb3，CI41043889043运行。按312→313→314人类合并、actualmain核对/retarget/适用重验，不合featurebase。P4/P5组件已交付候选；下一步P6真实模型/同卡闭环。main仍abcd9edf，禁止Firstmate深运行。
 
 ## 最新执行：固定方法接入既有调用边界（2026-10-30）
 

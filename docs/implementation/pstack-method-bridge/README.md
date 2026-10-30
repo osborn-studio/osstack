@@ -59,3 +59,5 @@ P4/P5组件证据不升级原24PS/19W/48A、整个C0/C1/C2、32J正式状态或�
 ## 可复核的原始记录
 
 `evidence/raw-verification.tar.gz` SHA256 `ef0900ac9672c5d7cc0c48ef268bd97510235ad3e58c56dbb981a836f486511e`；manifest `dde230cd3c1c09ac79bbb59082ac8524cedcc1810a15a2e49ad7d71e1acdde2f`。共1578成员（1109文件、461目录、8符号链接）、16997593文件字节；root逐type/mode/size/hash/target对照原件，不解引用符号链接。独立逐成员复核通过，回执`2953b9e26433af64e76c6cb78cfb23db09f4882c96b446a7a87d6df777cdc352`另存`evidence/independent-archive/`，并核16源码Git对象、两审计输入及受控调用绑定。包含两次full、两次静态审计完整输入/响应、所有RED/修订、实际固定源码/材料准备与受控调用、独立准则/原harness错误、PR313父栈最终CI原日志和三板回读。冻结原scratch后新输出写publication/archive-check，未重跑已封存packet。
+
+发布：[PR314](https://github.com/osborn-studio/osstack/pull/314) head`b161223b`，Draft/base313，CI41043889043运行。需前置312/313依次人类合并、actualmain核对与适用重验；当前不Ready。最新发布回执在publication，候选测试身份不因控制分支补记而改变。

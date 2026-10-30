@@ -26,7 +26,7 @@
   "purpose": "Absorb Firstmate and pstack capabilities into OSStack",
   "owner_thread": "01a178ed-616a-7bb1-8d20-13f4c1019245",
   "main_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
-  "observed_at": "2026-10-30T10:46:16.940076+00:00",
+  "observed_at": "2026-10-30T10:53:25.612338+00:00",
   "runtime_enabled": false,
   "named_method_entries_update": {
     "observed_at": "2026-10-28T09:25:23.349005+00:00",
@@ -6205,7 +6205,7 @@
     }
   },
   "pstack_method_bridge": {
-    "status": "implemented_pending_draft_publication",
+    "status": "draft_ci_and_parent_pending",
     "card_id": "card_93efbff1",
     "record": "docs/implementation/pstack-method-bridge/README.md",
     "tutorial": "docs/verification/bug-fix-method-handoff.md",
@@ -6263,6 +6263,11 @@
     "archive_manifest_sha256": "dde230cd3c1c09ac79bbb59082ac8524cedcc1810a15a2e49ad7d71e1acdde2f",
     "archive_members": 1578,
     "archive_file_bytes": 16997593,
-    "independent_archive_receipt_sha256": "2953b9e26433af64e76c6cb78cfb23db09f4882c96b446a7a87d6df777cdc352"
+    "independent_archive_receipt_sha256": "2953b9e26433af64e76c6cb78cfb23db09f4882c96b446a7a87d6df777cdc352",
+    "pr": 314,
+    "head_sha": "b161223bb3d2a3574a3ce9797ae07cbcd63c3fb3",
+    "base_branch": "codex/pstack-adoption-bundle-delivery",
+    "ci_run": 41043889043,
+    "ready": false
   }
 }

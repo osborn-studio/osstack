@@ -1,0 +1,7 @@
+{
+  "comment_id": 759,
+  "card_id": "card_a502fa36",
+  "author": "codex",
+  "body": "已发布PR314 https://github.com/osborn-studio/osstack/pull/314 ，headb161223b，Draft/base313，CI41043889043运行；P4/P5固定编译+强制材料接线有界候选。仅root管理PR/中央账本；312→313→314按人类合并和actualmain复验，不合featurebase。当前卡running等待CI/parent，非正式完成。下一P6真实host/最终candidate/同卡收据，不等Firstmate；受控3adapter/6receipt不等P6。",
+  "created_at": 1793357605.626
+}

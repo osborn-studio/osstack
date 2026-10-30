@@ -1,6 +1,6 @@
 # pstack-first feature queue
 
-最新发布：PR312仍Ready/main，等待gilberthello合并；PR313最新head f6d7c09a 的CI41036945434已五适用SUCCESS/paidSKIP，但仍Draft/base312，需parent合并后actualmain核对、retarget及复验。本批P4/P5已实现并验证，正在整理依赖313的Draft；下一项是P6真实模型与同卡闭环。实际main仍abcd9edf，禁止Firstmate深运行。
+最新发布：PR312仍Ready/main待gilberthello合并；PR313 headf6d7 CI41036945434五适用SUCCESS/paidSKIP但保持Draft/base312。新PR314 Draft/base codex/pstack-adoption-bundle-delivery，head b161223bb3d2a3574a3ce9797ae07cbcd63c3fb3，CI41043889043运行。按312→313→314人类合并、actualmain核对/retarget/适用重验，不合featurebase。P4/P5组件已交付候选；下一步P6真实模型/同卡闭环。main仍abcd9edf，禁止Firstmate深运行。
 
 ## 最新执行：固定方法接入既有调用边界（2026-10-30）
 
@@ -43,7 +43,7 @@ Firstmate deep recovery/supervision is deferred behind these pstack paths except
 
 | ID | Capability | Current delivery |
 |---|---|---|
-| PS01 | 单入口任务路由与渐进方法组合 | 14共享方法、四入口路由/帮助；没有单一runtime编译/强制执行通道 |
+| PS01 | 单入口任务路由与渐进方法组合 | 14共享方法、四入口路由/帮助；PR314候选提供单bug_fix纯编译和既有host必需方法材料，实际模型P6与全路由尚未验收 |
 | PS02 | 代码机制与历史动机取证 | investigation可用；how/why/teach为方法吸收，没有专门历史取证工具或全面效果验证 |
 | PS03 | 意图校准与可纠正的问题模型 | task-framing已合并；实际两宿主均LIMITED，尚非任务执行收益证明 |
 | PS04 | 从使用草图到原型证据的架构循环 | architecture/feature/refactoring可用；独立多原型arena和完整采纳循环未交付 |
