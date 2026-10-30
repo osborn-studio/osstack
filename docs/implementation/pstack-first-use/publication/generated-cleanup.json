@@ -1,0 +1,16 @@
+{
+  "fresh_dist_restored_after_all_verification": [
+    "packages/knowledge/dist/index.js",
+    "packages/knowledge/dist/index.js.map",
+    "packages/knowledge/dist/index.d.ts",
+    "packages/knowledge/dist/index.d.ts.map"
+  ],
+  "fresh_patch_preserved_sha256": "9cd0804e8ac972f377b8759044dd0a2ab17b4499e96fd6391f43a46f5a709567",
+  "own_local_bundle_removed_after_archive_verification": [
+    "builder.md",
+    "compiled.json",
+    "context.json",
+    "reviewer.md",
+    "verifier.md"
+  ]
+}

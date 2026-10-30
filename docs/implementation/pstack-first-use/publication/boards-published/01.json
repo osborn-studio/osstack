@@ -1,0 +1,27 @@
+{
+  "method": "kanban.move",
+  "params": {
+    "card_id": "card_ebb91eda",
+    "status": "blocked",
+    "blocked_reason": "P6 native reproduction could not start: scratch EPERM, no repair. PR315 explicit-directory candidate awaits CI/parent314 merge; actual OS grant and successful new task remain unverified. Original packet closed BLOCKED, do not retry to flip grade.",
+    "actor": "codex"
+  },
+  "response": {
+    "card_id": "card_ebb91eda",
+    "board": "joint-firstmate-pstack",
+    "task_id": null,
+    "title": "[PSTACK-P6] 固定0.15.36方法经既有Loop修复Node26验证工具兼容",
+    "body": "scope: assisted U1 first real use; no Firstmate deep runtime\nTask: pstack-first-use-node26-20261030. Target packages/github/src/delivery.test.ts only. Current Node26 named mutation test fails options.mode transform; Node22 same test passes. Preserve positive controls and mutant detection, no skip/weaken assertions. Fixed pstack0.15.36 c742dd6 materials via existing method compiler/context host and ordinary Loop. One native Codex task, 600s, no retry. Existing deliver default readonly and missing reported runtime identity mean no U2/local_verified claim. Independent final candidate verification and durable evidence before manual same-card link. Root only PR/control; human merge. Contributions PS06/08/13/20/21/23; J02/J03 support; formal false.",
+    "status": "blocked",
+    "priority": 95,
+    "assignee": "codex",
+    "blocked_reason": "P6 native reproduction could not start: scratch EPERM, no repair. PR315 explicit-directory candidate awaits CI/parent314 merge; actual OS grant and successful new task remain unverified. Original packet closed BLOCKED, do not retry to flip grade.",
+    "tenant_id": null,
+    "card_type": "implementation",
+    "meta": null,
+    "created_at": 1793358345.303,
+    "updated_at": 1793360018.245,
+    "started_at": 1793358345.303,
+    "completed_at": null
+  }
+}

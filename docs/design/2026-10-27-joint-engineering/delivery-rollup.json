@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "engineering_delivery_projection_not_formal_gate_receipt",
-  "observed_at": "2026-10-30T11:23:48.841083+00:00",
+  "observed_at": "2026-10-30T11:33:38.226599+00:00",
   "main_sha": "abcd9edf008568d3c3d869df4afd9143b079ee64",
   "main_tree": "88ea7afcc6f03ba7c63755c306f5814899101820",
   "priority": "pstack_first",
@@ -12289,7 +12289,7 @@
   },
   "pstack_first_use": {
     "observed_at": "2026-10-30T11:23:48.841083+00:00",
-    "status": "native_attempt_blocked_adapter_candidate_validated",
+    "status": "draft_ci_and_parent_pending_native_attempt_still_blocked",
     "record": "docs/implementation/pstack-first-use/README.md",
     "card_id": "card_ebb91eda",
     "task_id": "pstack-first-use-node26-20261030",
@@ -12349,6 +12349,15 @@
       "members": 419,
       "file_bytes": 11968136,
       "independent_receipt_sha256": "fb2777c9cfc11b7e536c1c33797e6f742e450904ff0a72dc82646d680a7f30c7"
-    }
+    },
+    "pr": 315,
+    "url": "https://github.com/osborn-studio/osstack/pull/315",
+    "head_sha": "08342874b1ffdbdf447f38d5221ffbb9aed8eeda",
+    "base_branch": "codex/pstack-method-bridge-delivery",
+    "ci_run": 41048799532,
+    "ci_status": "running",
+    "ready": false,
+    "publication_docs_tests": 241,
+    "publication_hygiene_tests": 1
   }
 }

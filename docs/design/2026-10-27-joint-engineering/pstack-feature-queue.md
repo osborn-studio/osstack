@@ -1,5 +1,7 @@
 # pstack-first feature queue
 
+发布：PR315 https://github.com/osborn-studio/osstack/pull/315，head08342874b1ffdbdf447f38d5221ffbb9aed8eeda，Draft/base codex/pstack-method-bridge-delivery，CI41048799532运行。312→313→314→315依序人类merge、actual-main核验/retarget/适用重验；不要合featurebase。最终publication241docs/1hygiene通过；四fresh dist与保存bytes/hash/patch一致后才恢复。原P6仍BLOCKED。
+
 ## 2026-10-30 首次原生 Loop 尝试与显式 scratch 接点
 
 固定0.15.36材料已实际经既有 Loop/host 交给原生 Codex，card_ebb91eda、任务 pstack-first-use-node26-20261030。第一条复现命令在 Vitest scratch mkdir 遭 EPERM，零测试、零修改；原生完成回复后宿主检查 Node22通过/Node26失败，Loop escalated。两份持久收据与人工同卡回链保留；这是 assisted U1 失败观察，不是 local_verified 或 P6完成。原packet保持BLOCKED且不重跑翻绿。

@@ -49,3 +49,5 @@
 PR314完整原CI另见[ci-final](../pstack-method-bridge/ci-final/README.md)。没有下载或重新hash远程artifact。当前main与候选发布栈分别记录，不能把这份修复的local full当作314或新PR的远程CI。
 
 独立逐成员核验同样通过，见[包外独立收据](publication/independent-archive/receipt.json)，SHA256 `fb2777c9cfc11b7e536c1c33797e6f742e450904ff0a72dc82646d680a7f30c7`；另核三个源码Git、三个完整审计输入及实际prompt/两收据。该核验不运行产品或模型。
+
+发布：PR315 https://github.com/osborn-studio/osstack/pull/315，head08342874b1ffdbdf447f38d5221ffbb9aed8eeda，Draft/base codex/pstack-method-bridge-delivery，CI41048799532运行。312→313→314→315依序人类merge、actual-main核验/retarget/适用重验；不要合featurebase。最终publication241docs/1hygiene通过；四fresh dist与保存bytes/hash/patch一致后才恢复。原P6仍BLOCKED。

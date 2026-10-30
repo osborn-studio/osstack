@@ -1,0 +1,15 @@
+{
+  "method": "kanban.comment",
+  "params": {
+    "card_id": "card_7d169d5f",
+    "author": "codex",
+    "body": "PS08/13/23 and J03 supporting evidence only: PR315 https://github.com/osborn-studio/osstack/pull/315 Draft/base314 head08342874b1ffdbdf447f38d5221ffbb9aed8eeda CI41048799532 running. Explicit writableRoots candidate:36focused/27independent; full1438f3c5 22packages7448pass5skip0fail; root changed9docs during full, tracked product/scripts stable; actual Sonnet5.5 static PASS_WITH_CONCERNS. Original P6 remains BLOCKED before native tests (scratch EPERM), zero model edits; two durable receipts preserved before manual same-card backlink, no automatic task/tenant FK or local_verified. Archive419members root+independent allhash/type/mode/size/linktarget verified, no symlink dereference. Evidence https://github.com/osborn-studio/osstack/blob/08342874b1ffdbdf447f38d5221ffbb9aed8eeda/docs/implementation/pstack-first-use/README.md . Next: installed-host permission proof then genuinely new task; no regrade/retry of closed original packet; Firstmate deep runtime prohibited."
+  },
+  "response": {
+    "comment_id": 764,
+    "card_id": "card_7d169d5f",
+    "author": "codex",
+    "body": "PS08/13/23 and J03 supporting evidence only: PR315 https://github.com/osborn-studio/osstack/pull/315 Draft/base314 head08342874b1ffdbdf447f38d5221ffbb9aed8eeda CI41048799532 running. Explicit writableRoots candidate:36focused/27independent; full1438f3c5 22packages7448pass5skip0fail; root changed9docs during full, tracked product/scripts stable; actual Sonnet5.5 static PASS_WITH_CONCERNS. Original P6 remains BLOCKED before native tests (scratch EPERM), zero model edits; two durable receipts preserved before manual same-card backlink, no automatic task/tenant FK or local_verified. Archive419members root+independent allhash/type/mode/size/linktarget verified, no symlink dereference. Evidence https://github.com/osborn-studio/osstack/blob/08342874b1ffdbdf447f38d5221ffbb9aed8eeda/docs/implementation/pstack-first-use/README.md . Next: installed-host permission proof then genuinely new task; no regrade/retry of closed original packet; Firstmate deep runtime prohibited.",
+    "created_at": 1793360018.245
+  }
+}
