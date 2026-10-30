@@ -24,8 +24,8 @@
 // SIGKILL after 2s if it hasn't exited.
 
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { isAbsolute, join, parse, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
@@ -245,6 +245,8 @@ interface CodexOptions {
   bin?: string;
   /** Sandbox mode. Default: read-only. */
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  /** Explicit extra writable directories; nonempty only with workspace-write. No environment defaults. */
+  writableRoots?: readonly string[];
   /** Working directory for the codex run. Default: $HOME. */
   cwd?: string;
   /** Probe timeout for availability dry-runs. */
@@ -255,6 +257,36 @@ interface CodexOptions {
   strictCompletion?: boolean;
 }
 
+function normalizeWritableRoots(
+  roots: CodexOptions["writableRoots"], sandbox: NonNullable<CodexOptions["sandbox"]>,
+): readonly string[] {
+  if (roots === undefined) return [];
+  if (!Array.isArray(roots) || roots.length > 8) {
+    throw new Error("writableRoots must be an array of at most eight directories");
+  }
+  if (roots.length > 0 && sandbox !== "workspace-write") {
+    throw new Error("writableRoots requires workspace-write sandbox");
+  }
+  const canonical = new Set<string>();
+  for (const root of roots) {
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: path authority must reject control characters
+    if (typeof root !== "string" || !isAbsolute(root) || /[\u0000-\u001f\u007f]/.test(root)) {
+      throw new Error("writableRoots entries must be absolute paths without control characters");
+    }
+    let directory: string;
+    try {
+      directory = realpathSync(root);
+      if (!statSync(directory).isDirectory() || directory === parse(directory).root) {
+        throw new Error("not a bounded directory");
+      }
+    } catch {
+      throw new Error("writableRoots entries must be existing non-root directories");
+    }
+    canonical.add(directory);
+  }
+  return Object.freeze([...canonical]);
+}
+
 export class CodexCliAdapter extends BaseAgentAdapter {
   readonly id = "codex-cli";
   readonly display_name = "OpenAI Codex CLI (headless)";
@@ -263,6 +295,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
   private readonly bin: string;
   private readonly sandbox: NonNullable<CodexOptions["sandbox"]>;
   private readonly cwd: string;
+  private readonly writableRoots: readonly string[];
   private readonly probeTimeoutMs: number;
   private readonly env: NodeJS.ProcessEnv | undefined;
   private readonly strictCompletion: boolean;
@@ -271,6 +304,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     super();
     this.bin = opts.bin ?? process.env["OSSTACK_CODEX_BIN"] ?? "codex";
     this.sandbox = opts.sandbox ?? "read-only";
+    this.writableRoots = normalizeWritableRoots(opts.writableRoots, this.sandbox);
     this.cwd = opts.cwd ?? process.env["HOME"] ?? process.cwd();
     this.probeTimeoutMs = opts.probeTimeoutMs ?? Number(process.env["OSSTACK_CODEX_PROBE_TIMEOUT_MS"] ?? 15_000);
     this.env = opts.env === undefined ? undefined : { ...opts.env };
@@ -380,7 +414,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       : this.cwd;
     return this.runSession([
       "exec", "--json", "--skip-git-repo-check",
-      "-s", this.sandbox, "-C", cwd, task.prompt,
+      "-s", this.sandbox, "-C", cwd, ...this.writableRoots.flatMap(root => ["--add-dir", root]), task.prompt,
     ], signal);
   }
 
@@ -392,7 +426,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     // precede `resume`; the fake-binary test locks this argv contract.
     return this.runSession([
       "exec", "--json", "--skip-git-repo-check",
-      "-s", this.sandbox, "-C", cwd,
+      "-s", this.sandbox, "-C", cwd, ...this.writableRoots.flatMap(root => ["--add-dir", root]),
       "resume", input.native_session_id, input.prompt,
     ], signal, input.native_session_id);
   }
@@ -528,6 +562,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       "exec", "--json", "--skip-git-repo-check",
       "-s", this.sandbox,
       "-C", taskCwd,
+      ...this.writableRoots.flatMap(root => ["--add-dir", root]),
       task.prompt,
     ];
     const proc = spawn(this.bin, args, {
