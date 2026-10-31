@@ -29,7 +29,7 @@
 | W9 | L1a：通用合同（`SourcePin`、`SourceSnapshot`、规范摘要）迁出 `protocol/joint`，迁移消费者 | **S-M** | `packages/protocol`、`packages/skill-registry` | W4 | 待做 |
 | W10 | L1b：移除 pstack 方法包及其构建/CI 消费者；保留 `execution-context` | **S-M** | `packages/cli/src/method-context*`、`tsup.config.ts`、`osstack-methods-skill/`、相关 `scripts/` 与 CI 步骤 | W9 | 待做 |
 | W11 | 设计：受限单执行器 Mission 路径（S2 核心，T0/T1 写入代理或强制沙箱、受限验证） | S-A | `docs/design` | W4、W8 | 待做 |
-| W12 | 分支治理第二轮：逐个核对未合并分支，列清单交用户确认后删除；AGENTS.md 增加分支生命周期规则 | S-A | — | W1–W4 合并后 | 待做 |
+| W12 | 分支治理第二轮：逐个核对未合并分支，列清单交用户确认后删除；AGENTS.md 增加分支生命周期规则 | S-A | — | W1–W4 合并后 | 清单待确认（`docs/plans/2026-10-31-branch-governance-round-2.md`） |
 
 ## 合并顺序（用户执行）
 

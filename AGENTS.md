@@ -28,6 +28,15 @@ Vitest is the test runner. Place tests beside the code they cover using `*.test.
 
 Recent history follows Conventional Commits, for example `feat(loop): add loop engineering foundation` and `feat: OSStack standalone product + role-based agent configuration`. Use a concise imperative subject and include a scope when it clarifies the affected package. Pull requests should describe the change, list validation commands run, link related issues or docs, and include screenshots only for user-visible CLI, dashboard, or Hermes-facing behavior.
 
+## Branch & Worktree Lifecycle
+
+- Open every PR against `main`. Do not stack PRs on another feature branch: when a base branch is merged without deleting it, the PRs on top merge into that branch and never reach `main` (#178–#184, #326, #327).
+- Delete the feature branch, remote and local, as soon as its PR is merged or closed. Remove its worktree in the same step (`git worktree remove`, then `git worktree prune`).
+- Worktrees live under `~/Developer/CodeX/.worktrees/osstack/<task>`, never beside the repository or on the internal disk.
+- Before deleting a branch that is not an ancestor of `main`, show that its work is in `main` (`git cherry origin/main <branch>` has no `+` lines, or its merged PR's merge commit is in `main`) or list it for the owner to confirm. Do not infer that a branch is abandoned from its name.
+- `main` and `changeset-release/main` (owned by the release workflow) are never deleted.
+- `main` protection dismisses approvals whenever `main` moves. Approve and merge one PR at a time.
+
 ## Performance Budgets
 
 Startup and latency budgets (from `docs/design/2026-08-12-performance-hints-improvement-plan.md`, after Dean & Ghemawat's Performance Hints). CI enforces the first two via the "CLI startup budget" step (`scripts/bench-cli-startup.mjs`); check the rest with `osstack stats` (rpc section).
