@@ -1,7 +1,17 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { createKnowledgePublishCatalog } from "../packages/knowledge/dist/index.js";
+import { fileURLToPath } from "node:url";
+
+// packages/knowledge/dist is a build output and is not committed: build it first
+// (`pnpm build`, or `pnpm build:knowledge-cloud-catalog`, which builds @osstack/knowledge).
+const knowledgeEntry = fileURLToPath(new URL("../packages/knowledge/dist/index.js", import.meta.url));
+if (!existsSync(knowledgeEntry)) {
+  console.error(`knowledge publish catalog: ${knowledgeEntry} is missing; run \`pnpm --filter @osstack/knowledge build\` (or \`pnpm build\`) first`);
+  process.exit(1);
+}
+const { createKnowledgePublishCatalog } = await import("../packages/knowledge/dist/index.js");
 
 const args = process.argv.slice(2);
 const outputArg = valueAfter("--output");
