@@ -287,6 +287,26 @@ it("recovers a failed local delivery receipt on the next scan without restart", 
   expect(sent.size).toBe(1);
 });
 
+it("sends opt-in overdue reminders after the first notice, and none without a policy", async () => {
+  for (const reminders of [{ overdueMs: 1, backoffMaxMs: 1 }, undefined]) {
+    const { service, scope } = setup(reminders ? { reminders } : {});
+    const sent: { delivery_id: string; reminder?: { sequence: number } }[] = [];
+    Object.defineProperty(service, "sender", { value: async (message: (typeof sent)[number]) => { sent.push(message); } });
+    service.store.projectDecision(service.observer.owner, {scopeId:scope.scope_id,sessionId:"s",turnId:"turn",sourceVersion:1,decision:{decision_id:"d",question:"Choose",choices:[]},now:1});
+    await vi.waitFor(async () => {
+      await service.requestScan();
+      expect(sent.filter((m) => m.reminder).length).toBeGreaterThanOrEqual(reminders ? 2 : 0);
+      expect(sent.filter((m) => !m.reminder)).toHaveLength(1);
+    });
+    if (!reminders) {
+      await service.requestScan();
+      expect(sent.filter((m) => m.reminder)).toEqual([]);
+    } else {
+      expect(sent.filter((m) => m.reminder).map((m) => m.reminder!.sequence).slice(0, 2)).toEqual([1, 2]);
+    }
+  }
+});
+
 it("aborts and joins a real hung notification batch before database close", async () => {
   const { service, scope, db } = setup();
   const late = deferred<void>();
@@ -327,4 +347,18 @@ it("yields between observation slices and checks stop before another slice", asy
   await scan;await stopped;
   expect(step).toHaveBeenCalledTimes(1);db.close();
   await new Promise<void>(resolve=>setImmediate(resolve));expect(step).toHaveBeenCalledTimes(1);
+});
+it("answers leaving away with the return brief and previews it read-only", async () => {
+  const { service, db, scope } = setup();
+  const s = scope.scope_id;
+  expect(await service.handle("attention.posture", { scope_id: s, actor: "owner", posture: "away" }))
+    .toMatchObject({ posture: "away", previous: null, return_brief: null, execution_takeover: false });
+  const preview = await service.handle("attention.return-brief", { scope_id: s, actor: "owner", limit: 3 }) as { interval: { since_known: boolean } };
+  expect(preview.interval.since_known).toBe(true);
+  await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner", since: "1" })).rejects.toThrow("invalid_since");
+  await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner", extra: 1 })).rejects.toThrow("invalid_return_brief_request");
+  const back = await service.handle("attention.posture", { scope_id: s, actor: "owner", posture: "attended", limit: 3 }) as { return_brief: unknown };
+  expect(back.return_brief).toMatchObject({ scope_id: s, authority: "none", waiting_on_you: { total: 0, omitted: 0 } });
+  await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner" })).rejects.toThrow("since_required");
+  expect(db.prepare("SELECT posture FROM attention_postures").get()).toEqual({ posture: "attended" });
 });

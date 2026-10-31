@@ -27,7 +27,9 @@ export { readAttentionRecovery, type AttentionRecoveryRequest, type AttentionRec
 export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
 export { EngineeringStore, engineeringSourceIdentity, type EngineeringPrincipal, type EngineeringMission, type EngineeringWait, type EngineeringActionReceipt, type EngineeringStopResult, type EngineeringObservationProof, type EngineeringDispatchPermit, type EngineeringHostEvidence } from "./state/engineering-store.js";
 export { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch, type EngineeringDispatchPhase } from "./state/engineering-dispatch.js";
-export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
+export { AttentionExperience, type AttentionSender, type AttentionPosture, type AttentionPostureResult } from "./state/attention-experience.js";
+export { readAttentionReturnBrief, type AttentionReturnBrief, type AttentionReturnBriefInput, type ReturnBriefSection, type ReturnBriefWaiting, type ReturnBriefOpened, type ReturnBriefResolved, type ReturnBriefDeliveryProblem } from "./state/attention-return-brief.js";
+export { parseAttentionReminderPolicy, type AttentionReminderPolicy } from "./state/attention-reminders.js";
 export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
 export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
 export { GraphActionStore, GraphActionStorageError } from "./state/graph-actions.js";

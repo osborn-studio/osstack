@@ -8,12 +8,15 @@ import {
   AttentionActions,
   attentionDigest,
   readAttentionRecovery,
+  type AttentionReminderPolicy,
   type AttentionSender,
 } from "@osstack/core";
 type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
 export interface SupervisionOptions {
   loopReader?: (input: LoopReadInput) => Promise<unknown>;
   readTimeoutMs?: number;
+  /** Opt-in overdue-decision reminders; only scheduled when a sender exists. */
+  reminders?: AttentionReminderPolicy;
 }
 type ReadFailure = "timeout" | "aborted" | "invalid_payload" | "read_failed" | "read_capacity_exceeded";
 type LoopFacts = Record<string, unknown> & { state: string; reason?: string };
@@ -62,6 +65,7 @@ export class SupervisionService {
   private scanDone: Promise<void> | undefined;
   private stopDone: Promise<void> | undefined;
   private epoch = 0;
+  private fenced = false;
   // A slot outlives its logical timeout until the underlying promise settles.
   // It holds no continuation that can access SQLite after stop.
   private readonly readers = new Map<string, ReadSlot>();
@@ -81,12 +85,29 @@ export class SupervisionService {
       this.store,
       this.store.claimOwner(randomUUID())
     );
-    this.experience = new AttentionExperience(this.store, this.observer.owner);
+    this.experience = new AttentionExperience(this.store, this.observer.owner, { reminders: this.options.reminders !== undefined });
     this.experience.recoverDeliveries();
     new AttentionActions(this.store, this.observer.owner).recover();
   }
+  /** True once a newer owner generation claimed this home; the service is then stopped. */
+  get takenOver(): boolean { return this.fenced; }
   private assertRunning(): void {
+    if (this.fenced) throw new Error("stale_owner");
     if (this.stopped) throw new Error("supervision_stopped");
+  }
+  /** Every write is owner-fenced, so a superseded service cannot change state,
+   * but it would keep polling and hold an in-flight send open. On any failure,
+   * re-read ownership; if a newer generation holds it, stop now, which aborts
+   * in-flight reads and sends. Lock contention or a fault is not a take-over. */
+  private stopIfTakenOver(): boolean {
+    if (this.stopped) return this.fenced;
+    try { this.store.assertOwner(this.observer.owner); return false; }
+    catch (error) {
+      if (!(error instanceof Error) || error.message !== "stale_owner") return false;
+      this.fenced = true;
+      void this.stop();
+      return true;
+    }
   }
   start(): void {
     this.assertRunning();
@@ -103,7 +124,7 @@ export class SupervisionService {
     this.scanDone ??= Promise.resolve().then(async () => {
       while (this.dirty && !this.stopped) {
         this.dirty = false;
-        try { await this.scan(); } catch { /* prior coverage expires */ }
+        try { await this.scan(); } catch { this.stopIfTakenOver(); /* else prior coverage expires */ }
       }
     }).finally(() => {
       this.scanDone = undefined;
@@ -150,6 +171,10 @@ export class SupervisionService {
       try { this.experience.enqueue(scope.scope_id); }
       catch { /* Keep observed items; one unavailable scope must not block other notices. */ }
     }
+    if (this.sender && this.options.reminders) {
+      try { this.experience.scheduleReminders(this.options.reminders); }
+      catch { /* A stale owner or busy DB skips this pass; the schedule is persisted. */ }
+    }
     if (this.sender && !this.delivering) {
       // Only this service owns the local idempotent sender. A failed receipt
       // write leaves `sending`; reconcile it before the next bounded batch.
@@ -159,8 +184,8 @@ export class SupervisionService {
       }
       this.delivering = true;
       this.deliveryDone = Promise.resolve().then(() => this.experience.drainBatch(this.sender!, { signal: this.deliveryAbort.signal }))
-        .then(() => {})
-        .catch(() => { this.deliveryRecoveryNeeded = true; })
+        .then((result) => { if (result.stale > 0) this.stopIfTakenOver(); })
+        .catch(() => { if (!this.stopIfTakenOver()) this.deliveryRecoveryNeeded = true; })
         .finally(() => { this.delivering = false; });
     }
   }
@@ -264,6 +289,13 @@ export class SupervisionService {
     return logical;
   }
   async handle(method: string, params: unknown): Promise<unknown> {
+    try { return await this.dispatch(method, params); }
+    catch (error) {
+      if (error instanceof Error && error.message === "stale_owner") this.stopIfTakenOver();
+      throw error;
+    }
+  }
+  private async dispatch(method: string, params: unknown): Promise<unknown> {
     this.assertRunning();
     if (!params || typeof params !== "object")
       throw new Error("explicit_scope_required");
@@ -286,6 +318,12 @@ export class SupervisionService {
       this.assertRunning();
       return this.observer.inventory(scope.scope_id);
     }
+    const briefLimit = (): { limit?: number } => {
+      const limit = p["limit"];
+      if (limit === undefined) return {};
+      if (typeof limit !== "number" || !Number.isInteger(limit)) throw new Error("invalid_limit");
+      return { limit };
+    };
     const scopeId = str("scope_id");
     if (!this.store.getScope(scopeId)) throw new Error("not_found");
     if (method === "attention.recovery") {
@@ -325,12 +363,26 @@ export class SupervisionService {
       const posture = str("posture");
       if (!["quiet", "away", "attended"].includes(posture))
         throw new Error("invalid_posture");
-      this.experience.posture(
+      // Leaving away for attended answers with the return brief; the write
+      // itself stays a UX posture with no authority.
+      return this.experience.posture(
         scopeId,
         str("actor"),
-        posture as "quiet" | "away" | "attended"
+        posture as "quiet" | "away" | "attended",
+        Date.now(),
+        briefLimit()
       );
-      return { posture };
+    }
+    if (method === "attention.return-brief") {
+      if (Object.keys(p).some((key) => !["scope_id", "actor", "since", "limit"].includes(key)))
+        throw new Error("invalid_return_brief_request");
+      const since = p["since"];
+      if (since !== undefined && (typeof since !== "number" || !Number.isSafeInteger(since)))
+        throw new Error("invalid_since");
+      return this.experience.returnBrief(scopeId, str("actor"), {
+        ...(since === undefined ? {} : { since: since as number }),
+        ...briefLimit(),
+      });
     }
     if (method === "attention.seen") {
       if (!Array.isArray(p["revisions"])) throw new Error("invalid_revisions");

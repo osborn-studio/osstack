@@ -45,11 +45,11 @@ function fixture() {
 const hash = (path: string) =>
   createHash("sha256").update(readFileSync(path)).digest("hex");
 
-it("reads schema 47 with its additive engineering ledger without migrating or inventing live coverage", () => {
+it("reads schema 49 with its additive engineering ledger without migrating or inventing live coverage", () => {
   const f = fixture();
   const db = new Database(f.dbPath, { readonly: true, fileMustExist: true });
   try {
-    expect(db.pragma("user_version", { simple: true })).toBe(47);
+    expect(db.pragma("user_version", { simple: true })).toBe(49);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('engineering_missions','attention_dispatch_phases','engineering_completions') ORDER BY name").all()).toEqual([
       { name: "attention_dispatch_phases" },
       { name: "engineering_completions" },
@@ -105,7 +105,7 @@ it("reports malformed decisions and accepted receipts without guessing delivery"
   );
   expect(result.limitations).toContain("invalid_decision:s");
 });
-it.each([23, 48, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
+it.each([23, 50, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
   const f = fixture();
   const db = new Database(f.dbPath);
   db.pragma(`user_version=${schema}`);

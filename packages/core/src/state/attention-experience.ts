@@ -5,6 +5,20 @@ import {
   attentionDigest,
   type AttentionOwner,
 } from "./attention-store.js";
+import type { AttentionReminderPolicy } from "./attention-reminders.js";
+import { readAttentionReturnBrief, type AttentionReturnBrief } from "./attention-return-brief.js";
+export type AttentionPosture = "attended" | "quiet" | "away";
+export interface AttentionPostureResult {
+  scope_id: string;
+  actor: string;
+  posture: AttentionPosture;
+  previous: AttentionPosture | null;
+  /** When the current posture was entered; null for a pre-49 posture kept unchanged. */
+  entered_at: number | null;
+  /** Present only when leaving `away` for `attended`. */
+  return_brief: AttentionReturnBrief | null;
+  execution_takeover: false;
+}
 interface Delivery {
   delivery_id: string;
   scope_id: string;
@@ -22,27 +36,92 @@ export type AttentionSender = (
     item_id: string;
     question: string;
     state: string;
+    /** Present only on an overdue-decision reminder, never on the first notice. */
+    reminder?: { sequence: number; age_ms: number };
   },
   signal: AbortSignal
 ) => Promise<void>;
+type DeliveryTable = "attention_deliveries" | "attention_reminders";
+type Claimed = Delivery & { table: DeliveryTable; sequence?: number; opened_at?: number; last_at?: number };
+// Same eligibility for first notices and reminders: due and not in a quiet scope.
+const claimable = (table: DeliveryTable) =>
+  `SELECT d.* FROM ${table} d WHERE d.state='pending' AND d.next_at<=? AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet') ORDER BY d.next_at,d.delivery_id LIMIT 1`;
 /** Local owner UX state; posture never changes any execution authority. */
 export class AttentionExperience {
-  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner) {}
+  /** Reminder rows are claimed only while this process has reminders
+   * enabled; a disabled process leaves queued rows for a later re-enable. */
+  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner,
+    private readonly options: { reminders?: boolean } = {}) {}
+  /** Record a posture. Re-asserting the current posture keeps its start, so a
+   * repeated `away` does not shorten the interval. Leaving `away` for
+   * `attended` also returns the read-only return brief for that interval,
+   * computed in the same transaction. Neither grants any authority. */
   posture(
     scope: string,
     actor: string,
-    posture: "attended" | "quiet" | "away"
-  ): void {
+    posture: AttentionPosture,
+    now = Date.now(),
+    options: { limit?: number } = {}
+  ): AttentionPostureResult {
     this.actor(actor);
     if (!["attended", "quiet", "away"].includes(posture))
       throw new Error("invalid_posture");
-    this.store.write(this.owner, () => {
+    if (!Number.isSafeInteger(now) || now < 0) throw new Error("invalid_now");
+    return this.store.write(this.owner, () => {
       this.scope(scope);
-      this.store.db
-        .prepare(
-          "INSERT INTO attention_postures VALUES(?,?,?) ON CONFLICT(scope_id,actor) DO UPDATE SET posture=excluded.posture"
-        )
-        .run(scope, actor, posture);
+      const db = this.store.db;
+      const prior = db
+        .prepare("SELECT posture,entered_at FROM attention_postures WHERE scope_id=? AND actor=?")
+        .get(scope, actor) as { posture: AttentionPosture; entered_at: number | null } | undefined;
+      const enteredAt = prior?.posture === posture ? prior.entered_at : now;
+      db.prepare(
+        `INSERT INTO attention_postures(scope_id,actor,posture,entered_at) VALUES(?,?,?,?)
+         ON CONFLICT(scope_id,actor) DO UPDATE SET posture=excluded.posture,entered_at=excluded.entered_at`
+      ).run(scope, actor, posture, enteredAt);
+      const returning = prior?.posture === "away" && posture === "attended";
+      return {
+        scope_id: scope,
+        actor,
+        posture,
+        previous: prior?.posture ?? null,
+        entered_at: enteredAt,
+        return_brief: returning
+          ? readAttentionReturnBrief(db, {
+              scope_id: scope,
+              // A clock that moved backwards cannot produce a negative interval.
+              since: prior.entered_at === null ? null : Math.min(prior.entered_at, now),
+              now,
+              ...(options.limit === undefined ? {} : { limit: options.limit }),
+            })
+          : null,
+        execution_takeover: false as const,
+      };
+    });
+  }
+  /** Read-only preview of a return brief without changing posture: over
+   * [since, now], or over the actor's current away interval. */
+  returnBrief(
+    scope: string,
+    actor: string,
+    options: { since?: number; limit?: number } = {},
+    now = Date.now()
+  ): AttentionReturnBrief {
+    this.actor(actor);
+    this.scope(scope);
+    let since: number | null;
+    if (options.since !== undefined) since = options.since;
+    else {
+      const row = this.store.db
+        .prepare("SELECT posture,entered_at FROM attention_postures WHERE scope_id=? AND actor=?")
+        .get(scope, actor) as { posture: string; entered_at: number | null } | undefined;
+      if (row?.posture !== "away") throw new Error("since_required");
+      since = row.entered_at === null ? null : Math.min(row.entered_at, now);
+    }
+    return readAttentionReturnBrief(this.store.db, {
+      scope_id: scope,
+      since,
+      now,
+      ...(options.limit === undefined ? {} : { limit: options.limit }),
     });
   }
   brief(scope: string, actor: string) {
@@ -119,14 +198,60 @@ export class AttentionExperience {
         .run(scope);
     });
   }
-  recoverDeliveries(): void {
-    this.store.write(this.owner, () =>
-      this.store.db
-        .prepare(
-          "UPDATE attention_deliveries SET state=CASE WHEN attempts>=5 THEN 'dead_letter' ELSE 'pending' END,error='interrupted_delivery' WHERE state='sending'"
-        )
-        .run()
-    );
+  recoverDeliveries(now = Date.now()): void {
+    this.store.write(this.owner, () => {
+      for (const table of ["attention_deliveries", "attention_reminders"] as const) {
+        this.store.db
+          .prepare(
+            `INSERT OR IGNORE INTO attention_dead_letters(delivery_id,kind,scope_id,item_id,revision,sequence,error,dead_at)
+             SELECT delivery_id,?,scope_id,item_id,revision,${table === "attention_reminders" ? "sequence" : "NULL"},'interrupted_delivery',?
+             FROM ${table} WHERE state='sending' AND attempts>=5`
+          )
+          .run(table === "attention_reminders" ? "reminder" : "first_notice", now);
+        this.store.db
+          .prepare(
+            `UPDATE ${table} SET state=CASE WHEN attempts>=5 THEN 'dead_letter' ELSE 'pending' END,error='interrupted_delivery' WHERE state='sending'`
+          )
+          .run();
+      }
+    });
+  }
+  /** Queue at most one reminder per call: the oldest open decision that is
+   * overdue and whose previous reminder has settled and backed off. Quiet
+   * scopes neither schedule nor reset. A revision change while the decision
+   * stays unresolved keeps the schedule; a reminder superseded by that change
+   * counts as settled. Resolved decisions are removed unless a send is in
+   * flight, whose receipt must still settle on its own row. */
+  scheduleReminders(policy: AttentionReminderPolicy, now = Date.now()) {
+    const { overdueMs, backoffMaxMs } = policy;
+    if (!Number.isInteger(overdueMs) || overdueMs < 1 || !Number.isInteger(backoffMaxMs) || backoffMaxMs < overdueMs)
+      throw new Error("invalid_attention_reminder_policy");
+    return this.store.write(this.owner, () => {
+      const db = this.store.db;
+      // Keep the schedule while the decision is still waiting on the owner
+      // (including an answer that is reserved or uncertain): its count feeds the
+      // return brief, and only `open` decisions are ever scheduled.
+      const cleared = db.prepare(`DELETE FROM attention_reminders AS r WHERE r.state<>'sending' AND NOT EXISTS(
+        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','answer_reserved','answer_uncertain','source_missing'))`).run().changes;
+      // A stored delay from an older policy is clamped into the current bounds.
+      const due = db.prepare(`SELECT i.item_id,i.scope_id,i.revision,i.created_at,r.sequence,r.delay_ms FROM attention_items i
+        LEFT JOIN attention_reminders r ON r.scope_id=i.scope_id AND r.item_id=i.item_id
+        WHERE i.state='open' AND i.created_at<=?
+          AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=i.scope_id AND p.posture='quiet')
+          AND (r.item_id IS NULL OR (r.state IN ('delivered','dead_letter','superseded') AND ?-r.last_at>=MIN(MAX(r.delay_ms,?),?)))
+        ORDER BY i.created_at,i.item_id LIMIT 1`).get(now - overdueMs, now, overdueMs, backoffMaxMs) as
+        { item_id: string; scope_id: string; revision: number; created_at: number; sequence: number | null; delay_ms: number | null } | undefined;
+      if (!due) return { scheduled: null, cleared };
+      const sequence = (due.sequence ?? 0) + 1;
+      const delay = due.delay_ms === null ? overdueMs
+        : Math.min(backoffMaxMs, Math.min(Math.max(due.delay_ms, overdueMs), backoffMaxMs) * 2);
+      const deliveryId = `${due.item_id}:${due.revision}:r${sequence}`;
+      db.prepare(`INSERT INTO attention_reminders(delivery_id,scope_id,item_id,revision,opened_at,sequence,last_at,delay_ms,next_at)
+        VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,item_id) DO UPDATE SET delivery_id=excluded.delivery_id,revision=excluded.revision,
+        sequence=excluded.sequence,last_at=excluded.last_at,delay_ms=excluded.delay_ms,state='pending',attempts=0,next_at=excluded.next_at,error=NULL`)
+        .run(deliveryId, due.scope_id, due.item_id, due.revision, due.created_at, sequence, now, delay, now);
+      return { scheduled: { item_id: due.item_id, scope_id: due.scope_id, sequence, age_ms: now - due.created_at }, cleared };
+    });
   }
   async drain(sender: AttentionSender, now = Date.now(), timeoutMs = 5000): Promise<void> {
     await this.drainOne(sender, now, timeoutMs);
@@ -176,7 +301,9 @@ export class AttentionExperience {
     // Counts use the same eligibility predicate as claim; quiet and delayed
     // retries remain persisted but are not currently deliverable.
     const due = this.store.db.prepare(`SELECT COUNT(*) n, MIN(d.next_at) oldest
-      FROM attention_deliveries d WHERE d.state='pending' AND d.next_at<=?
+      FROM (SELECT scope_id,state,next_at FROM attention_deliveries${this.options.reminders
+        ? " UNION ALL SELECT scope_id,state,next_at FROM attention_reminders" : ""}) d
+      WHERE d.state='pending' AND d.next_at<=?
       AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet')`
     ).get(Date.now()) as { n: number; oldest: number | null };
     return { ...result, remainingDue: due.n, oldestDueAt: due.oldest };
@@ -190,11 +317,15 @@ export class AttentionExperience {
   ): Promise<"idle" | "superseded" | "delivered" | "retried" | "dead_letter" | "stale" | "cancelled"> {
     const db = this.store.db;
     const row = this.store.write(this.owner, () => {
-      const d = db
-        .prepare(
-          `SELECT d.* FROM attention_deliveries d WHERE d.state='pending' AND d.next_at<=? AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet') ORDER BY d.next_at,d.delivery_id LIMIT 1`
-        )
-        .get(now) as Delivery | undefined;
+      const first = db.prepare(claimable("attention_deliveries")).get(now) as Delivery | undefined;
+      const reminder = this.options.reminders
+        ? db.prepare(claimable("attention_reminders")).get(now) as Claimed | undefined
+        : undefined;
+      const d: Claimed | undefined =
+        reminder && (!first || reminder.next_at < first.next_at ||
+          (reminder.next_at === first.next_at && reminder.delivery_id < first.delivery_id))
+          ? { ...reminder, table: "attention_reminders" }
+          : first && { ...first, table: "attention_deliveries" };
       if (d) {
         const item = this.store.getItem(d.scope_id, d.item_id);
         if (
@@ -203,20 +334,23 @@ export class AttentionExperience {
           !["open", "answer_uncertain", "source_missing"].includes(item.state)
         ) {
           db.prepare(
-            "UPDATE attention_deliveries SET state='superseded' WHERE delivery_id=?"
+            `UPDATE ${d.table} SET state='superseded' WHERE delivery_id=?`
           ).run(d.delivery_id);
           return "superseded" as const;
         }
       }
       if (d)
         db.prepare(
-          "UPDATE attention_deliveries SET state='sending',attempts=attempts+1 WHERE delivery_id=? AND state='pending'"
+          `UPDATE ${d.table} SET state='sending',attempts=attempts+1 WHERE delivery_id=? AND state='pending'`
         ).run(d.delivery_id);
       return d;
     });
     if (row === "superseded") return "superseded";
     if (!row) return "idle";
     const item = this.store.getItem(row.scope_id, row.item_id);
+    // Elapsed time on the caller's clock, so a dead letter is dated when the
+    // send actually failed, not when it was claimed.
+    const sendStarted = performance.now();
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let error: string | null = null;
@@ -234,6 +368,9 @@ export class AttentionExperience {
               item_id: row.item_id,
               question: item.decision.question,
               state: item.state,
+              ...(row.table === "attention_reminders"
+                ? { reminder: { sequence: row.sequence!, age_ms: row.last_at! - row.opened_at! } }
+                : {}),
             },
             controller.signal
           );
@@ -262,24 +399,33 @@ export class AttentionExperience {
     }
     let changed: number;
     try {
-    const updated = this.store.write(this.owner, () =>
-      db
+    const next = cancelled ? "pending" : error
+      ? row.attempts + 1 >= 5
+        ? "dead_letter"
+        : "pending"
+      : "delivered";
+    const updated = this.store.write(this.owner, () => {
+      const result = db
         .prepare(
-          "UPDATE attention_deliveries SET state=?,next_at=?,error=?,attempts=attempts-? WHERE delivery_id=? AND attempts=? AND state='sending'"
+          `UPDATE ${row.table} SET state=?,next_at=?,error=?,attempts=attempts-? WHERE delivery_id=? AND attempts=? AND state='sending'`
         )
         .run(
-          cancelled ? "pending" : error
-            ? row.attempts + 1 >= 5
-              ? "dead_letter"
-              : "pending"
-            : "delivered",
+          next,
           now + Math.min(300000, 1000 * 2 ** row.attempts),
           cancelled ? "delivery_cancelled_indeterminate" : error,
           cancelled ? 1 : 0,
           row.delivery_id,
           row.attempts + 1
-        )
-    );
+        );
+      // Keep when it dead-lettered: a reminder row is reused per sequence.
+      if (result.changes === 1 && next === "dead_letter")
+        db.prepare(
+          `INSERT OR IGNORE INTO attention_dead_letters(delivery_id,kind,scope_id,item_id,revision,sequence,error,dead_at) VALUES(?,?,?,?,?,?,?,?)`
+        ).run(row.delivery_id, row.table === "attention_reminders" ? "reminder" : "first_notice",
+          row.scope_id, row.item_id, row.revision, row.sequence ?? null, error,
+          now + Math.max(0, Math.ceil(performance.now() - sendStarted)));
+      return result;
+    });
     changed = updated.changes;
     } catch (e) {
       if (e instanceof Error && e.message === "stale_owner") return "stale";

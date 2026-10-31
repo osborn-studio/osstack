@@ -116,7 +116,7 @@ import { makeRepositoryPolicyGate } from "./repository-policy.js";
 import { SessionCollaborator, readContinuationTrust } from "./session-collaborator.js";
 import { describeSessionWait } from "./session-wait.js";
 import { runDailyBrief } from "./daily-command.js";
-import { resolveRepositoryScope } from "@osstack/core";
+import { parseAttentionReminderPolicy, resolveRepositoryScope } from "@osstack/core";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
@@ -4293,7 +4293,12 @@ export async function startDaemon(
     }));
     return graphBroker;
   };
-  if (process.env["OSSTACK_ATTENTION"] === "1") { ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, process.env["OSSTACK_ATTENTION_NOTIFY"] === "local" ? localAttentionSender(osstackHome()) : undefined); ctx.supervision.start(); }
+  if (process.env["OSSTACK_ATTENTION"] === "1") {
+    // Invalid enabled reminder settings refuse startup instead of looping unbounded.
+    const reminders = parseAttentionReminderPolicy(process.env);
+    ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, process.env["OSSTACK_ATTENTION_NOTIFY"] === "local" ? localAttentionSender(osstackHome()) : undefined, reminders ? { reminders } : {});
+    ctx.supervision.start();
+  }
   ctx.collaborator = new SessionCollaborator({
     repository: ctx.continuations,
     adapters: ctx.adapters,

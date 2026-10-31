@@ -346,8 +346,8 @@ export class AttentionObserver {
         const unresolved = this.receipts(source.session_id);
         if (["completed", "failed", "cancelled"].includes(source.state))
           db.prepare(
-            "UPDATE attention_items SET state='source_closed',revision=revision+1 WHERE scope_id=? AND session_id=? AND state='open'"
-          ).run(scope.scope_id, source.session_id);
+            "UPDATE attention_items SET state='source_closed',revision=revision+1,updated_at=? WHERE scope_id=? AND session_id=? AND state='open'"
+          ).run(now, scope.scope_id, source.session_id);
         // Only an applied receipt referencing this exact origin turn establishes
         // external continuation. Authorization/risk obligations remain unresolved.
         const items = (
@@ -376,8 +376,8 @@ export class AttentionObserver {
             | undefined;
           if (applied)
             db.prepare(
-              "UPDATE attention_items SET state='continued_externally',external_message_id=?,revision=revision+1 WHERE item_id=?"
-            ).run(applied.message_id, item.item_id);
+              "UPDATE attention_items SET state='continued_externally',external_message_id=?,revision=revision+1,updated_at=? WHERE item_id=?"
+            ).run(applied.message_id, now, item.item_id);
         }
         this.update(subject, now, {
           state: source.state,
