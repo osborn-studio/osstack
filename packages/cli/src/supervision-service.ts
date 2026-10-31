@@ -49,6 +49,15 @@ function validLoopFacts(value: unknown, id: string): value is LoopFacts {
     && typeof v.recovery_required === "boolean";
 }
 /** The daemon has already acquired its kernel process lock before construction. */
+export interface SupervisionHealth { taken_over: boolean; scan_errors: number; last_scan_error?: string }
+
+/** Dashboard state: a service a newer owner took over no longer supervises this home. */
+export function attentionServiceState(draining: boolean, svc: SupervisionService | undefined): "running" | "disabled" | "unavailable" {
+  if (draining) return "unavailable";
+  if (!svc) return "disabled";
+  return svc.takenOver ? "unavailable" : "running";
+}
+
 export class SupervisionService {
   readonly store: AttentionStore;
   readonly observer: AttentionObserver;
@@ -66,6 +75,8 @@ export class SupervisionService {
   private stopDone: Promise<void> | undefined;
   private epoch = 0;
   private fenced = false;
+  private scanErrors = 0;
+  private lastScanError: string | undefined;
   // A slot outlives its logical timeout until the underlying promise settles.
   // It holds no continuation that can access SQLite after stop.
   private readonly readers = new Map<string, ReadSlot>();
@@ -91,6 +102,17 @@ export class SupervisionService {
   }
   /** True once a newer owner generation claimed this home; the service is then stopped. */
   get takenOver(): boolean { return this.fenced; }
+  /** Errors a pass swallowed so one bad source cannot block the rest; surfaced by `osstack stats`. */
+  health(): SupervisionHealth {
+    return { taken_over: this.fenced, scan_errors: this.scanErrors,
+      ...(this.lastScanError === undefined ? {} : { last_scan_error: this.lastScanError }) };
+  }
+  /** A take-over is reported as `taken_over`, never as a scan error. */
+  private noteScanError(error: unknown): void {
+    if (this.stopIfTakenOver()) return;
+    this.scanErrors++;
+    this.lastScanError = (error instanceof Error ? error.message : String(error)).slice(0, 200);
+  }
   private assertRunning(): void {
     if (this.fenced) throw new Error("stale_owner");
     if (this.stopped) throw new Error("supervision_stopped");
@@ -124,7 +146,7 @@ export class SupervisionService {
     this.scanDone ??= Promise.resolve().then(async () => {
       while (this.dirty && !this.stopped) {
         this.dirty = false;
-        try { await this.scan(); } catch { this.stopIfTakenOver(); /* else prior coverage expires */ }
+        try { await this.scan(); } catch (error) { this.noteScanError(error); /* prior coverage expires */ }
       }
     }).finally(() => {
       this.scanDone = undefined;
@@ -152,11 +174,13 @@ export class SupervisionService {
       let path: unknown;
       try { path = (JSON.parse(row.payload_json) as Record<string, unknown>).state_path; } catch { /* below */ }
       if (typeof path !== "string" || !path || path.length > 4096) {
-        if (!this.stopped) this.store.write(this.observer.owner, () => {
-          // Do not replace newer metadata or an explicit owner release.
-          this.store.db.prepare("UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=? AND payload_json=?")
-            .run(Date.now(), JSON.stringify({ state: "unknown", reason: "invalid_payload", process_liveness: "unknown" }), row.scope_id, row.subject_id, row.payload_json);
-        });
+        if (!this.stopped) try {
+          this.store.write(this.observer.owner, () => {
+            // Do not replace newer metadata or an explicit owner release.
+            this.store.db.prepare("UPDATE attention_subjects SET sampled_at=?,payload_json=? WHERE scope_id=? AND kind='loop' AND subject_id=? AND payload_json=?")
+              .run(Date.now(), JSON.stringify({ state: "unknown", reason: "invalid_payload", process_liveness: "unknown" }), row.scope_id, row.subject_id, row.payload_json);
+          });
+        } catch (error) { this.noteScanError(error); }
         return;
       }
       try {
@@ -164,16 +188,16 @@ export class SupervisionService {
           scope_id: row.scope_id, loop_id: row.subject_id,
           state_path: path,
         });
-      } catch { /* source errors never suppress other readers */ }
+      } catch (error) { this.noteScanError(error); /* source errors never suppress other readers */ }
     }));
     if (this.stopped) return;
     for (const scope of this.store.listScopes()) {
       try { this.experience.enqueue(scope.scope_id); }
-      catch { /* Keep observed items; one unavailable scope must not block other notices. */ }
+      catch (error) { this.noteScanError(error); /* Keep observed items; one unavailable scope must not block other notices. */ }
     }
     if (this.sender && this.options.reminders) {
       try { this.experience.scheduleReminders(this.options.reminders); }
-      catch { /* A stale owner or busy DB skips this pass; the schedule is persisted. */ }
+      catch (error) { this.noteScanError(error); /* A stale owner or busy DB skips this pass; the schedule is persisted. */ }
     }
     if (this.sender && !this.delivering) {
       // Only this service owns the local idempotent sender. A failed receipt

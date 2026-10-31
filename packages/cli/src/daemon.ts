@@ -146,7 +146,7 @@ import {
 } from "./loop-neat-finalizer.js";
 
 import { localAttentionSender } from "./attention-local-delivery.js";
-import { SupervisionService } from "./supervision-service.js";
+import { SupervisionService, attentionServiceState, type SupervisionHealth } from "./supervision-service.js";
 
 const DAEMON_VERSION = VERSION;
 const DAEMON_PHASE = "S1.5-controls";
@@ -1369,6 +1369,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         active_runs: ctx.activeRuns.size,
         execution_lease_holds: ctx.writeSemaphore.in_use + ctx.readSemaphore.in_use,
         draining: ctx.draining,
+        attention: attentionServiceState(ctx.draining, ctx.supervision),
         concurrency: {
           writes: {
             limit: ctx.writeSemaphore.capacity,
@@ -1547,7 +1548,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     }
 
     case "stats":
-      return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions, ctx.rpcLatency));
+      return singleOk(req.id, computeStats(ctx.db, ctx.loopSessions, ctx.rpcLatency, ctx.supervision));
 
     case "autonomy.status": {
       const params = (req.params ?? {}) as { autonomy_run_id?: unknown };
@@ -1783,7 +1784,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         return singleErr(req.id, "bad_request", "Invalid Attention pagination");
       }
       return singleOk(req.id, createDashboardSnapshot({
-        attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
+        attentionService: attentionServiceState(ctx.draining, ctx.supervision),
         ...(attentionAfter === undefined ? {} : {attentionAfter: attentionAfter as string}),
         ...(attentionLimit === undefined ? {} : {attentionLimit: attentionLimit as number}),
         db: ctx.db,
@@ -2032,6 +2033,8 @@ interface DaemonStats {
   loops: LoopStats;
   /** Per-method socket RPC latency (p50/p95 over a recent window). */
   rpc: RpcMethodLatency[];
+  /** Attention supervision health; null when the daemon runs without OSSTACK_ATTENTION. */
+  attention: SupervisionHealth | null;
   generated_at: number;
 }
 
@@ -2102,6 +2105,7 @@ function computeStats(
   db: Database.Database,
   loopSessions: Map<string, LoopSession>,
   rpcLatency: RpcLatencyRecorder,
+  supervision?: SupervisionService,
 ): DaemonStats {
   const total_runs = countRuns(db);
   const total_events = countEvents(db);
@@ -2126,6 +2130,7 @@ function computeStats(
     per_agent: rows,
     loops: computeLoopStats(loopSessions),
     rpc: rpcLatency.snapshot(),
+    attention: supervision ? supervision.health() : null,
     generated_at: Date.now() / 1000,
   };
 }
@@ -2840,7 +2845,7 @@ async function runDailySession(ctx: DaemonContext, session: DailySession): Promi
         const run = await runDailyBrief({
           registryPath: session.registryPath,
           signal: session.abort.signal,
-          attentionReader: createDailyAttentionReader(ctx.db, () => ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled"),
+          attentionReader: createDailyAttentionReader(ctx.db, () => attentionServiceState(ctx.draining, ctx.supervision)),
         });
         session.lastBriefPath = run.briefPath;
         session.lastResultStatus = run.result.status;
@@ -4599,7 +4604,7 @@ export async function startDaemon(
       const dashOpts = dashboardUrlFromEnv();
       void startDashboardServer(
         (params) => createDashboardSnapshot({
-          attentionService: ctx.draining ? "unavailable" : ctx.supervision ? "running" : "disabled",
+          attentionService: attentionServiceState(ctx.draining, ctx.supervision),
           ...(params?.workspacePath === undefined ? {} : {workspacePath: resolveWorkspacePath(params.workspacePath)}),
           ...(params?.attentionAfter === undefined ? {} : {attentionAfter: params.attentionAfter}),
           ...(params?.attentionLimit === undefined ? {} : {attentionLimit: params.attentionLimit}),
