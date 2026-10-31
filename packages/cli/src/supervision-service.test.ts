@@ -348,3 +348,17 @@ it("yields between observation slices and checks stop before another slice", asy
   expect(step).toHaveBeenCalledTimes(1);db.close();
   await new Promise<void>(resolve=>setImmediate(resolve));expect(step).toHaveBeenCalledTimes(1);
 });
+it("answers leaving away with the return brief and previews it read-only", async () => {
+  const { service, db, scope } = setup();
+  const s = scope.scope_id;
+  expect(await service.handle("attention.posture", { scope_id: s, actor: "owner", posture: "away" }))
+    .toMatchObject({ posture: "away", previous: null, return_brief: null, execution_takeover: false });
+  const preview = await service.handle("attention.return-brief", { scope_id: s, actor: "owner", limit: 3 }) as { interval: { since_known: boolean } };
+  expect(preview.interval.since_known).toBe(true);
+  await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner", since: "1" })).rejects.toThrow("invalid_since");
+  await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner", extra: 1 })).rejects.toThrow("invalid_return_brief_request");
+  const back = await service.handle("attention.posture", { scope_id: s, actor: "owner", posture: "attended", limit: 3 }) as { return_brief: unknown };
+  expect(back.return_brief).toMatchObject({ scope_id: s, authority: "none", waiting_on_you: { total: 0, omitted: 0 } });
+  await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner" })).rejects.toThrow("since_required");
+  expect(db.prepare("SELECT posture FROM attention_postures").get()).toEqual({ posture: "attended" });
+});

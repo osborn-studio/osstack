@@ -12,7 +12,9 @@ Opt-in daemon: OSSTACK_ATTENTION=1 osstack serve
   attention abandon-receipt --scope ID --session ID --message ID --expected-version N --reason TEXT --evidence-sha256 HASH --acknowledge-unknown-effects
   attention recovery --scope ID [--after CURSOR] [--limit 1..25] [--json]
   attention brief|cockpit --scope ID --actor NAME
-  attention posture --scope ID --actor NAME --posture attended|quiet|away
+  attention posture --scope ID --actor NAME --posture attended|quiet|away [--limit 1..100]
+    (away -> attended also returns the return brief for the away interval)
+  attention return-brief --scope ID --actor NAME [--since EPOCH_MS] [--limit 1..100]
   attention seen --scope ID --actor NAME --revisions JSON
   attention foreground --scope ID --subjects JSON
   attention handoff --scope ID --client ID --token TOKEN
@@ -173,6 +175,7 @@ async function handleLive(
     "answer",
     "brief",
     "posture",
+    "return-brief",
     "seen",
     "foreground",
     "handoff",
@@ -220,6 +223,7 @@ async function handleLive(
     "reason",
     "evidence-sha256",
     "grant",
+    "since",
   ]);
   for (let i = 1; i < args.length; i++) {
     const flag = args[i]!;
@@ -265,7 +269,7 @@ async function handleLive(
     };
     const name = mapped[key] ?? key;
     if (params[name] !== undefined) throw new Error("duplicate_flag:" + flag);
-    params[name] = ["revision", "pr", "expected-version", "limit"].includes(key)
+    params[name] = ["revision", "pr", "expected-version", "limit", "since"].includes(key)
       ? Number(value)
       : ["revisions", "subjects", "required"].includes(key)
         ? JSON.parse(value)

@@ -6,6 +6,19 @@ import {
   type AttentionOwner,
 } from "./attention-store.js";
 import type { AttentionReminderPolicy } from "./attention-reminders.js";
+import { readAttentionReturnBrief, type AttentionReturnBrief } from "./attention-return-brief.js";
+export type AttentionPosture = "attended" | "quiet" | "away";
+export interface AttentionPostureResult {
+  scope_id: string;
+  actor: string;
+  posture: AttentionPosture;
+  previous: AttentionPosture | null;
+  /** When the current posture was entered; null for a pre-49 posture kept unchanged. */
+  entered_at: number | null;
+  /** Present only when leaving `away` for `attended`. */
+  return_brief: AttentionReturnBrief | null;
+  execution_takeover: false;
+}
 interface Delivery {
   delivery_id: string;
   scope_id: string;
@@ -39,21 +52,76 @@ export class AttentionExperience {
    * enabled; a disabled process leaves queued rows for a later re-enable. */
   constructor(readonly store: AttentionStore, readonly owner: AttentionOwner,
     private readonly options: { reminders?: boolean } = {}) {}
+  /** Record a posture. Re-asserting the current posture keeps its start, so a
+   * repeated `away` does not shorten the interval. Leaving `away` for
+   * `attended` also returns the read-only return brief for that interval,
+   * computed in the same transaction. Neither grants any authority. */
   posture(
     scope: string,
     actor: string,
-    posture: "attended" | "quiet" | "away"
-  ): void {
+    posture: AttentionPosture,
+    now = Date.now(),
+    options: { limit?: number } = {}
+  ): AttentionPostureResult {
     this.actor(actor);
     if (!["attended", "quiet", "away"].includes(posture))
       throw new Error("invalid_posture");
-    this.store.write(this.owner, () => {
+    if (!Number.isSafeInteger(now) || now < 0) throw new Error("invalid_now");
+    return this.store.write(this.owner, () => {
       this.scope(scope);
-      this.store.db
-        .prepare(
-          "INSERT INTO attention_postures VALUES(?,?,?) ON CONFLICT(scope_id,actor) DO UPDATE SET posture=excluded.posture"
-        )
-        .run(scope, actor, posture);
+      const db = this.store.db;
+      const prior = db
+        .prepare("SELECT posture,entered_at FROM attention_postures WHERE scope_id=? AND actor=?")
+        .get(scope, actor) as { posture: AttentionPosture; entered_at: number | null } | undefined;
+      const enteredAt = prior?.posture === posture ? prior.entered_at : now;
+      db.prepare(
+        `INSERT INTO attention_postures(scope_id,actor,posture,entered_at) VALUES(?,?,?,?)
+         ON CONFLICT(scope_id,actor) DO UPDATE SET posture=excluded.posture,entered_at=excluded.entered_at`
+      ).run(scope, actor, posture, enteredAt);
+      const returning = prior?.posture === "away" && posture === "attended";
+      return {
+        scope_id: scope,
+        actor,
+        posture,
+        previous: prior?.posture ?? null,
+        entered_at: enteredAt,
+        return_brief: returning
+          ? readAttentionReturnBrief(db, {
+              scope_id: scope,
+              // A clock that moved backwards cannot produce a negative interval.
+              since: prior.entered_at === null ? null : Math.min(prior.entered_at, now),
+              now,
+              ...(options.limit === undefined ? {} : { limit: options.limit }),
+            })
+          : null,
+        execution_takeover: false as const,
+      };
+    });
+  }
+  /** Read-only preview of a return brief without changing posture: over
+   * [since, now], or over the actor's current away interval. */
+  returnBrief(
+    scope: string,
+    actor: string,
+    options: { since?: number; limit?: number } = {},
+    now = Date.now()
+  ): AttentionReturnBrief {
+    this.actor(actor);
+    this.scope(scope);
+    let since: number | null;
+    if (options.since !== undefined) since = options.since;
+    else {
+      const row = this.store.db
+        .prepare("SELECT posture,entered_at FROM attention_postures WHERE scope_id=? AND actor=?")
+        .get(scope, actor) as { posture: string; entered_at: number | null } | undefined;
+      if (row?.posture !== "away") throw new Error("since_required");
+      since = row.entered_at === null ? null : Math.min(row.entered_at, now);
+    }
+    return readAttentionReturnBrief(this.store.db, {
+      scope_id: scope,
+      since,
+      now,
+      ...(options.limit === undefined ? {} : { limit: options.limit }),
     });
   }
   brief(scope: string, actor: string) {
@@ -130,14 +198,22 @@ export class AttentionExperience {
         .run(scope);
     });
   }
-  recoverDeliveries(): void {
+  recoverDeliveries(now = Date.now()): void {
     this.store.write(this.owner, () => {
-      for (const table of ["attention_deliveries", "attention_reminders"] as const)
+      for (const table of ["attention_deliveries", "attention_reminders"] as const) {
+        this.store.db
+          .prepare(
+            `INSERT OR IGNORE INTO attention_dead_letters(delivery_id,kind,scope_id,item_id,revision,sequence,error,dead_at)
+             SELECT delivery_id,?,scope_id,item_id,revision,${table === "attention_reminders" ? "sequence" : "NULL"},'interrupted_delivery',?
+             FROM ${table} WHERE state='sending' AND attempts>=5`
+          )
+          .run(table === "attention_reminders" ? "reminder" : "first_notice", now);
         this.store.db
           .prepare(
             `UPDATE ${table} SET state=CASE WHEN attempts>=5 THEN 'dead_letter' ELSE 'pending' END,error='interrupted_delivery' WHERE state='sending'`
           )
           .run();
+      }
     });
   }
   /** Queue at most one reminder per call: the oldest open decision that is
@@ -317,24 +393,32 @@ export class AttentionExperience {
     }
     let changed: number;
     try {
-    const updated = this.store.write(this.owner, () =>
-      db
+    const next = cancelled ? "pending" : error
+      ? row.attempts + 1 >= 5
+        ? "dead_letter"
+        : "pending"
+      : "delivered";
+    const updated = this.store.write(this.owner, () => {
+      const result = db
         .prepare(
           `UPDATE ${row.table} SET state=?,next_at=?,error=?,attempts=attempts-? WHERE delivery_id=? AND attempts=? AND state='sending'`
         )
         .run(
-          cancelled ? "pending" : error
-            ? row.attempts + 1 >= 5
-              ? "dead_letter"
-              : "pending"
-            : "delivered",
+          next,
           now + Math.min(300000, 1000 * 2 ** row.attempts),
           cancelled ? "delivery_cancelled_indeterminate" : error,
           cancelled ? 1 : 0,
           row.delivery_id,
           row.attempts + 1
-        )
-    );
+        );
+      // Keep when it dead-lettered: a reminder row is reused per sequence.
+      if (result.changes === 1 && next === "dead_letter")
+        db.prepare(
+          `INSERT OR IGNORE INTO attention_dead_letters(delivery_id,kind,scope_id,item_id,revision,sequence,error,dead_at) VALUES(?,?,?,?,?,?,?,?)`
+        ).run(row.delivery_id, row.table === "attention_reminders" ? "reminder" : "first_notice",
+          row.scope_id, row.item_id, row.revision, row.sequence ?? null, error, now);
+      return result;
+    });
     changed = updated.changes;
     } catch (e) {
       if (e instanceof Error && e.message === "stale_owner") return "stale";

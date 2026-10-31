@@ -61,3 +61,13 @@ it("escapes terminal format controls without changing JSON diagnostic identity",
   expect(await handleAttentionCommand(["recovery","--scope","scope","--json"],{stdout:text=>output.push(text),rpc:async()=>({ok:true,result:{subject_id:unsafe,canAutoRetry:false}})})).toBe(0);
   expect(output[0]).not.toContain(String.fromCharCode(0x202e));expect(output[0]).not.toContain(String.fromCharCode(0x009b));expect(JSON.parse(output[0]!).subject_id).toBe(unsafe);
 });
+it("routes the read-only return brief with numeric since and limit", async () => {
+  const calls: unknown[] = [];
+  const output: string[] = [];
+  expect(await handleAttentionCommand(
+    ["return-brief", "--scope", "scope", "--actor", "owner", "--since", "100", "--limit", "5", "--json"],
+    { stdout: (s) => output.push(s), rpc: async (method, params) => { calls.push([method, params]); return { ok: true, result: { authority: "none" } }; } }
+  )).toBe(0);
+  expect(calls).toEqual([["attention.return-brief", { scope_id: "scope", actor: "owner", since: 100, limit: 5 }]]);
+  expect(JSON.parse(output[0]!)).toEqual({ authority: "none" });
+});
