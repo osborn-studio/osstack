@@ -65,6 +65,7 @@ export class SupervisionService {
   private scanDone: Promise<void> | undefined;
   private stopDone: Promise<void> | undefined;
   private epoch = 0;
+  private fenced = false;
   // A slot outlives its logical timeout until the underlying promise settles.
   // It holds no continuation that can access SQLite after stop.
   private readonly readers = new Map<string, ReadSlot>();
@@ -88,8 +89,25 @@ export class SupervisionService {
     this.experience.recoverDeliveries();
     new AttentionActions(this.store, this.observer.owner).recover();
   }
+  /** True once a newer owner generation claimed this home; the service is then stopped. */
+  get takenOver(): boolean { return this.fenced; }
   private assertRunning(): void {
+    if (this.fenced) throw new Error("stale_owner");
     if (this.stopped) throw new Error("supervision_stopped");
+  }
+  /** Every write is owner-fenced, so a superseded service cannot change state,
+   * but it would keep polling and hold an in-flight send open. On any failure,
+   * re-read ownership; if a newer generation holds it, stop now, which aborts
+   * in-flight reads and sends. Lock contention or a fault is not a take-over. */
+  private stopIfTakenOver(): boolean {
+    if (this.stopped) return this.fenced;
+    try { this.store.assertOwner(this.observer.owner); return false; }
+    catch (error) {
+      if (!(error instanceof Error) || error.message !== "stale_owner") return false;
+      this.fenced = true;
+      void this.stop();
+      return true;
+    }
   }
   start(): void {
     this.assertRunning();
@@ -106,7 +124,7 @@ export class SupervisionService {
     this.scanDone ??= Promise.resolve().then(async () => {
       while (this.dirty && !this.stopped) {
         this.dirty = false;
-        try { await this.scan(); } catch { /* prior coverage expires */ }
+        try { await this.scan(); } catch { this.stopIfTakenOver(); /* else prior coverage expires */ }
       }
     }).finally(() => {
       this.scanDone = undefined;
@@ -166,8 +184,8 @@ export class SupervisionService {
       }
       this.delivering = true;
       this.deliveryDone = Promise.resolve().then(() => this.experience.drainBatch(this.sender!, { signal: this.deliveryAbort.signal }))
-        .then(() => {})
-        .catch(() => { this.deliveryRecoveryNeeded = true; })
+        .then((result) => { if (result.stale > 0) this.stopIfTakenOver(); })
+        .catch(() => { if (!this.stopIfTakenOver()) this.deliveryRecoveryNeeded = true; })
         .finally(() => { this.delivering = false; });
     }
   }
@@ -271,6 +289,13 @@ export class SupervisionService {
     return logical;
   }
   async handle(method: string, params: unknown): Promise<unknown> {
+    try { return await this.dispatch(method, params); }
+    catch (error) {
+      if (error instanceof Error && error.message === "stale_owner") this.stopIfTakenOver();
+      throw error;
+    }
+  }
+  private async dispatch(method: string, params: unknown): Promise<unknown> {
     this.assertRunning();
     if (!params || typeof params !== "object")
       throw new Error("explicit_scope_required");
