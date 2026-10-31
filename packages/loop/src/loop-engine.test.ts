@@ -755,6 +755,28 @@ describe("LoopEngine", () => {
     expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain("osstack/loop/");
   });
 
+  it("merges untracked-only worktree output when repository config hides untracked files", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    await git(workspace, ["config", "status.showUntrackedFiles", "no"]);
+    const result = await new LoopEngine({
+      loopId: "loop-worktree-hidden-untracked",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('generated.txt', 'new in worktree\\n')\"",
+      verifyCommands: ["node -e \"process.exit(require('fs').existsSync('generated.txt') ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "hidden-untracked-worktrees"),
+    }).runOnce();
+
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      worktree_commit: expect.stringMatching(/^[a-f0-9]{40}$/),
+    });
+    await expect(readFile(join(workspace, "generated.txt"), "utf-8")).resolves.toBe("new in worktree\n");
+    await expect(git(workspace, ["rev-parse", "HEAD"])).resolves.toBe(result.state.completed_tasks[0]?.worktree_commit);
+  });
+
   it("cleans a failed isolated worktree without merging its changes", async () => {
     const workspace = await makeGitQueuedWorkspace("stable\n");
     const result = await new LoopEngine({
