@@ -1230,7 +1230,9 @@ export class LoopEngine {
         const commit = await commitWorktreeChanges(worktree, `osstack loop task ${task.task_id}`);
         if (commit.committed) {
           preserveWorktreeBranch = true;
-          await mergeWorktree(worktree);
+          if (commit.commit === undefined) throw new Error("committed worktree reported no commit id");
+          // Land exactly the commit made from the verified tree, never the movable branch.
+          await mergeWorktree(worktree, { expectedCommit: commit.commit });
           worktreeCommit = commit.commit;
           preserveWorktreeBranch = false;
         }
