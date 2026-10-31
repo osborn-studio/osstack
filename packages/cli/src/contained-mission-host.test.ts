@@ -88,6 +88,11 @@ describe("ContainedMissionHost", () => {
     const scope = f.principal.write_scopes[0]!;
     expect(() => f.host.start(f.principal, { scope_id: scope, spec: { ...good, worktree_path: join(f.root, "elsewhere") } })).toThrow("CONTAINED_SPEC_INVALID");
     expect(() => f.host.start(f.principal, { scope_id: scope, spec: { ...good, branch: "main" } })).toThrow("CONTAINED_SPEC_INVALID");
+    mkdirSync(join(f.root, "worktrees"), { recursive: true }); mkdirSync(join(f.root, "outside"));
+    symlinkSync(join(f.root, "outside"), join(f.root, "worktrees", "evil"));
+    expect(() => f.host.start(f.principal, { scope_id: scope, spec: { ...good, worktree_path: join(f.root, "worktrees", "evil", "mission-x") } })).toThrow("CONTAINED_SPEC_INVALID");
+    symlinkSync(join(f.root, "missing"), join(f.root, "worktrees", "dangling"));
+    expect(() => f.host.start(f.principal, { scope_id: scope, spec: { ...good, worktree_path: join(f.root, "worktrees", "dangling", "mission-x") } })).toThrow("CONTAINED_SPEC_INVALID");
     expect(() => f.host.start({ ...f.principal, write_scopes: [] }, { scope_id: scope, spec: good })).toThrow("permission_denied");
   });
 
@@ -153,6 +158,19 @@ describe("ContainedMissionHost recovery", () => {
     const m = await orphanExecuting(f, false);
     await f.host.recover();
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
+  });
+
+  it("completes a cancel that was pending when the stop was unproven, once proof arrives", async () => {
+    const f = fixture({}, { empty: () => false });
+    const m = await orphanExecuting(f);
+    expect((await f.host.cancel(f.principal, m.mission_id)).state).toBe("cancel_requested");
+    await f.host.recover();
+    expect(f.store.get(m.mission_id).state).toBe("stop_unknown");
+    f.setEmpty(() => true);
+    await f.host.recover();
+    expect(f.store.get(m.mission_id)).toMatchObject({ state: "cancelled", stop_obligation: 0 });
+    await f.host.recover();
+    expect(f.store.claim(m.mission_id).state).toBe("released");
   });
 
   it("holds stop_unknown when no launch was journaled but a process still names the worktree", async () => {
@@ -239,6 +257,16 @@ describe("ContainedMissionHost reconciliation decisions", () => {
     expect(sh(f.repo, "show", `${next.candidate_head}:src/a.txt`)).toBe("hello");
   });
 
+  it("discard_changes probes the executor again and does not launch an unqualified one", async () => {
+    const f = fixture({ qualify: async () => ({ ...qualified, qualified: false, reasons: ["PARENT_NETWORK_ALLOWED"] }) });
+    const m = await orphanExecuting(f);
+    await f.host.recover();
+    const halted = await f.host.decide(f.principal, m.mission_id, { kind: "discard_changes" });
+    expect(halted.state).toBe("awaiting_decision");
+    expect(f.reason(m.mission_id)).toBe("qualification_failed");
+    expect(f.calls.execute).toBe(0);
+  });
+
   it("discard_changes removes symlinks and directories in the way without following them", async () => {
     const f = fixture();
     const m = await orphanExecuting(f);
@@ -269,6 +297,21 @@ describe("ContainedMissionHost reconciliation decisions", () => {
     await f.host.tick();
     expect(f.calls.verify).toBe(1);
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "verified", candidate_verified: 1 });
+  });
+
+  it("adopt_worktree builds on the ledger head and drops an unrecorded commit's history", async () => {
+    const f = fixture();
+    const m = await orphanExecuting(f);
+    const wt = spec(m).worktree_path;
+    writeFileSync(join(wt, "package.json"), "{\"scripts\":{\"x\":\"y\"}}\n");
+    sh(wt, "add", "package.json"); sh(wt, "commit", "-q", "-m", "unrecorded");
+    writeFileSync(join(wt, "package.json"), "{}\n"); writeFileSync(join(wt, "src/a.txt"), "adopted\n");
+    await f.host.recover();
+    const adopted = await f.host.decide(f.principal, m.mission_id, { kind: "adopt_worktree" });
+    expect(adopted.state).toBe("candidate_ready");
+    expect(sh(f.repo, "rev-parse", `${adopted.candidate_head}^`)).toBe(spec(m).start_commit);
+    expect(sh(f.repo, "rev-parse", `refs/heads/${spec(m).branch}`)).toBe(adopted.candidate_head);
+    expect(sh(f.repo, "diff", "--name-only", spec(m).start_commit, adopted.candidate_head!)).toBe("src/a.txt");
   });
 
   it("adopt_worktree escalates a protected-set change without committing", async () => {

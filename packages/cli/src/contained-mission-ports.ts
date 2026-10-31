@@ -189,8 +189,12 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     commitWorktree: async input => {
       assertSha(input.tree);
       const expectedConfigDigest = recordedConfigDigest(input.worktree);
-      const head = await branchHead(input.worktree, input.branch);
+      assertSha(input.expectedHead);
+      const current = await branchHead(input.worktree, input.branch);
       const run = git(input.worktree);
+      // Only the ledger head is trusted ancestry: an unrecorded commit's history was never classified, so it is dropped.
+      if (current !== input.expectedHead) await run(['update-ref', '-m', 'osstack: drop unrecorded commit', `refs/heads/${input.branch}`, input.expectedHead, current]);
+      const head = input.expectedHead;
       const status = nulList(await run(['diff-tree', '-r', '-z', '--no-renames', '--name-status', head, input.tree]));
       const files: Array<{ path: string; action: 'write' } | { path: string; action: 'delete' }> = [];
       for (let i = 0; i + 1 < status.length; i += 2) files.push({ path: status[i + 1]!, action: status[i] === 'D' ? 'delete' : 'write' });

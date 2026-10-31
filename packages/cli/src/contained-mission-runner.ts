@@ -25,8 +25,8 @@ export interface ContainedMissionPorts {
   restoreWorkspace: (input: { worktree: string; branch: string; expectedHead: string }) => Promise<void>;
   /** Diff from `startCommit` to the worktree's current files, read safely and hashed without filters; unsafe entries are listed, not read. */
   worktreeDiff: (input: { worktree: string; startCommit: string }) => Promise<{ diff: string; tree: string; unsafe: string[] }>;
-  /** Commit the worktree's current files onto the branch; the resulting tree must equal `tree`. */
-  commitWorktree: (input: { worktree: string; branch: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
+  /** Commit the worktree's current files on `expectedHead` (any unrecorded branch commit is dropped); the resulting tree must equal `tree`. */
+  commitWorktree: (input: { worktree: string; branch: string; expectedHead: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
   /** `stopped` only when the verification container was proven removed. */
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
 }
@@ -96,10 +96,21 @@ export class ContainedMissionRunner {
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
     try { await this.ports.restoreWorkspace({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: head }); }
     finally { this.live.delete(m.mission_id); }
-    const current = this.ports.store.get(m.mission_id);
+    let current = this.ports.store.get(m.mission_id);
     if (current.revision !== m.revision) return this.settleCancel(current) ?? current;
+    // The configured executor may have changed since the last turn (e.g. across a restart): probe it again before launching.
+    const gitDir = this.recordedGitDir(m);
+    if (!gitDir) return this.halt(m, 'awaiting_decision', 'workspace_unrecorded');
+    const probe = new AbortController(); this.live.set(m.mission_id, probe);
+    let q: CodexQualification;
+    try { q = await this.ports.qualify(spec.worktree_path, gitDir); } finally { this.live.delete(m.mission_id); }
+    this.ports.store.record(m.mission_id, 'qualification_probe', { ...q, reasons: q.reasons.slice(0, 32) }, this.ports.now());
+    current = this.ports.store.get(m.mission_id);
+    if (q.reasons.includes('PROBE_GROUP_NOT_STOPPED')) return this.halt(current, 'stop_unknown', 'qualification_probe_not_stopped');
+    if (current.revision !== m.revision) return this.settleCancel(current) ?? current;
+    if (!q.qualified) return this.halt(m, 'awaiting_decision', 'qualification_failed');
     let next: ContainedMission;
-    try { next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: head, event: { kind: 'decision_discard_changes', payload: { reason, head } } }, this.ports.now()); }
+    try { next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: head, event: { kind: 'decision_discard_changes', payload: { reason, head, version: q.version, identity_sha256: q.identity_sha256 } } }, this.ports.now()); }
     catch (error) { if (code(error) === 'repair_cycles_exhausted') return this.halt(m, 'awaiting_decision', 'repair_cycles_exhausted'); throw error; }
     return this.runExecutor(next, spec, containedExecutorPrompt(spec.goal));
   }
@@ -124,7 +135,7 @@ export class ContainedMissionRunner {
       if (overall.tier === 'rejected' || overall.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: overall.reasons, cumulative: true, adopted: true });
       if (screenOutputs({ patch: snapshot.diff }).hits.length > 0) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: ['SECRET_DETECTED'], cumulative: true, adopted: true });
       const before = fenced(); if (before) return before;
-      const commit = await this.ports.commitWorktree({ worktree: spec.worktree_path, branch: spec.branch, tree: snapshot.tree, message: `contained mission ${m.mission_id} ${operationId} (adopted worktree)` });
+      const commit = await this.ports.commitWorktree({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head ?? spec.start_commit, tree: snapshot.tree, message: `contained mission ${m.mission_id} ${operationId} (adopted worktree)` });
       const after = fenced(); if (after) { this.ports.store.record(m.mission_id, 'commit_after_cancel', { operation_id: operationId, head: commit.head }, this.ports.now()); return after; }
       return this.commitCandidate(m, operationId, snapshot.diff, commit, overall.tier, totals);
     } finally { this.live.delete(m.mission_id); }
@@ -153,9 +164,12 @@ export class ContainedMissionRunner {
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'workspace_ready', event: { kind: 'workspace_created', payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, this.ports.now());
   }
 
-  private async qualifyAndExecute(m: ContainedMission, spec: ContainedMissionSpec, prompt: string) {
+  private recordedGitDir(m: ContainedMission): string | undefined {
     const created = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'workspace_created').at(-1);
-    const gitDir = created ? (JSON.parse(created.payload_json) as { git_dir?: string }).git_dir : undefined;
+    return created ? (JSON.parse(created.payload_json) as { git_dir?: string }).git_dir : undefined;
+  }
+  private async qualifyAndExecute(m: ContainedMission, spec: ContainedMissionSpec, prompt: string) {
+    const gitDir = this.recordedGitDir(m);
     if (!gitDir) return this.halt(m, 'awaiting_decision', 'workspace_unrecorded');
     // The probe runs processes too: a cancel waits for it, and an unstopped probe group is stop_unknown.
     const probe = new AbortController(); this.live.set(m.mission_id, probe);

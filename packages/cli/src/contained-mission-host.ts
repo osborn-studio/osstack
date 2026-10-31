@@ -3,8 +3,8 @@
 // the `osstack mission` CLI are wired in M6c.
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, realpathSync, statSync } from 'node:fs';
-import { isAbsolute, join, resolve, sep } from 'node:path';
+import { existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { processGroupEmpty, runHardenedGit, type HardenedGitContext } from '@osstack/agents';
 import { scratchPath, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
@@ -64,9 +64,8 @@ export class ContainedMissionHost {
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
     const root = resolve(this.options.worktreesRoot ?? scratchPath('worktrees'));
-    const roots = [root, ...(existsSync(root) ? [realpathSync(root)] : [])];
-    if (!isAbsolute(spec.worktree_path) || resolve(spec.worktree_path) !== spec.worktree_path || !roots.some(r => spec.worktree_path.startsWith(r + sep))
-      || existsSync(spec.worktree_path) || !BRANCH.test(spec.branch) || !isAbsolute(spec.repo_path)) throw Error('CONTAINED_SPEC_INVALID');
+    if (!isAbsolute(spec.worktree_path) || resolve(spec.worktree_path) !== spec.worktree_path || existsSync(spec.worktree_path) || !BRANCH.test(spec.branch)
+      || !isAbsolute(spec.repo_path) || !within(canonical(spec.worktree_path), canonical(root))) throw Error('CONTAINED_SPEC_INVALID');
     const repo = realpathSync(spec.repo_path); const stat = statSync(repo);
     return this.store.authorize(principal, { scope_id: input.scope_id, spec: spec as unknown as Record<string, unknown>, ...(input.supersedes ? { supersedes: input.supersedes } : {}),
       claim: { repo_identity: `${repo}#${stat.dev}:${stat.ino}`, branch: spec.branch, worktree_identity: spec.worktree_path } }, this.options.ports.now());
@@ -170,8 +169,17 @@ export class ContainedMissionHost {
       if (!proof) return undefined;
       current = this.store.recordStopEvidence(m.mission_id, current.revision, { ...proof, recovered: true }, this.options.ports.now());
     }
+    if (current.state === 'stop_unknown' && this.cancelPending(current)) {
+      current = this.store.transition(m.mission_id, { if_revision: current.revision, to: 'cancel_requested', event: { kind: 'cancel_requested', payload: { recovered: true } } }, this.options.ports.now());
+    }
     if (current.state === 'cancel_requested') return this.store.transition(m.mission_id, { if_revision: current.revision, to: 'cancelled', event: { kind: 'cancelled', payload: { recovered: true } } }, this.options.ports.now());
     return this.halt(current, 'needs_reconciliation', m.state === 'stop_unknown' ? 'stop_evidence_recovered' : `orphaned_${m.state}`);
+  }
+
+  /** A cancel requested since the last executor turn or verification is still owed once the stop is proven. */
+  private cancelPending(m: ContainedMission): boolean {
+    const events = containedEvents(this.store, m.mission_id);
+    return events.slice(lastTransitionTo(events, ['executing', 'verifying']) + 1).some(e => eventPayload(e).to === 'cancel_requested');
   }
 
   /** Proof that the effect the Mission last opened (an executor turn or a verification) is gone. */
@@ -218,4 +226,13 @@ export function processesNaming(worktree: string): number[] {
     const match = /^\s*(\d+)\s+(.*)$/.exec(line);
     return match && Number(match[1]) !== process.pid && match[2]!.includes(worktree) ? [Number(match[1])] : [];
   });
+}
+
+const within = (path: string, root: string) => path.startsWith(root + sep);
+/** Canonical location of a possibly missing path: the nearest existing ancestor's realpath plus the rest. */
+function canonical(path: string): string {
+  const present = (p: string) => { try { lstatSync(p); return true; } catch { return false; } };
+  let ancestor = path;
+  while (!present(ancestor) && dirname(ancestor) !== ancestor) ancestor = dirname(ancestor);
+  try { return join(realpathSync(ancestor), relative(ancestor, path)); } catch { throw Error('CONTAINED_SPEC_INVALID'); }
 }
