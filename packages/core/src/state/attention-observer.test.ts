@@ -397,3 +397,14 @@ it("bounds inventory response bytes and resumes after the final emitted subject"
  const next=observer.inventory(scope.scope_id,2000,page.next_after!);expect(next.subjects.length).toBeGreaterThan(0);
  expect(next.subjects.some(item=>page.subjects.some(prior=>prior.subject_id===item.subject_id&&prior.kind===item.kind))).toBe(false);
 });
+it("stamps a decision closed by its source with the observation time for the return brief", () => {
+  const { observer, scope, db } = setup();
+  observer.tick(1000);
+  expect(db.prepare("SELECT state FROM attention_items").get()).toEqual({ state: "open" });
+  // A later turn without a decision, so the closing pass does not re-project.
+  db.exec("INSERT INTO session_turns(turn_id,session_id,ordinal,state,created_at,updated_at) VALUES('done','s0000',2,'completed',2,2); UPDATE agent_sessions SET state='completed',version=2");
+  observer.tick(5000);
+  expect(db.prepare("SELECT state,updated_at FROM attention_items").get()).toEqual({ state: "source_closed", updated_at: 5000 });
+  expect(db.prepare("SELECT scope_id,state,settled_at FROM attention_item_settlements").get())
+    .toEqual({ scope_id: scope.scope_id, state: "source_closed", settled_at: 5000 });
+});

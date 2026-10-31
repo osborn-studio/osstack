@@ -119,7 +119,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const schema=db.pragma('user_version',{simple:true}) as number;
       // Deliberately qualified, not CURRENT_SCHEMA_VERSION: a future migration
       // needs its own stopped-home compatibility review before this gate opens.
-      if(schema<33||schema>48)throw Error('upgrade_schema_unqualified');
+      if(schema<33||schema>49)throw Error('upgrade_schema_unqualified');
       const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(r=>r.name));
       const expected=['graph_runs','graph_action_admissions','graph_actions','improvement_pr_deliveries','improvement_executions'];
       if(schema>=45)expected.push('follow_up_delivery_attempts');
@@ -127,6 +127,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // 48 adds only the local idempotent reminder outbox. Like first-notice
       // deliveries it holds no external side effect; restart recovers `sending`.
       if(schema>=48)expected.push('attention_reminders');
+      // 49 adds a posture timestamp and two append-only local fact tables for
+      // the read-only return brief; nothing in them is an unsettled side effect.
+      if(schema>=49)expected.push('attention_item_settlements','attention_dead_letters');
       if(expected.some(name=>!tables.has(name)))throw Error('upgrade_schema_tables_missing');
       if((db.prepare("SELECT count(*) n FROM improvement_executions WHERE state IN ('claimed','running')").get() as {n:number}).n>0)throw Error('upgrade_unknown_actions');
       if(graphUpgradeHolds(db)>0)throw Error('upgrade_graph_holds');
@@ -135,6 +138,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(tables.has('follow_up_delivery_attempts')&&(db.prepare("SELECT count(*) n FROM follow_up_delivery_attempts WHERE state IN ('started','delivery_unknown')").get() as {n:number}).n>0)throw Error('upgrade_unknown_delivery');
       if(schema<47&&tables.has('attention_dispatch_phases'))throw Error('upgrade_schema_unqualified');
       if(schema<48&&tables.has('attention_reminders'))throw Error('upgrade_schema_unqualified');
+      if(schema<49&&(tables.has('attention_item_settlements')||tables.has('attention_dead_letters')))throw Error('upgrade_schema_unqualified');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
       this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
     }catch(error){db.close();throw error;}
