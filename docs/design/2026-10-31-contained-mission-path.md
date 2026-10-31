@@ -1,6 +1,6 @@
 # 受限单执行器 Mission 路径（W11 设计）
 
-日期：2026-10-31。状态：v2，已按 Codex（gpt-6.1-sol，medium，只读）审计修订（见 §13）。
+日期：2026-10-31。状态：v3，已按 Codex（gpt-6.1-sol，medium，只读）两轮审计修订（见 §13）。
 上位文档：[v3 设计](2026-10-30-osstack-dual-loop-factory.md)（§2 交付证据、§5 第 4 步）、[运行模型](2026-10-30-firstmate-upstream-delta/operating-model.md)（§1 T0/T1/T2、§2 执行器边界）、[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)（W11）。本文只设计，不改代码；实现按 §11 拆成多个 PR。
 
 ## 1. 目标与范围
@@ -41,7 +41,8 @@ osstack mission start …         用户显式授权：Mission 规格（T1）+ �
   → 写前分类 → 主机侧代理应用 → 加固的底层提交                     candidate_ready（固定 head）
   → 受限验证（Docker，固定命令）                                   verifying → verified | verify_failed
        失败且修复轮次未用完：send 失败摘要，回到 executing
-  → 签发一次性发布许可 → openPullRequestToGitHub                   delivering → pr_opened（终态）
+  → 复核候选、回执与授权，签发一次性发布许可                       revalidating
+  → openPullRequestToGitHub（每次远端变更前复核许可）              delivering → pr_opened（终态）
   越界 / 状态不明 → awaiting_decision 或 needs_reconciliation（§4.4 的决定表）
 ```
 
@@ -96,7 +97,7 @@ osstack mission start …         用户显式授权：Mission 规格（T1）+ �
 
 ```
 authorized → workspace_ready → executing → candidate_ready → verifying
-verifying → verified → delivering → pr_opened                 （成功终态）
+verifying → verified → revalidating → delivering → pr_opened  （成功终态）
 verifying → verify_failed → executing                          （repair_cycles < max）
 verify_failed → awaiting_decision                              （轮次用完）
 verified → awaiting_decision                                   （未预先批准发布）
@@ -117,9 +118,9 @@ verified → awaiting_decision                                   （未预先批
 | T2 越界（保护集合、删除、`allowed_paths` 外、修改验证会执行的代码） | 放弃；或以**新规格**重新授权 | `abandoned`；或创建 `supersedes` 本 Mission 的新 Mission（继承修复轮次与 worktree 认领的移交） |
 | 修复轮次用完 | 放弃；或批准一个额外修复轮次（计入 `repair_cycles`，有总上限） | `abandoned`；或 `executing` |
 | 资格自检失败 | 放弃 | `abandoned` |
-| `needs_reconciliation` | 主机重新计算 worktree 状态后：丢弃未提交改动（重置到 `expected_head`）；或把当前 worktree 作为新候选 | `executing` 或 `candidate_ready`（必须重新验证） |
-| `stop_unknown` | 只能等待停止证据（§9）；之后按 `needs_reconciliation` 处理；或放弃（worktree 冻结保留） | 无证据时不可离开，只能 `abandoned` 且认领不释放 |
-| 未预先批准发布 | 批准有界发布；或放弃 | `delivering`（重新签发许可，§8.1）或 `abandoned` |
+| `needs_reconciliation` | 丢弃未提交改动（按 `expected_head` 重新物化）；或把当前 worktree 的改动作为提议重新处理：相对 `start_commit` 的累计 diff 重新经过完整分类、策略门禁、授权检查与密钥扫描，通过后按 §6.4 重新构建候选，不沿用 worktree 中已有的索引或提交 | `executing`；或 `candidate_ready`（必须重新验证）；分类不通过则按 T2 处理 |
+| `stop_unknown` | 只能等待停止证据（§9）；之后按 `needs_reconciliation` 处理；或放弃（worktree 冻结保留） | 无证据时只能 `abandoned`，认领不释放，停止义务继续被恢复扫描 |
+| 未预先批准发布 | 批准有界发布；或放弃 | `revalidating`（§8.1）或 `abandoned` |
 
 ### 4.5 事件种类
 
@@ -172,7 +173,7 @@ verified → awaiting_decision                                   （未预先批
 
 ### 5.5 资格探针（v1 问题：让执行器自己去试写不可信）
 
-探针由主机运行，不经模型：用规格中固定的执行器二进制，以与 Mission 完全相同的沙箱参数启动其沙箱包装入口（Codex 提供的“在沙箱中运行命令”的调试入口，需按固定版本核实），执行一个主机自带的小程序，尝试：写 worktree 内文件、写 worktree 外的金丝雀路径、写主仓库 `.git/` 下的随机文件、发起一个本机回环之外的网络连接。只读模式下四项都必须失败，且主机观察到 worktree 与金丝雀路径均未变化。同时记录生效的配置（参数、版本、二进制摘要）。任一不符或没有可调用的沙箱入口：不合格，Mission 进入 `awaiting_decision`，不降级运行。二进制摘要或版本变化都需重新探针并重新授权。
+探针由主机运行，不经模型：用规格中固定的执行器二进制，以与 Mission 完全相同的沙箱参数启动其沙箱包装入口（Codex 提供的“在沙箱中运行命令”的调试入口，需按固定版本核实），执行一个主机自带的小程序，尝试：写 worktree 内文件、写 worktree 外的金丝雀路径、写主仓库 `.git/` 下的随机文件、发起一个本机回环之外的网络连接；再由该程序双 fork 并 `setsid` 出一个脱离进程组的后代，重复同样四项。只读模式下全部都必须失败，且主机观察到 worktree 与金丝雀路径均未变化。同时记录生效的配置（参数、版本、二进制摘要）。任一不符或没有可调用的沙箱入口：不合格，Mission 进入 `awaiting_decision`，不降级运行。二进制摘要或版本变化都需重新探针并重新授权。
 
 ### 5.6 环境与凭证隔离（v1 问题：保留真实 HOME）
 
@@ -205,7 +206,10 @@ T0 累计上限（相对 `start_commit`，执行器无法重置基线）初值�
 
 - **工作区租约：** 主机在“分类→应用→提交”期间持有该 Mission 的工作区租约（绑定 owner generation 与认领）；租约期间不启动执行器、不运行验证。执行器进程组已被证明为空（不变量 2），所以不存在并发的文件写入者。
 - **逐文件安全写入：** 对每个目标路径逐级 `lstat`，任一组件是符号链接或不在 worktree 内即拒绝；写到同目录临时文件，`fsync` 后 `rename`；写完重新读取并比对哈希。
-- **加固的 git：** 主机侧所有 git 调用（创建、提交、推送）使用同一个加固运行器：`GIT_CONFIG_NOSYSTEM=1`、`GIT_CONFIG_GLOBAL=/dev/null`、`GIT_NO_REPLACE_OBJECTS=1`、剥离其余 `GIT_*`，并以 `-c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.attributesFile=/dev/null` 运行。提交不用 `git add`：用 `hash-object -w --no-filters` 写入每个文件、`update-index --cacheinfo`、`write-tree`、`commit-tree`，最后 `update-ref <branch> <new> <expected_head>`，旧值不符即失败。这条路径不执行任何过滤器或钩子。
+- **加固的 git：** 主机侧所有 git 调用（创建、提交、推送）使用同一个加固运行器：`GIT_CONFIG_NOSYSTEM=1`、`GIT_CONFIG_GLOBAL=/dev/null`、`GIT_NO_REPLACE_OBJECTS=1`、剥离其余 `GIT_*`，并以 `-c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.attributesFile=/dev/null` 运行。仓库本地配置无法整体忽略，因此 `mission start` 时读取主仓库的本地配置（含 `include`/`includeIf` 展开），出现 `filter.*`、`diff.*.textconv`、`core.sshCommand`、`credential.*`、`url.*.insteadOf`、`remote.*.receivepack`/`uploadpack`、`protocol.*`、`core.gitProxy` 等会执行程序或改变传输的键即拒绝（T2，由用户先清理）；配置摘要记入规格，之后每次 git 调用前复核。
+- **创建与物化：** `git worktree add --no-checkout`，再由主机用 `cat-file` 读取 `start_commit` 的每个 blob，经逐文件安全写入物化到 worktree（与 `graph-contained-tests.ts` 导出候选同一做法），不经检出、不执行 smudge 过滤器。
+- **提交：** 不用 `git add`：用 `hash-object -w --no-filters` 写入每个文件、`update-index --cacheinfo`、`write-tree`、`commit-tree`，最后 `update-ref <branch> <new> <expected_head>`，旧值不符即失败。
+- **推送：** 经同一加固运行器，并显式固定传输：`-c protocol.allow=never -c protocol.https.allow=always`，凭证只通过主机侧受信任的凭证助手（以 `-c credential.helper=` 先清空再指定）提供。
 - **执行器提交检测：** 每轮执行前记录 `expected_head`；执行器退出后 HEAD 必须仍等于它（只读模式下本不可能变化，变化即视为资格失效，进入 `awaiting_decision`）。累计分类仍以 `start_commit` 为基线。
 
 ## 7. 受限验证
@@ -232,7 +236,7 @@ T0 累计上限（相对 `start_commit`，执行器无法重置基线）初值�
 ### 7.3 命令、依赖与时限
 
 - 规格中的命令是 argv 数组；主机按 POSIX 规则逐项加引号拼成现有运行器接受的单个字符串，摘要按 argv 计算并同时记录拼出的字符串，保证与现有回执兼容。
-- 容器无网络，依赖在基础镜像中：基础镜像按 `pnpm-lock.yaml` 摘要预先构建并固定镜像 ID；锁文件属于保护集合，候选不会改变依赖。基础镜像的构建在 Mission 之外。
+- 容器无网络，依赖必须事先就位。现有建镜像流程把候选文件复制到一个新的随机目录，不处理依赖，因此需要一个受信任的依赖布局：基础镜像按 `pnpm-lock.yaml` 摘要预先构建，包含固定位置的依赖树与一个主机自带的引导步骤，把候选目录与依赖树连接起来（具体方式由 M5 实测选定：固定工作目录加只读依赖目录，或离线 store 加只读安装）。镜像 ID、锁文件摘要与引导步骤摘要一起记入验证绑定。锁文件属于保护集合，候选不会改变依赖。基础镜像的构建在 Mission 之外。M5 的验收是一个真实的 `pnpm --filter <包> test` 在不放宽现有容器限制的情况下成功。
 - 首版保留 120 秒硬上限，不扩展。
 - Docker 不可用：Mission 停在 `candidate_ready` 并进入 `awaiting_decision`，**不在宿主机上直接运行验证命令**。
 
@@ -246,7 +250,9 @@ T0 累计上限（相对 `start_commit`，执行器无法重置基线）初值�
 
 ### 8.1 发布许可（v1 问题：开 PR 的辅助函数假定调用方已持有权限与租约）
 
-到达 `verified` 且有界发布已获批准时，主机签发一个进程内、单次使用的发布许可，绑定：owner generation、`spec_digest`、`candidate_head`、`candidate_tree`、最近一次成功且未取消的 `verify_receipt`、执行器进程组为空的停止证据、工作区租约。调用 `openPullRequestToGitHub` 前与其返回后各检查一次绑定仍成立；任何一项变化都撤销许可，Mission 回到 `candidate_ready`（候选变化）或进入决定（其他）。推送使用该函数自带的固定提交推送，经 §6.4 的加固 git 运行，不另写推送步骤。永不调用 `deliverToGitHub` 或 `mergeWorktree`。
+进入 `delivering` 只能经过 `revalidating`：主机重新确认当前候选（head、tree、diff 摘要）、最近一次成功且未取消的 `verify_receipt` 绑定该候选、有界发布授权仍有效、Mission 未被取消、执行器停止证据存在、工作区租约在手，全部成立才签发一个进程内、单次使用的发布许可。
+
+许可在每一次远端变更之前都要复核，而不只是在整个辅助函数前后（v2 问题：辅助函数内部的推送重试与开 PR 发生在两次检查之间）。为此 `openPullRequestToGitHub` 增加一个可选的 `beforeRemoteMutation` 回调，在每次推送（含重试）与创建 PR 之前调用；回调复核 owner generation、许可绑定、取消状态与授权，任何一项不成立即抛错中止，Mission 回到 `candidate_ready`（候选变化）或进入决定（其他）。推送使用该函数自带的固定提交推送，经 §6.4 的加固 git 运行。永不调用 `deliverToGitHub` 或 `mergeWorktree`。
 
 ### 8.2 证据内容与 base
 
@@ -258,11 +264,14 @@ v3 §2 的交付证据：仓库与 PR 编号、head 与 base SHA、证据 schema
 
 ## 9. 停止与恢复
 
-- **停止证据：** 执行器在独立进程组中启动；停止时向进程组发信号，证据是进程组为空（与 Loop 执行器的进程组处理同一做法）。只有拿到证据才写 `executor_stopped`。容器的停止证据沿用容器移除回执。
-- **重启恢复：** `recover()` 列出所有非终态 contained Mission：
-  - `executing` 且无 `executor_stopped`：检查记录的进程组；为空则补写证据后进入 `needs_reconciliation`；不能证明为空则 `stop_unknown`。
-  - 有 `t0_intent` / `verify_intent` / `delivery_intent` 而无对应结果：`needs_reconciliation`；`delivery_intent` 无结果时先在远端查找同分支 PR，查到则补记证据，查不到才进入决定。
-  - `verifying`：用中性恢复接口确认容器已移除；不能确认则 `stop_unknown`。
+- **启动日志（v2 问题：启动与记录之间的崩溃窗口）：** 启动前先在账本写 `executor_launch_intent`（调用 ID）。执行器经一个主机自带的小启动器进程启动：启动器先建立新会话与进程组，把自身 pid/pgid 与调用 ID 以 `fsync` 写入守护进程 home 证据根下的启动日志，再 `exec` 执行器；主机收到启动器的握手后才写 `executor_started`。崩溃于任一点，恢复都能从账本的 intent 与启动日志找到进程。
+- **停止证据与其强度（v2 问题：进程组为空不能证明全部后代已停）：** 停止时向进程组发信号并等待其为空。macOS 没有可防逃逸的进程范围，脱离进程组的后代无法排除，因此本路径**不声称**满足适配器合同的“全部后代已停止”，`confirmStopped` 仍报告不支持。本路径真正依赖的性质是“应用补丁时没有写入者”：Codex 的只读沙箱由后代继承，逃出进程组的后代仍然不能写文件、不能外连。M0 的探针必须实测这一点（从沙箱内双 fork 加 `setsid` 的后代仍被拒绝写入与网络）；实测不成立则 `codex-cli` 不合格。证据记为 `stop_proof: "group_empty+sandbox_inherited"`，与容器执行器的“容器已移除”区分；升级门禁接受它作为“无写入者”，但不把它当作进程已全部退出。
+- **重启恢复（v2 问题：与每秒 tick 冲突）：** `recover()` 只处理**孤儿**调用：其 owner generation 早于当前 generation，或当前进程内没有对应的活动句柄。当前 owner 正在运行的执行器、验证与交付不受影响。对孤儿：
+  - 执行器：按启动日志检查进程组；为空则补写证据后进入 `needs_reconciliation`；无法判定则 `stop_unknown`。
+  - 有 `t0_intent` / `verify_intent` / `delivery_intent` 而无对应结果：`needs_reconciliation`。
+  - `delivery_intent` 无结果：在远端查找 PR，只有仓库、分支、head SHA、base、`draft` 都与 intent 中持久化的绑定一致，且该 intent 引用的验证回执与发布许可记录完整时，才补记证据；任一不符进入决定，不凭分支名推断。
+  - 验证：用中性恢复接口确认容器已移除；不能确认则 `stop_unknown`。
+- **扫描范围（v2 问题：放弃后的停止义务无人跟进）：** 恢复扫描的对象是“有未释放认领或未结停止义务的 Mission”，与 Mission 是否终态无关；`abandoned` 但停止未证实的 Mission 仍被扫描，直到证据补齐后释放认领。
 - **`stop_unknown`：** worktree 冻结（不写入、不验证、不交付），认领不释放，升级门禁计为 hold；用户不能用确认代替停止证据。
 - **取消：** `cancel_requested` → 停止并取得证据 → 保全 worktree 与分支 → `cancelled`；取不到证据则 `stop_unknown`。
 - owner generation 变化时，旧 generation 的进程内许可全部失效；新 owner 只能从账本恢复。
@@ -285,7 +294,7 @@ v3 §2 的交付证据：仓库与 PR 编号、head 与 base SHA、证据 schema
 | M4 | `codex-cli` 的代理模式：只读参数、补丁通道、隔离 HOME、进程组与停止证据、资格探针 | `packages/agents/src/adapters/codex-cli.ts` |
 | M5 | 受限验证中性接口抽取，Graph 改用适配器，Mission 绑定 | `packages/cli/src/graph-contained-*`、`packages/agents/src/contained-command.ts` |
 | M6 | 宿主编排与 CLI：`osstack mission start|status|cancel|decide`、RPC、tick 推进、决定表 | `packages/cli/src/engineering-host.ts`、`daemon.ts`、新命令文件 |
-| M7 | 发布许可、开 PR、证据存储、Attention 通知 | `packages/cli`、`packages/github` |
+| M7 | 发布许可、`revalidating`、`openPullRequestToGitHub` 的 `beforeRemoteMutation` 回调、证据存储、Attention 通知 | `packages/cli`、`packages/github/src/delivery.ts` |
 | M8 | 中断与重启演练（§12 的恢复项） | 各包测试 |
 
 M0 先做，结论可能使 `codex-cli` 不合格，届时本路径以容器化执行器为前提重排。M1–M5 互不依赖；M6 依赖 M1–M5；M7 依赖 M6。新 CLI 命令懒加载，不进 `cli-entry.ts` 的启动路径。
@@ -295,11 +304,13 @@ M0 先做，结论可能使 `codex-cli` 不合格，届时本路径以容器化�
 - **账本：** 新建 50、49→50 升级（带已有 adopted Mission 与派发行）与重开 50 均通过谱系检查；adopted Mission 行为不变；同一仓库+分支或同一 worktree 不能有两个活跃认领；非终态 contained Mission 与未释放认领计入升级 hold。
 - **资格：** 主机探针在只读模式下写 worktree、写 worktree 外、写 `.git/`、外连网络均失败；版本或二进制摘要变化触发重新探针。
 - **补丁：** 超过 256 KiB、缺结束标记或非 UTF-8 的补丁被拒绝；符号链接、改名、二进制、被忽略路径、worktree 外路径、经由符号链接组件的路径在写前被拒；删除已跟踪文件、保护集合内一行改动、密钥命中均升为 T2。
-- **应用：** 应用期间无执行器进程；带 clean 过滤器与钩子的仓库配置在提交时不被执行；`update-ref` 旧值不符时提交失败。
+- **应用：** 应用期间无执行器进程；本地配置含过滤器、`core.sshCommand`、凭证助手或 `insteadOf` 的仓库在 `mission start` 时被拒；worktree 以 `--no-checkout` 创建并由主机物化，smudge/clean 过滤器与钩子都不被执行；`update-ref` 旧值不符时提交失败。
+- **启动：** 崩溃于启动 intent 与握手之间，恢复能通过启动日志找到执行器；脱离进程组的后代在探针中仍无法写入与外连。
 - **验证：** 在无网络容器中针对固定候选运行；候选变化使验证失效；Docker 不可用时不在宿主机运行；修复轮次用完后不自动继续。
-- **交付：** 只开 PR、不合并；未批准有界发布时停在决定；发布许可在候选、验证或停止证据变化时被撤销；证据摘要与账本一致。
-- **决定：** 任何决定都不能把 Mission 直接送回 `verified` 或 `delivering`；越界后扩大范围只能通过新规格。
-- **恢复：** 崩溃于写入、验证、交付任一 intent 之后，重启后进入 `needs_reconciliation`；进程组不能证明为空时进入 `stop_unknown` 并保持 hold；交付 intent 无结果时先查远端 PR。
+- **交付：** 只开 PR、不合并；未批准有界发布时停在决定；`delivering` 只能从 `revalidating` 进入；在推送重试或创建 PR 之前撤销授权、取消 Mission 或更换 owner，下一次远端变更被中止；证据摘要与账本一致。
+- **决定：** 任何决定都不能把 Mission 直接送回 `verified` 或 `delivering`；越界后扩大范围只能通过新规格；把 worktree 现状作为候选时，改动重新经过完整分类，保护集合内的改动仍升为 T2。
+- **恢复：** 每秒 tick 不影响当前 owner 正在运行的执行器、验证与交付；孤儿调用崩溃于写入、验证、交付任一 intent 之后进入 `needs_reconciliation`；无法判定停止时进入 `stop_unknown` 并保持 hold；远端只有同名分支但 head 或 base 不符的 PR 时不补记证据；`abandoned` 但停止未证实的 Mission 仍被扫描，认领不释放。
+- **依赖：** 一个真实的 `pnpm --filter <包> test` 在现有容器限制下通过受限验证。
 - **环境：** 执行器环境中没有 GitHub 凭证、SSH agent 与 OSStack 控制面变量，`HOME` 与 `CODEX_HOME` 为每 Mission 的隔离目录。
 
 ## 13. 开放问题与评审记录
@@ -320,3 +331,11 @@ M0 先做，结论可能使 `codex-cli` 不合格，届时本路径以容器化�
 - 发布改为单独列出的有界 T2 授权与一次性发布许可；删除已跟踪文件升为 T2；T0 收据补齐 worktree 与验证字段并在验证后关闭。
 - 区分验证次数与修复轮次；执行器提交检测改用每轮的 `expected_head`；验证 argv 与现有字符串运行器的兼容方式、受限执行的中性接口、base 观察与大证据存储均已明确。
 - 修正事实：`risk.ts` 同时有写前与写后分级；事件 payload 上限是 32768 字符而非字节。
+
+v2 复审：6 个 P1、4 个 P2，结论“只增迁移解决了重建风险，受限、恢复与发布仍有 P1 缺口”。Claude 核对（`worktree.ts` 的 `worktree add` 会检出、`loop/src/executor.ts` 注明脱离的进程会逃出进程组、`engineering-host.ts` 每秒调用 `recover()`、`contained-image.ts` 把候选复制到随机目录）后全部采纳：
+
+- worktree 改为 `--no-checkout` 加主机物化；仓库本地配置中会执行程序或改变传输的键在启动时拒绝；推送固定协议与凭证助手。
+- 停止证据如实降级为“进程组为空 + 沙箱由后代继承”，不声称满足“全部后代已停止”，并把后代逃逸写进探针；增加启动 intent 与启动器握手。
+- 把 worktree 现状作为候选时重新做完整分类与候选构建；新增 `revalidating` 状态，`delivering` 只能由它进入；发布许可在每次远端变更前复核（新增 `beforeRemoteMutation` 回调）。
+- 恢复只处理孤儿调用；远端 PR 必须与持久绑定逐项一致才补记证据；恢复扫描以未释放认领与未结停止义务为准，不看终态。
+- 依赖布局与引导步骤绑定到镜像与锁文件，验收以真实 pnpm 测试为准。
