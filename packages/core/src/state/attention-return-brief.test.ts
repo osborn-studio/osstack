@@ -151,3 +151,27 @@ it("stays read-only: works on a read-only connection and writes nothing", () => 
     expect(readAttentionReturnBrief(ro, { scope_id: f.scope, since: 5, now: 30 })).toEqual(preview);
   } finally { ro.close(); }
 });
+
+it("dates a dead letter when the send failed, not when it was claimed", async () => {
+  const f = setup([0]);
+  f.ux.enqueue(f.scope);
+  f.db.exec("UPDATE attention_deliveries SET attempts=4");
+  await f.ux.drain(async () => { await new Promise((r) => setTimeout(r, 40)); throw new Error("down"); }, 1000);
+  const [dead] = readAttentionReturnBrief(f.db, { scope_id: f.scope, since: 0, now: 10_000 }).delivery_problems.items;
+  expect(dead!.dead_at).toBeGreaterThanOrEqual(1035);
+  // A return that began after the claim still sees the failure.
+  expect(readAttentionReturnBrief(f.db, { scope_id: f.scope, since: 1030, now: 10_000 }).delivery_problems.total).toBe(1);
+});
+
+it("keeps the reminder count of a decision whose answer became uncertain", () => {
+  const f = setup([0]);
+  f.ux.scheduleReminders({ overdueMs: 10, backoffMaxMs: 20 }, 10);
+  settle(f.db, f.items[0]!.item_id, 20, "answer_uncertain");
+  f.ux.scheduleReminders({ overdueMs: 10, backoffMaxMs: 20 }, 30);
+  expect(readAttentionReturnBrief(f.db, { scope_id: f.scope, since: 0, now: 40 }).waiting_on_you.items
+    .map((i) => [i.state, i.reminder_count])).toEqual([["answer_uncertain", 1]]);
+  // Leaving the waiting set still clears the schedule.
+  settle(f.db, f.items[0]!.item_id, 50, "answer_applied");
+  f.ux.scheduleReminders({ overdueMs: 10, backoffMaxMs: 20 }, 60);
+  expect(f.db.prepare("SELECT COUNT(*) n FROM attention_reminders").get()).toEqual({ n: 0 });
+});
