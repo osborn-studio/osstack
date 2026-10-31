@@ -12,9 +12,13 @@ CREATE TABLE engineering_contained_missions (
   verify_attempts INTEGER NOT NULL DEFAULT 0 CHECK(verify_attempts>=0),
   repair_cycles INTEGER NOT NULL DEFAULT 0 CHECK(repair_cycles>=0),
   stop_obligation INTEGER NOT NULL DEFAULT 0 CHECK(stop_obligation IN (0,1)),
+  candidate_verified INTEGER NOT NULL DEFAULT 0 CHECK(candidate_verified IN (0,1)),
+  repair_pending INTEGER NOT NULL DEFAULT 0 CHECK(repair_pending IN (0,1)),
   supersedes TEXT REFERENCES engineering_contained_missions(mission_id),
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
-  CHECK(state<>'cancelled' OR stop_obligation=0)
+  CHECK(state<>'cancelled' OR stop_obligation=0),
+  CHECK(candidate_verified=0 OR candidate_head IS NOT NULL),
+  CHECK(state NOT IN ('revalidating','delivering','pr_opened') OR candidate_verified=1)
 );
 CREATE INDEX engineering_contained_scan ON engineering_contained_missions(created_at,mission_id);
 CREATE TRIGGER engineering_contained_fixed BEFORE UPDATE ON engineering_contained_missions
@@ -29,7 +33,8 @@ WHEN OLD.state IN ('pr_opened','cancelled','abandoned','failed')
 BEGIN SELECT RAISE(ABORT,'contained_mission_terminal'); END;
 CREATE TRIGGER engineering_contained_gates BEFORE UPDATE OF state ON engineering_contained_missions
 WHEN NEW.state<>OLD.state AND ((NEW.state='verified' AND OLD.state<>'verifying')
-  OR (NEW.state='delivering' AND OLD.state<>'revalidating') OR (NEW.state='pr_opened' AND OLD.state<>'delivering'))
+  OR (NEW.state='delivering' AND OLD.state<>'revalidating') OR (NEW.state='pr_opened' AND OLD.state<>'delivering')
+  OR (NEW.state IN ('executing','candidate_ready') AND OLD.stop_obligation=1))
 BEGIN SELECT RAISE(ABORT,'contained_transition_denied'); END;
 CREATE TABLE engineering_contained_events (
   seq INTEGER PRIMARY KEY AUTOINCREMENT, mission_id TEXT NOT NULL REFERENCES engineering_contained_missions(mission_id),

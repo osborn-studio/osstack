@@ -11,7 +11,10 @@ export interface ContainedMission {
   mission_id: string; scope_id: string; owner_principal_id: string; owner_client_session_id: string;
   spec_digest: string; spec_json: string; state: ContainedMissionState; revision: number;
   expected_head: string | null; candidate_head: string | null; candidate_tree: string | null; candidate_diff_digest: string | null;
-  verify_attempts: number; repair_cycles: number; stop_obligation: 0 | 1; supersedes: string | null;
+  verify_attempts: number; repair_cycles: number; stop_obligation: 0 | 1;
+  /** 1 only after verifying → verified for the current candidate. */ candidate_verified: 0 | 1;
+  /** A failed verification awaits repair; the next execution consumes one repair cycle. */ repair_pending: 0 | 1;
+  supersedes: string | null;
   created_at: number; updated_at: number;
 }
 export interface ContainedEvent { seq: number; mission_id: string; kind: string; actor: string | null; payload_json: string; created_at: number }
@@ -97,6 +100,7 @@ export class ContainedMissionStore {
       let repairCycles = 0;
       if (input.supersedes) {
         const prior = this.get(input.supersedes);
+        if (prior.scope_id !== input.scope_id) throw Error("permission_denied");
         if (!TERMINAL.has(prior.state)) throw Error("supersedes_active_mission");
         repairCycles = prior.repair_cycles;
         // Hand the worktree over; a prior Mission with unproven stop keeps its claim, so this fails as workspace_claimed.
@@ -132,21 +136,28 @@ export class ContainedMissionStore {
       if (TERMINAL.has(mission.state)) throw Error("mission_terminal");
       const from = mission.state; const to = step.to;
       if (!NEXT[from].includes(to) && !HALTS.includes(to)) throw Error("transition_denied");
-      if (to === "cancelled" && mission.stop_obligation === 1) throw Error("stop_evidence_required");
-      let repair = mission.repair_cycles;
-      if (to === "executing" && (from === "verify_failed" || from === "awaiting_decision")) {
-        const limit = from === "verify_failed" ? specRepairLimit(mission.spec_json) : MAX_REPAIR_CYCLES;
+      // No new execution and no host write while a previous executor may still be running.
+      if ((to === "cancelled" || to === "executing" || to === "candidate_ready") && mission.stop_obligation === 1) throw Error("stop_evidence_required");
+      if ((to === "revalidating" || to === "delivering") && mission.candidate_verified !== 1) throw Error("verification_required");
+      let repair = mission.repair_cycles; let pending = mission.repair_pending;
+      if (to === "verify_failed") pending = 1;
+      if (to === "executing" && pending === 1) {
+        // A user grant after exhaustion may extend up to the hard cap; every other route stays within the spec.
+        const limit = from === "awaiting_decision" ? MAX_REPAIR_CYCLES : specRepairLimit(mission.spec_json);
         if (repair >= limit) throw Error("repair_cycles_exhausted");
-        repair += 1;
+        repair += 1; pending = 0;
       }
       const attempts = to === "verifying" ? mission.verify_attempts + 1 : mission.verify_attempts;
       const candidate = candidateFor(mission, from, to, step.candidate);
+      const verified = to === "verified" ? 1 : candidate && candidate.head === mission.candidate_head && to !== "candidate_ready" && to !== "verify_failed" && to !== "verifying" ? mission.candidate_verified : 0;
       if (step.expected_head !== undefined && !SHA.test(step.expected_head)) throw Error("invalid_head");
       const expectedHead = step.expected_head ?? mission.expected_head;
       const obligation = to === "executing" ? 1 : mission.stop_obligation;
       this.db.prepare(`UPDATE engineering_contained_missions SET state=?,revision=revision+1,updated_at=?,expected_head=?,
-        candidate_head=?,candidate_tree=?,candidate_diff_digest=?,verify_attempts=?,repair_cycles=?,stop_obligation=? WHERE mission_id=?`)
-        .run(to, now, expectedHead, candidate?.head ?? null, candidate?.tree ?? null, candidate?.diff_digest ?? null, attempts, repair, obligation, missionId);
+        candidate_head=?,candidate_tree=?,candidate_diff_digest=?,verify_attempts=?,repair_cycles=?,stop_obligation=?,
+        candidate_verified=?,repair_pending=? WHERE mission_id=?`)
+        .run(to, now, expectedHead, candidate?.head ?? null, candidate?.tree ?? null, candidate?.diff_digest ?? null, attempts, repair, obligation,
+          verified, pending, missionId);
       this.event(missionId, step.event.kind, step.actor ?? null, { from, to, ...asObject(step.event.payload) }, now);
       return this.get(missionId);
     });

@@ -1,4 +1,4 @@
-import { realpathSync, rmSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import Database from "better-sqlite3";
@@ -31,16 +31,21 @@ type Fixture = ReturnType<typeof setup>;
 function step(f: Fixture, m: ContainedMission, to: ContainedMissionState, extra: { candidate?: typeof candidate; expected_head?: string } = {}, now = 2000): ContainedMission {
   return f.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: `to_${to}`, payload: {} }, ...extra }, now);
 }
+const stopped = (f: Fixture, m: ContainedMission) => f.store.recordStopEvidence(m.mission_id, m.revision, { stop_proof: "group_empty+sandbox_inherited" }, 2100);
+/** executing → (stop evidence) → candidate_ready, the only way a host may apply a patch. */
+const apply = (f: Fixture, m: ContainedMission) => step(f, stopped(f, m), "candidate_ready", { candidate });
+const fail = (f: Fixture, m: ContainedMission) => step(f, step(f, apply(f, m), "verifying"), "verify_failed");
+function executing(f: Fixture, spec?: Record<string, unknown>): ContainedMission {
+  const m = step(f, f.authorize(undefined, spec ? { spec } : {}), "workspace_ready");
+  return step(f, m, "executing", { expected_head: HEAD });
+}
 function toVerified(f: Fixture): ContainedMission {
-  let m = f.authorize();
-  m = step(f, m, "workspace_ready"); m = step(f, m, "executing", { expected_head: HEAD });
-  m = step(f, m, "candidate_ready", { candidate }); m = step(f, m, "verifying");
-  return step(f, m, "verified");
+  return step(f, step(f, apply(f, executing(f)), "verifying"), "verified");
 }
 
 it("records the spec digest, the claim and an append-only event trail", () => {
   const f = setup(); const m = f.authorize();
-  expect(m).toMatchObject({ state: "authorized", revision: 1, verify_attempts: 0, repair_cycles: 0, stop_obligation: 0 });
+  expect(m).toMatchObject({ state: "authorized", revision: 1, verify_attempts: 0, repair_cycles: 0, stop_obligation: 0, candidate_verified: 0, repair_pending: 0 });
   expect(m.spec_digest).toMatch(/^[0-9a-f]{64}$/);
   expect(f.store.claim(m.mission_id)).toMatchObject({ state: "active", branch: "osstack/m/1" });
   expect(f.store.events(m.mission_id).map(e => e.kind)).toEqual(["contained_authorized", "workspace_claimed"]);
@@ -64,45 +69,71 @@ it("enforces permission, revision and the state machine", () => {
   expect(() => f.store.transition(m.mission_id, { if_revision: 9, to: "workspace_ready", event: { kind: "x", payload: {} } }, 2)).toThrow("version_conflict");
   expect(() => step(f, m, "executing")).toThrow("transition_denied");
   expect(() => step(f, m, "verified")).toThrow("transition_denied");
-  expect(() => f.db.prepare("UPDATE engineering_contained_missions SET state='delivering',revision=revision+1").run()).toThrow("contained_transition_denied");
+  expect(() => f.db.prepare("UPDATE engineering_contained_missions SET state='delivering',revision=revision+1").run()).toThrow();
   expect(() => f.db.prepare("UPDATE engineering_contained_missions SET state='verified',revision=revision+1").run()).toThrow("contained_transition_denied");
 });
 
-it("fixes a candidate on candidate_ready, keeps it on the verify path and drops it on re-execution", () => {
-  const f = setup(); let m = f.authorize();
-  m = step(f, m, "workspace_ready"); m = step(f, m, "executing", { expected_head: HEAD });
+it("fixes a candidate only after stop evidence, keeps it on the verify path and drops it on re-execution", () => {
+  const f = setup(); let m = executing(f);
   expect(m.stop_obligation).toBe(1);
+  expect(() => step(f, m, "candidate_ready", { candidate })).toThrow("stop_evidence_required");
+  expect(() => f.db.prepare("UPDATE engineering_contained_missions SET state='candidate_ready',candidate_head=?,candidate_tree=?,candidate_diff_digest=?,revision=revision+1").run(HEAD, TREE, DIFF)).toThrow("contained_transition_denied");
+  m = stopped(f, m);
   expect(() => step(f, m, "candidate_ready")).toThrow("candidate_required");
   m = step(f, m, "candidate_ready", { candidate });
   expect(() => step(f, m, "verifying", { candidate })).toThrow("candidate_unexpected");
   m = step(f, m, "verifying"); expect(m.verify_attempts).toBe(1);
-  m = step(f, m, "verify_failed"); expect(m.candidate_head).toBe(HEAD);
-  m = step(f, m, "executing"); expect(m).toMatchObject({ repair_cycles: 1, candidate_head: null });
+  m = step(f, m, "verify_failed"); expect(m).toMatchObject({ candidate_head: HEAD, candidate_verified: 0, repair_pending: 1 });
+  m = step(f, m, "executing"); expect(m).toMatchObject({ repair_cycles: 1, repair_pending: 0, candidate_head: null });
 });
 
-it("caps automatic repair cycles by the spec and counts each extra grant", () => {
-  const f = setup(); let m = f.authorize(undefined, { spec: { max_repair_cycles: 1 } });
-  m = step(f, m, "workspace_ready"); m = step(f, m, "executing");
-  const fail = (x: ContainedMission) => step(f, step(f, step(f, x, "candidate_ready", { candidate }), "verifying"), "verify_failed");
-  m = fail(m); m = step(f, m, "executing"); expect(m.repair_cycles).toBe(1);
-  m = fail(m); expect(() => step(f, m, "executing")).toThrow("repair_cycles_exhausted");
+it("never resumes execution while a previous executor may still run", () => {
+  const f = setup(); let m = executing(f);
+  m = step(f, m, "stop_unknown"); m = step(f, m, "needs_reconciliation");
+  expect(() => step(f, m, "executing")).toThrow("stop_evidence_required");
+  expect(() => step(f, m, "candidate_ready", { candidate })).toThrow("stop_evidence_required");
+  m = step(f, m, "awaiting_decision");
+  expect(() => step(f, m, "executing")).toThrow("stop_evidence_required");
+  m = stopped(f, m); m = step(f, m, "executing");
+  expect(m.stop_obligation).toBe(1);
+});
+
+it("caps repair cycles by the spec on every route, including reconciliation, and counts each extra grant", () => {
+  const f = setup(); let m = executing(f, { max_repair_cycles: 1 });
+  m = fail(f, m); m = step(f, m, "executing"); expect(m.repair_cycles).toBe(1);
+  m = fail(f, m); expect(() => step(f, m, "executing")).toThrow("repair_cycles_exhausted");
+  m = step(f, m, "needs_reconciliation");
+  expect(() => step(f, m, "executing")).toThrow("repair_cycles_exhausted");
   m = step(f, m, "awaiting_decision"); m = step(f, m, "executing");
-  expect(m.repair_cycles).toBe(2);
+  expect(m).toMatchObject({ repair_cycles: 2, repair_pending: 0 });
+  const zero = setup(); let z = executing(zero, { max_repair_cycles: 0 });
+  z = fail(zero, z); z = step(zero, z, "needs_reconciliation");
+  expect(() => step(zero, z, "executing")).toThrow("repair_cycles_exhausted");
 });
 
-it("delivers only through revalidating and never returns a decision straight to verified or delivering", () => {
+it("delivers only a verified candidate through revalidating", () => {
   const f = setup(); let m = toVerified(f);
+  expect(m.candidate_verified).toBe(1);
   expect(() => step(f, m, "delivering")).toThrow("transition_denied");
-  m = step(f, m, "awaiting_decision"); expect(m.candidate_head).toBe(HEAD);
+  m = step(f, m, "awaiting_decision"); expect(m).toMatchObject({ candidate_head: HEAD, candidate_verified: 1 });
   expect(() => step(f, m, "verified")).toThrow("transition_denied");
   expect(() => step(f, m, "delivering")).toThrow("transition_denied");
   m = step(f, m, "revalidating"); m = step(f, m, "delivering"); m = step(f, m, "pr_opened");
   expect(() => step(f, m, "abandoned")).toThrow("mission_terminal");
 });
 
+it("refuses to revalidate an unverified or failed candidate", () => {
+  const f = setup(); let m = apply(f, executing(f));
+  m = step(f, m, "awaiting_decision"); expect(m.candidate_verified).toBe(0);
+  expect(() => step(f, m, "revalidating")).toThrow("verification_required");
+  const g = setup(); let n = fail(g, executing(g));
+  n = step(g, n, "awaiting_decision");
+  expect(() => step(g, n, "revalidating")).toThrow("verification_required");
+  expect(() => g.db.prepare("UPDATE engineering_contained_missions SET state='revalidating',revision=revision+1").run()).toThrow();
+});
+
 it("requires stop evidence before cancelling and keeps abandoned unknown-stop Missions outstanding", () => {
-  const f = setup(); let m = f.authorize();
-  m = step(f, m, "workspace_ready"); m = step(f, m, "executing");
+  const f = setup(); let m = executing(f);
   m = step(f, m, "cancel_requested");
   expect(() => step(f, m, "cancelled")).toThrow("stop_evidence_required");
   m = step(f, m, "stop_unknown"); m = step(f, m, "abandoned");
@@ -110,7 +141,7 @@ it("requires stop evidence before cancelling and keeps abandoned unknown-stop Mi
   expect(f.store.listOutstanding().map(r => r.mission_id)).toEqual([m.mission_id]);
   expect(() => f.store.releaseClaim(m.mission_id, "done", 3000)).toThrow("claim_release_denied");
   expect(containedUpgradeHolds(f.db)).toBe(1);
-  m = f.store.recordStopEvidence(m.mission_id, m.revision, { stop_proof: "group_empty+sandbox_inherited" }, 3001);
+  m = stopped(f, m);
   expect(m.stop_obligation).toBe(0);
   expect(containedUpgradeHolds(f.db)).toBe(1);
   f.store.releaseClaim(m.mission_id, "abandoned", 3002);
@@ -118,14 +149,15 @@ it("requires stop evidence before cancelling and keeps abandoned unknown-stop Mi
   expect(containedUpgradeHolds(f.db)).toBe(0);
 });
 
-it("a superseding Mission inherits repair cycles and takes over a released worktree", () => {
-  const f = setup(); let m = f.authorize();
-  m = step(f, m, "workspace_ready"); m = step(f, m, "executing");
-  m = step(f, step(f, step(f, m, "candidate_ready", { candidate }), "verifying"), "verify_failed");
+it("a superseding Mission inherits repair cycles and takes over a released worktree in the same scope only", () => {
+  const f = setup(); let m = fail(f, executing(f));
   m = step(f, m, "executing");
   expect(() => f.authorize({ repo_identity: "repo", branch: "osstack/m/2", worktree_identity: "wt9" }, { supersedes: m.mission_id })).toThrow("supersedes_active_mission");
-  m = f.store.recordStopEvidence(m.mission_id, m.revision, {}, 2500);
+  m = stopped(f, m);
   m = step(f, m, "awaiting_decision"); m = step(f, m, "abandoned");
+  mkdirSync(join(f.root, "other")); const other = f.attention.registerScope(f.owner, "t", join(f.root, "other"));
+  expect(() => f.store.authorize({ ...f.principal, write_scopes: [other.scope_id] }, { scope_id: other.scope_id, spec: {}, supersedes: m.mission_id, claim: { repo_identity: "x", branch: "y", worktree_identity: "z" } }, 1000)).toThrow("permission_denied");
+  expect(f.store.claim(m.mission_id).state).toBe("active");
   const next = f.authorize(undefined, { supersedes: m.mission_id });
   expect(next).toMatchObject({ repair_cycles: 1, supersedes: m.mission_id });
   expect(f.store.claim(m.mission_id)).toMatchObject({ state: "released", release_reason: "superseded" });
