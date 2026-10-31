@@ -383,19 +383,27 @@ describe("LoopEngine", () => {
   it("can run multiple cycles and pick up tasks that appear later", async () => {
     const workspace = mkdtempSync(join(tmpdir(), "osstack-loop-engine-watch-"));
     await mkdir(join(workspace, "tasks"));
-    setTimeout(() => {
-      void writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
-        task_id: "late-task",
-        capability: "code.test",
-        prompt: "Exercise a later cycle",
-      }));
-    }, 5);
+    // The gate is consulted once before cycle 1 and again before cycle 2, so
+    // writing the task on the second consult lands it strictly between cycles
+    // (a wall-clock timer raced cycle 1's discovery on slow runners).
+    let consults = 0;
+    const policyGate = async () => {
+      if (++consults === 2) {
+        await writeFile(join(workspace, "tasks", "late.json"), JSON.stringify({
+          task_id: "late-task",
+          capability: "code.test",
+          prompt: "Exercise a later cycle",
+        }));
+      }
+      return { allow: true as const };
+    };
 
     const result = await new LoopEngine({
       loopId: "loop-cycles",
       workspacePath: workspace,
       sources: ["task_queue"],
       executeCommand: "node -e \"require('fs').writeFileSync('late-done.txt', 'ok')\"",
+      policyGate,
     }).runCycles({ cycles: 2, intervalMs: 25 });
 
     expect(result.cycles).toHaveLength(2);
