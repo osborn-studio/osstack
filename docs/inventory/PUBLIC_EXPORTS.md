@@ -18,6 +18,7 @@ export { createControlledSessionAdapter, isControlledSessionAdapter, type Contro
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
+export { CodexProxyExecutor, readCodexProxyPatch, processGroupEmpty, CODEX_PROXY_PATCH_MAX_BYTES, CODEX_PROXY_END_MARKER, type CodexProxyOptions, type CodexProxyRun, type CodexProxyRunInput, type CodexProxyLaunch, type CodexProxyStopEvidence, type CodexProxyPatch, type CodexQualification, type CodexProbeOperation } from "./adapters/codex-proxy.js";
 export { OpenCodeCliAdapter } from "./adapters/opencode-cli.js";
 export { ZCodeCliAdapter } from "./adapters/zcode-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
@@ -25,6 +26,10 @@ export { DeepSeekReviewAdapter } from "./adapters/ds-review.js";
 export { DeepSeekVerifyAdapter } from "./adapters/ds-verify.js";
 export { GoogleStitchAdapter } from "./adapters/google-stitch.js";
 export { KimiCodeAdapter } from "./adapters/kimi-code.js";
+export {
+export {
+export {
+export {
 export {
 export {
 export {
@@ -139,6 +144,7 @@ export { readAttentionRecovery, type AttentionRecoveryRequest, type AttentionRec
 export { AttentionActions, reserveSessionInstruction } from "./state/attention-actions.js";
 export { EngineeringStore, engineeringSourceIdentity, type EngineeringPrincipal, type EngineeringMission, type EngineeringWait, type EngineeringActionReceipt, type EngineeringStopResult, type EngineeringObservationProof, type EngineeringDispatchPermit, type EngineeringHostEvidence } from "./state/engineering-store.js";
 export { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch, type EngineeringDispatchPhase } from "./state/engineering-dispatch.js";
+export { ContainedMissionStore, containedUpgradeHolds, type ContainedMission, type ContainedMissionState, type ContainedEvent, type WorkspaceClaim, type ContainedAuthorizeInput, type ContainedTransition } from "./state/engineering-contained-store.js";
 export { AttentionExperience, type AttentionSender, type AttentionPosture, type AttentionPostureResult } from "./state/attention-experience.js";
 export { readAttentionReturnBrief, type AttentionReturnBrief, type AttentionReturnBriefInput, type ReturnBriefSection, type ReturnBriefWaiting, type ReturnBriefOpened, type ReturnBriefResolved, type ReturnBriefDeliveryProblem } from "./state/attention-return-brief.js";
 export { parseAttentionReminderPolicy, type AttentionReminderPolicy } from "./state/attention-reminders.js";
@@ -183,6 +189,7 @@ export * from "./scanner.js";
 export * from "./review-boundary.js";
 export * from "./knowledge-hygiene/index.js";
 export * from "./probe/index.js";
+export * from "./mission-patch/index.js";
 ```
 
 ## `@osstack/graph`

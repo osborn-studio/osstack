@@ -28,6 +28,7 @@ export { createControlledSessionAdapter, isControlledSessionAdapter, type Contro
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
+export { CodexProxyExecutor, readCodexProxyPatch, processGroupEmpty, CODEX_PROXY_PATCH_MAX_BYTES, CODEX_PROXY_END_MARKER, type CodexProxyOptions, type CodexProxyRun, type CodexProxyRunInput, type CodexProxyLaunch, type CodexProxyStopEvidence, type CodexProxyPatch, type CodexQualification, type CodexProbeOperation } from "./adapters/codex-proxy.js";
 export { OpenCodeCliAdapter } from "./adapters/opencode-cli.js";
 export { ZCodeCliAdapter } from "./adapters/zcode-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
@@ -67,6 +68,58 @@ export {
   type CreateWorktreeOptions,
   type WorktreeHandle,
 } from "./worktree.js";
+export {
+  HARDENED_GIT_CONFIG_ARGS,
+  HARDENED_GIT_ERROR_CODES,
+  HardenedGitError,
+  hardenedGitEnvironment,
+  runHardenedGit,
+  type HardenedGitContext,
+  type HardenedGitEnvKey,
+  type HardenedGitErrorCode,
+  type HardenedGitOptions,
+  type HardenedGitResult,
+} from "./contained-workspace/hardened-git.js";
+export {
+  REPO_CONFIG_REJECTION_CODES,
+  RepoConfigChangedError,
+  assertRepoConfigUnchanged,
+  filterNeutralizingConfig,
+  inspectRepoConfig,
+  parseGitConfigList,
+  repoConfigDigest,
+  type RepoConfigEntry,
+  type RepoConfigInspection,
+  type RepoConfigRejection,
+  type RepoConfigRejectionCode,
+} from "./contained-workspace/repo-config.js";
+export {
+  CONTAINED_WORKSPACE_ERROR_CODES,
+  ContainedWorkspaceError,
+  commitPlumbing,
+  createNoCheckoutWorktree,
+  materializeCommit,
+  type CommitPlumbingOptions,
+  type ContainedWorkspaceErrorCode,
+  type CreateNoCheckoutWorktreeOptions,
+  type MaterializedFile,
+  type MaterializeResult,
+  type PlumbingCommitAuthor,
+  type PlumbingCommitFile,
+  type PlumbingCommitResult,
+  type TreeLimits,
+} from "./contained-workspace/plumbing.js";
+export {
+  SAFE_FILE_ERROR_CODES,
+  SafeFileError,
+  safeReadFile,
+  safeRelativePathSegments,
+  safeRemoveFile,
+  safeWriteFile,
+  type SafeFileErrorCode,
+  type SafeFileResult,
+  type SafeReadResult,
+} from "./contained-workspace/safe-write.js";
 export {
   AutoResearchAdapter, parseTrainLog,
   type AutoResearchConfig, type TrainResult,
