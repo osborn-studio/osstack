@@ -35,7 +35,7 @@ jobs:
   release-tests:
     # Validate release-environment changes before they reach the publisher.
     if: github.event_name != 'push'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
     permissions:
       contents: read
@@ -56,7 +56,7 @@ jobs:
       - run: pnpm -r test
 
   single-binary:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7

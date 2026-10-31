@@ -10,10 +10,11 @@
 // Tests that intentionally exercise a custom home still set their own
 // OSSTACK_HOME inside beforeEach/beforeAll; those run after this file and win.
 //
-// OSSTACK_SOCKET is intentionally left untouched: resolveSocketPath() derives it
-// from OSSTACK_HOME (see src/paths.ts), so pinning the home pins the socket too.
-// The assignment is unconditional so an external OSSTACK_HOME export (e.g. left
-// over in a shell) can never leak the real home into the suite.
+// OSSTACK_SOCKET overrides the socket derived from OSSTACK_HOME (src/paths.ts),
+// so an exported value would point the suite at a real daemon. It is cleared
+// here; tests that need a socket set their own. Both assignments are
+// unconditional so an external export (e.g. left over in a shell) can never
+// leak the real home or daemon into the suite.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -22,6 +23,7 @@ import { join } from "node:path";
 // which also gives each file cross-file isolation for free.
 const hermeticHome = mkdtempSync(join(tmpdir(), "osstack-vitest-home-"));
 process.env["OSSTACK_HOME"] = hermeticHome;
+delete process.env["OSSTACK_SOCKET"];
 
 process.on("exit", () => {
   rmSync(hermeticHome, { recursive: true, force: true });
