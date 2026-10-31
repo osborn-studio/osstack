@@ -7,7 +7,7 @@ import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb } f
 import { parseMissionPatch } from "@osstack/governance";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ContainedMissionSpec } from "./contained-mission-runner.js";
-import { containedVerifyInvocationId, createContainedMissionPorts, fencedDeliveryRunner, removalProven } from "./contained-mission-ports.js";
+import { containedVerifyInvocationId, createContainedMissionPorts, fencedDeliveryRunner, githubRepositoryOf, removalProven } from "./contained-mission-ports.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -173,5 +173,39 @@ describe("fencedDeliveryRunner", () => {
     const before = seen.length;
     await expect(refusing.run("git", ["push", "origin", "b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FENCE");
     expect(seen.length).toBe(before);
+  });
+});
+
+describe("githubRepositoryOf", () => {
+  it("reads owner/name from github.com https, ssh and scp-like URLs only", () => {
+    for (const url of ["https://github.com/o/r.git", "https://x-access-token@github.com/o/r", "git@github.com:o/r.git", "ssh://git@github.com/o/r", "https://github.com/o/r/"]) expect(githubRepositoryOf(url)).toBe("o/r");
+    for (const url of ["https://evil.example/o/r.git", "git@gitlab.com:o/r.git", "https://github.com.evil/o/r", "file:///tmp/r", "https://github.com/o/r/extra"]) expect(githubRepositoryOf(url)).toBeUndefined();
+  });
+});
+
+describe("contained Mission ports: publication destination", () => {
+  async function prepared(configure: (repo: string) => void) {
+    const f = fixture(); configure(f.repo);
+    const calls: Array<[string, readonly string[]]> = [];
+    const ports = createContainedMissionPorts({ store: f.store, now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
+      verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
+      delivery: { runner: { run: async (command, args) => { calls.push([command, args]); throw new Error("stop-here"); } } } });
+    const spec = { ...f.spec, publication: { remote: "origin", repository: "o/r", base: "main", draft: true } };
+    let m = f.authorize();
+    const ws = await ports.createWorkspace(spec, signal());
+    m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
+    const permit = { mission_id: m.mission_id, revision: m.revision, head: f.start, tree: "t", spec_digest: m.spec_digest };
+    const publish = () => ports.publish({ mission: m, spec, permit, body: "b", beforeRemoteMutation: () => {}, signal: signal() });
+    return { calls, publish };
+  }
+  it("refuses a remote whose push URL leaves the granted repository, before any push", async () => {
+    const p = await prepared(repo => { sh(repo, "remote", "add", "origin", "https://github.com/o/r.git"); sh(repo, "remote", "set-url", "--add", "--push", "origin", "https://evil.example/x.git"); });
+    await expect(p.publish()).rejects.toThrow("CONTAINED_PUBLICATION_DESTINATION");
+    expect(p.calls).toEqual([]);
+  });
+  it("proceeds to delivery when every push URL is the granted repository", async () => {
+    const p = await prepared(repo => { sh(repo, "remote", "add", "origin", "git@github.com:o/r.git"); });
+    await expect(p.publish()).rejects.toThrow("stop-here");
+    expect(p.calls.length).toBeGreaterThan(0);
   });
 });
