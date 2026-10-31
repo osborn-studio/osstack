@@ -87,7 +87,10 @@ export async function commitWorktreeChanges(
   handle: WorktreeHandle,
   message: string,
 ): Promise<CommitWorktreeResult> {
-  const status = await gitOutput(handle.worktreePath, ["status", "--porcelain"]);
+  // Request every untracked path explicitly: repository config such as
+  // status.showUntrackedFiles=no must not make untracked-only work look clean,
+  // or the caller would report "no changes" and then remove the worktree.
+  const status = await gitOutput(handle.worktreePath, ["status", "--porcelain", "--untracked-files=all"]);
   if (status.trim() === "") return { committed: false };
 
   await runGit(handle.worktreePath, ["add", "-A"]);

@@ -124,6 +124,20 @@ describe("git worktree lifecycle", () => {
     await cleanupWorktree(handle);
   });
 
+  it("commits untracked-only work even when repository config hides untracked files", async () => {
+    const { repo, root } = await makeRepo();
+    await git(repo, ["config", "status.showUntrackedFiles", "no"]);
+    const handle = await createWorktree({ repoPath: repo, runId: "hidden-untracked", rootPath: root });
+    await mkdir(join(handle.worktreePath, "nested"), { recursive: true });
+    await writeFile(join(handle.worktreePath, "nested", "only-new.txt"), "verified\n");
+
+    const commit = await commitWorktreeChanges(handle, "loop task hidden-untracked");
+
+    expect(commit.committed).toBe(true);
+    await expect(git(handle.worktreePath, ["show", "HEAD:nested/only-new.txt"])).resolves.toBe("verified");
+    await cleanupWorktree(handle);
+  });
+
   it("does not execute repository hooks while committing isolated changes", async () => {
     const { repo, root } = await makeRepo();
     const handle = await createWorktree({
