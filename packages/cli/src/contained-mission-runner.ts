@@ -21,10 +21,16 @@ export interface ContainedMissionPorts {
   commit: (input: { worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string }) => Promise<{ head: string; tree: string }>;
   /** Unified diff from `startCommit` to the tree that `files` would produce on `expectedHead`, without touching the worktree. */
   cumulativeDiff: (input: { worktree: string; startCommit: string; expectedHead: string; files: ReadonlyArray<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }> }) => Promise<string>;
+  /** Re-materialize `expectedHead` into the worktree, drop untracked files and any unrecorded commit on the branch. */
+  restoreWorkspace: (input: { worktree: string; branch: string; expectedHead: string }) => Promise<void>;
+  /** Diff from `startCommit` to the worktree's current files, read safely and hashed without filters; unsafe entries are listed, not read. */
+  worktreeDiff: (input: { worktree: string; startCommit: string }) => Promise<{ diff: string; tree: string; unsafe: string[] }>;
+  /** Commit the worktree's current files onto the branch; the resulting tree must equal `tree`. */
+  commitWorktree: (input: { worktree: string; branch: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
   /** `stopped` only when the verification container was proven removed. */
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
 }
-export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' };
+export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' } | { kind: 'discard_changes' } | { kind: 'adopt_worktree' };
 const OUTPUT_EXCERPT = 4_000;
 const MAX_RECORDED_HITS = 32;
 
@@ -78,7 +84,50 @@ export class ContainedMissionRunner {
       return this.runExecutor(next, parseContainedMissionSpec(next.spec_json), this.lastFailurePrompt(next));
     }
     if (decision.kind === 'approve_publication' && m.state === 'awaiting_decision' && reason === 'publication_pending') return go('revalidating', 'decision_approve_publication');
+    if (decision.kind === 'discard_changes' && m.state === 'needs_reconciliation') return this.discardChanges(m, reason);
+    if (decision.kind === 'adopt_worktree' && m.state === 'needs_reconciliation') return this.adoptWorktree(m);
     throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+  }
+
+  /** §4.4: restore `expected_head` exactly, then start a fresh executor turn. */
+  private async discardChanges(m: ContainedMission, reason: string | undefined): Promise<ContainedMission> {
+    if (m.stop_obligation === 1) throw Error('stop_evidence_required');
+    const spec = parseContainedMissionSpec(m.spec_json); const head = m.expected_head ?? spec.start_commit;
+    const controller = new AbortController(); this.live.set(m.mission_id, controller);
+    try { await this.ports.restoreWorkspace({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: head }); }
+    finally { this.live.delete(m.mission_id); }
+    const current = this.ports.store.get(m.mission_id);
+    if (current.revision !== m.revision) return this.settleCancel(current) ?? current;
+    let next: ContainedMission;
+    try { next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: head, event: { kind: 'decision_discard_changes', payload: { reason, head } } }, this.ports.now()); }
+    catch (error) { if (code(error) === 'repair_cycles_exhausted') return this.halt(m, 'awaiting_decision', 'repair_cycles_exhausted'); throw error; }
+    return this.runExecutor(next, spec, containedExecutorPrompt(spec.goal));
+  }
+
+  /** §4.4: the worktree as a new proposal. The whole diff from start_commit is classified and scanned again, then re-verified. */
+  private async adoptWorktree(m: ContainedMission): Promise<ContainedMission> {
+    if (m.stop_obligation === 1) throw Error('stop_evidence_required');
+    const spec = parseContainedMissionSpec(m.spec_json);
+    const operationId = `op_${createHash('sha256').update(`${m.mission_id}:${m.revision}:adopt`).digest('hex').slice(0, 16)}`;
+    const controller = new AbortController(); this.live.set(m.mission_id, controller);
+    const fenced = () => { const now = this.ports.store.get(m.mission_id); return controller.signal.aborted || now.revision !== m.revision ? this.settleCancel(now) ?? now : undefined; };
+    try {
+      const snapshot = await this.ports.worktreeDiff({ worktree: spec.worktree_path, startCommit: spec.start_commit });
+      const moved = fenced(); if (moved) return moved;
+      if (snapshot.unsafe.length > 0) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, adopted: true, reasons: snapshot.unsafe.slice(0, 32) });
+      if (!snapshot.diff) throw Error('CONTAINED_ADOPT_EMPTY');
+      const overall = this.classify(spec, snapshot.diff);
+      const totals = overall.tier === 'rejected' ? undefined : overall.totals;
+      const parsed = parseMissionPatch(snapshot.diff);
+      this.ports.store.record(m.mission_id, 't0_intent', { operation_id: operationId, worktree: spec.worktree_path, head_before: m.expected_head, tier: overall.tier, reasons: overall.reasons, adopted: true,
+        files: parsed.ok ? parsed.files.slice(0, 256).map(f => ({ path: f.path, kind: f.kind })) : [], cumulative_totals: totals }, this.ports.now());
+      if (overall.tier === 'rejected' || overall.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: overall.reasons, cumulative: true, adopted: true });
+      if (screenOutputs({ patch: snapshot.diff }).hits.length > 0) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: ['SECRET_DETECTED'], cumulative: true, adopted: true });
+      const before = fenced(); if (before) return before;
+      const commit = await this.ports.commitWorktree({ worktree: spec.worktree_path, branch: spec.branch, tree: snapshot.tree, message: `contained mission ${m.mission_id} ${operationId} (adopted worktree)` });
+      const after = fenced(); if (after) { this.ports.store.record(m.mission_id, 'commit_after_cancel', { operation_id: operationId, head: commit.head }, this.ports.now()); return after; }
+      return this.commitCandidate(m, operationId, snapshot.diff, commit, overall.tier, totals);
+    } finally { this.live.delete(m.mission_id); }
   }
 
   /** Abort a live executor or verifier; the step that owns it records stop evidence and settles state. */
@@ -154,7 +203,7 @@ export class ContainedMissionRunner {
   }
 
   private async applyPatch(m: ContainedMission, spec: ContainedMissionSpec, patch: string): Promise<ContainedMission> {
-    const classify = (text: string) => classifyMissionPatch({ allowedPaths: spec.allowed_paths, ...(spec.caps ? { caps: spec.caps } : {}), ...(spec.verification_paths ? { verificationPaths: spec.verification_paths } : {}) }, text);
+    const classify = (text: string) => this.classify(spec, text);
     const operationId = `op_${createHash('sha256').update(`${m.mission_id}:${m.revision}:${patch}`).digest('hex').slice(0, 16)}`;
     // The turn's own patch decides what may be applied; the cumulative diff (below) decides the tier.
     const incremental = classify(patch);
@@ -236,6 +285,9 @@ export class ContainedMissionRunner {
     return this.runExecutor(next, spec, this.lastFailurePrompt(next));
   }
 
+  private classify(spec: ContainedMissionSpec, text: string) {
+    return classifyMissionPatch({ allowedPaths: spec.allowed_paths, ...(spec.caps ? { caps: spec.caps } : {}), ...(spec.verification_paths ? { verificationPaths: spec.verification_paths } : {}) }, text);
+  }
   private halt(m: ContainedMission, to: 'awaiting_decision' | 'needs_reconciliation' | 'stop_unknown', reason: string, extra: Record<string, unknown> = {}) {
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: 'halted', payload: { reason, ...extra } } }, this.ports.now());
   }

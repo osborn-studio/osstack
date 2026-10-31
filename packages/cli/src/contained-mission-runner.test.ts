@@ -42,6 +42,7 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
     commit: async input => { calls.commit.push(input); head = (head === START ? "b" : "c").repeat(40); return { head, tree: "d".repeat(40) }; },
     verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? "ok" : "1 failed", cancelled: false, evidence: "docker-removed:x", stopped: true }; },
     cumulativeDiff: async input => { calls.cumulative.push(input); return cumulativeText ?? PATCH; },
+    restoreWorkspace: async () => {}, worktreeDiff: async () => ({ diff: PATCH, tree: "d".repeat(40), unsafe: [] }), commitWorktree: async () => ({ head: "e".repeat(40), tree: "d".repeat(40) }),
     ...over,
   };
   const spec: ContainedMissionSpec = { goal: "fix it", repo_path: join(root, "repo"), base_ref: "main", start_commit: START, branch: "osstack/m/1",
