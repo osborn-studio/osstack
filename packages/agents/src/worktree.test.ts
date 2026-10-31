@@ -189,6 +189,35 @@ describe("git worktree lifecycle", () => {
     await cleanupWorktree(handle);
   });
 
+  it("lands only the accepted commit and refuses when the branch moved after acceptance", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "pinned", rootPath: root });
+    await writeFile(join(handle.worktreePath, "feature.txt"), "accepted\n");
+    const accepted = await commitWorktreeChanges(handle, "loop task pinned");
+    const before = await git(repo, ["rev-parse", "HEAD"]);
+    // A lingering worker appends an unreviewed commit to the task branch.
+    await writeFile(join(handle.worktreePath, "feature.txt"), "unreviewed\n");
+    await git(handle.worktreePath, ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qam", "late"]);
+
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit! })).rejects.toThrow(/differs from the accepted commit/);
+    await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(before);
+    await cleanupWorktree(handle);
+  });
+
+  it("refuses an abbreviated or symbolic accepted commit", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "pinned-shape", rootPath: root });
+    await writeFile(join(handle.worktreePath, "feature.txt"), "accepted\n");
+    const accepted = await commitWorktreeChanges(handle, "loop task pinned-shape");
+
+    for (const expectedCommit of [accepted.commit!.slice(0, 12), handle.branch, "HEAD"]) {
+      await expect(mergeWorktree(handle, { expectedCommit })).rejects.toThrow(/full commit id/);
+    }
+    await mergeWorktree(handle, { expectedCommit: accepted.commit! });
+    await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(accepted.commit);
+    await cleanupWorktree(handle);
+  });
+
   it("can remove a worktree while preserving its branch", async () => {
     const { repo, root } = await makeRepo();
     const handle = await createWorktree({ repoPath: repo, runId: "preserve", rootPath: root });

@@ -108,12 +108,32 @@ export async function commitWorktreeChanges(
   return { committed: true, commit };
 }
 
-export async function mergeWorktree(handle: WorktreeHandle): Promise<void> {
+export interface MergeWorktreeOptions {
+  /**
+   * Full commit id the caller accepted (verified and committed). When set, the
+   * fast-forward lands exactly this commit, and refuses if the task branch no
+   * longer points at it, so commits added after acceptance never land.
+   */
+  expectedCommit?: string;
+}
+
+export async function mergeWorktree(handle: WorktreeHandle, options: MergeWorktreeOptions = {}): Promise<void> {
+  const { expectedCommit } = options;
+  if (expectedCommit !== undefined) {
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expectedCommit)) {
+      throw new Error("accepted worktree commit must be a full commit id");
+    }
+    const branchHead = await gitOutput(handle.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${handle.branch}^{commit}`]);
+    if (branchHead !== expectedCommit) {
+      throw new Error(`worktree branch ${handle.branch} differs from the accepted commit; refusing to land`);
+    }
+  }
   await runGit(handle.repoPath, [
     ...DISABLE_GIT_HOOKS_ARGS,
     "merge",
     "--ff-only",
-    handle.branch,
+    // Merge the pinned object, not the movable branch name.
+    expectedCommit ?? handle.branch,
   ]);
 }
 
