@@ -163,6 +163,18 @@ it("dates a dead letter when the send failed, not when it was claimed", async ()
   expect(readAttentionReturnBrief(f.db, { scope_id: f.scope, since: 1030, now: 10_000 }).delivery_problems.total).toBe(1);
 });
 
+it("keeps the reminder count through an answer reservation that becomes uncertain", () => {
+  const f = setup([0]);
+  const policy = { overdueMs: 10, backoffMaxMs: 20 };
+  f.ux.scheduleReminders(policy, 10);
+  settle(f.db, f.items[0]!.item_id, 20, "answer_reserved");
+  f.ux.scheduleReminders(policy, 30);
+  settle(f.db, f.items[0]!.item_id, 40, "answer_uncertain");
+  f.ux.scheduleReminders(policy, 50);
+  expect(readAttentionReturnBrief(f.db, { scope_id: f.scope, since: 0, now: 60 }).waiting_on_you.items
+    .map((i) => [i.state, i.reminder_count])).toEqual([["answer_uncertain", 1]]);
+});
+
 it("keeps the reminder count of a decision whose answer became uncertain", () => {
   const f = setup([0]);
   f.ux.scheduleReminders({ overdueMs: 10, backoffMaxMs: 20 }, 10);

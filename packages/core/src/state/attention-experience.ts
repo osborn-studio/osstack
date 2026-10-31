@@ -229,10 +229,10 @@ export class AttentionExperience {
     return this.store.write(this.owner, () => {
       const db = this.store.db;
       // Keep the schedule while the decision is still waiting on the owner
-      // (including answer_uncertain): its count feeds the return brief, and
-      // only `open` decisions are ever scheduled.
+      // (including an answer that is reserved or uncertain): its count feeds the
+      // return brief, and only `open` decisions are ever scheduled.
       const cleared = db.prepare(`DELETE FROM attention_reminders AS r WHERE r.state<>'sending' AND NOT EXISTS(
-        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','answer_uncertain','source_missing'))`).run().changes;
+        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','answer_reserved','answer_uncertain','source_missing'))`).run().changes;
       // A stored delay from an older policy is clamped into the current bounds.
       const due = db.prepare(`SELECT i.item_id,i.scope_id,i.revision,i.created_at,r.sequence,r.delay_ms FROM attention_items i
         LEFT JOIN attention_reminders r ON r.scope_id=i.scope_id AND r.item_id=i.item_id
