@@ -85,6 +85,8 @@ osstack attention deliveries --scope SCOPE --json
 
 posture 为 attended、quiet、away，只改变体验，不改变权限。当前为本地 owner 模型；任一 actor 的 quiet 会保守地静默整个 scope，恢复通知须将该 actor 改回 attended/away。
 
+posture 记录进入时间；重复设置当前 posture 不改变起点。从 away 改回 attended 时，返回结果带 `return_brief`：仍在等你的全部决定（最早在前，带年龄与提醒次数；列表有上限，但总数与省略数总会给出）、离开期间新开与已解除的决定、离开期间死信的首发通知与提醒。`osstack attention return-brief --scope SCOPE --actor owner [--since MS] [--limit N] --json` 只读预览，不改变 posture。quiet 改回 attended 不生成回归简报。简报只是信息，不授予任何权限。
+
 若启动时另设 `OSSTACK_ATTENTION_NOTIFY=local`，通知写到 home 下 `attention-notifications/`。每个 delivery ID 原子发布一个本地文件，重复尝试不会生成第二份。其他 transport 通过受限 sender 端口注入；协议为至少一次，接收方须按 delivery ID 去重。失败最多 5 次，随后 dead_letter；旧 revision 在发送前判为 superseded。没有配置 transport 时不外发消息。
 
 - delivered：transport 收到，不代表用户已读。

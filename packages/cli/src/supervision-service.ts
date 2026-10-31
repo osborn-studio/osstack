@@ -318,6 +318,12 @@ export class SupervisionService {
       this.assertRunning();
       return this.observer.inventory(scope.scope_id);
     }
+    const briefLimit = (): { limit?: number } => {
+      const limit = p["limit"];
+      if (limit === undefined) return {};
+      if (typeof limit !== "number" || !Number.isInteger(limit)) throw new Error("invalid_limit");
+      return { limit };
+    };
     const scopeId = str("scope_id");
     if (!this.store.getScope(scopeId)) throw new Error("not_found");
     if (method === "attention.recovery") {
@@ -357,12 +363,26 @@ export class SupervisionService {
       const posture = str("posture");
       if (!["quiet", "away", "attended"].includes(posture))
         throw new Error("invalid_posture");
-      this.experience.posture(
+      // Leaving away for attended answers with the return brief; the write
+      // itself stays a UX posture with no authority.
+      return this.experience.posture(
         scopeId,
         str("actor"),
-        posture as "quiet" | "away" | "attended"
+        posture as "quiet" | "away" | "attended",
+        Date.now(),
+        briefLimit()
       );
-      return { posture };
+    }
+    if (method === "attention.return-brief") {
+      if (Object.keys(p).some((key) => !["scope_id", "actor", "since", "limit"].includes(key)))
+        throw new Error("invalid_return_brief_request");
+      const since = p["since"];
+      if (since !== undefined && (typeof since !== "number" || !Number.isSafeInteger(since)))
+        throw new Error("invalid_since");
+      return this.experience.returnBrief(scopeId, str("actor"), {
+        ...(since === undefined ? {} : { since: since as number }),
+        ...briefLimit(),
+      });
     }
     if (method === "attention.seen") {
       if (!Array.isArray(p["revisions"])) throw new Error("invalid_revisions");

@@ -671,6 +671,8 @@ it("attention watch/inbox/answer shares the exact governed session receipt", asy
   expect(await rpc("attention.answer",params)).toMatchObject({ok:true,result:{state:"applied",replay:true}});
   expect(adapter.resumed.length-before).toBe(1);
   expect(await rpc("attention.brief",{scope_id:scope,actor:"owner"})).toMatchObject({ok:true,result:{total:1}});
+  expect(await rpc("attention.posture",{scope_id:scope,actor:"owner",posture:"away"})).toMatchObject({ok:true,result:{posture:"away",return_brief:null}});
+  expect(await rpc("attention.posture",{scope_id:scope,actor:"owner",posture:"attended"})).toMatchObject({ok:true,result:{previous:"away",return_brief:{authority:"none",execution_takeover:false,waiting_on_you:{total:0}}}});
 });
 
 it("never resumes an abandoned receipt when its original direct message ID is replayed",async()=>{
