@@ -46,7 +46,8 @@
 
 - `attention_postures.entered_at`：posture 进入时间。重复设置当前 posture 保留起点（对应重复 `/afk` 只刷新）；离开再进入 away 则重置区间。49 之前的行为 NULL，回归时标为 `since_known:false`，从头读取且仍有上限。
 - `attention_item_settlements`：决定离开等待集合（`open`/`answer_uncertain`/`source_missing`）的时间，由 `attention_items` 上的触发器取该次转换自身的 `updated_at` 写入，覆盖所有结算路径；observer 的 `source_closed`/`continued_externally` 转换补写 `updated_at`。
-- `attention_dead_letters`：首发通知与提醒每次死信一行及其时间（含重启恢复判死）。提醒行按序号复用，只看 outbox 会丢失较早的死信。
+- `attention_dead_letters`：首发通知与提醒每次死信一行及其时间（含重启恢复判死）。时间取发送实际失败或超时的时刻（claim 时钟加发送耗时），而非 claim 时刻，否则 away 前开始、away 后失败的发送会落在区间外。提醒行按序号复用，只看 outbox 会丢失较早的死信。
+- 提醒计划在决定处于整个等待集合（含 `answer_uncertain`）期间保留，只有 `open` 会被排入新提醒；否则 uncertain 决定在简报中的提醒次数会归零。
 - 纯读函数 `readAttentionReturnBrief(db, {scope_id, since, now, limit})`，区间 `[since, now]` 两端闭合，只执行 SELECT，可在只读连接或调用方写事务中运行。三节：(a) waiting_on_you — 全部未结决定，最早在前，带年龄与已排提醒次数；(b) changed_while_away — 区间内新开、区间内解除（解除后又回到等待集合的计入 (a) 而非 (b)）；(c) delivery_problems — 区间内死信，另报未带时间的旧死信数 `undated`。每节都有 `total`/`omitted`，列表默认 20、上限 100，排序确定。
 - `AttentionExperience.posture` 在同一事务内写 posture，away → attended 时返回该区间的 `return_brief`；`returnBrief()` 与 RPC `attention.return-brief`、CLI `osstack attention return-brief` 只读预览。posture 写入仍受 owner generation 约束，stale owner 被拒。结果固定 `execution_takeover:false`、`authority:"none"`。
 

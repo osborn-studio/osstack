@@ -228,8 +228,11 @@ export class AttentionExperience {
       throw new Error("invalid_attention_reminder_policy");
     return this.store.write(this.owner, () => {
       const db = this.store.db;
+      // Keep the schedule while the decision is still waiting on the owner
+      // (including answer_uncertain): its count feeds the return brief, and
+      // only `open` decisions are ever scheduled.
       const cleared = db.prepare(`DELETE FROM attention_reminders AS r WHERE r.state<>'sending' AND NOT EXISTS(
-        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','source_missing'))`).run().changes;
+        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','answer_uncertain','source_missing'))`).run().changes;
       // A stored delay from an older policy is clamped into the current bounds.
       const due = db.prepare(`SELECT i.item_id,i.scope_id,i.revision,i.created_at,r.sequence,r.delay_ms FROM attention_items i
         LEFT JOIN attention_reminders r ON r.scope_id=i.scope_id AND r.item_id=i.item_id
@@ -345,6 +348,9 @@ export class AttentionExperience {
     if (row === "superseded") return "superseded";
     if (!row) return "idle";
     const item = this.store.getItem(row.scope_id, row.item_id);
+    // Elapsed time on the caller's clock, so a dead letter is dated when the
+    // send actually failed, not when it was claimed.
+    const sendStarted = performance.now();
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let error: string | null = null;
@@ -416,7 +422,8 @@ export class AttentionExperience {
         db.prepare(
           `INSERT OR IGNORE INTO attention_dead_letters(delivery_id,kind,scope_id,item_id,revision,sequence,error,dead_at) VALUES(?,?,?,?,?,?,?,?)`
         ).run(row.delivery_id, row.table === "attention_reminders" ? "reminder" : "first_notice",
-          row.scope_id, row.item_id, row.revision, row.sequence ?? null, error, now);
+          row.scope_id, row.item_id, row.revision, row.sequence ?? null, error,
+          now + Math.max(0, Math.ceil(performance.now() - sendStarted)));
       return result;
     });
     changed = updated.changes;
