@@ -185,7 +185,7 @@ export class ContainedMissionRunner {
     const probe = new AbortController(); this.live.set(m.mission_id, probe);
     let q: CodexQualification;
     try { q = await this.ports.qualify(spec.worktree_path, gitDir); } finally { this.live.delete(m.mission_id); }
-    const first = this.ports.store.events(m.mission_id, 0, 500).find(e => e.kind === 'qualification_probe' && (JSON.parse(e.payload_json) as { qualified?: boolean }).qualified === true);
+    const first = this.allEvents(m.mission_id).find(e => e.kind === 'qualification_probe' && (JSON.parse(e.payload_json) as { qualified?: boolean }).qualified === true);
     this.ports.store.record(m.mission_id, 'qualification_probe', { ...q, reasons: q.reasons.slice(0, 32) }, this.ports.now());
     const current = this.ports.store.get(m.mission_id);
     if (q.reasons.includes('PROBE_GROUP_NOT_STOPPED')) return { halted: this.halt(current, 'stop_unknown', 'qualification_probe_not_stopped') };
@@ -197,7 +197,7 @@ export class ContainedMissionRunner {
     return { q };
   }
   private recordedGitDir(m: ContainedMission): string | undefined {
-    const created = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'workspace_created').at(-1);
+    const created = this.allEvents(m.mission_id).filter(e => e.kind === 'workspace_created').at(-1);
     return created ? (JSON.parse(created.payload_json) as { git_dir?: string }).git_dir : undefined;
   }
   private async qualifyAndExecute(m: ContainedMission, spec: ContainedMissionSpec, prompt: string) {
@@ -333,12 +333,12 @@ export class ContainedMissionRunner {
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: 'halted', payload: { reason, ...extra } } }, this.ports.now());
   }
   private haltReason(m: ContainedMission): string | undefined {
-    const halted = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'halted').at(-1);
+    const halted = this.allEvents(m.mission_id).filter(e => e.kind === 'halted').at(-1);
     return halted ? (JSON.parse(halted.payload_json) as { reason?: string }).reason : undefined;
   }
   private lastFailurePrompt(m: ContainedMission): string {
     const spec = parseContainedMissionSpec(m.spec_json);
-    const receipt = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'verify_receipt').at(-1);
+    const receipt = this.allEvents(m.mission_id).filter(e => e.kind === 'verify_receipt').at(-1);
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number | null; output: string } : undefined;
     // Only the exit code and redacted, truncated output; never anything the host would execute.
     return containedExecutorPrompt(spec.goal, `The previous change failed verification (exit ${r?.exit_code ?? 'unknown'}). Output excerpt:\n${r?.output ?? ''}`);
@@ -349,7 +349,7 @@ export class ContainedMissionRunner {
     if (m.candidate_verified !== 1 || !m.candidate_head || !m.candidate_tree) return 'candidate_unverified';
     if (m.stop_obligation === 1) return 'stop_unproven';
     if (this.ports.store.claim(m.mission_id).state !== 'active') return 'claim_released';
-    const events = this.ports.store.events(m.mission_id, 0, 500);
+    const events = this.allEvents(m.mission_id);
     const intent = events.filter(e => e.kind === 'verify_intent').at(-1); const receipt = events.filter(e => e.kind === 'verify_receipt').at(-1);
     const i = intent ? JSON.parse(intent.payload_json) as { candidate?: string } : undefined;
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code?: number | null; cancelled?: boolean } : undefined;
@@ -371,7 +371,7 @@ export class ContainedMissionRunner {
 
   /** One bounded delivery attempt. An uncertain failure stays in delivering and is retried idempotently by the next step. */
   private async deliver(m: ContainedMission, spec: ContainedMissionSpec): Promise<ContainedMission> {
-    const events = this.ports.store.events(m.mission_id, 0, 500);
+    const events = this.allEvents(m.mission_id);
     const since = events.map(e => e.kind).lastIndexOf('delivery_intent');
     const attempts = events.slice(since + 1).filter(e => e.kind === 'delivery_attempt').length;
     if (attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
@@ -411,7 +411,7 @@ export class ContainedMissionRunner {
 
   /** v3 §2 delivery evidence. The ledger copy is authoritative; the PR body is only a display copy. */
   private deliveryEvidence(m: ContainedMission, spec: ContainedMissionSpec, permit: ContainedPublicationPermit, result: ContainedPublicationResult) {
-    const events = this.ports.store.events(m.mission_id, 0, 500);
+    const events = this.allEvents(m.mission_id);
     const receipt = JSON.parse(events.filter(e => e.kind === 'verify_receipt').at(-1)!.payload_json) as { exit_code: number; evidence: string };
     const committed = JSON.parse(events.filter(e => e.kind === 'candidate_committed').at(-1)!.payload_json) as { tier: string };
     const p = spec.publication!;
@@ -423,7 +423,7 @@ export class ContainedMissionRunner {
     return { ...body, evidence_digest: createHash('sha256').update(canonical(body)).digest('hex') };
   }
   private publicationBody(m: ContainedMission, spec: ContainedMissionSpec): string {
-    const receipt = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'verify_receipt').at(-1);
+    const receipt = this.allEvents(m.mission_id).filter(e => e.kind === 'verify_receipt').at(-1);
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number; evidence: string } : undefined;
     return [
       `Contained Mission \`${m.mission_id}\`, opened by OSStack. Review before merging; OSStack never merges.`, '',
@@ -434,12 +434,21 @@ export class ContainedMissionRunner {
       'The authoritative delivery evidence is the `delivery_evidence` event in the OSStack ledger for this Mission.',
     ].join('\n');
   }
+  /** Every event of the Mission, page by page; decisions must never be made from a truncated history. */
+  private allEvents(missionId: string) {
+    const all: ReturnType<ContainedMissionStore['events']> = [];
+    for (let after = 0; ;) {
+      const page = this.ports.store.events(missionId, after, 500); all.push(...page);
+      if (page.length < 500) return all;
+      after = page.at(-1)!.seq;
+    }
+  }
   private settleCancel(m: ContainedMission): ContainedMission | undefined {
     if (m.state !== 'cancel_requested' || m.stop_obligation === 1) return undefined;
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
   }
   private openIntents(m: ContainedMission) {
-    const events = this.ports.store.events(m.mission_id, 0, 500);
+    const events = this.allEvents(m.mission_id);
     const closed = new Set(events.filter(e => e.kind === 't0_receipt').map(e => (JSON.parse(e.payload_json) as { operation_id: string }).operation_id));
     const committed = new Set(events.filter(e => e.kind === 'candidate_committed').map(e => (JSON.parse(e.payload_json) as { operation_id: string }).operation_id));
     return events.filter(e => e.kind === 't0_intent').map(e => JSON.parse(e.payload_json) as { operation_id: string; worktree: string; head_before: string; files: unknown })

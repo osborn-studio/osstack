@@ -209,3 +209,21 @@ describe("contained Mission ports: publication destination", () => {
     expect(p.calls.length).toBeGreaterThan(0);
   });
 });
+
+describe("fencedDeliveryRunner destination", () => {
+  it("re-resolves every push URL with the push's own configuration and refuses a rewrite away from the grant", async () => {
+    const pushes: string[][] = [];
+    const inner = (pushUrl: string) => ({ run: async (_c: string, args: readonly string[]) => {
+      const a = args.filter((_, i) => i >= 10);
+      if (a[0] === "remote" && a[1] === "get-url") return { exitCode: 0, stdout: `${pushUrl}\n`, stderr: "" };
+      if (a[0] === "push") pushes.push([...a]);
+      return { exitCode: 0, stdout: "", stderr: "" };
+    } });
+    const evil = fencedDeliveryRunner(inner("https://evil.example/o/r.git"), () => {}, { remote: "origin", repository: "o/r" });
+    await expect(evil.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_DESTINATION");
+    expect(pushes).toEqual([]);
+    const good = fencedDeliveryRunner(inner("git@github.com:O/R.git"), () => {}, { remote: "origin", repository: "o/r" });
+    await good.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
+    expect(pushes).toEqual([["push", "origin", "x:refs/heads/b"]]);
+  });
+});

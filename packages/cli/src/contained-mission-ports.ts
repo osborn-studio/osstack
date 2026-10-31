@@ -68,15 +68,25 @@ export function githubRepositoryOf(url: string): string | undefined {
 const FORBIDDEN_GH = new Set(['merge', 'edit', 'close', 'ready', 'review', 'comment']);
 /** Wraps the delivery runner: every push and PR creation passes the Mission's publication fence first, git runs without
  * hooks or fsmonitor and only over https/ssh, and no gh subcommand that changes a PR other than creating it can run. */
-export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteMutation: (kind: 'push' | 'pr_create') => void): DeliveryCommandRunner {
+export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteMutation: (kind: 'push' | 'pr_create') => void,
+  destination?: { remote: string; repository: string }): DeliveryCommandRunner {
+  const git = (args: readonly string[], runOptions: Parameters<DeliveryCommandRunner['run']>[2]) => inner.run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
+    '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', ...args], runOptions);
   return {
     async run(command, args, runOptions) {
       if (command === 'gh' && args[0] === 'pr' && FORBIDDEN_GH.has(args[1] ?? '')) throw Error('CONTAINED_PUBLICATION_FORBIDDEN');
       if (command === 'gh' && args[0] === 'pr' && args[1] === 'create') beforeRemoteMutation('pr_create');
       if (command !== 'git') return inner.run(command, args, runOptions);
-      if (args[0] === 'push') beforeRemoteMutation('push');
-      return inner.run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', '-c', 'protocol.allow=never',
-        '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', ...args], runOptions);
+      if (args[0] === 'push') {
+        // Resolved with the same configuration the push will use, so pushurl and any pushInsteadOf rewrite are included.
+        if (destination) {
+          const urls = await git(['remote', 'get-url', '--push', '--all', '--', destination.remote], runOptions);
+          const list = urls.exitCode === 0 ? urls.stdout.split('\n').map(u => u.trim()).filter(Boolean) : [];
+          if (list.length === 0 || list.some(url => githubRepositoryOf(url)?.toLowerCase() !== destination.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
+        }
+        beforeRemoteMutation('push');
+      }
+      return git(args, runOptions);
     },
   };
 }
@@ -158,7 +168,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       if (pushUrls.length === 0 || pushUrls.some(url => githubRepositoryOf(url)?.toLowerCase() !== p.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
       const bodyFile = join(runtimeDir(spec.worktree_path), `pr-body-${permit.revision}.md`);
       writeFileSync(bodyFile, body, { mode: 0o600 });
-      const runner = fencedDeliveryRunner(options.delivery?.runner ?? defaultDeliveryCommandRunner, beforeRemoteMutation);
+      const runner = fencedDeliveryRunner(options.delivery?.runner ?? defaultDeliveryCommandRunner, beforeRemoteMutation, { remote: p.remote, repository: p.repository });
       // The title is published verbatim, so it is redacted like the body; control characters never reach gh.
       const title = redactSecrets(p.title ?? `Contained Mission ${mission.mission_id.slice(3, 11)}: ${spec.goal.replace(/\s+/g, ' ').slice(0, 72)}`)
         // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.

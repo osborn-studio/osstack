@@ -329,3 +329,16 @@ describe("ContainedMissionRunner publication (M7)", () => {
     expect(m.state).toBe("awaiting_decision"); expect(f.allPayloads()).toContain("publication_failed:CONTAINED_REPO_CONFIG_CHANGED");
   });
 });
+
+describe("ContainedMissionRunner long histories", () => {
+  it("keeps the delivery retry bound when the Mission has more than one page of events", async () => {
+    let tries = 0;
+    const f = setup({ publish: async input => { tries++; input.beforeRemoteMutation("push"); throw new Error("gh_unavailable"); } },
+      { publication: { remote: "origin", repository: "o/r", base: "main", draft: true, preauthorized: true } });
+    let m = await drive(f, 4);
+    for (let i = 0; i < 600; i++) f.store.record(m.mission_id, "noise", { i }, 5000 + i);
+    for (let i = 0; i < 4; i++) m = await f.runner.step(m.mission_id);
+    expect(tries).toBe(3);
+    expect(m.state).toBe("awaiting_decision");
+  });
+});
