@@ -2,8 +2,9 @@
 node_modules/
 .pnpm-store/
 
-# Build outputs
+# Build outputs (never commit package dist/; consumers must run `pnpm build` first)
 dist/
+packages/knowledge/dist/
 *.tsbuildinfo
 .tsup/
 

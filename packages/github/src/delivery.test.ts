@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFile } from "node:fs/promises";
-import { stripTypeScriptTypes } from "node:module";
+import { transformSync } from "esbuild";
 import { compileFunction } from "node:vm";
 import {
   deliverToGitHub,
@@ -1084,7 +1084,7 @@ it("source mutant omitting unique final current checks permits stale green plus 
  const contradiction = () => evidenceRunner(call => call.args.includes("number,url,headRefOid,state,mergeable,mergeStateStatus,statusCheckRollup") ? result(JSON.stringify({ number:42,url:"https://github.com/gilosbornhello/osstack/pull/42",headRefOid:HEAD_SHA,state:"OPEN",mergeable:"MERGEABLE",mergeStateStatus:"CLEAN",statusCheckRollup:[{name:"ci",status:"COMPLETED",conclusion:"SUCCESS"},{name:"ci",status:"COMPLETED",conclusion:"CANCELLED"}] })) : undefined);
  const normal = contradiction(); await expect(deliverToGitHub(evidenceInput(), normal)).rejects.toThrow("current required checks"); expect(normal.calls.some(call => call.args[1] === "merge")).toBe(false);
  const source = await readFile(new URL("./delivery.ts", import.meta.url), "utf8"); const anchor = "assertUniqueCurrentRequiredChecks(baseProtection.requiredChecks, mergeCandidate.statusCheckRollup);"; expect(source.split(anchor)).toHaveLength(2);
- const javascript = stripTypeScriptTypes(source.replace(anchor, "/* MUTANT: final uniqueness lost */"), { mode: "transform" }).replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:async|class|const|function))/g, "");
+ const javascript = transformSync(source.replace(anchor, "/* MUTANT: final uniqueness lost */"), { loader: "ts" }).code.replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:async|class|const|function))/g, "");
  const load = async (specifier: string) => specifier === "./candidate-evidence.js" ? import("./candidate-evidence.js") : import(/* @vite-ignore */ specifier);
  const module = await compileFunction(`return (async () => {${javascript}\nreturn { deliverToGitHub };})()`, ["load"])(load); expect(typeof module.deliverToGitHub).toBe("function");
  const mutated = contradiction(); await expect(module.deliverToGitHub(evidenceInput(), mutated)).resolves.toBeDefined(); expect(mutated.calls.filter(call => call.args[1] === "merge")).toHaveLength(1); expect(mutated.calls.some(call => call.args[0] === "push" || call.args.includes("--watch"))).toBe(false);

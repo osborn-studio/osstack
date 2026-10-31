@@ -9,7 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { stripTypeScriptTypes } from "node:module";
+import { transformSync } from "esbuild";
 import { compileFunction } from "node:vm";
 import type {
   AgentAdapter,
@@ -667,7 +667,7 @@ it("source mutant deleting second-context comparison hands off stale hint after 
  const sourcePath = fileURLToPath(new URL("./guarded-git-runtime.ts", import.meta.url)); const source = await readFile(sourcePath, "utf8");
  const anchor = 'if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("CANDIDATE_CONTEXT_CHANGED");'; expect(source.split(anchor)).toHaveLength(2);
  const mutatedSource = source.replace(anchor, "/* MUTANT: lost second context guard */");
- const javascript = stripTypeScriptTypes(mutatedSource, { mode: "transform" }).replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:class|const|function))/g, "");
+ const javascript = transformSync(mutatedSource, { loader: "ts" }).code.replace(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["'];/g, (_, names: string, specifier: string) => `const {${names.replace(/\bas\b/g, ":")}} = await load(${JSON.stringify(specifier)});`).replace(/\bexport (?=(?:class|const|function))/g, "");
  const load = async (specifier: string) => specifier === "./policy-gate.js" ? import("./policy-gate.js") : import(/* @vite-ignore */ specifier);
  const module = await compileFunction(`return (async () => {${javascript}\nreturn { GuardedGitRuntime };})()`, ["load"])(load); expect(typeof module.GuardedGitRuntime).toBe("function");
  const mutated = await contextScenario("changed", module.GuardedGitRuntime); expect(mutated.result.status).toBe("completed"); expect(mutated.sample).toHaveBeenCalledTimes(2); expect(mutated.deliverGit).toHaveBeenCalledTimes(1);

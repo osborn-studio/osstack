@@ -1,5 +1,5 @@
-import { mkdtempSync } from "node:fs";
-import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtempSync, realpathSync } from "node:fs";
+import { chmod, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -138,6 +138,109 @@ printf '{"type":"thread.started","thread_id":"thread"}\\n{"type":"turn.completed
     const events: HermesEvent[] = [];
     for await (const event of adapter.invoke(task(), new AbortController().signal)) events.push(event);
     expect((events.at(-1)?.payload as { status: string }).status).toBe("failed");
+  });
+});
+
+
+describe("CodexCliAdapter explicit writable roots", () => {
+  it.each(["invoke", "start", "resume"] as const)("passes canonical deduplicated directories as parent flags for %s", async (route) => {
+    const root = join(tmp, "owned scratch");
+    const alias = join(tmp, "scratch-alias");
+    await mkdir(root);
+    await symlink(root, alias, "dir");
+    const log = join(tmp, "argv.bin");
+    const bin = await fakeCommand("codex-roots", `
+printf '%s\\0' "$@" > '${log}'
+printf '{"type":"thread.started","thread_id":"019f-thread"}\\n{"type":"turn.completed"}\\n'
+`);
+    const roots = [root, alias, join(root, ".")];
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp, sandbox: "workspace-write", writableRoots: roots });
+    roots.splice(0, roots.length, "/");
+    if (route === "invoke") {
+      for await (const _event of adapter.invoke(task(), new AbortController().signal)) { /* drain fake */ }
+    } else if (route === "start") {
+      await drain(adapter.startSession(task(), new AbortController().signal));
+    } else {
+      await drain(adapter.resumeSession(sessionInput(), new AbortController().signal));
+    }
+    const args = (await readFile(log, "utf8")).split("\0").slice(0, -1);
+    expect(args).toEqual([
+      "exec", "--json", "--skip-git-repo-check", "-s", "workspace-write",
+      "-C", tmp, "--add-dir", realpathSync(root),
+      ...(route === "resume" ? ["resume", "019f-thread", sessionInput().prompt] : [task().prompt]),
+    ]);
+  });
+
+  it.each([undefined, "read-only", "danger-full-access"] as const)("rejects nonempty writable roots for sandbox %s", (sandbox) => {
+    const options = { writableRoots: [tmp], ...(sandbox === undefined ? {} : { sandbox }) };
+    expect(() => new CodexCliAdapter(options)).toThrow(/writableRoots/);
+  });
+
+  it.each([
+    ["relative", (): unknown => ["relative"]],
+    ["empty path", (): unknown => [""]],
+    ["root", (): unknown => ["/"]],
+    ["root via normalization", (): unknown => ["/tmp/.."]],
+    ["NUL", (): unknown => [tmp + "\0bad"]],
+    ["control character", (): unknown => [tmp + "\nbad"]],
+    ["missing", (): unknown => [join(tmp, "missing")]],
+    ["too many", (): unknown => Array(9).fill(tmp)],
+    ["non-string", (): unknown => [42]],
+    ["not an array", (): unknown => tmp],
+    ["null", (): unknown => null],
+    ["sparse array", (): unknown => Array(1)],
+  ] as const)("rejects %s before spawning", (_label, roots) => {
+    const options = { sandbox: "workspace-write" as const, writableRoots: roots() };
+    expect((): unknown => new CodexCliAdapter(options as ConstructorParameters<typeof CodexCliAdapter>[0])).toThrow(/writableRoots/);
+  });
+
+  it("rejects files and aliases to filesystem root", async () => {
+    const file = join(tmp, "plain-file");
+    const alias = join(tmp, "root-alias");
+    await writeFile(file, "");
+    await symlink("/", alias, "dir");
+    for (const path of [file, alias]) {
+      expect(() => new CodexCliAdapter({ sandbox: "workspace-write", writableRoots: [path] })).toThrow(/writableRoots/);
+    }
+  });
+
+  it("accepts eight existing distinct directories", async () => {
+    const roots = Array.from({ length: 8 }, (_, index) => join(tmp, `root-${index}`));
+    await Promise.all(roots.map(root => mkdir(root)));
+    expect(() => new CodexCliAdapter({ sandbox: "workspace-write", writableRoots: roots })).not.toThrow();
+  });
+
+  it.each(["read-only", "workspace-write", "danger-full-access"] as const)("keeps empty roots legal with sandbox %s", sandbox => {
+    expect(() => new CodexCliAdapter({ sandbox, writableRoots: [] })).not.toThrow();
+  });
+
+  it.each([["omitted", undefined], ["empty", []]] as const)("keeps default argv unchanged and ignores ambient scratch for roots %s", async (_label, writableRoots) => {
+    const log = join(tmp, "argv.bin");
+    const bin = await fakeCommand("codex-default-roots", `
+printf '%s\\0' "$@" > '${log}'
+printf '{"type":"turn.completed"}\\n'
+`);
+    const previous = process.env["OSSTACK_SCRATCH_ROOT"];
+    process.env["OSSTACK_SCRATCH_ROOT"] = "/";
+    try {
+      const adapter = new CodexCliAdapter({ bin, cwd: tmp, ...(writableRoots === undefined ? {} : { writableRoots }) });
+      for await (const _event of adapter.invoke(task(), new AbortController().signal)) { /* drain fake */ }
+      expect((await readFile(log, "utf8")).split("\0").slice(0, -1)).toEqual([
+        "exec", "--json", "--skip-git-repo-check", "-s", "read-only", "-C", tmp, task().prompt,
+      ]);
+    } finally {
+      if (previous === undefined) delete process.env["OSSTACK_SCRATCH_ROOT"];
+      else process.env["OSSTACK_SCRATCH_ROOT"] = previous;
+    }
+  });
+
+  it("never grants configured roots to the no-model availability probe", async () => {
+    const log = join(tmp, "probe-argv.bin");
+    const bin = await fakeCommand("codex-root-probe", `printf '%s\\0' "$@" > '${log}'`);
+    const adapter = new CodexCliAdapter({ bin, sandbox: "workspace-write", writableRoots: [tmp],
+      env: { PATH: process.env["PATH"], CODEX_HOME: tmp } });
+    expect((await adapter.isAvailable()).available).toBe(true);
+    expect((await readFile(log, "utf8")).split("\0").slice(0, -1)).toEqual(["exec", "resume", "--help"]);
   });
 });
 
