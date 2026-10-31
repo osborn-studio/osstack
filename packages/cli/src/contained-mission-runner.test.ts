@@ -29,8 +29,10 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
   const scope = attention.registerScope(owner, "t", root);
   const store = new ContainedMissionStore(attention, owner);
   const files = new Map<string, string>([["src/a.txt", "hi\n"]]);
-  const calls = { execute: [] as string[], commit: [] as unknown[], verify: 0 };
-  let clock = 1000; let head = START; let verifyExit = 0;
+  const calls = { execute: [] as string[], commit: [] as unknown[], verify: 0, cumulative: [] as unknown[] };
+  // Default cumulative diff: concatenate every turn's patch (enough for the fakes' single-file edits).
+  const turns: string[] = [];
+  let clock = 1000; let head = START; let verifyExit = 0; let cumulativeText: string | undefined;
   const ports: ContainedMissionPorts = {
     store, now: () => ++clock,
     createWorkspace: async () => ({ worktree: join(root, "wt"), gitDir: join(root, "repo", ".git"), head: START, configDigest: "sha256:" + "0".repeat(64) }),
@@ -38,7 +40,8 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
     execute: async input => { calls.execute.push(input.prompt); input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 }); return run(); },
     readFile: async (_wt, p) => files.get(p) ?? null,
     commit: async input => { calls.commit.push(input); head = (head === START ? "b" : "c").repeat(40); return { head, tree: "d".repeat(40) }; },
-    verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? "ok" : "1 failed", cancelled: false, evidence: "docker-removed:x" }; },
+    verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? "ok" : "1 failed", cancelled: false, evidence: "docker-removed:x", stopped: true }; },
+    cumulativeDiff: async input => { calls.cumulative.push(input); return cumulativeText ?? PATCH; },
     ...over,
   };
   const spec: ContainedMissionSpec = { goal: "fix it", repo_path: join(root, "repo"), base_ref: "main", start_commit: START, branch: "osstack/m/1",
@@ -48,7 +51,8 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
   const runner = new ContainedMissionRunner(ports);
   const kinds = () => store.events(mission.mission_id, 0, 500).map(e => e.kind);
   const allPayloads = () => store.events(mission.mission_id, 0, 500).map(e => e.payload_json).join("\n");
-  return { store, runner, mission, calls, kinds, allPayloads, setVerifyExit: (n: number) => { verifyExit = n; } };
+  void turns;
+  return { store, runner, mission, calls, kinds, allPayloads, setVerifyExit: (n: number) => { verifyExit = n; }, setCumulative: (t: string) => { cumulativeText = t; } };
 }
 async function drive(f: ReturnType<typeof setup>, steps: number): Promise<ContainedMission> {
   let m = f.store.get(f.mission.mission_id);
@@ -161,6 +165,45 @@ describe("ContainedMissionRunner", () => {
     m = await pending;
     expect(m.state).toBe("cancelled");
     expect(f.calls.commit).toEqual([]);
+  });
+
+  it("classifies the cumulative diff since start_commit, not one repair turn", async () => {
+    const f = setup({}, { caps: { maxChangedLines: 3 } }); f.setVerifyExit(1);
+    let m = await drive(f, 3);
+    expect(m.state).toBe("verify_failed");
+    const big = "--- a/src/a.txt\n+++ b/src/a.txt\n@@ -1 +1,4 @@\n-hi\n+h1\n+h2\n+h3\n+h4\n";
+    f.setCumulative(big);
+    m = await f.runner.step(m.mission_id);
+    const intents = f.store.events(m.mission_id, 0, 500).filter(e => e.kind === "t0_intent").map(e => JSON.parse(e.payload_json) as { tier: string });
+    expect(intents.map(i => i.tier)).toEqual(["T0", "T1"]);
+    m = await drive(f, 2);
+    expect(m.state).toBe("awaiting_decision");
+    // A later turn whose own patch is clean but whose cumulative diff reaches a protected path.
+    f.setCumulative("--- a/package.json\n+++ b/package.json\n@@ -1 +1 @@\n-{}\n+{\"x\":1}\n");
+    m = await f.runner.decide(m.mission_id, { kind: "extra_repair" });
+    expect(m.state).toBe("awaiting_decision");
+    expect(f.allPayloads()).toContain('"cumulative":true');
+    expect(f.calls.commit).toHaveLength(2);
+  });
+
+  it("keeps the stop obligation when the verifier cannot prove its container stopped", async () => {
+    const f = setup({ verify: async () => ({ exit_code: 0, output: "ok", cancelled: false, evidence: "", stopped: false }) });
+    const m = await drive(f, 3);
+    expect(m).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+    await expect(f.runner.cancel(m.mission_id).then(x => x.state)).resolves.toBe("cancel_requested");
+    const thrown = setup({ verify: async () => { throw new Error("docker_unreachable"); } });
+    expect(await drive(thrown, 3)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+  });
+
+  it("waits for workspace creation to settle before a cancel completes", async () => {
+    let finish!: () => void;
+    const f = setup({ createWorkspace: async () => { await new Promise<void>(resolve => { finish = resolve; }); return { worktree: "w", gitDir: "g", head: START, configDigest: "d" }; } });
+    const pending = f.runner.step(f.mission.mission_id);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const requested = await f.runner.cancel(f.mission.mission_id);
+    expect(requested.state).toBe("cancel_requested");
+    finish();
+    expect((await pending).state).toBe("cancelled");
   });
 
   it("cancels a live executor and settles once it is proven stopped", async () => {

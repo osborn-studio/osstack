@@ -139,6 +139,7 @@ export class ContainedMissionStore {
       // No new execution and no host write while a previous executor may still be running.
       if ((to === "cancelled" || to === "executing" || to === "candidate_ready") && mission.stop_obligation === 1) throw Error("stop_evidence_required");
       if ((to === "revalidating" || to === "delivering") && mission.candidate_verified !== 1) throw Error("verification_required");
+      if (from === "verifying" && (to === "verified" || to === "verify_failed") && mission.stop_obligation === 1) throw Error("stop_evidence_required");
       let repair = mission.repair_cycles; let pending = mission.repair_pending;
       if (to === "verify_failed") pending = 1;
       if (to === "executing" && pending === 1) {
@@ -152,7 +153,8 @@ export class ContainedMissionStore {
       const verified = to === "verified" ? 1 : candidate && candidate.head === mission.candidate_head && to !== "candidate_ready" && to !== "verify_failed" && to !== "verifying" ? mission.candidate_verified : 0;
       if (step.expected_head !== undefined && !SHA.test(step.expected_head)) throw Error("invalid_head");
       const expectedHead = step.expected_head ?? mission.expected_head;
-      const obligation = to === "executing" ? 1 : mission.stop_obligation;
+      // An executor turn and a verification container are both effects that must be proven stopped.
+      const obligation = to === "executing" || to === "verifying" ? 1 : mission.stop_obligation;
       this.db.prepare(`UPDATE engineering_contained_missions SET state=?,revision=revision+1,updated_at=?,expected_head=?,
         candidate_head=?,candidate_tree=?,candidate_diff_digest=?,verify_attempts=?,repair_cycles=?,stop_obligation=?,
         candidate_verified=?,repair_pending=? WHERE mission_id=?`)

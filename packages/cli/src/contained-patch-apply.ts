@@ -13,7 +13,12 @@ export function applyContainedPatchFile(change: Pick<MissionPatchFile, 'kind' | 
     if (start < cursor || start > old.length) throw Error('CONTAINED_PATCH_MISMATCH');
     out.push(...old.slice(cursor, start)); cursor = start;
     for (const l of hunk.lines) {
-      if (l.op !== '+') { if (old[cursor] !== l.text) throw Error('CONTAINED_PATCH_MISMATCH'); cursor++; }
+      if (l.op !== '+') {
+        // The old side must match byte for byte, including whether its last line ends in a newline.
+        const last = cursor === old.length - 1;
+        if (old[cursor] !== l.text || (last ? l.noEol !== !endsWithEol : l.noEol)) throw Error('CONTAINED_PATCH_MISMATCH');
+        cursor++;
+      }
       if (l.op !== '-') { out.push(l.text); lastNoEol = l.noEol; }
     }
   }

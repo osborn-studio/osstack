@@ -34,13 +34,15 @@ function step(f: Fixture, m: ContainedMission, to: ContainedMissionState, extra:
 const stopped = (f: Fixture, m: ContainedMission) => f.store.recordStopEvidence(m.mission_id, m.revision, { stop_proof: "group_empty+sandbox_inherited" }, 2100);
 /** executing → (stop evidence) → candidate_ready, the only way a host may apply a patch. */
 const apply = (f: Fixture, m: ContainedMission) => step(f, stopped(f, m), "candidate_ready", { candidate });
-const fail = (f: Fixture, m: ContainedMission) => step(f, step(f, apply(f, m), "verifying"), "verify_failed");
+/** verifying → (container stop evidence) → result. */
+const verifyDone = (f: Fixture, m: ContainedMission) => stopped(f, step(f, m, "verifying"));
+const fail = (f: Fixture, m: ContainedMission) => step(f, verifyDone(f, apply(f, m)), "verify_failed");
 function executing(f: Fixture, spec?: Record<string, unknown>): ContainedMission {
   const m = step(f, f.authorize(undefined, spec ? { spec } : {}), "workspace_ready");
   return step(f, m, "executing", { expected_head: HEAD });
 }
 function toVerified(f: Fixture): ContainedMission {
-  return step(f, step(f, apply(f, executing(f)), "verifying"), "verified");
+  return step(f, verifyDone(f, apply(f, executing(f))), "verified");
 }
 
 it("records the spec digest, the claim and an append-only event trail", () => {
@@ -82,8 +84,9 @@ it("fixes a candidate only after stop evidence, keeps it on the verify path and 
   expect(() => step(f, m, "candidate_ready")).toThrow("candidate_required");
   m = step(f, m, "candidate_ready", { candidate });
   expect(() => step(f, m, "verifying", { candidate })).toThrow("candidate_unexpected");
-  m = step(f, m, "verifying"); expect(m.verify_attempts).toBe(1);
-  m = step(f, m, "verify_failed"); expect(m).toMatchObject({ candidate_head: HEAD, candidate_verified: 0, repair_pending: 1 });
+  m = step(f, m, "verifying"); expect(m).toMatchObject({ verify_attempts: 1, stop_obligation: 1 });
+  expect(() => step(f, m, "verify_failed")).toThrow("stop_evidence_required");
+  m = step(f, stopped(f, m), "verify_failed"); expect(m).toMatchObject({ candidate_head: HEAD, candidate_verified: 0, repair_pending: 1 });
   m = step(f, m, "executing"); expect(m).toMatchObject({ repair_cycles: 1, repair_pending: 0, candidate_head: null });
 });
 

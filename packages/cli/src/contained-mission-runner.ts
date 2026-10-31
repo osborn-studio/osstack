@@ -14,12 +14,15 @@ export interface ContainedMissionSpec {
 }
 export interface ContainedMissionPorts {
   store: ContainedMissionStore; now: () => number;
-  createWorkspace: (spec: ContainedMissionSpec) => Promise<{ worktree: string; gitDir: string; head: string; configDigest: string }>;
+  createWorkspace: (spec: ContainedMissionSpec, signal: AbortSignal) => Promise<{ worktree: string; gitDir: string; head: string; configDigest: string }>;
   qualify: (worktree: string, gitDir: string) => Promise<CodexQualification>;
   execute: (input: { worktree: string; prompt: string; signal: AbortSignal; onLaunched: (launch: { pid: number; pgid: number; started_at: number }) => void }) => Promise<CodexProxyRun>;
   readFile: (worktree: string, path: string) => Promise<string | null>;
   commit: (input: { worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string }) => Promise<{ head: string; tree: string }>;
-  verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string }>;
+  /** Unified diff from `startCommit` to the tree that `files` would produce on `expectedHead`, without touching the worktree. */
+  cumulativeDiff: (input: { worktree: string; startCommit: string; expectedHead: string; files: ReadonlyArray<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }> }) => Promise<string>;
+  /** `stopped` only when the verification container was proven removed. */
+  verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
 }
 export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' };
 const OUTPUT_EXCERPT = 4_000;
@@ -89,8 +92,13 @@ export class ContainedMissionRunner {
 
   private async createWorkspace(m: ContainedMission, spec: ContainedMissionSpec) {
     this.ports.store.record(m.mission_id, 'workspace_intent', { worktree_path: spec.worktree_path, branch: spec.branch, start_commit: spec.start_commit }, this.ports.now());
+    // Tracked like any other effect: a cancel waits for creation to settle before the claim can be released.
+    const controller = new AbortController(); this.live.set(m.mission_id, controller);
     let ws: Awaited<ReturnType<ContainedMissionPorts['createWorkspace']>>;
-    try { ws = await this.ports.createWorkspace(spec); } catch (error) { return this.halt(m, 'awaiting_decision', `workspace_failed:${code(error)}`); }
+    try { ws = await this.ports.createWorkspace(spec, controller.signal); }
+    catch (error) { return this.settleCancel(this.ports.store.get(m.mission_id)) ?? this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `workspace_failed:${code(error)}`); }
+    finally { this.live.delete(m.mission_id); }
+    const cancelled = this.settleCancel(this.ports.store.get(m.mission_id)); if (cancelled) return cancelled;
     if (ws.head !== spec.start_commit) return this.halt(m, 'awaiting_decision', 'workspace_head_mismatch');
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'workspace_ready', event: { kind: 'workspace_created', payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, this.ports.now());
   }
@@ -137,16 +145,12 @@ export class ContainedMissionRunner {
   }
 
   private async applyPatch(m: ContainedMission, spec: ContainedMissionSpec, patch: string): Promise<ContainedMission> {
-    const classification = classifyMissionPatch({ allowedPaths: spec.allowed_paths, ...(spec.caps ? { caps: spec.caps } : {}), ...(spec.verification_paths ? { verificationPaths: spec.verification_paths } : {}) }, patch);
-    const cumulative = this.cumulativeTotals(m);
-    const totals = classification.tier === 'rejected' ? undefined : classification.totals;
-    let tier: string = classification.tier;
-    if (tier === 'T0' && totals && (cumulative.files + totals.files > classification.caps.maxFiles || cumulative.changedLines + totals.changedLines > classification.caps.maxChangedLines)) tier = 'T1';
+    const classify = (text: string) => classifyMissionPatch({ allowedPaths: spec.allowed_paths, ...(spec.caps ? { caps: spec.caps } : {}), ...(spec.verification_paths ? { verificationPaths: spec.verification_paths } : {}) }, text);
     const operationId = `op_${createHash('sha256').update(`${m.mission_id}:${m.revision}:${patch}`).digest('hex').slice(0, 16)}`;
-    this.ports.store.record(m.mission_id, 't0_intent', { operation_id: operationId, worktree: spec.worktree_path, head_before: m.expected_head, tier, reasons: classification.reasons,
-      files: totals ? (classification as { files: Array<{ path: string; kind: string }> }).files.map(f => ({ path: f.path, kind: f.kind })) : [] }, this.ports.now());
-    if (classification.tier === 'rejected') return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId, reasons: classification.reasons });
-    if (classification.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: classification.reasons });
+    // The turn's own patch decides what may be applied; the cumulative diff (below) decides the tier.
+    const incremental = classify(patch);
+    if (incremental.tier === 'rejected') return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId, reasons: incremental.reasons });
+    if (incremental.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: incremental.reasons });
     // Apply exactly the files the classifier parsed; the patch text is never parsed a second way.
     const parsed = parseMissionPatch(patch);
     if (!parsed.ok) return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId });
@@ -164,6 +168,18 @@ export class ContainedMissionRunner {
         const next = applyContainedPatchFile(change, current);
         files.push(next === null ? { path: change.path, action: 'delete' } : { path: change.path, action: 'write', content: next });
       }
+      let cumulative: string;
+      try { cumulative = await this.ports.cumulativeDiff({ worktree: spec.worktree_path, startCommit: spec.start_commit, expectedHead: m.expected_head!, files }); }
+      catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `cumulative_diff_failed:${code(error)}`, { operation_id: operationId }); }
+      const moved = fenced(); if (moved) return settle(moved);
+      // Caps and the protected set apply to everything changed since start_commit, not to one repair turn.
+      const overall = classify(cumulative);
+      const totals = overall.tier === 'rejected' ? undefined : overall.totals;
+      this.ports.store.record(m.mission_id, 't0_intent', { operation_id: operationId, worktree: spec.worktree_path, head_before: m.expected_head, tier: overall.tier, reasons: overall.reasons,
+        files: parsed.files.map(f => ({ path: f.path, kind: f.kind })), cumulative_totals: totals }, this.ports.now());
+      if (overall.tier === 'rejected' || overall.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: overall.reasons, cumulative: true });
+      if (screenOutputs({ patch: cumulative }).hits.length > 0) return this.halt(m, 'awaiting_decision', 'secret_detected', { operation_id: operationId, cumulative: true });
+      const tier = overall.tier;
       const before = fenced(); if (before) return settle(before);
       let commit: { head: string; tree: string };
       try {
@@ -187,10 +203,13 @@ export class ContainedMissionRunner {
     const verifying = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'verifying', event: { kind: 'verify_intent', payload: { candidate: m.candidate_head, argv: spec.verify.argv } } }, this.ports.now());
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
     let result: Awaited<ReturnType<ContainedMissionPorts['verify']>>;
+    // Entering verifying opened a stop obligation; it closes only on proof the container is gone.
     try { result = await this.ports.verify(verifying, spec.verify.argv, controller.signal); }
     catch (error) { this.live.delete(m.mission_id); return this.halt(this.ports.store.get(m.mission_id), 'stop_unknown', `verify_failed_to_settle:${code(error)}`); }
     this.live.delete(m.mission_id);
-    const current = this.ports.store.get(m.mission_id);
+    let current = this.ports.store.get(m.mission_id);
+    if (!result.stopped) return this.halt(current, 'stop_unknown', 'verify_stop_unproven');
+    current = this.ports.store.recordStopEvidence(current.mission_id, current.revision, { stop_proof: 'container_removed', evidence: result.evidence }, this.ports.now());
     const screen = screenOutputs({ stdout: result.output });
     const passed = result.exit_code === 0 && !result.cancelled;
     this.ports.store.record(m.mission_id, 'verify_receipt', { exit_code: result.exit_code, cancelled: result.cancelled, evidence: result.evidence, output: screen.redacted.stdout, secret_hits: screen.hits }, this.ports.now());
@@ -221,13 +240,9 @@ export class ContainedMissionRunner {
     // Only the exit code and redacted, truncated output; never anything the host would execute.
     return containedExecutorPrompt(spec.goal, `The previous change failed verification (exit ${r?.exit_code ?? 'unknown'}). Output excerpt:\n${r?.output ?? ''}`);
   }
-  private cumulativeTotals(m: ContainedMission) {
-    let files = 0; let changedLines = 0;
-    for (const e of this.ports.store.events(m.mission_id, 0, 500).filter(x => x.kind === 'candidate_committed')) {
-      const t = (JSON.parse(e.payload_json) as { totals?: { files: number; changedLines: number } }).totals;
-      if (t) { files += t.files; changedLines += t.changedLines; }
-    }
-    return { files, changedLines };
+  private settleCancel(m: ContainedMission): ContainedMission | undefined {
+    if (m.state !== 'cancel_requested' || m.stop_obligation === 1) return undefined;
+    return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
   }
   private openIntents(m: ContainedMission) {
     const events = this.ports.store.events(m.mission_id, 0, 500);

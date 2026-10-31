@@ -31,6 +31,10 @@ describe("contained patch application", () => {
     expect(applyContainedPatchFile(one("--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n\\ No newline at end of file\n"), "a\n")).toBe("b");
     expect(applyContainedPatchFile(one("--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n"), "a\nz")).toBe("b\nz");
   });
+  it("rejects final-newline drift on the old side", () => {
+    expect(() => applyContainedPatchFile(one("--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n"), "a")).toThrow("CONTAINED_PATCH_MISMATCH");
+    expect(() => applyContainedPatchFile(one("--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n\\ No newline at end of file\n+b\n"), "a\n")).toThrow("CONTAINED_PATCH_MISMATCH");
+  });
   it("refuses any drift instead of fuzzing", () => {
     const change = one("--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n");
     expect(() => applyContainedPatchFile(change, "q\n")).toThrow("CONTAINED_PATCH_MISMATCH");
