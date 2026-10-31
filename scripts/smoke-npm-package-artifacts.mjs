@@ -33,6 +33,8 @@ try {
   await writeFile(join(fixture, "package.json"), JSON.stringify({
     name: "@osstack/package-artifact-fixture",
     version: "1.0.0",
+    main: "./dist/index.js",
+    types: "./dist/index.d.ts",
     files: ["dist"],
   }));
   await writeFile(join(fixture, "dist", "index.js"), "export const ready = true;\n");
@@ -79,6 +81,37 @@ try {
   assert(ignoreRejected.code !== 0, "package preparation must reject a symlinked dist/.npmignore");
   assert(await readFile(externalIgnore, "utf8") === "must remain unchanged\n", "package preparation must not follow a dist/.npmignore symlink");
 
+  // dist/ is never committed: an unbuilt package must fail prepack loudly instead
+  // of packing nothing or a stale tree.
+  const unbuiltFixture = join(temp, "unbuilt-fixture");
+  await mkdir(unbuiltFixture);
+  await writeFile(join(unbuiltFixture, "package.json"), JSON.stringify({
+    name: "@osstack/unbuilt-package-fixture",
+    version: "1.0.0",
+    main: "./dist/index.js",
+    files: ["dist"],
+  }));
+  const unbuilt = run(process.execPath, [prepareScript], { cwd: unbuiltFixture });
+  assert(unbuilt.code !== 0, "package preparation must reject a package without dist/");
+  assert(/has no dist\/ directory: run `pnpm --filter @osstack\/unbuilt-package-fixture build`/u.test(unbuilt.stderr),
+    `package preparation must explain how to build a package without dist/: ${unbuilt.stderr}`);
+
+  const partialFixture = join(temp, "partial-fixture");
+  await mkdir(join(partialFixture, "dist"), { recursive: true });
+  await writeFile(join(partialFixture, "package.json"), JSON.stringify({
+    name: "@osstack/partial-package-fixture",
+    version: "1.0.0",
+    main: "./dist/index.js",
+    types: "./dist/index.d.ts",
+    exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } },
+    files: ["dist"],
+  }));
+  await writeFile(join(partialFixture, "dist", "index.d.ts"), "export {};\n");
+  const partial = run(process.execPath, [prepareScript], { cwd: partialFixture });
+  assert(partial.code !== 0, "package preparation must reject a dist/ missing its declared entrypoint");
+  assert(partial.stderr.includes("missing built entrypoints dist/index.js"),
+    `package preparation must name the missing entrypoint: ${partial.stderr}`);
+
   console.log(JSON.stringify({
     ok: true,
     kind: "npm-package-artifacts-smoke",
@@ -87,6 +120,8 @@ try {
       "test/spec artifacts excluded",
       "symlinked dist rejected",
       "symlinked dist/.npmignore rejected",
+      "unbuilt package (no dist/) rejected with build hint",
+      "dist/ missing a declared entrypoint rejected",
     ],
   }, null, 2));
 } finally {

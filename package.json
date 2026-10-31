@@ -27,7 +27,7 @@
     "sbom:single-binary": "node scripts/generate-single-binary-sbom.mjs",
     "package:single-binary": "node scripts/package-single-binary.mjs",
     "publish:single-binary": "node scripts/publish-single-binary-release.mjs",
-    "build:knowledge-cloud-catalog": "node scripts/build-knowledge-cloud-publish-catalog.mjs",
+    "build:knowledge-cloud-catalog": "pnpm --filter @osstack/knowledge build && node scripts/build-knowledge-cloud-publish-catalog.mjs",
     "version:packages": "node scripts/version-packages.mjs",
     "release": "pnpm preflight:npm-bootstrap && node scripts/publish-packages-safely.mjs",
     "preflight:npm-publish": "node scripts/preflight-npm-publish-access.mjs",
