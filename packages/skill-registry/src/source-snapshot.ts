@@ -5,7 +5,7 @@ import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { z } from 'zod';
-import { SourcePin, SourceSnapshot, canonicalJointJson, jointDigest } from '@osstack/protocol/joint';
+import { SourcePin, SourceSnapshot, canonicalJson, sourceDigest } from '@osstack/protocol/source';
 
 const FILE_LIMIT = 512;
 const BLOB_LIMIT = 512 * 1024;
@@ -69,7 +69,7 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
     subdir: o.subdir, content_sha256: '0'.repeat(64), license_refs: ['pending'] });
   if (!preliminary.success) return fail('INVALID_INPUT');
   const placeholder = preliminary.data;
-  try { canonicalJointJson(placeholder); } catch { return fail('INVALID_INPUT'); }
+  try { canonicalJson(placeholder); } catch { return fail('INVALID_INPUT'); }
   let binary: string; let repo: string;
   try { binary = realpathSync(o.gitBinary); repo = realpathSync(o.repositoryPath); } catch { return fail('INVALID_INPUT'); }
   const deadline = performance.now() + 30_000;
@@ -170,11 +170,11 @@ function inspect(options: GitSourceOptions): GitSourceInspection {
   if (offset !== batch.length) return fail('OBJECT_MISMATCH');
   const files: InspectedSourceFile[] = selected.map(f => ({...f,bytes:sizes.get(f.blob)!,sha256:hashes.get(f.blob)!,role:licenses.has(f.path) ? 'license' : 'source'}));
   const content = { schema_version: 1, repository: o.repository, commit: o.commit, subdir: o.subdir, files };
-  const digest = jointDigest('osstack.joint.source-content.v1', content);
+  const digest = sourceDigest('osstack.joint.source-content.v1', content);
   if (o.expectedContentSha256 !== undefined && digest !== o.expectedContentSha256) return fail('CONTENT_DRIFT');
   const pin = SourcePin.parse({ ...placeholder, content_sha256: digest,
     license_refs: [...new Set(files.filter(f => f.role === 'license').map(f => `sha256:${f.sha256}`))].sort() });
   const result = { kind: 'source_inspection' as const, schema_version: 1 as const, dependency_resolution: 'not_performed' as const,
     repository_identity: 'caller_asserted' as const, expected_digest_checked: o.expectedContentSha256 !== undefined, pin, files };
-  return { ...result, inspection_digest: jointDigest('osstack.joint.source-inspection.v1', result) };
+  return { ...result, inspection_digest: sourceDigest('osstack.joint.source-inspection.v1', result) };
 }

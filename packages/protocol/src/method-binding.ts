@@ -1,11 +1,9 @@
 import { z } from 'zod';
 import * as shapes from './joint-shapes.js';
-import { Digest, Ref, Role, issue, unique, portableGitPath } from './joint-primitives.js';
+import { Digest, Ref, Role, issue, unique } from './contract-primitives.js';
 import { jointDigest } from './joint-json.js';
 
-export const SourcePin = shapes.SourcePinShape.superRefine((v, ctx) => {
-  if (!portableGitPath(v.subdir, true)) issue(ctx, 'NONCANONICAL_SOURCE_PATH');
-});
+export { SourcePin } from './source-contracts.js';
 export const MethodBinding = shapes.MethodBindingShape.superRefine((v, ctx) => {
   if ((v.mode === 'trial') !== (v.trial_permit_id !== undefined)) issue(ctx, 'TRIAL_PERMIT_MODE_MISMATCH');
   if (!unique(v.role_materials.map(r => r.role))) issue(ctx, 'DUPLICATE_ROLE');

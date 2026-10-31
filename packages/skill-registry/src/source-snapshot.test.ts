@@ -5,7 +5,8 @@ import { deflateSync } from 'node:zlib';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createScratchDir } from '@osstack/core';
-import { decodeJointContractAs, SourcePin, SourceSnapshot } from '@osstack/protocol/joint';
+import { decodeJointContractAs } from '@osstack/protocol/joint';
+import { SourcePin, SourceSnapshot } from '@osstack/protocol/source';
 import { inspectGitSource, type GitSourceOptions } from './source-snapshot.js';
 
 const gitBinary = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();

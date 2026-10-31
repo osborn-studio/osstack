@@ -1,6 +1,6 @@
 import { jointDigest } from './joint-json.js';
 import { z } from 'zod';
-import { Digest, Ref, UInt, issue, unique } from './joint-primitives.js';
+import { Digest, Ref, UInt, issue, unique } from './contract-primitives.js';
 const Text = z.string().min(1).max(16_384).refine(v => Buffer.byteLength(v, 'utf8') <= 16_384, 'MATERIAL_TEXT_BYTE_LIMIT');
 const Texts = z.array(Text).max(128);
 const Refs = z.array(Ref).max(128);

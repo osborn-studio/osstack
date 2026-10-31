@@ -1,7 +1,7 @@
 /** Explicit candidate assembly over retained inspection facts. No source discovery or activation. */
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
-import { SourcePin, SourceSnapshot, canonicalJointJson, jointDigest } from '@osstack/protocol/joint';
+import { SourcePin, SourceSnapshot, canonicalJson, sourceDigest } from '@osstack/protocol/source';
 
 const FILE_LIMIT = 512;
 const BYTE_LIMIT = 8 * 1024 * 1024;
@@ -38,7 +38,7 @@ export class SourceAdoptionError extends Error {
 function requireFact(ok: unknown, code: SourceAdoptionErrorCode): asserts ok { if (!ok) throw new SourceAdoptionError(code); }
 const unique = (values: string[]) => new Set(values).size === values.length;
 const pathOrder = (a: string, b: string) => Buffer.compare(Buffer.from(a), Buffer.from(b));
-const same = (a: unknown, b: unknown) => canonicalJointJson(a) === canonicalJointJson(b);
+const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b);
 type AggregateFile = Omit<z.infer<typeof File>, 'role'> & { component_ids: string[]; roles: { component_id: string; role: 'source' | 'license' }[] };
 
 /** Rechecks declared closure and retained hashes, not the origin of supplied facts.
@@ -49,7 +49,7 @@ export function assembleDeclaredAdoption(declaration: unknown, inspections: unkn
   const parsed = Declaration.safeParse(declaration);
   requireFact(parsed.success, 'INVALID_DECLARATION');
   const d = parsed.data;
-  try { canonicalJointJson(d); } catch { throw new SourceAdoptionError('INVALID_DECLARATION'); }
+  try { canonicalJson(d); } catch { throw new SourceAdoptionError('INVALID_DECLARATION'); }
   requireFact(unique(d.roots) && unique(d.components.map(c => c.id)) && unique(d.components.map(c => c.subdir))
     && unique(d.external_requirements.map(e => e.id)) && d.components.every(c => unique(c.requires) && unique(c.external_requires)), 'INVALID_DECLARATION');
   const components = new Map(d.components.map(c => [c.id, c]));
@@ -82,8 +82,8 @@ export function assembleDeclaredAdoption(declaration: unknown, inspections: unkn
     try {
       const content = {schema_version:1,repository:i.pin.repository,commit:i.pin.commit,subdir:i.pin.subdir,files:i.files};
       const {inspection_digest, ...body} = i;
-      requireFact(jointDigest('osstack.joint.source-content.v1',content) === i.pin.content_sha256
-        && jointDigest('osstack.joint.source-inspection.v1',body) === inspection_digest, 'DIGEST_MISMATCH');
+      requireFact(sourceDigest('osstack.joint.source-content.v1',content) === i.pin.content_sha256
+        && sourceDigest('osstack.joint.source-inspection.v1',body) === inspection_digest, 'DIGEST_MISMATCH');
     } catch (error) { if (error instanceof SourceAdoptionError) throw error; throw new SourceAdoptionError('INVALID_INSPECTION'); }
     facts.set(i.pin.subdir,i);
   }
@@ -122,7 +122,7 @@ export function assembleDeclaredAdoption(declaration: unknown, inspections: unkn
       'No fetch, installation, execution, registry mutation, permission grant or activation.']};
   // Candidate-only domain: do not register it as a formal joint contract.
   let canonicalResult: string;
-  try { canonicalResult = canonicalJointJson(result); }
+  try { canonicalResult = canonicalJson(result); }
   catch { throw new SourceAdoptionError('RESOURCE_LIMIT'); }
   const candidate_digest = createHash('sha256').update('osstack.joint.declared-adoption.v1\n' + canonicalResult, 'utf8').digest('hex');
   return {...result,candidate_digest};

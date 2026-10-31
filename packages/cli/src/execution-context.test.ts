@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { compileBugFix } from "@osstack/skill-registry/bug-fix-compiler";
-import { sourceSnapshotDigest } from "@osstack/protocol/joint";
+import { sourceSnapshotDigest } from "@osstack/protocol/source";
 import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";

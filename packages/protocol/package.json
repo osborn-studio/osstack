@@ -45,6 +45,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./source": {
+      "types": "./dist/source.d.ts",
+      "import": "./dist/source.js",
+      "default": "./dist/source.js"
+    },
     "./joint": {
       "types": "./dist/joint.d.ts",
       "import": "./dist/joint.js",
