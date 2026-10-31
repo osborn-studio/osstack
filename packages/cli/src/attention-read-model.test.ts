@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { openDb, AttentionStore, EngineeringStore, reserveSessionInstruction } from "@osstack/core";
+import { CURRENT_SCHEMA_VERSION, openDb, AttentionStore, EngineeringStore, reserveSessionInstruction } from "@osstack/core";
 import { afterEach, expect, it } from "vitest";
 import { readAttentionStatus } from "./attention-read-model.js";
 
@@ -49,7 +49,7 @@ it("reads schema 49 with its additive engineering ledger without migrating or in
   const f = fixture();
   const db = new Database(f.dbPath, { readonly: true, fileMustExist: true });
   try {
-    expect(db.pragma("user_version", { simple: true })).toBe(49);
+    expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('engineering_missions','attention_dispatch_phases','engineering_completions') ORDER BY name").all()).toEqual([
       { name: "attention_dispatch_phases" },
       { name: "engineering_completions" },

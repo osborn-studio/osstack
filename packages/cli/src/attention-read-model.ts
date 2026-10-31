@@ -15,6 +15,12 @@ import {
   defaultOsstackHome,
 } from "./control-plane-guard.js";
 
+/** Reviewed migrations 25–49 preserve the v24 read projection: 47 adds engineering
+ * tables, 48 the reminder outbox, 49 the return-brief facts (a nullable posture
+ * column and two ledgers), none of which this view reads. Kept apart from the
+ * upgrade gate; a new migration fails `schema-gates.test.ts` until reviewed here. */
+export const ATTENTION_READ_QUALIFIED_SCHEMA = 49;
+
 export interface AttentionReadInput {
   dbPath: string;
   taskId: string;
@@ -228,11 +234,7 @@ export function readAttentionStatus(
     const source = db;
     return source.transaction(() => {
       const schema = source.pragma("user_version", { simple: true });
-      // Reviewed migrations 25–49 preserve the v24 read projection. Migration 47
-      // adds engineering tables, 48 the reminder outbox and 49 the return-brief
-      // facts (a nullable posture column and two ledgers), none of which this
-      // view reads; future migrations still need review.
-      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > 49)
+      if (!Number.isInteger(schema) || Number(schema) < 24 || Number(schema) > ATTENTION_READ_QUALIFIED_SCHEMA)
         throw new Error("unsupported_schema");
       const task = source
         .prepare(
