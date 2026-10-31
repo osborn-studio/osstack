@@ -815,6 +815,11 @@ describe("LoopEngine", () => {
       guardedLocalCandidate: { mode: "artifact_only", inspect: async () => {} } })).toThrow("LOCAL_LANDING_FORBIDDEN_FOR_GUARDED_CANDIDATE");
   });
 
+  it("refuses a goal command on worktree runs whose success never reaches the main checkout", () => {
+    expect(() => new LoopEngine({ workspacePath: "/nonexistent", useWorktree: true, goalCommand: "test -f done.txt" })).toThrow("WORKTREE_GOAL_REQUIRES_LOCAL_LANDING");
+    expect(() => new LoopEngine({ workspacePath: "/nonexistent", useWorktree: true, goalCommand: "test -f done.txt", localLanding: { targetBranch: "main" } })).not.toThrow();
+  });
+
   it("preserves executor-made commits instead of deleting the branch when the tree is clean (D6)", async () => {
     const workspace = await makeGitQueuedWorkspace("initial\n");
     const before = await git(workspace, ["rev-parse", "HEAD"]);

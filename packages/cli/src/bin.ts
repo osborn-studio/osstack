@@ -10480,6 +10480,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${governanceScope.message}`);
       return 1;
     }
+    if (goalCommand !== undefined && useWorktree && landBranch === undefined && candidatePolicy === undefined) {
+      // The goal command runs in the main checkout; see WORKTREE_GOAL_REQUIRES_LOCAL_LANDING.
+      console.error("osstack: --goal with --worktree requires --land-branch B (the goal runs in the main checkout)");
+      return 1;
+    }
     if (governanceMode !== undefined && useWorktree && landBranch === undefined) {
       // Governance scans the main checkout; without landing the candidate is
       // only on the kept task branch, so a pass there would prove nothing.

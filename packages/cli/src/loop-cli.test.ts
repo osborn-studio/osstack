@@ -1185,6 +1185,13 @@ required_surfaces:
     expect(errors.join("\n")).toMatch(/--govern with --worktree requires --land-branch/);
   });
 
+  it("refuses --goal with --worktree when the candidate would not reach the checked checkout", async () => {
+    await mkdir(join(tmp, "tasks"), { recursive: true });
+    await git(tmp, ["init", "-b", "main"]);
+    await expect(main(["loop", "run", "--workspace", tmp, "--source", "task_queue", "--worktree", "--goal", "true"])).resolves.toBe(1);
+    expect(errors.join("\n")).toMatch(/--goal with --worktree requires --land-branch/);
+  });
+
   it("does not treat an unknown --agent as a successful local no-op", async () => {
     const workspace = join(tmp, "unknown-agent-workspace");
     process.env["OSSTACK_HOME"] = join(tmp, "unknown-agent-home");

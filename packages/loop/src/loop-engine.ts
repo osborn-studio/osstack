@@ -260,6 +260,10 @@ export class LoopEngine {
     this.candidatePolicy = options.candidatePolicy === undefined ? undefined : CandidatePolicy.parse(options.candidatePolicy);
     if (this.candidatePolicy && options.useWorktree !== true) throw Error("CANDIDATE_WORKTREE_REQUIRED");
     this.localLanding = resolveLocalLanding(options, this.candidatePolicy);
+    // The goal command runs in the main checkout; without landing, successful
+    // worktree work stays on its task branch and the goal could never observe it.
+    if (options.useWorktree === true && options.goalCommand !== undefined && this.localLanding === undefined)
+      throw new Error("WORKTREE_GOAL_REQUIRES_LOCAL_LANDING");
     if (this.candidatePolicy && (options.goalCommand !== undefined || options.selfImprovement !== undefined || options.stateFilePath !== undefined || options.markdownPath !== undefined)) throw Error("CANDIDATE_POST_HOOK_FORBIDDEN");
   }
 
