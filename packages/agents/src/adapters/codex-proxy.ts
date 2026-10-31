@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { accessSync, closeSync, constants, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
-import { delimiter, isAbsolute, join } from "node:path";
+import { delimiter, dirname, isAbsolute, join } from "node:path";
 
 export const CODEX_PROXY_PATCH_MAX_BYTES = 256 * 1024;
 export const CODEX_PROXY_END_MARKER = "END-OF-PATCH";
@@ -103,9 +103,14 @@ export class CodexProxyExecutor {
     const reasons: string[] = [];
     const version = (await runGroup(this.options.bin, ["--version"], { cwd: worktree, env: this.isolatedEnv(), timeoutMs: 15_000, graceMs: 500 })).stdout.trim();
     if (!version) reasons.push("VERSION_UNAVAILABLE");
-    const identity = this.options.identityBinary ?? resolveExecutable(this.options.bin);
+    const identity = this.options.identityBinary ?? nativeCodexBinary(resolveExecutable(this.options.bin));
     let identitySha: string | null = null;
-    try { identitySha = createHash("sha256").update(readFileSync(realpathSync(identity ?? ""))).digest("hex"); } catch { reasons.push("IDENTITY_UNREADABLE"); }
+    try {
+      const bytes = readFileSync(realpathSync(identity ?? ""));
+      // A script launcher can stay unchanged while the build it starts is replaced; it is not an identity.
+      if (bytes.subarray(0, 2).toString() === "#!" || /\.(?:c|m)?js$/.test(identity!)) reasons.push("IDENTITY_LAUNCHER_ONLY");
+      else identitySha = createHash("sha256").update(bytes).digest("hex");
+    } catch { reasons.push("IDENTITY_UNREADABLE"); }
     const target = this.options.probeTarget ?? { host: "1.1.1.1", port: 443 };
     // Without host connectivity a denied connection proves nothing about the sandbox.
     if (!(await reachable(target))) reasons.push("NETWORK_CONTROL_UNREACHABLE");
@@ -113,6 +118,11 @@ export class CodexProxyExecutor {
     const outside = join(probeDir, "outside"); mkdirSync(outside, { recursive: true, mode: 0o700 });
     const script = join(probeDir, "probe.mjs"); writeFileSync(script, PROBE_SOURCE, { mode: 0o600 });
     const tag = randomBytes(6).toString("hex");
+    // Unsandboxed write controls: a target the host itself cannot write proves nothing when the sandbox denies it.
+    for (const [name, dir] of [["WORKTREE", worktree], ["OUTSIDE", outside], ["GITDIR", gitDir]] as const) {
+      const control = join(dir, `probe-control-${tag}`);
+      try { writeFileSync(control, "x"); rmSync(control); } catch { reasons.push(`${name}_CONTROL_UNWRITABLE`); }
+    }
     const before = snapshot([worktree, outside, gitDir]);
     const run = await runGroup(this.options.bin, ["sandbox", "-P", ":read-only", "-C", worktree, "--", process.execPath, script, worktree, outside, gitDir, tag, target.host, String(target.port)], {
       cwd: worktree, env: this.isolatedEnv(), timeoutMs: 60_000, graceMs: 1_000,
@@ -229,6 +239,22 @@ function parseProbe(stdout: string): CodexQualification["results"] {
   }
   return results;
 }
+/** npm installs start a Node launcher; the build identity is the vendored native binary beside it. */
+function nativeCodexBinary(launcher: string | undefined): string | undefined {
+  if (!launcher) return undefined;
+  let real: string;
+  try { real = realpathSync(launcher); } catch { return launcher; }
+  if (!/\/@openai\/codex\/bin\/codex\.js$/.test(real)) return real;
+  const vendor = join(dirname(dirname(real)), "node_modules", "@openai");
+  try {
+    for (const pkg of readdirSync(vendor).filter(name => name.startsWith("codex-")).sort())
+      for (const triple of readdirSync(join(vendor, pkg, "vendor"))) {
+        const candidate = join(vendor, pkg, "vendor", triple, "bin", "codex");
+        if (existsSync(candidate)) return candidate;
+      }
+  } catch { /* fall through to the launcher, which is then refused as an identity */ }
+  return real;
+}
 function resolveExecutable(bin: string): string | undefined {
   if (bin.includes("/")) return isAbsolute(bin) ? bin : join(process.cwd(), bin);
   for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
@@ -264,7 +290,8 @@ function snapshot(roots: string[]): Set<string> {
 const PROBE_SOURCE = `
 import { spawn } from "node:child_process"; import { writeFileSync } from "node:fs"; import { connect } from "node:net"; import { join } from "node:path";
 const [wt, outside, gitDir, tag, host, port, role] = process.argv.slice(2);
-const tryWrite = p => { try { writeFileSync(p, "x"); return "allowed"; } catch { return "denied"; } };
+// Only permission errors are sandbox denial; any other failure is inconclusive.
+const tryWrite = p => { try { writeFileSync(p, "x"); return "allowed"; } catch (e) { return ["EPERM", "EACCES", "EROFS"].includes(e.code) ? "denied" : "inconclusive"; } };
 // Only a permission error is sandbox denial; timeouts and unreachable hosts prove nothing.
 const tryNet = () => new Promise(r => { const s = connect({ host, port: Number(port), timeout: 3000 }); s.once("connect", () => { s.destroy(); r("allowed"); }); s.once("error", e => r(e.code === "EPERM" || e.code === "EACCES" ? "denied" : "inconclusive")); s.once("timeout", () => { s.destroy(); r("inconclusive"); }); });
 const run = async who => JSON.stringify({ who,

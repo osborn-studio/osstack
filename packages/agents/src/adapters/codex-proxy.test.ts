@@ -52,8 +52,9 @@ function setup(env: Record<string, string> = {}) {
   const previous = { ...process.env };
   Object.assign(process.env, env, { OSSTACK_SECRET_TOKEN: "s3cret", GH_TOKEN: "gh", OSSTACK_HOME: "/nope" });
   cleanup.push(() => { for (const key of Object.keys(process.env)) if (!(key in previous)) delete process.env[key]; Object.assign(process.env, previous); });
-  const executor = new CodexProxyExecutor({ bin, sourceCodexHome: source, runtimeDir: join(root, "runtime"), passEnv: Object.keys(env), timeoutMs: 5_000, terminationGraceMs: 200, probeTarget: target });
-  return { root, bin, source, repo, executor };
+  const identityBinary = join(root, "codex-native"); writeFileSync(identityBinary, Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 1, 2, 3]));
+  const executor = new CodexProxyExecutor({ bin, identityBinary, sourceCodexHome: source, runtimeDir: join(root, "runtime"), passEnv: Object.keys(env), timeoutMs: 5_000, terminationGraceMs: 200, probeTarget: target });
+  return { root, bin, identityBinary, source, repo, executor };
 }
 
 describe("CodexProxyExecutor", () => {
@@ -146,15 +147,30 @@ describe("qualification probe", () => {
     const closed = createServer(); await new Promise<void>(resolve => closed.listen(0, "127.0.0.1", resolve));
     const port = (closed.address() as { port: number }).port; await new Promise(resolve => closed.close(resolve));
     const g = setup({ FAKE_SANDBOX: "deny" });
-    const offline = new CodexProxyExecutor({ bin: g.bin, sourceCodexHome: g.source, runtimeDir: join(g.root, "runtime3"), passEnv: ["FAKE_SANDBOX"], probeTarget: { host: "127.0.0.1", port } });
+    const offline = new CodexProxyExecutor({ bin: g.bin, identityBinary: g.identityBinary, sourceCodexHome: g.source, runtimeDir: join(g.root, "runtime3"), passEnv: ["FAKE_SANDBOX"], probeTarget: { host: "127.0.0.1", port } });
     expect((await offline.qualify(g.repo, gitDir(g.repo))).reasons).toContain("NETWORK_CONTROL_UNREACHABLE");
   });
-  it("resolves a bare launcher name through PATH for its identity", async () => {
+  it("resolves a bare launcher through PATH but refuses a script launcher as the build identity", async () => {
     const f = setup({ FAKE_SANDBOX: "deny" });
     process.env["PATH"] = `${f.root}${delimiter}${process.env["PATH"] ?? ""}`;
     const named = new CodexProxyExecutor({ bin: "codex", sourceCodexHome: f.source, runtimeDir: join(f.root, "runtime4"), passEnv: ["FAKE_SANDBOX"], probeTarget: target });
     const q = await named.qualify(f.repo, gitDir(f.repo));
-    expect(q.identity_sha256).toMatch(/^[0-9a-f]{64}$/); expect(q.qualified).toBe(true);
+    expect(q).toMatchObject({ qualified: false, identity_sha256: null, reasons: ["IDENTITY_LAUNCHER_ONLY"] });
+  });
+  it("finds the vendored native binary behind an npm launcher", async () => {
+    const f = setup({ FAKE_SANDBOX: "deny" });
+    const pkg = join(f.root, "lib", "node_modules", "@openai", "codex"); mkdirSync(join(pkg, "bin"), { recursive: true });
+    const native = join(pkg, "node_modules", "@openai", "codex-darwin-arm64", "vendor", "aarch64-apple-darwin", "bin");
+    mkdirSync(native, { recursive: true }); writeFileSync(join(native, "codex"), Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 9]));
+    const launcher = join(pkg, "bin", "codex.js"); writeFileSync(launcher, FAKE); chmodSync(launcher, 0o755);
+    const npm = new CodexProxyExecutor({ bin: launcher, sourceCodexHome: f.source, runtimeDir: join(f.root, "runtime5"), passEnv: ["FAKE_SANDBOX"], probeTarget: target });
+    const q = await npm.qualify(f.repo, gitDir(f.repo));
+    expect(q).toMatchObject({ qualified: true, reasons: [] }); expect(q.identity_sha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+  it("does not qualify against a target the host itself cannot write", async () => {
+    const f = setup({ FAKE_SANDBOX: "deny" });
+    const q = await f.executor.qualify(f.repo, join(f.repo, ".git", "missing"));
+    expect(q.qualified).toBe(false); expect(q.reasons).toContain("GITDIR_CONTROL_UNWRITABLE");
   });
   it("treats a missing escaped-child report as not qualified", async () => {
     const f = setup({ FAKE_SANDBOX: "child-only" });
