@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { hardenedGitEnvironment, type CodexProxyRun, type CodexQualification } from "@osstack/agents";
 import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
@@ -19,7 +19,7 @@ const run = (patch = PATCH): CodexProxyRun => ({ launch: { pid: 4242, pgid: 4242
   stop: { stop_proof: "group_empty+sandbox_inherited", pgid: 4242, signals: [], confirmed_at: 2 }, patch: { ok: true, text: patch, bytes: patch.length },
   stdout: "", stderr: "", stdout_truncated: false, stderr_truncated: false });
 
-function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { maxConcurrent?: number; empty?: (pgid: number) => boolean } = {}) {
+function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { maxConcurrent?: number; empty?: (pgid: number) => boolean; scan?: { pageSize: number; maxPages: number } } = {}) {
   const root = realpathSync(createScratchDirSync("tests", "contained-host"));
   const repo = join(root, "repo"); mkdirSync(repo);
   for (const [path, content] of Object.entries({ "src/a.txt": "hi\n", "src/b.txt": "bye\n", "package.json": "{}\n" })) { mkdirSync(dirname(join(repo, path)), { recursive: true }); writeFileSync(join(repo, path), content); }
@@ -42,13 +42,14 @@ function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { maxC
     execute: async input => { calls.execute++; input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 }); if (gate) await gate; return run(patch); },
     verify: async () => { calls.verify++; return { exit_code: 0, output: "ok", cancelled: false, evidence: "docker-removed:x", stopped: true }; },
     ...over };
-  let empty = hostOver.empty ?? (() => true);
-  const host = new ContainedMissionHost({ ports, worktreesRoot, processGroupEmpty: pgid => empty(pgid), ...(hostOver.maxConcurrent ? { maxConcurrent: hostOver.maxConcurrent } : {}) });
+  let empty = hostOver.empty ?? (() => true); let named: number[] = [];
+  const host = new ContainedMissionHost({ ports, worktreesRoot, processGroupEmpty: pgid => empty(pgid), processesForWorktree: () => named,
+    ...(hostOver.maxConcurrent ? { maxConcurrent: hostOver.maxConcurrent } : {}), ...(hostOver.scan ? { scan: hostOver.scan } : {}) });
   const principal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [], operator_scopes: [] };
   const start = async () => host.start(principal, { scope_id: scope.scope_id, spec: await resolveContainedMissionStart({ goal: "say hello", repo_path: repo, base_ref: "main", allowed_paths: ["src/**"], verify: { argv: ["true"] } }, { worktreesRoot }) });
   const reason = (id: string) => { const e = store.events(id, 0, 500).filter(x => x.kind === "halted").at(-1); return e ? (JSON.parse(e.payload_json) as { reason: string }).reason : undefined; };
   return { root, repo, store, host, principal, start, calls, reason, now: () => ++clock,
-    setPatch: (p: string) => { patch = p; }, setGate: (g: Promise<void> | undefined) => { gate = g; }, setEmpty: (fn: (pgid: number) => boolean) => { empty = fn; } };
+    setPatch: (p: string) => { patch = p; }, setGate: (g: Promise<void> | undefined) => { gate = g; }, setEmpty: (fn: (pgid: number) => boolean) => { empty = fn; }, setNamed: (pids: number[]) => { named = pids; } };
 }
 type Fixture = ReturnType<typeof fixture>;
 const spec = (m: ContainedMission) => JSON.parse(m.spec_json) as { worktree_path: string; branch: string; start_commit: string };
@@ -113,6 +114,18 @@ describe("ContainedMissionHost", () => {
     expect([f.store.get(a.mission_id).state, f.store.get(b.mission_id).state].sort()).toEqual(["authorized", "workspace_ready"]);
   });
 
+  it("resumes its scan where the previous tick stopped, so halted Missions cannot starve later ones", async () => {
+    const f = fixture({}, { scan: { pageSize: 1, maxPages: 1 } });
+    const halted = await f.start();
+    const cur = f.store.get(halted.mission_id);
+    f.store.transition(halted.mission_id, { if_revision: cur.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "test" } } }, f.now());
+    const later = await f.start();
+    await f.host.tick();
+    expect(f.store.get(later.mission_id).state).toBe("authorized");
+    await f.host.tick();
+    expect(f.store.get(later.mission_id).state).toBe("workspace_ready");
+  });
+
   it("records a failing step as an event instead of throwing", async () => {
     const f = fixture({ createWorkspace: async () => { throw new Error("boom"); } });
     const m = await f.start();
@@ -140,6 +153,16 @@ describe("ContainedMissionHost recovery", () => {
     const m = await orphanExecuting(f, false);
     await f.host.recover();
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
+  });
+
+  it("holds stop_unknown when no launch was journaled but a process still names the worktree", async () => {
+    const f = fixture();
+    const m = await orphanExecuting(f, false);
+    f.setNamed([31337]);
+    await f.host.recover();
+    expect(f.store.get(m.mission_id)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+    f.setNamed([]);
+    expect(await f.host.decide(f.principal, m.mission_id, { kind: "retry_stop_check" })).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
   });
 
   it("holds stop_unknown while the group is live, and settles only on a later stop check", async () => {
@@ -214,6 +237,23 @@ describe("ContainedMissionHost reconciliation decisions", () => {
     expect(existsSync(join(wt, "src/junk.txt"))).toBe(false);
     expect(readFileSync(join(wt, "src/a.txt"), "utf8")).toBe("hello\n");
     expect(sh(f.repo, "show", `${next.candidate_head}:src/a.txt`)).toBe("hello");
+  });
+
+  it("discard_changes removes symlinks and directories in the way without following them", async () => {
+    const f = fixture();
+    const m = await orphanExecuting(f);
+    const wt = spec(m).worktree_path;
+    const outside = join(f.root, "outside.txt"); writeFileSync(outside, "keep\n");
+    rmSync(join(wt, "src/b.txt")); symlinkSync(outside, join(wt, "src/b.txt"));
+    rmSync(join(wt, "src/a.txt")); mkdirSync(join(wt, "src/a.txt")); writeFileSync(join(wt, "src/a.txt/inner"), "x\n");
+    symlinkSync(join(f.root, "elsewhere"), join(wt, "src/link"));
+    await f.host.recover();
+    const next = await f.host.decide(f.principal, m.mission_id, { kind: "discard_changes" });
+    expect(next.state).toBe("candidate_ready");
+    expect(readFileSync(outside, "utf8")).toBe("keep\n");
+    expect(lstatSync(join(wt, "src/b.txt")).isFile()).toBe(true); expect(readFileSync(join(wt, "src/b.txt"), "utf8")).toBe("bye\n");
+    expect(readFileSync(join(wt, "src/a.txt"), "utf8")).toBe("hello\n");
+    expect(() => lstatSync(join(wt, "src/link"))).toThrow();
   });
 
   it("adopt_worktree classifies the worktree from start_commit and still requires verification", async () => {

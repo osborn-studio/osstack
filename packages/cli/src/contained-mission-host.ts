@@ -1,6 +1,7 @@
 // Daemon-side host for contained Missions (W11 §4.4, §9, M6b): authorization,
 // a bounded stepping loop and restart recovery over the runner. Daemon RPC and
 // the `osstack mission` CLI are wired in M6c.
+import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve, sep } from 'node:path';
@@ -16,10 +17,14 @@ export interface ContainedMissionHostOptions {
   runner?: ContainedMissionRunner;
   /** Injectable for tests; defaults to the M4 process-group probe. */
   processGroupEmpty?: (pgid: number) => boolean;
+  /** Pids whose command line names this worktree; default reads `ps`. A launch the ledger never journaled is excluded only when this is empty. */
+  processesForWorktree?: (worktree: string) => number[];
   /** Concurrent Mission steps across the host (default 1). */
   maxConcurrent?: number;
   /** Root every Mission worktree must live under (default: the scratch root's worktrees/). */
   worktreesRoot?: string;
+  /** Page size and pages per tick; the scan resumes where the previous tick stopped. */
+  scan?: { pageSize: number; maxPages: number };
 }
 export interface ContainedStartInput { scope_id: string; spec: ContainedMissionSpec; supersedes?: string }
 export type ContainedStartRequest = Omit<ContainedMissionSpec, 'start_commit' | 'branch' | 'worktree_path'>;
@@ -28,7 +33,7 @@ const TERMINAL = new Set<ContainedMission['state']>(['pr_opened', 'cancelled', '
 // States whose next move is a runner step. Halts wait for a decision; executing/verifying only exist inside a step.
 const STEPPABLE = new Set<ContainedMission['state']>(['authorized', 'workspace_ready', 'candidate_ready', 'verify_failed', 'verified']);
 const BRANCH = /^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const PAGE = 100; const MAX_PAGES = 10; const EVENT_TAIL = 50; const EVENT_EXCERPT = 2_000;
+const EVENT_TAIL = 50; const EVENT_EXCERPT = 2_000;
 const code = (error: unknown) => error instanceof Error ? (error.message.split(':')[0] ?? 'error').slice(0, 64) : 'error';
 
 /** Resolve a start request into a full spec: `start_commit` from `base_ref` through the hardened runner, a fresh branch and worktree path. */
@@ -44,11 +49,16 @@ export class ContainedMissionHost {
   private readonly inFlight = new Map<string, Promise<void>>();
   private readonly groupEmpty: (pgid: number) => boolean;
   private readonly max: number;
+  private readonly processes: (worktree: string) => number[];
+  private readonly page: number; private readonly pages: number;
+  private cursor: { created_at: number; mission_id: string } | undefined;
   private closed = false;
   constructor(private readonly options: ContainedMissionHostOptions) {
     this.store = options.ports.store; this.runner = options.runner ?? new ContainedMissionRunner(options.ports);
     this.groupEmpty = options.processGroupEmpty ?? processGroupEmpty;
     this.max = Math.max(1, Math.floor(options.maxConcurrent ?? 1));
+    this.processes = options.processesForWorktree ?? processesNaming;
+    this.page = options.scan?.pageSize ?? 100; this.pages = options.scan?.maxPages ?? 10;
   }
 
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
@@ -97,32 +107,32 @@ export class ContainedMissionHost {
   async tick(): Promise<void> {
     if (this.closed) return;
     const launched: Promise<void>[] = [];
-    let after: { created_at: number; mission_id: string } | undefined;
-    pages: for (let page = 0; page < MAX_PAGES; page++) {
-      const rows = this.store.listOutstanding(PAGE, after);
+    // Resume after the last row scanned, so long-halted Missions cannot starve later ones.
+    pages: for (let page = 0; page < this.pages; page++) {
+      const rows = this.store.listOutstanding(this.page, this.cursor);
       for (const row of rows) {
         if (this.inFlight.size >= this.max) break pages;
+        this.cursor = row;
         if (this.inFlight.has(row.mission_id)) continue;
         let state: ContainedMission['state'];
         try { state = this.store.get(row.mission_id).state; } catch { continue; }
         if (STEPPABLE.has(state)) launched.push(this.track(row.mission_id, async () => { await this.runner.step(row.mission_id); }));
       }
-      if (rows.length < PAGE) break;
-      after = rows.at(-1);
+      if (rows.length < this.page) { this.cursor = undefined; break; }
     }
     await Promise.all(launched);
   }
 
-  /** Restart recovery (§9): settle orphans from the ledger and stop proofs only. It never resumes execution. */
+  /** Restart recovery (§9) over every outstanding Mission: settle orphans from the ledger and stop proofs only. It never resumes execution. */
   async recover(): Promise<void> {
     let after: { created_at: number; mission_id: string } | undefined;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const rows = this.store.listOutstanding(PAGE, after);
+    for (;;) {
+      const rows = this.store.listOutstanding(this.page, after);
       for (const row of rows) {
         if (this.inFlight.has(row.mission_id)) continue;
         try { await this.recoverOne(row.mission_id); } catch (error) { this.recordError(row.mission_id, 'recover', error); }
       }
-      if (rows.length < PAGE) break;
+      if (rows.length < this.page) return;
       after = rows.at(-1);
     }
   }
@@ -174,7 +184,11 @@ export class ContainedMissionHost {
       return result.stopped ? { stop_proof: result.proof, evidence: result.evidence } : undefined;
     }
     const started = events.slice(opened + 1).filter(e => e.kind === 'executor_started').at(-1);
-    if (!started) return { stop_proof: 'never_launched' };
+    // The intent precedes the spawn, but a crash can fall between spawn and journaling: require that no process names the worktree.
+    if (!started) {
+      try { return this.processes(parseContainedMissionSpec(m.spec_json).worktree_path).length === 0 ? { stop_proof: 'never_launched', evidence: 'no_process_names_worktree' } : undefined; }
+      catch { return undefined; }
+    }
     const pgid = eventPayload(started).pgid;
     if (typeof pgid !== 'number') return undefined;
     try { return this.groupEmpty(pgid) ? { stop_proof: 'group_empty_after_restart', pgid } : undefined; } catch { return undefined; }
@@ -195,4 +209,13 @@ export class ContainedMissionHost {
   private recordError(missionId: string, stage: string, error: unknown): void {
     try { this.store.record(missionId, 'host_step_failed', { stage, error: code(error) }, this.options.ports.now()); } catch { /* a stale owner cannot write diagnostics */ }
   }
+}
+
+/** Pids of processes whose argv mentions `worktree` (Codex is always started with `-C <worktree>`). Throws when `ps` cannot be read. */
+export function processesNaming(worktree: string): number[] {
+  const listing = execFileSync('ps', ['-axww', '-o', 'pid=,args='], { encoding: 'utf8', timeout: 10_000, maxBuffer: 32 * 1024 * 1024 });
+  return listing.split('\n').flatMap(line => {
+    const match = /^\s*(\d+)\s+(.*)$/.exec(line);
+    return match && Number(match[1]) !== process.pid && match[2]!.includes(worktree) ? [Number(match[1])] : [];
+  });
 }

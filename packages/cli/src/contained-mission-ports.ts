@@ -3,8 +3,9 @@
 // verification. Nothing here runs repository code on the host.
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, realpathSync, rmSync } from 'node:fs';
+import { lstat, realpath, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { CodexProxyExecutor, SafeFileError, commitPlumbing, createNoCheckoutWorktree, filterNeutralizingConfig, inspectRepoConfig, materializeCommit, runHardenedGit, safeReadFile, safeRelativePathSegments, safeRemoveFile,
+import { CodexProxyExecutor, SafeFileError, commitPlumbing, createNoCheckoutWorktree, filterNeutralizingConfig, inspectRepoConfig, materializeCommit, runHardenedGit, safeReadFile, safeRelativePathSegments,
   type CodexProxyOptions, type HardenedGitContext, type HardenedGitOptions, type PlumbingCommitAuthor } from '@osstack/agents';
 import { scratchPath, type ContainedEvent, type ContainedMission, type ContainedMissionStore } from '@osstack/core';
 import { containedBindingCanonical, containedCommandFromArgv, containedOwnerPort, missionVerificationBinding, prepareContainedCandidateImage, registerContainedExecution, reopenContainedExecution, type ContainedOwnerIdentity } from './contained-verification.js';
@@ -152,11 +153,15 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       const current = await branchHead(input.worktree, input.branch);
       // A host commit the ledger never recorded is dropped from the branch (its objects stay in the repository).
       if (current !== input.expectedHead) await git(input.worktree)(['update-ref', '-m', 'osstack: discard unrecorded commit', `refs/heads/${input.branch}`, input.expectedHead, current]);
+      // Anything standing where a tracked file must go (a symlink, a directory, a hard link) is removed first, never followed.
+      const tracked = nulList(await git(input.worktree)(['ls-tree', '-r', '-z', '--name-only', '--full-tree', input.expectedHead]));
+      if (tracked.length > MAX_WORKTREE_FILES) throw Error('CONTAINED_WORKTREE_LIMIT');
+      for (const path of tracked) await clearObstruction(input.worktree, path, true);
       await materializeCommit(input.worktree, input.expectedHead, { git: ctx });
       const config = await filterNeutralizingConfig(input.worktree, ctx);
       const others = nulList(await runHardenedGit(['ls-files', '--others', '-z'], { ...ctx, config, cwd: input.worktree }));
       if (others.length > MAX_WORKTREE_FILES) throw Error('CONTAINED_WORKTREE_LIMIT');
-      for (const path of others) await safeRemoveFile(input.worktree, path);
+      for (const path of others) await clearObstruction(input.worktree, path, false);
     },
     worktreeDiff: async input => {
       assertSha(input.startCommit);
@@ -247,6 +252,27 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     },
   };
   return ports;
+}
+
+/**
+ * Walk `relPath` under `root` with lstat only and remove the first entry in the way:
+ * a non-directory where a directory is needed, or the leaf itself unless `keepRegular`
+ * and it is a single-link regular file. `rm` never follows a symlink.
+ */
+async function clearObstruction(root: string, relPath: string, keepRegular: boolean): Promise<void> {
+  const segments = safeRelativePathSegments(relPath);
+  let current = await realpath(root);
+  for (const [index, segment] of segments.entries()) {
+    current = join(current, segment);
+    const stat = await lstat(current).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return undefined; throw error; });
+    if (!stat) return;
+    if (index < segments.length - 1) {
+      if (stat.isDirectory()) continue;
+      await rm(current, { force: true }); return;
+    }
+    if (keepRegular && stat.isFile() && stat.nlink === 1) return;
+    await rm(current, { recursive: true, force: true }); return;
+  }
 }
 
 /** True only when the result carries the Docker removal receipt its evidence names (as Graph checks it). */
