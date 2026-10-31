@@ -16,7 +16,6 @@ describe('neutral source contracts', () => {
   it('keeps the joint subpath on the same contract objects', () => {
     expect(joint.SourcePin).toBe(source.SourcePin);
     expect(joint.SourceSnapshot).toBe(source.SourceSnapshot);
-    expect(joint.sourceSnapshotDigest).toBe(source.sourceSnapshotDigest);
     expect(SourcePinShape).toBe(source.SourcePinShape);
   });
   it('produces the pinned joint vectors without the joint registry', () => {
@@ -25,6 +24,7 @@ describe('neutral source contracts', () => {
       expect(source.domainDigest(v.domain, v.input)).toBe(v.sha256);
     }
     const snapshot = { kind: 'source_snapshot', schema_version: 1, pin, files: [file('z'), file('a')], dependencies: [] };
+    expect(joint.sourceSnapshotDigest(snapshot)).toBe(source.sourceSnapshotDigest(snapshot));
     expect(source.sourceSnapshotDigest(snapshot)).toBe(joint.jointDigest('osstack.joint.source-snapshot.v1', { ...snapshot, files: [file('a'), file('z')] }));
     for (const domain of ['osstack.joint.source-content.v1', 'osstack.joint.source-inspection.v1'])
       expect(source.sourceDigest(domain, { pin })).toBe(joint.jointDigest(domain, { pin }));
@@ -37,6 +37,10 @@ describe('neutral source contracts', () => {
     expect(() => source.canonicalJson(-0)).toThrow('INVALID_CANONICAL_JSON');
     expect(() => joint.canonicalJointJson(-0)).toThrow('INVALID_JOINT_JSON');
     expect(() => joint.jointDigest('osstack.joint.intent.v1', -0)).toThrow('INVALID_JOINT_JSON');
+    // Schema-valid but not canonicalizable: an unpaired surrogate in the repository name.
+    const lone = { kind: 'source_snapshot', schema_version: 1, pin: { ...pin, repository: 'repo\ud800' }, files: [], dependencies: [] };
+    expect(() => source.sourceSnapshotDigest(lone)).toThrow('INVALID_CANONICAL_JSON');
+    expect(() => joint.sourceSnapshotDigest(lone)).toThrow('INVALID_JOINT_JSON');
   });
   it('loads the source subpath without joint method contracts', () => {
     const code = "const s = await import('@osstack/protocol/source'); if ('decodeJointContract' in s || 'MethodBinding' in s || typeof s.sourceSnapshotDigest !== 'function') process.exit(1); console.log('ok');";

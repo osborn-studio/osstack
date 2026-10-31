@@ -1,5 +1,6 @@
 // Joint names over the neutral canonical JSON. Keeps the joint error code and domain registry.
 import { canonicalJson, domainDigest, parseCanonicalJson, parseCanonicalJsonBytes, type CanonicalJson } from './canonical-json.js';
+import { joint } from './joint-errors.js';
 
 export type JointJson = CanonicalJson;
 export const JOINT_DIGEST_DOMAINS = Object.freeze([
@@ -11,13 +12,6 @@ export const JOINT_DIGEST_DOMAINS = Object.freeze([
   'source-content.v1', 'source-inspection.v1',
 ].map(name => `osstack.joint.${name}`));
 const domains = new Set(JOINT_DIGEST_DOMAINS);
-
-function joint<T>(run: () => T): T {
-  try { return run(); } catch (error) {
-    if (error instanceof Error && error.message === 'INVALID_CANONICAL_JSON') throw new Error('INVALID_JOINT_JSON');
-    throw error;
-  }
-}
 
 /** Parse raw wire text before duplicate keys or -0 can be lost by JSON.parse. */
 export const parseJointJson = (raw: string): JointJson => joint(() => parseCanonicalJson(raw));
