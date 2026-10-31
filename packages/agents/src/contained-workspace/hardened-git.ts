@@ -113,20 +113,39 @@ export function runHardenedGit(args: readonly string[], options: HardenedGitOpti
   const { signal } = options;
   if (signal?.aborted) return Promise.reject(new HardenedGitError("HARDENED_GIT_ABORTED", args));
   return new Promise((resolve, reject) => {
+    // Own process group, so a timeout or abort also kills helpers git spawned.
     const child = spawn(options.gitBinary ?? "git", argv, {
       cwd: options.cwd,
       env: hardenedGitEnvironment(options.env, options.home ?? options.env?.HOME ?? process.env.HOME, options.gitEnv),
       shell: false,
+      detached: true,
       stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
     const stdout: Buffer[] = [];
     let stdoutBytes = 0;
     let stderr = "";
-    let failure: HardenedGitError | undefined;
+    let settled = false;
+    const killGroup = () => {
+      try {
+        if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    };
+    const settle = (error: HardenedGitError | undefined, result?: HardenedGitResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      if (error) reject(error);
+      else resolve(result as HardenedGitResult);
+    };
     const fail = (code: HardenedGitErrorCode) => {
-      if (failure) return;
-      failure = new HardenedGitError(code, args, null, stderr);
-      child.kill("SIGKILL");
+      if (settled) return;
+      killGroup();
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      settle(new HardenedGitError(code, args, null, stderr));
     };
     const timer = setTimeout(() => fail("HARDENED_GIT_TIMEOUT"), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     const onAbort = () => fail("HARDENED_GIT_ABORTED");
@@ -143,21 +162,13 @@ export function runHardenedGit(args: readonly string[], options: HardenedGitOpti
       child.stdin.on("error", () => undefined);
       child.stdin.end(options.input);
     }
-    const settle = () => {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", onAbort);
-    };
-    child.on("error", () => {
-      settle();
-      reject(failure ?? new HardenedGitError("HARDENED_GIT_SPAWN_FAILED", args));
-    });
+    child.on("error", () => settle(new HardenedGitError("HARDENED_GIT_SPAWN_FAILED", args)));
     child.on("close", (exitCode) => {
-      settle();
-      if (failure) return reject(failure);
+      killGroup();
       if (exitCode === null || !okExitCodes.includes(exitCode)) {
-        return reject(new HardenedGitError("HARDENED_GIT_FAILED", args, exitCode, stderr));
+        return settle(new HardenedGitError("HARDENED_GIT_FAILED", args, exitCode, stderr));
       }
-      resolve({ stdout: Buffer.concat(stdout), stderr, exitCode });
+      settle(undefined, { stdout: Buffer.concat(stdout), stderr, exitCode });
     });
   });
 }

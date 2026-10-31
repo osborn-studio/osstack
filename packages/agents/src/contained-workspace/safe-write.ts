@@ -115,7 +115,7 @@ const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest(
 async function readNoFollow(path: string, relPath: string): Promise<{ bytes: Buffer; mode: number }> {
   let handle: Awaited<ReturnType<typeof open>>;
   try {
-    handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ELOOP") throw new SafeFileError("SAFE_PATH_SYMLINK", relPath);

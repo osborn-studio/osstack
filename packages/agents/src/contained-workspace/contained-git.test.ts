@@ -79,6 +79,13 @@ describe("hardened git runner", () => {
     expect(await errorCode(runHardenedGit(["rev-parse", "--verify", "nope"], { cwd: repo }))).toBe("HARDENED_GIT_FAILED");
     expect(await errorCode(runHardenedGit(["status"], { cwd: repo, config: [["bad key", "x"]] }))).toBe("HARDENED_GIT_INVALID_ARGS");
   });
+  it("kills helpers git spawned when the timeout fires", async () => {
+    const { repo } = await makeRepo({ "a.txt": "a\n" });
+    const started = Date.now();
+    const slow = runHardenedGit(["slow"], { cwd: repo, timeoutMs: 100, config: [["alias.slow", "!sleep 5"]] });
+    expect(await errorCode(slow)).toBe("HARDENED_GIT_TIMEOUT");
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
 });
 
 describe("inspectRepoConfig", () => {

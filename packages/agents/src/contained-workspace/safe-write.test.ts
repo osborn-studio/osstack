@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { link, mkdir, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createScratchDir } from "@osstack/core";
@@ -73,5 +74,12 @@ describe("safeWriteFile", () => {
     await safeRemoveFile(root, "plain");
     expect(await readdir(root)).toEqual([]);
     expect(await code(safeRemoveFile(root, "plain"))).toBe("SAFE_PATH_NOT_FOUND");
+  });
+
+  it("rejects a named pipe without blocking", async () => {
+    const { root } = await fixture();
+    execFileSync("mkfifo", [join(root, "pipe")]);
+    expect(await code(safeReadFile(root, "pipe"))).toBe("SAFE_PATH_NOT_REGULAR");
+    expect(await code(safeWriteFile(root, "pipe", "x"))).toBe("SAFE_PATH_NOT_REGULAR");
   });
 });
