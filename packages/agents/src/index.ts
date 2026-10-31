@@ -28,6 +28,7 @@ export { createControlledSessionAdapter, isControlledSessionAdapter, type Contro
 export { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 export { ClaudeCliAdapter } from "./adapters/claude-cli.js";
 export { CodexCliAdapter } from "./adapters/codex-cli.js";
+export { CodexProxyExecutor, readCodexProxyPatch, processGroupEmpty, CODEX_PROXY_PATCH_MAX_BYTES, CODEX_PROXY_END_MARKER, type CodexProxyOptions, type CodexProxyRun, type CodexProxyRunInput, type CodexProxyLaunch, type CodexProxyStopEvidence, type CodexProxyPatch, type CodexQualification, type CodexProbeOperation } from "./adapters/codex-proxy.js";
 export { OpenCodeCliAdapter } from "./adapters/opencode-cli.js";
 export { ZCodeCliAdapter } from "./adapters/zcode-cli.js";
 export { ClaudeDesignAdapter } from "./adapters/claude-design.js";
