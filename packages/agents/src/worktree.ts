@@ -10,6 +10,13 @@ export interface WorktreeHandle {
   branch: string;
   baseRef: string;
   rootPath: string;
+  /**
+   * Full commit id the task branch was created at. Recorded at creation so a
+   * clean tree can still be told apart from "executor committed its own
+   * work", and so cleanup never deletes commits made beyond it. Absent on
+   * handles rebuilt from `git worktree list` (orphans).
+   */
+  startCommit?: string;
 }
 
 export interface CreateWorktreeOptions {
@@ -23,8 +30,21 @@ export interface CreateWorktreeOptions {
 }
 
 export interface CommitWorktreeResult {
+  /** True only when this call created a commit from the worktree's changes. */
   committed: boolean;
+  /** The loop's commit when `committed`, or the branch tip when `executorCommitted`. */
   commit?: string;
+  /**
+   * The task branch already had commits beyond `startCommit` before this call
+   * (the executor ran `git commit` itself). Those commits were never part of a
+   * loop-made candidate and must be preserved, not landed or deleted.
+   */
+  executorCommitted?: boolean;
+}
+
+export interface CleanupWorktreeResult {
+  /** False when the branch was kept, either on request or because it holds unique commits. */
+  branchRemoved: boolean;
 }
 
 export interface CleanupOrphanedWorktreesOptions {
@@ -41,6 +61,7 @@ export interface CleanupOrphanedWorktreesResult {
 }
 
 const DEFAULT_BRANCH_PREFIX = "osstack/loop";
+const FULL_COMMIT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 const DISABLE_GIT_HOOKS_ARGS = [
   "-c",
   "core.hooksPath=/dev/null",
@@ -58,6 +79,9 @@ export async function createWorktree(rawOptions: CreateWorktreeOptions): Promise
   const branch = `${branchPrefix}/${safeRunId}-${suffix}`;
   const worktreePath = join(rootPath, `${safeRunId}-${suffix}`);
   const baseRef = options.baseRef ?? "HEAD";
+  // Pin the start to an object id so the branch's own history can be measured later.
+  const startCommit = await gitOutput(repoPath, ["rev-parse", "--verify", "--quiet", `${baseRef}^{commit}`]);
+  if (!FULL_COMMIT_ID.test(startCommit)) throw new Error(`worktree base ${baseRef} does not resolve to a commit`);
 
   if (options.graphRetention !== undefined) {
     await persistGraphRetention({ repoPath, worktreePath, branch, baseRef, rootPath }, options.graphRetention);
@@ -69,7 +93,7 @@ export async function createWorktree(rawOptions: CreateWorktreeOptions): Promise
     "-b",
     branch,
     worktreePath,
-    baseRef,
+    startCommit,
   ]);
 
   if (options.graphRetention !== undefined) await runGit(repoPath, ["worktree", "lock", "--reason", "OSStack graph retained", worktreePath]);
@@ -80,6 +104,7 @@ export async function createWorktree(rawOptions: CreateWorktreeOptions): Promise
     branch,
     baseRef,
     rootPath,
+    startCommit,
   };
 }
 
@@ -91,7 +116,12 @@ export async function commitWorktreeChanges(
   // status.showUntrackedFiles=no must not make untracked-only work look clean,
   // or the caller would report "no changes" and then remove the worktree.
   const status = await gitOutput(handle.worktreePath, ["status", "--porcelain", "--untracked-files=all"]);
-  if (status.trim() === "") return { committed: false };
+  const head = await gitOutput(handle.worktreePath, ["rev-parse", "--verify", "HEAD^{commit}"]);
+  const executorCommitted = handle.startCommit !== undefined && head !== handle.startCommit;
+  if (status.trim() === "") {
+    // A clean tree is not "no work" when the executor committed by itself.
+    return executorCommitted ? { committed: false, commit: head, executorCommitted: true } : { committed: false };
+  }
 
   await runGit(handle.worktreePath, ["add", "-A"]);
   await runGit(handle.worktreePath, [
@@ -105,47 +135,99 @@ export async function commitWorktreeChanges(
     message,
   ]);
   const commit = await gitOutput(handle.worktreePath, ["rev-parse", "HEAD"]);
-  return { committed: true, commit };
+  return { committed: true, commit, ...(executorCommitted ? { executorCommitted: true } : {}) };
 }
 
 export interface MergeWorktreeOptions {
   /**
-   * Full commit id the caller accepted (verified and committed). When set, the
+   * Full commit id the caller accepted (verified and committed). The
    * fast-forward lands exactly this commit, and refuses if the task branch no
    * longer points at it, so commits added after acceptance never land.
    */
-  expectedCommit?: string;
+  expectedCommit: string;
+  /**
+   * Branch the main checkout must have checked out. Landing refuses when the
+   * checkout is on any other branch (or detached), so a run can never
+   * fast-forward whatever branch happens to be checked out.
+   */
+  targetBranch: string;
 }
 
-export async function mergeWorktree(handle: WorktreeHandle, options: MergeWorktreeOptions = {}): Promise<void> {
-  const { expectedCommit } = options;
-  if (expectedCommit !== undefined) {
-    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expectedCommit)) {
-      throw new Error("accepted worktree commit must be a full commit id");
+/**
+ * Local landing: fast-forward the main checkout's `targetBranch` to the
+ * accepted commit. Callers must opt in explicitly; unattended runs keep the
+ * task branch for PR delivery instead (humans merge main).
+ */
+export async function mergeWorktree(handle: WorktreeHandle, options: MergeWorktreeOptions): Promise<void> {
+  const { expectedCommit, targetBranch } = options;
+  if (typeof expectedCommit !== "string" || !FULL_COMMIT_ID.test(expectedCommit)) {
+    throw new Error("accepted worktree commit must be a full commit id");
+  }
+  await assertLandingTargetBranchName(handle.repoPath, targetBranch);
+  const branchHead = await gitOutput(handle.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${handle.branch}^{commit}`]);
+  if (branchHead !== expectedCommit) {
+    throw new Error(`worktree branch ${handle.branch} differs from the accepted commit; refusing to land`);
+  }
+  if (handle.startCommit !== undefined) {
+    // Only the single accepted commit on top of the recorded start may land;
+    // anything else carries history nobody reviewed as this candidate.
+    const parent = await gitOutput(handle.repoPath, ["rev-parse", "--verify", "--quiet", `${expectedCommit}^1`]);
+    if (parent !== handle.startCommit) {
+      throw new Error(`worktree branch ${handle.branch} has commits beyond the accepted commit's start; refusing to land`);
     }
-    const branchHead = await gitOutput(handle.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${handle.branch}^{commit}`]);
-    if (branchHead !== expectedCommit) {
-      throw new Error(`worktree branch ${handle.branch} differs from the accepted commit; refusing to land`);
-    }
+  }
+  const checkedOut = await runGit(handle.repoPath, ["symbolic-ref", "--quiet", "HEAD"], { allowFailure: true });
+  if (checkedOut !== `refs/heads/${targetBranch}`) {
+    const current = checkedOut === "" ? "a detached HEAD" : checkedOut.replace(/^refs\/heads\//, "");
+    throw new Error(`main checkout is on ${current}, not the landing target ${targetBranch}; refusing to land`);
   }
   await runGit(handle.repoPath, [
     ...DISABLE_GIT_HOOKS_ARGS,
     "merge",
     "--ff-only",
     // Merge the pinned object, not the movable branch name.
-    expectedCommit ?? handle.branch,
+    expectedCommit,
   ]);
+  const landed = await gitOutput(handle.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${targetBranch}^{commit}`]);
+  if (landed !== expectedCommit) throw new Error(`landing target ${targetBranch} did not reach the accepted commit`);
+}
+
+async function assertLandingTargetBranchName(repoPath: string, targetBranch: string): Promise<void> {
+  if (typeof targetBranch !== "string" || targetBranch.trim() === "" || targetBranch.startsWith("-")) {
+    throw new Error("local landing requires an explicit target branch");
+  }
+  const normalized = await runGit(repoPath, ["check-ref-format", "--normalize", `refs/heads/${targetBranch}`], { allowFailure: true });
+  if (normalized !== `refs/heads/${targetBranch}`) throw new Error(`invalid landing target branch: ${targetBranch}`);
 }
 
 export async function cleanupWorktree(
   handle: WorktreeHandle,
   options: CleanupWorktreeOptions = {},
-): Promise<void> {
-  if (await hasGraphRetention(handle)) return;
+): Promise<CleanupWorktreeResult> {
+  if (await hasGraphRetention(handle)) return { branchRemoved: false };
   await runGit(handle.repoPath, ["worktree", "remove", "--force", handle.worktreePath], { allowFailure: true });
-  if (options.removeBranch !== false) {
-    await runGit(handle.repoPath, ["branch", "-D", handle.branch], { allowFailure: true });
-  }
+  if (options.removeBranch === false) return { branchRemoved: false };
+  // Never delete commits that exist only on this branch (for example an
+  // executor that committed by itself): keep it for inspection or delivery.
+  if (!(await branchTipIsSafeToDelete(handle))) return { branchRemoved: false };
+  await runGit(handle.repoPath, ["branch", "-D", handle.branch], { allowFailure: true });
+  const remaining = await runGit(handle.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${handle.branch}`], { allowFailure: true });
+  return { branchRemoved: remaining === "" };
+}
+
+/**
+ * A task branch may be deleted only when its tip adds nothing: it equals the
+ * recorded start, or the main checkout's HEAD or another ref already contains
+ * it. A missing branch is trivially safe.
+ */
+async function branchTipIsSafeToDelete(handle: WorktreeHandle): Promise<boolean> {
+  const ref = `refs/heads/${handle.branch}`;
+  const tip = await runGit(handle.repoPath, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { allowFailure: true });
+  if (tip === "") return true;
+  if (handle.startCommit !== undefined && tip === handle.startCommit) return true;
+  if (await runGit(handle.repoPath, ["merge-base", "--is-ancestor", tip, "HEAD"]).then(() => true, () => false)) return true;
+  const containing = await runGit(handle.repoPath, ["for-each-ref", "--contains", tip, "--format=%(refname)"], { allowFailure: true });
+  return containing.split("\n").map((line) => line.trim()).some((name) => name !== "" && name !== ref);
 }
 
 export async function cleanupOrphanedWorktrees(

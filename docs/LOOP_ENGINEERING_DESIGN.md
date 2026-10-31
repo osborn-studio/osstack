@@ -556,7 +556,9 @@ daemon hot loop
 - `--reviewer <id>` / `--checker <id>` 已接入 Verify 阶段，可在 maker/executor 完成后自动运行 adapter verifier；local CLI、daemon RPC 和 built CLI smoke 均覆盖 `ds-review` post-execution review。
 - `scripts/smoke-loop.mjs` 已用 built CLI 覆盖 `--reviewer ds-review`：在临时 git workspace 中由 execute 阶段制造 diff，经 adapter stdin 传给 fake `ds-review`，并断言 `reviews/ds-review/latest.md` 包含新增行。
 - 未注册的非本地 agent 会失败并进入验证/迭代流程，不会被当成 `local-noop` 成功。
-- `--worktree` 已支持每个 task 在独立 git worktree 内执行；成功任务会提交并 `--ff-only` 合并回主工作区，失败/升级任务会清理临时 worktree。
+- `--worktree` 已支持每个 task 在独立 git worktree 内执行；成功任务会由 Loop 从已验证的工作树提交，并把该提交保留在 `osstack/loop/...` 任务分支上（`loop.worktree.preserved`，原因 `local_landing_disabled`），**默认不在本地落地**——工厂/无人值守模式只走受控 PR 交付，合并权在人（D7）。失败/升级任务会清理临时 worktree。
+- 本地落地是显式 opt-in：`loop run` / `deliver`（仅 legacy 自主模式）加 `--land-branch <B>`，或 `LoopRunOptions.localLanding = { targetBranch }`。落地只快进已接受的那一个提交（`mergeWorktree` 的 `expectedCommit`），且要求主检出当前正检出 `<B>`，否则拒绝并保留分支；daemon 管理的循环（`loop start`、`loop run --daemon`）不提供本地落地。CandidatePolicy 以其 `branch` 作为隐式目标分支。`--govern` 与 `--worktree` 同用时必须带 `--land-branch`，因为 legacy 治理扫描的是主检出。
+- 执行器自行 `git commit` 留下干净工作区时（D6），Loop 以 worktree 创建时记录的起点提交判断分支上有新提交：保留分支并报告（`loop.worktree.preserved`，原因 `executor_commits`），从不删除；这些提交未作为 Loop 候选被审查（审查证据相对 worktree HEAD 收集），因此即使开启本地落地也拒绝落地。`cleanupWorktree` 只删除尖端等于起点、或已被主检出 HEAD/其他 ref 包含的分支，孤儿清理同样不会删除独有提交。
 - 如果成功任务已提交但主工作区无法 fast-forward 合并，Loop 会清理临时 worktree 但保留 `osstack/loop/...` 分支，避免丢失可人工处理的成果。
 - daemon 启动恢复 session 时会清理已持久化 worktree loop 的孤儿 worktree；启用 `--worktree` 的循环会在每个 cycle 前后清理当前 loop 前缀下的残留 worktree，并发 loop 之间通过 `osstack/loop/<loop_id>/...` 分支前缀隔离。
 - `legacy-python/runtime/bin/osb-loop` 已改为兼容 shim：自动复用或临时启动 daemon，调用 `loop start --once --source git_diff`，轮询 session 完成，并用 `LOOP-STATE.json` 中的 completed task outcome 决定退出码。

@@ -127,6 +127,9 @@ async function smokeWorktreeLoop() {
     "--verify",
     "node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'after smoke worktree\\n' ? 0 : 1)\"",
     "--worktree",
+    // Local landing is an explicit opt-in pinned to the checked-out branch (D7).
+    "--land-branch",
+    "main",
     "--worktree-root",
     worktreeRoot,
     "--json",

@@ -504,7 +504,7 @@ Project commands:
   release edgeone [--workspace P] [--cloud-url URL] [--output P] [--json]
                       Generate the EdgeOne Knowledge Cloud setup handoff
   init [dir]          Scaffold OSBORN project layout (V2 osb-init)
-  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree] [--autonomy legacy|guarded-local|guarded-git]
+  deliver <prompt> [--verify CMD] [--auto-agent] [--worktree [--land-branch B]] [--autonomy legacy|guarded-local|guarded-git]
                       Product entry: task queue -> loop -> report/scorecard/proof;
                       guarded-git adds risk, signed approval, PR/CI/merge, final proof
   autonomy list|status|approve|reject|resume
@@ -571,7 +571,7 @@ Loop engineering (local, testable hot-loop MVP):
                                  Write a GitHub-ready PR body from run evidence
   loop run [--workspace P] [--source S] [--execute CMD] [--verify CMD]
            [--reviewer ID] [--checker ID] [--goal CMD] [--max-iter N] [--cycles N] [--interval-ms N]
-           [--state P] [--markdown P] [--worktree] [--knowledge off|local|cloud] [--govern [warn|strict]]
+           [--state P] [--markdown P] [--worktree [--land-branch B]] [--knowledge off|local|cloud] [--govern [warn|strict]]
            [--self-improvement --repo-id ID [--propose-improvements]]
            [--report] [--scorecard] [--proof] [--json] [--daemon]
                                  Run one discover→execute→verify→iterate cycle
@@ -9007,7 +9007,7 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
   status: "recorded" | "unknown";
   entries?: Array<{
     task_id: string;
-    status: "created" | "merged" | "cleaned";
+    status: "created" | "merged" | "preserved" | "cleaned";
     branch: string;
     commit: string;
     path: string;
@@ -9019,6 +9019,7 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
     .filter((event) => (
       event.type === "loop.worktree.created"
       || event.type === "loop.worktree.merged"
+      || event.type === "loop.worktree.preserved"
       || event.type === "loop.worktree.cleaned"
     ))
     .map((event) => ({
@@ -9027,7 +9028,9 @@ function createWorktreeStatusEvidence(events: LoopEvent[]): {
         ? "created" as const
         : event.type === "loop.worktree.merged"
           ? "merged" as const
-          : "cleaned" as const,
+          : event.type === "loop.worktree.preserved"
+            ? "preserved" as const
+            : "cleaned" as const,
       branch: stringEventPayload(event, "branch"),
       commit: stringEventPayload(event, "commit"),
       path: firstStringEventPayload(event, ["path", "worktree_path"]),
@@ -9167,7 +9170,7 @@ function validateWorktreeStatusEvidence(value: ReturnType<typeof createWorktreeS
         if (entry.task_id.length === 0 || entry.task_id === "unknown") {
           errors.push(`worktree-status.entries[${index}].task_id is required`);
         }
-        if (!["created", "merged", "cleaned"].includes(entry.status)) {
+        if (!["created", "merged", "preserved", "cleaned"].includes(entry.status)) {
           errors.push(`worktree-status.entries[${index}].status is invalid`);
         }
         if (entry.branch.length === 0 || entry.branch === "unknown") {
@@ -9175,6 +9178,9 @@ function validateWorktreeStatusEvidence(value: ReturnType<typeof createWorktreeS
         }
         if (entry.status === "merged" && (entry.commit.length === 0 || entry.commit === "unknown")) {
           errors.push(`worktree-status.entries[${index}].commit is required for merged worktrees`);
+        }
+        if (entry.status === "preserved" && (entry.commit.length === 0 || entry.commit === "unknown")) {
+          errors.push(`worktree-status.entries[${index}].commit is required for preserved worktrees`);
         }
         if (entry.path.length === 0 || entry.path === "unknown") {
           errors.push(`worktree-status.entries[${index}].path is required`);
@@ -10198,6 +10204,22 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+/**
+ * Local landing is an explicit, attended opt-in (D7): `--land-branch B`
+ * fast-forwards branch B in the main checkout to the accepted worktree commit,
+ * and only when B is what the checkout has checked out. Without it a
+ * `--worktree` run keeps the accepted commit on its task branch.
+ */
+function parseLandBranchFlag(args: string[], useDaemon: boolean): string | undefined | Error {
+  if (!args.includes("--land-branch")) return undefined;
+  if (args.filter((arg) => arg === "--land-branch").length > 1) return new Error("--land-branch may be given only once");
+  const value = flagValue(args, "--land-branch");
+  if (value === undefined || value.trim() === "" || value.startsWith("-")) return new Error("--land-branch requires a branch name");
+  if (!args.includes("--worktree")) return new Error("--land-branch requires --worktree");
+  if (useDaemon) return new Error("--land-branch is local-only and cannot be combined with --daemon");
+  return value;
+}
+
 async function handleLoopCommand(args: string[]): Promise<number> {
   if (args[0] === "run" || args[0] === "enqueue") {
     const { applyLoopDefaults } = await import("./loop-defaults.js");
@@ -10225,6 +10247,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const goalCommand = flagValue(args, "--goal");
     const schedule = flagValue(args, "--schedule");
     const worktreeRoot = flagValue(args, "--worktree-root");
+    if (args.includes("--land-branch")) {
+      console.error("osstack: --land-branch is not available for daemon-managed loops; they keep accepted commits on the task branch for PR delivery");
+      return 1;
+    }
     const verifyCommands = flagValues(args, "--verify");
     let verifierAgentIds = [...flagValues(args, "--reviewer"), ...flagValues(args, "--checker")];
     const artifactVerification = parseArtifactVerification(args);
@@ -10406,6 +10432,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error("osstack: --self-improvement is local-only and cannot be combined with --daemon");
       return 1;
     }
+    const landBranch = parseLandBranchFlag(args, useDaemon);
+    if (landBranch instanceof Error) {
+      console.error(`osstack: ${landBranch.message}`);
+      return 1;
+    }
     const profileRouting = await resolveLoopProfileRouting(args, agentId, verifierAgentIds);
     if (profileRouting instanceof Error) {
       console.error(`osstack: ${profileRouting.message}`);
@@ -10447,6 +10478,12 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const governanceScope = parseLoopGovernanceScope(args, governanceMode);
     if (governanceScope instanceof Error) {
       console.error(`osstack: ${governanceScope.message}`);
+      return 1;
+    }
+    if (governanceMode !== undefined && useWorktree && landBranch === undefined) {
+      // Governance scans the main checkout; without landing the candidate is
+      // only on the kept task branch, so a pass there would prove nothing.
+      console.error("osstack: --govern with --worktree requires --land-branch B (governance scans the main checkout)");
       return 1;
     }
     const governanceBaseline = governanceScope === "baseline" || governanceScope === "changed"
@@ -10564,6 +10601,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(archiveCompletedTasks ? { archiveCompletedTasks } : {}),
       ...(useWorktree ? { useWorktree: true } : {}),
       ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+      ...(landBranch !== undefined ? { localLanding: { targetBranch: landBranch } } : {}),
       ...(selfImprovement !== undefined ? { selfImprovement } : {}),
       ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
       // Kernel gate (R2.2): defense-in-depth over the upfront gate; a mid-run
@@ -10778,7 +10816,10 @@ Options:
   --schedule CRON     Cron schedule for daemon-managed loop start
   --archive-completed Move successful single-task queue files into tasks/archive/
   --checkpoint       Create a shadow checkpoint before non-worktree runs
-  --worktree         Run each task in an isolated git worktree, merge success back
+  --worktree         Run each task in an isolated git worktree; success is committed
+                     on the kept task branch (osstack/loop/...), not landed locally
+  --land-branch B    loop run only: explicitly opt in to fast-forward branch B in the
+                     main checkout to the accepted commit; refused unless B is checked out
   --worktree-root P  Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
   --max-runtime-ms N  Budget: stop after N ms total runtime (exit code 2)

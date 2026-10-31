@@ -776,6 +776,8 @@ required_surfaces:
       "--execute",
       "printf 'const password = \"new-worktree-password\";\\n' > app.ts",
       "--worktree",
+      "--land-branch",
+      "main",
       "--govern",
       "strict",
       "--govern-scope",
@@ -1113,6 +1115,8 @@ required_surfaces:
       "--verify",
       "node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'after\\n' ? 0 : 1)\"",
       "--worktree",
+      "--land-branch",
+      "main",
       "--worktree-root",
       join(tmp, "worktrees"),
       "--json",
@@ -1128,6 +1132,57 @@ required_surfaces:
       "loop.worktree.cleaned",
     ]));
     await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("after\n");
+  });
+
+  it("keeps --worktree success on the task branch unless --land-branch opts in (D7)", async () => {
+    const workspace = join(tmp, "worktree-no-landing-workspace");
+    await mkdir(join(workspace, "tasks"), { recursive: true });
+    await git(workspace, ["init", "-b", "main"]);
+    await writeFile(join(workspace, "app.txt"), "before\n");
+    await git(workspace, ["add", "app.txt"]);
+    await git(workspace, ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-m", "initial"]);
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "cli-worktree-no-landing",
+      capability: "code.test",
+      prompt: "Exercise default no-landing",
+    }));
+    const before = await git(workspace, ["rev-parse", "HEAD"]);
+
+    const exitCode = await main([
+      "loop", "run", "--workspace", workspace, "--source", "task_queue",
+      "--execute", "node -e \"require('fs').writeFileSync('app.txt', 'after\\n')\"",
+      "--worktree", "--worktree-root", join(tmp, "no-landing-worktrees"), "--json",
+    ]);
+
+    expect(exitCode).toBe(0);
+    const result = JSON.parse(logs.join("\n")) as {
+      events: Array<{ type: string; payload: Record<string, unknown> }>;
+      completed_tasks: Array<{ worktree_branch?: string; worktree_commit?: string; worktree_branch_preserved?: boolean }>;
+    };
+    const types = result.events.map((event) => event.type);
+    expect(types).toContain("loop.worktree.preserved");
+    expect(types).not.toContain("loop.worktree.merged");
+    expect(result.completed_tasks[0]).toMatchObject({ worktree_branch_preserved: true, worktree_commit: expect.stringMatching(/^[a-f0-9]{40}$/) });
+    await expect(git(workspace, ["rev-parse", "HEAD"])).resolves.toBe(before);
+    await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("before\n");
+    await expect(git(workspace, ["rev-parse", result.completed_tasks[0]!.worktree_branch!])).resolves.toBe(result.completed_tasks[0]!.worktree_commit);
+  });
+
+  it("refuses unsafe --land-branch combinations before running anything", async () => {
+    await mkdir(join(tmp, "tasks"), { recursive: true });
+    await expect(main(["loop", "run", "--workspace", tmp, "--land-branch", "main"])).resolves.toBe(1);
+    await expect(main(["loop", "run", "--workspace", tmp, "--worktree", "--land-branch"])).resolves.toBe(1);
+    await expect(main(["loop", "run", "--workspace", tmp, "--worktree", "--land-branch", "main", "--daemon"])).resolves.toBe(1);
+    await expect(main(["loop", "start", "--workspace", tmp, "--worktree", "--land-branch", "main"])).resolves.toBe(1);
+    expect(errors.join("\n")).toMatch(/--land-branch requires --worktree/);
+    expect(errors.join("\n")).toMatch(/not available for daemon-managed loops/);
+  });
+
+  it("refuses --govern with --worktree when the candidate would not reach the scanned checkout", async () => {
+    await mkdir(join(tmp, "tasks"), { recursive: true });
+    await git(tmp, ["init", "-b", "main"]);
+    await expect(main(["loop", "run", "--workspace", tmp, "--source", "task_queue", "--worktree", "--govern", "strict"])).resolves.toBe(1);
+    expect(errors.join("\n")).toMatch(/--govern with --worktree requires --land-branch/);
   });
 
   it("does not treat an unknown --agent as a successful local no-op", async () => {

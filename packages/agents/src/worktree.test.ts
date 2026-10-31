@@ -92,7 +92,7 @@ describe("git worktree lifecycle", () => {
     expect(commit.committed).toBe(true);
     expect(commit.commit).toMatch(/^[a-f0-9]{40}$/);
 
-    await mergeWorktree(handle);
+    await mergeWorktree(handle, { expectedCommit: commit.commit!, targetBranch: "main" });
     await expect(readFile(join(repo, "feature.txt"), "utf-8")).resolves.toBe("done\n");
 
     await cleanupWorktree(handle);
@@ -172,7 +172,7 @@ describe("git worktree lifecycle", () => {
       rootPath: root,
     });
     await writeFile(join(handle.worktreePath, "feature.txt"), "safe\n");
-    await commitWorktreeChanges(handle, "loop task merge-hook");
+    const accepted = await commitWorktreeChanges(handle, "loop task merge-hook");
     const marker = join(root, "merge-hook-ran");
     const hook = join(repo, ".git", "hooks", "post-merge");
     await writeFile(
@@ -181,7 +181,7 @@ describe("git worktree lifecycle", () => {
     );
     await chmod(hook, 0o755);
 
-    await mergeWorktree(handle);
+    await mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" });
 
     await expect(readFile(marker, "utf-8")).rejects.toMatchObject({
       code: "ENOENT",
@@ -199,7 +199,7 @@ describe("git worktree lifecycle", () => {
     await writeFile(join(handle.worktreePath, "feature.txt"), "unreviewed\n");
     await git(handle.worktreePath, ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qam", "late"]);
 
-    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit! })).rejects.toThrow(/differs from the accepted commit/);
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" })).rejects.toThrow(/differs from the accepted commit/);
     await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(before);
     await cleanupWorktree(handle);
   });
@@ -217,7 +217,7 @@ describe("git worktree lifecycle", () => {
     await git(handle.worktreePath, ["add", "config.yaml"]);
     await git(handle.worktreePath, ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "loop task whitespace"]);
 
-    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit! })).rejects.toThrow(/differs from the accepted commit/);
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" })).rejects.toThrow(/differs from the accepted commit/);
     await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(before);
     await cleanupWorktree(handle);
   });
@@ -229,11 +229,80 @@ describe("git worktree lifecycle", () => {
     const accepted = await commitWorktreeChanges(handle, "loop task pinned-shape");
 
     for (const expectedCommit of [accepted.commit!.slice(0, 12), handle.branch, "HEAD"]) {
-      await expect(mergeWorktree(handle, { expectedCommit })).rejects.toThrow(/full commit id/);
+      await expect(mergeWorktree(handle, { expectedCommit, targetBranch: "main" })).rejects.toThrow(/full commit id/);
     }
-    await mergeWorktree(handle, { expectedCommit: accepted.commit! });
+    await mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" });
     await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(accepted.commit);
     await cleanupWorktree(handle);
+  });
+
+  it("records the start commit and reports executor-made commits on a clean tree (D6)", async () => {
+    const { repo, root } = await makeRepo();
+    const start = await git(repo, ["rev-parse", "HEAD"]);
+    const handle = await createWorktree({ repoPath: repo, runId: "self-commit", rootPath: root });
+    expect(handle.startCommit).toBe(start);
+    await writeFile(join(handle.worktreePath, "feature.txt"), "executor work\n");
+    await git(handle.worktreePath, ["add", "feature.txt"]);
+    await git(handle.worktreePath, ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "executor commit"]);
+    const tip = await git(handle.worktreePath, ["rev-parse", "HEAD"]);
+
+    await expect(commitWorktreeChanges(handle, "loop task self-commit")).resolves.toEqual({ committed: false, commit: tip, executorCommitted: true });
+    await expect(cleanupWorktree(handle)).resolves.toEqual({ branchRemoved: false });
+    await expect(git(repo, ["rev-parse", "--verify", `refs/heads/${handle.branch}`])).resolves.toBe(tip);
+    await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(start);
+  });
+
+  it("refuses to land a loop commit stacked on executor-made commits", async () => {
+    const { repo, root } = await makeRepo();
+    const start = await git(repo, ["rev-parse", "HEAD"]);
+    const handle = await createWorktree({ repoPath: repo, runId: "stacked", rootPath: root });
+    await writeFile(join(handle.worktreePath, "a.txt"), "executor\n");
+    await git(handle.worktreePath, ["add", "a.txt"]);
+    await git(handle.worktreePath, ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "executor commit"]);
+    await writeFile(join(handle.worktreePath, "b.txt"), "loop\n");
+    const accepted = await commitWorktreeChanges(handle, "loop task stacked");
+    expect(accepted).toMatchObject({ committed: true, executorCommitted: true });
+
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" })).rejects.toThrow(/commits beyond the accepted commit's start/);
+    await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(start);
+    await expect(cleanupWorktree(handle)).resolves.toEqual({ branchRemoved: false });
+  });
+
+  it("lands only onto the explicit target branch the main checkout has checked out (D7)", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "target", rootPath: root });
+    await writeFile(join(handle.worktreePath, "feature.txt"), "accepted\n");
+    const accepted = await commitWorktreeChanges(handle, "loop task target");
+    await git(repo, ["switch", "-q", "-c", "topic"]);
+    const before = await git(repo, ["rev-parse", "HEAD"]);
+
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" })).rejects.toThrow(/main checkout is on topic, not the landing target main/);
+    for (const targetBranch of ["", "-main", "bad..name"]) {
+      await expect(mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch })).rejects.toThrow(/target branch/);
+    }
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit! } as never)).rejects.toThrow(/explicit target branch/);
+    await git(repo, ["switch", "-q", "--detach"]);
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" })).rejects.toThrow(/detached HEAD/);
+    await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(before);
+    await expect(git(repo, ["rev-parse", "refs/heads/main"])).resolves.toBe(before);
+
+    await git(repo, ["switch", "-q", "main"]);
+    await mergeWorktree(handle, { expectedCommit: accepted.commit!, targetBranch: "main" });
+    await expect(git(repo, ["rev-parse", "refs/heads/main"])).resolves.toBe(accepted.commit);
+    await expect(git(repo, ["rev-parse", "refs/heads/topic"])).resolves.toBe(before);
+    // Landed commits are reachable from main, so the task branch may go.
+    await expect(cleanupWorktree(handle)).resolves.toEqual({ branchRemoved: true });
+  });
+
+  it("orphan cleanup keeps a branch whose commits exist nowhere else", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "orphan-commit", rootPath: root });
+    await writeFile(join(handle.worktreePath, "feature.txt"), "unique\n");
+    const made = await commitWorktreeChanges(handle, "loop task orphan-commit");
+
+    const result = await cleanupOrphanedWorktrees(repo, { rootPath: root });
+    expect(result.removed).toEqual([expect.objectContaining({ branch: handle.branch })]);
+    await expect(git(repo, ["rev-parse", "--verify", `refs/heads/${handle.branch}`])).resolves.toBe(made.commit);
   });
 
   it("can remove a worktree while preserving its branch", async () => {

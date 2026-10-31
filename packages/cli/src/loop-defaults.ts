@@ -259,6 +259,7 @@ function explicitFlags(args: string[], strict = true): Set<string> {
           "--state",
           "--markdown",
           "--worktree-root",
+          "--land-branch",
           "--cycles",
           "--interval-ms",
           "--lessons-dir",

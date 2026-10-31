@@ -726,7 +726,7 @@ describe("LoopEngine", () => {
     });
   });
 
-  it("can execute a successful task in an isolated git worktree and merge it back", async () => {
+  it("can execute a successful task in an isolated git worktree and merge it back when local landing is opted in", async () => {
     const workspace = await makeGitQueuedWorkspace("initial\n");
     const worktreeRoot = join(workspace, "..", "isolated-worktrees");
     const result = await new LoopEngine({
@@ -737,6 +737,7 @@ describe("LoopEngine", () => {
       verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8').includes('changed') ? 0 : 1)\""],
       useWorktree: true,
       worktreeRoot,
+      localLanding: { targetBranch: "main" },
     }).runOnce();
 
     expect(result.state.completed_tasks[0]).toMatchObject({
@@ -755,6 +756,120 @@ describe("LoopEngine", () => {
     expect(await git(workspace, ["worktree", "list", "--porcelain"])).not.toContain("osstack/loop/");
   });
 
+  it("never lands locally by default: a successful worktree run keeps its accepted commit on the task branch (D7)", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    const before = await git(workspace, ["rev-parse", "HEAD"]);
+    const result = await new LoopEngine({
+      loopId: "loop-worktree-no-landing",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.txt', 'changed in worktree\\n')\"",
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8').includes('changed') ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "no-landing-worktrees"),
+    }).runOnce();
+
+    const task = result.state.completed_tasks[0]!;
+    expect(task).toMatchObject({
+      task_id: "task-1",
+      outcome: "success",
+      worktree_commit: expect.stringMatching(/^[a-f0-9]{40}$/),
+      worktree_branch_preserved: true,
+    });
+    const types = result.events.map((event) => event.type);
+    expect(types).toContain("loop.worktree.preserved");
+    expect(types).not.toContain("loop.worktree.merged");
+    expect(result.events.find((event) => event.type === "loop.worktree.preserved")?.payload).toMatchObject({
+      reason: "local_landing_disabled", commit: task.worktree_commit, branch: task.worktree_branch,
+    });
+    await expect(git(workspace, ["rev-parse", "HEAD"])).resolves.toBe(before);
+    await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("initial\n");
+    await expect(git(workspace, ["rev-parse", `refs/heads/${task.worktree_branch}`])).resolves.toBe(task.worktree_commit);
+    await expect(git(workspace, ["show", `${task.worktree_commit}:app.txt`])).resolves.toBe("changed in worktree");
+  });
+
+  it("refuses local landing when the main checkout is not on the pinned target branch (D7)", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    await git(workspace, ["branch", "release"]);
+    const before = await git(workspace, ["rev-parse", "HEAD"]);
+    await expect(new LoopEngine({
+      loopId: "loop-worktree-wrong-target",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('app.txt', 'changed in worktree\\n')\"",
+      verifyCommands: ["node -e \"process.exit(0)\""],
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "wrong-target-worktrees"),
+      localLanding: { targetBranch: "release" },
+    }).runOnce()).rejects.toThrow(/main checkout is on main, not the landing target release/);
+    await expect(git(workspace, ["rev-parse", "refs/heads/main"])).resolves.toBe(before);
+    await expect(git(workspace, ["rev-parse", "refs/heads/release"])).resolves.toBe(before);
+    const branches = await git(workspace, ["branch", "--list", "osstack/loop/*"]);
+    expect(branches).toContain("osstack/loop/loop-worktree-wrong-target/");
+  });
+
+  it("validates the local landing opt-in up front", () => {
+    expect(() => new LoopEngine({ workspacePath: "/nonexistent", localLanding: { targetBranch: "main" } })).toThrow("LOCAL_LANDING_WORKTREE_REQUIRED");
+    expect(() => new LoopEngine({ workspacePath: "/nonexistent", useWorktree: true, localLanding: { targetBranch: " " } })).toThrow("LOCAL_LANDING_TARGET_REQUIRED");
+    expect(() => new LoopEngine({ workspacePath: "/nonexistent", useWorktree: true, localLanding: { targetBranch: "main" },
+      guardedLocalCandidate: { mode: "artifact_only", inspect: async () => {} } })).toThrow("LOCAL_LANDING_FORBIDDEN_FOR_GUARDED_CANDIDATE");
+  });
+
+  it("preserves executor-made commits instead of deleting the branch when the tree is clean (D6)", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    const before = await git(workspace, ["rev-parse", "HEAD"]);
+    const command = [
+      "const fs=require('fs')",
+      "const cp=require('child_process')",
+      "fs.writeFileSync('app.txt','committed by executor\\n')",
+      "cp.execFileSync('git',['add','app.txt'])",
+      "cp.execFileSync('git',['-c','user.name=exec','-c','user.email=exec@example.invalid','commit','-qm','executor commit'])",
+    ].join(";");
+    const result = await new LoopEngine({
+      loopId: "loop-worktree-executor-commit",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: `node -e ${JSON.stringify(command)}`,
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8').startsWith('committed') ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "executor-commit-worktrees"),
+    }).runOnce();
+
+    const task = result.state.completed_tasks[0]!;
+    expect(task).toMatchObject({ task_id: "task-1", outcome: "success", worktree_branch_preserved: true, worktree_commit: expect.stringMatching(/^[a-f0-9]{40}$/) });
+    expect(result.events.find((event) => event.type === "loop.worktree.preserved")?.payload).toMatchObject({ reason: "executor_commits", commit: task.worktree_commit });
+    expect(result.events.find((event) => event.type === "loop.worktree.cleaned")?.payload).toMatchObject({ branch_removed: false });
+    await expect(git(workspace, ["rev-parse", `refs/heads/${task.worktree_branch}`])).resolves.toBe(task.worktree_commit);
+    await expect(git(workspace, ["log", "-1", "--format=%s", task.worktree_commit!])).resolves.toBe("executor commit");
+    await expect(git(workspace, ["rev-parse", "HEAD"])).resolves.toBe(before);
+  });
+
+  it("refuses to land executor-made commits even with local landing opted in (D6)", async () => {
+    const workspace = await makeGitQueuedWorkspace("initial\n");
+    const before = await git(workspace, ["rev-parse", "HEAD"]);
+    const command = [
+      "const fs=require('fs')",
+      "const cp=require('child_process')",
+      "fs.writeFileSync('app.txt','committed by executor\\n')",
+      "cp.execFileSync('git',['add','app.txt'])",
+      "cp.execFileSync('git',['-c','user.name=exec','-c','user.email=exec@example.invalid','commit','-qm','executor commit'])",
+    ].join(";");
+    await expect(new LoopEngine({
+      loopId: "loop-worktree-executor-commit-land",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: `node -e ${JSON.stringify(command)}`,
+      verifyCommands: ["node -e \"process.exit(0)\""],
+      useWorktree: true,
+      worktreeRoot: join(workspace, "..", "executor-commit-land-worktrees"),
+      localLanding: { targetBranch: "main" },
+    }).runOnce()).rejects.toThrow(/executor-made commits/);
+    await expect(git(workspace, ["rev-parse", "HEAD"])).resolves.toBe(before);
+    const branch = (await git(workspace, ["branch", "--list", "--format=%(refname:short)", "osstack/loop/*"])).trim();
+    expect(branch).toContain("osstack/loop/loop-worktree-executor-commit-land/");
+    await expect(git(workspace, ["log", "-1", "--format=%s", branch])).resolves.toBe("executor commit");
+  });
+
   it("merges untracked-only worktree output when repository config hides untracked files", async () => {
     const workspace = await makeGitQueuedWorkspace("initial\n");
     await git(workspace, ["config", "status.showUntrackedFiles", "no"]);
@@ -766,6 +881,7 @@ describe("LoopEngine", () => {
       verifyCommands: ["node -e \"process.exit(require('fs').existsSync('generated.txt') ? 0 : 1)\""],
       useWorktree: true,
       worktreeRoot: join(workspace, "..", "hidden-untracked-worktrees"),
+      localLanding: { targetBranch: "main" },
     }).runOnce();
 
     expect(result.state.completed_tasks[0]).toMatchObject({
@@ -1004,6 +1120,7 @@ describe("LoopEngine", () => {
       verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8') === 'worktree change\\n' ? 0 : 1)\""],
       useWorktree: true,
       worktreeRoot,
+      localLanding: { targetBranch: "main" },
     }).runOnce()).rejects.toThrow(/merge --ff-only/);
 
     expect(await git(workspace, ["branch", "--list", "osstack/loop/*"])).toContain("osstack/loop/");

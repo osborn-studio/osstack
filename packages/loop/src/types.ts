@@ -494,6 +494,7 @@ export const LoopEventType = z.enum([
   "loop.escalated",
   "loop.worktree.created",
   "loop.worktree.merged",
+  "loop.worktree.preserved",
   "loop.worktree.cleaned",
   "loop.worktree.orphans_cleaned",
   "loop.goal.checked",
