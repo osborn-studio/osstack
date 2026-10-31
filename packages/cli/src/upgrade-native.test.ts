@@ -48,15 +48,14 @@ async function fixture(oldSchema=40,nextSchema=41) {
   return{root,config,old,next,plan,input,backend,journal,starts:()=>starts};
 }
 describe('managed native upgrade actual filesystem/process boundaries',()=>{
-  it('accepts clean schema47 to schema49 homes but refuses an unqualified schema50 home',async()=>{
-    for(const schema of [47,48,49,50]){
-      const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
-      try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});
-        if(schema<50){expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}
-        else{expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}
-      }finally{await port.close();}
-    }
-  },60000);
+  it.each([47,48,49])('accepts a clean schema%i home',async schema=>{
+    const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}finally{await port.close();}
+  },30000);
+  it('refuses an unqualified schema50 home',async()=>{
+    const f=await fixture(50,50);const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
+  },30000);
   it.each(['reserved','dispatch_committed'] as const)('quarantines schema47 %s without an applied receipt before replacing code',async phase=>{
     const f=await fixture(47,47);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));
     db.prepare('INSERT INTO attention_dispatch_phases VALUES(?,?)').run('message',phase);db.exec("INSERT INTO session_messages VALUES('message','accepted')");db.close();
