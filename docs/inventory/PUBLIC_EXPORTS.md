@@ -120,6 +120,8 @@ export * from "./hub-package.js";
 ```ts
 export * as protocol from "@osstack/protocol";
 export * from "./capability.js";
+export { evaluateBehaviorRegistry } from "./behavior-registry.js";
+export type { BehaviorRegistryInput, BehaviorRegistryTrust, BehaviorRegistryPolicy, BehaviorRegistryEntry, BehaviorRegistrySnapshot, BehaviorRegistryEvaluationContext } from "./behavior-registry.js";
 export * from "./state/index.js";
 export * from "./state/protocol-mappers.js";
 export * from "./privacy/index.js";
@@ -138,6 +140,7 @@ export { AttentionActions, reserveSessionInstruction } from "./state/attention-a
 export { EngineeringStore, engineeringSourceIdentity, type EngineeringPrincipal, type EngineeringMission, type EngineeringWait, type EngineeringActionReceipt, type EngineeringStopResult, type EngineeringObservationProof, type EngineeringDispatchPermit, type EngineeringHostEvidence } from "./state/engineering-store.js";
 export { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch, type EngineeringDispatchPhase } from "./state/engineering-dispatch.js";
 export { AttentionExperience, type AttentionSender } from "./state/attention-experience.js";
+export { parseAttentionReminderPolicy, type AttentionReminderPolicy } from "./state/attention-reminders.js";
 export { classifyAttentionWait, evaluateCoverage, evaluateActivity, type WaitInput } from './attention.js';
 export { GraphRunStore, GraphRunStorageError } from "./state/graph-runs.js";
 export { GraphActionStore, GraphActionStorageError } from "./state/graph-actions.js";
@@ -277,6 +280,7 @@ export {
 export { DeliveryContractV2, FrozenDeliveryContractV2, DeliveryVerificationReceiptV2,
 export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams,
 export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
+export {
 export {
 ```
 
