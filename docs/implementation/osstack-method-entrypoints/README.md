@@ -1,6 +1,6 @@
 # Named OSStack methods and host export
 
-Candidate work follows merged PR290/main `f92914e0a98bd3e5f82765fddc5a275a93637f30`. [Specification](spec.md) defines the D2a scope and [export usage](../../../osstack-methods-skill/EXPORT.md) describes the four named entries. Four named entries and both host export layouts are implemented in this candidate. Native discovery and runtime qualification remain unverified.
+Candidate work follows merged PR290/main `f92914e0a98bd3e5f82765fddc5a275a93637f30`. [Specification](spec.md) defines the D2a scope and export usage (removed) describes the four named entries. Four named entries and both host export layouts are implemented in this candidate. Native discovery and runtime qualification remain unverified.
 
 PR291 was independently combined with this main at `c85de1a96109c0efccdf9e1e1d5fc52a2a927e92`, tree `3e2f587932ee9ab47fd2613587b3a738ed1fb6cf`. Fresh install/build, skills 25 tests plus five actual CLI cases, engineering 27 tests plus actual workflow, and 241 document checks passed after the preserved verification-harness and incremental-build corrections. This is not a new combined full-repository run. The [composition report](composition-report.md) describes the exact sequence; the archive includes raw failures and successful rechecks.
 

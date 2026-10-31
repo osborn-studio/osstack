@@ -6,7 +6,7 @@ This slice adds method text and export/navigation tests. It does not add a revie
 
 ## Sources and adaptation
 
-The upstream source is `cursor/plugins` at `99b609a72323b70204eab407c622f436e858e112`, under `pstack/skills/`. The adapted wording and links are maintained in [source attribution](../../../osstack-methods-skill/references/sources.md).
+The upstream source is `cursor/plugins` at `99b609a72323b70204eab407c622f436e858e112`, under `pstack/skills/`. The adapted wording and links are maintained in source attribution (removed).
 
 | Source | Capability retained | OSStack adaptation |
 | --- | --- | --- |

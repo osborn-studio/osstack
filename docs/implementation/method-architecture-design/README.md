@@ -1,6 +1,6 @@
 # Architecture design method
 
-This author slice adds [architecture design guidance](../../../osstack-methods-skill/references/architecture-design.md) and this record. It starts with caller usage, derives domain types and signatures, compares distinct ownership structures, and specifies lifecycle, compatibility and falsifiable checks. It does not implement the example service or add runtime behavior.
+This author slice adds architecture design guidance (removed) and this record. It starts with caller usage, derives domain types and signatures, compares distinct ownership structures, and specifies lifecycle, compatibility and falsifiable checks. It does not implement the example service or add runtime behavior.
 
 The baseline is `711c45e75264000bde859328bd7dc131f68461d1`. Shared entry routing, source attribution and exporter tests belong to the integration owner. This isolated slice does not claim eleven-method navigation, actual host use or improved design quality.
 

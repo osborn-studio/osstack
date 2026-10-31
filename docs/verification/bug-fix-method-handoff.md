@@ -58,7 +58,7 @@ node scripts/prepare-bug-fix-method.mjs --input "$REQUEST_JSON" --output "$NEW_H
 
 ## 合成示例与测试
 
-仓库 [synthetic-bug-fix-compilation.json](../../scripts/fixtures/synthetic-bug-fix-compilation.json) 是合成输入。其来源事实、命令摘要、角色正文与“观察”都是测试构造，不是当前缺陷证据。
+仓库 synthetic-bug-fix-compilation.json (removed) 是合成输入。其来源事实、命令摘要、角色正文与“观察”都是测试构造，不是当前缺陷证据。
 
 准备演示时，复制到自有 scratch；将 compilation.target_repository、compilation.check_binding.repository、host.workspace_path 同时改成演示 workspace 的真实路径，再加完整 host envelope。若改 source snapshot 或 material text，重算相应摘要。`test.builder` 一类 capability 不是实际 host 配置，不能直接用于真实 deliver。
 

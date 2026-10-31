@@ -9,7 +9,7 @@ The retained full skills-check journey can now be projected without dropping dri
 - Integrated code/docs: `c7a712909f32f5691bc85afe43a033951ecc2447`. The final projector/test bytes equal the repaired author commit. Root adds the full project/check CI step and artifact preservation; old default CI remains.
 - OSStack activity `card_522ee55d`: PS08/PS13/PS20, primary J07 and supporting J03/J23. This is a tool slice, not whole-capability or formal milestone completion.
 
-See the existing [journey recipe](../../../osstack-methods-skill/references/skills-check-journey.md) and [maintenance guide](../../../osstack-methods-skill/references/maintain-verification.md). The full packet has fixed ordered healthy, missing-ref, drift, mixed and empty rows; verified product exits are 0/1/2/1/0. Failed, not_run and unknown states remain distinct from a verified product result. Projection checks retained manifests, command/raw bytes, fixed sources, Git SHA observations and semantic rows before creating output. Checking a transferred packet checks its own closed structure and manifest; it does not reopen original evidence or authenticate its producer.
+See the existing journey recipe (removed) and maintenance guide (removed). The full packet has fixed ordered healthy, missing-ref, drift, mixed and empty rows; verified product exits are 0/1/2/1/0. Failed, not_run and unknown states remain distinct from a verified product result. Projection checks retained manifests, command/raw bytes, fixed sources, Git SHA observations and semantic rows before creating output. Checking a transferred packet checks its own closed structure and manifest; it does not reopen original evidence or authenticate its producer.
 
 ## Verification and confirmed repair
 

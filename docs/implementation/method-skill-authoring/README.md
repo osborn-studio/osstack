@@ -6,7 +6,7 @@ The method starts from a repeated task, a representative request and a nearby no
 
 ## Sources and adaptation
 
-The original pstack commit is `99b609a72323b70204eab407c622f436e858e112`: `poteto-mode/playbooks/authoring-a-skill.md`, `reflect/SKILL.md`, `correct/SKILL.md`, and `principle-encode-lessons-in-structure/SKILL.md`, all under `pstack/skills/`. Firstmate commit `af1c6817fc47589b162cbc361671c43cdb150933` supplies `.agents/skills/agent-skill-trigger-index/SKILL.md` and `.agents/skills/firstmate-self-repo/SKILL.md`. The [source attribution](../../../osstack-methods-skill/references/sources.md) retains the original links, MIT license attribution and excluded host-specific behavior.
+The original pstack commit is `99b609a72323b70204eab407c622f436e858e112`: `poteto-mode/playbooks/authoring-a-skill.md`, `reflect/SKILL.md`, `correct/SKILL.md`, and `principle-encode-lessons-in-structure/SKILL.md`, all under `pstack/skills/`. Firstmate commit `af1c6817fc47589b162cbc361671c43cdb150933` supplies `.agents/skills/agent-skill-trigger-index/SKILL.md` and `.agents/skills/firstmate-self-repo/SKILL.md`. The source attribution (removed) retains the original links, MIT license attribution and excluded host-specific behavior.
 
 These are independently worded adaptations. They do not import mandatory reviewer models, automatic tracker publication, global transcript collection, cache mutation, Firstmate role machinery or a new approval requirement for already-authorized edits.
 

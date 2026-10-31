@@ -538,14 +538,9 @@ changed-file findings that were not present in that baseline. The changed set
 includes working-tree, staged, untracked, and commits created since the run
 started, including isolated-worktree merges.
 
-### Engineering verification methods
+### Engineering decision journey
 
-The repository includes [shared engineering methods](osstack-methods-skill/SKILL.md)
-for explicit use in Codex or Claude: investigation, bug-fix, creating verification
-instructions, and maintaining them. Ask the host to read the selected entry and
-its common evidence rules; no host installation or runtime authorization is implied.
-
-After `pnpm install` and `pnpm build`, start with the local decision journey:
+After `pnpm install` and `pnpm build`, run the local decision journey:
 
 ```sh
 node scripts/smoke-engineering-decision.mjs --doctor

@@ -6,7 +6,7 @@ The author branch starts at main `a9e480d39b9fcff206f356cee75a72cc9cc4d9e4`. The
 
 ## Original sources and adaptation
 
-[pstack sources and Firstmate attribution](../../../osstack-methods-skill/references/sources.md) preserve original authors and exact revision URLs. The author read Git objects, not a secondary report in place of original sources:
+pstack sources and Firstmate attribution (removed) preserve original authors and exact revision URLs. The author read Git objects, not a secondary report in place of original sources:
 
 | Original source | Retained capability | Adaptation boundary |
 | --- | --- | --- |

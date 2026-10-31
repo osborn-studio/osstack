@@ -6,7 +6,7 @@
 
 - 在现有真实 CLI → 独立 daemon → SQLite 的回答回执 smoke 上增加只读预检、执行计划和清理后可复查的证据。
 - [单功能地图](feature-map.md)按用户行为界定检查范围；确定性 Adapter 的结果不能外推到真实 Provider。
-- [共用方法材料](../../../osstack-methods-skill/SKILL.md)由 Codex、Claude 显式读取，覆盖 investigation、bug-fix、create-verification 和 maintain-verification。不自动安装、不修改宿主配置，不要求固定模型。
+- 共用方法材料 (removed)由 Codex、Claude 显式读取，覆盖 investigation、bug-fix、create-verification 和 maintain-verification。不自动安装、不修改宿主配置，不要求固定模型。
 - 审计、失败、验证候选和测试范围随交付记录保存；用户仍是 PR 审批与合并者。
 
 ## 推进顺序

@@ -128,21 +128,6 @@ jobs:
       - name: Test
         run: pnpm -r test
 
-      - name: Method export contracts
-        run: pnpm test:method-export
-
-      - name: Relevant feature-map selection contracts
-        run: pnpm test:method-feature-map
-
-      - name: Read-only maintenance health contracts
-        run: pnpm test:method-health
-
-      - name: Fixed bug-fix preparation contracts
-        run: pnpm test:bug-fix-method
-
-      - name: Method material pagination contracts
-        run: pnpm test:method-read
-
       - name: Session adoption decision smoke (local fixture)
         run: pnpm smoke:engineering-decision
 
@@ -163,107 +148,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Method verification journey contracts
-        run: pnpm test:method-journey
-
-      - name: Method verification journey (two real local cases)
-        id: method-journey
-        env:
-          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
-        run: |
-          mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
-          pnpm smoke:method-journey --output "$OSSTACK_SCRATCH_ROOT/runtime/method-journey-ci-evidence"
-
-      - name: Preserve method journey evidence
-        if: always() && steps.method-journey.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: method-journey-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/osstack/runtime/method-journey-ci-evidence
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Full method verification journey (five real local cases)
-        id: method-journey-full
-        env:
-          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
-        run: |
-          mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
-          pnpm smoke:method-journey --output "$OSSTACK_SCRATCH_ROOT/runtime/method-journey-full-ci-evidence" --scope full
-
-      - name: Preserve full method journey evidence
-        if: always() && steps.method-journey-full.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: method-journey-full-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/osstack/runtime/method-journey-full-ci-evidence
-          if-no-files-found: warn
-          retention-days: 7
-
       - name: Read-only PR snapshot contracts (offline)
         run: pnpm test:pr-candidate
 
       - name: Ordered PR stack snapshot contracts (offline)
         run: pnpm test:pr-stack-candidate
-
-      - name: Skills map maintenance contracts
-        run: pnpm test:skills-map
-
-      - name: Maintain fixed skills map (five real local cases)
-        id: skills-map-maintenance
-        env:
-          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
-        run: |
-          mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
-          pnpm smoke:skills-map --map "$GITHUB_WORKSPACE/docs/implementation/skills-check-map-maintenance/map.json" --output "$OSSTACK_SCRATCH_ROOT/runtime/skills-map-ci-evidence"
-
-      - name: Preserve skills map maintenance evidence
-        if: always() && steps.skills-map-maintenance.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: skills-map-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/osstack/runtime/skills-map-ci-evidence
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Model evidence projection contracts
-        env:
-          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
-        run: pnpm test:method-projection
-
-      - name: Project and check actual method evidence
-        id: method-projection
-        env:
-          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
-        run: |
-          pnpm method:project-evidence --input "$OSSTACK_SCRATCH_ROOT/runtime/method-journey-ci-evidence" --output "$OSSTACK_SCRATCH_ROOT/runtime/method-packet-ci-evidence"
-          pnpm method:project-evidence --check "$OSSTACK_SCRATCH_ROOT/runtime/method-packet-ci-evidence"
-
-      - name: Preserve model evidence packet
-        if: always() && steps.method-projection.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: method-packet-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/osstack/runtime/method-packet-ci-evidence
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Project and check full five-case method evidence
-        id: method-projection-full
-        env:
-          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
-        run: |
-          pnpm method:project-evidence --input "$OSSTACK_SCRATCH_ROOT/runtime/method-journey-full-ci-evidence" --output "$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence" --scope full
-          pnpm method:project-evidence --check "$OSSTACK_SCRATCH_ROOT/runtime/method-full-packet-ci-evidence"
-
-      - name: Preserve full model evidence packet
-        if: always() && steps.method-projection-full.outcome != 'skipped'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: method-full-packet-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/osstack/runtime/method-full-packet-ci-evidence
-          if-no-files-found: warn
-          retention-days: 7
 
       # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
       # Budgets are looser than the local defaults (150/500ms) because CI

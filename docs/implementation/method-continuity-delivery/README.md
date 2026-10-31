@@ -2,7 +2,7 @@
 
 The four OSStack entries now reach twelve shared methods. The new session-continuity method helps an agent recall, continue, hand off or explicitly pause authorized work while preserving unresolved decisions. It reconciles current goal/authority and ownership with trusted task records, records base and dirty-file ownership, and names the next observer/trigger or a coverage gap. Unknown producer/effect state is not silently unlocked or replayed. Ordinary authorized continuation does not acquire a new identity approval requirement.
 
-This delivery adapts original pstack and Firstmate material into OSStack guidance for Codex and Claude. It does not add runtime persistence, a supervisor, a recovery mechanism, or deployment qualification. See the [method author report](../method-session-continuity/README.md) and [shared method](../../../osstack-methods-skill/references/session-continuity.md).
+This delivery adapts original pstack and Firstmate material into OSStack guidance for Codex and Claude. It does not add runtime persistence, a supervisor, a recovery mechanism, or deployment qualification. See the [method author report](../method-session-continuity/README.md) and shared method (removed).
 
 ## Candidate and validation
 

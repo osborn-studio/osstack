@@ -124,4 +124,4 @@ node scripts/project-method-journey-evidence.mjs --check "$packet_output"
 
 第一条失败时不要继续第二条；分别保留原始退出码与输出。`--check` 不加 `--scope`，由 packet 版本识别。它检查封闭结构与字节一致性，不重新执行产品，不认证原运行/模型身份，也不证明消费者理解材料。原始旅程始终保留。
 
-本教程独立表述并适配 Lauren Tan 的 MIT 许可 [pstack maintain-verification-skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md)：实际驱动、故障归属、恢复后复验、清理后证据仍在。原来源和许可见 [来源说明](../../osstack-methods-skill/references/sources.md)。它只覆盖本仓库固定案例，不实现上游全部维护流程或默认周期任务。
+本教程独立表述并适配 Lauren Tan 的 MIT 许可 [pstack maintain-verification-skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md)：实际驱动、故障归属、恢复后复验、清理后证据仍在。原来源和许可见 来源说明 (removed)。它只覆盖本仓库固定案例，不实现上游全部维护流程或默认周期任务。
