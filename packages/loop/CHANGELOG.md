@@ -1,5 +1,27 @@
 # @osstack/loop
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies [1372ecd]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [9d54cfd]
+- Updated dependencies [540cd7a]
+- Updated dependencies [d5eea3e]
+- Updated dependencies [936aced]
+- Updated dependencies [bda3942]
+- Updated dependencies [13bfb45]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+  - @osstack/protocol@0.23.0
+  - @osstack/core@0.23.0
+  - @osstack/github@0.23.0
+  - @osstack/autonomy@0.23.0
+  - @osstack/agents@0.23.0
+  - @osstack/hermes-adapter@0.23.0
+
 ## 0.22.0
 
 ### Minor Changes

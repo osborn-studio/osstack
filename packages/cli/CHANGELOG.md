@@ -1,5 +1,62 @@
 # @osstack/cli
 
+## 0.23.0
+
+### Minor Changes
+
+- bdab376: Expose seven engineering subcommands for adopting, observing, answering, deferring, cancelling and reconciling existing waiting Sessions.
+- a7c4b85: Add opt-in host-authenticated Session adoption RPC, first-dispatch recovery and independent stop handling. Preserve committed unknown receipts without automatic replay.
+
+### Patch Changes
+
+- a5236a5: Clear `OSSTACK_SOCKET` in the CLI test setup so an exported socket cannot point the suite at a real daemon.
+- a9a4511: Compile a deterministic, non-executable bug-fix proposal and supply explicitly pinned method materials through the existing local execution context. Reject missing, changed, over-budget or wrong-task material before adapter invocation; retain ordinary delivery authorization and verification controls.
+- b5f2f93: Keep adopted Session identity faults fenced after cleared waits and source restoration. Prevent daemon drain from reporting success while execution leases remain held after asynchronous or failed cleanup.
+- 0cf68ab: Respect unresolved Session dispatch phases during managed upgrade and show only proven pre-dispatch cancellation in attention views.
+- 56bd314: Preserve the committed Session send result when writer lease cleanup fails. Keep uncertain delivery errors and retained admission intact. Database-driven replay does not send the original request again; tests cover a daemon restart in the same process.
+
+  Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
+
+- 8db3abb: Preserve completed Session start responses when writer lease cleanup fails. Clear the settled active-run marker while keeping retained admission visible to drain in the current daemon instance. Database-driven replay of the original start request does not start another Session.
+
+  Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
+
+  Replay is a lookup of the stored Session state. A failed initial start returns `agent_failed`; replay returns `ok: true` with `state: failed` and never repeats the adapter invocation. Callers must inspect the stored state. Terminal producer fencing remains a separate change in #279.
+
+- c5d0fc8: Reject Session start streams that end without a successful terminal event. Session send already rejected such streams; it now requires existing adapter stop confirmation before releasing their writer lease. Both paths retain admission when stop is unconfirmed. Normal completed streams still release without stop confirmation. A trusted completed terminal followed by normal iterator exhaustion establishes invocation completion even if the Session result subsequently fails validation (for example, a missing native session ID); that failed result does not retain an already completed invocation.
+
+  Replaying the original request does not invoke the adapter again. A failed Session send replays as delivery_uncertain. For Session start replay, RPC ok means that the stored snapshot was read successfully; clients must check state, which can still be failed or starting.
+
+  Tests use real local RPC and SQLite with a deterministic adapter, including daemon restart in the same process. This change does not qualify live provider stop behavior or add a recovery API. Cross-process retained-hold visibility and recovery remain pending in DEBT02.
+
+- a567bd9: Return exit code 1 when any configured source cannot be checked by `osstack skills check`. Preserve exit code 2 for drift-only results and 0 for no drift or an empty list, and report failed checks separately from drift.
+- Updated dependencies [1372ecd]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [9d54cfd]
+- Updated dependencies [540cd7a]
+- Updated dependencies [d5eea3e]
+- Updated dependencies [43db3e1]
+- Updated dependencies [936aced]
+- Updated dependencies [bda3942]
+- Updated dependencies [2389dcd]
+- Updated dependencies [a9a4511]
+- Updated dependencies [52d7730]
+- Updated dependencies [13bfb45]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+  - @osstack/protocol@0.23.0
+  - @osstack/core@0.23.0
+  - @osstack/github@0.23.0
+  - @osstack/skill-registry@0.23.0
+  - @osstack/autonomy@0.23.0
+  - @osstack/agents@0.23.0
+  - @osstack/graph@0.23.0
+  - @osstack/loop@0.23.0
+  - @osstack/config@0.23.0
+  - @osstack/hermes-adapter@0.23.0
+  - @osstack/skills@0.23.0
+
 ## 0.22.1
 
 ### Patch Changes

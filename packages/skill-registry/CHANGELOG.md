@@ -1,5 +1,27 @@
 # @osstack/skill-registry
 
+## 0.23.0
+
+### Minor Changes
+
+- 936aced: Add bounded offline inspection of pinned Git source objects through the opt-in source-snapshot entry. Results bind content hashes and explicit incomplete-dependency and caller-asserted identity markers; they do not activate skills or authorize execution.
+
+### Patch Changes
+
+- 43db3e1: Wait for Git output streams to close before interpreting tracked skill refs. Preserve command deadlines while output is still pending so a valid delayed ref is not misclassified as missing.
+- 2389dcd: Assemble bounded, explicitly declared source component candidates from retained inspections. Recheck component identity, dependency closure and digests without installation or activation.
+- a9a4511: Compile a deterministic, non-executable bug-fix proposal and supply explicitly pinned method materials through the existing local execution context. Reject missing, changed, over-budget or wrong-task material before adapter invocation; retain ordinary delivery authorization and verification controls.
+- 52d7730: Preserve an explicitly registered Git subtree and independent package version in source manifests. Reject unknown fields instead of silently dropping misspelled pins. Registration does not activate a subtree or change update adoption.
+- Updated dependencies [1372ecd]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [936aced]
+- Updated dependencies [13bfb45]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+  - @osstack/protocol@0.23.0
+  - @osstack/core@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

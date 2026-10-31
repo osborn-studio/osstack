@@ -1,5 +1,13 @@
 # @osstack/protocol
 
+## 0.23.0
+
+### Minor Changes
+
+- 1372ecd: Add strict versioned behavior declarations, source snapshot manifests, qualification records and delivery projections. Bind evidence bundles to the candidate and limitations, and restrict identity tokens. These records do not enable runtime behavior or grant execution authority.
+- 936aced: Add bounded offline inspection of pinned Git source objects through the opt-in source-snapshot entry. Results bind content hashes and explicit incomplete-dependency and caller-asserted identity markers; they do not activate skills or authorize execution.
+- 13bfb45: Add strict request schemas for opt-in Session adoption, decision receipts, independent cancellation, and observation reconciliation.
+
 ## 0.22.0
 
 ### Minor Changes

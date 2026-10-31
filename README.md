@@ -62,8 +62,8 @@ The mappings above describe existing commands. Unified engineering-agent orchest
 
 | Area | Status |
 |---|---|
-| npm package | Published: [`@osstack/cli@0.22.1`](https://www.npmjs.com/package/@osstack/cli/v/0.22.1). `latest` verified on 2026-10-25 (Asia/Shanghai). Check again with `npm view @osstack/cli version` |
-| Source and binary channels | Source tag: [`@osstack/cli@0.22.1`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.22.1); separate single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Published: [`@osstack/cli@0.23.0`](https://www.npmjs.com/package/@osstack/cli/v/0.22.1). `latest` verified on 2026-10-25 (Asia/Shanghai). Check again with `npm view @osstack/cli version` |
+| Source and binary channels | Source tag: [`@osstack/cli@0.23.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.22.1); separate single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
@@ -169,7 +169,7 @@ osstack answers those questions with a local-first control plane:
 ### npm
 
 ```bash
-npm install -g @osstack/cli@0.22.1
+npm install -g @osstack/cli@0.23.0
 osstack --version
 osstack doctor --workspace .
 ```
@@ -177,7 +177,7 @@ osstack doctor --workspace .
 Expected version for this release:
 
 ```text
-osstack 0.22.1
+osstack 0.23.0
 ```
 
 ### macOS Single-Binary Archive

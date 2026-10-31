@@ -1,5 +1,21 @@
 # @osstack/core
 
+## 0.23.0
+
+### Minor Changes
+
+- eb35fbb: Add a bounded behavior registry evaluator for caller-supplied build pins, clock, policy and trust context. It checks source membership, qualification signatures, evidence and dependencies relative to those inputs. It does not authenticate the trust context, verify the operations-root signature, persist a revocation epoch or grant execution authority. It is not wired into daemon routing.
+- 7939a10: Add schema 47 Mission and Wait storage, atomic answer reservations, cancellation proofs, and conservative recovery. Existing attention actions remain the sole dispatch authority.
+
+### Patch Changes
+
+- 85e19da: Reject unknown behavior trust and policy fields, cache failed artifact reads and manifest parses, and normalize malformed context echoes. Preserve the frozen Behavior V1 signing format while keeping corrupt data within the evidence work budget.
+- b5f2f93: Keep adopted Session identity faults fenced after cleared waits and source restoration. Prevent daemon drain from reporting success while execution leases remain held after asynchronous or failed cleanup.
+- Updated dependencies [1372ecd]
+- Updated dependencies [936aced]
+- Updated dependencies [13bfb45]
+  - @osstack/protocol@0.23.0
+
 ## 0.22.0
 
 ### Minor Changes
