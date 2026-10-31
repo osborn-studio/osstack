@@ -68,6 +68,58 @@ export {
   type WorktreeHandle,
 } from "./worktree.js";
 export {
+  HARDENED_GIT_CONFIG_ARGS,
+  HARDENED_GIT_ERROR_CODES,
+  HardenedGitError,
+  hardenedGitEnvironment,
+  runHardenedGit,
+  type HardenedGitContext,
+  type HardenedGitEnvKey,
+  type HardenedGitErrorCode,
+  type HardenedGitOptions,
+  type HardenedGitResult,
+} from "./contained-workspace/hardened-git.js";
+export {
+  REPO_CONFIG_REJECTION_CODES,
+  RepoConfigChangedError,
+  assertRepoConfigUnchanged,
+  filterNeutralizingConfig,
+  inspectRepoConfig,
+  parseGitConfigList,
+  repoConfigDigest,
+  type RepoConfigEntry,
+  type RepoConfigInspection,
+  type RepoConfigRejection,
+  type RepoConfigRejectionCode,
+} from "./contained-workspace/repo-config.js";
+export {
+  CONTAINED_WORKSPACE_ERROR_CODES,
+  ContainedWorkspaceError,
+  commitPlumbing,
+  createNoCheckoutWorktree,
+  materializeCommit,
+  type CommitPlumbingOptions,
+  type ContainedWorkspaceErrorCode,
+  type CreateNoCheckoutWorktreeOptions,
+  type MaterializedFile,
+  type MaterializeResult,
+  type PlumbingCommitAuthor,
+  type PlumbingCommitFile,
+  type PlumbingCommitResult,
+  type TreeLimits,
+} from "./contained-workspace/plumbing.js";
+export {
+  SAFE_FILE_ERROR_CODES,
+  SafeFileError,
+  safeReadFile,
+  safeRelativePathSegments,
+  safeRemoveFile,
+  safeWriteFile,
+  type SafeFileErrorCode,
+  type SafeFileResult,
+  type SafeReadResult,
+} from "./contained-workspace/safe-write.js";
+export {
   AutoResearchAdapter, parseTrainLog,
   type AutoResearchConfig, type TrainResult,
   type ProposeContext, type ProposeResult, type ProposeFn, type TrainFn, type GitFn,
