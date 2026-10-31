@@ -956,6 +956,34 @@ describe("LoopEngine", () => {
     }));
   });
 
+  it("keeps the isolated worktree when Git cannot commit its verified changes", async () => {
+    const workspace = await makeGitQueuedWorkspace("base\n");
+    const worktreeRoot = join(workspace, "..", "commit-unavailable-worktrees");
+    const command = [
+      "const fs=require('fs')",
+      "const cp=require('child_process')",
+      "fs.writeFileSync('app.txt','verified but uncommitted\\n')",
+      // A stale index lock makes `git add` fail after verification passed.
+      "fs.writeFileSync(cp.execFileSync('git',['rev-parse','--path-format=absolute','--git-path','index.lock'],{encoding:'utf8'}).trim(),'')",
+    ].join(";");
+
+    await expect(new LoopEngine({
+      loopId: "loop-worktree-commit-unavailable",
+      workspacePath: workspace,
+      sources: ["task_queue"],
+      executeCommand: `node -e ${JSON.stringify(command)}`,
+      verifyCommands: ["node -e \"process.exit(require('fs').readFileSync('app.txt','utf8').startsWith('verified') ? 0 : 1)\""],
+      useWorktree: true,
+      worktreeRoot,
+    }).runOnce()).rejects.toThrow(/index\.lock|git add/);
+
+    const listed = await git(workspace, ["worktree", "list", "--porcelain"]);
+    const retained = listed.split("\n").find((line) => line.startsWith("worktree ") && line.includes("commit-unavailable-worktrees"));
+    expect(retained).toBeDefined();
+    await expect(readFile(join(retained!.slice("worktree ".length), "app.txt"), "utf-8")).resolves.toBe("verified but uncommitted\n");
+    await expect(readFile(join(workspace, "app.txt"), "utf-8")).resolves.toBe("base\n");
+  });
+
   it("preserves the isolated branch when a successful task cannot fast-forward merge", async () => {
     const workspace = await makeGitQueuedWorkspace("base\n");
     const worktreeRoot = join(workspace, "..", "merge-conflict-worktrees");
