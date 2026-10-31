@@ -221,6 +221,24 @@ describe("no-checkout worktree and plumbing commit", () => {
     );
   });
 
+  it("rejects re-encoded paths and refuses a commit git would hash differently", async () => {
+    const encoded = await makeRepo({ ".gitattributes": "*.txt working-tree-encoding=UTF-16LE\n", "a.txt": "" });
+    await writeFile(join(encoded.repo, "a.txt"), Buffer.from("hi\n", "utf16le"));
+    sh(encoded.repo, "add", "a.txt");
+    sh(encoded.repo, "commit", "-q", "-m", "encoded");
+    const encodedHead = sh(encoded.repo, "rev-parse", "HEAD");
+    expect(await errorCode(createNoCheckoutWorktree({ repoPath: encoded.repo, worktreePath: join(encoded.dir, "wt"), branch: "m", startCommit: encodedHead }))).toBe(
+      "WORKSPACE_TREE_UNSUPPORTED_ATTRIBUTE",
+    );
+
+    const fixture = await makeRepo({ ".gitattributes": "*.txt text\n", "a.txt": "a\n" });
+    const worktree = join(fixture.dir, "wt");
+    await createNoCheckoutWorktree({ repoPath: fixture.repo, worktreePath: worktree, branch: "mission/crlf", startCommit: fixture.head });
+    const crlf = commitPlumbing({ worktree, branch: "mission/crlf", expectedHead: fixture.head, message: "crlf", author: AUTHOR, files: [{ path: "a.txt", action: "write", content: "b\r\n" }] });
+    expect(await errorCode(crlf)).toBe("WORKSPACE_INDEX_MISMATCH");
+    expect(sh(fixture.repo, "rev-parse", "refs/heads/mission/crlf")).toBe(fixture.head);
+  });
+
   it("never runs clean, smudge or process filters during materialization and commit", async () => {
     const fixture = await makeRepo({ ".gitattributes": "*.txt filter=x\n", "a.txt": "raw\n" });
     const touch = `sh -c 'touch "${fixture.canary}"; cat'`;

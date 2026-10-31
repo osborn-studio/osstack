@@ -14,6 +14,7 @@ export const CONTAINED_WORKSPACE_ERROR_CODES = [
   "WORKSPACE_TREE_UNSAFE_PATH",
   "WORKSPACE_TREE_LIMIT",
   "WORKSPACE_BLOB_MISMATCH",
+  "WORKSPACE_TREE_UNSUPPORTED_ATTRIBUTE",
   "WORKSPACE_INDEX_MISMATCH",
   "PLUMBING_COMMIT_INVALID_FILES",
   "PLUMBING_COMMIT_BRANCH_MISMATCH",
@@ -115,7 +116,7 @@ function blobId(bytes: Uint8Array, algorithm: "sha1" | "sha256"): string {
 
 /** Refresh index stat data; `run` must come from {@link filterFreeGit}. */
 async function refreshIndex(run: Awaited<ReturnType<typeof filterFreeGit>>, indexFile?: string): Promise<number> {
-  const result = await run(["update-index", "-q", "--refresh"], { okExitCodes: [0, 1], ...(indexFile ? { gitEnv: { GIT_INDEX_FILE: indexFile } } : {}) });
+  const result = await run(["update-index", "--refresh"], { okExitCodes: [0, 1], ...(indexFile ? { gitEnv: { GIT_INDEX_FILE: indexFile } } : {}) });
   return result.exitCode;
 }
 
@@ -148,6 +149,22 @@ function parseTree(listing: Buffer): TreeEntry[] {
 }
 
 /**
+ * Raw blobs are written as-is, so a path whose attributes re-encode the
+ * worktree copy could never match the index; refuse it up front.
+ */
+async function rejectReencodedPaths(run: Awaited<ReturnType<typeof filterFreeGit>>, commit: string, entries: readonly TreeEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  const listing = await run(["check-attr", `--source=${commit}`, "-z", "--stdin", "working-tree-encoding"], {
+    input: entries.map((entry) => `${entry.path}\0`).join(""),
+  });
+  const fields = listing.stdout.toString("utf8").split("\0");
+  for (let index = 0; index + 2 < fields.length; index += 3) {
+    const value = fields[index + 2];
+    if (value !== "unspecified" && value !== "unset") throw new ContainedWorkspaceError("WORKSPACE_TREE_UNSUPPORTED_ATTRIBUTE", fields[index]);
+  }
+}
+
+/**
  * Write every blob of `commit` into `worktreePath` through the safe writer
  * (no checkout, no smudge filters), then point the index at the commit and
  * refresh its stat data so `git status` is clean.
@@ -165,6 +182,7 @@ export async function materializeCommit(
   const run = await filterFreeGit(worktreePath, context);
   const entries = parseTree((await run( ["ls-tree", "-r", "-z", "--full-tree", `${commit}^{tree}`])).stdout);
   if (entries.length > maxFiles) throw new ContainedWorkspaceError("WORKSPACE_TREE_LIMIT", "files");
+  await rejectReencodedPaths(run, commit, entries);
   const algorithm = commit.length === 64 ? "sha256" : "sha1";
   const files: MaterializedFile[] = [];
   let total = 0;
@@ -270,6 +288,8 @@ export async function commitPlumbing(options: CommitPlumbingOptions): Promise<Pl
       await run(["update-index", "--add", "--cacheinfo", `${executable ? "100755" : "100644"},${blob},${file.path}`], withIndex);
     }
     const tree = text(await run(["write-tree"], withIndex));
+    // A nonzero refresh means git's built-in conversions would hash these bytes differently.
+    if ((await refreshIndex(run, tempIndex)) !== 0) throw new ContainedWorkspaceError("WORKSPACE_INDEX_MISMATCH");
     const head = text(
       await run(["commit-tree", "--no-gpg-sign", tree, "-p", expectedHead, "-F", "-"], {
         gitEnv,
@@ -283,7 +303,6 @@ export async function commitPlumbing(options: CommitPlumbingOptions): Promise<Pl
       if (error instanceof HardenedGitError && error.code === "HARDENED_GIT_FAILED") throw new ContainedWorkspaceError("PLUMBING_COMMIT_STALE_HEAD", error.stderr.trim());
       throw error;
     }
-    await refreshIndex(run, tempIndex);
     await rename(tempIndex, realIndex);
     return { head, tree };
   } finally {
