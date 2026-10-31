@@ -26,21 +26,22 @@
 | **A 补回 · 通用** | #289 `64b203c3` | `cli/skills-command.ts` check 失败退出码 + tests | 宿主技能检查，与 pstack 无关 |
 | **A 补回 · 测试稳定性** | #299 `7d3fc2bf`（仅 `packages/cli/src/upgrade-native.test.ts`） | 升级测试准备阶段移入 beforeEach、独立超时 | PR 其余部分是方法包 |
 | **A 补回 · 测试稳定性** | #300 `e26f6d2c`（仅 `packages/core/src/state/attention-observer.test.ts`） | 修复分页依赖哈希顺序的不稳定断言 | PR 其余部分是方法包 |
-| **B 拆分后补回** | #291 `9debb0f9` | 取：`skill-registry/watcher.ts`+test（输出排空修复）、`scripts/prepare-node-headers.mjs`+test、`scripts/lib/scratch.mjs` 改动、对应 changeset 与 CI 中 node headers 步骤 | 不取：`skills-check-verification.mjs`、`smoke-skills-check*`（方法包验证旅程）；移植前逐个确认 `scratch.mjs`/`ci.yml` hunk 不引用方法脚本 |
+| **B 拆分后补回** | #291 `9debb0f9` | 取：`skill-registry/watcher.ts`+test（输出排空修复）、`scripts/prepare-node-headers.mjs`+test、`scripts/lib/scratch.mjs` 改动、对应 changeset 与 CI 中 node headers 步骤；后续补取：`scripts/smoke-skills-check.mjs`+test、`scripts/lib/skills-check-verification.mjs`、`smoke:skills-check` 脚本与 CI 的 skills-check 步骤及证据上传 | 复核后确认 skills-check 验证只 import node 内置模块与 `@osstack/core` dist，驱动宿主 `osstack skills check`（#289）跑本地 file:// Git fixture，与方法包无关，原判“方法包验证旅程”有误；只有 docs 下的证据包不取 |
 | **B 待定 · 通用候选** | #307 `de43f47c`、#310 `01ec1852` | `github/pr-candidate-snapshot.ts`、`pr-stack-candidate.ts` + `scripts/report-*` | 库代码本身通用（有界 PR/栈快照），但起因是 pr-readiness 方法；若 Firstmate 交付环节需要 PR 就绪判断则补回，不取 `osstack-methods-skill/` 改动 |
 | **B 待定 · 通用候选** | #312 `dcac6ffb`（仅 `skill-registry/manifest.ts`+test） | SkillSource 增 `subdir`/`package_version`，schema 改 `.strict()` | `.strict()` 会拒绝未知字段，是行为变化；只有需要“外部技能包作为可选来源”时再补 |
 | **C 不补回 · joint 合同** | #272 `baf88ea3`、#273 `69859eec`、#280 `e9a9656a`、#281 `8fed8313`、#283 `697d0b9c`、#285 `bc061aeb` | `protocol/joint*`、schemas、fixtures、`skill-registry/source-snapshot`、`.osstack/neat.yaml` | Firstmate×pstack 联合合同 |
 | **C 不补回 · joint 恢复规格** | #274 `baee1f6a`、#284 `3192b424`、#286 `fd9cac81` | operator/broker recovery 离线规格测试与 fixtures | 全部 import `@osstack/protocol/joint`，无运行时入口。Firstmate 的恢复能力应在本分支按 OSStack 自身状态模型重新实现 |
-| **C 不补回 · pstack 方法包** | #288、#290、#292–#298、#301–#306、#311、#313、#314 | `osstack-methods-skill/`、导出/旅程/投影/材料/特性图/健康/来源采用/bug_fix 编译/`method-context` 接线 | pstack 留在核心之外 |
+| **B 拆分后补回** | #288 `4d31c3f5`（仅 `scripts/`） | `scripts/lib/engineering-verification-evidence.mjs` + `smoke-engineering-decision.mjs`/test：doctor/dry-run 预检、独立证据目录与封存 manifest、凭据脱敏（含跨分片尾部）、清理与失败诊断 | 逐文件确认只依赖 node 内置模块、esbuild 与 `@osstack/core` dist；本分支这两个 smoke 文件与 `4d31c3f5^1` 完全相同，补丁无冲突。不取 `osstack-methods-skill/` 与 README 中指向方法包的段落 |
+| **C 不补回 · pstack 方法包** | #288（除 `scripts/` 外）、#290、#292–#298、#301–#306、#311、#313、#314 | `osstack-methods-skill/`、导出/旅程/投影/材料/特性图/健康/来源采用/bug_fix 编译/`method-context` 接线 | pstack 留在核心之外 |
 
 ## 主线之外的待合入修复（PR315/316 候选，均未进 main）
 
 | 处置 | 提交 | 内容 |
 |---|---|---|
-| **A 补回 · 通用** | `bcb596cd` fix(agents): pass explicit Codex writable directories | `agents/adapters/codex-cli.ts`+test+changeset |
+| **A 补回 · 通用** | `bcb596cd` fix(agents): pass explicit Codex writable directories | `agents/adapters/codex-cli.ts`+test（源提交本身没有 changeset，本分支另补 `@osstack/agents` patch changeset） |
 | **A 补回 · 通用** | `cd30b6cc` fix(loop): preserve exact paths in diff discovery | `loop/discover.ts`+test+changeset（长路径/特殊路径） |
 
-两者来自 `origin/codex/pstack-loop-long-path-delivery`，非 docs 改动只有这 6 个文件。用 `git cherry-pick <sha>` 即可（单父提交，不带 docs）；同分支其余 `docs(pstack)` 提交不取。
+两者来自 `origin/codex/pstack-loop-long-path-delivery`，非 docs 改动只有这 5 个文件（`bcb596cd` 2 个，`cd30b6cc` 3 个）。用 `git cherry-pick <sha>` 即可（单父提交，不带 docs）；同分支其余 `docs(pstack)` 提交不取。
 
 ## 执行批次
 
@@ -79,3 +80,13 @@ Backported from 4924d224 (non-docs paths only) onto the Firstmate baseline.
 - `pnpm -r test`：22 个包中 19 个全绿；共 4 个失败，均与移植无关：
   - `github/delivery.test.ts`、`cli/guarded-git-runtime.test.ts` 各 1 个：`stripTypeScriptTypes({mode:"transform"})` 在 Node 26 已不支持；CI 用 Node 22，origin/main 同样代码。
   - `loop/executor.test.ts` 2 个（process group EPERM/ESRCH fixture 超时）：把 `discover.ts` 还原为 ce543535 后仍失败，executor 文件与 origin/main 相同，是本机既有问题。
+
+## 后续补回（2026-10-30，Codex 独立审计 3 个 P2）
+
+分支 `codex/firstmate-baseline-followups`（基于 `codex/firstmate-pure-baseline` 8bc63977），3 个提交：
+
+1. **#291 skills-check 验证**（P2-1，成立）：`skills-check-verification.mjs`、`smoke-skills-check.mjs`+test 只 import node 内置模块，运行时动态加载 `packages/core/dist`（`createScratchDir`）并调用编译后的 `osstack skills check`，属于通用宿主技能验证。补回脚本、`smoke:skills-check` 与 CI 步骤（含证据上传）；`ci.yml` 与 `9debb0f9` 版本逐字相同。提交 `3e571ee8`。
+2. **#288 engineering smoke 证据**（P2-2，成立，可干净拆分）：`engineering-verification-evidence.mjs` 与 smoke 改动不引用方法包，补丁直接套用。不取 `osstack-methods-skill/` 和 README 段落。提交 `9499e564`。
+3. **Codex 可写目录 changeset**（P2-3，成立）：`bcb596cd` 本身无 changeset，新增 `.changeset/codex-explicit-writable-roots.md`（`@osstack/agents` patch）。提交 `4afa5118`。
+
+验证：`pnpm smoke:skills-check`（25/25，5 个用例全过，fixture 已清理）、`pnpm smoke:engineering-decision`（27/27，真实运行通过）、`pnpm build`、`pnpm typecheck:check`、`pnpm lint`（0 错误）；非 docs 路径 `git grep "protocol/joint|osstack-methods-skill|method-context|source-snapshot"` 无结果。
