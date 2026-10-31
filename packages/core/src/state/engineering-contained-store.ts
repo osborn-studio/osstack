@@ -97,12 +97,12 @@ export class ContainedMissionStore {
     const spec_json = JSON.stringify(input.spec);
     if (spec_json.length > 32768) throw Error("invalid_spec");
     return this.write(() => {
-      let repairCycles = 0;
+      let repairCycles = 0; let repairPending = 0;
       if (input.supersedes) {
         const prior = this.get(input.supersedes);
         if (prior.scope_id !== input.scope_id) throw Error("permission_denied");
         if (!TERMINAL.has(prior.state)) throw Error("supersedes_active_mission");
-        repairCycles = prior.repair_cycles;
+        repairCycles = prior.repair_cycles; repairPending = prior.repair_pending;
         // Hand the worktree over; a prior Mission with unproven stop keeps its claim, so this fails as workspace_claimed.
         if (prior.stop_obligation === 0 && this.claim(prior.mission_id).state === "active") {
           this.db.prepare("UPDATE engineering_workspace_claims SET state='released',released_at=?,release_reason='superseded' WHERE mission_id=?").run(now, prior.mission_id);
@@ -111,8 +111,8 @@ export class ContainedMissionStore {
       }
       const missionId = `cm_${randomUUID()}`;
       this.db.prepare(`INSERT INTO engineering_contained_missions(mission_id,scope_id,owner_principal_id,owner_client_session_id,spec_digest,spec_json,
-        state,revision,repair_cycles,supersedes,created_at,updated_at) VALUES(?,?,?,?,?,?,'authorized',1,?,?,?,?)`)
-        .run(missionId, input.scope_id, principal.principal_id, principal.client_session_id, attentionDigest(input.spec), spec_json, repairCycles, input.supersedes ?? null, now, now);
+        state,revision,repair_cycles,repair_pending,supersedes,created_at,updated_at) VALUES(?,?,?,?,?,?,'authorized',1,?,?,?,?,?)`)
+        .run(missionId, input.scope_id, principal.principal_id, principal.client_session_id, attentionDigest(input.spec), spec_json, repairCycles, repairPending, input.supersedes ?? null, now, now);
       try {
         this.db.prepare(`INSERT INTO engineering_workspace_claims(claim_id,mission_id,repo_identity,branch,worktree_identity,state,created_at)
           VALUES(?,?,?,?,?,'active',?)`).run(`wc_${randomUUID()}`, missionId, repo_identity, branch, worktree_identity, now);
@@ -158,7 +158,7 @@ export class ContainedMissionStore {
         candidate_verified=?,repair_pending=? WHERE mission_id=?`)
         .run(to, now, expectedHead, candidate?.head ?? null, candidate?.tree ?? null, candidate?.diff_digest ?? null, attempts, repair, obligation,
           verified, pending, missionId);
-      this.event(missionId, step.event.kind, step.actor ?? null, { from, to, ...asObject(step.event.payload) }, now);
+      this.event(missionId, step.event.kind, step.actor ?? null, { ...asObject(step.event.payload), from, to }, now);
       return this.get(missionId);
     });
   }

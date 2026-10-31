@@ -163,6 +163,22 @@ it("a superseding Mission inherits repair cycles and takes over a released workt
   expect(f.store.claim(m.mission_id)).toMatchObject({ state: "released", release_reason: "superseded" });
 });
 
+it("a successor of failed work still consumes the repair budget", () => {
+  const f = setup(); let m = fail(f, executing(f, { max_repair_cycles: 0 }));
+  m = step(f, m, "awaiting_decision"); m = step(f, m, "abandoned");
+  let next = f.authorize(undefined, { supersedes: m.mission_id, spec: { max_repair_cycles: 0 } });
+  expect(next).toMatchObject({ repair_cycles: 0, repair_pending: 1 });
+  next = step(f, next, "workspace_ready");
+  expect(() => step(f, next, "executing")).toThrow("repair_cycles_exhausted");
+});
+
+it("records the actual transition even when the payload names other states", () => {
+  const f = setup(); const m = f.authorize();
+  f.store.transition(m.mission_id, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halt", payload: { from: "x", to: "pr_opened", reason: "r" } } }, 2000);
+  const last = f.store.events(m.mission_id).at(-1)!;
+  expect(JSON.parse(last.payload_json)).toEqual({ reason: "r", from: "authorized", to: "awaiting_decision" });
+});
+
 it("upgrades a 49 home to 50 additively and reopens cleanly", () => {
   const root = realpathSync(createScratchDirSync("tests", "contained-upgrade"));
   const path = join(root, "state.db");
