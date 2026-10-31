@@ -167,7 +167,7 @@ it("upgrades canonical schema46 without changing existing receipts or granting l
   old.exec("INSERT INTO attention_actions VALUES('legacy','scope','item','hash','message','uncertain',1,1)"); old.close();
   const upgraded = openDb({ path });
   try {
-    expect(CURRENT_SCHEMA_VERSION).toBe(48); expect(upgraded.pragma("user_version", { simple: true })).toBe(48);
+    expect(CURRENT_SCHEMA_VERSION).toBe(49); expect(upgraded.pragma("user_version", { simple: true })).toBe(49);
     expect(upgraded.prepare("SELECT action_id,state FROM attention_actions").get()).toEqual({ action_id: "legacy", state: "uncertain" });
     expect(upgraded.prepare("SELECT COUNT(*) n FROM attention_dispatch_phases").get()).toEqual({ n: 0 });
   } finally { upgraded.close(); }
@@ -430,7 +430,7 @@ it("reopens schema47 read-only and read-write with every additive table recogniz
   openDb({ path }).close();
   const names = [...MIGRATIONS.find(m => m.id === 47)!.sql.matchAll(/^\s*CREATE\s+TABLE\s+(\w+)\s*\(/gm)].map(match => match[1]!);
   expect(names.sort()).toEqual(["attention_dispatch_phases", "engineering_completions", "engineering_events", "engineering_interactions", "engineering_missions", "engineering_requests", "engineering_waits"]);
-  for (const readwrite of [false, true]) { const db = openDb({ path, readwrite }); try { expect(db.pragma("user_version", { simple: true })).toBe(48); for (const name of names) expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name)).toEqual({ name }); } finally { db.close(); } }
+  for (const readwrite of [false, true]) { const db = openDb({ path, readwrite }); try { expect(db.pragma("user_version", { simple: true })).toBe(49); for (const name of names) expect(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name)).toEqual({ name }); } finally { db.close(); } }
 });
 it.each(["attention_dispatch_phases", "engineering_completions", "engineering_events", "engineering_interactions", "engineering_missions", "engineering_requests", "engineering_waits"])("recognizes %s as required released schema47 lineage, not an unregistered draft", table => {
   const root = realpathSync(createScratchDirSync("tests", "engineering-lineage-required")); const path = join(root, "state.db"); cleanup.push(() => rmSync(root, { recursive: true, force: true }));
