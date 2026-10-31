@@ -201,6 +201,7 @@ interface DaemonContext {
   collaborator: SessionCollaborator | undefined;
   supervision?: SupervisionService;
   engineering?: import("./engineering-host.js").EngineeringHost;
+  contained?: import("./contained-mission-rpc.js").ContainedMissionService;
   workerLogReads?: Set<Promise<unknown>>;
   workerLogAbort?: AbortController;
   workerViews?: import("./worker-view-service.js").WorkerViewService;
@@ -1285,6 +1286,14 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     catch (error) {
       const code = error instanceof Error && /^[a-z_]{1,64}$/.test(error.message) ? error.message : "engineering_failed";
       return singleErr(req.id, code, "Engineering request was not completed; inspect the original Mission and receipt before retrying");
+    }
+  }
+  if (req.method.startsWith("mission.")) {
+    if (!ctx.contained) return singleErr(req.id, "mission_disabled", "Enable OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and the contained executor configuration");
+    try { return singleOk(req.id, await ctx.contained.handle(req.method, req.params)); }
+    catch (error) {
+      const code = error instanceof Error && /^[A-Za-z_]{1,64}$/.test(error.message) ? error.message : "mission_failed";
+      return singleErr(req.id, code, "Mission request was not completed; inspect the Mission with mission status before retrying");
     }
   }
   if (req.method.startsWith("attention.")) {
@@ -4392,6 +4401,14 @@ export async function startDaemon(
       },
     });
     ctx.engineering.start();
+    if (process.env["OSSTACK_CONTAINED_MISSIONS"] === "1") {
+      const { createContainedMissionService } = await import("./contained-mission-rpc.js");
+      ctx.contained = await createContainedMissionService({ attention: ctx.supervision.store, owner: ctx.supervision.observer.owner,
+        access: new EngineeringAccess(authPath), home: osstackHome(), draining: () => ctx.draining });
+      await ctx.contained.start();
+    }
+  } else if (process.env["OSSTACK_CONTAINED_MISSIONS"] === "1") {
+    throw new Error("contained_missions_require_engineering");
   }
   const stopUpdateChecker = startUpdateChecker();
   stopUpdates = stopUpdateChecker;
@@ -4583,6 +4600,7 @@ export async function startDaemon(
             guardedRecovery,
             collaboratorStopped,
             ctx.engineering?.close(),
+            ctx.contained?.close(),
           ]);
           await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
           try { if (dashboard !== null) await dashboard.close(); }
@@ -4668,6 +4686,7 @@ export async function startDaemon(
       failedContext.draining = true;
       for (const controller of failedContext.activeRuns.values()) controller.abort();
       await failedContext.engineering?.close();
+      await failedContext.contained?.close();
       await failedContext.supervision?.stop();
       const stopped = Promise.resolve().then(() => failedContext!.collaborator?.stop());
       for (const session of [...failedContext.dailySessions.values(), ...failedContext.loopSessions.values()]) {
