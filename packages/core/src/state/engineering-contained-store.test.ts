@@ -101,6 +101,13 @@ it("never resumes execution while a previous executor may still run", () => {
   expect(m.stop_obligation).toBe(1);
 });
 
+it("opens a stop obligation on stop_unknown from any state", () => {
+  const f = setup(); let m = step(f, f.authorize(), "workspace_ready");
+  m = step(f, m, "stop_unknown"); expect(m.stop_obligation).toBe(1);
+  m = step(f, m, "abandoned");
+  expect(() => f.store.releaseClaim(m.mission_id, "done", 3000)).toThrow("claim_release_denied");
+});
+
 it("caps repair cycles by the spec on every route, including reconciliation, and counts each extra grant", () => {
   const f = setup(); let m = executing(f, { max_repair_cycles: 1 });
   m = fail(f, m); m = step(f, m, "executing"); expect(m.repair_cycles).toBe(1);

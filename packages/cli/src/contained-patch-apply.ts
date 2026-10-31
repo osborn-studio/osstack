@@ -11,7 +11,9 @@ export function applyContainedPatchFile(change: Pick<MissionPatchFile, 'kind' | 
   for (const hunk of change.hunks) {
     const start = hunk.oldCount === 0 ? hunk.oldStart : hunk.oldStart - 1;
     if (start < cursor || start > old.length) throw Error('CONTAINED_PATCH_MISMATCH');
-    out.push(...old.slice(cursor, start)); cursor = start;
+    // A copied prefix ends in a newline unless it reaches the old file's unterminated last line.
+    if (start > cursor) { out.push(...old.slice(cursor, start)); lastNoEol = start === old.length && !endsWithEol; }
+    cursor = start;
     for (const l of hunk.lines) {
       if (l.op !== '+') {
         // The old side must match byte for byte, including whether its last line ends in a newline.

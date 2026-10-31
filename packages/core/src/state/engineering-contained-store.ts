@@ -154,7 +154,8 @@ export class ContainedMissionStore {
       if (step.expected_head !== undefined && !SHA.test(step.expected_head)) throw Error("invalid_head");
       const expectedHead = step.expected_head ?? mission.expected_head;
       // An executor turn and a verification container are both effects that must be proven stopped.
-      const obligation = to === "executing" || to === "verifying" ? 1 : mission.stop_obligation;
+      // stop_unknown always means some effect may still be running, whatever state it came from.
+      const obligation = to === "executing" || to === "verifying" || to === "stop_unknown" ? 1 : mission.stop_obligation;
       this.db.prepare(`UPDATE engineering_contained_missions SET state=?,revision=revision+1,updated_at=?,expected_head=?,
         candidate_head=?,candidate_tree=?,candidate_diff_digest=?,verify_attempts=?,repair_cycles=?,stop_obligation=?,
         candidate_verified=?,repair_pending=? WHERE mission_id=?`)

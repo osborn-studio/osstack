@@ -26,6 +26,7 @@ export interface ContainedMissionPorts {
 }
 export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' };
 const OUTPUT_EXCERPT = 4_000;
+const MAX_RECORDED_HITS = 32;
 
 /** Scan every channel before anything is persisted, displayed or published; return only redacted text. */
 export function screenOutputs(outputs: Partial<Record<MissionOutputChannel, string>>) {
@@ -107,8 +108,15 @@ export class ContainedMissionRunner {
     const created = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'workspace_created').at(-1);
     const gitDir = created ? (JSON.parse(created.payload_json) as { git_dir?: string }).git_dir : undefined;
     if (!gitDir) return this.halt(m, 'awaiting_decision', 'workspace_unrecorded');
-    const q = await this.ports.qualify(spec.worktree_path, gitDir);
-    this.ports.store.record(m.mission_id, 'qualification_probe', q, this.ports.now());
+    // The probe runs processes too: a cancel waits for it, and an unstopped probe group is stop_unknown.
+    const probe = new AbortController(); this.live.set(m.mission_id, probe);
+    let q: CodexQualification;
+    try { q = await this.ports.qualify(spec.worktree_path, gitDir); } finally { this.live.delete(m.mission_id); }
+    this.ports.store.record(m.mission_id, 'qualification_probe', { ...q, reasons: q.reasons.slice(0, 32) }, this.ports.now());
+    const current = this.ports.store.get(m.mission_id);
+    if (q.reasons.includes('PROBE_GROUP_NOT_STOPPED')) return this.halt(current, 'stop_unknown', 'qualification_probe_not_stopped');
+    const cancelled = this.settleCancel(current); if (cancelled) return cancelled;
+    if (current.revision !== m.revision) return current;
     if (!q.qualified) return this.halt(m, 'awaiting_decision', 'qualification_failed');
     const next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: spec.start_commit, event: { kind: 'executor_launch_intent', payload: { version: q.version, identity_sha256: q.identity_sha256 } } }, this.ports.now());
     return this.runExecutor(next, spec, prompt);
@@ -133,11 +141,12 @@ export class ContainedMissionRunner {
     // Secrets in any channel are found before the patch, message or logs are recorded anywhere.
     const patchText = run.patch.ok ? run.patch.text : '';
     const screen = screenOutputs({ patch: patchText, stdout: run.stdout, stderr: run.stderr });
+    // Stop evidence first: nothing about the output may keep a stopped executor's obligation open.
+    if (run.stop) current = this.ports.store.recordStopEvidence(current.mission_id, current.revision, run.stop, this.ports.now());
     this.ports.store.record(m.mission_id, 'executor_output', { exit_code: run.exit_code, timed_out: run.timed_out, cancelled: run.cancelled,
       patch: run.patch.ok ? { bytes: run.patch.bytes } : { reason: run.patch.reason }, stdout: screen.redacted.stdout, stderr: screen.redacted.stderr,
-      secret_hits: screen.hits }, this.ports.now());
+      secret_hits: screen.hits.slice(0, MAX_RECORDED_HITS), secret_hit_count: screen.hits.length }, this.ports.now());
     if (!run.stop) return this.halt(current, 'stop_unknown', 'executor_stop_unproven');
-    current = this.ports.store.recordStopEvidence(current.mission_id, current.revision, run.stop, this.ports.now());
     if (current.state === 'cancel_requested') return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
     if (!run.patch.ok) return this.halt(current, 'awaiting_decision', `patch_invalid:${run.patch.reason}`);
     if (screen.hits.length > 0) return this.halt(current, 'awaiting_decision', 'secret_detected');
@@ -212,7 +221,8 @@ export class ContainedMissionRunner {
     current = this.ports.store.recordStopEvidence(current.mission_id, current.revision, { stop_proof: 'container_removed', evidence: result.evidence }, this.ports.now());
     const screen = screenOutputs({ stdout: result.output });
     const passed = result.exit_code === 0 && !result.cancelled;
-    this.ports.store.record(m.mission_id, 'verify_receipt', { exit_code: result.exit_code, cancelled: result.cancelled, evidence: result.evidence, output: screen.redacted.stdout, secret_hits: screen.hits }, this.ports.now());
+    this.ports.store.record(m.mission_id, 'verify_receipt', { exit_code: result.exit_code, cancelled: result.cancelled, evidence: result.evidence, output: screen.redacted.stdout,
+      secret_hits: screen.hits.slice(0, MAX_RECORDED_HITS), secret_hit_count: screen.hits.length }, this.ports.now());
     // T0 receipts close only once the candidate holding their write has been verified (§4.5).
     for (const intent of this.openIntents(current)) this.ports.store.record(m.mission_id, 't0_receipt', { ...intent, head_after: current.candidate_head, diff_digest: current.candidate_diff_digest, verify_command: spec.verify.argv, verify_exit: result.exit_code }, this.ports.now());
     if (current.state === 'cancel_requested') return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());

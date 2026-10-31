@@ -206,6 +206,22 @@ describe("ContainedMissionRunner", () => {
     expect((await pending).state).toBe("cancelled");
   });
 
+  it("treats an unstopped qualification probe as stop_unknown", async () => {
+    const f = setup({ qualify: async () => ({ ...qualified, qualified: false, reasons: ["PROBE_GROUP_NOT_STOPPED"] }) });
+    const m = await drive(f, 2);
+    expect(m).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+    expect(f.calls.execute).toEqual([]);
+  });
+
+  it("records stop evidence even when an output floods the secret scanner", async () => {
+    const flood = Array.from({ length: 2000 }, (_, i) => `${FAKE_TOKEN.slice(0, -4)}${String(i).padStart(4, "0")}`).join("\n");
+    const f = setup({ execute: async input => { input.onLaunched({ pid: 1, pgid: 4242, started_at: 1 }); return run({ stdout: flood }); } });
+    const m = await drive(f, 2);
+    expect(m).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
+    const output = JSON.parse(f.store.events(m.mission_id, 0, 500).find(e => e.kind === "executor_output")!.payload_json) as { secret_hits: unknown[]; secret_hit_count: number };
+    expect(output.secret_hits).toHaveLength(32); expect(output.secret_hit_count).toBe(2000);
+  });
+
   it("cancels a live executor and settles once it is proven stopped", async () => {
     let release!: () => void;
     const f = setup({ execute: async input => {
