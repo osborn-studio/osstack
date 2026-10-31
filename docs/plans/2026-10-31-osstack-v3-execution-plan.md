@@ -28,8 +28,8 @@
 | W8 | D1：迁移机械部分派生（期望表由迁移 SQL 推导、worker 模块清单共享辅助、版本断言引用常量；两个限定区间保持独立） | S-A | `upgrade-native-port.ts`、graph worker 测试、`db.ts` | W3 | 待做 |
 | W9 | L1a：通用合同（`SourcePin`、`SourceSnapshot`、规范摘要）迁出 `protocol/joint`，迁移消费者 | **S-M** | `packages/protocol`、`packages/skill-registry` | W4 | 待做 |
 | W10 | L1b：移除 pstack 方法包及其构建/CI 消费者；保留 `execution-context` | **S-M** | `packages/cli/src/method-context*`、`tsup.config.ts`、`osstack-methods-skill/`、相关 `scripts/` 与 CI 步骤 | W9 | 待做 |
-| W11 | 设计：受限单执行器 Mission 路径（S2 核心，T0/T1 写入代理或强制沙箱、受限验证） | S-A | `docs/design` | W4、W8 | 待做 |
-| W12 | 分支治理第二轮：逐个核对未合并分支，列清单交用户确认后删除；AGENTS.md 增加分支生命周期规则 | S-A | — | W1–W4 合并后 | 清单待确认（`docs/plans/2026-10-31-branch-governance-round-2.md`） |
+| W11 | 设计：受限单执行器 Mission 路径（S2 核心，T0/T1 写入代理或强制沙箱、受限验证） | **S-M** | `docs/design/2026-10-31-contained-mission-path.md` | W4、W8 | 已合并（#341）；实施分 M0–M8 |
+| W12 | 分支治理第二轮：逐个核对未合并分支，列清单交用户确认后删除；AGENTS.md 增加分支生命周期规则 | S-A | — | W1–W4 合并后 | 已合并（#339）；A、B、C 三组已按用户确认删除；规则见 AGENTS.md |
 
 ## 合并顺序（用户执行）
 
