@@ -83,6 +83,9 @@ async function handleRun(args: string[]): Promise<number> {
   const executeCommand = flagValue(args, "--execute");
   const goalCommand = flagValue(args, "--goal");
   const worktreeRoot = flagValue(args, "--worktree-root");
+  const landBranch = flagValue(args, "--land-branch");
+  if (args.includes("--land-branch") && (landBranch === undefined || landBranch.startsWith("-") || !args.includes("--worktree")))
+    return printError(new Error("--land-branch requires a branch name and --worktree"));
   const verifyCommands = flagValues(args, "--verify");
   const artifactVerification = parseArtifactVerification(args);
   const sources = flagValues(args, "--source");
@@ -111,6 +114,7 @@ async function handleRun(args: string[]): Promise<number> {
     ...(args.includes("--archive-completed") ? { archiveCompletedTasks: true } : {}),
     ...(args.includes("--worktree") ? { useWorktree: true } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    ...(landBranch !== undefined ? { localLanding: { targetBranch: landBranch } } : {}),
   });
 
   const result = runCycles
@@ -363,7 +367,10 @@ Options:
   --command-timeout-ms N
                       Timeout in milliseconds for execute, verify, and goal commands
   --archive-completed Move successful single-task queue files into tasks/archive/
-  --worktree          Run each task in an isolated git worktree, merge success back
+  --worktree          Run each task in an isolated git worktree; success is committed
+                      on the kept task branch, not landed locally
+  --land-branch B     Opt in to fast-forward branch B in the main checkout to the
+                      accepted commit; refused unless B is checked out
   --worktree-root P   Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
   --cycles N          Run multiple cycles before exiting

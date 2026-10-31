@@ -61,6 +61,11 @@ import { truncateUnicodeSafe } from "./unicode.js";
 import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile, assertCandidateIndexVisible } from "./candidate-policy.js";
 import { chmod } from "node:fs/promises";
 
+export interface LocalLandingOptions {
+  /** Branch the main checkout must have checked out; never inferred from the checkout. */
+  targetBranch: string;
+}
+
 export interface LoopRunOptions {
   loopId?: string;
   workspacePath?: string;
@@ -82,6 +87,15 @@ export interface LoopRunOptions {
   archiveCompletedTasks?: boolean;
   useWorktree?: boolean;
   worktreeRoot?: string;
+  /**
+   * Explicit opt-in to local landing: after a successful isolated-worktree
+   * task, fast-forward `targetBranch` in the main checkout to the exact commit
+   * the loop made from the verified tree. Off by default — unattended/factory
+   * runs keep the accepted commit on the preserved task branch for PR
+   * delivery (humans merge main). Landing refuses unless the main checkout has
+   * `targetBranch` checked out. A candidate policy implies its own `branch`.
+   */
+  localLanding?: LocalLandingOptions;
   /** Trusted host-only gate before any candidate commit/merge or publish hook.
    * artifact_only retains an isolated candidate and never commits/merges it. */
   guardedLocalCandidate?: {
@@ -238,12 +252,18 @@ export class LoopEngine {
   private readonly events: LoopEvent[] = [];
 
   private readonly candidatePolicy: CandidatePolicy | undefined;
+  private readonly localLanding: LocalLandingOptions | undefined;
   private candidateRecheck: ((state: LoopState) => Promise<void>) | undefined;
   constructor(private readonly options: LoopRunOptions = {}) {
     if (options.guardedLocalCandidate && (options.useWorktree !== true || options.publish !== undefined || options.selfImprovement !== undefined || options.goalCommand !== undefined))
       throw new Error("GUARDED_LOCAL_ARTIFACT_ISOLATION_REQUIRED");
     this.candidatePolicy = options.candidatePolicy === undefined ? undefined : CandidatePolicy.parse(options.candidatePolicy);
     if (this.candidatePolicy && options.useWorktree !== true) throw Error("CANDIDATE_WORKTREE_REQUIRED");
+    this.localLanding = resolveLocalLanding(options, this.candidatePolicy);
+    // The goal command runs in the main checkout; without landing, successful
+    // worktree work stays on its task branch and the goal could never observe it.
+    if (options.useWorktree === true && options.goalCommand !== undefined && this.localLanding === undefined)
+      throw new Error("WORKTREE_GOAL_REQUIRES_LOCAL_LANDING");
     if (this.candidatePolicy && (options.goalCommand !== undefined || options.selfImprovement !== undefined || options.stateFilePath !== undefined || options.markdownPath !== undefined)) throw Error("CANDIDATE_POST_HOOK_FORBIDDEN");
   }
 
@@ -1227,32 +1247,68 @@ export class LoopEngine {
       }
 
       if (worktree !== undefined && outcome === "success" && this.options.guardedLocalCandidate === undefined) {
+        // Until the commit is proven, the verified changes exist only in this
+        // worktree. A Git error here is an unavailable proof, not "no changes":
+        // keep the worktree instead of letting cleanup force-remove it.
+        preserveCandidateWorktree = true;
         const commit = await commitWorktreeChanges(worktree, `osstack loop task ${task.task_id}`);
-        if (commit.committed) {
+        preserveCandidateWorktree = false;
+        if (commit.executorCommitted === true) {
+          // D6: the executor committed by itself. Review evidence was collected
+          // against the worktree HEAD, so those commits were never reviewed as
+          // this candidate: keep the branch, never land it, never delete it.
           preserveWorktreeBranch = true;
-          await mergeWorktree(worktree);
+          if (commit.commit === undefined) throw new Error("executor-committed worktree reported no commit id");
           worktreeCommit = commit.commit;
-          preserveWorktreeBranch = false;
+          this.emitWorktreePreserved(loopId, task.task_id, worktree, commit.commit, "executor_commits");
+          decisions.push(`${task.task_id}: preserved branch ${worktree.branch} at ${commit.commit}; it contains executor-made commits that were not reviewed as a loop candidate and is not landed`);
+          if (this.localLanding !== undefined) {
+            throw new Error(`worktree branch ${worktree.branch} contains executor-made commits; refusing to land them locally (branch preserved at ${commit.commit})`);
+          }
+        } else if (commit.committed) {
+          preserveWorktreeBranch = true;
+          if (commit.commit === undefined) throw new Error("committed worktree reported no commit id");
+          worktreeCommit = commit.commit;
+          if (this.localLanding === undefined) {
+            // D7: no local landing without explicit opt-in. The accepted commit
+            // stays on the task branch for controlled PR delivery.
+            this.emitWorktreePreserved(loopId, task.task_id, worktree, commit.commit, "local_landing_disabled");
+            decisions.push(`${task.task_id}: kept accepted commit ${commit.commit} on branch ${worktree.branch}; local landing is not enabled`);
+          } else {
+            // Land exactly the commit made from the verified tree, never the
+            // movable branch, and only onto the pinned target branch.
+            await mergeWorktree(worktree, { expectedCommit: commit.commit, targetBranch: this.localLanding.targetBranch });
+            preserveWorktreeBranch = false;
+            this.emit(loopId, "loop.worktree.merged", {
+              task_id: task.task_id,
+              worktree_path: worktree.worktreePath,
+              branch: worktree.branch,
+              committed: true,
+              commit: commit.commit,
+              target_branch: this.localLanding.targetBranch,
+            });
+            decisions.push(`${task.task_id}: merged isolated worktree commit ${commit.commit} into ${this.localLanding.targetBranch}`);
+          }
+        } else {
+          this.emit(loopId, "loop.worktree.merged", {
+            task_id: task.task_id,
+            worktree_path: worktree.worktreePath,
+            branch: worktree.branch,
+            committed: false,
+          });
+          decisions.push(`${task.task_id}: isolated worktree had no git changes to merge`);
         }
-        this.emit(loopId, "loop.worktree.merged", {
-          task_id: task.task_id,
-          worktree_path: worktree.worktreePath,
-          branch: worktree.branch,
-          committed: commit.committed,
-          ...(commit.commit !== undefined ? { commit: commit.commit } : {}),
-        });
-        decisions.push(commit.committed
-          ? `${task.task_id}: merged isolated worktree commit ${commit.commit}`
-          : `${task.task_id}: isolated worktree had no git changes to merge`);
       }
     } finally {
       if (worktree !== undefined && !this.implementationUnconfirmed && !this.candidateContaminated && !preserveCandidateWorktree) {
-        await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
+        const cleaned = await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
+        // Cleanup also keeps a branch holding commits found nowhere else (D6).
+        if (!cleaned.branchRemoved) preserveWorktreeBranch = true;
         this.emit(loopId, "loop.worktree.cleaned", {
           task_id: task.task_id,
           worktree_path: worktree.worktreePath,
           branch: worktree.branch,
-          branch_removed: !preserveWorktreeBranch,
+          branch_removed: cleaned.branchRemoved,
         });
         decisions.push(`${task.task_id}: cleaned isolated worktree ${worktree.worktreePath}`);
       }
@@ -1312,6 +1368,18 @@ export class LoopEngine {
       completedTask: this.implementationUnconfirmed || this.candidateContaminated ? completedTask : await this.applySelfImprovement(loopId, completedTask, decisions),
       decisions,
     };
+  }
+
+  private emitWorktreePreserved(loopId: string, taskId: string, worktree: WorktreeHandle, commit: string,
+    reason: "local_landing_disabled" | "executor_commits"): void {
+    this.emit(loopId, "loop.worktree.preserved", {
+      task_id: taskId,
+      worktree_path: worktree.worktreePath,
+      branch: worktree.branch,
+      commit,
+      reason,
+      ...(worktree.startCommit !== undefined ? { start_commit: worktree.startCommit } : {}),
+    });
   }
 
   /**
@@ -1784,6 +1852,21 @@ function summarizeGoalResult(exitCode: number, stdout: string, stderr: string): 
   const output = truncateUnicodeSafe((stderr.trim() || stdout.trim()).replace(/\s+/g, " "), 240);
   if (exitCode === 0) return output === "" ? "goal command exited 0" : output;
   return output === "" ? `goal command exited ${exitCode}` : output;
+}
+
+function resolveLocalLanding(options: LoopRunOptions, candidatePolicy: CandidatePolicy | undefined): LocalLandingOptions | undefined {
+  const explicit = options.localLanding;
+  if (explicit !== undefined) {
+    if (options.useWorktree !== true) throw new Error("LOCAL_LANDING_WORKTREE_REQUIRED");
+    if (options.guardedLocalCandidate !== undefined) throw new Error("LOCAL_LANDING_FORBIDDEN_FOR_GUARDED_CANDIDATE");
+    if (typeof explicit.targetBranch !== "string" || explicit.targetBranch.trim() === "") throw new Error("LOCAL_LANDING_TARGET_REQUIRED");
+  }
+  // A candidate policy is itself an explicit, branch-bound opt-in.
+  if (candidatePolicy !== undefined) {
+    if (explicit !== undefined && explicit.targetBranch !== candidatePolicy.branch) throw new Error("LOCAL_LANDING_TARGET_MISMATCH");
+    return { targetBranch: candidatePolicy.branch };
+  }
+  return explicit === undefined ? undefined : { targetBranch: explicit.targetBranch };
 }
 
 function loopWorktreeBranchPrefix(loopId: string): string {

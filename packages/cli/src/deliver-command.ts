@@ -165,10 +165,14 @@ export async function handleDeliverCommand(
   if (args[0] === "help" || args.includes("--help") || args.includes("-h")) {
     console.log(`osstack deliver — product entry from one intent to proof
 
-  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--contract FILE] [--execution-context FILE] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
+  osstack deliver "Add billing dashboard" [--workspace P] [--execute CMD] [--verify CMD] [--auto-agent] [--worktree [--land-branch B]] [--checkpoint] [--govern [warn|strict]] [--govern-scope workspace|changed|baseline] [--autonomy legacy|guarded-local|guarded-git|guarded-deploy] [--contract FILE] [--execution-context FILE] [--deploy-policy project] [--profile NAME] [--expected-path P] [--action A] [--command-timeout-ms N] [--json]
 
 Stages:
   intake -> plan -> execute-loop -> verify-review -> proof
+
+--worktree keeps the accepted commit on its task branch (osstack/loop/...); it never
+lands locally unless --land-branch B is given (legacy autonomy only), which
+fast-forwards B to that exact commit and is refused unless the checkout is on B.
 
 guarded-git additionally performs:
   preflight risk -> local verification/review -> post-diff risk -> candidate proof -> commit -> PR/CI/merge -> final proof
@@ -192,6 +196,7 @@ guarded-deploy adds after merge:
     "--max-iter",
     "--command-timeout-ms",
     "--worktree-root",
+    "--land-branch",
     "--govern",
     "--govern-scope",
     "--autonomy",
@@ -233,6 +238,14 @@ guarded-deploy adds after merge:
   const guardedDeploy = autonomy === "guarded-deploy";
   const guardedGit = autonomy === "guarded-git" || guardedDeploy;
   const guarded = guardedLocal || guardedGit;
+  // D7: local landing is an explicit, legacy-only opt-in pinned to a branch.
+  const landBranch = args.includes("--land-branch") ? flagValue(args, "--land-branch") : undefined;
+  if (args.includes("--land-branch")) {
+    if (landBranch === undefined || landBranch.trim() === "" || landBranch.startsWith("-") || args.filter((arg) => arg === "--land-branch").length > 1)
+      return deliverBlocked(args, "land_branch_invalid", "--land-branch requires exactly one branch name");
+    if (guarded) return deliverBlocked(args, "land_branch_unsupported", "--land-branch is available only with --autonomy legacy; guarded modes never land locally");
+    if (!args.includes("--worktree")) return deliverBlocked(args, "land_branch_requires_worktree", "--land-branch requires --worktree");
+  }
   if (frozenContract && (!guarded || frozenContract.contract.mode === "scout" || flagValue(args, "--execute") !== undefined))
     return deliverBlocked(args, "delivery_contract_runtime_unsupported", "V2 requires a guarded implement adapter; scout lacks a proven tool-free executor");
   if (frozenContract && guardedLocal && frozenContract.contract.requested_completion !== "local_verified")
@@ -345,6 +358,12 @@ guarded-deploy adds after merge:
   );
   if (governanceScope instanceof Error) {
     console.error(`osstack: ${governanceScope.message}`);
+    return 1;
+  }
+  if (!guarded && governanceMode !== undefined && args.includes("--worktree") && landBranch === undefined) {
+    // Legacy governance scans the main checkout; without --land-branch the
+    // candidate stays on the kept task branch and a pass would prove nothing.
+    console.error("osstack: --govern with --worktree requires --land-branch B (governance scans the main checkout)");
     return 1;
   }
   if (
@@ -596,6 +615,7 @@ guarded-deploy adds after merge:
     commandTimeoutMs: Math.min(effectiveCommandTimeoutMs ?? GUARDED_LOCAL_COMMAND_TIMEOUT_MS, contractPolicy!.budget.max_wall_time_ms) } : {}),
     ...(useWorktree ? { useWorktree: true } : {}),
     ...(worktreeRoot !== undefined ? { worktreeRoot } : {}),
+    ...(landBranch !== undefined ? { localLanding: { targetBranch: landBranch } } : {}),
     policyGate: makePolicyGate(workspacePath),
   });
   const result = await engine.runOnce();

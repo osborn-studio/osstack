@@ -642,6 +642,30 @@ describe("deliver CLI", () => {
     expect(builderInvoke).not.toHaveBeenCalled();
   });
 
+  it("refuses --land-branch outside legacy autonomy before Builder invoke (D7)", async () => {
+    const workspace = await initGuardedFixture();
+    const builderInvoke = vi.fn(async function* (
+      task: AgentTask,
+    ): AsyncIterable<HermesEvent> {
+      yield doneEvent(task, "completed", "unexpected");
+    });
+
+    const exitCode = await handleDeliverCommand([
+      "Attempt guarded delivery with local landing",
+      "--workspace", workspace,
+      "--verify", "node --test",
+      "--profile", "mac-mini",
+      "--autonomy", "guarded-local",
+      "--worktree",
+      "--land-branch", "main",
+      "--json",
+    ], { ...createDeliverCommandDeps(), adapters: () => guardedAdapters(builderInvoke) });
+
+    expect(exitCode).toBe(2);
+    expect(JSON.parse(logs.join("\n"))).toMatchObject({ error: { code: "land_branch_unsupported" } });
+    expect(builderInvoke).not.toHaveBeenCalled();
+  });
+
   it("rejects an invalid guarded-local command timeout before Builder invoke", async () => {
     const workspace = await initGuardedFixture();
     const builderInvoke = vi.fn(async function* (

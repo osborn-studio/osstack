@@ -30,6 +30,9 @@ try {
     "--worktree",
     "--worktree-root",
     join(workspace, ".osstack-worktrees"),
+    // Local landing is opt-in; this proof asserts a recorded merge.
+    "--land-branch",
+    "main",
     "--auto-agent",
     "--json",
   ], { cwd: root, capture: true });

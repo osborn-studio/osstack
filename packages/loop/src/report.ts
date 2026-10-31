@@ -67,7 +67,7 @@ export interface LoopReportVerifyResult {
 
 export interface LoopReportWorktreeStatus {
   task_id: string;
-  status: "created" | "merged" | "cleaned" | "unknown";
+  status: "created" | "merged" | "preserved" | "cleaned" | "unknown";
   branch: string;
   commit: string;
   path: string;
@@ -671,6 +671,7 @@ function deriveWorktreeStatus(events: LoopEvent[]): LoopReportWorktreeStatus[] {
     .filter((event) => (
       event.type === "loop.worktree.created"
       || event.type === "loop.worktree.merged"
+      || event.type === "loop.worktree.preserved"
       || event.type === "loop.worktree.cleaned"
     ))
     .map((event) => ({
@@ -679,7 +680,9 @@ function deriveWorktreeStatus(events: LoopEvent[]): LoopReportWorktreeStatus[] {
         ? "created"
         : event.type === "loop.worktree.merged"
           ? "merged"
-          : event.type === "loop.worktree.cleaned"
+          : event.type === "loop.worktree.preserved"
+            ? "preserved"
+            : event.type === "loop.worktree.cleaned"
             ? "cleaned"
             : "unknown",
       branch: stringPayload(event, "branch"),
@@ -707,7 +710,7 @@ function summarizeEvent(event: LoopEvent): string {
   if (event.type === "loop.execute.done") {
     return `${stringPayload(event, "task_id")} executed by ${stringPayload(event, "agent_id")} with outcome ${stringPayload(event, "outcome")}`;
   }
-  if (event.type === "loop.worktree.created" || event.type === "loop.worktree.merged" || event.type === "loop.worktree.cleaned") {
+  if (event.type === "loop.worktree.created" || event.type === "loop.worktree.merged" || event.type === "loop.worktree.preserved" || event.type === "loop.worktree.cleaned") {
     return `${stringPayload(event, "task_id")} ${event.type.replace("loop.worktree.", "worktree ")}`;
   }
   const taskId = stringPayload(event, "task_id");

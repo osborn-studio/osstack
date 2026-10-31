@@ -28,6 +28,9 @@ try {
     "--verify",
     "npm test",
     "--worktree",
+    // Local landing is an explicit opt-in pinned to the checked-out branch (D7).
+    "--land-branch",
+    "main",
     "--worktree-root",
     join(workspace, ".osstack-worktrees"),
     "--auto-agent",

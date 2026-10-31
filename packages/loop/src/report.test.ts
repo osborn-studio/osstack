@@ -265,9 +265,32 @@ describe("loop state report", () => {
             commit: "abc123",
           },
         },
+        {
+          event_id: "evt-4",
+          loop_id: "loop-event-rich",
+          type: "loop.worktree.preserved",
+          seq: 4,
+          created_at: 1782090003000,
+          payload: {
+            task_id: "task-event-rich",
+            branch: "osstack/loop/kept",
+            commit: "def456",
+            reason: "local_landing_disabled",
+          },
+        },
       ],
     });
 
+    expect(report.worktree_status).toContainEqual(expect.objectContaining({
+      task_id: "task-event-rich",
+      status: "preserved",
+      branch: "osstack/loop/kept",
+      commit: "def456",
+    }));
+    expect(report.events_timeline).toContainEqual(expect.objectContaining({
+      seq: 4,
+      summary: "task-event-rich worktree preserved",
+    }));
     expect(report.events_timeline).toContainEqual(expect.objectContaining({
       seq: 1,
       type: "loop.plan.done",

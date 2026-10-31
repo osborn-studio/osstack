@@ -249,7 +249,9 @@ osstack neat semantic --dimensions narrative,contradiction,drift,memory-overlap
 # Build a reviewable remediation transaction; writes still require approval.
 osstack neat narrative plan --repo . --findings FINDING_FINGERPRINT
 
-# Run one delivery flow in a git worktree and produce evidence.
+# Run one delivery flow in a git worktree and produce evidence. The accepted
+# commit stays on its osstack/loop/... task branch; add --land-branch main to
+# explicitly fast-forward the checked-out main to it.
 osstack deliver "Make a small verified change" \
   --verify "pnpm test" \
   --auto-agent \

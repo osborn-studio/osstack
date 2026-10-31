@@ -61,6 +61,8 @@ export {
   mergeWorktree,
   type CleanupOrphanedWorktreesResult,
   type CleanupWorktreeOptions,
+  type CleanupWorktreeResult,
+  type MergeWorktreeOptions,
   type CommitWorktreeResult,
   type CreateWorktreeOptions,
   type WorktreeHandle,

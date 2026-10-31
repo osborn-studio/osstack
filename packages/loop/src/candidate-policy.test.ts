@@ -101,9 +101,15 @@ describe("candidate preservation of full gates and actual scope", () => {
     const mutant = fixture(1), original = candidateModule.assertCandidateScope;
     const spy = vi.spyOn(candidateModule, "assertCandidateScope").mockImplementation((workspace, policy) => original(workspace, policy, execFileSync("git", ["-C", workspace, "rev-parse", "HEAD"], { encoding: "utf8" }).trim()));
     try {
-      const result = await new LoopEngine({ ...mutant.opts, executeCommand: committedForeign }).runOnce();
-      expect(result.completedTasks[0]?.outcome).toBe("failed");
-      expect(readFileSync(join(mutant.repo, "foreign.txt"), "utf8")).toBe("bad"); // Observable forbidden merged artifact, not an import/anchor error.
+      // With the scope anchor mutated away, the executor's own commit passes the
+      // scope gate; the landing guard (D6) is now the second layer that keeps it
+      // out of the main checkout and preserves it on the task branch.
+      const before = mutant.git("rev-parse", "HEAD");
+      await expect(new LoopEngine({ ...mutant.opts, executeCommand: committedForeign }).runOnce()).rejects.toThrow("executor-made commits");
+      expect(spy).toHaveBeenCalled();
+      expect(mutant.git("rev-parse", "HEAD")).toBe(before);
+      expect(() => readFileSync(join(mutant.repo, "foreign.txt"), "utf8")).toThrow();
+      expect(mutant.git("branch", "--list", "--format=%(refname:short)", "osstack/loop/*")).toContain("osstack/loop/");
     } finally { spy.mockRestore(); }
   });
   it("checks deletion source when an out-of-scope tracked file is renamed to an allowed target", async () => {
@@ -129,7 +135,7 @@ describe("candidate preservation of full gates and actual scope", () => {
   });
   it("reexecutes the complete explicit batch even when a prior legacy run completed the same task ID", async () => {
     const f = fixture(); const { candidatePolicy: _, ...legacy } = f.opts;
-    await new LoopEngine({ ...legacy, inputTasks: [f.tasks[0]!], stateFilePath: join(f.state, "loop-explicit-batch.json"), markdownPath: join(f.state, "loop-explicit-batch.md") }).runOnce();
+    await new LoopEngine({ ...legacy, localLanding: { targetBranch: f.policy.branch }, inputTasks: [f.tasks[0]!], stateFilePath: join(f.state, "loop-explicit-batch.json"), markdownPath: join(f.state, "loop-explicit-batch.md") }).runOnce();
     chmodSync(join(f.state, "loop-explicit-batch.json"), 0o600); chmodSync(join(f.state, "loop-explicit-batch.md"), 0o600);
     const result = await new LoopEngine(f.opts).runOnce();
     expect(result.executedTaskCount).toBe(2); expect(result.completedTasks.map(t => t.task_id)).toEqual(["part-0", "part-1"]);

@@ -712,7 +712,7 @@ export async function observeCurrentGreenCandidate(
   for (const ref of [input.branch, input.base]) await runOrThrow(runner, input, "git", ["check-ref-format", "--branch", ref], "observer ref validation");
   const branch = (await runOrThrow(runner, input, "git", ["branch", "--show-current"], "observer branch")).stdout.trim();
   if (branch !== input.branch) throw new Error("observer local branch changed");
-  if ((await runOrThrow(runner, input, "git", ["status", "--porcelain=v1", "-z"], "observer clean worktree")).stdout !== "") return undefined;
+  if ((await runOrThrow(runner, input, "git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], "observer clean worktree")).stdout !== "") return undefined;
   const head = GitCommitSha.parse((await runOrThrow(runner, input, "git", ["rev-parse", "HEAD"], "observer local HEAD")).stdout.trim());
   const remoteUrl = (await runOrThrow(runner, input, "git", ["remote", "get-url", input.remote], "observer remote")).stdout;
   const repo = RepoView.parse(parseJson((await runOrThrow(runner, input, "gh", ["repo", "view", "--json", "nameWithOwner"], "observer repository")).stdout, "observer repository")).nameWithOwner;
@@ -818,7 +818,8 @@ async function runGitHubDelivery(
     runner,
     input,
     "git",
-    ["status", "--porcelain=v1", "-z"],
+    // Explicit: status.showUntrackedFiles=no must not make uncommitted work look clean.
+    ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
     "worktree status",
   );
   if (status.stdout.length !== 0) {
