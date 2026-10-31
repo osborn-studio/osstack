@@ -11,6 +11,12 @@ import type { NativeUpgradePort, UpgradeAuthority, UpgradeStopLease } from './up
 import { upgradeCanonical, upgradeDigest, type FrozenUpgradePlan, type UpgradePlanGroup, type UpgradePlanHome } from './upgrade-plan.js';
 import { loadBundle, loadInstallation, privateDirectory, publishPrivate, finishPrivatePublication, readPrivate, sha256, stageRelease, switchRelease, syncDirectory, type ManagedInstallation, type ReleaseBundle } from './upgrade-native-files.js';
 import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgradeRpc, verifyRelease, type UpgradeBackend } from './upgrade-native-backend.js';
+
+/** Highest schema reviewed for stopped-home upgrade compatibility. Deliberately
+ * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
+ * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
+ * effect it can hold) and bumps this. */
+export const UPGRADE_QUALIFIED_SCHEMA = 49;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -117,9 +123,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     try {
       db.exec('BEGIN EXCLUSIVE');
       const schema=db.pragma('user_version',{simple:true}) as number;
-      // Deliberately qualified, not CURRENT_SCHEMA_VERSION: a future migration
-      // needs its own stopped-home compatibility review before this gate opens.
-      if(schema<33||schema>49)throw Error('upgrade_schema_unqualified');
+      if(schema<33||schema>UPGRADE_QUALIFIED_SCHEMA)throw Error('upgrade_schema_unqualified');
       const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(r=>r.name));
       const expected=['graph_runs','graph_action_admissions','graph_actions','improvement_pr_deliveries','improvement_executions'];
       if(schema>=45)expected.push('follow_up_delivery_attempts');
