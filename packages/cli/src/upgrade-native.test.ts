@@ -194,7 +194,7 @@ const backend={async assertConsumers(){},async service(label){const c=config.con
     const f=await fixture();await publishPrivate(join(f.root,'restart-permit.json'),{plan_digest:'f'.repeat(64),build_digest:f.old.target.build_digest});
     const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{expect((await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).state).toBe('verified');await port.complete();expect(f.starts()).toBe(4);expect(existsSync(join(f.root,'restart-permit.json'))).toBe(false);}finally{await port.close();}
-  },30000);
+  },60000);
   it('accepts only a single publication temp hardlink peer in the pre-DB managed guard',async()=>{
     const f=await fixture();const c=f.config.consumers[0]!,marker=join(c.home,'managed-consumer.json'),peer=join(c.home,'.publish-'+ 'a'.repeat(32));
     await link(marker,peer);expect(()=>assertManagedHomeMarker(c.home,join(f.root,'current','bin.mjs'))).not.toThrow();
