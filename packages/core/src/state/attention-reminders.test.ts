@@ -25,7 +25,7 @@ function setup(opened = [10, 20]) {
     });
   });
   const items = store.listItems(scope).sort((a, b) => a.created_at - b.created_at);
-  return { db, store, owner, scope, items, ux: new AttentionExperience(store, owner) };
+  return { db, store, owner, scope, items, ux: new AttentionExperience(store, owner, { reminders: true }) };
 }
 type Sent = { delivery_id: string; item_id: string; reminder?: { sequence: number; age_ms: number } };
 function collector() {
@@ -72,7 +72,7 @@ it("keeps the schedule across an owner restart", async () => {
   const { ux, store } = setup([0]);
   ux.scheduleReminders(policy, 1000);
   await ux.drain(collector().send, 1000);
-  const restarted = new AttentionExperience(store, store.claimOwner("b"));
+  const restarted = new AttentionExperience(store, store.claimOwner("b"), { reminders: true });
   expect(restarted.scheduleReminders(policy, 1500)).toMatchObject({ scheduled: null });
   expect(restarted.scheduleReminders(policy, 2000)).toMatchObject({ scheduled: { sequence: 2 } });
 });
@@ -94,6 +94,48 @@ it("quiet scopes neither schedule nor reset, and reminders resume afterwards", a
   expect(ux.scheduleReminders(policy, 5000)).toMatchObject({ scheduled: null });
   ux.posture(scope, "owner", "away");
   expect(ux.scheduleReminders(policy, 5000)).toMatchObject({ scheduled: { sequence: 2 } });
+});
+it("keeps the backoff when an unresolved decision changes revision", async () => {
+  const { ux, store, owner, scope, db, items } = setup([0]);
+  const { sent, send } = collector();
+  ux.scheduleReminders(policy, 1000);
+  await ux.drain(send, 1000);
+  // A new source version bumps the revision while the decision stays open.
+  store.projectDecision(owner, {
+    scopeId: scope, sessionId: "s", turnId: "turn0", sourceVersion: 2,
+    decision: { decision_id: "d", question: "Q0", choices: [] }, now: 1001,
+  });
+  expect(db.prepare("SELECT revision,state FROM attention_items WHERE item_id=?").get(items[0]!.item_id))
+    .toEqual({ revision: 2, state: "open" });
+  expect(ux.scheduleReminders(policy, 1500)).toMatchObject({ scheduled: null, cleared: 0 });
+  expect(ux.scheduleReminders(policy, 2000)).toMatchObject({ scheduled: { sequence: 2 } });
+  await ux.drain(send, 2000);
+  expect(sent.map((m) => m.delivery_id)).toEqual([`${items[0]!.item_id}:1:r1`, `${items[0]!.item_id}:2:r2`]);
+});
+it("treats a reminder superseded by a revision change as settled", async () => {
+  const { ux, store, owner, scope, items } = setup([0]);
+  ux.scheduleReminders(policy, 1000);
+  store.projectDecision(owner, {
+    scopeId: scope, sessionId: "s", turnId: "turn0", sourceVersion: 2,
+    decision: { decision_id: "d", question: "Q0", choices: [] }, now: 1000,
+  });
+  const { sent, send } = collector();
+  await ux.drain(send, 1000);
+  expect(sent).toEqual([]);
+  expect(ux.scheduleReminders(policy, 1999)).toMatchObject({ scheduled: null });
+  expect(ux.scheduleReminders(policy, 2000)).toMatchObject({ scheduled: { item_id: items[0]!.item_id, sequence: 2 } });
+});
+it("does not send queued reminders while reminders are disabled, and resumes when enabled", async () => {
+  const { ux, store, owner, scope } = setup([0]);
+  ux.scheduleReminders(policy, 1000);
+  const disabled = new AttentionExperience(store, owner);
+  const { sent, send } = collector();
+  ux.enqueue(scope);
+  const batch = await disabled.drainBatch(send);
+  expect(sent.every((m) => !m.reminder)).toBe(true);
+  expect(batch.remainingDue).toBe(0);
+  await ux.drain(send, 1000);
+  expect(sent.filter((m) => m.reminder).map((m) => m.reminder!.sequence)).toEqual([1]);
 });
 it("does not schedule over a reminder that is still being retried", async () => {
   const { ux, db } = setup([0]);

@@ -84,7 +84,7 @@ export class SupervisionService {
       this.store,
       this.store.claimOwner(randomUUID())
     );
-    this.experience = new AttentionExperience(this.store, this.observer.owner);
+    this.experience = new AttentionExperience(this.store, this.observer.owner, { reminders: this.options.reminders !== undefined });
     this.experience.recoverDeliveries();
     new AttentionActions(this.store, this.observer.owner).recover();
   }

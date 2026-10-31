@@ -35,7 +35,10 @@ const claimable = (table: DeliveryTable) =>
   `SELECT d.* FROM ${table} d WHERE d.state='pending' AND d.next_at<=? AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet') ORDER BY d.next_at,d.delivery_id LIMIT 1`;
 /** Local owner UX state; posture never changes any execution authority. */
 export class AttentionExperience {
-  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner) {}
+  /** Reminder rows are claimed only while this process has reminders
+   * enabled; a disabled process leaves queued rows for a later re-enable. */
+  constructor(readonly store: AttentionStore, readonly owner: AttentionOwner,
+    private readonly options: { reminders?: boolean } = {}) {}
   posture(
     scope: string,
     actor: string,
@@ -139,8 +142,10 @@ export class AttentionExperience {
   }
   /** Queue at most one reminder per call: the oldest open decision that is
    * overdue and whose previous reminder has settled and backed off. Quiet
-   * scopes neither schedule nor reset. Resolved episodes are removed unless a
-   * send is in flight, whose receipt must still settle on its own row. */
+   * scopes neither schedule nor reset. A revision change while the decision
+   * stays unresolved keeps the schedule; a reminder superseded by that change
+   * counts as settled. Resolved decisions are removed unless a send is in
+   * flight, whose receipt must still settle on its own row. */
   scheduleReminders(policy: AttentionReminderPolicy, now = Date.now()) {
     const { overdueMs, backoffMaxMs } = policy;
     if (!Number.isInteger(overdueMs) || overdueMs < 1 || !Number.isInteger(backoffMaxMs) || backoffMaxMs < overdueMs)
@@ -148,13 +153,13 @@ export class AttentionExperience {
     return this.store.write(this.owner, () => {
       const db = this.store.db;
       const cleared = db.prepare(`DELETE FROM attention_reminders AS r WHERE r.state<>'sending' AND NOT EXISTS(
-        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.revision=r.revision AND i.state='open')`).run().changes;
+        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','source_missing'))`).run().changes;
       // A stored delay from an older policy is clamped into the current bounds.
       const due = db.prepare(`SELECT i.item_id,i.scope_id,i.revision,i.created_at,r.sequence,r.delay_ms FROM attention_items i
-        LEFT JOIN attention_reminders r ON r.scope_id=i.scope_id AND r.item_id=i.item_id AND r.revision=i.revision
+        LEFT JOIN attention_reminders r ON r.scope_id=i.scope_id AND r.item_id=i.item_id
         WHERE i.state='open' AND i.created_at<=?
           AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=i.scope_id AND p.posture='quiet')
-          AND (r.item_id IS NULL OR (r.state IN ('delivered','dead_letter') AND ?-r.last_at>=MIN(MAX(r.delay_ms,?),?)))
+          AND (r.item_id IS NULL OR (r.state IN ('delivered','dead_letter','superseded') AND ?-r.last_at>=MIN(MAX(r.delay_ms,?),?)))
         ORDER BY i.created_at,i.item_id LIMIT 1`).get(now - overdueMs, now, overdueMs, backoffMaxMs) as
         { item_id: string; scope_id: string; revision: number; created_at: number; sequence: number | null; delay_ms: number | null } | undefined;
       if (!due) return { scheduled: null, cleared };
@@ -163,7 +168,7 @@ export class AttentionExperience {
         : Math.min(backoffMaxMs, Math.min(Math.max(due.delay_ms, overdueMs), backoffMaxMs) * 2);
       const deliveryId = `${due.item_id}:${due.revision}:r${sequence}`;
       db.prepare(`INSERT INTO attention_reminders(delivery_id,scope_id,item_id,revision,opened_at,sequence,last_at,delay_ms,next_at)
-        VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,item_id,revision) DO UPDATE SET delivery_id=excluded.delivery_id,
+        VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(scope_id,item_id) DO UPDATE SET delivery_id=excluded.delivery_id,revision=excluded.revision,
         sequence=excluded.sequence,last_at=excluded.last_at,delay_ms=excluded.delay_ms,state='pending',attempts=0,next_at=excluded.next_at,error=NULL`)
         .run(deliveryId, due.scope_id, due.item_id, due.revision, due.created_at, sequence, now, delay, now);
       return { scheduled: { item_id: due.item_id, scope_id: due.scope_id, sequence, age_ms: now - due.created_at }, cleared };
@@ -217,7 +222,8 @@ export class AttentionExperience {
     // Counts use the same eligibility predicate as claim; quiet and delayed
     // retries remain persisted but are not currently deliverable.
     const due = this.store.db.prepare(`SELECT COUNT(*) n, MIN(d.next_at) oldest
-      FROM (SELECT scope_id,state,next_at FROM attention_deliveries UNION ALL SELECT scope_id,state,next_at FROM attention_reminders) d
+      FROM (SELECT scope_id,state,next_at FROM attention_deliveries${this.options.reminders
+        ? " UNION ALL SELECT scope_id,state,next_at FROM attention_reminders" : ""}) d
       WHERE d.state='pending' AND d.next_at<=?
       AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet')`
     ).get(Date.now()) as { n: number; oldest: number | null };
@@ -233,7 +239,9 @@ export class AttentionExperience {
     const db = this.store.db;
     const row = this.store.write(this.owner, () => {
       const first = db.prepare(claimable("attention_deliveries")).get(now) as Delivery | undefined;
-      const reminder = db.prepare(claimable("attention_reminders")).get(now) as Claimed | undefined;
+      const reminder = this.options.reminders
+        ? db.prepare(claimable("attention_reminders")).get(now) as Claimed | undefined
+        : undefined;
       const d: Claimed | undefined =
         reminder && (!first || reminder.next_at < first.next_at ||
           (reminder.next_at === first.next_at && reminder.delivery_id < first.delivery_id))
