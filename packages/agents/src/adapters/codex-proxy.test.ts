@@ -1,12 +1,21 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { createServer, type Server } from "node:net";
+import { delimiter, join } from "node:path";
 import { createScratchDirSync } from "@osstack/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { CODEX_PROXY_PATCH_MAX_BYTES, CodexProxyExecutor, processGroupEmpty, readCodexProxyPatch } from "./codex-proxy.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
+// Local TCP target so the unsandboxed connectivity control never depends on the internet.
+let server: Server; let target: { host: string; port: number };
+beforeAll(async () => {
+  server = createServer(socket => socket.destroy());
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  target = { host: "127.0.0.1", port: (server.address() as { port: number }).port };
+});
+afterAll(async () => { await new Promise(resolve => server.close(resolve)); });
 
 // Stands in for the codex launcher. FAKE_MODE selects exec behaviour and FAKE_SANDBOX the `codex sandbox` behaviour.
 const FAKE = `#!${process.execPath}
@@ -20,6 +29,7 @@ if (args[0] === "sandbox") {
   if (sb === "none") { const r = spawnSync(cmd[0], cmd.slice(1), { stdio: "inherit" }); process.exit(r.status ?? 1); }
   if (sb === "liar") fs.writeFileSync(path.join(wt, "probe-parent-" + tag), "x");
   if (sb === "child-only") { console.log(row("parent")); process.exit(0); }
+  if (sb === "inconclusive") { console.log(row("parent")); console.log(row("escaped_child").replace('"network":"denied"', '"network":"inconclusive"')); process.exit(0); }
   console.log(row("parent")); console.log(row("escaped_child")); process.exit(0);
 }
 const out = args[args.indexOf("-o") + 1];
@@ -27,6 +37,7 @@ console.log(JSON.stringify({ args, HOME: process.env.HOME, CODEX_HOME: process.e
 if (mode === "ok") fs.writeFileSync(out, "--- a/a.txt\\n+++ b/a.txt\\n@@ -1 +1 @@\\n-hi\\n+hello\\nEND-OF-PATCH");
 if (mode === "nomarker") fs.writeFileSync(out, "--- a/a.txt\\n+++ b/a.txt\\n");
 if (mode === "linger") { spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" }).unref(); fs.writeFileSync(out, "END-OF-PATCH\\n"); }
+if (mode === "detached-pipe") { spawn(process.execPath, ["-e", "setTimeout(() => {}, 3000)"], { stdio: ["ignore", "inherit", "inherit"], detached: true }).unref(); fs.writeFileSync(out, "END-OF-PATCH"); process.exit(0); }
 if (mode === "hang") { spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" }); setTimeout(() => {}, 60000); }
 `;
 
@@ -41,7 +52,7 @@ function setup(env: Record<string, string> = {}) {
   const previous = { ...process.env };
   Object.assign(process.env, env, { OSSTACK_SECRET_TOKEN: "s3cret", GH_TOKEN: "gh", OSSTACK_HOME: "/nope" });
   cleanup.push(() => { for (const key of Object.keys(process.env)) if (!(key in previous)) delete process.env[key]; Object.assign(process.env, previous); });
-  const executor = new CodexProxyExecutor({ bin, sourceCodexHome: source, runtimeDir: join(root, "runtime"), passEnv: Object.keys(env), timeoutMs: 5_000, terminationGraceMs: 200 });
+  const executor = new CodexProxyExecutor({ bin, sourceCodexHome: source, runtimeDir: join(root, "runtime"), passEnv: Object.keys(env), timeoutMs: 5_000, terminationGraceMs: 200, probeTarget: target });
   return { root, bin, source, repo, executor };
 }
 
@@ -93,6 +104,22 @@ describe("CodexProxyExecutor", () => {
   }, 15_000);
 });
 
+describe("CodexProxyExecutor shutdown edges", () => {
+  it("returns without waiting for a detached descendant that holds the output pipes", async () => {
+    const f = setup({ FAKE_MODE: "detached-pipe" });
+    const started = Date.now();
+    const run = await f.executor.run({ worktree: f.repo, prompt: "p" });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(run.patch.ok).toBe(true);
+  });
+  it("stops the group and rethrows when the launch cannot be journalled", async () => {
+    const f = setup({ FAKE_MODE: "hang" });
+    let pgid = 0;
+    await expect(f.executor.run({ worktree: f.repo, prompt: "p", onLaunched: l => { pgid = l.pgid; throw new Error("journal_failed"); } })).rejects.toThrow("journal_failed");
+    expect(pgid).toBeGreaterThan(1); expect(processGroupEmpty(pgid)).toBe(true);
+  });
+});
+
 describe("qualification probe", () => {
   function gitDir(repo: string) { return join(repo, ".git"); }
   it("qualifies only when both the probe and its escaped child are denied every operation", async () => {
@@ -112,6 +139,22 @@ describe("qualification probe", () => {
     const f = setup({ FAKE_SANDBOX: "liar" });
     const q = await f.executor.qualify(f.repo, gitDir(f.repo));
     expect(q).toMatchObject({ qualified: false, reasons: ["HOST_OBSERVED_WRITE"] });
+  });
+  it("never counts an unreachable target or an inconclusive connection as network denial", async () => {
+    const f = setup({ FAKE_SANDBOX: "inconclusive" });
+    expect((await f.executor.qualify(f.repo, gitDir(f.repo))).reasons).toEqual(["ESCAPED_CHILD_NETWORK_INCONCLUSIVE"]);
+    const closed = createServer(); await new Promise<void>(resolve => closed.listen(0, "127.0.0.1", resolve));
+    const port = (closed.address() as { port: number }).port; await new Promise(resolve => closed.close(resolve));
+    const g = setup({ FAKE_SANDBOX: "deny" });
+    const offline = new CodexProxyExecutor({ bin: g.bin, sourceCodexHome: g.source, runtimeDir: join(g.root, "runtime3"), passEnv: ["FAKE_SANDBOX"], probeTarget: { host: "127.0.0.1", port } });
+    expect((await offline.qualify(g.repo, gitDir(g.repo))).reasons).toContain("NETWORK_CONTROL_UNREACHABLE");
+  });
+  it("resolves a bare launcher name through PATH for its identity", async () => {
+    const f = setup({ FAKE_SANDBOX: "deny" });
+    process.env["PATH"] = `${f.root}${delimiter}${process.env["PATH"] ?? ""}`;
+    const named = new CodexProxyExecutor({ bin: "codex", sourceCodexHome: f.source, runtimeDir: join(f.root, "runtime4"), passEnv: ["FAKE_SANDBOX"], probeTarget: target });
+    const q = await named.qualify(f.repo, gitDir(f.repo));
+    expect(q.identity_sha256).toMatch(/^[0-9a-f]{64}$/); expect(q.qualified).toBe(true);
   });
   it("treats a missing escaped-child report as not qualified", async () => {
     const f = setup({ FAKE_SANDBOX: "child-only" });

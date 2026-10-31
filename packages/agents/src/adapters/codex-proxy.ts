@@ -3,8 +3,9 @@
 // group, and a host-run qualification probe. Verified on codex-cli 0.160.1 (§5.7).
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { accessSync, closeSync, constants, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { connect } from "node:net";
+import { delimiter, isAbsolute, join } from "node:path";
 
 export const CODEX_PROXY_PATCH_MAX_BYTES = 256 * 1024;
 export const CODEX_PROXY_END_MARKER = "END-OF-PATCH";
@@ -27,6 +28,8 @@ export interface CodexProxyOptions {
   timeoutMs?: number;
   /** Grace between SIGTERM and SIGKILL when stopping the group. */
   terminationGraceMs?: number;
+  /** TCP target for the network probe; the host first connects to it unsandboxed as a control. */
+  probeTarget?: { host: string; port: number };
 }
 export interface CodexProxyLaunch { pid: number; pgid: number; started_at: number }
 export interface CodexProxyStopEvidence { stop_proof: "group_empty+sandbox_inherited"; pgid: number; signals: NodeJS.Signals[]; confirmed_at: number }
@@ -48,7 +51,7 @@ export type CodexProbeOperation = "write_worktree" | "write_outside" | "write_gi
 export interface CodexQualification {
   qualified: boolean; version: string; identity_sha256: string | null; profile: ":read-only";
   /** Each operation must be denied for both the probe process and a descendant that left its process group. */
-  results: Record<"parent" | "escaped_child", Record<CodexProbeOperation, "denied" | "allowed" | "missing">>;
+  results: Record<"parent" | "escaped_child", Record<CodexProbeOperation, "denied" | "allowed" | "inconclusive" | "missing">>;
   host_observed_writes: string[]; reasons: string[];
 }
 
@@ -100,15 +103,18 @@ export class CodexProxyExecutor {
     const reasons: string[] = [];
     const version = (await runGroup(this.options.bin, ["--version"], { cwd: worktree, env: this.isolatedEnv(), timeoutMs: 15_000, graceMs: 500 })).stdout.trim();
     if (!version) reasons.push("VERSION_UNAVAILABLE");
-    const identity = this.options.identityBinary ?? this.options.bin;
+    const identity = this.options.identityBinary ?? resolveExecutable(this.options.bin);
     let identitySha: string | null = null;
-    try { identitySha = createHash("sha256").update(readFileSync(realpathSync(identity))).digest("hex"); } catch { reasons.push("IDENTITY_UNREADABLE"); }
+    try { identitySha = createHash("sha256").update(readFileSync(realpathSync(identity ?? ""))).digest("hex"); } catch { reasons.push("IDENTITY_UNREADABLE"); }
+    const target = this.options.probeTarget ?? { host: "1.1.1.1", port: 443 };
+    // Without host connectivity a denied connection proves nothing about the sandbox.
+    if (!(await reachable(target))) reasons.push("NETWORK_CONTROL_UNREACHABLE");
     const probeDir = join(this.options.runtimeDir, `probe-${randomBytes(6).toString("hex")}`);
     const outside = join(probeDir, "outside"); mkdirSync(outside, { recursive: true, mode: 0o700 });
     const script = join(probeDir, "probe.mjs"); writeFileSync(script, PROBE_SOURCE, { mode: 0o600 });
     const tag = randomBytes(6).toString("hex");
     const before = snapshot([worktree, outside, gitDir]);
-    const run = await runGroup(this.options.bin, ["sandbox", "-P", ":read-only", "-C", worktree, "--", process.execPath, script, worktree, outside, gitDir, tag], {
+    const run = await runGroup(this.options.bin, ["sandbox", "-P", ":read-only", "-C", worktree, "--", process.execPath, script, worktree, outside, gitDir, tag, target.host, String(target.port)], {
       cwd: worktree, env: this.isolatedEnv(), timeoutMs: 60_000, graceMs: 1_000,
     });
     const after = snapshot([worktree, outside, gitDir]);
@@ -126,9 +132,14 @@ export class CodexProxyExecutor {
 
 /** Lossless `-o` channel check (§5.3): bounded, valid UTF-8, last non-empty line is the end marker; EOF may follow it directly. */
 export function readCodexProxyPatch(path: string, marker = CODEX_PROXY_END_MARKER): CodexProxyPatch {
-  let bytes: Buffer;
-  try { bytes = readFileSync(path); } catch { return { ok: false, reason: "PATCH_MISSING" }; }
-  if (bytes.length > CODEX_PROXY_PATCH_MAX_BYTES) return { ok: false, reason: "PATCH_TOO_LARGE" };
+  let fd: number;
+  try { fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW); } catch { return { ok: false, reason: "PATCH_MISSING" }; }
+  const buffer = Buffer.alloc(CODEX_PROXY_PATCH_MAX_BYTES + 1); let length = 0;
+  try {
+    for (let n = 1; n > 0 && length < buffer.length; length += n) n = readSync(fd, buffer, length, buffer.length - length, null);
+  } finally { closeSync(fd); }
+  if (length > CODEX_PROXY_PATCH_MAX_BYTES) return { ok: false, reason: "PATCH_TOO_LARGE" };
+  const bytes = buffer.subarray(0, length);
   let text: string;
   try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return { ok: false, reason: "PATCH_NOT_UTF8" }; }
   const lines = text.split("\n");
@@ -158,20 +169,30 @@ async function runGroup(bin: string, args: string[], options: GroupOptions): Pro
   });
   if (spawned instanceof Error) throw Error(`codex_proxy_spawn_failed: ${spawned.message}`);
   const launch = { pid: spawned, pgid: spawned, started_at: Date.now() };
-  options.onLaunched?.(launch);
   const signals: NodeJS.Signals[] = [];
   const kill = (signal: NodeJS.Signals) => { signals.push(signal); try { process.kill(-launch.pgid, signal); } catch { /* ESRCH: proven by processGroupEmpty below */ } };
+  const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once("exit", (code, signal) => resolve({ code, signal })));
+  const closed = new Promise<void>(resolve => child.once("close", () => resolve()));
+  try { options.onLaunched?.(launch); } catch (error) {
+    // The host could not journal the launch: do not leave an unrecorded executor running.
+    kill("SIGTERM"); if (!(await waitEmpty(launch.pgid, options.graceMs))) { kill("SIGKILL"); await waitEmpty(launch.pgid, options.graceMs); }
+    child.stdout.destroy(); child.stderr.destroy();
+    throw error;
+  }
   let timedOut = false; let cancelled = false;
   const stop = () => { kill("SIGTERM"); setTimeout(() => { if (!processGroupEmpty(launch.pgid)) kill("SIGKILL"); }, options.graceMs).unref(); };
   const timer = setTimeout(() => { timedOut = true; stop(); }, options.timeoutMs); timer.unref();
   const onAbort = () => { cancelled = true; stop(); };
   if (options.signal?.aborted) onAbort(); else options.signal?.addEventListener("abort", onAbort, { once: true });
-  const exit = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once("close", (code, signal) => resolve({ code, signal })));
+  // Wait for the leader's exit, not for its pipes: a descendant that inherited them could hold close open.
+  const exit = await exited;
   clearTimeout(timer); options.signal?.removeEventListener("abort", onAbort);
   // The leader has exited; give remaining members a grace period, then kill and re-check the group.
   let empty = await waitEmpty(launch.pgid, options.graceMs);
   if (!empty) { kill("SIGTERM"); empty = await waitEmpty(launch.pgid, options.graceMs); }
   if (!empty) { kill("SIGKILL"); empty = await waitEmpty(launch.pgid, options.graceMs); }
+  const drained = await Promise.race([closed.then(() => true), new Promise<boolean>(resolve => setTimeout(() => resolve(false), options.graceMs).unref())]);
+  if (!drained) { child.stdout.destroy(); child.stderr.destroy(); }
   return {
     launch, exit_code: exit.code, signal: exit.signal, timed_out: timedOut, cancelled,
     ...(empty ? { stop: { stop_proof: "group_empty+sandbox_inherited" as const, pgid: launch.pgid, signals, confirmed_at: Date.now() } } : {}),
@@ -204,9 +225,25 @@ function parseProbe(stdout: string): CodexQualification["results"] {
     if (!row || typeof row !== "object") continue;
     const { who, ...ops } = row as Record<string, unknown>;
     if (who !== "parent" && who !== "escaped_child") continue;
-    for (const op of OPERATIONS) if (ops[op] === "denied" || ops[op] === "allowed") results[who][op] = ops[op];
+    for (const op of OPERATIONS) if (ops[op] === "denied" || ops[op] === "allowed" || ops[op] === "inconclusive") results[who][op] = ops[op];
   }
   return results;
+}
+function resolveExecutable(bin: string): string | undefined {
+  if (bin.includes("/")) return isAbsolute(bin) ? bin : join(process.cwd(), bin);
+  for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
+    const candidate = join(dir, bin);
+    try { accessSync(candidate, constants.X_OK); if (statSync(candidate).isFile()) return candidate; } catch { /* next */ }
+  }
+  return undefined;
+}
+function reachable(target: { host: string; port: number }): Promise<boolean> {
+  return new Promise(resolve => {
+    const socket = connect({ host: target.host, port: target.port, timeout: 3_000 });
+    socket.once("connect", () => { socket.destroy(); resolve(true); });
+    socket.once("error", () => resolve(false));
+    socket.once("timeout", () => { socket.destroy(); resolve(false); });
+  });
 }
 function snapshot(roots: string[]): Set<string> {
   const seen = new Set<string>();
@@ -226,16 +263,17 @@ function snapshot(roots: string[]): Set<string> {
 // The escaped child is spawned detached (setsid), so it is outside the probe's process group.
 const PROBE_SOURCE = `
 import { spawn } from "node:child_process"; import { writeFileSync } from "node:fs"; import { connect } from "node:net"; import { join } from "node:path";
-const [wt, outside, gitDir, tag, role] = process.argv.slice(2);
+const [wt, outside, gitDir, tag, host, port, role] = process.argv.slice(2);
 const tryWrite = p => { try { writeFileSync(p, "x"); return "allowed"; } catch { return "denied"; } };
-const tryNet = () => new Promise(r => { const s = connect({ host: "1.1.1.1", port: 443, timeout: 3000 }); s.once("connect", () => { s.destroy(); r("allowed"); }); s.once("error", () => r("denied")); s.once("timeout", () => { s.destroy(); r("denied"); }); });
+// Only a permission error is sandbox denial; timeouts and unreachable hosts prove nothing.
+const tryNet = () => new Promise(r => { const s = connect({ host, port: Number(port), timeout: 3000 }); s.once("connect", () => { s.destroy(); r("allowed"); }); s.once("error", e => r(e.code === "EPERM" || e.code === "EACCES" ? "denied" : "inconclusive")); s.once("timeout", () => { s.destroy(); r("inconclusive"); }); });
 const run = async who => JSON.stringify({ who,
   write_worktree: tryWrite(join(wt, "probe-" + who + "-" + tag)), write_outside: tryWrite(join(outside, "probe-" + who + "-" + tag)),
   write_gitdir: tryWrite(join(gitDir, "probe-" + who + "-" + tag)), network: await tryNet() });
 if (role === "child") { process.stdout.write(await run("escaped_child") + "\\n"); }
 else {
   process.stdout.write(await run("parent") + "\\n");
-  const c = spawn(process.execPath, [process.argv[1], wt, outside, gitDir, tag, "child"], { detached: true, stdio: ["ignore", "pipe", "ignore"] });
+  const c = spawn(process.execPath, [process.argv[1], wt, outside, gitDir, tag, host, port, "child"], { detached: true, stdio: ["ignore", "pipe", "ignore"] });
   c.stdout.pipe(process.stdout); await new Promise(r => c.once("close", r));
 }
 `;
