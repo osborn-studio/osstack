@@ -30,6 +30,10 @@ export {
 export {
 export {
 export {
+export {
+export {
+export {
+export {
 export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
 export { createContainedCommandExecutor, createContainedCommandAdapter } from "./contained.js";
