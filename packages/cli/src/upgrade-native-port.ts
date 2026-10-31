@@ -16,7 +16,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 49;
+export const UPGRADE_QUALIFIED_SCHEMA = 50;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -134,6 +134,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // 49 adds a posture timestamp and two append-only local fact tables for
       // the read-only return brief; nothing in them is an unsettled side effect.
       if(schema>=49)expected.push('attention_item_settlements','attention_dead_letters');
+      // 50 adds the contained-Mission ledger. Its in-flight work (non-terminal
+      // Missions, open stop obligations, held claims) counts in engineeringUpgradeHolds.
+      if(schema>=50)expected.push('engineering_contained_missions','engineering_contained_events','engineering_workspace_claims');
       if(expected.some(name=>!tables.has(name)))throw Error('upgrade_schema_tables_missing');
       if((db.prepare("SELECT count(*) n FROM improvement_executions WHERE state IN ('claimed','running')").get() as {n:number}).n>0)throw Error('upgrade_unknown_actions');
       if(graphUpgradeHolds(db)>0)throw Error('upgrade_graph_holds');
@@ -143,6 +146,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema<47&&tables.has('attention_dispatch_phases'))throw Error('upgrade_schema_unqualified');
       if(schema<48&&tables.has('attention_reminders'))throw Error('upgrade_schema_unqualified');
       if(schema<49&&(tables.has('attention_item_settlements')||tables.has('attention_dead_letters')))throw Error('upgrade_schema_unqualified');
+      if(schema<50&&(tables.has('engineering_contained_missions')||tables.has('engineering_workspace_claims')))throw Error('upgrade_schema_unqualified');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
       this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
     }catch(error){db.close();throw error;}

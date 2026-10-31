@@ -29,7 +29,7 @@ async function fixture(oldSchema=40,nextSchema=41) {
   const root=realpathSync(await createScratchDir('tests','native-upgrade'));roots.push(root);await chmod(root,0o700);
   const config:ManagedInstallation={schema_version:1,backend:'launchd',installation_id:'shared',root,node:realpathSync(process.execPath),node_sha256:createHash('sha256').update(readFileSync(realpathSync(process.execPath))).digest('hex'),entry:'bin.mjs',consumers:[]};
   // A short canonical directory is required for AF_UNIX; OSStack's test setup already owns TMPDIR.
-  for(let i=1;i<=2;i++){const home=realpathSync(await createScratchDir('tests',`u${i}`));roots.push(home);await chmod(home,0o700);const db=new Database(join(home,'state.db'));db.pragma(`user_version=${oldSchema}`);db.exec('CREATE TABLE graph_runs(status TEXT);CREATE TABLE graph_action_admissions(released_at INTEGER);CREATE TABLE graph_actions(state TEXT);CREATE TABLE improvement_pr_deliveries(state TEXT);CREATE TABLE improvement_executions(state TEXT);');if(oldSchema>=45)db.exec('CREATE TABLE follow_up_delivery_attempts(state TEXT)');if(oldSchema>=47)db.exec('CREATE TABLE engineering_missions(mission_id TEXT); CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT); CREATE TABLE session_messages(message_id TEXT,state TEXT)');if(oldSchema>=48)db.exec('CREATE TABLE attention_reminders(delivery_id TEXT,state TEXT)');if(oldSchema>=49)db.exec('CREATE TABLE attention_item_settlements(item_id TEXT); CREATE TABLE attention_dead_letters(delivery_id TEXT)');db.close();config.consumers.push({home_id:`home_${String(i).padStart(32,'0')}`,home,socket:join(home,'s'),label:`ai.osstack.managed.test${i}`});}
+  for(let i=1;i<=2;i++){const home=realpathSync(await createScratchDir('tests',`u${i}`));roots.push(home);await chmod(home,0o700);const db=new Database(join(home,'state.db'));db.pragma(`user_version=${oldSchema}`);db.exec('CREATE TABLE graph_runs(status TEXT);CREATE TABLE graph_action_admissions(released_at INTEGER);CREATE TABLE graph_actions(state TEXT);CREATE TABLE improvement_pr_deliveries(state TEXT);CREATE TABLE improvement_executions(state TEXT);');if(oldSchema>=45)db.exec('CREATE TABLE follow_up_delivery_attempts(state TEXT)');if(oldSchema>=47)db.exec('CREATE TABLE engineering_missions(mission_id TEXT); CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT); CREATE TABLE session_messages(message_id TEXT,state TEXT)');if(oldSchema>=48)db.exec('CREATE TABLE attention_reminders(delivery_id TEXT,state TEXT)');if(oldSchema>=49)db.exec('CREATE TABLE attention_item_settlements(item_id TEXT); CREATE TABLE attention_dead_letters(delivery_id TEXT)');if(oldSchema>=50)db.exec('CREATE TABLE engineering_contained_missions(mission_id TEXT,state TEXT,stop_obligation INTEGER); CREATE TABLE engineering_contained_events(seq INTEGER); CREATE TABLE engineering_workspace_claims(mission_id TEXT,state TEXT)');db.close();config.consumers.push({home_id:`home_${String(i).padStart(32,'0')}`,home,socket:join(home,'s'),label:`ai.osstack.managed.test${i}`});}
   await mkdir(join(root,'consumers'),{mode:0o700});await mkdir(join(root,'services'),{mode:0o700});await mkdir(join(root,'journal'),{mode:0o700});
   for(const c of config.consumers){await publishPrivate(join(c.home,'managed-consumer.json'),{schema_version:1,root,home_id:c.home_id});await publishPrivate(join(c.home,'deployment-identity.json'),{schema_version:1,home_id:c.home_id});await publishPrivate(join(root,'consumers',`${c.home_id}.json`),c);await writeFile(join(root,'services',`${c.home_id}.plist`),managedPlist(config,c),{mode:0o600});}
   await publishPrivate(join(root,'installation.json'),config);
@@ -48,12 +48,12 @@ async function fixture(oldSchema=40,nextSchema=41) {
   return{root,config,old,next,plan,input,backend,journal,starts:()=>starts};
 }
 describe('managed native upgrade actual filesystem/process boundaries',()=>{
-  it.each([47,48,49])('accepts a clean schema%i home',async schema=>{
+  it.each([47,48,49,50])('accepts a clean schema%i home',async schema=>{
     const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}finally{await port.close();}
   },60000);
-  it('refuses an unqualified schema50 home',async()=>{
-    const f=await fixture(50,50);const port=new ManagedNativeUpgradePort(f.input,f.backend);
+  it('refuses an unqualified schema51 home',async()=>{
+    const f=await fixture(51,51);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
   },30000);
   it.each(['reserved','dispatch_committed'] as const)('quarantines schema47 %s without an applied receipt before replacing code',async phase=>{
@@ -81,6 +81,17 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     const f=await fixture(48,48);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec('CREATE TABLE attention_dead_letters(delivery_id TEXT)');db.close();
     const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
+  },30000);
+  it('fails closed when a pre50 home contains an unexpected contained-Mission ledger',async()=>{
+    const f=await fixture(49,49);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec('CREATE TABLE engineering_workspace_claims(mission_id TEXT,state TEXT)');db.close();
+    const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
+  },30000);
+  it('quarantines schema50 contained work that recovery would still visit',async()=>{
+    const f=await fixture(50,50);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));
+    db.exec("INSERT INTO engineering_contained_missions VALUES('m','abandoned',1)");db.close();
+    const port=new ManagedNativeUpgradePort(f.input,f.backend);
+    try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_unknown_actions'});expect(f.starts()).toBe(2);}finally{await port.close();}
   },30000);
   it('stops both real processes, snapshots unchanged databases, atomically switches exact release and verifies new generations',async()=>{
     const f=await fixture();const port=new ManagedNativeUpgradePort(f.input,f.backend);
