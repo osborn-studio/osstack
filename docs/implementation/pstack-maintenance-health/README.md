@@ -67,6 +67,6 @@ node scripts/method-control-health.mjs \
 - `audit/`、`audit-closure/`：实际输入、响应、模型报告与原始结论，均在调用完成后封包。
 - `root/final-validation/`：历史 d12 全仓绑定；当前组合日志另行保留，不能覆盖历史。
 
-本实现受 Lauren Tan / poteto 的 MIT 许可 pstack 维护方法启发；独立表达和现有 OSStack 工具组合不改变[原来源与许可归属](../../../osstack-methods-skill/references/sources.md)。
+本实现受 Lauren Tan / poteto 的 MIT 许可 pstack 维护方法启发；独立表达和现有 OSStack 工具组合不改变原来源与许可归属 (removed)。
 
 根收口：驱动摘要只绑定单文件，诊断不可信，缺失outer phase不能证明该阶段完成。产品偏差标签描述完整sealed raw中的谓词偏差，cause仍unknown，不升级健康或资格。source manifest的addSource仍是整条替换语义，未来消费者重写时必须保留subdir/version。

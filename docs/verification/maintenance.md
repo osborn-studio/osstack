@@ -89,7 +89,7 @@ printf '%s\n' "$health_exit" > "$health_root/health-01.exit"
 
 本页连接的是“已有维护记录 → 显式配置 → 有限健康报告”和“授权修复 → 新输出复验”。输出固定为 `schedule: not_configured`、`notifications: none`、`execution: not_run`、`qualification: none`；没有默认周期、后台任务、通知或自动修复。没有接通全仓发现、任意工具/地图/产品故障根因、原生 host/模型/Firstmate 深运行；这次记录不等于 A45、W19、W18 或 C0 整体验收，也不证明所有后代进程终止。记录编写者是熟悉上下文的分析者，不是 fresh cold 验收者。
 
-本教程独立表述并适配 Lauren Tan / poteto 的 MIT 许可 pstack 维护方法；原文与许可见 [来源说明](../../osstack-methods-skill/references/sources.md)。
+本教程独立表述并适配 Lauren Tan / poteto 的 MIT 许可 pstack 维护方法；原文与许可见 来源说明 (removed)。
 
 ## 查询的有限保证
 

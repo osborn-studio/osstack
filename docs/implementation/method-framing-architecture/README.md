@@ -8,7 +8,7 @@ Architecture design starts with real caller use, domain states and ownership. It
 
 ## Source and ownership
 
-Baseline main `711c45e75264000bde859328bd7dc131f68461d1` is the user merge of PR297 and has the same tree as published0862bc38. Historical validation keeps its original SHA. Upstream is pinned to `99b609a72323b70204eab407c622f436e858e112`; the [source index](../../../osstack-methods-skill/references/sources.md) preserves original identities, attribution and adaptation choices.
+Baseline main `711c45e75264000bde859328bd7dc131f68461d1` is the user merge of PR297 and has the same tree as published0862bc38. Historical validation keeps its original SHA. Upstream is pinned to `99b609a72323b70204eab407c622f436e858e112`; the source index (removed) preserves original identities, attribution and adaptation choices.
 
 A owns task framing at `01c4977b954635d245799d00172592d76e2cd857` (ten-method intermediate,84exports). B owns architecture material at `6ec4c38a9f4e1bd2351dd0ad3cfd84ebe7fc1e82` (two new files; source/link and explicitly manual synthetic checks). Root integrates the eleventh method at `85d34eb1f8681fb26a8328431fb69f3509596f6b`, then repairs source attribution, entry/experiment scope and synthetic-state explanations at `035285cf26c6fe26a751cbbb93020b2f8cd5c1d8`. Shared files had one writer at each stage.
 

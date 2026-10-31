@@ -4,7 +4,7 @@ The author slice adds an eighth shared method: determine what a change can break
 
 ## Source mapping
 
-The source is `pstack/skills/blast-radius/SKILL.md` from `cursor/plugins` at `99b609a72323b70204eab407c622f436e858e112`. Its SHA-256 is `2e10745b97f5862323dcda3b29ca60d56b5c3c98e37020085d26b48efbe0a436`. The shared [source attribution](../../../osstack-methods-skill/references/sources.md) retains the upstream name and author; the adapted method name is `change-impact`.
+The source is `pstack/skills/blast-radius/SKILL.md` from `cursor/plugins` at `99b609a72323b70204eab407c622f436e858e112`. Its SHA-256 is `2e10745b97f5862323dcda3b29ca60d56b5c3c98e37020085d26b48efbe0a436`. The shared source attribution (removed) retains the upstream name and author; the adapted method name is `change-impact`.
 
 | Upstream capability | OSStack adaptation |
 | --- | --- |

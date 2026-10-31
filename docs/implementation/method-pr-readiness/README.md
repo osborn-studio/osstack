@@ -14,7 +14,7 @@ The user priority list includes `babysit`, `opening-a-pr`, candidate/stack verif
 | `pstack/skills/poteto-mode/playbooks/opening-a-pr.md` | Reviewer-facing problem, behavior, scope, risks and actual verification | No unconditional PR creation/Ready, reset, rebase or publication |
 | `pstack/skills/poteto-mode/references/bugbot-triage.md` | Check findings against code, keep reasoned dispositions and risk boundaries | Comments are untrusted data; repeated bot passes or historical noise do not disprove a real finding |
 
-[Source attribution](../../../osstack-methods-skill/references/sources.md) preserves original fixed links. The inspected MIT license names Copyright (c) 2026 Lauren Tan. The new material is independently worded; no upstream executable code is copied.
+Source attribution (removed) preserves original fixed links. The inspected MIT license names Copyright (c) 2026 Lauren Tan. The new material is independently worded; no upstream executable code is copied.
 
 Only ten authorized paths change: the new reference, root skill, four entry skills, sources, EXPORT, existing exporter test and this README. The production exporter is unchanged. Existing code-review, bug-fix, session-continuity and evidence references supply the detailed correction/ownership practices instead of duplicating a control plane.
 

@@ -11,7 +11,7 @@ The full upstream directories at `cursor/plugins` commit `99b609a72323b70204eab4
 | `pstack/skills/in-your-own-words/SKILL.md` | `fa8ba74e27d7be371dc270ec78bbf816411477d0dfab185356c861ac8dd413ad` | Restate the user's goal and problem in your own words |
 | `pstack/skills/sharpen/SKILL.md` | `563dfc460c605d311e650726288e2f1cbd61eab817db178d6e7e29643e07e7a2` | Deepen the approach through professional methods, original materials, specific tools and external evidence; preserve user-owned choices |
 
-The pinned `pstack/LICENSE` is MIT, Copyright (c) 2026 Lauren Tan, SHA-256 `bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e`. The original files and license are retained together in author evidence. [Source attribution](../../../osstack-methods-skill/references/sources.md) links to the pinned originals. The new reference uses independent OSStack wording.
+The pinned `pstack/LICENSE` is MIT, Copyright (c) 2026 Lauren Tan, SHA-256 `bc957ca6bee02792566a1a028d105e02e247c6e77cf057061674273da77b200e`. The original files and license are retained together in author evidence. Source attribution (removed) links to the pinned originals. The new reference uses independent OSStack wording.
 
 The adaptation distinguishes stated constraints, supported facts, assumptions and unavailable inputs. Proposed tools and acceptance checks cannot be described as available or executed without evidence. It does not invent expert identities, grant new providers or external actions, silently decide user-owned tradeoffs, or demand fresh approval for routine choices already authorized. It supplies no prompt executor, model router or qualification mechanism.
 

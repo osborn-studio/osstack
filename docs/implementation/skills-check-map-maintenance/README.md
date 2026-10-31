@@ -36,7 +36,7 @@ The bounded maintenance demonstration uses an explicitly injected stale expectat
 
 Agreement covers these five local fixture cases only. It does not complete source review, discover unmapped project features, authenticate evidence producers or qualify a native host/model. Source/build bindings retain the existing journey's declarations; build hashes do not prove compilation. Map hashes are before/after snapshots, not a concurrent-writer lock. Direct-child exit and fixture absence do not attest all descendants. No watcher, scheduler, network provider, automatic correction or new method is added. The tool does not need the packet projector or PR305.
 
-This fixed maintenance slice adapts index reconciliation, live re-proof and failure preservation from Lauren Tan's MIT-licensed [pstack maintain-verification-skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md). It uses OSStack's existing [maintenance method](../../../osstack-methods-skill/references/maintain-verification.md) and [full journey](../../../scripts/method-verification-journey.mjs). It does not implement pstack's complete general-project maintenance lifecycle.
+This fixed maintenance slice adapts index reconciliation, live re-proof and failure preservation from Lauren Tan's MIT-licensed [pstack maintain-verification-skill](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md). It uses OSStack's existing maintenance method (removed) and full journey (removed). It does not implement pstack's complete general-project maintenance lifecycle.
 
 ## Delivery evidence
 

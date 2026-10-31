@@ -95,7 +95,7 @@ journey_output="$feature_root/journey-01"
 
 Exit 0 means all selected cases/evidence passed, 1 failure/refusal and 2 invalid usage. Omitting `--scope full` runs only two cases. Do not add driver-only options to this wrapper. A failed doctor stops later work, leaving `not_run` rows.
 
-Verified product exits/statuses are `healthy 0/healthy`, `missing-ref 1/failed`, `drift 2/drift`, `mixed 1/failed`, `empty 0/empty`. Driver exit 0 verifies the expected negative; it does not repair a source. Empty checks no sources. Inspect counts, refs, SHAs, raw output, overall status and cleanup, not exits alone. See the [journey reference](../../../osstack-methods-skill/references/skills-check-journey.md).
+Verified product exits/statuses are `healthy 0/healthy`, `missing-ref 1/failed`, `drift 2/drift`, `mixed 1/failed`, `empty 0/empty`. Driver exit 0 verifies the expected negative; it does not repair a source. Empty checks no sources. Inspect counts, refs, SHAs, raw output, overall status and cleanup, not exits alone. See the journey reference (removed).
 
 ### Project and check retained evidence
 
@@ -126,4 +126,4 @@ W19 still owns configured responsibility, health queries, change-triggered maint
 
 ## Sources
 
-These independently worded instructions adapt OSStack's existing workflows and pstack create/maintain verification practices, authored by poteto. The inspected [MIT license](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/LICENSE) names Copyright (c) 2026 Lauren Tan. Sources at pin `99b609a72323b70204eab407c622f436e858e112`: [create verification](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/SKILL.md), [maintain verification](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md) and the repository [adaptation record](../../../osstack-methods-skill/references/sources.md). No upstream executable code or substantial verbatim skill text is copied.
+These independently worded instructions adapt OSStack's existing workflows and pstack create/maintain verification practices, authored by poteto. The inspected [MIT license](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/LICENSE) names Copyright (c) 2026 Lauren Tan. Sources at pin `99b609a72323b70204eab407c622f436e858e112`: [create verification](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/create-verification-skill/SKILL.md), [maintain verification](https://github.com/cursor/plugins/blob/99b609a72323b70204eab407c622f436e858e112/pstack/skills/maintain-verification-skill/SKILL.md) and the repository adaptation record (removed). No upstream executable code or substantial verbatim skill text is copied.

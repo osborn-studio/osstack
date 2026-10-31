@@ -4,8 +4,8 @@ OSStack now supplies two more shared methods through its existing four entries. 
 
 | Intent | Material | Required distinction |
 | --- | --- | --- |
-| Add or intentionally change behavior | [Feature](../../../osstack-methods-skill/references/feature.md) | Domain shape, owned slices, actual entry-point acceptance and affected existing behavior |
-| Change structure while preserving behavior | [Refactoring](../../../osstack-methods-skill/references/refactoring.md) | Baseline behavior pin, caller migration, same-input comparison and unexplained differences |
+| Add or intentionally change behavior | Feature (removed) | Domain shape, owned slices, actual entry-point acceptance and affected existing behavior |
+| Change structure while preserving behavior | Refactoring (removed) | Baseline behavior pin, caller migration, same-input comparison and unexplained differences |
 
 Use the current exported `osstack-mode` with a concrete task and repository scope. For example: “Add an optional filter to this command and verify its accepted and empty-result paths.” For a refactor: “Extract the formatter while preserving output ordering, errors and exit behavior on the current fixtures.” These examples select a workflow; they do not execute code by themselves or grant publication authority.
 

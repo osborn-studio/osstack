@@ -1,6 +1,6 @@
 # Performance measurement method
 
-This slice adds shared [performance measurement guidance](../../../osstack-methods-skill/references/performance-measurement.md). It teaches a caller to compare equivalent completed work, preserve errors and timing boundaries, explain measured limits, and separate local numbers from user-visible effects. It adds no benchmark runner, model call, runtime behavior or qualification.
+This slice adds shared performance measurement guidance (removed). It teaches a caller to compare equivalent completed work, preserve errors and timing boundaries, explain measured limits, and separate local numbers from user-visible effects. It adds no benchmark runner, model call, runtime behavior or qualification.
 
 The author baseline is `92088fe55a2f985ca743fa1fabee0c081a6f672d`. Only the new reference and this implementation record belong to this slice. The integration owner handles entry routing, shared attribution and export tests. This author slice alone does not claim that the new method is reachable from the four entries or that either host has used it.
 

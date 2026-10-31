@@ -7,7 +7,7 @@ This D2a delivery adds two source-adapted engineering methods to OSStack's exist
 
 ## Source and authorship
 
-Upstream remains pinned to `99b609a72323b70204eab407c622f436e858e112`, with original author/license attribution in the [package source index](../../../osstack-methods-skill/references/sources.md). Adapted originals are `blast-radius`, `benchmark-checklist`, and `principle-explain-the-number`.
+Upstream remains pinned to `99b609a72323b70204eab407c622f436e858e112`, with original author/license attribution in the package source index (removed). Adapted originals are `blast-radius`, `benchmark-checklist`, and `principle-explain-the-number`.
 
 A authored `f6c56937f7b3ca75a0b349d9f757a8caa901da3e` (eight-method intermediate, 80 export tests); B authored `5f7797034437e5005dbfe8696c4a3762d3a7e724` (standalone performance material). Root integrated the shared nine-method routing at `4483e7d676fdb8c53b0b84a0611d5a6755b1ab95`, then addressed audit suggestions at **`687811a69c564b5812200c65f02e8aba35f002a3`**. Historical author results retain their original scope.
 

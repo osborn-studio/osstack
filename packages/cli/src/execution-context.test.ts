@@ -1,6 +1,3 @@
-import { createHash } from "node:crypto";
-import { compileBugFix } from "@osstack/skill-registry/bug-fix-compiler";
-import { sourceSnapshotDigest } from "@osstack/protocol/source";
 import { mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
@@ -8,7 +5,6 @@ import { createScratchDirSync } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { executionContextDigest, type ExecutionContextEntry } from "@osstack/knowledge";
 import { afterEach, expect, it, vi } from "vitest";
-import { createMethodContext } from "./method-context.js";
 import { createExecutionContextAdapters, createPinnedLocalContextLoader, loadExecutionContextConfig, type ExecutionContextReceipt } from "./execution-context.js";
 
 const roots: string[] = [];
@@ -45,14 +41,6 @@ it("defaults off with original adapter identity and zero loaders or receipts", a
   expect(wrapped.adapters).toBe(options.adapters);
   await consume(wrapped.adapters[0]!);
   expect(f.loadContext).not.toHaveBeenCalled(); expect(f.recordReceipt).not.toHaveBeenCalled(); expect(f.captured[0]).toBe(task);
-});
-it.each(["off", undefined] as const)("rejects mandatory methods when context mode is %s", mode => {
-  const f = fixture(); const { mode: _mode, ...base } = f.options;
-  const methodContext = { load: vi.fn(() => { throw new Error("must not load"); }), validateSync: vi.fn() };
-  expect(() => createExecutionContextAdapters({ ...base, ...(mode === undefined ? {} : { mode }), methodContext }))
-    .toThrow("invalid_execution_context_options");
-  expect(methodContext.load).not.toHaveBeenCalled(); expect(methodContext.validateSync).not.toHaveBeenCalled();
-  expect(f.captured).toHaveLength(0); expect(f.recordReceipt).not.toHaveBeenCalled();
 });
 it("passes the actual augmented prompt and preserves this-bound methods and stop uncertainty", async () => {
   const f = fixture(); const wrapped = createExecutionContextAdapters({ ...f.options, contractDigest: "b".repeat(64), contractBrief: "local verification only" });
@@ -133,6 +121,9 @@ it("rejects config repo mismatch, unknown settings and traversal before retrieva
   writeFileSync(join(other, "context.json"), JSON.stringify(f.config));
   await expect(loadExecutionContextConfig(join(other, "context.json"), other)).rejects.toThrow("execution_context_scope_mismatch");
   writeFileSync(f.configPath, JSON.stringify({ ...f.config, cloud_url: "https://example.invalid" }));
+  await expect(loadExecutionContextConfig(f.configPath, f.root)).rejects.toThrow("invalid_execution_context_config");
+  // Method packages were removed: a config that still requires one fails closed instead of running without it.
+  writeFileSync(f.configPath, JSON.stringify({ ...f.config, methods: { schema_version: 1 } }));
   await expect(loadExecutionContextConfig(f.configPath, f.root)).rejects.toThrow("invalid_execution_context_config");
   f.config.packs[0]!.path = "../escape.json"; writeFileSync(f.configPath, JSON.stringify(f.config));
   await expect(loadExecutionContextConfig(f.configPath, f.root)).rejects.toThrow("invalid_execution_context_config");
@@ -263,52 +254,3 @@ it("attests adapter admission rather than claiming a later provider-wire authori
   expect(f.receipts.every(receipt => receipt.evidence_boundary === "agent_task_prompt_not_provider_wire")).toBe(true);
 });
 
-
-it("rechecks required method bytes after receipt persistence without losing existing source validators", async () => {
-  const f = fixture(); const body = "Required method"; writeFileSync(join(f.root, "method.md"), body);
-  const compilation = compiledFixture(f.root, body, task.task_id);
-  const methodContext = createMethodContext({ compiled: compilation.pin, schema_version: 1, task_id: task.task_id, package_version: "0.15.36", proposal_digest: compilation.compiled.proposal_digest, max_bytes: 4096,
-    roles: [{ role: "builder", capability_id: task.capability_id, materials: [{ path: "method.md", sha256: executionContextDigest(body) }] }] });
-  const validateContext = vi.fn(async () => {}); const validateContextSync = vi.fn(() => {});
-  f.recordReceipt.mockImplementationOnce(async receipt => { f.receipts.push(receipt); writeFileSync(join(f.root, "method.md"), "Changed during receipt"); return { path: join(f.root, "prepared.json"), digest: "a".repeat(64) }; });
-  await expect(consume(createExecutionContextAdapters({ ...f.options, methodContext, validateContext, validateContextSync }).adapters[0]!)).rejects.toThrow("method_context_pin_mismatch");
-  expect(f.captured).toEqual([]); expect(validateContext).toHaveBeenCalledOnce(); expect(validateContextSync).toHaveBeenCalledOnce();
-});
-it("charges escaped mandatory framing to final prompt budget before optional selection", async () => {
-  const f = fixture(); const body = "<".repeat(200); writeFileSync(join(f.root, "method.md"), body);
-  const compilation = compiledFixture(f.root, body, task.task_id);
-  const methodContext = createMethodContext({ compiled: compilation.pin, schema_version: 1, task_id: task.task_id, package_version: "0.15.36", proposal_digest: compilation.compiled.proposal_digest, max_bytes: 4096,
-    roles: [{ role: "builder", capability_id: task.capability_id, materials: [{ path: "method.md", sha256: executionContextDigest(body) }] }] });
-  await expect(consume(createExecutionContextAdapters({ ...f.options, methodContext, maxPromptBytes: 1000 }).adapters[0]!)).rejects.toThrow("mandatory_budget_exceeded");
-  expect(f.captured).toEqual([]); expect(f.recordReceipt).not.toHaveBeenCalled();
-});
-
-function compiledFixture(repo: string, text: string, taskId = "task") {
-  const sha = (value: string) => createHash("sha256").update(value).digest("hex");
-  const source_snapshot = { kind: "source_snapshot" as const, schema_version: 1 as const,
-    pin: { kind: "source_pin" as const, schema_version: 1 as const, repository: "https://example.invalid/methods", commit: "a".repeat(40), subdir: "methods", content_sha256: sha("declared"), license_refs: ["license:MIT"] },
-    files: [{ path: "methods/fix.md", mode: "100644" as const, blob: "b".repeat(40) }], dependencies: [] };
-  const entries = ["repro", "regress", "accept"].map(id => ({ ref: "sha256:" + sha(id), command_bytes_sha256: sha(id), pass_codes: [0], fail_codes: [1] }));
-  const obligations = [["intent_frame", "builder"], ["reproduction", "builder"], ["candidate_checks", "builder"], ["independent_review", "reviewer"], ["cleanup_receipt", "verifier"]] as const;
-  const input = { schema_version: 1, target_repository: repo,
-    intent: { kind: "material:intent_frame", schema_version: 1, task_id: taskId, intent_revision: 1, goals: ["Fix"], non_goals: ["No publication"], observations: ["A failure"], hypotheses: [], unknowns: [], source_refs: ["task:fixture"] },
-    source_snapshot, source_snapshot_digest: sourceSnapshotDigest(source_snapshot),
-    materials: ["builder", "reviewer", "verifier"].map(role => ({ role, text: role === "builder" ? text : role === "reviewer" ? "Review only" : "Verify only", sha256: sha(role === "builder" ? text : role === "reviewer" ? "Review only" : "Verify only") })),
-    required_artifacts: { kind: "artifact_requirements", schema_version: 1, recipe_version: "bug-fix.v1", requirements: obligations.map(([artifact_ref_kind, producer_role]) => ({ artifact_ref_kind, producer_role, body_schema_digest: sha(artifact_ref_kind), verifier_policy_digest: sha("policy"), required: true })) },
-    required_feature_ids: ["bug"], available_feature_ids: ["bug"],
-    check_registry: { kind: "check_registry", schema_version: 1, entries },
-    check_binding: { kind: "check_binding", schema_version: 1, repository: repo, primary_id: "accept", checks: ["reproduce", "regression", "acceptance"].map((role, i) => ({ id: ["repro", "regress", "accept"][i], role, registry_ref: entries[i]!.ref, required: true })) } };
-  const compiled = compileBugFix(input); const bytes = JSON.stringify(compiled);
-  writeFileSync(join(repo, "compiled.json"), bytes);
-  return { input, compiled, pin: { path: "compiled.json", sha256: sha(bytes) } };
-}
-
-it("refuses compiled artifact replacement during prepared receipt persistence", async () => {
-  const f = fixture(); const body = "Required method"; writeFileSync(join(f.root, "method.md"), body);
-  const compilation = compiledFixture(f.root, body, task.task_id);
-  const methodContext = createMethodContext({ compiled: compilation.pin, schema_version: 1, task_id: task.task_id, package_version: "0.15.36", proposal_digest: compilation.compiled.proposal_digest, max_bytes: 4096,
-    roles: [{ role: "builder", capability_id: task.capability_id, materials: [{ path: "method.md", sha256: executionContextDigest(body) }] }] });
-  f.recordReceipt.mockImplementationOnce(async receipt => { f.receipts.push(receipt); writeFileSync(join(f.root, "compiled.json"), "{}"); return { path: join(f.root, "prepared.json"), digest: "a".repeat(64) }; });
-  await expect(consume(createExecutionContextAdapters({ ...f.options, methodContext }).adapters[0]!)).rejects.toThrow("method_context_pin_mismatch");
-  expect(f.captured).toEqual([]);
-});
