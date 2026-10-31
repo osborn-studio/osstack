@@ -42,6 +42,16 @@ export const MISSION_PROTECTED_RULES: readonly MissionProtectedRule[] = Object.f
   { id: "verify.graph-contained", glob: "packages/cli/src/graph-contained-*" },
   { id: "verify.contained-command", glob: "packages/agents/src/contained-command.ts" },
   { id: "verify.reviewer-isolation", glob: "packages/loop/src/reviewer-isolation.ts" },
+  // Contained Mission path (W11): verification, image build, host workspace writes,
+  // the executor's own sandbox and qualification, and the ledger and upgrade holds.
+  // Rules match path strings, so files from still-open PRs are covered once they land.
+  { id: "verify.contained-verification", glob: "packages/cli/src/contained-verification.ts" },
+  { id: "verify.contained-image", glob: "packages/agents/src/contained-image.ts" },
+  { id: "guard.contained-workspace", glob: "packages/agents/src/contained-workspace/**" },
+  { id: "guard.codex-proxy", glob: "packages/agents/src/adapters/codex-proxy.ts" },
+  { id: "state.contained-mission", glob: "packages/core/src/state/engineering-contained-*" },
+  { id: "guard.engineering-upgrade-holds", glob: "packages/cli/src/engineering-upgrade-guard.ts" },
+  { id: "guard.upgrade-native-port", glob: "packages/cli/src/upgrade-native-port.ts" },
   { id: "tool.codex", glob: "**/.codex/**" },
   { id: "tool.claude", glob: "**/.claude/**" },
   { id: "tool.cursor", glob: "**/.cursor/**" },

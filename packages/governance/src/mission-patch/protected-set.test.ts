@@ -52,6 +52,14 @@ describe("mission protected set", () => {
     "packages/cli/src/graph-contained-tests.ts",
     "packages/agents/src/contained-command.ts",
     "packages/loop/src/reviewer-isolation.ts",
+    "packages/cli/src/contained-verification.ts",
+    "packages/agents/src/contained-image.ts",
+    "packages/agents/src/contained-workspace/plumbing.ts",
+    "packages/agents/src/contained-workspace/safe-write.ts",
+    "packages/agents/src/adapters/codex-proxy.ts",
+    "packages/core/src/state/engineering-contained-store.ts",
+    "packages/cli/src/engineering-upgrade-guard.ts",
+    "packages/cli/src/upgrade-native-port.ts",
   ])("protects %s", (path) => {
     expect(matchMissionProtectedPath(path).length).toBeGreaterThan(0);
   });
@@ -62,6 +70,8 @@ describe("mission protected set", () => {
     "packages/core/src/state/engineering-store.ts",
     ".changeset/new-feature.md",
     "packages/governance/src/scanner.ts",
+    "packages/agents/src/adapters/codex-cli.ts",
+    "packages/cli/src/contained-verification-notes.md",
   ])("leaves %s unprotected", (path) => {
     expect(matchMissionProtectedPath(path)).toEqual([]);
   });
