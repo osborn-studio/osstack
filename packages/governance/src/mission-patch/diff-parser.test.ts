@@ -35,8 +35,19 @@ describe("parseMissionPatch", () => {
           { line: 2, patchLine: 8, text: "export const b = 3;" },
           { line: 3, patchLine: 9, text: "export const c = 4;" },
         ],
+        hunks: [{ oldStart: 1, oldCount: 2, lines: [
+          { op: " ", text: "export const a = 1;", noEol: false },
+          { op: "-", text: "export const b = 2;", noEol: false },
+          { op: "+", text: "export const b = 3;", noEol: false },
+          { op: "+", text: "export const c = 4;", noEol: false },
+        ] }],
       }],
     });
+  });
+
+  it("marks a missing final newline on the line it follows", () => {
+    const result = parseMissionPatch("--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n\\ No newline at end of file\n+b\n\\ No newline at end of file\n");
+    expect(result.ok && result.files[0]!.hunks[0]!.lines).toEqual([{ op: "-", text: "a", noEol: true }, { op: "+", text: "b", noEol: true }]);
   });
 
   it("recognises new files, deletions (by mode or /dev/null) and empty new files", () => {

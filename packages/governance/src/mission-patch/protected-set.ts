@@ -31,6 +31,10 @@ export const MISSION_PROTECTED_RULES: readonly MissionProtectedRule[] = Object.f
   { id: "guard.policy-gate", glob: "packages/cli/src/policy-gate.ts" },
   { id: "guard.guarded-open-db", glob: "packages/cli/src/guarded-open-db.ts" },
   { id: "guard.control-plane", glob: "packages/cli/src/control-plane-guard.ts" },
+  // Contained Mission host (W11 M6): runner, exact patch application, mission RPC and CLI
+  // enforce tiers, the decision table and stop proof.
+  { id: "guard.contained-mission-host", glob: "packages/cli/src/contained-mission-*" },
+  { id: "guard.contained-patch-apply", glob: "packages/cli/src/contained-patch-*" },
   { id: "guard.mission-patch", glob: "packages/governance/src/mission-patch/**" },
   { id: "guard.autonomy-risk", glob: "packages/autonomy/src/risk.ts" },
   { id: "guard.loop-review-boundary", glob: "packages/loop/src/review-boundary.ts" },

@@ -34,6 +34,9 @@ export interface MissionPatchAddedLine {
   text: string;
 }
 
+export interface MissionPatchHunkLine { op: " " | "-" | "+"; text: string; /** Followed by "\\ No newline at end of file". */ noEol: boolean }
+export interface MissionPatchHunk { oldStart: number; oldCount: number; lines: MissionPatchHunkLine[] }
+
 export interface MissionPatchFile {
   path: string;
   /** 1-based patch line where this file's section starts. */
@@ -44,6 +47,8 @@ export interface MissionPatchFile {
   /** UTF-8 bytes of the added lines, newlines included. */
   addedBytes: number;
   addedLines: MissionPatchAddedLine[];
+  /** The exact hunk bodies, so an applier never re-parses the patch text. */
+  hunks: MissionPatchHunk[];
 }
 
 export type MissionPatchParseResult =
@@ -138,7 +143,7 @@ class Parser {
       hunks: 0,
       lastOldStart: 0,
       lastNewStart: 0,
-      file: { path: "", patchLine: this.index + 1, kind: "modify", added: 0, removed: 0, addedBytes: 0, addedLines: [] },
+      file: { path: "", patchLine: this.index + 1, kind: "modify", added: 0, removed: 0, addedBytes: 0, addedLines: [], hunks: [] },
     };
     if (line.startsWith("diff --git ")) {
       const gitPath = parseGitHeaderPath(line.slice("diff --git ".length));
@@ -220,6 +225,8 @@ class Parser {
     if (section.newPath === null && (newStart !== 0 || newLeft !== 0)) this.fatal("HUNK_MALFORMED");
     section.hunks += 1;
     this.index += 1;
+    const body: MissionPatchHunk = { oldStart, oldCount: oldLeft, lines: [] };
+    section.file.hunks.push(body);
     let newLine = newStart;
     while (oldLeft > 0 || newLeft > 0) {
       const line = this.lines[this.index];
@@ -227,6 +234,8 @@ class Parser {
       if (line === undefined || marker === undefined) this.fatal("HUNK_MALFORMED");
       // Git treats NUL as binary; a textual hunk must not smuggle it past the header checks.
       if (line.includes("\u0000")) this.fatal("BINARY_REJECTED", section.newPath ?? section.oldPath ?? undefined);
+      if (marker === " " || marker === "-" || marker === "+") body.lines.push({ op: marker, text: line.slice(1), noEol: false });
+      else if (marker === "\\" && body.lines.length > 0) body.lines[body.lines.length - 1]!.noEol = true;
       if (marker === " " && oldLeft > 0 && newLeft > 0) {
         oldLeft -= 1;
         newLeft -= 1;
@@ -246,7 +255,10 @@ class Parser {
       }
       this.index += 1;
     }
-    if (this.lines[this.index]?.startsWith("\\") === true) this.index += 1;
+    if (this.lines[this.index]?.startsWith("\\") === true) {
+      if (body.lines.length > 0) body.lines[body.lines.length - 1]!.noEol = true;
+      this.index += 1;
+    }
     const next = this.lines[this.index];
     if (
       next !== undefined
