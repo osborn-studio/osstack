@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createScratchDir } from '@osstack/core';
-import { canonicalJointJson, jointDigest, SourceSnapshot } from '@osstack/protocol/joint';
+import { canonicalJson, sourceDigest, SourceSnapshot } from '@osstack/protocol/source';
 import { inspectGitSource, type GitSourceInspection, type InspectedSourceFile } from './source-snapshot.js';
 import { assembleDeclaredAdoption, SourceAdoptionError } from './source-adoption.js';
 
@@ -21,10 +21,10 @@ function inspection(subdir: string, extra: InspectedSourceFile[] = []): GitSourc
     pin: { kind: 'source_pin', schema_version: 1, repository: repo, commit, subdir, content_sha256: '0'.repeat(64), license_refs: [] }, files, inspection_digest: '' });
 }
 function resign(i: GitSourceInspection): GitSourceInspection {
-  i.pin.content_sha256 = jointDigest('osstack.joint.source-content.v1', { schema_version: 1, repository: i.pin.repository, commit: i.pin.commit, subdir: i.pin.subdir, files: i.files });
+  i.pin.content_sha256 = sourceDigest('osstack.joint.source-content.v1', { schema_version: 1, repository: i.pin.repository, commit: i.pin.commit, subdir: i.pin.subdir, files: i.files });
   i.pin.license_refs = [...new Set(i.files.filter(f => f.role === 'license').map(f => `sha256:${f.sha256}`))].sort();
   const { inspection_digest: _old, ...body } = i;
-  i.inspection_digest = jointDigest('osstack.joint.source-inspection.v1', body); return i;
+  i.inspection_digest = sourceDigest('osstack.joint.source-inspection.v1', body); return i;
 }
 function example() {
   const a = inspection('method'), b = inspection('principle');
@@ -87,7 +87,7 @@ describe('declared candidate closure, not semantic discovery or activation', () 
     // Unique files (501) and bytes (507) are small. Two 64-byte IDs per
     // component/file alone exceed 1 MiB before JSON keys or any other metadata.
     expect(500 * 32 * 2 * 64).toBeGreaterThan(1_048_576);
-    expect(x.inspections.every(i => Buffer.byteLength(canonicalJointJson(i)) < 1_048_576)).toBe(true);
+    expect(x.inspections.every(i => Buffer.byteLength(canonicalJson(i)) < 1_048_576)).toBe(true);
     let failure: unknown;
     try { assemble(x); } catch (error) { failure = error; }
     expect(failure).toBeInstanceOf(SourceAdoptionError);
@@ -118,7 +118,7 @@ describe('declared candidate closure, not semantic discovery or activation', () 
     expect(out.activation).toBe(false); expect(out.installation).toBe('not_performed'); expect(out.formal_snapshot).toBe(false);
     expect(out.external_requirements[0]?.status).toBe('not_checked'); expect(SourceSnapshot.safeParse(out).success).toBe(false);
     const { candidate_digest, ...body } = out;
-    expect(candidate_digest).toBe(hash('osstack.joint.declared-adoption.v1\n'+canonicalJointJson(body))); expect(JSON.stringify(x)).toBe(before);
+    expect(candidate_digest).toBe(hash('osstack.joint.declared-adoption.v1\n'+canonicalJson(body))); expect(JSON.stringify(x)).toBe(before);
   });
   it('set ordering is deterministic and graph changes alter the candidate digest', () => {
     const x=example(), first=assemble(x); x.declaration.components.reverse();x.inspections.reverse();expect(assemble(x)).toEqual(first);
@@ -151,7 +151,7 @@ describe('declared candidate closure, not semantic discovery or activation', () 
     if(defect==='repository'){i.pin.repository='https://other.invalid/skills';resign(i);}
     if(defect==='commit'){i.pin.commit='c'.repeat(40);resign(i);}
     if(defect==='file')i.files[1]!.bytes++;
-    if(defect==='license'){i.pin.license_refs=['sha256:'+'d'.repeat(64)];const {inspection_digest:_,...body}=i;i.inspection_digest=jointDigest('osstack.joint.source-inspection.v1',body);}
+    if(defect==='license'){i.pin.license_refs=['sha256:'+'d'.repeat(64)];const {inspection_digest:_,...body}=i;i.inspection_digest=sourceDigest('osstack.joint.source-inspection.v1',body);}
     if(defect==='extra-key')Object.assign(i,{activation:true});
     expect(()=>assemble(x)).toThrow();
   });

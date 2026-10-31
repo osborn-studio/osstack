@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Digest, GitId, Ref, UInt, issue, unique } from './joint-primitives.js';
+import { Digest, GitId, Ref, UInt, issue, unique } from './contract-primitives.js';
 import { jointDigest } from './joint-json.js';
 const assigned = { authors: z.array(Ref).min(1).max(64), reviewers: z.array(Ref).max(64), implementation_principals: z.array(Ref).min(1).max(64), custodian: Ref, critical_safety: z.boolean() };
 const identity = { kind: z.literal('oracle_lifecycle'), schema_version: z.literal(1), oracle_id: Ref, revision: UInt };

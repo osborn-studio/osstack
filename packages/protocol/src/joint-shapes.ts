@@ -1,16 +1,8 @@
 // Strict wire shapes. Semantic invariants live in method-binding and joint-recovery.
 import { z } from 'zod';
-import { Digest, GitId } from './joint-primitives.js';
+import { Digest, GitId } from './contract-primitives.js';
 
-export const SourcePinShape = z.object({
-  kind: z.literal("source_pin"),
-  schema_version: z.literal(1),
-  repository: z.string().min(1).max(512),
-  commit: GitId,
-  subdir: z.string().min(1).max(512),
-  content_sha256: Digest,
-  license_refs: z.array(z.string().min(1).max(512)).min(1).max(256),
-}).strict();
+export { SourcePinShape } from './source-contracts.js';
 
 export const MethodBindingShape = z.object({
   kind: z.literal("method_binding"),

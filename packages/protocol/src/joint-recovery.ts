@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { RecoveryReceiptShape } from './joint-shapes.js';
-import { Digest, Ref, UInt, issue, unique } from './joint-primitives.js';
+import { Digest, Ref, UInt, issue, unique } from './contract-primitives.js';
 import { jointDigest, canonicalJointJson } from './joint-json.js';
 export const RecoverySubject = RecoveryReceiptShape.shape.subject;
 export type RecoverySubject = z.infer<typeof RecoverySubject>;

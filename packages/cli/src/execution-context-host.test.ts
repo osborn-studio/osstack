@@ -1,5 +1,5 @@
 import { compileBugFix } from "@osstack/skill-registry/bug-fix-compiler";
-import { sourceSnapshotDigest } from "@osstack/protocol/joint";
+import { sourceSnapshotDigest } from "@osstack/protocol/source";
 import { createHash } from "node:crypto";
 import {
   mkdirSync,

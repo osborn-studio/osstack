@@ -1,18 +1,8 @@
 import { jointDigest } from './joint-json.js';
 import { z } from 'zod';
-import { Digest, GitId, Ref, Role, issue, unique, portableGitPath } from './joint-primitives.js';
-import { SourcePin } from './method-binding.js';
+import { Digest, Ref, Role, issue, unique } from './contract-primitives.js';
 const Refs = z.array(Ref).max(256);
-export const SourceSnapshot = z.object({ kind: z.literal('source_snapshot'), schema_version: z.literal(1), pin: SourcePin,
-  files: z.array(z.object({ path: Ref, mode: z.enum(['100644', '100755']), blob: GitId }).strict()).max(4096),
-  dependencies: z.array(SourcePin).max(256),
-}).strict().superRefine((v, ctx) => {
-  const paths = v.files.map(f => f.path.normalize('NFC').toLowerCase());
-  if (!unique(paths)) issue(ctx, 'COLLIDING_SOURCE_PATH');
-  const pathSet = new Set(paths);
-  for (const path of paths) { const parts = path.split('/'); for (let i=1; i<parts.length; i++) if (pathSet.has(parts.slice(0,i).join('/'))) issue(ctx, 'SOURCE_PREFIX_CONFLICT'); }
-  for (const f of v.files) if (!portableGitPath(f.path)) issue(ctx, 'NONCANONICAL_SOURCE_PATH');
-});
+export { SourceSnapshot, sourceSnapshotDigest } from './source-contracts.js';
 export const MethodInput = z.object({ kind: z.literal('method_input'), schema_version: z.literal(1), role: Role, intent_digest: Digest, source_snapshot_digest: Digest, requested_materials: Refs }).strict();
 export const EnvironmentBinding = z.object({ kind: z.literal('environment'), schema_version: z.literal(1), scope_id: Ref, repository: Ref, home_id: Ref, os: Ref, arch: Ref, filesystem: Ref, host_build_digest: Digest, provider: Ref, model: Ref, runtime: Ref, isolation: Ref, setup_fixture_digests: z.array(Digest).max(256) }).strict();
 export const ScenarioBinding = z.object({ kind: z.literal('scenario'), schema_version: z.literal(1), driver_ref: Ref, definition_digest: Digest, action_schema_digest: Digest, input_fixture_digest: Digest }).strict();
@@ -22,12 +12,6 @@ export const CheckRegistry = z.object({ kind: z.literal('check_registry'), schem
   for (const e of v.entries) if (new Set([...e.pass_codes, ...e.fail_codes]).size !== e.pass_codes.length + e.fail_codes.length) issue(ctx, 'OVERLAPPING_EXIT_CODES');
 });
 
-/** Sort only the catalog's declared sets; all other arrays retain declaration order. */
-export function sourceSnapshotDigest(input: unknown): string {
-  const v = SourceSnapshot.parse(input);
-  v.files.sort((a, b) => Buffer.compare(Buffer.from(a.path, 'utf8'), Buffer.from(b.path, 'utf8')));
-  return jointDigest('osstack.joint.source-snapshot.v1', v);
-}
 export function checkRegistryDigest(input: unknown): string {
   const v = CheckRegistry.parse(input);
   v.entries.sort((a, b) => a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0);
