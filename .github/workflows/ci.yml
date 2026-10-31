@@ -131,6 +131,23 @@ jobs:
       - name: Session adoption decision smoke (local fixture)
         run: pnpm smoke:engineering-decision
 
+      - name: Skills check verification (local Git fixtures)
+        id: skills-check
+        env:
+          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
+        run: |
+          mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
+          pnpm smoke:skills-check --evidence-dir "$OSSTACK_SCRATCH_ROOT/runtime/skills-check-ci-evidence"
+
+      - name: Preserve skills check evidence
+        if: always() && steps.skills-check.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: skills-check-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/osstack/runtime/skills-check-ci-evidence
+          if-no-files-found: warn
+          retention-days: 7
+
       # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
       # Budgets are looser than the local defaults (150/500ms) because CI
       # runners spawn node slower; they still catch the eager-import class
