@@ -42,6 +42,7 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
     commit: async input => { calls.commit.push(input); head = (head === START ? "b" : "c").repeat(40); return { head, tree: "d".repeat(40) }; },
     verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? "ok" : "1 failed", cancelled: false, evidence: "docker-removed:x", stopped: true }; },
     cumulativeDiff: async input => { calls.cumulative.push(input); return cumulativeText ?? PATCH; },
+    restoreWorkspace: async () => {}, worktreeDiff: async () => ({ diff: PATCH, tree: "d".repeat(40), unsafe: [] }), commitWorktree: async () => ({ head: "e".repeat(40), tree: "d".repeat(40) }),
     ...over,
   };
   const spec: ContainedMissionSpec = { goal: "fix it", repo_path: join(root, "repo"), base_ref: "main", start_commit: START, branch: "osstack/m/1",
@@ -220,6 +221,23 @@ describe("ContainedMissionRunner", () => {
     expect(m).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
     const output = JSON.parse(f.store.events(m.mission_id, 0, 500).find(e => e.kind === "executor_output")!.payload_json) as { secret_hits: unknown[]; secret_hit_count: number };
     expect(output.secret_hits).toHaveLength(32); expect(output.secret_hit_count).toBe(2000);
+  });
+
+  it("re-probes before every repair turn and halts when the Codex build changed", async () => {
+    let probes = 0; let identity = "f".repeat(64);
+    const f = setup({ qualify: async () => { probes++; return { ...qualified, identity_sha256: identity }; } }, { max_repair_cycles: 2 });
+    f.setVerifyExit(1);
+    let m = await drive(f, 3);
+    expect(m.state).toBe("verify_failed"); expect(probes).toBe(1);
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("candidate_ready"); expect(probes).toBe(2);
+    m = await drive(f, 1);
+    expect(m.state).toBe("verify_failed");
+    identity = "e".repeat(64);
+    m = await f.runner.step(m.mission_id);
+    expect(m).toMatchObject({ state: "awaiting_decision", repair_cycles: 1 });
+    expect(f.allPayloads()).toContain("executor_identity_changed");
+    expect(f.calls.execute).toHaveLength(2);
   });
 
   it("cancels a live executor and settles once it is proven stopped", async () => {
