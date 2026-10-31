@@ -121,9 +121,42 @@ describe("classifyMissionPatch", () => {
     const result = classifyMissionPatch(spec, addFile("src/config.ts", ["// ok", `export const t = "${fakeGithubToken}";`]));
     expect(result.tier).toBe("T2");
     expect(result.findings).toEqual([
-      { code: "SECRET_DETECTED", channel: "patch", path: "src/config.ts", line: 2, rules: ["secret.github-token"] },
+      { code: "SECRET_DETECTED", channel: "patch", path: "src/config.ts", line: 2, patchLine: 8, rules: ["secret.github-token"] },
     ]);
     expect(JSON.stringify(result)).not.toContain(fakeGithubToken);
+  });
+
+  it("escalates a secret in context or removed lines, which are executor output too", () => {
+    const patch = modifyFile("src/a.ts", "export const a = 1;", "export const a = 2;") + [
+      "diff --git a/src/b.ts b/src/b.ts",
+      "index 1111111..2222222 100644",
+      "--- a/src/b.ts",
+      "+++ b/src/b.ts",
+      "@@ -1,2 +1,2 @@",
+      ` const t = "${fakeGithubToken}";`,
+      `-const u = "${fakeGithubToken}";`,
+      "+const u = process.env.TOKEN;",
+      "",
+    ].join("\n");
+    const result = classifyMissionPatch(spec, patch);
+    expect(result.tier).toBe("T2");
+    expect(result.findings).toEqual([
+      { code: "SECRET_DETECTED", channel: "patch", path: "src/b.ts", patchLine: 13, rules: ["secret.github-token"] },
+      { code: "SECRET_DETECTED", channel: "patch", path: "src/b.ts", patchLine: 14, rules: ["secret.github-token"] },
+    ]);
+  });
+
+  it("still reports secrets when the patch itself is rejected", () => {
+    const patch = `${modifyFile("src/a.ts", "a", `"${fakeGithubToken}"`)}\nstray\n`;
+    expect(classifyMissionPatch(spec, patch)).toMatchObject({
+      tier: "rejected",
+      reasons: ["HUNK_MALFORMED", "SECRET_DETECTED"],
+    });
+  });
+
+  it("rejects NUL bytes smuggled through a textual hunk", () => {
+    const result = classifyMissionPatch(spec, addFile("src/blob.ts", ["a\u0000b"]));
+    expect(result).toMatchObject({ tier: "rejected", reasons: ["BINARY_REJECTED"] });
   });
 
   it("catches a private key read from ~/.ssh in the final message while the clean patch stays T0", () => {
@@ -143,7 +176,7 @@ describe("classifyMissionPatch", () => {
     const withOutputs = classifyMissionPatch(spec, patch, { final_message: message, stdout: "ok\n" });
     expect(withOutputs.tier).toBe("T2");
     expect(withOutputs.findings).toEqual([
-      { code: "SECRET_DETECTED", channel: "final_message", line: 2, rules: ["secret.private-key"] },
+      { code: "SECRET_DETECTED", channel: "final_message", patchLine: 2, rules: ["secret.private-key"] },
     ]);
     expect(JSON.stringify(withOutputs)).not.toContain(body);
   });

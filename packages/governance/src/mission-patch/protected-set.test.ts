@@ -42,6 +42,12 @@ describe("mission protected set", () => {
     ".GITHUB/workflows/x.yml",
     ".env.local",
     "deploy/server.pem",
+    "deploy/ca.crt",
+    "secrets/prod.json",
+    "config/credentials/token.json",
+    "packages/cli/src/graph-contained-tests.ts",
+    "packages/agents/src/contained-command.ts",
+    "packages/loop/src/reviewer-isolation.ts",
   ])("protects %s", (path) => {
     expect(matchMissionProtectedPath(path).length).toBeGreaterThan(0);
   });

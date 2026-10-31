@@ -26,11 +26,15 @@ describe("parseMissionPatch", () => {
       ok: true,
       files: [{
         path: "src/app.ts",
+        patchLine: 1,
         kind: "modify",
         added: 2,
         removed: 1,
         addedBytes: 40,
-        addedLines: [{ line: 2, text: "export const b = 3;" }, { line: 3, text: "export const c = 4;" }],
+        addedLines: [
+          { line: 2, patchLine: 8, text: "export const b = 3;" },
+          { line: 3, patchLine: 9, text: "export const c = 4;" },
+        ],
       }],
     });
   });

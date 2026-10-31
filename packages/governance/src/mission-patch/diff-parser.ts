@@ -29,11 +29,15 @@ export type MissionPatchFileKind = "modify" | "add" | "delete";
 export interface MissionPatchAddedLine {
   /** 1-based line number in the new file. */
   line: number;
+  /** 1-based line of the patch text. */
+  patchLine: number;
   text: string;
 }
 
 export interface MissionPatchFile {
   path: string;
+  /** 1-based patch line where this file's section starts. */
+  patchLine: number;
   kind: MissionPatchFileKind;
   added: number;
   removed: number;
@@ -56,13 +60,14 @@ const INDEX_LINE = /^index [0-9a-f]+\.\.[0-9a-f]+(?: (\d{6}))?$/;
  * Anything that is not a content change to a regular text file is rejected.
  */
 export function parseMissionPatch(input: string | Uint8Array): MissionPatchParseResult {
-  const decoded = decodePatch(input);
+  const decoded = decodeMissionPatch(input);
   if (typeof decoded !== "string") return { ok: false, rejections: [decoded] };
   if (decoded === "") return { ok: false, rejections: [{ code: "PATCH_EMPTY" }] };
   return new Parser(decoded).run();
 }
 
-function decodePatch(input: string | Uint8Array): string | MissionPatchRejection {
+/** Size and UTF-8 checks shared by the parser and the patch-channel secret scan. */
+export function decodeMissionPatch(input: string | Uint8Array): string | MissionPatchRejection {
   if (typeof input === "string") {
     if (input.length > MISSION_PATCH_MAX_BYTES) return { code: "PATCH_TOO_LARGE" };
     if (LONE_SURROGATE.test(input)) return { code: "PATCH_NOT_UTF8" };
@@ -133,7 +138,7 @@ class Parser {
       hunks: 0,
       lastOldStart: 0,
       lastNewStart: 0,
-      file: { path: "", kind: "modify", added: 0, removed: 0, addedBytes: 0, addedLines: [] },
+      file: { path: "", patchLine: this.index + 1, kind: "modify", added: 0, removed: 0, addedBytes: 0, addedLines: [] },
     };
     if (line.startsWith("diff --git ")) {
       const gitPath = parseGitHeaderPath(line.slice("diff --git ".length));
@@ -220,6 +225,8 @@ class Parser {
       const line = this.lines[this.index];
       const marker = line?.[0];
       if (line === undefined || marker === undefined) this.fatal("HUNK_MALFORMED");
+      // Git treats NUL as binary; a textual hunk must not smuggle it past the header checks.
+      if (line.includes("\u0000")) this.fatal("BINARY_REJECTED", section.newPath ?? section.oldPath ?? undefined);
       if (marker === " " && oldLeft > 0 && newLeft > 0) {
         oldLeft -= 1;
         newLeft -= 1;
@@ -232,7 +239,7 @@ class Parser {
         const text = line.slice(1);
         section.file.added += 1;
         section.file.addedBytes += encoder.encode(text).length + 1;
-        section.file.addedLines.push({ line: newLine, text });
+        section.file.addedLines.push({ line: newLine, patchLine: this.index + 1, text });
         newLine += 1;
       } else if (marker !== "\\" || !/^[ +-]/.test(this.lines[this.index - 1]!)) {
         this.fatal("HUNK_MALFORMED");

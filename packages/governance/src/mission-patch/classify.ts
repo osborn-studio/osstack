@@ -1,4 +1,6 @@
 import {
+  decodeMissionPatch,
+  type MissionPatchFile,
   type MissionPatchFileKind,
   type MissionPatchRejection,
   type MissionPatchRejectionCode,
@@ -58,8 +60,10 @@ export type MissionPatchReasonCode = MissionPatchRejectionCode | MissionPatchEsc
 export interface MissionPatchFinding {
   code: MissionPatchReasonCode;
   path?: string;
-  /** New-file line for secrets, patch line for parser rejections. */
+  /** 1-based line in the new file, for a secret on an added line. */
   line?: number;
+  /** 1-based line of the patch or output text. */
+  patchLine?: number;
   /** Protected-set rule ids or the secret rule. */
   rules?: string[];
   /** Output channel of a secret hit. */
@@ -132,7 +136,7 @@ export function classifyMissionPatch(
   const protectedSetDigest = missionProtectedSetDigest();
   const parsed = parseMissionPatch(patch);
   if (!parsed.ok) {
-    const findings = parsed.rejections.map(rejectionFinding);
+    const findings = sortFindings([...parsed.rejections.map(rejectionFinding), ...secretFindings(patch, [], outputs)]);
     return { tier: "rejected", reasons: reasonCodes(findings), findings, caps, protectedSetDigest };
   }
 
@@ -149,20 +153,7 @@ export function classifyMissionPatch(
     changedLines += file.added + file.removed;
     addedBytes += file.addedBytes;
   }
-  for (const file of parsed.files) {
-    for (const added of file.addedLines) {
-      for (const match of scanForSecrets(added.text, { channel: "patch" })) {
-        findings.push({ code: "SECRET_DETECTED", channel: "patch", path: file.path, line: added.line, rules: [match.rule] });
-      }
-    }
-  }
-  for (const channel of ["final_message", "stdout", "stderr"] as const) {
-    const text = outputs[channel];
-    if (text === undefined) continue;
-    for (const match of scanForSecrets(text, { channel })) {
-      findings.push({ code: "SECRET_DETECTED", channel, line: match.line, rules: [match.rule] });
-    }
-  }
+  findings.push(...secretFindings(patch, parsed.files, outputs));
   if (parsed.files.length > caps.maxFiles) findings.push({ code: "CAP_FILES_EXCEEDED" });
   if (changedLines > caps.maxChangedLines) findings.push({ code: "CAP_CHANGED_LINES_EXCEEDED" });
   if (addedBytes > caps.maxTotalBytes) findings.push({ code: "CAP_TOTAL_BYTES_EXCEEDED" });
@@ -192,11 +183,44 @@ function compileAllowedPaths(globs: readonly string[]): RegExp[] {
   });
 }
 
+// The whole patch is scanned, context and removed lines included: all of it is executor output.
+function secretFindings(
+  patch: string | Uint8Array,
+  files: readonly MissionPatchFile[],
+  outputs: MissionPatchOutputs,
+): MissionPatchFinding[] {
+  const findings: MissionPatchFinding[] = [];
+  const text = decodeMissionPatch(patch);
+  if (typeof text === "string") {
+    const addedByPatchLine = new Map(files.flatMap((file) => file.addedLines.map((added) => [added.patchLine, added.line] as const)));
+    for (const match of scanForSecrets(text, { channel: "patch" })) {
+      const file = [...files].reverse().find((candidate) => candidate.patchLine <= match.line);
+      const line = addedByPatchLine.get(match.line);
+      findings.push({
+        code: "SECRET_DETECTED",
+        channel: "patch",
+        ...(file === undefined ? {} : { path: file.path }),
+        ...(line === undefined ? {} : { line }),
+        patchLine: match.line,
+        rules: [match.rule],
+      });
+    }
+  }
+  for (const channel of ["final_message", "stdout", "stderr"] as const) {
+    const output = outputs[channel];
+    if (output === undefined) continue;
+    for (const match of scanForSecrets(output, { channel })) {
+      findings.push({ code: "SECRET_DETECTED", channel, patchLine: match.line, rules: [match.rule] });
+    }
+  }
+  return findings;
+}
+
 function rejectionFinding(rejection: MissionPatchRejection): MissionPatchFinding {
   return {
     code: rejection.code,
     ...(rejection.path === undefined ? {} : { path: rejection.path }),
-    ...(rejection.patchLine === undefined ? {} : { line: rejection.patchLine }),
+    ...(rejection.patchLine === undefined ? {} : { patchLine: rejection.patchLine }),
   };
 }
 
@@ -209,6 +233,7 @@ function sortFindings(findings: readonly MissionPatchFinding[]): MissionPatchFin
     compare(left.code, right.code)
     || compare(left.channel ?? "", right.channel ?? "")
     || compare(left.path ?? "", right.path ?? "")
+    || (left.patchLine ?? 0) - (right.patchLine ?? 0)
     || (left.line ?? 0) - (right.line ?? 0)
     || compare((left.rules ?? []).join(","), (right.rules ?? []).join(",")));
 }
