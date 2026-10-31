@@ -23,7 +23,7 @@ Preconditions:
 
 - **URL.** Run `$V cli url -- dashboard url`. Stdout `http://localhost:<port>/dashboard` with the port from `$V env`.
 - **Render.** Run `$V screenshot cockpit`. Exit `0`; `ui/cockpit.png` shows the `osstack Cockpit` header, metric tiles, `AGENT ROLES`, `KANBAN BOARD`, `RECENT RUNS`; `ui/cockpit.text.txt` contains `osstack Cockpit` and `KANBAN BOARD`.
-- **API.** `ui/cockpit.api-dashboard.json` has keys `dashboard, overview, board, quality, agents, evidence, recent_runs, next_steps`, and `dashboard.db_path` is inside the scratch home.
+- **API.** `ui/cockpit.api-dashboard.json` has keys `dashboard, overview, board, quality, agents, agent_scorecards, evidence, lessons, autonomy, attention, recent_runs, next_steps`, and `dashboard.db_path` is inside the scratch home.
 - **CLI text.** Run `$V cli cockpit -- cockpit`. Stdout starts `Osstack Cockpit`, then `daemon=<version> phase=...`, `runs total=`, `kanban:`, `next steps:`.
 - **CLI JSON.** Run `$V cli cockpit-json -- cockpit --json`. Exit `0`; stdout is JSON with top-level keys `daemon` and `cockpit`.
 - **Workspace view.** After a `deliver` journey, run `$V screenshot cockpit-ws "/dashboard?workspace=$(node -p 'encodeURIComponent(process.argv[1])' "$W")" "Proof packs"` and compare its evidence panel with `cockpit --workspace "$W"`.
