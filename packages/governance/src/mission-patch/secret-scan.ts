@@ -31,7 +31,11 @@ const SECRET_RULES: ReadonlyArray<{ rule: MissionSecretRule; source: string }> =
     source: String.raw`\b(?:gh[opsur]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59})(?![A-Za-z0-9_])`,
   },
   { rule: "secret.aws-access-key-id", source: String.raw`\b(?:AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}\b` },
-  { rule: "secret.sk-api-key", source: String.raw`(?<![A-Za-z0-9_-])sk-(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{32,}` },
+  // A diff marker (`-`, `+`, space) at line start may precede the key; `task-sk-…` elsewhere may not.
+  {
+    rule: "secret.sk-api-key",
+    source: String.raw`(?:(?<![A-Za-z0-9_-])|(?<=^[-+ ]))sk-(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{32,}`,
+  },
   { rule: "secret.slack-token", source: String.raw`\b(?:xox[abposr]|xapp)-[A-Za-z0-9-]{10,}` },
   {
     rule: "secret.slack-webhook",
@@ -48,7 +52,7 @@ interface Span {
 function secretSpans(text: string): Span[] {
   const spans: Span[] = [];
   for (const { rule, source } of SECRET_RULES) {
-    for (const match of text.matchAll(new RegExp(source, "g"))) {
+    for (const match of text.matchAll(new RegExp(source, "gm"))) {
       spans.push({ start: match.index!, end: match.index! + match[0].length, rule });
     }
   }

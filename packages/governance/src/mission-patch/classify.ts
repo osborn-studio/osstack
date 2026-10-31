@@ -29,6 +29,8 @@ export const DEFAULT_MISSION_PATCH_CAPS: Readonly<MissionPatchCaps> = Object.fre
 
 export interface MissionPatchSpec {
   allowedPaths: readonly string[];
+  /** Tests and other code the Mission's verification runs; any change to them is T2. */
+  verificationPaths?: readonly string[];
   /** May only tighten {@link DEFAULT_MISSION_PATCH_CAPS}. */
   caps?: Partial<MissionPatchCaps>;
 }
@@ -47,7 +49,8 @@ export type MissionPatchEscalationCode =
   | "OUTSIDE_ALLOWED"
   | "PACKAGE_MANIFEST_CHANGED"
   | "PROTECTED_PATH"
-  | "SECRET_DETECTED";
+  | "SECRET_DETECTED"
+  | "VERIFICATION_PATH";
 
 export type MissionPatchCapCode =
   | "CAP_CHANGED_LINES_EXCEEDED"
@@ -133,6 +136,7 @@ export function classifyMissionPatch(
 ): MissionPatchClassification {
   const caps = resolveMissionPatchCaps(spec.caps);
   const allowed = compileAllowedPaths(spec.allowedPaths);
+  const verification = compileAllowedPaths(spec.verificationPaths ?? []);
   const protectedSetDigest = missionProtectedSetDigest();
   const parsed = parseMissionPatch(patch);
   if (!parsed.ok) {
@@ -148,6 +152,7 @@ export function classifyMissionPatch(
     if (protectedRules.length > 0) findings.push({ code: "PROTECTED_PATH", path: file.path, rules: protectedRules });
     if (file.kind === "delete") findings.push({ code: "DELETE_TRACKED", path: file.path });
     if (!allowed.some((pattern) => pattern.test(file.path))) findings.push({ code: "OUTSIDE_ALLOWED", path: file.path });
+    if (verification.some((pattern) => pattern.test(file.path))) findings.push({ code: "VERIFICATION_PATH", path: file.path });
     if (/(?:^|\/)package\.json$/i.test(file.path)) findings.push({ code: "PACKAGE_MANIFEST_CHANGED", path: file.path });
     if (file.addedBytes > caps.maxFileBytes) findings.push({ code: "CAP_FILE_BYTES_EXCEEDED", path: file.path });
     changedLines += file.added + file.removed;

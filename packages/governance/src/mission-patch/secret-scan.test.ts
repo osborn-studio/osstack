@@ -29,9 +29,15 @@ describe("scanForSecrets", () => {
     expect(JSON.stringify(matches)).not.toContain(FAKE[name]);
   });
 
+  it("detects keys right after a diff marker", () => {
+    const text = `-${FAKE.sk}\n+${FAKE.sk}\n ${FAKE.sk}\n`;
+    expect(scanForSecrets(text, { channel: "patch" }).map((match) => match.line)).toEqual([1, 2, 3]);
+    expect(redactSecrets(text)).not.toContain(FAKE.sk);
+  });
+
   it("ignores short or unrealistic look-alikes", () => {
     const text = [
-      "task-sk-short",
+      "task-sk-" + "a1".repeat(20),
       "sk-" + "a".repeat(40),
       "gh" + "p_short",
       "AKIA-not-a-key",

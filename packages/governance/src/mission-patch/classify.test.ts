@@ -103,6 +103,16 @@ describe("classifyMissionPatch", () => {
     expect(result).toMatchObject({ tier: "T2", reasons: ["PROTECTED_PATH"] });
   });
 
+  it("escalates changes to the spec's verification paths", () => {
+    const strict = { ...spec, verificationPaths: ["src/**/*.test.ts"] };
+    expect(classifyMissionPatch(spec, modifyFile("src/a.test.ts", "a", "b")).tier).toBe("T0");
+    expect(classifyMissionPatch(strict, modifyFile("src/a.test.ts", "a", "b"))).toMatchObject({
+      tier: "T2",
+      findings: [{ code: "VERIFICATION_PATH", path: "src/a.test.ts" }],
+    });
+    expect(() => classifyMissionPatch({ ...spec, verificationPaths: ["../x"] }, "")).toThrow(/ALLOWED_PATH_INVALID/);
+  });
+
   it("escalates package.json changes, deletions and out-of-scope paths with ordered reasons", () => {
     const patch = deleteFile("src/old.ts") + modifyFile("package.json", "{", "{ ") + modifyFile("lib/x.ts", "a", "b");
     const result = classifyMissionPatch(spec, patch);
