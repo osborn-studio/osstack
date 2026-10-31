@@ -27,10 +27,14 @@ export const ContainedMissionRpcRequests = {
     decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'retry_stop_check']) }).strict(),
 } as const;
 export type ContainedMissionRpcMethod = keyof typeof ContainedMissionRpcRequests;
+/** Decisions that probe, launch an executor or write a commit: refused while draining, acknowledged without waiting. */
+const PRODUCES_WORK = new Set(['extra_repair', 'discard_changes', 'adopt_worktree']);
 
 export interface ContainedMissionServiceOptions {
   host: ContainedMissionHost; access: EngineeringAccess;
   draining: () => boolean; tickMs?: number;
+  /** How long `mission.decide` waits for a work-producing decision before acknowledging it (default 2000ms). */
+  ackMs?: number;
   /** Resolves `base_ref` and picks branch/worktree; injectable for tests. */
   resolveStart?: typeof resolveContainedMissionStart;
 }
@@ -40,6 +44,7 @@ export class ContainedMissionService {
   private timer: ReturnType<typeof setInterval> | undefined;
   private ticking: Promise<void> | undefined;
   private closed = false;
+  private readonly background = new Set<Promise<void>>();
   constructor(private readonly options: ContainedMissionServiceOptions) {}
   get store(): ContainedMissionStore { return this.options.host.store; }
 
@@ -56,7 +61,7 @@ export class ContainedMissionService {
   }
   async close(): Promise<void> {
     this.closed = true; if (this.timer) clearInterval(this.timer);
-    await this.ticking; await this.options.host.close();
+    await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
   }
 
   async handle(method: string, params: unknown): Promise<unknown> {
@@ -92,7 +97,18 @@ export class ContainedMissionService {
       }
       case 'mission.decide': {
         const p = ContainedMissionRpcRequests['mission.decide'].parse(params);
-        return view(await host.decide(actor, p.mission_id, { kind: p.decision }));
+        if (!PRODUCES_WORK.has(p.decision)) return view(await host.decide(actor, p.mission_id, { kind: p.decision }));
+        if (this.options.draining()) throw new Error('draining');
+        // A work-producing decision can run for minutes: return once it is accepted or rejected, and let it continue.
+        const running = host.decide(actor, p.mission_id, { kind: p.decision });
+        const settled = await Promise.race([running.then(m => ({ m })), new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), this.options.ackMs ?? 2000).unref())]);
+        if (settled) return view(settled.m);
+        const tracked: Promise<void> = running.then(() => undefined, (error: unknown) => {
+          try { host.store.record(p.mission_id, 'host_decision_failed', { decision: p.decision, code: error instanceof Error ? (error.message.split(':')[0] ?? 'error').slice(0, 64) : 'error' }, Date.now()); }
+          catch { /* the Mission row is the authority; a missing event never blocks recovery */ }
+        }).finally(() => { this.background.delete(tracked); });
+        this.background.add(tracked);
+        return { accepted: true, decision: p.decision, mission: view(host.store.get(p.mission_id)) };
       }
     }
   }

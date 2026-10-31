@@ -14,7 +14,7 @@ const credential = "c".repeat(48);
 const scope = "a".repeat(64); const other = "b".repeat(64);
 const MID = "cm_00000000-0000-4000-8000-000000000000";
 
-function setup(draining = false) {
+function setup(draining = false, decideDelay = 0) {
   const root = realpathSync(createScratchDirSync("tests", "contained-rpc"));
   cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
   const authDir = join(root, "auth"); mkdirSync(authDir, { mode: 0o700 });
@@ -25,18 +25,18 @@ function setup(draining = false) {
   const calls: Array<[string, unknown]> = []; let ticks = 0; let release: (() => void) | undefined;
   const mission = { mission_id: MID, state: "authorized", spec_json: "{\"goal\":\"secret-free\"}", revision: 1 };
   const host = {
-    store: {},
+    store: { get: () => mission, record: () => 1 },
     start: (_principal: unknown, input: unknown) => { calls.push(["start", input]); return mission; },
     status: (_principal: unknown, id: string) => { calls.push(["status", id]); return { mission, events: [] }; },
     cancel: async (_principal: unknown, id: string) => { calls.push(["cancel", id]); return mission; },
-    decide: async (_principal: unknown, _id: string, d: unknown) => { calls.push(["decide", d]); return mission; },
+    decide: async (_principal: unknown, _id: string, d: unknown) => { calls.push(["decide", d]); if (decideDelay) await new Promise(r => setTimeout(r, decideDelay)); return mission; },
     tick: () => { ticks++; return new Promise<void>(resolve => { release = resolve; }); },
     recover: async () => { calls.push(["recover", null]); },
     close: async () => { calls.push(["close", null]); },
   } as unknown as ContainedMissionHost;
   const resolveStart = async (request: Omit<ContainedMissionSpec, "start_commit" | "branch" | "worktree_path">): Promise<ContainedMissionSpec> =>
     ({ ...request, start_commit: "d".repeat(40), branch: "osstack/mission/abc123", worktree_path: join(root, "wt") });
-  const service = new ContainedMissionService({ host, access: new EngineeringAccess(path), draining: () => draining, resolveStart, tickMs: 60_000 });
+  const service = new ContainedMissionService({ host, access: new EngineeringAccess(path), draining: () => draining, resolveStart, tickMs: 60_000, ackMs: 50 });
   cleanup.push(() => { void service.close(); });
   const start = (over: Record<string, unknown> = {}) => service.handle("mission.start", { credential, scope_id: scope,
     request: { goal: "fix it", repo_path: repo, base_ref: "main", allowed_paths: ["src/**"], verify: { argv: ["pnpm", "test"] } }, ...over });
@@ -79,6 +79,24 @@ describe("ContainedMissionService", () => {
     await f.service.handle("mission.decide", { credential, mission_id: MID, decision: "approve_publication" });
     await expect(f.service.handle("mission.decide", { credential, mission_id: MID, decision: "merge" })).rejects.toThrow("bad_request");
     expect(f.calls).toEqual([["cancel", MID], ["decide", { kind: "approve_publication" }]]);
+  });
+
+  it("refuses work-producing decisions while draining but still allows abandon and cancel", async () => {
+    const f = setup(true);
+    for (const decision of ["extra_repair", "discard_changes", "adopt_worktree"]) await expect(f.service.handle("mission.decide", { credential, mission_id: MID, decision })).rejects.toThrow("draining");
+    await f.service.handle("mission.decide", { credential, mission_id: MID, decision: "abandon" });
+    await f.service.handle("mission.cancel", { credential, mission_id: MID });
+    expect(f.calls.map(c => c[0])).toEqual(["decide", "cancel"]);
+  });
+
+  it("acknowledges a long work-producing decision and finishes it before close", async () => {
+    const f = setup(false, 300);
+    const started = Date.now();
+    const ack = await f.service.handle("mission.decide", { credential, mission_id: MID, decision: "extra_repair" }) as Record<string, unknown>;
+    expect(Date.now() - started).toBeLessThan(250);
+    expect(ack).toMatchObject({ accepted: true, decision: "extra_repair", mission: { mission_id: MID } });
+    await f.service.close();
+    expect(f.calls).toContainEqual(["decide", { kind: "extra_repair" }]);
   });
 
   it("recovers before ticking and never overlaps two ticks", async () => {
