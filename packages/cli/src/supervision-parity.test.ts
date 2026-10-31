@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import type Database from "better-sqlite3";
 import { createScratchDirSync, openDb } from "@osstack/core";
-import { SupervisionService, type SupervisionOptions } from "./supervision-service.js";
+import { SupervisionService, attentionServiceState, type SupervisionOptions } from "./supervision-service.js";
 
 type Message = { delivery_id: string; scope_id: string; item_id: string };
 type Sender = (message: Message, signal: AbortSignal) => Promise<void>;
@@ -232,4 +232,44 @@ it("a stopped old service's timer never wakes after a take-over", async () => {
   const calls = step.mock.calls.length;
   await vi.advanceTimersByTimeAsync(120_000);
   expect(step.mock.calls.length).toBe(calls);
+});
+it("counts swallowed scan errors and reports the take-over in health, which the daemon maps to unavailable", async () => {
+  const h = home();
+  const old = h.service(async () => {});
+  expect(old.health()).toEqual({ taken_over: false, scan_errors: 0 });
+  expect(attentionServiceState(false, old)).toBe("running");
+  vi.spyOn(old.experience, "enqueue").mockImplementation(() => { throw new Error("busy"); });
+  old.store.registerScope(old.observer.owner, "t", h.root);
+  await old.requestScan();
+  expect(old.health()).toMatchObject({ taken_over: false, scan_errors: 1, last_scan_error: "busy" });
+  h.service(async () => {}, {}, h.open());
+  await old.requestScan().catch(() => {});
+  await vi.waitFor(() => expect(old.health().taken_over).toBe(true));
+  expect(attentionServiceState(false, old)).toBe("unavailable");
+  expect(attentionServiceState(true, undefined)).toBe("unavailable");
+  expect(attentionServiceState(false, undefined)).toBe("disabled");
+});
+it("a take-over during a scanned loop read is reported as taken_over, not a scan error", async () => {
+  const h = home();
+  const hung = deferred<unknown>();
+  const old = h.service(undefined, { loopReader: () => hung.promise });
+  const scope = old.store.registerScope(old.observer.owner, "t", h.root);
+  await old.handle("attention.loop", { scope_id: scope.scope_id, loop_id: "loop", state_path: join(h.root, "loop.json") }).catch(() => {});
+  const scan = old.requestScan();
+  h.service(undefined, {}, h.open());
+  hung.resolve({ loop_id: "loop", path: join(h.root, "loop.json"), state: "snapshot_available", updated_at: "x", in_progress: [], pending: [],
+    completed_count: 0, process_liveness: "unknown", coverage: "snapshot_only", gap: "best_effort_snapshot_no_event_replay", recovery_required: false });
+  await scan.catch(() => {});
+  await vi.waitFor(() => expect(old.health().taken_over).toBe(true));
+  expect(old.health().scan_errors).toBe(0);
+});
+it("counts a failed invalid-payload repair write", async () => {
+  const h = home();
+  const svc = h.service();
+  const scope = svc.store.registerScope(svc.observer.owner, "t", h.root);
+  svc.store.db.prepare("INSERT INTO attention_subjects(scope_id,kind,subject_id,binding_hash,source_version,admitted,discovered_at,sampled_at,generation,payload_json) VALUES(?,'loop','bad','binding',1,1,1,1,?,'{}')")
+    .run(scope.scope_id, svc.observer.owner.generation);
+  svc.store.db.exec("CREATE TRIGGER fail_repair BEFORE UPDATE ON attention_subjects WHEN NEW.payload_json LIKE '%invalid_payload%' BEGIN SELECT RAISE(ABORT,'repair_failed'); END");
+  await svc.requestScan();
+  expect(svc.health()).toMatchObject({ taken_over: false, scan_errors: 1, last_scan_error: "repair_failed" });
 });
