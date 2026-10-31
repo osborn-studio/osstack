@@ -1227,7 +1227,12 @@ export class LoopEngine {
       }
 
       if (worktree !== undefined && outcome === "success" && this.options.guardedLocalCandidate === undefined) {
+        // Until the commit is proven, the verified changes exist only in this
+        // worktree. A Git error here is an unavailable proof, not "no changes":
+        // keep the worktree instead of letting cleanup force-remove it.
+        preserveCandidateWorktree = true;
         const commit = await commitWorktreeChanges(worktree, `osstack loop task ${task.task_id}`);
+        preserveCandidateWorktree = false;
         if (commit.committed) {
           preserveWorktreeBranch = true;
           if (commit.commit === undefined) throw new Error("committed worktree reported no commit id");
