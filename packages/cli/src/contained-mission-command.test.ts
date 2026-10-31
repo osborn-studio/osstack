@@ -43,3 +43,17 @@ describe("osstack mission", () => {
     expect(r).toBe(0);
   });
 });
+
+describe("osstack mission start publication grant", () => {
+  const base = ["start", "--scope", "s1", "--repo", "/r", "--base", "main", "--goal", "g", "--allow", "**", "--verify-arg", "true"];
+  it("adds a bounded, draft-by-default grant", async () => {
+    const r = await run([...base, "--publish-repository", "o/r", "--publish-preauthorized"]);
+    expect(r.code).toBe(0);
+    expect((r.calls[0]!.params as { request: { publication: unknown } }).request.publication).toEqual({ repository: "o/r", remote: "origin", base: "main", draft: true, preauthorized: true });
+  });
+  it("rejects publication flags without a repository and an invalid draft value", async () => {
+    expect((await run([...base, "--publish-preauthorized"])).err.join("\n")).toContain("required:--publish-repository");
+    expect((await run([...base, "--publish-repository", "o/r", "--publish-draft", "maybe"])).err.join("\n")).toContain("invalid:--publish-draft");
+    expect((await run([...base, "--publish-repository", "not a repo"])).err.join("\n")).toContain("invalid_request");
+  });
+});

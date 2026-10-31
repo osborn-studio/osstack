@@ -18,6 +18,8 @@ export const ContainedMissionRpcRequests = {
       allowed_paths: z.array(Text(512)).min(1).max(64), verification_paths: z.array(Text(512)).max(64).optional(),
       verify: z.object({ argv: z.array(Text(4096)).min(1).max(64) }).strict(),
       max_repair_cycles: z.number().int().min(0).max(8).optional(),
+      publication: z.object({ remote: Text(256), repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/), base: Text(256),
+        draft: z.boolean(), title: Text(200).optional(), preauthorized: z.boolean().optional() }).strict().optional(),
       caps: z.object({ maxFiles: z.number().int().positive(), maxChangedLines: z.number().int().positive(), maxFileBytes: z.number().int().positive(), maxTotalBytes: z.number().int().positive() }).partial().strict().optional(),
     }).strict(),
   }).strict(),
@@ -83,7 +85,9 @@ export class ContainedMissionService {
         const spec = await (this.options.resolveStart ?? resolveContainedMissionStart)({
           goal: r.goal, repo_path: r.repo_path, base_ref: r.base_ref, allowed_paths: [...r.allowed_paths], verify: { argv: [...r.verify.argv] },
           ...(r.verification_paths ? { verification_paths: [...r.verification_paths] } : {}),
-          ...(r.max_repair_cycles !== undefined ? { max_repair_cycles: r.max_repair_cycles } : {}), ...(caps ? { caps } : {}) });
+          ...(r.max_repair_cycles !== undefined ? { max_repair_cycles: r.max_repair_cycles } : {}), ...(caps ? { caps } : {}),
+          ...(r.publication ? { publication: { remote: r.publication.remote, repository: r.publication.repository, base: r.publication.base, draft: r.publication.draft,
+            ...(r.publication.title ? { title: r.publication.title } : {}), ...(r.publication.preauthorized !== undefined ? { preauthorized: r.publication.preauthorized } : {}) } } : {}) });
         parseContainedMissionSpec(JSON.stringify(spec));
         return view(host.start(actor, { scope_id: p.scope_id, spec, ...(p.supersedes ? { supersedes: p.supersedes } : {}) }));
       }

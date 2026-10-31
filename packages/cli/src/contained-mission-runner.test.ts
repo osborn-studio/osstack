@@ -29,7 +29,7 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
   const scope = attention.registerScope(owner, "t", root);
   const store = new ContainedMissionStore(attention, owner);
   const files = new Map<string, string>([["src/a.txt", "hi\n"]]);
-  const calls = { execute: [] as string[], commit: [] as unknown[], verify: 0, cumulative: [] as unknown[] };
+  const calls = { execute: [] as string[], commit: [] as unknown[], verify: 0, cumulative: [] as unknown[], publish: [] as Array<{ head: string; body: string }> };
   // Default cumulative diff: concatenate every turn's patch (enough for the fakes' single-file edits).
   const turns: string[] = [];
   let clock = 1000; let head = START; let verifyExit = 0; let cumulativeText: string | undefined;
@@ -42,6 +42,11 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
     commit: async input => { calls.commit.push(input); head = (head === START ? "b" : "c").repeat(40); return { head, tree: "d".repeat(40) }; },
     verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? "ok" : "1 failed", cancelled: false, evidence: "docker-removed:x", stopped: true }; },
     cumulativeDiff: async input => { calls.cumulative.push(input); return cumulativeText ?? PATCH; },
+    publish: async input => {
+      calls.publish.push({ head: input.permit.head, body: input.body });
+      input.beforeRemoteMutation("push"); input.beforeRemoteMutation("pr_create");
+      return { pushed_commit: input.permit.head, pr: { number: 7, url: "https://github.com/o/r/pull/7", reused: false }, base_head: "e".repeat(40) };
+    },
     restoreWorkspace: async () => {}, worktreeDiff: async () => ({ diff: PATCH, tree: "d".repeat(40), unsafe: [] }), commitWorktree: async () => ({ head: "e".repeat(40), tree: "d".repeat(40) }),
     ...over,
   };
@@ -254,5 +259,73 @@ describe("ContainedMissionRunner", () => {
     expect(m.state).toBe("cancel_requested");
     m = await pending; release();
     expect(m).toMatchObject({ state: "cancelled", stop_obligation: 0 });
+  });
+});
+
+describe("ContainedMissionRunner publication (M7)", () => {
+  const publication = { remote: "origin", repository: "o/r", base: "main", draft: true };
+  const toPending = async (f: ReturnType<typeof setup>) => { let m = await drive(f, 3); m = await f.runner.step(m.mission_id); return m; };
+
+  it("opens the PR only after approval and re-validation, and records authoritative evidence", async () => {
+    const f = setup({}, { publication });
+    let m = await toPending(f);
+    expect(m.state).toBe("awaiting_decision"); expect(f.calls.publish).toEqual([]);
+    m = await f.runner.decide(m.mission_id, { kind: "approve_publication" });
+    expect(m.state).toBe("revalidating");
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("pr_opened");
+    expect(f.calls.publish).toEqual([{ head: "b".repeat(40), body: expect.stringContaining("OSStack never merges") }]);
+    const kinds = f.kinds();
+    expect(kinds.filter(k => k === "remote_mutation")).toHaveLength(2);
+    expect(kinds.indexOf("delivery_intent")).toBeLessThan(kinds.indexOf("remote_mutation"));
+    const evidence = JSON.parse(f.store.events(m.mission_id, 0, 500).find(e => e.kind === "delivery_evidence")!.payload_json);
+    expect(evidence).toMatchObject({ schema_version: 1, repository: "o/r", head: "b".repeat(40), base: "main", base_head: "e".repeat(40), draft: true,
+      pr: { number: 7 }, verify: { argv: ["pnpm", "test"], exit_code: 0 }, migrations_changed: false, protected_paths_changed: false });
+    expect(evidence.evidence_digest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("goes straight to re-validation when publication was pre-authorized in the spec", async () => {
+    const f = setup({}, { publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 3);
+    m = await f.runner.step(m.mission_id); expect(m.state).toBe("revalidating");
+    m = await f.runner.step(m.mission_id); expect(m.state).toBe("pr_opened");
+  });
+
+  it("refuses to publish without a configured grant or with a receipt for another candidate", async () => {
+    const f = setup();
+    let m = await toPending(f);
+    m = await f.runner.decide(m.mission_id, { kind: "approve_publication" });
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("awaiting_decision"); expect(f.allPayloads()).toContain("revalidation_failed:publication_not_configured");
+    expect(f.calls.publish).toEqual([]);
+  });
+
+  it("stops remote mutation once the permit no longer holds", async () => {
+    let cancel!: () => Promise<unknown>;
+    const f = setup({ publish: async input => { await cancel(); input.beforeRemoteMutation("push"); throw new Error("unreachable"); } }, { publication: { ...publication, preauthorized: true } });
+    cancel = () => f.runner.cancel(f.mission.mission_id);
+    let m = await drive(f, 4);
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("cancelled");
+    expect(f.kinds()).not.toContain("remote_mutation");
+  });
+
+  it("retries an uncertain delivery idempotently, then asks for a decision", async () => {
+    let tries = 0;
+    const f = setup({ publish: async input => { tries++; input.beforeRemoteMutation("push"); throw new Error("gh_unavailable"); } }, { publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 4);
+    m = await f.runner.step(m.mission_id); expect(m.state).toBe("delivering");
+    m = await f.runner.step(m.mission_id); m = await f.runner.step(m.mission_id);
+    expect(tries).toBe(3);
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("awaiting_decision"); expect(f.allPayloads()).toContain("publication_failed:attempts_exhausted");
+    expect((await f.runner.decide(m.mission_id, { kind: "approve_publication" })).state).toBe("revalidating");
+  });
+
+  it("asks for a decision when publication fails before any remote mutation", async () => {
+    const f = setup({ publish: async () => { throw new Error("CONTAINED_REPO_CONFIG_CHANGED"); } }, { publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 4);
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("awaiting_decision"); expect(f.allPayloads()).toContain("publication_failed:CONTAINED_REPO_CONFIG_CHANGED");
   });
 });

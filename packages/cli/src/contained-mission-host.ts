@@ -31,7 +31,7 @@ export type ContainedStartRequest = Omit<ContainedMissionSpec, 'start_commit' | 
 
 const TERMINAL = new Set<ContainedMission['state']>(['pr_opened', 'cancelled', 'abandoned', 'failed']);
 // States whose next move is a runner step. Halts wait for a decision; executing/verifying only exist inside a step.
-const STEPPABLE = new Set<ContainedMission['state']>(['authorized', 'workspace_ready', 'candidate_ready', 'verify_failed', 'verified']);
+const STEPPABLE = new Set<ContainedMission['state']>(['authorized', 'workspace_ready', 'candidate_ready', 'verify_failed', 'verified', 'revalidating', 'delivering']);
 const BRANCH = /^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const EVENT_TAIL = 50; const EVENT_EXCERPT = 2_000;
 const code = (error: unknown) => error instanceof Error ? (error.message.split(':')[0] ?? 'error').slice(0, 64) : 'error';

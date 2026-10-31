@@ -7,7 +7,7 @@ import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb } f
 import { parseMissionPatch } from "@osstack/governance";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ContainedMissionSpec } from "./contained-mission-runner.js";
-import { containedVerifyInvocationId, createContainedMissionPorts, removalProven } from "./contained-mission-ports.js";
+import { containedVerifyInvocationId, createContainedMissionPorts, fencedDeliveryRunner, removalProven } from "./contained-mission-ports.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -155,5 +155,23 @@ describe("contained Mission ports: verification", () => {
     expect(await f.ports.verificationStopped(f.store.get(m.mission_id))).toEqual({ stopped: true, proof: "never_launched", evidence: "journal_absent" });
     mkdirSync(join(f.journalRoot, createHash("sha256").update(containedVerifyInvocationId(m)).digest("hex")));
     expect(await f.ports.verificationStopped(f.store.get(m.mission_id))).toEqual({ stopped: false });
+  });
+});
+
+describe("fencedDeliveryRunner", () => {
+  it("fences every push and PR creation, hardens git and refuses PR-changing gh commands", async () => {
+    const seen: Array<[string, readonly string[]]> = []; const fences: string[] = [];
+    const inner = { run: async (command: string, args: readonly string[]) => { seen.push([command, args]); return { exitCode: 0, stdout: "", stderr: "" }; } };
+    const runner = fencedDeliveryRunner(inner, kind => { fences.push(kind); });
+    await runner.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
+    await runner.run("gh", ["pr", "create", "--base", "main"], { cwd: "/", timeoutMs: 1 });
+    await runner.run("gh", ["pr", "view", "1"], { cwd: "/", timeoutMs: 1 });
+    expect(fences).toEqual(["push", "pr_create"]);
+    expect(seen[0]![1]).toEqual(["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "push", "origin", "x:refs/heads/b"]);
+    for (const sub of ["merge", "edit", "close", "ready", "review", "comment"]) await expect(runner.run("gh", ["pr", sub, "1"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FORBIDDEN");
+    const refusing = fencedDeliveryRunner(inner, () => { throw new Error("CONTAINED_PUBLICATION_FENCE"); });
+    const before = seen.length;
+    await expect(refusing.run("git", ["push", "origin", "b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FENCE");
+    expect(seen.length).toBe(before);
   });
 });
