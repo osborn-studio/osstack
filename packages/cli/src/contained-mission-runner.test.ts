@@ -223,6 +223,23 @@ describe("ContainedMissionRunner", () => {
     expect(output.secret_hits).toHaveLength(32); expect(output.secret_hit_count).toBe(2000);
   });
 
+  it("re-probes before every repair turn and halts when the Codex build changed", async () => {
+    let probes = 0; let identity = "f".repeat(64);
+    const f = setup({ qualify: async () => { probes++; return { ...qualified, identity_sha256: identity }; } }, { max_repair_cycles: 2 });
+    f.setVerifyExit(1);
+    let m = await drive(f, 3);
+    expect(m.state).toBe("verify_failed"); expect(probes).toBe(1);
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("candidate_ready"); expect(probes).toBe(2);
+    m = await drive(f, 1);
+    expect(m.state).toBe("verify_failed");
+    identity = "e".repeat(64);
+    m = await f.runner.step(m.mission_id);
+    expect(m).toMatchObject({ state: "awaiting_decision", repair_cycles: 1 });
+    expect(f.allPayloads()).toContain("executor_identity_changed");
+    expect(f.calls.execute).toHaveLength(2);
+  });
+
   it("cancels a live executor and settles once it is proven stopped", async () => {
     let release!: () => void;
     const f = setup({ execute: async input => {
