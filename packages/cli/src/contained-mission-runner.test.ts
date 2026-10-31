@@ -132,6 +132,37 @@ describe("ContainedMissionRunner", () => {
     expect(m).toMatchObject({ state: "candidate_ready", repair_cycles: 2 });
   });
 
+  it("states the proxy patch protocol on every executor turn", async () => {
+    const f = setup(); f.setVerifyExit(1);
+    await drive(f, 4);
+    expect(f.calls.execute).toHaveLength(2);
+    for (const prompt of f.calls.execute) { expect(prompt).toContain("unified diff"); expect(prompt.trimEnd()).toMatch(/END-OF-PATCH/); expect(prompt).toContain("fix it"); }
+  });
+
+  it("never writes a path that only appears inside hunk text", async () => {
+    const smuggle = "--- a/src/a.txt\n+++ b/src/a.txt\n@@ -1 +1,3 @@\n-hi\n+hello\n+--- /dev/null\n++++ b/package.json\n";
+    const f = setup({ execute: async input => { input.onLaunched({ pid: 1, pgid: 4242, started_at: 1 }); return run({ patch: { ok: true, text: smuggle, bytes: smuggle.length } }); } });
+    const m = await drive(f, 2);
+    expect(m.state).toBe("candidate_ready");
+    const files = (f.calls.commit[0] as { files: Array<{ path: string }> }).files;
+    expect(files.map(x => x.path)).toEqual(["src/a.txt"]);
+  });
+
+  it("does not commit after a cancel that arrives during the host write", async () => {
+    let unblock!: () => void; let reading!: () => void;
+    const reached = new Promise<void>(resolve => { reading = resolve; });
+    const f = setup({ readFile: async () => { reading(); await new Promise<void>(resolve => { unblock = resolve; }); return "hi\n"; } });
+    let m = await f.runner.step(f.mission.mission_id);
+    const pending = f.runner.step(m.mission_id);
+    await reached;
+    m = await f.runner.cancel(m.mission_id);
+    expect(m.state).toBe("cancel_requested");
+    unblock();
+    m = await pending;
+    expect(m.state).toBe("cancelled");
+    expect(f.calls.commit).toEqual([]);
+  });
+
   it("cancels a live executor and settles once it is proven stopped", async () => {
     let release!: () => void;
     const f = setup({ execute: async input => {

@@ -2,10 +2,10 @@
 // `step` advances at most one state through the ledger; every effect is behind a
 // port so the daemon (M6b) supplies the real executor, workspace and verifier.
 import { createHash } from 'node:crypto';
-import type { CodexProxyRun, CodexQualification } from '@osstack/agents';
+import { CODEX_PROXY_END_MARKER, type CodexProxyRun, type CodexQualification } from '@osstack/agents';
 import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
-import { classifyMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
-import { applyContainedPatchFile, parseContainedPatch } from './contained-patch-apply.js';
+import { classifyMissionPatch, parseMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
+import { applyContainedPatchFile } from './contained-patch-apply.js';
 
 export interface ContainedMissionSpec {
   goal: string; repo_path: string; base_ref: string; start_commit: string; branch: string; worktree_path: string;
@@ -30,6 +30,16 @@ export function screenOutputs(outputs: Partial<Record<MissionOutputChannel, stri
   const redacted = Object.fromEntries(Object.entries(outputs).map(([channel, text]) => [channel, text ? redactSecrets(text).slice(0, OUTPUT_EXCERPT) : ''])) as Partial<Record<MissionOutputChannel, string>>;
   return { hits, redacted };
 }
+/** Every executor turn states the proxy protocol; the goal alone gives Codex no way to know it. */
+export function containedExecutorPrompt(goal: string, feedback?: string): string {
+  return [
+    'You are working in a read-only checkout. Do not try to edit files or run commands that change it.',
+    'Propose your change as one unified diff (git diff format, paths relative to the repository root, a/ and b/ prefixes).',
+    'Output only the diff: no prose, no code fences. Text files only; no renames, mode changes, symlinks or binary content.',
+    `End your reply with a final line containing exactly ${CODEX_PROXY_END_MARKER}.`,
+    '', `Task: ${goal}`, ...(feedback ? ['', feedback] : []),
+  ].join('\n');
+}
 export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
   const v = JSON.parse(json) as ContainedMissionSpec;
   const str = (x: unknown) => typeof x === 'string' && x.length > 0;
@@ -47,7 +57,7 @@ export class ContainedMissionRunner {
     const m = this.ports.store.get(missionId); const spec = parseContainedMissionSpec(m.spec_json);
     switch (m.state) {
       case 'authorized': return this.createWorkspace(m, spec);
-      case 'workspace_ready': return this.qualifyAndExecute(m, spec, spec.goal);
+      case 'workspace_ready': return this.qualifyAndExecute(m, spec, containedExecutorPrompt(spec.goal));
       case 'candidate_ready': return this.verify(m, spec);
       case 'verify_failed': return this.repair(m, spec);
       case 'verified': return this.halt(m, 'awaiting_decision', 'publication_pending');
@@ -137,17 +147,37 @@ export class ContainedMissionRunner {
       files: totals ? (classification as { files: Array<{ path: string; kind: string }> }).files.map(f => ({ path: f.path, kind: f.kind })) : [] }, this.ports.now());
     if (classification.tier === 'rejected') return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId, reasons: classification.reasons });
     if (classification.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: classification.reasons });
-    const files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }> = [];
+    // Apply exactly the files the classifier parsed; the patch text is never parsed a second way.
+    const parsed = parseMissionPatch(patch);
+    if (!parsed.ok) return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId });
+    // Host-write phase: cancel() aborts this controller, and every await is followed by a fence check.
+    const controller = new AbortController(); this.live.set(m.mission_id, controller);
+    const fenced = () => { const now = this.ports.store.get(m.mission_id); return controller.signal.aborted || now.revision !== m.revision ? now : undefined; };
+    const settle = (now: ContainedMission) => now.state === 'cancel_requested'
+      ? this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'cancelled', event: { kind: 'cancelled', payload: { operation_id: operationId } } }, this.ports.now())
+      : now;
     try {
-      for (const change of parseContainedPatch(patch)) {
-        const next = applyContainedPatchFile(change, await this.ports.readFile(spec.worktree_path, change.path));
+      const files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }> = [];
+      for (const change of parsed.files) {
+        const current = await this.ports.readFile(spec.worktree_path, change.path);
+        const moved = fenced(); if (moved) return settle(moved);
+        const next = applyContainedPatchFile(change, current);
         files.push(next === null ? { path: change.path, action: 'delete' } : { path: change.path, action: 'write', content: next });
       }
-    } catch (error) { return this.halt(m, 'awaiting_decision', `patch_apply_failed:${code(error)}`, { operation_id: operationId }); }
-    let commit: { head: string; tree: string };
-    try {
-      commit = await this.ports.commit({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head!, files, message: `contained mission ${m.mission_id} ${operationId}` });
-    } catch (error) { return this.halt(m, 'needs_reconciliation', `commit_failed:${code(error)}`, { operation_id: operationId }); }
+      const before = fenced(); if (before) return settle(before);
+      let commit: { head: string; tree: string };
+      try {
+        commit = await this.ports.commit({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head!, files, message: `contained mission ${m.mission_id} ${operationId}` });
+      } catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'needs_reconciliation', `commit_failed:${code(error)}`, { operation_id: operationId }); }
+      // A cancel that arrived during the commit leaves the commit on the preserved branch, never delivered.
+      const after = fenced(); if (after) { this.ports.store.record(m.mission_id, 'commit_after_cancel', { operation_id: operationId, head: commit.head }, this.ports.now()); return settle(after); }
+      return this.commitCandidate(m, operationId, patch, commit, tier, totals);
+    } catch (error) {
+      return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `patch_apply_failed:${code(error)}`, { operation_id: operationId });
+    } finally { this.live.delete(m.mission_id); }
+  }
+
+  private commitCandidate(m: ContainedMission, operationId: string, patch: string, commit: { head: string; tree: string }, tier: string, totals: unknown) {
     const diffDigest = createHash('sha256').update(patch).digest('hex');
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'candidate_ready', expected_head: commit.head, candidate: { head: commit.head, tree: commit.tree, diff_digest: diffDigest },
       event: { kind: 'candidate_committed', payload: { operation_id: operationId, head_commit: commit.head, tree_id: commit.tree, diff_digest: diffDigest, tier, totals } } }, this.ports.now());
@@ -189,7 +219,7 @@ export class ContainedMissionRunner {
     const receipt = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'verify_receipt').at(-1);
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number | null; output: string } : undefined;
     // Only the exit code and redacted, truncated output; never anything the host would execute.
-    return `${spec.goal}\n\nThe previous change failed verification (exit ${r?.exit_code ?? 'unknown'}). Output excerpt:\n${r?.output ?? ''}`;
+    return containedExecutorPrompt(spec.goal, `The previous change failed verification (exit ${r?.exit_code ?? 'unknown'}). Output excerpt:\n${r?.output ?? ''}`);
   }
   private cumulativeTotals(m: ContainedMission) {
     let files = 0; let changedLines = 0;
