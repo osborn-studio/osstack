@@ -204,6 +204,24 @@ describe("git worktree lifecycle", () => {
     await cleanupWorktree(handle);
   });
 
+  it("treats a whitespace-only rewrite of the accepted commit as different work", async () => {
+    const { repo, root } = await makeRepo();
+    const handle = await createWorktree({ repoPath: repo, runId: "whitespace", rootPath: root });
+    await writeFile(join(handle.worktreePath, "config.yaml"), "a:\n  b: 1\n");
+    const accepted = await commitWorktreeChanges(handle, "loop task whitespace");
+    const before = await git(repo, ["rev-parse", "HEAD"]);
+    // Same message, same paths, indentation changed: a patch-id that ignores
+    // whitespace would call this equivalent, but the meaning differs.
+    await git(handle.worktreePath, ["reset", "-q", "--hard", "HEAD~1"]);
+    await writeFile(join(handle.worktreePath, "config.yaml"), "a:\nb: 1\n");
+    await git(handle.worktreePath, ["add", "config.yaml"]);
+    await git(handle.worktreePath, ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-qm", "loop task whitespace"]);
+
+    await expect(mergeWorktree(handle, { expectedCommit: accepted.commit! })).rejects.toThrow(/differs from the accepted commit/);
+    await expect(git(repo, ["rev-parse", "HEAD"])).resolves.toBe(before);
+    await cleanupWorktree(handle);
+  });
+
   it("refuses an abbreviated or symbolic accepted commit", async () => {
     const { repo, root } = await makeRepo();
     const handle = await createWorktree({ repoPath: repo, runId: "pinned-shape", rootPath: root });
