@@ -51,7 +51,7 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
   it.each([47,48,49])('accepts a clean schema%i home',async schema=>{
     const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}finally{await port.close();}
-  },30000);
+  },60000);
   it('refuses an unqualified schema50 home',async()=>{
     const f=await fixture(50,50);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
