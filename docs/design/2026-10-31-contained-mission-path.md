@@ -159,13 +159,13 @@ verified → awaiting_decision                                   （未预先批
 
 ### 5.3 补丁通道（v1 问题：会话消息截断到 4000 字符）
 
-补丁不走助手消息。由执行器 CLI 进程本身（在沙箱之外，由主机启动）把最终输出写入主机指定的文件：`codex exec` 的“最终消息写入文件”选项（需按固定版本核实名称与行为）。主机侧检查：文件大小 ≤ 256 KiB、完整（以约定的结束标记收尾）、UTF-8 合法；任一不满足即拒绝，不尝试解析残缺补丁。若固定版本没有这样的通道，`codex-cli` 不合格。
+补丁不走助手消息。由执行器 CLI 进程本身（在沙箱之外，由主机启动）把最终输出写入主机指定的文件：`codex exec -o <file>`（`--output-last-message`，M0 已核实，见 §5.7）。该文件由 Codex 主进程写入，不受只读沙箱限制，也不经过适配器的 4000 字符截断。主机侧检查：文件大小 ≤ 256 KiB、完整（最后一个非空行等于约定的结束标记；Codex 写出的文件末尾**没有**换行，判定时允许 EOF 直接跟在标记后）、UTF-8 合法；任一不满足即拒绝，不尝试解析残缺补丁。文件路径放在 scratch 根 `runtime/` 下每 Mission 的目录中，启动前删除旧文件，避免把上一轮的输出当成本轮结果。
 
 ### 5.4 首期候选
 
 | 适配器 | 只读运行 | 补丁通道 | 结论 |
 |---|---|---|---|
-| `codex-cli` | `-s read-only` | 待核实（§5.3） | **唯一候选**，资格由探针决定 |
+| `codex-cli` | `-s read-only`（0.160.1 实测有效，§5.7） | `-o <file>`（0.160.1 实测无损，§5.7） | **合格**（固定 0.160.1；版本变化需重新探针） |
 | `claude-code` | 无 OSStack 可强制的只读边界（只有默认权限或 `bypassPermissions`） | — | 不合格 |
 | `claude-cli`、`opencode-cli`、`deepseek-command` | 无沙箱参数 | — | 不合格 |
 | `zcode-cli` | 硬编码 `--mode yolo` | — | 不合格 |
@@ -173,13 +173,34 @@ verified → awaiting_decision                                   （未预先批
 
 ### 5.5 资格探针（v1 问题：让执行器自己去试写不可信）
 
-探针由主机运行，不经模型：用规格中固定的执行器二进制，以与 Mission 完全相同的沙箱参数启动其沙箱包装入口（Codex 提供的“在沙箱中运行命令”的调试入口，需按固定版本核实），执行一个主机自带的小程序，尝试：写 worktree 内文件、写 worktree 外的金丝雀路径、写主仓库 `.git/` 下的随机文件、发起一个本机回环之外的网络连接；再由该程序双 fork 并 `setsid` 出一个脱离进程组的后代，重复同样四项。只读模式下全部都必须失败，且主机观察到 worktree 与金丝雀路径均未变化。同时记录生效的配置（参数、版本、二进制摘要）。任一不符或没有可调用的沙箱入口：不合格，Mission 进入 `awaiting_decision`，不降级运行。二进制摘要或版本变化都需重新探针并重新授权。
+探针由主机运行，不经模型：用规格中固定的执行器二进制，以与 Mission 对应的沙箱策略启动其沙箱包装入口（0.160.1 为 `codex sandbox -P :read-only -C <worktree> -- <程序>`，`:read-only` 是内置权限配置，对应 `codex exec -s read-only`；M0 已核实两者行为一致，见 §5.7），执行一个主机自带的小程序，尝试：写 worktree 内文件、写 worktree 外的金丝雀路径、写主仓库 `.git/` 下的随机文件、发起一个本机回环之外的网络连接；再由该程序双 fork 并 `setsid` 出一个脱离进程组的后代，重复同样四项。只读模式下全部都必须失败，且主机观察到 worktree 与金丝雀路径均未变化。同时记录生效的配置（参数、版本、二进制摘要）。任一不符或没有可调用的沙箱入口：不合格，Mission 进入 `awaiting_decision`，不降级运行。二进制摘要或版本变化都需重新探针并重新授权。
 
 ### 5.6 环境与凭证隔离（v1 问题：保留真实 HOME）
 
 - 执行器以独立的进程组启动；`HOME` 与 `CODEX_HOME` 指向 scratch 根 `runtime/` 下每个 Mission 一个的目录，其中只放该执行器登录所需的最小文件（复制，不链接）。
 - 环境为白名单：剥离 `OSSTACK_*` 控制面变量、`GH_*`/`GITHUB_*`、`SSH_AUTH_SOCK`、`*_TOKEN`、`*_API_KEY`（执行器自身所需的按适配器逐个列出）与 `OSSTACK_AUTOAPPROVE`。
-- **残余风险（如实记录）：** macOS 上 Codex 的只读沙箱限制写与网络，但不限制按绝对路径读取，执行器仍可能读到真实 `~/.ssh`、`~/.config/gh` 等文件并把内容放进补丁或发给其模型服务。缓解：补丁在应用前做密钥扫描（命中即 T2）；PR 由人审阅后才合并。根治需要容器化执行器（只挂载 worktree 副本，登录信息经窄通道注入），列为后续工作；在此之前不开放沙箱模式。
+- 执行器启动时 stdin 必须为空（`/dev/null` 或关闭）：`codex exec` 在 stdin 不是终端时会继续读取“附加输入”并一直等待（M0 实测）。现有适配器以 `stdio: ["ignore", …]` 启动，已满足。
+- 用户自己的 `~/.codex/config.toml` 可能声明 MCP 服务器与其他工具，它们由 Codex 在沙箱之外启动。隔离的 `CODEX_HOME` 避免加载它们；另加 `--ignore-user-config`（0.160.1 提供，只忽略配置，登录仍取自 `CODEX_HOME`）与 `--ignore-rules` 作为第二道。
+- **残余风险（如实记录，M0 已实测确认）：** macOS 上 Codex 的只读沙箱限制写与网络，但不限制按绝对路径读取：`:read-only` 下可以读取 `~/.gitconfig`、列出 `~/.ssh`。执行器仍可能把读到的内容放进补丁或发给其模型服务。缓解：补丁在应用前做密钥扫描（命中即 T2）；PR 由人审阅后才合并。根治需要容器化执行器（只挂载 worktree 副本，登录信息经窄通道注入），列为后续工作；在此之前不开放沙箱模式。
+
+### 5.7 M0 实测结果（Codex 0.160.1）
+
+环境：macOS 27.0.1，arm64；`codex-cli 0.160.1`（Homebrew 的 npm 包，原生二进制 `@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex`，SHA-256 前缀 `09fa44fdc37a5fc7`；`/opt/homebrew/bin/codex` 只是 Node 启动脚本，规格中的二进制摘要应取原生二进制）。实验仓库在 scratch 根 `smoke/` 下：一个主仓库、一个 worktree、一个 worktree 外的金丝雀目录。探针是主机自带的 Python 程序（`python3 -I` 运行，不来自仓库），对父进程和一个经双 fork 加 `setsid` 脱离进程组的后代分别尝试四项操作。
+
+| 问题 | 做法 | 结果 |
+|---|---|---|
+| 沙箱包装入口 | `codex sandbox -P <配置> -C <worktree> -- <程序>`；必须给 `-P`，内置配置名带冒号：`:read-only`、`:workspace`、`:danger-full-access`（`:workspace-write` 不存在；不带冒号的名字需要用户配置中的 `[permissions]` 表） | **有**，可由主机直接调用，不经模型 |
+| 只读模式的写入 | `:read-only` 下父进程与脱离的后代写 worktree、写 worktree 外、写主仓库 `.git/` | **全部被拒**（`PermissionError`）；连 `/tmp` 也不可写 |
+| 只读模式的网络 | 同上，TCP 连接 `1.1.1.1:443` | **被拒**（父进程与后代） |
+| 对照 | `:workspace`：仅 worktree 可写，外部与 `.git/` 被拒，网络被拒；`:danger-full-access`：四项全部放行 | 探针能区分放行与拒绝，结论可信 |
+| `exec` 与包装入口一致 | 让 `codex exec -s read-only` 运行同一探针 | 结果与 `:read-only` 相同，后代同样被拒 |
+| 仓库内配置能否放宽沙箱 | worktree 中放置 `.codex/config.toml`（`sandbox_mode = "danger-full-access"`、开启网络），分别以未信任与信任（`-c projects."<wt>".trust_level="trusted"`）运行 `codex exec -s read-only` | 两种情况下日志都显示 `sandbox: read-only`，探针全部被拒：**显式 `-s` 优先于仓库配置** |
+| 仓库内配置能否启动程序 | 同一文件中声明一个 `mcp_servers` 条目，其命令在 worktree 外创建金丝雀文件 | 未信任与信任两种情况下均**未创建**金丝雀文件 |
+| 补丁通道 | `codex exec -o <file>`，要求原样输出 worktree 中一个 12000 字节的文件 | 输出文件 12390 字节，原文件内容**完整包含**（无截断）；文件末尾无换行 |
+| 读取范围 | `:read-only` 下读取 `~/.gitconfig`、列出 `~/.ssh` | **允许**（残余风险，§5.6） |
+| stdin | 未关闭 stdin 时运行 `codex exec` | 进程等待“附加输入”直到超时；关闭 stdin 后正常结束 |
+
+结论：`codex-cli` 0.160.1 满足代理模式的四项前提——只读沙箱对写入与网络有效且由后代继承、可由主机直接调用的沙箱入口、无损的补丁文件通道、显式 `-s` 不被仓库配置覆盖。未覆盖的情况：仓库内的 hooks（Codex 要求持久化的 hook 信任，Mission 不授予该信任且 `.codex/` 在保护集合中）、Linux 平台（本期只支持 macOS）、0.160.1 以外的版本。M4 实现时把本表的探针做成可重复运行的主机侧检查，每次版本或二进制摘要变化都重跑。
 
 ## 6. 写入分类与主机侧应用
 
@@ -287,7 +308,7 @@ v3 §2 的交付证据：仓库与 PR 编号、head 与 base SHA、证据 schema
 
 | 序号 | 内容 | 主要文件 |
 |---|---|---|
-| M0 | 实测核实：Codex 固定版本的补丁文件通道、沙箱包装入口、只读模式的网络限制、仓库内配置是否影响沙箱（结果写回本文 §5） | 文档 |
+| M0 | 实测核实：Codex 固定版本的补丁文件通道、沙箱包装入口、只读模式的网络限制、仓库内配置是否影响沙箱（已完成，§5.7） | 文档 |
 | M1 | 迁移 50 三张表、contained store（具名列）、升级 hold、两个限定区间 | `packages/core/src/state/engineering-contained-*`、`migrations.ts`、`engineering-upgrade-guard.ts` |
 | M2 | 分类器、保护集合、密钥扫描（纯函数） | `packages/governance` |
 | M3 | 加固 git 运行器与底层提交；逐文件安全写入 | `packages/agents/src/worktree.ts` 或新模块 |
@@ -317,7 +338,7 @@ M0 先做，结论可能使 `codex-cli` 不合格，届时本路径以容器化�
 
 开放问题（M0 实测确认）：
 
-1. Codex 固定版本是否提供把最终消息写入文件的选项、可调用的沙箱包装入口，只读模式是否同时限制网络，仓库内配置是否会改变沙箱级别。任一缺失都影响 §5 的资格。
+1. ~~Codex 固定版本是否提供把最终消息写入文件的选项、可调用的沙箱包装入口，只读模式是否同时限制网络，仓库内配置是否会改变沙箱级别。~~ 已由 M0 在 0.160.1 上核实，四项均满足（§5.7）。
 2. 基础镜像的构建与刷新方式，以及 pnpm workspace 在只读根文件系统下运行测试是否需要额外的 tmpfs。
 3. 读取侧的残余风险（§5.6）在容器化执行器到位前是否可接受；若不可接受，本路径以容器化执行器为前置条件。
 4. `draft` 缺省值：无人值守的结果默认 draft；是否改为 ready 由用户决定。
