@@ -160,8 +160,8 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       writeFileSync(bodyFile, body, { mode: 0o600 });
       const runner = fencedDeliveryRunner(options.delivery?.runner ?? defaultDeliveryCommandRunner, beforeRemoteMutation);
       // The title is published verbatim, so it is redacted like the body; control characters never reach gh.
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.
       const title = redactSecrets(p.title ?? `Contained Mission ${mission.mission_id.slice(3, 11)}: ${spec.goal.replace(/\s+/g, ' ').slice(0, 72)}`)
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.
         .replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 200);
       const opened = await openPullRequestToGitHub({ workspacePath: spec.worktree_path, remote: p.remote, base: p.base, branch: spec.branch, title, bodyFile,
         mergeStrategy: 'squash', ciTimeoutMs: 60_000 }, { repository: p.repository, headCommit: permit.head, draft: p.draft }, runner);
