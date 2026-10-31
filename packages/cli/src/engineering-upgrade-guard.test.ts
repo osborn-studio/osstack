@@ -1,7 +1,7 @@
 import { realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { AttentionStore, EngineeringStore, SessionRepository, createScratchDir, openDb } from "@osstack/core";
+import { AttentionStore, ContainedMissionStore, EngineeringStore, SessionRepository, createScratchDir, openDb } from "@osstack/core";
 import { afterEach, expect, it } from "vitest";
 import { engineeringUpgradeHolds } from "./engineering-upgrade-guard.js";
 
@@ -69,4 +69,18 @@ it("holds unknown phase labels, missing messages and incomplete cancellation pro
   expect(engineeringUpgradeHolds(db)).toBe(0);
   db.exec("CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT); CREATE TABLE session_messages(message_id TEXT,state TEXT); INSERT INTO attention_dispatch_phases VALUES('missing','dispatch_committed'),('unknown','future_phase'),('cancelled','cancelled_before_dispatch'); INSERT INTO session_messages VALUES('unknown','applied'),('cancelled','accepted')");
   expect(engineeringUpgradeHolds(db)).toBe(3);
+});
+
+it("holds contained work until the Mission is terminal, stop is proven and the claim is released", async () => {
+  const f = await fixture();
+  f.store.commitDispatch(f.receipt.action_id, f.principal, 1003);
+  const baseline = engineeringUpgradeHolds(f.db);
+  const contained = new ContainedMissionStore(f.store.attention, f.store.owner);
+  let m = contained.authorize(f.principal, { scope_id: f.store.getMission(f.receipt.mission.mission_id).scope_id, spec: { goal: "fix" }, claim: { repo_identity: "r", branch: "b", worktree_identity: "w" } }, 2000);
+  expect(engineeringUpgradeHolds(f.db)).toBe(baseline + 1);
+  m = contained.transition(m.mission_id, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halt", payload: {} } }, 2001);
+  m = contained.transition(m.mission_id, { if_revision: m.revision, to: "abandoned", event: { kind: "abandon", payload: {} } }, 2001);
+  expect(engineeringUpgradeHolds(f.db)).toBe(baseline + 1);
+  contained.releaseClaim(m.mission_id, "abandoned", 2002);
+  expect(engineeringUpgradeHolds(f.db)).toBe(baseline);
 });

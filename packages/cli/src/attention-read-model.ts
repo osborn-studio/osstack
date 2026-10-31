@@ -15,11 +15,11 @@ import {
   defaultOsstackHome,
 } from "./control-plane-guard.js";
 
-/** Reviewed migrations 25–49 preserve the v24 read projection: 47 adds engineering
+/** Reviewed migrations 25–50 preserve the v24 read projection: 47 adds engineering
  * tables, 48 the reminder outbox, 49 the return-brief facts (a nullable posture
- * column and two ledgers), none of which this view reads. Kept apart from the
+ * column and two ledgers), 50 the contained-Mission ledger, none of which this view reads. Kept apart from the
  * upgrade gate; a new migration fails `schema-gates.test.ts` until reviewed here. */
-export const ATTENTION_READ_QUALIFIED_SCHEMA = 49;
+export const ATTENTION_READ_QUALIFIED_SCHEMA = 50;
 
 export interface AttentionReadInput {
   dbPath: string;

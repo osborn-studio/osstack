@@ -105,7 +105,7 @@ it("reports malformed decisions and accepted receipts without guessing delivery"
   );
   expect(result.limitations).toContain("invalid_decision:s");
 });
-it.each([23, 50, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
+it.each([23, 51, 999])("rejects unsupported schema %i without opening a write path", (schema) => {
   const f = fixture();
   const db = new Database(f.dbPath);
   db.pragma(`user_version=${schema}`);
