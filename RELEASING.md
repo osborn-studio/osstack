@@ -134,6 +134,11 @@ Version Packages PR workflow.
 
 ### When organization policy blocks version PR creation
 
+The Changesets step fails with `GitHub Actions is not permitted to create or
+approve pull requests` and pushes `changeset-release/main` without opening a
+PR. This happened for 0.23.0, whose Version Packages PR (#358) was opened by a
+maintainer from the pushed branch.
+
 `pull-requests: write` does not override the organization setting that forbids
 GitHub Actions from creating pull requests. A repository-level attempt to enable
 `can_approve_pull_request_reviews` can return HTTP 409 under that policy.
