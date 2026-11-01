@@ -36,7 +36,7 @@ surface that makes AI coding work visible and auditable.
 
 For the next integration stage, see the [engineering-agent upgrade roadmap](docs/design/2026-10-26-firstmate-upgrade/README.md). It maps all 24 capabilities to 50 work packages and acceptance evidence. Automatic goal dispatch and Loop/Graph selection remain planned; the delivered Session adoption pilot has a narrower scope.
 
-Firstmate’s 24 capability mappings are integrated into main and included in CLI 0.22.1. They use new commands and existing OSStack mechanisms. **Package publication does not qualify every live integration.** Remote hosts, external transports, managed upgrades and live models still need environment-specific checks. See the [delivery and upgrade guide](docs/guides/install-upgrade.en.md).
+Firstmate’s 24 capability mappings are integrated into main and included since CLI 0.22.1. They use new commands and existing OSStack mechanisms. **Package publication does not qualify every live integration.** Remote hosts, external transports, managed upgrades and live models still need environment-specific checks. See the [delivery and upgrade guide](docs/guides/install-upgrade.en.md).
 
 | Purpose | Command entry points |
 |---|---|
@@ -56,21 +56,21 @@ See the [full English command guide](docs/guides/firstmate-commands.en.md) and [
 
 The mappings above describe existing commands. Unified engineering-agent orchestration is still being implemented in stages.
 
-**Source-only pilot:** `osstack engineering adopt/observe/decide/defer/cancel/end-observation/reconcile` adopts an existing Session that is waiting for a decision. The host records ownership, answers and recovery evidence. It is opt-in and proves at most one observed reply turn; it does not yet route a new goal through Loop or Graph. See the [English guide](docs/guides/engineering-session-adoption.en.md), [中文指南](docs/guides/engineering-session-adoption.md), and [architecture and capability registry](docs/design/2026-10-25-engineering-agent/README.md). This pilot is not included in npm 0.22.1.
+**Opt-in pilot:** `osstack engineering adopt/observe/decide/defer/cancel/end-observation/reconcile` adopts an existing Session that is waiting for a decision. The host records ownership, answers and recovery evidence. It is opt-in and proves at most one observed reply turn; it does not yet route a new goal through Loop or Graph. See the [English guide](docs/guides/engineering-session-adoption.en.md), [中文指南](docs/guides/engineering-session-adoption.md), and [architecture and capability registry](docs/design/2026-10-25-engineering-agent/README.md). It ships in npm starting with 0.23.0.
 
 ## Current Status
 
 | Area | Status |
 |---|---|
-| npm package | Published: [`@osstack/cli@0.23.0`](https://www.npmjs.com/package/@osstack/cli/v/0.22.1). `latest` verified on 2026-10-25 (Asia/Shanghai). Check again with `npm view @osstack/cli version` |
-| Source and binary channels | Source tag: [`@osstack/cli@0.23.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.22.1); separate single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm package | Published: [`@osstack/cli@0.23.0`](https://www.npmjs.com/package/@osstack/cli/v/0.23.0). `latest` verified on 2026-11-01 (Asia/Shanghai). Check again with `npm view @osstack/cli version` |
+| Source and binary channels | Source tag: [`@osstack/cli@0.23.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.23.0); separate single binary: [`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS single binary | Published as explicit `public-ad-hoc` archive for `darwin-arm64` |
 | Knowledge Cloud | Live on EdgeOne: `https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI lifecycle shipped in CLI 0.19.0; report-only is gate behavior, not a background job. The two-week real-use checkpoint remains open. |
 | License | MIT |
 | Monorepo | 22 workspace packages |
 
-**Release boundary:** CLI 0.22.1 is published on npm. Check `osstack --version` on each host to confirm its installed version. A package update does not restart a daemon or upgrade another server. See [installation and deployment checks](docs/guides/install-upgrade.en.md).
+**Release boundary:** CLI 0.23.0 is published on npm. Check `osstack --version` on each host to confirm its installed version. A package update does not restart a daemon or upgrade another server. See [installation and deployment checks](docs/guides/install-upgrade.en.md).
 
 ## Current Capability Map
 

@@ -42,6 +42,13 @@ export function checkReleaseFacts({ npmVersion, readmes }) {
         problems.push(`${name}: mentions @osstack/cli@${match[1]} but packages/cli/package.json is ${npmVersion}`);
       }
     }
+    // npm channel: npm and source-tag link targets must equal package.json too.
+    for (const match of text.matchAll(/\/package\/@osstack\/cli\/v\/(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)|%40osstack%2Fcli%40(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/g)) {
+      const linked = match[1] ?? match[2];
+      if (linked !== npmVersion) {
+        problems.push(`${name}: links to @osstack/cli ${linked} but packages/cli/package.json is ${npmVersion}`);
+      }
+    }
     // npm channel: the `osstack X.Y.Z` --version sample must equal package.json.
     for (const match of text.matchAll(/^osstack (\d+\.\d+\.\d+)$/gm)) {
       if (match[1] !== npmVersion) {
@@ -102,6 +109,24 @@ function selfTest() {
       npmVersion: "1.2.3",
       readme: "`@osstack/cli@1.0.0`\n",
       expectProblems: 1,
+    },
+    {
+      name: "stale npm and tag links fail",
+      npmVersion: "1.2.3",
+      readme: "[`@osstack/cli@1.2.3`](https://npm/package/@osstack/cli/v/1.0.0) [t](https://g/tree/%40osstack%2Fcli%401.0.0)\n",
+      expectProblems: 2,
+    },
+    {
+      name: "prerelease link to a stable version fails",
+      npmVersion: "1.2.3",
+      readme: "[n](https://npm/package/@osstack/cli/v/1.2.3-rc.1)\n",
+      expectProblems: 1,
+    },
+    {
+      name: "matching prerelease links pass",
+      npmVersion: "1.2.3-rc.1",
+      readme: "[n](https://npm/package/@osstack/cli/v/1.2.3-rc.1) [t](https://g/tree/%40osstack%2Fcli%401.2.3-rc.1)\n",
+      expectProblems: 0,
     },
     {
       name: "stale --version sample fails",

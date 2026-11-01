@@ -31,7 +31,19 @@ export function syncReadmeVersion(text, version) {
     },
   );
 
-  return { text: updated, packageReferences, versionSamples };
+  // Link targets carry the version in URL form, which the text patterns above do not match.
+  let linkReferences = 0;
+  const withLinks = updated
+    .replace(new RegExp(`/package/@osstack/cli/v/${VERSION_PATTERN}`, "g"), () => {
+      linkReferences += 1;
+      return `/package/@osstack/cli/v/${version}`;
+    })
+    .replace(new RegExp(`%40osstack%2Fcli%40${VERSION_PATTERN}`, "g"), () => {
+      linkReferences += 1;
+      return `%40osstack%2Fcli%40${version}`;
+    });
+
+  return { text: withLinks, packageReferences, versionSamples, linkReferences };
 }
 
 function run(command, args) {
@@ -40,17 +52,18 @@ function run(command, args) {
 
 async function selfTest() {
   const source = [
-    "Published: `@osstack/cli@1.2.3`",
+    "Published: [`@osstack/cli@1.2.3`](https://www.npmjs.com/package/@osstack/cli/v/1.2.3)",
+    "[tag](https://github.com/o/r/tree/%40osstack%2Fcli%401.2.3)",
     "osstack 1.2.3",
     "osstack-0.8.1-darwin-arm64",
     "https://example.test/releases/tag/v0.8.1",
     "",
   ].join("\n");
   const result = syncReadmeVersion(source, "2.0.0");
-  if (result.packageReferences !== 1 || result.versionSamples !== 1) {
+  if (result.packageReferences !== 1 || result.versionSamples !== 1 || result.linkReferences !== 2) {
     throw new Error("self-test failed to count npm release references");
   }
-  if (!result.text.includes("@osstack/cli@2.0.0") || !result.text.includes("osstack 2.0.0")) {
+  if (!result.text.includes("@osstack/cli@2.0.0") || !result.text.includes("osstack 2.0.0") || /1\.2\.3/.test(result.text)) {
     throw new Error("self-test failed to synchronize npm release references");
   }
   if (!result.text.includes("osstack-0.8.1-darwin-arm64") || !result.text.includes("/releases/tag/v0.8.1")) {
