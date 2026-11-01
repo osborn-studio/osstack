@@ -32,7 +32,7 @@ Prerequisites: Node **>= 22** first on `PATH` (CI uses 22; with Node 20 the pinn
 ## Launch
 
 ```bash
-$V build     # once per checkout change: pnpm install --frozen-lockfile && pnpm --filter "@osstack/cli..." build  (~25s)
+$V build     # once per checkout change: pnpm install --frozen-lockfile && pnpm --filter "@osstack/cli..." build  (~25s; clears stale package tsbuildinfo if dist/index.js is missing, retries once on failure)
 $V launch    # prints: ready: pid=<pid> socket=<...>/daemon.sock dashboard=http://127.0.0.1:<port>/dashboard evidence=<dir>
 ```
 
@@ -57,7 +57,7 @@ Recipes per feature live in [`features/`](features/README.md). Shared mechanics:
 - **CLI:** `$V cli <label> -- <osstack args...>` runs the command with the run's env and writes `cli/<label>.{cmd,stdout,stderr,exit}` to evidence; it prints stdout and returns the command's exit code. Use `--json` where offered and assert on parsed JSON, not on prose.
 - **Scratch git repo:** `W=$($V workspace [name])` creates `/tmp/osstack-verify/$RUN_ID/workspaces/<name>` with one commit on `main`. Use one fresh workspace per `deliver` journey (the task queue persists in the workspace).
 - **Cockpit:** `$V screenshot <label> [/dashboard?workspace=<urlencoded W>] ["text to wait for"]` writes `ui/<label>.png|.dom.html|.text.txt` plus `ui/<label>.api-dashboard.json`; exit 1 if the page or the wait text never renders (20s). Stable handles in the page: `#board` (kanban columns), `#runs`, `#evidence`, `#agents`, `#metrics`, `#attention` (`role=status`), `#generated` (timestamp; `loading...` until first data load).
-- **HTTP:** `curl -fsS http://127.0.0.1:$OSSTACK_DASHBOARD_PORT/api/dashboard` (keys: `dashboard, overview, board, quality, agents, agent_scorecards, evidence, lessons, autonomy, recent_runs, next_steps`).
+- **HTTP:** `curl -fsS http://127.0.0.1:$OSSTACK_DASHBOARD_PORT/api/dashboard` (keys: `dashboard, overview, board, quality, agents, agent_scorecards, evidence, lessons, autonomy, attention, recent_runs, next_steps`).
 - **Keep artifacts the app writes into scratch:** `$V keep <label> <path>` copies into `kept/<label>/` before cleanup.
 
 ## Evidence

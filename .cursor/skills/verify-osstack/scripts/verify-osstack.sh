@@ -45,7 +45,23 @@ cmd_build() {
   need_node
   cd "$REPO"
   pnpm install --frozen-lockfile
-  pnpm --filter "@osstack/cli..." build
+  # Shared/partial checkouts can leave *.tsbuildinfo while dist/index.js is gone;
+  # tsc then skips emit and dependents fail with "Cannot find module '@osstack/...'".
+  clear_stale_tsbuildinfo() {
+    local f pkg
+    while IFS= read -r -d '' f; do
+      pkg="$(dirname "$f")"
+      if [ -f "$pkg/src/index.ts" ] && [ ! -f "$pkg/dist/index.js" ]; then
+        rm -f "$f"
+      fi
+    done < <(find packages -name 'tsconfig.tsbuildinfo' -print0 2>/dev/null)
+  }
+  clear_stale_tsbuildinfo
+  if ! pnpm --filter "@osstack/cli..." build; then
+    echo "verify-osstack: build failed; clearing all package tsbuildinfo and retrying once" >&2
+    find packages -name 'tsconfig.tsbuildinfo' -delete
+    pnpm --filter "@osstack/cli..." build
+  fi
   node "$BIN" --version
 }
 
