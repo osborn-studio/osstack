@@ -2,12 +2,14 @@
 // creation, the Codex proxy, plumbing commits, temp-index diffs and contained
 // verification. Nothing here runs repository code on the host.
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { lstat, realpath, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { CodexProxyExecutor, SafeFileError, commitPlumbing, createNoCheckoutWorktree, filterNeutralizingConfig, inspectRepoConfig, materializeCommit, runHardenedGit, safeReadFile, safeRelativePathSegments,
+import { CodexProxyExecutor, SafeFileError, assertRepoConfigUnchanged, commitPlumbing, createNoCheckoutWorktree, filterNeutralizingConfig, inspectRepoConfig, materializeCommit, runHardenedGit, safeReadFile, safeRelativePathSegments,
   type CodexProxyOptions, type HardenedGitContext, type HardenedGitOptions, type PlumbingCommitAuthor } from '@osstack/agents';
 import { scratchPath, type ContainedEvent, type ContainedMission, type ContainedMissionStore } from '@osstack/core';
+import { defaultDeliveryCommandRunner, openPullRequestToGitHub, type DeliveryCommandRunner } from '@osstack/github';
+import { redactSecrets } from '@osstack/governance';
 import { containedBindingCanonical, containedCommandFromArgv, containedOwnerPort, missionVerificationBinding, prepareContainedCandidateImage, registerContainedExecution, reopenContainedExecution, type ContainedOwnerIdentity } from './contained-verification.js';
 import { parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
 
@@ -19,6 +21,8 @@ export interface ContainedMissionPortsOptions {
   runtimeRoot?: string;
   verification: { socketPath: string; daemonId: string; baseImageId: string; journalRoot: string };
   author: PlumbingCommitAuthor;
+  /** Command runner for the PR-only publication; the default uses the host's own git and gh credentials. */
+  delivery?: { runner?: DeliveryCommandRunner };
   git?: HardenedGitContext;
 }
 export type ContainedVerificationStop = { stopped: true; proof: 'container_removed' | 'never_launched'; evidence: string } | { stopped: false };
@@ -55,6 +59,37 @@ export function lastTransitionTo(events: readonly ContainedEvent[], states: read
   return -1;
 }
 export const eventPayload = (event: ContainedEvent): Record<string, unknown> => { try { return JSON.parse(event.payload_json) as Record<string, unknown>; } catch { return {}; } };
+
+/** owner/name of a github.com remote URL (https, ssh or scp-like), otherwise undefined. */
+export function githubRepositoryOf(url: string): string | undefined {
+  const match = /^(?:https:\/\/(?:[^@/]+@)?github\.com\/|ssh:\/\/git@github\.com(?::22)?\/|git@github\.com:)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(url.trim());
+  return match?.[1];
+}
+const FORBIDDEN_GH = new Set(['merge', 'edit', 'close', 'ready', 'review', 'comment']);
+/** Wraps the delivery runner: every push and PR creation passes the Mission's publication fence first, git runs without
+ * hooks or fsmonitor and only over https/ssh, and no gh subcommand that changes a PR other than creating it can run. */
+export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteMutation: (kind: 'push' | 'pr_create') => void,
+  destination?: { remote: string; repository: string }): DeliveryCommandRunner {
+  const git = (args: readonly string[], runOptions: Parameters<DeliveryCommandRunner['run']>[2]) => inner.run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
+    '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', ...args], runOptions);
+  return {
+    async run(command, args, runOptions) {
+      if (command === 'gh' && args[0] === 'pr' && FORBIDDEN_GH.has(args[1] ?? '')) throw Error('CONTAINED_PUBLICATION_FORBIDDEN');
+      if (command === 'gh' && args[0] === 'pr' && args[1] === 'create') beforeRemoteMutation('pr_create');
+      if (command !== 'git') return inner.run(command, args, runOptions);
+      if (args[0] === 'push') {
+        // Resolved with the same configuration the push will use, so pushurl and any pushInsteadOf rewrite are included.
+        if (destination) {
+          const urls = await git(['remote', 'get-url', '--push', '--all', '--', destination.remote], runOptions);
+          const list = urls.exitCode === 0 ? urls.stdout.split('\n').map(u => u.trim()).filter(Boolean) : [];
+          if (list.length === 0 || list.some(url => githubRepositoryOf(url)?.toLowerCase() !== destination.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
+        }
+        beforeRemoteMutation('push');
+      }
+      return git(args, runOptions);
+    },
+  };
+}
 
 export function createContainedMissionPorts(options: ContainedMissionPortsOptions): ContainedMissionHostPorts {
   const { store, verification, author } = options; const ctx = options.git ?? {};
@@ -123,6 +158,27 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       return { worktree, gitDir: inspection.gitDir, head, configDigest: inspection.digest };
     },
     qualify: (worktree, gitDir) => executor(worktree).qualify(worktree, gitDir),
+    publish: async ({ mission, spec, permit, body, beforeRemoteMutation }) => {
+      const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
+      // The repository config that made the workspace safe must still hold before anything leaves the machine.
+      await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), ctx);
+      if (await branchHead(spec.worktree_path, spec.branch) !== permit.head) throw Error('CONTAINED_PUBLICATION_HEAD_MISMATCH');
+      // Every URL git would push to (pushurl included) must be the granted repository, before anything is pushed.
+      const pushUrls = text(await git(spec.worktree_path)(['remote', 'get-url', '--push', '--all', '--', p.remote])).split('\n').filter(Boolean);
+      if (pushUrls.length === 0 || pushUrls.some(url => githubRepositoryOf(url)?.toLowerCase() !== p.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
+      const bodyFile = join(runtimeDir(spec.worktree_path), `pr-body-${permit.revision}.md`);
+      writeFileSync(bodyFile, body, { mode: 0o600 });
+      const runner = fencedDeliveryRunner(options.delivery?.runner ?? defaultDeliveryCommandRunner, beforeRemoteMutation, { remote: p.remote, repository: p.repository });
+      // The title is published verbatim, so it is redacted like the body; control characters never reach gh.
+      const title = redactSecrets(p.title ?? `Contained Mission ${mission.mission_id.slice(3, 11)}: ${spec.goal.replace(/\s+/g, ' ').slice(0, 72)}`)
+        // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.
+        .replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 200);
+      const opened = await openPullRequestToGitHub({ workspacePath: spec.worktree_path, remote: p.remote, base: p.base, branch: spec.branch, title, bodyFile,
+        mergeStrategy: 'squash', ciTimeoutMs: 60_000 }, { repository: p.repository, headCommit: permit.head, draft: p.draft }, runner);
+      const listed = await runner.run('git', ['ls-remote', '--', p.remote, `refs/heads/${p.base}`], { cwd: spec.worktree_path, timeoutMs: 30_000 });
+      const baseHead = listed.exitCode === 0 ? /^([0-9a-f]{40}|[0-9a-f]{64})\s/.exec(listed.stdout)?.[1] ?? null : null;
+      return { pushed_commit: opened.pushedCommit, pr: opened.pr, base_head: baseHead };
+    },
     execute: input => executor(input.worktree).run({ worktree: input.worktree, prompt: input.prompt, signal: input.signal, onLaunched: input.onLaunched }),
     readFile: async (worktree, path) => {
       try { return utf8((await safeReadFile(worktree, path)).bytes, 'CONTAINED_FILE_NOT_UTF8'); }

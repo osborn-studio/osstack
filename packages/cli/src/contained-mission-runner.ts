@@ -11,7 +11,13 @@ export interface ContainedMissionSpec {
   goal: string; repo_path: string; base_ref: string; start_commit: string; branch: string; worktree_path: string;
   allowed_paths: string[]; caps?: Partial<{ maxFiles: number; maxChangedLines: number; maxFileBytes: number; maxTotalBytes: number }>;
   verify: { argv: string[] }; max_repair_cycles?: number; verification_paths?: string[];
+  /** Bounded publication grant (§4.2): one PR on this repository and base. `preauthorized` skips the publication_pending decision. */
+  publication?: ContainedPublicationSpec;
 }
+export interface ContainedPublicationSpec { remote: string; repository: string; base: string; draft: boolean; title?: string; preauthorized?: boolean }
+/** Process-local, single-delivery-attempt binding; never serialized as authority (§8.1). */
+export interface ContainedPublicationPermit { readonly mission_id: string; readonly revision: number; readonly head: string; readonly tree: string; readonly spec_digest: string }
+export interface ContainedPublicationResult { pushed_commit: string; pr: { number: number; url: string; reused: boolean }; base_head: string | null }
 export interface ContainedMissionPorts {
   store: ContainedMissionStore; now: () => number;
   createWorkspace: (spec: ContainedMissionSpec, signal: AbortSignal) => Promise<{ worktree: string; gitDir: string; head: string; configDigest: string }>;
@@ -29,10 +35,15 @@ export interface ContainedMissionPorts {
   commitWorktree: (input: { worktree: string; branch: string; expectedHead: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
   /** `stopped` only when the verification container was proven removed. */
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
+  /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
+  publish: (input: { mission: ContainedMission; spec: ContainedMissionSpec; permit: ContainedPublicationPermit; body: string; beforeRemoteMutation: (kind: 'push' | 'pr_create') => void; signal: AbortSignal }) => Promise<ContainedPublicationResult>;
 }
 export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' } | { kind: 'discard_changes' } | { kind: 'adopt_worktree' };
 const OUTPUT_EXCERPT = 4_000;
 const MAX_RECORDED_HITS = 32;
+const MAX_DELIVERY_ATTEMPTS = 3;
+const canonical = (v: unknown): string => Array.isArray(v) ? `[${v.map(canonical).join(',')}]`
+  : v !== null && typeof v === 'object' ? `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(',')}}` : JSON.stringify(v);
 
 /** Scan every channel before anything is persisted, displayed or published; return only redacted text. */
 export function screenOutputs(outputs: Partial<Record<MissionOutputChannel, string>>) {
@@ -55,6 +66,9 @@ export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
   const str = (x: unknown) => typeof x === 'string' && x.length > 0;
   if (!v || ![v.goal, v.repo_path, v.base_ref, v.start_commit, v.branch, v.worktree_path].every(str) || !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/.test(v.start_commit)
     || !Array.isArray(v.allowed_paths) || !Array.isArray(v.verify?.argv) || v.verify.argv.length === 0 || !v.verify.argv.every(str)) throw Error('CONTAINED_SPEC_INVALID');
+  const p = v.publication;
+  if (p !== undefined && (!p || !str(p.remote) || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(p.repository) || !str(p.base) || typeof p.draft !== 'boolean'
+    || (p.title !== undefined && (typeof p.title !== 'string' || p.title.length > 200)) || (p.preauthorized !== undefined && typeof p.preauthorized !== 'boolean'))) throw Error('CONTAINED_SPEC_INVALID');
   return v;
 }
 
@@ -70,7 +84,11 @@ export class ContainedMissionRunner {
       case 'workspace_ready': return this.qualifyAndExecute(m, spec, containedExecutorPrompt(spec.goal));
       case 'candidate_ready': return this.verify(m, spec);
       case 'verify_failed': return this.repair(m, spec);
-      case 'verified': return this.halt(m, 'awaiting_decision', 'publication_pending');
+      case 'verified': return spec.publication?.preauthorized
+        ? this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'revalidating', event: { kind: 'publication_preauthorized', payload: {} } }, this.ports.now())
+        : this.halt(m, 'awaiting_decision', 'publication_pending');
+      case 'revalidating': return this.revalidate(m, spec);
+      case 'delivering': return this.deliver(m, spec);
       default: return m;
     }
   }
@@ -86,7 +104,8 @@ export class ContainedMissionRunner {
       const next = this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'executing', event: { kind: 'decision_extra_repair', payload: { reason } } }, this.ports.now());
       return this.runExecutor(next, spec, this.lastFailurePrompt(next));
     }
-    if (decision.kind === 'approve_publication' && m.state === 'awaiting_decision' && reason === 'publication_pending') return go('revalidating', 'decision_approve_publication');
+    if (decision.kind === 'approve_publication' && m.state === 'awaiting_decision' && reason !== undefined
+      && (reason === 'publication_pending' || reason.startsWith('publication_failed') || reason.startsWith('revalidation_failed'))) return go('revalidating', 'decision_approve_publication');
     if (decision.kind === 'discard_changes' && m.state === 'needs_reconciliation') return this.discardChanges(m, reason);
     if (decision.kind === 'adopt_worktree' && m.state === 'needs_reconciliation') return this.adoptWorktree(m);
     throw Error('CONTAINED_DECISION_NOT_ALLOWED');
@@ -166,7 +185,7 @@ export class ContainedMissionRunner {
     const probe = new AbortController(); this.live.set(m.mission_id, probe);
     let q: CodexQualification;
     try { q = await this.ports.qualify(spec.worktree_path, gitDir); } finally { this.live.delete(m.mission_id); }
-    const first = this.ports.store.events(m.mission_id, 0, 500).find(e => e.kind === 'qualification_probe' && (JSON.parse(e.payload_json) as { qualified?: boolean }).qualified === true);
+    const first = this.allEvents(m.mission_id).find(e => e.kind === 'qualification_probe' && (JSON.parse(e.payload_json) as { qualified?: boolean }).qualified === true);
     this.ports.store.record(m.mission_id, 'qualification_probe', { ...q, reasons: q.reasons.slice(0, 32) }, this.ports.now());
     const current = this.ports.store.get(m.mission_id);
     if (q.reasons.includes('PROBE_GROUP_NOT_STOPPED')) return { halted: this.halt(current, 'stop_unknown', 'qualification_probe_not_stopped') };
@@ -178,7 +197,7 @@ export class ContainedMissionRunner {
     return { q };
   }
   private recordedGitDir(m: ContainedMission): string | undefined {
-    const created = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'workspace_created').at(-1);
+    const created = this.allEvents(m.mission_id).filter(e => e.kind === 'workspace_created').at(-1);
     return created ? (JSON.parse(created.payload_json) as { git_dir?: string }).git_dir : undefined;
   }
   private async qualifyAndExecute(m: ContainedMission, spec: ContainedMissionSpec, prompt: string) {
@@ -314,22 +333,122 @@ export class ContainedMissionRunner {
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: 'halted', payload: { reason, ...extra } } }, this.ports.now());
   }
   private haltReason(m: ContainedMission): string | undefined {
-    const halted = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'halted').at(-1);
+    const halted = this.allEvents(m.mission_id).filter(e => e.kind === 'halted').at(-1);
     return halted ? (JSON.parse(halted.payload_json) as { reason?: string }).reason : undefined;
   }
   private lastFailurePrompt(m: ContainedMission): string {
     const spec = parseContainedMissionSpec(m.spec_json);
-    const receipt = this.ports.store.events(m.mission_id, 0, 500).filter(e => e.kind === 'verify_receipt').at(-1);
+    const receipt = this.allEvents(m.mission_id).filter(e => e.kind === 'verify_receipt').at(-1);
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number | null; output: string } : undefined;
     // Only the exit code and redacted, truncated output; never anything the host would execute.
     return containedExecutorPrompt(spec.goal, `The previous change failed verification (exit ${r?.exit_code ?? 'unknown'}). Output excerpt:\n${r?.output ?? ''}`);
+  }
+  /** §8.1: nothing is published unless the current candidate passed its own verification and every effect is proven stopped. */
+  private publicationBlocker(m: ContainedMission, spec: ContainedMissionSpec): string | undefined {
+    if (!spec.publication) return 'publication_not_configured';
+    if (m.candidate_verified !== 1 || !m.candidate_head || !m.candidate_tree) return 'candidate_unverified';
+    if (m.stop_obligation === 1) return 'stop_unproven';
+    if (this.ports.store.claim(m.mission_id).state !== 'active') return 'claim_released';
+    const events = this.allEvents(m.mission_id);
+    const intent = events.filter(e => e.kind === 'verify_intent').at(-1); const receipt = events.filter(e => e.kind === 'verify_receipt').at(-1);
+    const i = intent ? JSON.parse(intent.payload_json) as { candidate?: string } : undefined;
+    const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code?: number | null; cancelled?: boolean } : undefined;
+    if (!intent || !receipt || receipt.seq < intent.seq || i?.candidate !== m.candidate_head || r?.exit_code !== 0 || r.cancelled !== false) return 'verify_receipt_mismatch';
+    const committed = events.filter(e => e.kind === 'candidate_committed').at(-1);
+    const c = committed ? JSON.parse(committed.payload_json) as { head_commit?: string; tier?: string } : undefined;
+    if (c?.head_commit !== m.candidate_head || (c.tier !== 'T0' && c.tier !== 'T1')) return 'candidate_untraced';
+    return undefined;
+  }
+
+  private revalidate(m: ContainedMission, spec: ContainedMissionSpec): ContainedMission | Promise<ContainedMission> {
+    const blocker = this.publicationBlocker(m, spec);
+    if (blocker) return this.halt(m, 'awaiting_decision', `revalidation_failed:${blocker}`);
+    const p = spec.publication!;
+    const next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'delivering', event: { kind: 'delivery_intent', payload: {
+      repository: p.repository, remote: p.remote, base: p.base, branch: spec.branch, head: m.candidate_head, tree: m.candidate_tree, draft: p.draft } } }, this.ports.now());
+    return this.deliver(next, spec);
+  }
+
+  /** One bounded delivery attempt. An uncertain failure stays in delivering and is retried idempotently by the next step. */
+  private async deliver(m: ContainedMission, spec: ContainedMissionSpec): Promise<ContainedMission> {
+    const events = this.allEvents(m.mission_id);
+    const since = events.map(e => e.kind).lastIndexOf('delivery_intent');
+    const attempts = events.slice(since + 1).filter(e => e.kind === 'delivery_attempt').length;
+    if (attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
+    const blocker = this.publicationBlocker(m, spec);
+    if (blocker) return this.halt(m, 'awaiting_decision', `publication_failed:${blocker}`);
+    const permit: ContainedPublicationPermit = Object.freeze({ mission_id: m.mission_id, revision: m.revision, head: m.candidate_head!, tree: m.candidate_tree!, spec_digest: m.spec_digest });
+    this.ports.store.record(m.mission_id, 'delivery_attempt', { attempt: attempts + 1, head: permit.head }, this.ports.now());
+    let mutated = false;
+    // Journals each remote mutation under the owner fence, and refuses it once anything about the permit changed.
+    const beforeRemoteMutation = (kind: 'push' | 'pr_create') => {
+      const now = this.ports.store.get(m.mission_id);
+      if (now.state !== 'delivering' || now.revision !== permit.revision || now.candidate_head !== permit.head || now.stop_obligation === 1 || now.candidate_verified !== 1) throw Error('CONTAINED_PUBLICATION_FENCE');
+      this.ports.store.record(m.mission_id, 'remote_mutation', { kind, head: permit.head }, this.ports.now());
+      mutated = true;
+    };
+    const controller = new AbortController(); this.live.set(m.mission_id, controller);
+    let result: ContainedPublicationResult;
+    try { result = await this.ports.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal }); }
+    catch (error) {
+      const current = this.ports.store.get(m.mission_id);
+      const cancelled = this.settleCancel(current); if (cancelled) return cancelled;
+      if (current.revision !== m.revision) return current;
+      if (!mutated) return this.halt(current, 'awaiting_decision', `publication_failed:${code(error)}`);
+      this.ports.store.record(m.mission_id, 'delivery_uncertain', { code: code(error) }, this.ports.now());
+      return current;
+    } finally { this.live.delete(m.mission_id); }
+    if (result.pushed_commit !== permit.head) return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', 'publication_failed:pushed_head_mismatch');
+    const evidence = this.deliveryEvidence(m, spec, permit, result);
+    this.ports.store.record(m.mission_id, 'delivery_evidence', evidence, this.ports.now());
+    const current = this.ports.store.get(m.mission_id);
+    if (current.state === 'cancel_requested') {
+      this.ports.store.record(m.mission_id, 'pr_opened_before_cancel', { pr: result.pr }, this.ports.now());
+      return this.settleCancel(current) ?? current;
+    }
+    return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: { pr: result.pr, evidence_digest: evidence.evidence_digest } } }, this.ports.now());
+  }
+
+  /** v3 §2 delivery evidence. The ledger copy is authoritative; the PR body is only a display copy. */
+  private deliveryEvidence(m: ContainedMission, spec: ContainedMissionSpec, permit: ContainedPublicationPermit, result: ContainedPublicationResult) {
+    const events = this.allEvents(m.mission_id);
+    const receipt = JSON.parse(events.filter(e => e.kind === 'verify_receipt').at(-1)!.payload_json) as { exit_code: number; evidence: string };
+    const committed = JSON.parse(events.filter(e => e.kind === 'candidate_committed').at(-1)!.payload_json) as { tier: string };
+    const p = spec.publication!;
+    // Migrations and every other protected path are T2, and a T2 candidate never reaches delivery.
+    const body = { schema_version: 1, mission_id: m.mission_id, spec_digest: m.spec_digest, repository: p.repository, remote: p.remote, branch: spec.branch,
+      base: p.base, base_head: result.base_head, start_commit: spec.start_commit, head: permit.head, tree: permit.tree, draft: p.draft, pr: result.pr,
+      verify: { argv: spec.verify.argv, exit_code: receipt.exit_code, evidence: receipt.evidence }, tier: committed.tier,
+      migrations_changed: false, protected_paths_changed: false };
+    return { ...body, evidence_digest: createHash('sha256').update(canonical(body)).digest('hex') };
+  }
+  private publicationBody(m: ContainedMission, spec: ContainedMissionSpec): string {
+    const receipt = this.allEvents(m.mission_id).filter(e => e.kind === 'verify_receipt').at(-1);
+    const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number; evidence: string } : undefined;
+    return [
+      `Contained Mission \`${m.mission_id}\`, opened by OSStack. Review before merging; OSStack never merges.`, '',
+      `**Goal:** ${redactSecrets(spec.goal).slice(0, 2000)}`, '',
+      `- Candidate: \`${m.candidate_head}\` (tree \`${m.candidate_tree}\`) from \`${spec.start_commit}\``,
+      `- Verification: \`${spec.verify.argv.join(' ')}\` exited ${r?.exit_code ?? 'unknown'} in a no-network container (${r?.evidence ?? 'no receipt'})`,
+      `- Spec digest: \`${m.spec_digest}\``, '',
+      'The authoritative delivery evidence is the `delivery_evidence` event in the OSStack ledger for this Mission.',
+    ].join('\n');
+  }
+  /** Every event of the Mission, page by page; decisions must never be made from a truncated history. */
+  private allEvents(missionId: string) {
+    const all: ReturnType<ContainedMissionStore['events']> = [];
+    for (let after = 0; ;) {
+      const page = this.ports.store.events(missionId, after, 500); all.push(...page);
+      if (page.length < 500) return all;
+      after = page.at(-1)!.seq;
+    }
   }
   private settleCancel(m: ContainedMission): ContainedMission | undefined {
     if (m.state !== 'cancel_requested' || m.stop_obligation === 1) return undefined;
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
   }
   private openIntents(m: ContainedMission) {
-    const events = this.ports.store.events(m.mission_id, 0, 500);
+    const events = this.allEvents(m.mission_id);
     const closed = new Set(events.filter(e => e.kind === 't0_receipt').map(e => (JSON.parse(e.payload_json) as { operation_id: string }).operation_id));
     const committed = new Set(events.filter(e => e.kind === 'candidate_committed').map(e => (JSON.parse(e.payload_json) as { operation_id: string }).operation_id));
     return events.filter(e => e.kind === 't0_intent').map(e => JSON.parse(e.payload_json) as { operation_id: string; worktree: string; head_before: string; files: unknown })

@@ -275,6 +275,8 @@ T0 累计上限（相对 `start_commit`，执行器无法重置基线）初值�
 
 许可在每一次远端变更之前都要复核，而不只是在整个辅助函数前后（v2 问题：辅助函数内部的推送重试与开 PR 发生在两次检查之间）。为此 `openPullRequestToGitHub` 增加一个可选的 `beforeRemoteMutation` 回调，在每次推送（含重试）与创建 PR 之前调用；回调复核 owner generation、许可绑定、取消状态与授权，任何一项不成立即抛错中止，Mission 回到 `candidate_ready`（候选变化）或进入决定（其他）。推送使用该函数自带的固定提交推送，经 §6.4 的加固 git 运行。永不调用 `deliverToGitHub` 或 `mergeWorktree`。
 
+**实现说明（M7）：** 每次远端变更前的复核没有改动 `delivery.ts`，而是包在传给 `openPullRequestToGitHub` 的命令运行器外层（`fencedDeliveryRunner`）：每次 `git push` 与 `gh pr create` 之前调用 Mission 的发布栅栏（在 owner 栅栏下记一条 `remote_mutation` 事件并复核许可），git 一律关闭 hooks 与 fsmonitor、只允许 https/ssh 协议，`gh pr merge|edit|close|ready|review|comment` 直接拒绝。推送使用主机自身的 git/gh 凭证；推送前复核仓库配置摘要与分支头。远端变更之后的失败留在 `delivering`，下一次 tick 以同一许可条件幂等重试（已有 PR 复用），最多 3 次后转入决定。
+
 ### 8.2 证据内容与 base
 
 v3 §2 的交付证据：仓库与 PR 编号、head 与 base SHA、证据 schema 版本、验证命令与结果、迁移变化、受保护路径变化（二者应为无）、`mission_id`、证据摘要。候选字段沿用 `protocol` 中 `DeliveryVerificationReceiptV2` 的 `{base_head, head, tree_id, diff_digest}` 形状。base 记录两个值：`start_commit`（候选的父提交）与开 PR 时观察到的远端 base 头；二者不同时如实记录，PR 仍以规格中的 base 开出，本期不自动 rebase。
