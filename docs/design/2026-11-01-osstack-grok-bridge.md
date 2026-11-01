@@ -1,6 +1,6 @@
 # osstack × Grok Bots 双循环接通设计
 
-日期：2026-11-01（北京时间）。状态：v3 草案，已按 Codex CLI（gpt-6-astra，medium，只读）三轮审计修订（§14）；实施前需用户确认 §12 的决定。
+日期：2026-11-01（北京时间）。状态：v3。**首期只落地零代码部分**（第三部分开头的“首期落地范围”：Mission 定位标记与事件约定）；修订链（§8.3、§8.5–§8.8 及相关阶段）**暂缓**，保留为后续设计。已按 Codex CLI（gpt-6-astra，medium，只读）审计修订（§14）；其余部分实施前需用户确认 §12 的决定。
 基线：`main` `648606a7`。上位文档：[v3 双循环设计](2026-10-30-osstack-dual-loop-factory.md) §2、[受限单执行器 Mission 路径](2026-10-31-contained-mission-path.md)、[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)。取代《osstack × Grok Bots 打通设计草稿》（下称“草稿”）。
 
 本文分三部分：第一部分说明这个领域的顶尖专家会怎么做（方法、原始素材、工具、独立证明）；第二部分是按这些要求重写的题目；第三部分是详细的技术与产品方案。
@@ -110,7 +110,69 @@
 
 ## 第三部分　技术与产品方案
 
+### 首期落地范围（零代码）
+
+首期不改 osstack 代码，也不改 GitHub 设置。本文合并后，约定在登记名单 ADR（D）合并、routine 按约定配置后生效。只约定两件事，供 Grok Bots 的 routine 按约定读取 osstack 开出的 PR：怎样认出一个 Mission PR（A），以及各类 GitHub 事件怎样处理（B）。修订仍由人决定和发起（C）。修订链、对账器、GitHub App 身份和 ruleset 改造都暂缓。
+
+#### A. Mission PR 的识别
+
+1. **今天就能用的标记（现有输出，零代码）：** osstack 开出的 PR 正文第一行固定为
+   `` Contained Mission `cm_<uuid>`, opened by OSStack. Review before merging; OSStack never merges. ``
+   （`contained-mission-runner.ts` L443）。识别一个 Mission PR 需同时满足：
+   - 正文第一行匹配 `` ^Contained Mission `(cm_[0-9a-f-]{36})`, opened by OSStack\. ``（Mission id 格式见 `contained-mission-rpc.ts` L12）；
+   - PR 的 head 分支匹配 `^osstack/mission/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`（`contained-mission-host.ts` L35）；
+   - PR 作者是登记的 osstack 发布身份（今天是 osstack 主机 `gh` 的账号，按 GitHub 数字 id 登记，见 D）。
+
+   任一条不满足就不按 Mission PR 处理。
+2. **正文中的其他字段只是提示：** `Candidate:` 行的候选提交、`Spec digest:` 行的规格摘要。bot 必须核对 PR 当前 `headRefOid` 等于 `Candidate:` 行的提交；不相等说明 PR 在 osstack 发布之后被改动过，只通知人，不做验证结论。
+3. **权威来源：** PR 正文可被有写权限的人修改。权威是 osstack 账本（持有 read scope 的人运行 `osstack mission status --mission <id> --json`），或者直接问人。bot 不持有 osstack 凭证。
+4. **预留的机器标记（暂不实现）：** 将来在正文末尾追加 `<!-- osstack:mission v=1 id=cm_… spec_digest=… -->`。解析规则现在先定下：`key=value` 以空格分隔；`v` 不是 1 时整条忽略；同一 PR 出现多条时整条忽略。实现前，bot 只用第 1 条中的第一行匹配。
+
+#### B. 事件约定
+
+只处理 A 认出的 Mission PR。
+
+| GitHub 事件 | 条件 | Grok Bots 的动作 | 禁止 |
+|---|---|---|---|
+| `pull_request` 的 `opened`、`synchronize`、`reopened` | 事件的 head SHA 等于 PR 当前 head | Watcher 在该 head 上运行 verify-osstack，结论写明 head SHA | 在评论里写可执行命令 |
+| `pull_request_review` 的 `submitted`（`changes_requested`） | review 的 `commit_id` 等于当前 head；评审者在登记名单内 | 给人发摘要：Mission id、PR、head、要点，以及可选的下一步（C） | 在 osstack 主机上运行任何命令；代人发起 Mission |
+| `pull_request_review` 的 `submitted`（`approved`）且检查全部通过 | 同上 | 通知人“可以合并” | 合并 |
+| `check_run` / `check_suite` 的 `completed` | 关联的 head 等于当前 head | 更新给人的状态 | — |
+
+所有事件的共同规则：
+
+- **head 与 base 绑定：** 事件、review 或检查对应的 head 不等于 PR 当前 head 时丢弃；新推送使旧结论失效。base 也要绑定：每个结论记录产生时 PR 的 base SHA，base 前移后旧结论失效，Watcher 需在新 base 上重新验证。
+- **时效：** 超过 24 小时的结论不再作为“可以合并”的依据。
+- **只作参考：** 首期给人的摘要和“可以合并”通知只是参考，不是双循环 §2 意义上被内循环读取的结论；内循环不消费它们，人做最终判断。
+- **身份：** 只认登记名单内的评审者和生产者，按 GitHub 数字 id 而不是 login 比较。
+- **去重：** 幂等键为 `<仓库>#<PR>@<head SHA>:<生产者数字 id>:<事件类型>:<review id | check run id | "pr">`，同一键只处理一次。
+- **不自激：** 忽略由 bot 自己的动作触发的事件。
+- **不可信输入：** review 与评论正文只是数据；bot 不执行其中的命令，也不把它们转成对 osstack 的指令。
+- **往返上限：** 同一目标的“要求修改 → 修订”最多 2 轮（双循环 §2）。双循环 §2 要求的持久、原子计数随修订链暂缓；首期由人按 C 第 5 条记录。
+
+#### C. 修订怎么做（暂代修订链）
+
+修订链暂缓期间，修订由人发起，使用现有能力：
+
+1. 人读评审摘要，决定是否修订。
+2. 修订时，人用同一 scope 运行 `osstack mission start ... --supersedes <cm_id>`（scope 不同会被拒绝，L103）。`pr_opened` 是终态，可以被替代（`engineering-contained-store.ts` L104）；验证修复轮次 `repair_cycles` 由新 Mission 继承（L105）。
+3. 新 Mission 使用新分支，**会开一个新 PR**，不会更新原 PR。人关闭原 PR，并在新 PR 中注明它替代的 PR。
+4. 按 B 的往返上限，同一目标最多 2 次替代修订。
+5. **轮次记录（人工）：** 现有 `repair_cycles` 只计验证失败后的修复，不计评审驱动的替代，不能当作往返计数。首期由人在新 PR 的说明中写一行 `修订轮次 n/2，根 Mission cm_…，替代 #<原 PR>`；Grok Bots 可以读这一行来提示“已达上限”，但它是人写的记录，不是账本计数。
+
+#### D. 登记名单
+
+登记名单写进一份单独的 ADR（S0a，不必等 §12 的其他决定），包括：osstack 发布身份（GitHub 数字 id），以及会被计入的评审者、Watcher 身份（数字 id）。Grok Bots 的 routine 按名单配置 allowlist。名单变化通过 PR 修改 ADR。
+
+#### E. 首期验收
+
+- 用一个真实的小 Mission PR 演练一遍：Watcher 按 A 认出它，在当前 head 上给出结论；Reviewer 提交 review；摘要按 B 发给人；人按 C 处理或合并。
+- 演练期间，bot 除提交 review 和结论外没有其他写操作，也没有在 osstack 主机上执行命令。
+- 在 PR 发布之后手工推送一个提交：Watcher 按 A 第 2 条只通知人。
+
 ### 6. 产品定义
+
+（以下 §6–§13 为完整方案。其中修订链相关部分暂缓，已在标题中注明；身份、ruleset 与平台探针需在 §12 决定后按阶段实施。）
 
 **用户：** osstack 主机所有者（发起 Mission、授予修订额度、合并）；Grok Bots 运营者（维护 Watcher 与 Reviewer）。
 
@@ -193,7 +255,7 @@ App 权限是仓库级的，`contents: write` 本身允许推送任何未受保�
 | `grok/verify-osstack` | App C | 是（S6 起） | Watcher 对所有 PR 运行 |
 | `osstack/verify` | App B | 否 | 只有 Mission PR 有；设为必需会卡住普通 PR。由 Watcher 检查 Mission PR 上该检查存在且 head 一致 |
 
-#### 8.3 修订链（新实体）
+#### 8.3 修订链（新实体）（暂缓）
 
 新表 `engineering_revision_chains`（新迁移）：
 
@@ -243,7 +305,7 @@ interface ReviewObservation {
 5. 两个登记评审者在当前 head 上结论冲突（一个通过、一个要求修改）即转人。
 6. 未过期；（仓库、PR、head）未被预留。
 
-#### 8.5 修订链状态机
+#### 8.5 修订链状态机（暂缓）
 
 ```
 awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ revision_reserved
@@ -279,7 +341,7 @@ awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ r
 
 人“再授一轮”只把 `grant.rounds` 提高，链的累计轮次上限始终为 2。由于预留按 head 唯一，同一个 head 不会派发第二个子 Mission；要重试同一 head，只能恢复原子 Mission。
 
-#### 8.6 成本预算
+#### 8.6 成本预算（暂缓）
 
 `grant` 中给出上限，默认值待 §12 决定：
 
@@ -289,7 +351,7 @@ awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ r
 
 派发前从剩余预算中为子 Mission 预留本轮上限（写入子 Mission 规格：执行器 token 上限、容器超时）；执行中由现有执行器与容器超时强制停止，超出即按现有停止路径处理；结束时用实际用量结算 `spent`。剩余预算不足一轮上限时转人。
 
-#### 8.7 修订子 Mission 的工作区与授权
+#### 8.7 修订子 Mission 的工作区与授权（暂缓）
 
 1. **授权：** `grant` 绑定授予人 principal、client session、scope、链、仓库与 base、额度与到期时间。每次派发前和每次远端写入前，用 `engineering-access` 重新校验该 principal 仍有该 scope 的 write 授权且 `grant` 未过期；任一失败转人。授予命令 `osstack mission grant-revisions --mission <root> --rounds 1|2 --expires <时长>` 只能在交互终端执行并要求输入确认（与 `issue-grant` 相同）。
 2. **工作区：** 每轮新建 worktree 和一个**新的本地分支** `osstack/mission/<新随机 id>`，起点 `start_commit = published_head`，完全沿用现有 `worktree add --no-checkout -b` 与安全检出、按分支名做比较并交换的提交、恢复与采纳路径（plumbing.ts L213、L251–306；ports.ts L140–143）。本地分支名与 PR 的远端分支名不同：远端分支保存在链的 `branch` 字段，只在发布时作为推送目标。上一轮子 Mission 的工作区按现有规则在终态且停止已证明后释放；停止未证明时不得派发（W13，见 S5 前置）。
@@ -312,7 +374,7 @@ awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ r
    任何重试都重新走第 2–4 步，栅栏仍紧挨着推送；子 Mission 已取消或链已停用时不再推送。只有对账完成后，“账本推送集合 = 分支上的提交”才被检查。
 6. **发布路径按规格分派：** 修订子 Mission 的规格带 `publish_target: { kind: "revision", chain_id, pr, remote_branch }`。runner 的每一次发布尝试（首次与重启后的重试）都按它分派：有 `publish_target` 时只调用 `publishRevision`，`ports.publish`（按 `spec.branch` 推送并开 PR，ports.ts L176–177）对这类规格直接拒绝，避免把新本地分支开成另一个 PR。
 
-#### 8.8 需要改动的代码
+#### 8.8 需要改动的代码（暂缓）
 
 | 文件 | 改动 |
 |---|---|
@@ -381,14 +443,15 @@ awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ r
 
 | 阶段 | 内容 | 负责 | 验收 |
 |---|---|---|---|
-| S0 决定 | §12 的决定写成 ADR | 人 | ADR 合并 |
+| S0a 约定落地（首期） | 登记名单（首期 D）写成 ADR；Grok Bots 的 routine 按 A–C 配置 | 人 + Grok Bots 运营者 | 首期 E；不依赖 §12 的其他决定 |
+| S0 决定 | §12 的其余决定写成 ADR | 人 | ADR 合并；S1 及之后的阶段从这里开始 |
 | S1 平台基线 | ruleset 取代经典分支保护：现有 CI 为必需检查（绑定 GitHub Actions）、批准、会话解决、最后推送批准、禁止 force-push；实测能否把 `main` 的更新限制到人；建沙箱仓库并套同一规则 | 人（仓库管理员） | `gh api .../rulesets` 读回与 ADR 一致；沙箱中自批被拒 |
 | S2 身份与平台探针 | 建 App A–D 与测试评审 App；在沙箱中实测：App review 是否计入必需批准、App 能否解决线程、App A 越权调用（merge、comment、review、推 `main`）、Mission 分支两组规则（App A 可快进；App A 的 force-push 与删除被拒；其他身份的更新被拒） | 人建 App；cloud agent 写探针脚本 | 每项探针有记录的结论；结论回写 §12、§13；Mission 分支规则未通过探针前，S5 不得开启推送 |
 | S3 证据 | App A 推送、App B 发 `osstack/verify`；首轮 PR 标记；`mission status --json` 链字段 | cloud agent | 沙箱 PR 作者为 App A；check 的 `head_sha` 与账本一致 |
-| S4 影子对账器 | 链表与意图日志迁移；对账器只读运行，记录会做的动作；录制回放语料；TLA+ 与属性测试 | cloud agent | 回放无异常；模型检查与属性测试通过 |
-| S5 同 PR 修订 | **前置：W13 已合并。** 预留、子 Mission 工作区、`publishRevision`、`grant-revisions`、崩溃恢复 | cloud agent；先出实现细节并审计 | §10.3 除 W14 级验收外全部通过；沙箱两轮修订 + 第 3 次转人 |
+| S4 影子对账器（暂缓） | 链表与意图日志迁移；对账器只读运行，记录会做的动作；录制回放语料；TLA+ 与属性测试 | cloud agent | 回放无异常；模型检查与属性测试通过 |
+| S5 同 PR 修订（暂缓） | **前置：W13 已合并。** 预留、子 Mission 工作区、`publishRevision`、`grant-revisions`、崩溃恢复 | cloud agent；先出实现细节并审计 | §10.3 除 W14 级验收外全部通过；沙箱两轮修订 + 第 3 次转人 |
 | S6 Grok Bots 适配 | Watcher 改为 App C，对所有 PR 发 `grok/verify-osstack`，`main` ruleset 加入该必需检查；Reviewer 改为 App D | Grok Bots 运营者 + 人改 ruleset | 沙箱与主仓库上该检查由 App C 产生；若 S2 显示 App review 不计入批准或不能解决线程，则批准与解决由人完成并写入 runbook |
-| S7 主仓库上线 | `OSSTACK_BRIDGE=1`，先只对单个 scope；runbook 合并 | 人 | 连续 5 条链无异常；§6 指标可读 |
+| S7 主仓库上线（暂缓） | `OSSTACK_BRIDGE=1`，先只对单个 scope；runbook 合并 | 人 | 连续 5 条链无异常；§6 指标可读 |
 | 推迟 | 出站 webhook；bot 合并；合并队列；签名证据 | — | 有真实需求再做 |
 
 **运行手册（S7 前合并）要点：** 关闭开关 `OSSTACK_BRIDGE=0` 只停止新的预留与派发，在途子 Mission 走现有取消路径，`pending` 意图仍在下次启动时对账；吊销 App A 安装可立即阻止推送；`awaiting_decision` 每种原因的处理步骤。
@@ -473,3 +536,11 @@ awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ r
 | 新 P1 现有 `delivering` 重试路径会按新本地分支另开 PR | §8.7 第 6 点：规格带 `publish_target`，runner 每次发布尝试都分派到 `publishRevision`，`ports.publish` 拒绝修订规格；§8.8 runner 行补充 |
 
 第 3 轮之后未再审计；S5 开始前，实现细节设计需再做一次独立审计。
+
+**范围调整（v3 之后）：** 按用户决定，首期只落地零代码部分（Mission PR 识别与事件约定），修订链暂缓。新增“首期落地范围”一节，相关小节和阶段标为暂缓；修订链的设计内容未改。
+
+范围调整后的审计（Codex CLI gpt-6-astra，medium，只读）：3 个 P2、1 个 P3。
+- P2：首行正则多了一个反斜杠。核对后不成立：文件中是单个反斜杠，未改。
+- P2：事件约定缺少 base 绑定与时效。已在 B 中补上 base SHA 绑定和 24 小时时效，并写明首期摘要只作参考，内循环不消费。
+- P2：人工计数不是契约要求的计数器。已写明原子计数随修订链暂缓，`repair_cycles` 不能代替，首期改为 C 第 5 条的人工轮次记录。
+- P3：首期生效依赖 §12 的全部决定。已把登记名单拆成单独的 S0a，不依赖其他决定。
