@@ -1115,6 +1115,14 @@ describe("contract PR-only publication", () => {
       expect(commandStrings(r).some(c => c.startsWith("git push"))).toBe(false);
     }
   });
+  it("does not adopt an existing PR on the same branch whose base or head branch differs", async () => {
+    for (const identity of [{ baseRefName: "release" }, { headRefName: "osstack/other" }]) {
+      const r = runner(call => call.args.includes("headRefOid,baseRefName,headRefName")
+        ? result(JSON.stringify({ headRefOid: HEAD_SHA, baseRefName: "main", headRefName: "osstack/task-123", ...identity })) : undefined);
+      await expect(openPullRequestToGitHub(input(), scope, r)).rejects.toThrow("candidate PR scope binding mismatched");
+      expect(commandStrings(r).some(c => c.startsWith("gh pr create") || c.includes("pr merge"))).toBe(false);
+    }
+  });
   it("does not claim draft publication when an existing PR is ready", async () => {
     const r = runner(); await expect(openPullRequestToGitHub(input(), { ...scope, draft: true }, r)).rejects.toThrow("draft scope mismatch");
     expect(commandStrings(r).some(c => c.includes("pr merge"))).toBe(false);

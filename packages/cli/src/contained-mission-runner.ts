@@ -24,7 +24,9 @@ export interface ContainedMissionPorts {
   qualify: (worktree: string, gitDir: string) => Promise<CodexQualification>;
   execute: (input: { worktree: string; prompt: string; signal: AbortSignal; onLaunched: (launch: { pid: number; pgid: number; started_at: number }) => void }) => Promise<CodexProxyRun>;
   readFile: (worktree: string, path: string) => Promise<string | null>;
-  commit: (input: { worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string }) => Promise<{ head: string; tree: string }>;
+  commit: (input: { worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string;
+    /** Must run before every worktree write and the ref update; it throws once this owner or Mission revision is no longer current. */
+    fence: () => void }) => Promise<{ head: string; tree: string }>;
   /** Unified diff from `startCommit` to the tree that `files` would produce on `expectedHead`, without touching the worktree. */
   cumulativeDiff: (input: { worktree: string; startCommit: string; expectedHead: string; files: ReadonlyArray<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }> }) => Promise<string>;
   /** Re-materialize `expectedHead` into the worktree, drop untracked files and any unrecorded commit on the branch. */
@@ -278,8 +280,14 @@ export class ContainedMissionRunner {
       const before = fenced(); if (before) return settle(before);
       let commit: { head: string; tree: string };
       try {
-        commit = await this.ports.commit({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head!, files, message: `contained mission ${m.mission_id} ${operationId}` });
-      } catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'needs_reconciliation', `commit_failed:${code(error)}`, { operation_id: operationId }); }
+        commit = await this.ports.commit({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head!, files, message: `contained mission ${m.mission_id} ${operationId}`,
+          fence: () => this.assertWriter(m, controller.signal) });
+      } catch (error) {
+        // A cancel that tripped the write fence is settled as a cancel; the branch was never moved.
+        const now = this.ports.store.get(m.mission_id);
+        if (now.state === 'cancel_requested') return settle(now);
+        return this.halt(now, 'needs_reconciliation', `commit_failed:${code(error)}`, { operation_id: operationId });
+      }
       // A cancel that arrived during the commit leaves the commit on the preserved branch, never delivered.
       const after = fenced(); if (after) { this.ports.store.record(m.mission_id, 'commit_after_cancel', { operation_id: operationId, head: commit.head }, this.ports.now()); return settle(after); }
       return this.commitCandidate(m, operationId, patch, commit, tier, totals);
@@ -324,6 +332,12 @@ export class ContainedMissionRunner {
     try { next = this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'executing', event: { kind: 'repair_started', payload: {} } }, this.ports.now()); }
     catch (error) { if (code(error) === 'repair_cycles_exhausted') return this.halt(m, 'awaiting_decision', 'repair_cycles_exhausted'); throw error; }
     return this.runExecutor(next, spec, this.lastFailurePrompt(next));
+  }
+
+  /** A host write may proceed only while this daemon still owns the ledger and the Mission has not moved on. */
+  private assertWriter(m: ContainedMission, signal: AbortSignal): void {
+    this.ports.store.attention.assertOwner(this.ports.store.owner);
+    if (signal.aborted || this.ports.store.get(m.mission_id).revision !== m.revision) throw Error('CONTAINED_WRITE_FENCE');
   }
 
   private classify(spec: ContainedMissionSpec, text: string) {

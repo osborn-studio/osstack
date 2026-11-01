@@ -299,6 +299,13 @@ v3 §2 的交付证据：仓库与 PR 编号、head 与 base SHA、证据 schema
 - **取消：** `cancel_requested` → 停止并取得证据 → 保全 worktree 与分支 → `cancelled`；取不到证据则 `stop_unknown`。
 - owner generation 变化时，旧 generation 的进程内许可全部失效；新 owner 只能从账本恢复。
 
+**实现说明（M8）：** 演练见 `packages/cli/src/contained-mission-recovery.test.ts`：两个守护进程共用一个账本，第二个在第一个执行步骤中途 `claimOwner` 接管，第一个继续以“僵尸 owner”运行。演练覆盖执行器回合、受限验证、写入准备阶段、提交过程中（文件写入之后、`update-ref` 之前）、首次推送前、推送与创建 PR 之间各一次接管，以及当前 owner 自己的在途步骤不受 `recover()` 影响。结论与边界：
+- 旧 owner 的每一次账本写入都被 owner 栅栏拒绝（`stale_owner`），因此它的执行器输出、验证回执、`t0_intent`、`remote_mutation` 与 `delivery_evidence` 都不会落账。
+- 主机提交带写入栅栏：`commitPlumbing` 在每个 worktree 写入与 `update-ref` 之前调用 `fence`，运行器的栅栏同时核对 owner 与 Mission revision，任一失效即中止且分支不动；取消在提交途中触发栅栏时按取消结算（`cancelled`），不进入 `needs_reconciliation`。栅栏只是纵深防御：已经通过栅栏的那一次写入（`safeWriteFile` 的临时文件与改名、最后的 `update-ref`）不会被撤回，可能在接管之后完成，恢复也不等待旧写入者。进程锁（`acquireDaemonLock` 先于 `claimOwner`）保证同一时刻只有一个守护进程，但**不**保证只有一个写入者：主机 git 在独立进程组中运行，守护进程崩溃时已派生的 git 子进程（如 `update-ref`）可能存活，新 owner 的恢复只检查执行器与容器的停止证据，不检查这类子进程。残余风险：孤儿 git 子进程在新 owner 丢弃改动之后仍可能更新分支（`update-ref` 旧值仍匹配时）。这一窗口很短（崩溃恰好落在 git 子进程运行期间，且新 owner 在其结束前完成恢复与决定），未在 M8 中关闭；关闭它需要恢复前确认主机 git 子进程已退出（例如把主机 git 的 pgid 也记入启动日志），列为后续工作。
+- 远端变更：每次 `git push` 与 `gh pr create` 之前的栅栏写入受 owner 栅栏约束，在过期 owner 下执行的栅栏回调会被拒绝，因此其后的那条命令不会发出。回调在接管之前已经通过的命令仍可能在接管之后启动或完成，账本不会撤销它；这种结果由新 owner 的幂等重试（同一 head、复用同一 PR）吸收，证据只由新 owner 记录一次。
+- 与 §9 的偏差一：孤儿 `delivering` 不另做远端查找，而是留给下一次 tick 的有界幂等重试；重试经由 `openPullRequestToGitHub` 复用同分支 PR 时，PR 的 head SHA、base 与 head 分支必须与许可一致，草稿状态必须与规格一致，任一不符即拒绝（`delivery.test.ts` 补了 base 与分支不符的用例），因此不会凭分支名补记证据。
+- 与 §9 的偏差二：未实现带 `fsync` 的启动器日志。没有 `executor_started` 的孤儿回合改为要求“没有任何进程的命令行包含该 worktree”（Codex 总以 `-C <worktree>` 启动）才记 `never_launched`；`ps` 不可读或仍有进程时进入 `stop_unknown`。
+
 ## 10. 与已有部件的关系
 
 - 现有 adopted Mission、`EngineeringStore` 与会话派发路径不改动。contained 路径有自己的 store 类与 RPC（`mission.*`），共享 `EngineeringHost` 的宿主与 tick，以及 Attention 的决定与投递。
