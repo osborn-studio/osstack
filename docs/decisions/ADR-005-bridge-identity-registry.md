@@ -1,6 +1,6 @@
 # ADR-005: identity registry for the osstack × Grok Bots first phase
 
-- Status: Proposed (draft; the repository owner fills in every `FILL` cell, then sets Accepted)
+- Status: Accepted (2026-11-01; answers given by the repository owner in conversation)
 - Date: 2026-11-01
 - Decision owner: repository owner
 - Scope: which GitHub identities the first-phase bridge conventions recognize
@@ -31,12 +31,29 @@ All seven are ordinary user accounts; the repository has no GitHub App identitie
 
 Each role lists the accounts whose actions the first-phase conventions recognize. An account not listed for a role is ignored for that role.
 
-| Role | What the conventions use it for | Login | Numeric id | Operated by (person / bot) |
+| Role | What the conventions use it for | Login | Numeric id | Operated by |
 |---|---|---|---|---|
-| osstack publisher | A PR counts as a Mission PR only if this account authored it (design A.1) | `gilosbornhello` (FILL: confirm) | 269190136 | FILL |
-| Reviewer | Its `CHANGES_REQUESTED` and `APPROVED` reviews feed the human summary (design B) | FILL | FILL | FILL |
-| Watcher | Its verify-osstack conclusions on the current head and base feed the human summary (design B) | FILL | FILL | FILL |
-| Human merger | Merges `main` after GitHub shows the PR as mergeable | FILL | FILL | person |
+| osstack publisher | A PR counts as a Mission PR only if this account authored it (design A.1) | `gilosbornhello` | 269190136 | person |
+| Reviewer | Its `CHANGES_REQUESTED` and `APPROVED` reviews feed the human summary (design B) | `gilberthello` | 160148718 | person |
+| Reviewer | 〃 | `Rubebun-Jadeem` | 243772068 | person |
+| Reviewer | 〃 | `maomaobdm` | 317464155 | person |
+| Reviewer | 〃 | `hyfwin` | 2900559 | person |
+| Reviewer | 〃 | `wsorange` | 127640032 | person |
+| Reviewer | 〃 | `linxinlan1980` | 292102352 | person |
+| Watcher | Posts verify-osstack conclusions **as reviews** on the current head and base (design B) | `gilberthello` | 160148718 | person |
+| Watcher | 〃 | `Rubebun-Jadeem` | 243772068 | person |
+| Watcher | 〃 | `maomaobdm` | 317464155 | person |
+| Watcher | 〃 | `hyfwin` | 2900559 | person |
+| Watcher | 〃 | `wsorange` | 127640032 | person |
+| Watcher | 〃 | `linxinlan1980` | 292102352 | person |
+| Human merger | Merges `main` after GitHub shows the PR as mergeable | `gilberthello` | 160148718 | person |
+| Human merger | 〃 | `Rubebun-Jadeem` | 243772068 | person |
+
+Notes on these assignments:
+
+- The owner's per-account answers also named `maomaobdm`, `hyfwin`, `wsorange` and `linxinlan1980` as human mergers, while the direct question on mergers named only `gilberthello` and `Rubebun-Jadeem`. The owner confirmed the shorter list.
+- Reviewer and Watcher hold the same accounts, and Watcher conclusions are reviews, so the identity alone does not tell a verification result from a review. A routine treats every registered review on the current head and base as a conclusion; telling the two apart is the routine's job, not the registry's.
+- `linxinlan1980` currently has read permission. Its reviews can still be read as advisory conclusions, but GitHub does not count them toward the required approval, and it cannot merge.
 
 A role may have several rows; add one row per account.
 
@@ -44,8 +61,9 @@ A role may have several rows; add one row per account.
 
 | Producer | Check names | GitHub App id | Counts toward “all checks passed” |
 |---|---|---|---|
-| GitHub Actions (`github-actions`) | `check`, `graph-macos-fixtures (*)`, `graph-runtime-matrix (*)` (observed on `main` at `d19b7fae`) | 15368 | FILL: yes / no, and which names |
-| Watcher, if it publishes check runs | FILL | FILL | FILL |
+| GitHub Actions (`github-actions`) | `check`, `graph-macos-fixtures (*)`, `graph-runtime-matrix (*)` (observed on `main` at `d19b7fae`) | 15368 | yes, all three; `Paid DeepSeek semantic smoke` (usually skipped) does not count |
+
+The Watcher publishes no check runs; its conclusions are reviews.
 
 **Identity field per event.** Routines compare these numeric fields with the tables:
 
@@ -53,7 +71,7 @@ A role may have several rows; add one row per account.
 |---|---|---|
 | `pull_request` | `pull_request.user.id` | osstack publisher |
 | `pull_request_review` | `review.user.id` | Reviewer |
-| Watcher conclusion posted as a review | `review.user.id` | Watcher |
+| Watcher conclusion (a review) | `review.user.id` | Watcher |
 | `check_run`, `check_suite` | `check_run.app.id`, `check_suite.app.id` | check producers |
 | Any event, to skip self-triggered ones (design B) | `sender.id` | the routine's own account |
 
@@ -65,17 +83,17 @@ Rules:
 
 ### 2. Every collaborator
 
-Every account in the observed facts must have a row here before this ADR is Accepted, including the ones that also appear in §1.
+Every observed account has a row here, including the ones that also appear in §1.
 
 | Login | Numeric id | Operated by (person / bot) | Roles from §1, or “none” | Keep current repository role? |
 |---|---|---|---|---|
-| `gilosbornhello` | 269190136 | FILL | FILL | FILL |
-| `gilberthello` | 160148718 | FILL | FILL | FILL |
-| `Rubebun-Jadeem` | 243772068 | FILL | FILL | FILL |
-| `maomaobdm` | 317464155 | FILL | FILL | FILL |
-| `hyfwin` | 2900559 | FILL | FILL | FILL |
-| `wsorange` | 127640032 | FILL | FILL | FILL |
-| `linxinlan1980` | 292102352 | FILL | FILL | FILL |
+| `gilosbornhello` | 269190136 | person | osstack publisher | yes, admin (owner of the osborn-studio organization) |
+| `gilberthello` | 160148718 | person | Reviewer, Watcher, Human merger | yes, admin (owner of the osborn-studio organization) |
+| `Rubebun-Jadeem` | 243772068 | person | Reviewer, Watcher, Human merger | at least maintain (currently admin) |
+| `maomaobdm` | 317464155 | person | Reviewer, Watcher | at least maintain (currently maintain) |
+| `hyfwin` | 2900559 | person | Reviewer, Watcher | yes, admin (owner of the osborn-studio organization) |
+| `wsorange` | 127640032 | person | Reviewer, Watcher | at least maintain (currently admin) |
+| `linxinlan1980` | 292102352 | person | Reviewer, Watcher | at least maintain (currently read; raising it is a separate change) |
 
 Repository role changes are not part of the first phase; record the intent here and make the change separately.
 
