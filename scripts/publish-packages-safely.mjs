@@ -151,8 +151,44 @@ export function npmPublishArgs(item, distTag) {
   ];
 }
 
+// RELEASING.md tells an operator to run `--plan` before a manual fallback publish.
+// The flag prints this same order and the same pnpm arguments. It does not
+// contact the registry and it does not publish.
+export function publishCliMode(argv) {
+  const args = argv.slice(2);
+  if (args.length === 0) return "publish";
+  if (args.length === 1 && args[0] === "--plan") return "plan";
+  throw new Error(`unknown arguments: ${args.join(" ")}. Use --plan to print the publish order without publishing.`);
+}
+
+export function publishPlanPayload(packages, distTag) {
+  return {
+    ok: true,
+    kind: "safe-sequential-npm-publish-plan",
+    dist_tag: distTag,
+    registry,
+    public_packages: packages.length,
+    plan: buildTopologicalPublishPlan(packages).map((item, index) => ({
+      order: index + 1,
+      name: item.name,
+      version: item.version,
+      directory: item.directory,
+      access: item.access,
+      internalDependencies: item.internalDependencies,
+      publish_argv: npmPublishArgs(item, distTag),
+    })),
+    invariant: "internal dependencies exist before dependents publish",
+  };
+}
+
 async function main() {
+  const mode = publishCliMode(process.argv);
   const packages = await publicWorkspacePackages();
+  if (mode === "plan") {
+    console.log(JSON.stringify(publishPlanPayload(packages, releaseDistTag(packages)), null, 2));
+    return;
+  }
+
   const publishedVersions = await registryPublishedVersions(packages);
   const distTag = releaseDistTag(packages);
   const result = await publishPackagesSequentially(packages, {
