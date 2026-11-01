@@ -189,7 +189,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       const modes = await headModes(git(input.worktree), input.expectedHead, input.files.map(f => f.path));
       // Keep each file's committed mode; cumulativeDiff assumes the same, so what was classified is what is committed.
       const files = input.files.map(f => f.action === 'delete' ? f : { ...f, executable: modes.get(f.path) === '100755' });
-      return commitPlumbing({ worktree: input.worktree, branch: input.branch, expectedHead: input.expectedHead, files, message: input.message, author, expectedConfigDigest, git: ctx });
+      return commitPlumbing({ worktree: input.worktree, branch: input.branch, expectedHead: input.expectedHead, files, message: input.message, author, expectedConfigDigest, git: ctx, fence: input.fence });
     },
     cumulativeDiff: async input => {
       assertSha(input.startCommit); assertSha(input.expectedHead);

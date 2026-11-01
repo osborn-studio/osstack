@@ -116,16 +116,21 @@ describe("contained Mission ports: files and commits", () => {
     const m = f.authorize();
     const ws = await f.ports.createWorkspace(f.spec, signal());
     // Without a recorded workspace the commit has no digest to check and is refused.
-    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m" })).rejects.toThrow("CONTAINED_WORKSPACE_UNRECORDED");
+    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m", fence: () => {} })).rejects.toThrow("CONTAINED_WORKSPACE_UNRECORDED");
     f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
-    const commit = await f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained",
-      files: [{ path: "src/a.txt", action: "write", content: "hello\n" }, { path: "src/b.txt", action: "delete" }, { path: "bin/run.sh", action: "write", content: "#!/bin/sh\necho ok\n" }] });
+    const files = [{ path: "src/a.txt", action: "write" as const, content: "hello\n" }, { path: "src/b.txt", action: "delete" as const }, { path: "bin/run.sh", action: "write" as const, content: "#!/bin/sh\necho ok\n" }];
+    // The fence runs before each file and before the ref update; refusing at the last one leaves the branch where it was.
+    let fences = 0;
+    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained", files,
+      fence: () => { if (++fences === files.length + 1) throw new Error("stale_owner"); } })).rejects.toThrow("stale_owner");
+    expect(sh(f.repo, "rev-parse", `refs/heads/${f.spec.branch}`)).toBe(f.start);
+    const commit = await f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained", files, fence: () => {} });
     expect(sh(f.repo, "rev-parse", `refs/heads/${f.spec.branch}`)).toBe(commit.head);
     expect(sh(f.repo, "show", `${commit.head}:src/a.txt`)).toBe("hello");
     expect(sh(f.repo, "ls-tree", "--name-only", "-r", commit.head)).not.toContain("src/b.txt");
     expect(sh(f.repo, "ls-tree", commit.head, "bin/run.sh")).toMatch(/^100755 /);
     sh(f.repo, "config", "core.sshCommand", "evil");
-    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: commit.head, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m" })).rejects.toThrow("REPO_CONFIG_CHANGED");
+    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: commit.head, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m", fence: () => {} })).rejects.toThrow("REPO_CONFIG_CHANGED");
   });
 });
 

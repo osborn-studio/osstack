@@ -79,6 +79,8 @@ export interface CommitPlumbingOptions {
   committer?: PlumbingCommitAuthor;
   expectedConfigDigest?: string;
   git?: HardenedGitContext;
+  /** Called before each worktree write and before the ref update; throwing aborts the commit with the ref unchanged. */
+  fence?: () => void;
 }
 export interface PlumbingCommitResult {
   head: string;
@@ -276,10 +278,12 @@ export async function commitPlumbing(options: CommitPlumbingOptions): Promise<Pl
             throw error;
           },
         );
+        options.fence?.();
         if (present) await safeRemoveFile(worktree, file.path);
         await run(["update-index", "--force-remove", "--", file.path], withIndex);
         continue;
       }
+      options.fence?.();
       if (file.content !== undefined) await safeWriteFile(worktree, file.path, file.content, file.executable ? 0o755 : 0o644);
       const read = await safeReadFile(worktree, file.path);
       const executable = file.content !== undefined ? file.executable === true : read.executable;
@@ -297,6 +301,7 @@ export async function commitPlumbing(options: CommitPlumbingOptions): Promise<Pl
       }),
     );
     assertCommitId(head, head);
+    options.fence?.();
     try {
       await run(["update-ref", "-m", "osstack: plumbing commit", ref, head, expectedHead]);
     } catch (error) {
