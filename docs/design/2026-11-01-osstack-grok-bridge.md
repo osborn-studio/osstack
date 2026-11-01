@@ -162,7 +162,7 @@
 
 #### D. 登记名单
 
-登记名单写进一份单独的 ADR（S0a，不必等 §12 的其他决定），包括：osstack 发布身份（GitHub 数字 id），以及会被计入的评审者、Watcher 身份（数字 id）。Grok Bots 的 routine 按名单配置 allowlist。名单变化通过 PR 修改 ADR。
+登记名单写进一份单独的 ADR（S0a，不必等 §12 的其他决定；见 [ADR-005](../decisions/ADR-005-bridge-identity-registry.md)），包括：osstack 发布身份（GitHub 数字 id），以及会被计入的评审者、Watcher 身份（数字 id）。Grok Bots 的 routine 按名单配置 allowlist。名单变化通过 PR 修改 ADR。
 
 #### E. 首期验收
 
