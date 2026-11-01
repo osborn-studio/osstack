@@ -1,5 +1,34 @@
 # @osstack/conformance
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies [95534c7]
+- Updated dependencies [12de1f7]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [1e6eeb9]
+- Updated dependencies [ca24452]
+- Updated dependencies [3a5d523]
+- Updated dependencies [5b3400e]
+- Updated dependencies [0d9dca7]
+- Updated dependencies [6a3e760]
+- Updated dependencies [b103f62]
+- Updated dependencies [e6d316e]
+- Updated dependencies [c310d51]
+- Updated dependencies [f740da8]
+- Updated dependencies [d26c920]
+- Updated dependencies [41a1b0a]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+- Updated dependencies [e93d640]
+  - @osstack/core@0.23.0
+  - @osstack/agents@0.23.0
+  - @osstack/governance@0.23.0
+  - @osstack/loop@0.23.0
+  - @osstack/hermes-adapter@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

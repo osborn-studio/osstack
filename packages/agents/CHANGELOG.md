@@ -1,5 +1,46 @@
 # @osstack/agents
 
+## 0.23.0
+
+### Minor Changes
+
+- ca24452: Add `CodexProxyExecutor` for contained Missions. It runs Codex read-only with user config and rules ignored, in an isolated HOME and CODEX_HOME that hold only a copied login, and reads the proposed patch losslessly through `-o`. Codex runs in its own process group with stop evidence, and a host-run qualification probe checks that the sandbox denies writes and network for the probe and for a descendant that left its group.
+- 3a5d523: Add host-side git hardening and safe file writes for the contained Mission path (M3). `runHardenedGit` runs git from an argv array with no shell, a minimal environment (PATH, HOME, LANG/LC*\*; every ambient `GIT*\*`stripped; system and global config disabled; replace objects off), a fixed`core.hooksPath`/`core.fsmonitor`/`core.attributesFile`override, bounded output, a timeout and an AbortSignal.`inspectRepoConfig`reads repository-scoped config with includes expanded, returns a canonical digest and stable rejection codes for keys that run programs or change transport;`assertRepoConfigUnchanged`re-checks the digest.`createNoCheckoutWorktree`adds a worktree with no checkout and materializes the start commit's blobs host-side (symlinks, submodules and unsafe paths rejected, exec bits kept, index refreshed so status is clean).`commitPlumbing`commits explicit paths with hash-object/update-index/write-tree/commit-tree and a compare-and-swap`update-ref`, never running filters or hooks. `safeWriteFile`/`safeRemoveFile`/`safeReadFile` refuse symlinked components, symlink and hard-link targets, and write via fsynced same-directory temp files verified by sha256. Existing Loop worktree helpers are unchanged.
+- f740da8: **Behavior change — Loop no longer lands isolated-worktree work locally by default (D7), and never loses executor-made commits (D6).**
+
+  - `osstack loop run --worktree` and `osstack deliver --worktree` used to fast-forward whatever branch the main checkout had checked out after a successful task. They now commit the verified tree on the kept `osstack/loop/...` task branch and report it (`loop.worktree.preserved`, reason `local_landing_disabled`; `worktree_commit` and `worktree_branch_preserved: true` in the completed task). Nothing in the main checkout changes, which keeps unattended/factory runs on controlled PR delivery (humans merge main).
+  - Local landing is an explicit, attended opt-in: `--land-branch <B>` (requires `--worktree`; `deliver` only with `--autonomy legacy`) or `LoopRunOptions.localLanding = { targetBranch }`. It lands only the accepted commit and is refused unless the main checkout has `<B>` checked out. Daemon-managed loops (`loop start`, `loop run --daemon`) do not offer it. A `CandidatePolicy` implies its own `branch` as the target. To keep the old behavior, add `--land-branch <current branch>`.
+  - `--govern` combined with `--worktree` now requires `--land-branch`, because legacy governance scans the main checkout and would otherwise pass without seeing the candidate.
+  - `mergeWorktree(handle, { expectedCommit, targetBranch })` now requires both options and also refuses when the accepted commit is not the single commit on top of the worktree's recorded start.
+  - `createWorktree` records `startCommit`. When the executor ran `git commit` itself, `commitWorktreeChanges` reports `executorCommitted` (with the branch tip as `commit` on a clean tree); the Loop preserves that branch (reason `executor_commits`) and refuses to land it, because review evidence was collected against the worktree HEAD. `cleanupWorktree` returns `{ branchRemoved }` and never deletes a branch whose tip is not the start commit or already contained in HEAD or another ref, including during orphan cleanup.
+  - Reports and proof packs accept the new `preserved` worktree status (a commit is required).
+  - `--goal` combined with `--worktree` (and `LoopRunOptions.goalCommand` with `useWorktree`) now requires local landing (`WORKTREE_GOAL_REQUIRES_LOCAL_LANDING`), because the goal command runs in the main checkout and would never observe work kept on the task branch. Daemon-managed `loop start --worktree --goal` sessions are refused for the same reason.
+
+### Patch Changes
+
+- 1e6eeb9: Let the Codex CLI adapter accept explicit `writableRoots` (at most eight existing, non-root, absolute directories, canonicalized) and pass each as `--add-dir` on exec and resume, allowed only with the `workspace-write` sandbox. No environment defaults are added; invalid or out-of-sandbox roots are rejected at construction.
+- 6a3e760: Contained Missions now fence the host commit itself: `commitPlumbing` accepts a `fence` callback that runs before every worktree write and before the ref update, and the Mission runner's fence refuses once the daemon no longer owns the ledger or the Mission has moved on. Restart drills cover a takeover during an executor turn, a verification, a commit, and each remote mutation.
+- e6d316e: Request all untracked files explicitly when deciding whether an isolated loop worktree has work to commit and whether a GitHub delivery candidate is clean. Repository config such as `status.showUntrackedFiles=no` no longer makes untracked-only work look clean, so it is committed instead of being discarded with the worktree, and delivery refuses instead of publishing a PR that omits it.
+- 41a1b0a: Pin isolated-worktree landing to the accepted commit. `mergeWorktree` accepts `{ expectedCommit }` (a full commit id), refuses when the task branch no longer points at it, and fast-forwards that exact object instead of the movable branch name. The loop passes the commit it made from the verified tree, so commits added to the task branch after acceptance cannot land.
+- Updated dependencies [95534c7]
+- Updated dependencies [12de1f7]
+- Updated dependencies [1372ecd]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [5b3400e]
+- Updated dependencies [0d9dca7]
+- Updated dependencies [b103f62]
+- Updated dependencies [936aced]
+- Updated dependencies [d26c920]
+- Updated dependencies [2f9d33a]
+- Updated dependencies [13bfb45]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+  - @osstack/core@0.23.0
+  - @osstack/protocol@0.23.0
+  - @osstack/governance@0.23.0
+  - @osstack/hermes-adapter@0.23.0
+
 ## 0.22.0
 
 ### Minor Changes

@@ -1,5 +1,31 @@
 # @osstack/core
 
+## 0.23.0
+
+### Minor Changes
+
+- 95534c7: Add opt-in reminders for overdue open Attention decisions (migration 48). With `OSSTACK_ATTENTION_REMINDERS=1`, supervision queues at most one reminder per pass for the oldest decision left open past `OSSTACK_ATTENTION_REMINDER_OVERDUE_SECS` (default 1800), repeating with doubling intervals capped at `OSSTACK_ATTENTION_REMINDER_BACKOFF_MAX_SECS` (default 14400). Schedules survive restarts, quiet scopes neither schedule nor reset, and resolving a decision stops its reminders. Reminders reuse the local notification drain under their own delivery IDs and grant no authority. Invalid enabled settings refuse daemon startup. Managed upgrade and the read-only Attention status view now qualify schema 48.
+- 12de1f7: Add the Attention return brief (migration 49). Postures now record when they were entered; re-asserting the current posture keeps its start. Leaving `away` for `attended` (`attention.posture` / `osstack attention posture`) returns a bounded, read-only brief for the away interval: every decision still waiting on you (oldest first, with age and reminder count, always with total and omitted counts), decisions opened and resolved while away, and first notices or reminders that dead-lettered in the interval (plus undated pre-49 dead letters). `osstack attention return-brief --scope ID --actor NAME [--since MS] [--limit N]` previews it without changing posture. Decision settlements and dead letters are recorded with their time in two new local ledgers. The brief is information only and grants no authority. Managed upgrade and the read-only Attention status view now qualify schema 49.
+- eb35fbb: Add a bounded behavior registry evaluator for caller-supplied build pins, clock, policy and trust context. It checks source membership, qualification signatures, evidence and dependencies relative to those inputs. It does not authenticate the trust context, verify the operations-root signature, persist a revocation epoch or grant execution authority. It is not wired into daemon routing.
+- 5b3400e: Add migration 50 with an additive contained-Mission ledger: Missions, append-only events and workspace claims, behind a `ContainedMissionStore` that enforces the W11 state machine, candidate binding, repair-cycle limits and stop evidence. Managed upgrade and the attention read model qualify schema 50, and in-flight contained work counts as an upgrade hold.
+- 7939a10: Add schema 47 Mission and Wait storage, atomic answer reservations, cancellation proofs, and conservative recovery. Existing attention actions remain the sole dispatch authority.
+
+### Patch Changes
+
+- 85e19da: Reject unknown behavior trust and policy fields, cache failed artifact reads and manifest parses, and normalize malformed context echoes. Preserve the frozen Behavior V1 signing format while keeping corrupt data within the evidence work budget.
+- 0d9dca7: Add the contained Mission runner. It advances one step at a time from workspace creation through qualification, a proxy executor turn, patch classification, exact host-side patch application and plumbing commit, to verification and repair cycles. Every executor channel is secret-scanned and redacted before anything is recorded, and decisions follow the W11 decision table.
+
+  Patch changes to the runner, patch applier, mission RPC and CLI now escalate to T2 in the Mission patch classifier.
+
+  The contained ledger now opens a stop obligation on entering `verifying` and requires container stop evidence before a verification result is recorded.
+
+- b5f2f93: Keep adopted Session identity faults fenced after cleared waits and source restoration. Prevent daemon drain from reporting success while execution leases remain held after asynchronous or failed cleanup.
+- Updated dependencies [1372ecd]
+- Updated dependencies [936aced]
+- Updated dependencies [2f9d33a]
+- Updated dependencies [13bfb45]
+  - @osstack/protocol@0.23.0
+
 ## 0.22.0
 
 ### Minor Changes

@@ -1,5 +1,57 @@
 # @osstack/loop
 
+## 0.23.0
+
+### Minor Changes
+
+- f740da8: **Behavior change — Loop no longer lands isolated-worktree work locally by default (D7), and never loses executor-made commits (D6).**
+
+  - `osstack loop run --worktree` and `osstack deliver --worktree` used to fast-forward whatever branch the main checkout had checked out after a successful task. They now commit the verified tree on the kept `osstack/loop/...` task branch and report it (`loop.worktree.preserved`, reason `local_landing_disabled`; `worktree_commit` and `worktree_branch_preserved: true` in the completed task). Nothing in the main checkout changes, which keeps unattended/factory runs on controlled PR delivery (humans merge main).
+  - Local landing is an explicit, attended opt-in: `--land-branch <B>` (requires `--worktree`; `deliver` only with `--autonomy legacy`) or `LoopRunOptions.localLanding = { targetBranch }`. It lands only the accepted commit and is refused unless the main checkout has `<B>` checked out. Daemon-managed loops (`loop start`, `loop run --daemon`) do not offer it. A `CandidatePolicy` implies its own `branch` as the target. To keep the old behavior, add `--land-branch <current branch>`.
+  - `--govern` combined with `--worktree` now requires `--land-branch`, because legacy governance scans the main checkout and would otherwise pass without seeing the candidate.
+  - `mergeWorktree(handle, { expectedCommit, targetBranch })` now requires both options and also refuses when the accepted commit is not the single commit on top of the worktree's recorded start.
+  - `createWorktree` records `startCommit`. When the executor ran `git commit` itself, `commitWorktreeChanges` reports `executorCommitted` (with the branch tip as `commit` on a clean tree); the Loop preserves that branch (reason `executor_commits`) and refuses to land it, because review evidence was collected against the worktree HEAD. `cleanupWorktree` returns `{ branchRemoved }` and never deletes a branch whose tip is not the start commit or already contained in HEAD or another ref, including during orphan cleanup.
+  - Reports and proof packs accept the new `preserved` worktree status (a commit is required).
+  - `--goal` combined with `--worktree` (and `LoopRunOptions.goalCommand` with `useWorktree`) now requires local landing (`WORKTREE_GOAL_REQUIRES_LOCAL_LANDING`), because the goal command runs in the main checkout and would never observe work kept on the task branch. Daemon-managed `loop start --worktree --goal` sessions are refused for the same reason.
+
+### Patch Changes
+
+- c310d51: Preserve exact file paths in Git diff discovery so long paths resolve to the changed file. Keep line-count priorities and skip binary records.
+- 41a1b0a: Pin isolated-worktree landing to the accepted commit. `mergeWorktree` accepts `{ expectedCommit }` (a full commit id), refuses when the task branch no longer points at it, and fast-forwards that exact object instead of the movable branch name. The loop passes the commit it made from the verified tree, so commits added to the task branch after acceptance cannot land.
+- e93d640: Keep an isolated loop worktree when Git cannot commit its verified changes. A Git error while staging or committing is now treated as an unavailable proof rather than "no changes": the run still fails, but cleanup no longer force-removes the only copy of the verified work.
+- Updated dependencies [95534c7]
+- Updated dependencies [12de1f7]
+- Updated dependencies [1372ecd]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [9d54cfd]
+- Updated dependencies [540cd7a]
+- Updated dependencies [1e6eeb9]
+- Updated dependencies [ca24452]
+- Updated dependencies [d5eea3e]
+- Updated dependencies [3a5d523]
+- Updated dependencies [5b3400e]
+- Updated dependencies [0d9dca7]
+- Updated dependencies [6a3e760]
+- Updated dependencies [b103f62]
+- Updated dependencies [e6d316e]
+- Updated dependencies [936aced]
+- Updated dependencies [bda3942]
+- Updated dependencies [f740da8]
+- Updated dependencies [d26c920]
+- Updated dependencies [41a1b0a]
+- Updated dependencies [2f9d33a]
+- Updated dependencies [13bfb45]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+  - @osstack/core@0.23.0
+  - @osstack/protocol@0.23.0
+  - @osstack/github@0.23.0
+  - @osstack/agents@0.23.0
+  - @osstack/governance@0.23.0
+  - @osstack/autonomy@0.23.0
+  - @osstack/hermes-adapter@0.23.0
+
 ## 0.22.0
 
 ### Minor Changes

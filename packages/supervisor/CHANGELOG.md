@@ -1,5 +1,27 @@
 # @osstack/supervisor
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies [95534c7]
+- Updated dependencies [12de1f7]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [5b3400e]
+- Updated dependencies [0d9dca7]
+- Updated dependencies [b103f62]
+- Updated dependencies [c310d51]
+- Updated dependencies [f740da8]
+- Updated dependencies [d26c920]
+- Updated dependencies [41a1b0a]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+- Updated dependencies [e93d640]
+  - @osstack/core@0.23.0
+  - @osstack/governance@0.23.0
+  - @osstack/loop@0.23.0
+
 ## 0.22.0
 
 ### Minor Changes
