@@ -28,8 +28,10 @@
 | W8 | D1：迁移机械部分派生（期望表由迁移 SQL 推导、worker 模块清单共享辅助、版本断言引用常量；两个限定区间保持独立） | S-A | `upgrade-native-port.ts`、graph worker 测试、`db.ts` | W3 | 待做 |
 | W9 | L1a：通用合同（`SourcePin`、`SourceSnapshot`、规范摘要）迁出 `protocol/joint`，迁移消费者 | **S-M** | `packages/protocol`、`packages/skill-registry` | W4 | 待做 |
 | W10 | L1b：移除 pstack 方法包及其构建/CI 消费者；保留 `execution-context` | **S-M** | `packages/cli/src/method-context*`、`tsup.config.ts`、`osstack-methods-skill/`、相关 `scripts/` 与 CI 步骤 | W9 | 待做 |
-| W11 | 设计：受限单执行器 Mission 路径（S2 核心，T0/T1 写入代理或强制沙箱、受限验证） | **S-M** | `docs/design/2026-10-31-contained-mission-path.md` | W4、W8 | 已合并（#341）；实施分 M0–M8 |
+| W11 | 设计：受限单执行器 Mission 路径（S2 核心，T0/T1 写入代理或强制沙箱、受限验证） | **S-M** | `docs/design/2026-10-31-contained-mission-path.md` | W4、W8 | 设计已合并（#341）；M0–M8 已全部合并（最后两项为 #353 M7、#354 M8）；后续工作见 W13、W14 |
 | W12 | 分支治理第二轮：逐个核对未合并分支，列清单交用户确认后删除；AGENTS.md 增加分支生命周期规则 | S-A | — | W1–W4 合并后 | 已合并（#339）；A、B、C 三组已按用户确认删除；规则见 AGENTS.md |
+| W13 | Mission 残余风险：主机 git 子进程（如 `update-ref`）在守护进程崩溃后可能存活，恢复不等待它，新 owner 丢弃改动后它仍可能移动分支（见设计 §9 实现说明 M8）。主机 git 的 pgid 记入账本或启动日志；`recover()` 在结算 `executing` 与 `needs_reconciliation` 前确认这些进程组已空，否则 `stop_unknown`。验收：恢复演练中一个持有的 git 子进程使 Mission 停在 `stop_unknown`，进程退出后才可结算 | **S-M** | `packages/agents/src/contained-workspace/hardened-git.ts`、`plumbing.ts`、`packages/cli/src/contained-mission-host.ts`、`contained-mission-recovery.test.ts` | W11 | 待做 |
+| W14 | 受限验证的受信任依赖布局（设计 §7.3 方案 B）：按 `pnpm-lock.yaml` 摘要在 Mission 之外预先构建基础镜像（固定位置的依赖树）与主机自带的引导步骤，把候选目录与依赖树连接；镜像 ID、锁文件摘要与引导步骤摘要记入验证绑定。验收（§12“依赖”）：一个真实的 `pnpm --filter <包> test` 在无网络容器、不放宽现有限制的情况下通过 | **S-M** | `packages/agents/src/contained-image.ts`、`packages/cli/src/contained-verification.ts`、基础镜像构建脚本 | W11 | 待做；首次真实端到端演练前可先用不需要依赖的验证命令（方案 A） |
 
 ## 合并顺序（用户执行）
 
