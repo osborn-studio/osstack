@@ -1,5 +1,21 @@
 # @osstack/governance
 
+## 0.23.0
+
+### Minor Changes
+
+- b103f62: Add the contained Mission patch classifier as pure functions: `classifyMissionPatch` parses a bounded unified diff and returns `rejected`, `T2`, `T1` or `T0` with stable, ordered reason codes, using a digested protected set and cumulative caps that a spec may only tighten. `scanForSecrets` and `redactSecrets` scan and redact any executor output channel (patch, final message, stdout, stderr) without ever returning the secret value.
+
+### Patch Changes
+
+- 0d9dca7: Add the contained Mission runner. It advances one step at a time from workspace creation through qualification, a proxy executor turn, patch classification, exact host-side patch application and plumbing commit, to verification and repair cycles. Every executor channel is secret-scanned and redacted before anything is recorded, and decisions follow the W11 decision table.
+
+  Patch changes to the runner, patch applier, mission RPC and CLI now escalate to T2 in the Mission patch classifier.
+
+  The contained ledger now opens a stop obligation on entering `verifying` and requires container stop evidence before a verification result is recorded.
+
+- d26c920: Protect the contained Mission path's own code in the Mission patch classifier. Changes to the shared contained verification, the verification image build, host workspace writes, the Codex proxy executor, the contained ledger and the upgrade holds now escalate to T2.
+
 ## 0.20.0
 
 ### Patch Changes

@@ -1,5 +1,19 @@
 # @osstack/hermes-adapter
 
+## 0.23.0
+
+### Patch Changes
+
+- Updated dependencies [95534c7]
+- Updated dependencies [12de1f7]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [5b3400e]
+- Updated dependencies [0d9dca7]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+  - @osstack/core@0.23.0
+
 ## 0.22.0
 
 ### Patch Changes

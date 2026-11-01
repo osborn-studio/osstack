@@ -1,5 +1,18 @@
 # @osstack/github
 
+## 0.23.0
+
+### Minor Changes
+
+- 9d54cfd: Add a bounded read-only pull request candidate snapshot API with head/base checks, paginated check and review observations, and explicit incomplete-state reporting. The snapshot never authorizes or performs a merge.
+- 540cd7a: Add a bounded one-time report for one to three explicitly ordered PR candidates. Retain each candidate's observations, unknowns and raw evidence; only pass a stable observed merged prefix when selecting the unresolved frontier. Branch relations are observations rather than ancestry proof, and reports never authorize merge.
+
+### Patch Changes
+
+- d5eea3e: Prevent PR stack ingestion from treating anomalous CheckRun outcomes as successful. Classify ACTION_REQUIRED, STALE and STARTUP_FAILURE as failures, and require explicit COMPLETED status with SUCCESS, NEUTRAL or SKIPPED to report success. Missing, unknown and waiting states are reported as pending; preserve existing StatusContext handling and failure precedence.
+- e6d316e: Request all untracked files explicitly when deciding whether an isolated loop worktree has work to commit and whether a GitHub delivery candidate is clean. Repository config such as `status.showUntrackedFiles=no` no longer makes untracked-only work look clean, so it is committed instead of being discarded with the worktree, and delivery refuses instead of publishing a PR that omits it.
+- bda3942: Preserve legacy GitHub StatusContext success and failure outcomes during PR stack ingestion instead of reporting them as pending. Keep existing CheckRun aggregation and conservative handling of missing or unknown context states.
+
 ## 0.22.0
 
 ### Minor Changes

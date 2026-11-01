@@ -1,5 +1,103 @@
 # @osstack/cli
 
+## 0.23.0
+
+### Minor Changes
+
+- 95534c7: Add opt-in reminders for overdue open Attention decisions (migration 48). With `OSSTACK_ATTENTION_REMINDERS=1`, supervision queues at most one reminder per pass for the oldest decision left open past `OSSTACK_ATTENTION_REMINDER_OVERDUE_SECS` (default 1800), repeating with doubling intervals capped at `OSSTACK_ATTENTION_REMINDER_BACKOFF_MAX_SECS` (default 14400). Schedules survive restarts, quiet scopes neither schedule nor reset, and resolving a decision stops its reminders. Reminders reuse the local notification drain under their own delivery IDs and grant no authority. Invalid enabled settings refuse daemon startup. Managed upgrade and the read-only Attention status view now qualify schema 48.
+- 12de1f7: Add the Attention return brief (migration 49). Postures now record when they were entered; re-asserting the current posture keeps its start. Leaving `away` for `attended` (`attention.posture` / `osstack attention posture`) returns a bounded, read-only brief for the away interval: every decision still waiting on you (oldest first, with age and reminder count, always with total and omitted counts), decisions opened and resolved while away, and first notices or reminders that dead-lettered in the interval (plus undated pre-49 dead letters). `osstack attention return-brief --scope ID --actor NAME [--since MS] [--limit N]` previews it without changing posture. Decision settlements and dead letters are recorded with their time in two new local ledgers. The brief is information only and grants no authority. Managed upgrade and the read-only Attention status view now qualify schema 49.
+- f740da8: **Behavior change — Loop no longer lands isolated-worktree work locally by default (D7), and never loses executor-made commits (D6).**
+
+  - `osstack loop run --worktree` and `osstack deliver --worktree` used to fast-forward whatever branch the main checkout had checked out after a successful task. They now commit the verified tree on the kept `osstack/loop/...` task branch and report it (`loop.worktree.preserved`, reason `local_landing_disabled`; `worktree_commit` and `worktree_branch_preserved: true` in the completed task). Nothing in the main checkout changes, which keeps unattended/factory runs on controlled PR delivery (humans merge main).
+  - Local landing is an explicit, attended opt-in: `--land-branch <B>` (requires `--worktree`; `deliver` only with `--autonomy legacy`) or `LoopRunOptions.localLanding = { targetBranch }`. It lands only the accepted commit and is refused unless the main checkout has `<B>` checked out. Daemon-managed loops (`loop start`, `loop run --daemon`) do not offer it. A `CandidatePolicy` implies its own `branch` as the target. To keep the old behavior, add `--land-branch <current branch>`.
+  - `--govern` combined with `--worktree` now requires `--land-branch`, because legacy governance scans the main checkout and would otherwise pass without seeing the candidate.
+  - `mergeWorktree(handle, { expectedCommit, targetBranch })` now requires both options and also refuses when the accepted commit is not the single commit on top of the worktree's recorded start.
+  - `createWorktree` records `startCommit`. When the executor ran `git commit` itself, `commitWorktreeChanges` reports `executorCommitted` (with the branch tip as `commit` on a clean tree); the Loop preserves that branch (reason `executor_commits`) and refuses to land it, because review evidence was collected against the worktree HEAD. `cleanupWorktree` returns `{ branchRemoved }` and never deletes a branch whose tip is not the start commit or already contained in HEAD or another ref, including during orphan cleanup.
+  - Reports and proof packs accept the new `preserved` worktree status (a commit is required).
+  - `--goal` combined with `--worktree` (and `LoopRunOptions.goalCommand` with `useWorktree`) now requires local landing (`WORKTREE_GOAL_REQUIRES_LOCAL_LANDING`), because the goal command runs in the main checkout and would never observe work kept on the task branch. Daemon-managed `loop start --worktree --goal` sessions are refused for the same reason.
+
+- bdab376: Expose seven engineering subcommands for adopting, observing, answering, deferring, cancelling and reconciling existing waiting Sessions.
+- a7c4b85: Add opt-in host-authenticated Session adoption RPC, first-dispatch recovery and independent stop handling. Preserve committed unknown receipts without automatic replay.
+
+### Patch Changes
+
+- 71240d3: Stop a superseded Attention supervision service as soon as it sees that a newer owner generation claimed the home. Its writes were already fenced; it now also clears its timer and aborts in-flight source reads and notification sends instead of polling until daemon shutdown, and later Attention RPCs report `stale_owner`. Write-lock contention and transient faults are not treated as a take-over.
+- d7d0068: The daemon now reports an Attention supervision service that a newer owner took over as `unavailable` (dashboard, daily, `health`) instead of `running`, and `osstack stats` gains an `attention` field with the take-over flag and the count and last message of errors a supervision pass swallowed.
+- 0e9d9d6: Add `osstack mission start|status|cancel|decide` and the daemon `mission.*` RPC for contained Missions. Both are opt-in through `OSSTACK_CONTAINED_MISSIONS=1` together with the engineering host, and authenticated by the engineering authority file. The daemon recovers orphaned Missions at start and then advances them on its own tick. Nothing is merged or published.
+- bedbb18: Add the contained Mission host (W11 M6b): real ports over the hardened git runner, the Codex proxy and contained verification; a bounded `tick` that never steps one Mission twice; restart recovery for orphaned executor turns and verifications; and the `discard_changes`, `adopt_worktree` and `retry_stop_check` decisions.
+- 5b3400e: Add migration 50 with an additive contained-Mission ledger: Missions, append-only events and workspace claims, behind a `ContainedMissionStore` that enforces the W11 state machine, candidate binding, repair-cycle limits and stop evidence. Managed upgrade and the attention read model qualify schema 50, and in-flight contained work counts as an upgrade hold.
+- bef1c06: Contained Missions can now open their PR: after approval (or a pre-authorized grant in the spec), the host re-validates the verified candidate, issues a single-use publication permit, and opens the PR through a fenced delivery runner. The runner journals each push and PR creation under the owner fence, re-checks the permit before each one, disables git hooks and refuses PR-changing gh commands. Authoritative delivery evidence is recorded before `pr_opened`. Nothing is ever merged.
+- 0d9dca7: Add the contained Mission runner. It advances one step at a time from workspace creation through qualification, a proxy executor turn, patch classification, exact host-side patch application and plumbing commit, to verification and repair cycles. Every executor channel is secret-scanned and redacted before anything is recorded, and decisions follow the W11 decision table.
+
+  Patch changes to the runner, patch applier, mission RPC and CLI now escalate to T2 in the Mission patch classifier.
+
+  The contained ledger now opens a stop obligation on entering `verifying` and requires container stop evidence before a verification result is recorded.
+
+- 6a3e760: Contained Missions now fence the host commit itself: `commitPlumbing` accepts a `fence` callback that runs before every worktree write and before the ref update, and the Mission runner's fence refuses once the daemon no longer owns the ledger or the Mission has moved on. Restart drills cover a takeover during an executor turn, a verification, a commit, and each remote mutation.
+- 61463a4: Extract contained verification into an owner-neutral module (`contained-verification.ts`, M5 of the contained Mission path): Git candidate export and image build, a neutral `ContainedVerificationBinding` with canonical digest, execution registration and journal reopening, each parameterised by the owner's identity check and fence. Graph contained tests and recovery are now thin adapters with unchanged behaviour; Graph journals keep their exact bytes, and journals written before this change still reopen. Adds `missionVerificationBinding` for contained Missions and `containedCommandFromArgv`, which POSIX-quotes an argv into the single `/bin/sh -c` string the contained runner accepts. Nothing is wired into the daemon or Mission lifecycle yet.
+- a5236a5: Clear `OSSTACK_SOCKET` in the CLI test setup so an exported socket cannot point the suite at a real daemon.
+- b5f2f93: Keep adopted Session identity faults fenced after cleared waits and source restoration. Prevent daemon drain from reporting success while execution leases remain held after asynchronous or failed cleanup.
+- 0cf68ab: Respect unresolved Session dispatch phases during managed upgrade and show only proven pre-dispatch cancellation in attention views.
+- 56bd314: Preserve the committed Session send result when writer lease cleanup fails. Keep uncertain delivery errors and retained admission intact. Database-driven replay does not send the original request again; tests cover a daemon restart in the same process.
+
+  Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
+
+- 8db3abb: Preserve completed Session start responses when writer lease cleanup fails. Clear the settled active-run marker while keeping retained admission visible to drain in the current daemon instance. Database-driven replay of the original start request does not start another Session.
+
+  Retained-hold visibility across process restart is not verified. Recovery and drain visibility after process death remain pending in DEBT02. This change does not add a recovery API.
+
+  Replay is a lookup of the stored Session state. A failed initial start returns `agent_failed`; replay returns `ok: true` with `state: failed` and never repeats the adapter invocation. Callers must inspect the stored state. Terminal producer fencing remains a separate change in #279.
+
+- c5d0fc8: Reject Session start streams that end without a successful terminal event. Session send already rejected such streams; it now requires existing adapter stop confirmation before releasing their writer lease. Both paths retain admission when stop is unconfirmed. Normal completed streams still release without stop confirmation. A trusted completed terminal followed by normal iterator exhaustion establishes invocation completion even if the Session result subsequently fails validation (for example, a missing native session ID); that failed result does not retain an already completed invocation.
+
+  Replaying the original request does not invoke the adapter again. A failed Session send replays as delivery_uncertain. For Session start replay, RPC ok means that the stored snapshot was read successfully; clients must check state, which can still be failed or starting.
+
+  Tests use real local RPC and SQLite with a deterministic adapter, including daemon restart in the same process. This change does not qualify live provider stop behavior or add a recovery API. Cross-process retained-hold visibility and recovery remain pending in DEBT02.
+
+- a567bd9: Return exit code 1 when any configured source cannot be checked by `osstack skills check`. Preserve exit code 2 for drift-only results and 0 for no drift or an empty list, and report failed checks separately from drift.
+- Updated dependencies [95534c7]
+- Updated dependencies [12de1f7]
+- Updated dependencies [1372ecd]
+- Updated dependencies [85e19da]
+- Updated dependencies [eb35fbb]
+- Updated dependencies [9d54cfd]
+- Updated dependencies [540cd7a]
+- Updated dependencies [1e6eeb9]
+- Updated dependencies [ca24452]
+- Updated dependencies [d5eea3e]
+- Updated dependencies [3a5d523]
+- Updated dependencies [5b3400e]
+- Updated dependencies [0d9dca7]
+- Updated dependencies [6a3e760]
+- Updated dependencies [43db3e1]
+- Updated dependencies [b103f62]
+- Updated dependencies [e6d316e]
+- Updated dependencies [936aced]
+- Updated dependencies [bda3942]
+- Updated dependencies [c310d51]
+- Updated dependencies [f740da8]
+- Updated dependencies [d26c920]
+- Updated dependencies [41a1b0a]
+- Updated dependencies [2f9d33a]
+- Updated dependencies [2389dcd]
+- Updated dependencies [52d7730]
+- Updated dependencies [13bfb45]
+- Updated dependencies [b5f2f93]
+- Updated dependencies [7939a10]
+- Updated dependencies [e93d640]
+  - @osstack/core@0.23.0
+  - @osstack/protocol@0.23.0
+  - @osstack/github@0.23.0
+  - @osstack/agents@0.23.0
+  - @osstack/governance@0.23.0
+  - @osstack/skill-registry@0.23.0
+  - @osstack/loop@0.23.0
+  - @osstack/autonomy@0.23.0
+  - @osstack/config@0.23.0
+  - @osstack/hermes-adapter@0.23.0
+  - @osstack/skills@0.23.0
+  - @osstack/graph@0.23.0
+
 ## 0.22.1
 
 ### Patch Changes
