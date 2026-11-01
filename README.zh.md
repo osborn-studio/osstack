@@ -77,6 +77,7 @@ Firstmate 的 24 项能力映射已整合到 main，自 CLI 0.22.1 起随包发�
 | 能力 | 当前实现 | 主要命令 / package |
 |---|---|---|
 | 产品入口 | 一条命令把目标变成带验证、report、scorecard、proof pack 和可选 worktree 隔离的交付流程。 | `osstack deliver`, `@osstack/cli` |
+| 受限 Mission（需显式启用） | 单个执行器只读提出补丁；主机分类、应用并提交，在无网络容器中验证，停在 `publication_pending`。发布需要单独授权，最多开一个 PR，不合并。 | `osstack mission start/status/cancel/decide` |
 | Graph Engineering（内部 beta） | 固定工程图：隔离实现、冻结候选、并行 review/tests、按候选汇合、有界修复、检查点与动作账本。只交付 artifact。 | `osstack graph ...`、`@osstack/graph` |
 | 知识卫生 | 确定性文档/指令检查，以及显式启用的语义审计与审阅后修复。 | `osstack neat ...` |
 | Loop Engineering | 任务发现、执行、验证、迭代、预算、停止原因、报告、分数卡、lesson draft、daemon 托管 loop session。 | `osstack loop ...`, `@osstack/loop` |
@@ -155,6 +156,8 @@ osstack doctor --workspace .
 ```text
 osstack 0.23.0
 ```
+
+如果 npm 提示 `allow-scripts`，随后 `osstack` 无法加载 `better-sqlite3`，说明 npm 跳过了原生模块编译。请用 `npm install -g @osstack/cli@0.23.0 --allow-scripts=better-sqlite3,protobufjs` 重新安装。
 
 ### 使用 macOS 单文件 archive
 
@@ -278,6 +281,12 @@ osstack graph resume --request /absolute/resume.json --json
 ```
 
 这些 JSON 文件不是任意 prompt；需要严格 v1 schema、显式 scope、幂等键以及当前 host 授权。`run` 返回不代表完成；继续查询 `status`，再读 `result`。退出码 `2` 表示提交结果未知，只能重试同一个请求。完整字段、预算、状态与错误处理见[参数手册](docs/guides/graph-quickstart.md)。
+
+## 受限 Mission
+
+`osstack mission` 用单个受限执行器完成一个目标。Codex 在没有写权限的情况下提出补丁；主机按 `--allow` 路径规则检查补丁，应用并提交，再在无网络容器中运行 `--verify-arg` 指定的命令。Mission 停在 `publication_pending`；`decide --decision approve_publication`（或启动时的 `--publish-preauthorized`）会在指定仓库和基准分支上开一个 PR，不合并。
+
+默认关闭。主机需设置 `OSSTACK_CONTAINED_MISSIONS=1`、`OSSTACK_ENGINEERING=1`、`OSSTACK_ATTENTION=1`，用 `OSSTACK_ENGINEERING_AUTH_FILE` 指定工程授权文件，用 `OSSTACK_CONTAINED_BASE_IMAGE_ID` 指定验证基础镜像，并配置 `OSSTACK_CONTAINED_CODEX_*` 和 `OSSTACK_CONTAINED_DOCKER_*`。调用方通过 `OSSTACK_ENGINEERING_CREDENTIAL` 表明身份。参数见 `osstack mission --help`；状态机、恢复与限制见[设计文档](docs/design/2026-10-31-contained-mission-path.md)。验证容器目前没有依赖布局，验证命令不能依赖已安装的包。
 
 ## 主要命令
 
@@ -660,7 +669,7 @@ pnpm smoke:single-binary-release-publish
 
 ```bash
 npm view @osstack/cli version --json
-gh release view v0.8.1 --repo gilosbornhello/osstack
+gh release view v0.8.1 --repo osborn-studio/osstack
 curl -fsS https://osstack-knowledge-cloud-1grycf4k.edgeone.cool/healthz
 ```
 
@@ -675,6 +684,12 @@ curl -fsS https://osstack-knowledge-cloud-1grycf4k.edgeone.cool/healthz
 - Knowledge Cloud 生产可观测性；
 - 可选的 notarized macOS release channel；
 - 更深入的 agent scorecard learning。
+
+当前工作包及其状态见 [v3 执行计划](docs/plans/2026-10-31-osstack-v3-execution-plan.md)。
+
+## 任务关注
+
+`osstack attention status` 读取限定范围的任务与 Session 快照。显式启用后台观察后，还会提供持久的决策收件箱、明确的回答与交接回执、本地通知，以及有边界的 Claude Code Stop hook。启用方法、恢复行为以及“观察”与“执行权限”的区别见 [Attention 指南](docs/guides/attention.md)。
 
 ## License
 
