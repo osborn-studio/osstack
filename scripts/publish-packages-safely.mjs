@@ -92,6 +92,32 @@ export async function publishPackagesSequentially(packages, options) {
   return { plan, published, skipped };
 }
 
+// npm answers a burst of Trusted Publishing PUTs with a transient 404 after a
+// few packages; the same version then publishes on a later attempt.
+export const PUBLISH_RETRY_DELAYS_MS = [15_000, 30_000, 60_000, 90_000];
+
+export function isTransientPublishError(message) {
+  return /\bE404\b|404 Not Found - PUT|\bE429\b|\bETIMEDOUT\b|\bECONNRESET\b|\bE5\d\d\b/u.test(String(message));
+}
+
+export async function publishWithRetry(item, options) {
+  const delays = options.delays ?? PUBLISH_RETRY_DELAYS_MS;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await options.publish(item);
+      return { attempts: attempt + 1 };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isTransientPublishError(message) || attempt >= delays.length) throw error;
+      // A PUT that failed on the client may still have landed on the registry.
+      if (await options.hasVersion(item)) return { attempts: attempt + 1, alreadyPublished: true };
+      options.log?.(`transient publish failure for ${item.name}@${item.version}; retrying in ${delays[attempt] / 1000}s`);
+      await options.wait(delays[attempt]);
+      if (await options.hasVersion(item)) return { attempts: attempt + 1, alreadyPublished: true };
+    }
+  }
+}
+
 export function sanitizePublishError(raw) {
   return String(raw)
     .replace(/https:\/\/www\.npmjs\.com\/auth\/cli\/[^\s]+/giu, "[npm-auth-url-redacted]")
@@ -131,7 +157,12 @@ async function main() {
   const distTag = releaseDistTag(packages);
   const result = await publishPackagesSequentially(packages, {
     publishedVersions,
-    publish: (item) => publishPackage(item, distTag),
+    publish: (item) => publishWithRetry(item, {
+      publish: (candidate) => publishPackage(candidate, distTag),
+      hasVersion: registryHasVersion,
+      wait: (ms) => new Promise((resolveWait) => setTimeout(resolveWait, ms)),
+      log: (line) => console.log(line),
+    }),
     recordPublished: recordPublishedPackage,
   });
 
