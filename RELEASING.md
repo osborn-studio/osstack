@@ -33,7 +33,8 @@ smooth cycles, tighten the cadence to weekly by just doing it every Friday.
    dist-tag and tags the release. Public workspace packages are published in
    dependency-first topological order, one at a time. The first publish error
    stops the train before any dependent package can become visible with a
-   missing exact internal dependency.
+   missing exact internal dependency. When that publish fails, follow
+   [Manual fallback publish](#manual-fallback-publish).
 
 5. Verify on a machine: `osstack upgrade --dry-run`, then `osstack upgrade`.
 
@@ -59,8 +60,10 @@ gh workflow run "macOS Release Candidate" --ref main
   authorized npm account, then configure `osborn-studio/osstack` and
   `release.yml` as that package's GitHub Actions Trusted Publisher.
 - The Release workflow uses GitHub OIDC (`id-token: write`) and does not need a
-  long-lived `NPM_TOKEN`. Local npm login/token access is only a bootstrap and
-  manual recovery path.
+  long-lived `NPM_TOKEN`. Local npm login is the bootstrap for a package's
+  first version and the [manual fallback publish](#manual-fallback-publish)
+  when Trusted Publishing fails. Keep `NPM_TOKEN` and `NODE_AUTH_TOKEN` out of
+  [`.github/workflows/release.yml`](.github/workflows/release.yml).
 - The `@osstack` npm scope must exist and be owned by the publishing account
   (`npm org` / scope settings on npmjs.com).
 - **EDGEONE_API_TOKEN secret** on the GitHub repo: the Tencent EdgeOne Makers
@@ -174,6 +177,185 @@ stdin and stdout to be terminals before opening its web-auth flow; capturing
 stdout in a subprocess can instead return `EOTP`, even after a successful login.
 The website's temporary skip window still requires completing the CLI web-auth
 handshake. Never print or persist the returned OTP as an operational workaround.
+
+## Manual fallback publish
+
+Use this section when the Release workflow's Trusted Publishing step fails for
+a version that is already committed on `main`. The workflow publishes with
+GitHub OIDC from
+[`.github/workflows/release.yml`](.github/workflows/release.yml). Keep
+`NPM_TOKEN` and `NODE_AUTH_TOKEN` out of that workflow.
+
+[`scripts/publish-packages-safely.mjs`](scripts/publish-packages-safely.mjs)
+retries a transient `E404`, `404 Not Found - PUT`, `E429`, `ETIMEDOUT`,
+`ECONNRESET`, or `E5xx` error after 15 seconds, 30 seconds, 60 seconds, and
+90 seconds. Use this fallback when those retries are exhausted, or when the
+same package returns `404` on every attempt. Release 0.23.0 did that for
+`@osstack/graph`.
+
+This fallback publishes from an interactive npm login. A version published this
+way has no provenance attestation. npm attaches provenance only for a Trusted
+Publishing publish from a public repository when the package is public.
+Source: https://docs.npmjs.com/trusted-publishers/#automatic-provenance-generation
+
+The OIDC publisher is `osborn-studio/osstack` with workflow `release.yml`.
+Login rules for this fallback are in
+[Repository transfers and Trusted Publishers](#repository-transfers-and-trusted-publishers).
+
+### 1. Confirm the release checkout
+
+Run these commands from the repository root:
+
+```bash
+git status --porcelain
+git rev-parse --abbrev-ref HEAD
+git rev-parse HEAD
+```
+
+`git status --porcelain` must print nothing. The branch must be `main`. `HEAD`
+must be the merge commit of the Version Packages PR for this train. If any
+check fails, stop.
+
+Build the packages. `prepack` refuses to pack a package that has no `dist/`.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+```
+
+### 2. Confirm the npm account
+
+Open a terminal where stdin and stdout are both terminals. A captured stdout
+can return `EOTP`. Follow the web-auth rules in
+[Repository transfers and Trusted Publishers](#repository-transfers-and-trusted-publishers).
+
+```bash
+npm whoami
+```
+
+The command must print `osbornhello`. That is the account required by
+`scripts/configure-npm-trusted-publishers.mjs` and
+`scripts/deprecate-broken-npm-versions.mjs`. If the command fails, or if it
+prints a different name, stop. Log in as `osbornhello` in this same terminal.
+`npm whoami` checks this local login. It does not check the GitHub Actions
+Trusted Publisher.
+
+### 3. Print the publish order
+
+Print the order from the publisher. This command does not contact npm and it
+does not publish:
+
+```bash
+node scripts/publish-packages-safely.mjs --plan
+```
+
+The JSON `kind` must be `safe-sequential-npm-publish-plan` and `ok` must be
+`true`. Read `plan` from `order` 1 through the end. Publish in that order.
+The order is `buildTopologicalPublishPlan` in
+[`scripts/publish-packages-safely.mjs`](scripts/publish-packages-safely.mjs).
+A package follows each of its internal dependencies. The ready set is sorted
+with `localeCompare("en")`, and it is sorted again each time another package
+becomes ready. Copy `name`, `version`, `directory`, `access`, and `dist_tag`
+from this JSON. Use the `plan` array as the package list.
+
+`dist_tag` is the `--tag` value. For a train-day release it is `latest`.
+If the command fails with
+`prerelease versions require OSSTACK_NPM_DIST_TAG to be set explicitly`,
+set `OSSTACK_NPM_DIST_TAG` to the pre-release tag and run the command again.
+If the command fails for any other reason, stop. The publisher refuses to
+publish a pre-release version as `latest`.
+
+`publish_argv` is the argument list for `pnpm`. The publish command in step 5
+is that list.
+
+### 4. Skip a version that is already published
+
+For each plan item, before you publish it, run:
+
+```bash
+npm view "<name>@<version>" version dist-tags
+```
+
+Quote the package spec. Substitute `name` and `version` from that plan item.
+
+- The command prints `version = '<version>'` and that value equals the plan
+  `version`: this version is already on the registry. Skip the publish. Keep
+  the next item's `order`. The Release workflow may already have published
+  this version, with provenance. `dist-tags` on this output is the package's
+  current tag map.
+- The command fails and the message contains `E404` or `ETARGET`: this version
+  is absent. Publish it in step 5.
+- The command fails for any other reason: stop. Leave every later package
+  unpublished.
+
+Before you publish an absent version, and only when `dist_tag` is `latest`,
+read the current tags:
+
+```bash
+npm view "<name>" dist-tags
+```
+
+`E404` means the package has no published version. Continue to step 5. Any
+other failure: stop. When the command prints `latest`, compare that version
+with the plan version by major, then minor, then patch, as numbers. When
+`latest` is greater than the plan version, stop. A publish with `--tag latest`
+would point `latest` at the older version. Leave the tag unchanged.
+
+A skipped dependency stays in front of its dependents. Continue at the next
+`order`. Publish a dependent only after every name in its
+`internalDependencies` is on the registry at the plan version.
+
+### 5. Publish one package
+
+Publish one absent version with the plan item's `publish_argv`:
+
+```bash
+pnpm --dir <directory> publish --access <access> --tag <dist_tag> --no-git-checks --json --registry https://registry.npmjs.org/
+```
+
+Substitute `directory` and `access` from the plan item, and `dist_tag` from
+the plan root. Run the command from the repository root.
+
+`--no-git-checks` is part of `publish_argv`, the same list the Release
+workflow uses. The empty `git status --porcelain` output in step 1 is the
+clean-tree check for this manual run.
+
+The command uses the `osbornhello` login from `npm whoami`. npm does not
+attach a provenance attestation to this publish. The argument list has no
+provenance flag. Provenance stays on the Trusted Publishing path linked above.
+
+If the command fails, stop. Leave every later package unpublished.
+
+### 6. Verify the published version
+
+After each successful publish, run:
+
+```bash
+npm view "<name>@<version>" version dist-tags
+```
+
+A successful check prints `version = '<version>'` and
+`dist-tags = { <dist_tag>: '<version>', ... }`. Check both fields:
+
+- `version` equals the plan `version`.
+- `dist-tags` includes `<dist_tag>`, and that tag's value equals the plan
+  `version`.
+
+If either check fails, stop. Leave the dist-tag unchanged. Leave every later
+package unpublished.
+
+After the last plan item, every public version in the plan is on the registry.
+Record each version this procedure published. Those versions have no provenance
+attestation. Versions the Release workflow published still have provenance.
+
+This procedure does not create the git tag `<name>@<version>` and it does not
+open a GitHub release. The publisher prints `New tag: <name>@<version>` only
+for a version it publishes itself. A later Release workflow run skips a version
+that is already on the registry and does not print that line for the skipped
+version.
+
+Then continue with step 5 of
+[How a change gets released](#how-a-change-gets-released).
 
 ## Hotfix flow (between trains)
 

@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import {
   buildTopologicalPublishPlan,
   changesetsTagAnnouncement,
   npmPublishArgs,
+  publishCliMode,
   publishPackagesSequentially,
+  publishPlanPayload,
   publishWithRetry,
   isTransientPublishError,
   sanitizePublishError,
 } from "./publish-packages-safely.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const packages = [
   workspacePackage("@osstack/cli", [
@@ -113,10 +120,76 @@ assert.deepEqual(
   "the guarded publisher must use the canonical registry",
 );
 
+assert.equal(publishCliMode(["node", "publish-packages-safely.mjs"]), "publish");
+assert.equal(publishCliMode(["node", "publish-packages-safely.mjs", "--plan"]), "plan");
+assert.throws(
+  () => publishCliMode(["node", "publish-packages-safely.mjs", "--plan", "--json"]),
+  /unknown arguments/u,
+  "extra plan arguments must fail before any publish",
+);
+
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const planEnv = { ...process.env };
+delete planEnv.OSSTACK_NPM_DIST_TAG;
+const planRun = await execFileAsync(process.execPath, [
+  fileURLToPath(new URL("./publish-packages-safely.mjs", import.meta.url)),
+  "--plan",
+], { cwd: repoRoot, env: planEnv, timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
+const planned = JSON.parse(planRun.stdout);
+assert.equal(planned.ok, true);
+assert.equal(planned.kind, "safe-sequential-npm-publish-plan");
+assert.equal(planned.dist_tag, "latest");
+assert.equal(planned.registry, "https://registry.npmjs.org/");
+assert.equal(planned.public_packages, planned.plan.length);
+assert.ok(planned.plan.length > 0, "the workspace plan must list the public packages");
+const plannedPackages = planned.plan.map((item) => ({
+  name: item.name,
+  version: item.version,
+  directory: item.directory,
+  access: item.access,
+  internalDependencies: item.internalDependencies,
+}));
+assert.deepEqual(
+  planned.plan.map((item) => item.name),
+  buildTopologicalPublishPlan(plannedPackages).map((item) => item.name),
+  "--plan must print buildTopologicalPublishPlan order",
+);
+assert.deepEqual(
+  planned,
+  publishPlanPayload(plannedPackages, planned.dist_tag),
+  "--plan JSON must match publishPlanPayload",
+);
+const orderByName = new Map(planned.plan.map((item) => [item.name, item.order]));
+for (const item of planned.plan) {
+  assert.equal(item.order, planned.plan.indexOf(item) + 1);
+  assert.deepEqual(
+    item.publish_argv,
+    npmPublishArgs(item, planned.dist_tag),
+    `${item.name} must use npmPublishArgs`,
+  );
+  for (const dependency of item.internalDependencies) {
+    const dependencyOrder = orderByName.get(dependency);
+    assert.ok(
+      dependencyOrder !== undefined && dependencyOrder < item.order,
+      `${item.name} must follow ${dependency}`,
+    );
+  }
+}
+assert.ok(orderByName.has("@osstack/cli"), "the public CLI must be in the plan");
+assert.equal(orderByName.has("@osstack/supervisor"), false, "private packages must stay out of the plan");
+
+await assert.rejects(
+  execFileAsync(process.execPath, [
+    fileURLToPath(new URL("./publish-packages-safely.mjs", import.meta.url)),
+    "--publish",
+  ], { cwd: repoRoot, env: planEnv, timeout: 30_000 }),
+  /unknown arguments/u,
+);
+
 console.log(JSON.stringify({
   ok: true,
   kind: "npm-publish-order-smoke",
-  cases: 7,
+  cases: 8,
 }, null, 2));
 
 function workspacePackage(name, internalDependencies = []) {
