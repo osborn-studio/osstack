@@ -5,6 +5,8 @@ import {
   changesetsTagAnnouncement,
   npmPublishArgs,
   publishPackagesSequentially,
+  publishWithRetry,
+  isTransientPublishError,
   sanitizePublishError,
 } from "./publish-packages-safely.mjs";
 
@@ -124,4 +126,48 @@ function workspacePackage(name, internalDependencies = []) {
     directory: `packages/${name.slice("@osstack/".length)}`,
     internalDependencies,
   };
+}
+
+{
+  const item = { name: "@osstack/graph", version: "0.23.0" };
+  const waits = [];
+  let calls = 0;
+  const result = await publishWithRetry(item, {
+    delays: [1, 2],
+    publish: async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("publish failed for @osstack/graph@0.23.0: 404 Not Found - PUT https://registry.npmjs.org/@osstack%2fgraph - Not found");
+    },
+    hasVersion: async () => false,
+    wait: async (ms) => { waits.push(ms); },
+  });
+  assert.deepEqual(result, { attempts: 2 }, "a transient Trusted Publishing 404 must be retried");
+  assert.deepEqual(waits, [1]);
+
+  const landed = await publishWithRetry(item, {
+    delays: [1],
+    publish: async () => { throw new Error("E404 404 Not Found - PUT"); },
+    hasVersion: async () => true,
+    wait: async () => {},
+  });
+  assert.equal(landed.alreadyPublished, true, "a PUT that landed despite a client error must not be republished");
+
+  let permanent = 0;
+  await assert.rejects(publishWithRetry(item, {
+    delays: [1, 2],
+    publish: async () => { permanent += 1; throw new Error("E403 You cannot publish over the previously published versions"); },
+    hasVersion: async () => false,
+    wait: async () => {},
+  }), /E403/u);
+  assert.equal(permanent, 1, "non-transient failures must not be retried");
+
+  let exhausted = 0;
+  await assert.rejects(publishWithRetry(item, {
+    delays: [1, 2],
+    publish: async () => { exhausted += 1; throw new Error("404 Not Found - PUT"); },
+    hasVersion: async () => false,
+    wait: async () => {},
+  }), /404/u);
+  assert.equal(exhausted, 3, "retries are bounded by the delay schedule");
+  assert(!isTransientPublishError("E403 forbidden"));
 }
