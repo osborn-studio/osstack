@@ -82,6 +82,7 @@ control plane with these implemented surfaces (distribution limits noted below):
 | Product entry | One command can turn an intent into a verified local delivery run with reports, scorecards, proof packs, and optional worktree isolation. | `osstack deliver`, `@osstack/cli` |
 | Guarded Git autonomy | Classifies R0-R4 before and after the diff, requires external signed approval for R3, permanently blocks R4, and automatically delivers eligible R1/R2 changes through PR, CI, merge, and two-stage proof. | `osstack deliver --autonomy guarded-git`, `osstack autonomy ...`, `@osstack/autonomy` |
 | Graph Engineering (internal beta) | Fixed engineering graph: isolated implementation, candidate freeze, parallel review/tests, candidate-bound join, bounded repair, checkpoints and action ledger. Artifact-only delivery. | `osstack graph ...`, `@osstack/graph` |
+| Contained Missions (opt-in) | One executor proposes a patch read-only; the host classifies, applies and commits it, verifies it in a no-network container, and stops at `publication_pending`. Publishing opens at most one PR under a separate grant; nothing is merged. | `osstack mission start/status/cancel/decide` |
 | Knowledge hygiene | Deterministic document/instruction checks, opt-in semantic audits and reviewed remediation. | `osstack neat ...` |
 | Loop Engineering | Task discovery, execution, verification, iteration, budgets, stop reasons, reports, scorecards, lesson drafts, and daemon-managed loop sessions. | `osstack loop ...`, `@osstack/loop` |
 | Portfolio supervision | Repo registry, maturity scan, portfolio report, feedback assets, improvement proposals, evaluator epochs, and machine-actionable recommendations. | `osstack supervise`, `feedback`, `improve`, `evaluator`, `daily`; `@osstack/supervisor` |
@@ -179,6 +180,8 @@ Expected version for this release:
 ```text
 osstack 0.23.0
 ```
+
+If npm reports `allow-scripts` and `osstack` then fails to load `better-sqlite3`, npm skipped the native build. Reinstall with `npm install -g @osstack/cli@0.23.0 --allow-scripts=better-sqlite3,protobufjs`.
 
 ### macOS Single-Binary Archive
 
@@ -320,6 +323,12 @@ osstack graph resume --request /absolute/resume.json --json
 ```
 
 Request files use strict v1 schemas, explicit scope and idempotency keys. Submission is not completion: inspect `status`, then `result`. Exit code `2` means delivery is unknown; retry the identical request. See the [runtime guide](docs/guides/graph-runtime.md), [walkthrough and parameter reference](docs/guides/graph-quickstart.en.md), and [operator runbook](docs/runbooks/graph-runtime.md).
+
+## Contained Missions
+
+`osstack mission` runs one goal through a single contained executor. Codex proposes a patch without write access. The host checks the patch against the `--allow` globs, applies and commits it, and runs the `--verify-arg` command in a no-network container. The Mission stops at `publication_pending`; `decide --decision approve_publication` (or `--publish-preauthorized` at start) opens one PR on the named repository and base. Nothing is merged.
+
+It is off by default. The host enables it with `OSSTACK_CONTAINED_MISSIONS=1`, `OSSTACK_ENGINEERING=1` and `OSSTACK_ATTENTION=1`, an engineering auth file in `OSSTACK_ENGINEERING_AUTH_FILE`, the verification base image in `OSSTACK_CONTAINED_BASE_IMAGE_ID`, and the `OSSTACK_CONTAINED_CODEX_*` and `OSSTACK_CONTAINED_DOCKER_*` settings. Callers identify themselves with `OSSTACK_ENGINEERING_CREDENTIAL`. Run `osstack mission --help` for the flags, and see the [design](docs/design/2026-10-31-contained-mission-path.md) for the state machine, recovery and limits. The verification container has no dependency layout yet, so verify commands must not need installed packages.
 
 ## Main Commands
 
@@ -811,7 +820,7 @@ Useful release checks:
 
 ```bash
 npm view @osstack/cli version --json
-gh release view v0.8.1 --repo gilosbornhello/osstack
+gh release view v0.8.1 --repo osborn-studio/osstack
 curl -fsS https://osstack-knowledge-cloud-1grycf4k.edgeone.cool/healthz
 ```
 
@@ -829,6 +838,8 @@ epochs, and the loop self-improvement hook). Next priorities:
 - more production observability for Knowledge Cloud;
 - optional notarized macOS release channel;
 - deeper agent scorecard learning.
+
+Current work packages and their status are tracked in the [v3 execution plan](docs/plans/2026-10-31-osstack-v3-execution-plan.md).
 
 ## Task attention
 
