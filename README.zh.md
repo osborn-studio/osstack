@@ -34,7 +34,7 @@ DeepSeek 检查器以及你自己的脚本，组织成一套可路由、可循�
 
 后续融合见[工程 Agent 升级路线图](docs/design/2026-10-26-firstmate-upgrade/README.md)：24 项能力逐一映射到 50 个工作包和验收证据。自动目标派发及 Loop/Graph 选择仍属计划；已交付的 Session 采纳试点范围更小。
 
-Firstmate 的 24 项能力映射已整合到 main，并随 CLI 0.22.1 发布。它们通过新增命令和 OSStack 既有机制实现。**npm 发布不等于所有真实集成都已验收。** 远程主机、外部消息传输、托管升级和真实模型仍需按环境验证。请参阅[交付与升级指南](docs/guides/install-upgrade.md)。
+Firstmate 的 24 项能力映射已整合到 main，自 CLI 0.22.1 起随包发布。它们通过新增命令和 OSStack 既有机制实现。**npm 发布不等于所有真实集成都已验收。** 远程主机、外部消息传输、托管升级和真实模型仍需按环境验证。请参阅[交付与升级指南](docs/guides/install-upgrade.md)。
 
 | 用途 | 命令入口 |
 |---|---|
@@ -54,21 +54,21 @@ Firstmate 的 24 项能力映射已整合到 main，并随 CLI 0.22.1 发布。�
 
 以上映射描述现有命令的能力。统一工程 Agent 的编排入口仍在分阶段实现。
 
-**源码试点：** `osstack engineering adopt/observe/decide/defer/cancel/end-observation/reconcile` 可采纳正在等待决策的既有 Session。主机记录所有权、答案和恢复证据。试点需显式启用，最多证明一个回复回合已被观察；新目标的 Loop / Graph 自动选路尚未实现。参阅[中文指南](docs/guides/engineering-session-adoption.md)、[English guide](docs/guides/engineering-session-adoption.en.md)与[架构及能力注册表](docs/design/2026-10-25-engineering-agent/README.md)。该试点尚未包含在 npm 0.22.1 中。
+**可选试点：** `osstack engineering adopt/observe/decide/defer/cancel/end-observation/reconcile` 可采纳正在等待决策的既有 Session。主机记录所有权、答案和恢复证据。试点需显式启用，最多证明一个回复回合已被观察；新目标的 Loop / Graph 自动选路尚未实现。参阅[中文指南](docs/guides/engineering-session-adoption.md)、[English guide](docs/guides/engineering-session-adoption.en.md)与[架构及能力注册表](docs/design/2026-10-25-engineering-agent/README.md)。该试点自 npm 0.23.0 起包含在发布包中。
 
 ## 当前状态
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 已发布：[`@osstack/cli@0.23.0`](https://www.npmjs.com/package/@osstack/cli/v/0.22.1)。2026-10-25（北京时间）已核对 `latest`。请用 `npm view @osstack/cli version` 获取最新结果 |
-| 源码与二进制通道 | 源码标签：[`@osstack/cli@0.23.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.22.1)；独立的单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 已发布：[`@osstack/cli@0.23.0`](https://www.npmjs.com/package/@osstack/cli/v/0.23.0)。2026-11-01（北京时间）已核对 `latest`。请用 `npm view @osstack/cli version` 获取最新结果 |
+| 源码与二进制通道 | 源码标签：[`@osstack/cli@0.23.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.23.0)；独立的单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
 | License | MIT |
 | Monorepo | 22 个 workspace package |
 
-**版本边界：** CLI 0.22.1 已在 npm 发布。请在每台主机上运行 `osstack --version`，确认实际安装版本。更新 npm 包不会自动重启 daemon，也不会升级其他服务器。请参阅[安装与部署检查](docs/guides/install-upgrade.md)。
+**版本边界：** CLI 0.23.0 已在 npm 发布。请在每台主机上运行 `osstack --version`，确认实际安装版本。更新 npm 包不会自动重启 daemon，也不会升级其他服务器。请参阅[安装与部署检查](docs/guides/install-upgrade.md)。
 
 ## 当前能力范围
 
