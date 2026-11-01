@@ -353,6 +353,10 @@ describe("handleNeatCommand", () => {
     await execFileAsync("git", ["config", "user.name", "Neat Test"], {
       cwd: repoRoot,
     });
+    // `git commit` otherwise starts detached auto-maintenance, whose maintenance.lock can
+    // appear in one snapshot and not the other; the test measures only neat's own writes.
+    await execFileAsync("git", ["config", "maintenance.auto", "false"], { cwd: repoRoot });
+    await execFileAsync("git", ["config", "gc.auto", "0"], { cwd: repoRoot });
     await writeFile(join(repoRoot, "AGENTS.md"), "# Canonical\n");
     await execFileAsync("git", ["add", "AGENTS.md"], { cwd: repoRoot });
     await execFileAsync("git", ["commit", "--quiet", "-m", "initial"], {
