@@ -37,4 +37,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Cockpit dashboard](./cockpit.md) — the daemon-served HTML cockpit, its JSON API, and the `cockpit`/`dashboard` CLI views.
 - [Project init and doctor](./init-doctor.md) — scaffold a project with `osstack init` and check readiness with `osstack doctor`.
 
-Not yet mapped (candidates for `/maintain-verification-skill`): `start`/`control` contract-gated delivery (needs `.osstack/repos.json` + `.osstack/repo.yaml` fixtures), `task submit` (needs a live agent), `graph`, `probe`, `neat check`, `attention`, `config`, `daily`, `release doctor` (needs GitHub/npm auth).
+Not yet mapped (candidates for `/maintain-verification-skill`): `mission` / contained Missions (`packages/cli/src/contained-mission-command.ts`; needs `OSSTACK_CONTAINED_MISSIONS=1` plus engineering/attention/Codex/Docker host setup and a live executor), `start`/`control` contract-gated delivery (needs `.osstack/repos.json` + `.osstack/repo.yaml` fixtures), `task submit` (needs a live agent), `graph`, `probe`, `neat check`, `attention`, `config`, `daily`, `release doctor` (needs GitHub/npm auth).
