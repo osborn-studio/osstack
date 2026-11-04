@@ -126,7 +126,12 @@
    任一条不满足就不按 Mission PR 处理。
 2. **正文中的其他字段只是提示：** `Candidate:` 行的候选提交、`Spec digest:` 行的规格摘要。bot 必须核对 PR 当前 `headRefOid` 等于 `Candidate:` 行的提交；不相等说明 PR 在 osstack 发布之后被改动过，只通知人，不做验证结论。
 3. **权威来源：** PR 正文可被有写权限的人修改。权威是 osstack 账本（持有 read scope 的人运行 `osstack mission status --mission <id> --json`），或者直接问人。bot 不持有 osstack 凭证。
-4. **预留的机器标记（暂不实现）：** 将来在正文末尾追加 `<!-- osstack:mission v=1 id=cm_… spec_digest=… -->`。解析规则现在先定下：`key=value` 以空格分隔；`v` 不是 1 时整条忽略；同一 PR 出现多条时整条忽略。实现前，bot 只用第 1 条中的第一行匹配。
+4. **机器标记（已实现，阶段 1）：** osstack 在正文末尾追加一行 `<!-- osstack:mission v=1 id=cm_<uuid> spec_digest=<64 位十六进制> head=<提交 id> start=<提交 id> -->`（`contained-mission-marker.ts`；提交 id 为 40 或 64 位小写十六进制，与 `start_commit` 的格式一致）。解析规则：
+   - 逐行解析，行尾允许 `\r`；由三个以上反引号或波浪号围起的代码块内的行不算（按 CommonMark：结束行只能是同种字符、不短于开始行，后面只允许空白）。
+   - 以 `<!-- osstack:mission ` 开头的行都是候选行。候选行不是恰好一条时，没有标记。
+   - 唯一的候选行必须整行匹配 `^<!-- osstack:mission ((?:[a-z_]+=[^\s=]+ )+)-->$`，键恰好是 `v`、`id`、`spec_digest`、`head`、`start` 各一次，值符合上面的格式；否则没有标记。`v` 不是 1 时也没有标记。
+   - 正文里的 goal 与验证命令都先脱敏、截断，再渲染为单行（换行变空格，`` ` `` 变 `'`，`<!--` 变 `<\!--`），不能开代码块，也不能成为候选行。
+   - 标记只用于定位：正文可被编辑，它不证明来源，也不授权任何动作。使用者必须核对第一行的 Mission id 与标记 `id` 一致；权威仍是账本（见第 3 条）。`osstack mission status --json` 的 `publication` 字段直接给出 PR 号、URL 与推送的提交。
 
 #### B. 事件约定
 

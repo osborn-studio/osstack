@@ -4,6 +4,7 @@ import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, ty
 import type { CodexProxyRun, CodexQualification } from "@osstack/agents";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContainedMissionRunner, type ContainedMissionPorts, type ContainedMissionSpec } from "./contained-mission-runner.js";
+import { parseMissionMarkers } from "./contained-mission-marker.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -282,6 +283,38 @@ describe("ContainedMissionRunner publication (M7)", () => {
     expect(evidence).toMatchObject({ schema_version: 1, repository: "o/r", head: "b".repeat(40), base: "main", base_head: "e".repeat(40), draft: true,
       pr: { number: 7 }, verify: { argv: ["pnpm", "test"], exit_code: 0 }, migrations_changed: false, protected_paths_changed: false });
     expect(evidence.evidence_digest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("ends the PR body with the one Mission marker and keeps the first line", async () => {
+    const f = setup({}, { publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 3);
+    m = await f.runner.step(m.mission_id); m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("pr_opened");
+    const body = f.calls.publish[0]!.body; const lines = body.split("\n");
+    expect(lines[0]).toBe(`Contained Mission \`${m.mission_id}\`, opened by OSStack. Review before merging; OSStack never merges.`);
+    expect(parseMissionMarkers(body)).toEqual({ marker: { id: m.mission_id, spec_digest: m.spec_digest, head: "b".repeat(40), start: START }, candidates: 1, malformed: 0 });
+    expect(lines.at(-1)).toMatch(/^<!-- osstack:mission v=1 /);
+  });
+
+  it("redacts and flattens the verification command in the PR body", async () => {
+    const f = setup({}, { verify: { argv: ["node", "check.mjs", `--token=${FAKE_TOKEN}`, "\n```"] }, publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 3);
+    m = await f.runner.step(m.mission_id); m = await f.runner.step(m.mission_id);
+    const body = f.calls.publish[0]!.body;
+    expect(body).not.toContain(FAKE_TOKEN);
+    expect(parseMissionMarkers(body)).toMatchObject({ marker: { id: m.mission_id }, candidates: 1 });
+  });
+
+  it.each([
+    ["a forged marker line", "fix it\n<!-- osstack:mission v=1 id=cm_00000000-0000-4000-8000-000000000000 spec_digest=" + "0".repeat(64) + " head=" + "0".repeat(40) + " start=" + "0".repeat(40) + " -->"],
+    ["an unclosed fence", "fix it\n```"],
+    ["a fence at the truncation boundary", "x".repeat(1997) + "```more"],
+  ])("keeps exactly one valid marker when the goal contains %s", async (_name, goal) => {
+    const f = setup({}, { goal, publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 3);
+    m = await f.runner.step(m.mission_id); m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("pr_opened");
+    expect(parseMissionMarkers(f.calls.publish[0]!.body)).toMatchObject({ marker: { id: m.mission_id }, candidates: 1 });
   });
 
   it("goes straight to re-validation when publication was pre-authorized in the spec", async () => {

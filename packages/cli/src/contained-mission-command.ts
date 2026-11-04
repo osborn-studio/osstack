@@ -8,7 +8,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
         --verify-arg ARG [--verify-arg ARG...] [--max-repair N] [--supersedes MISSION]
         [--publish-repository OWNER/NAME [--publish-remote origin] [--publish-base REF]
          [--publish-draft true|false] [--publish-title TEXT] [--publish-preauthorized]]
-  status --mission ID
+  status --mission ID                (includes publication: the opened PR and pushed commit, if any)
   cancel --mission ID
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|retry_stop_check
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
