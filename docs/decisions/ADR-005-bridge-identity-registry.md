@@ -1,6 +1,6 @@
 # ADR-005: identity registry for the osstack × Grok Bots first phase
 
-- Status: Accepted (2026-11-01; answers given by the repository owner in conversation)
+- Status: Accepted (2026-11-01; answers given by the repository owner in conversation); the "Operated by" column and §1 rules 2–3 are superseded by [ADR-006](ADR-006-bridge-s0-decisions.md) (2026-11-04)
 - Date: 2026-11-01
 - Decision owner: repository owner
 - Scope: which GitHub identities the first-phase bridge conventions recognize
