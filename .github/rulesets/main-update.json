@@ -1,0 +1,17 @@
+{
+  "_osstack": {
+    "adr": "ADR-006 decision 5",
+    "apply_to": ["sandbox"],
+    "note": "Restricts who may update the default branch; the bypass list is the merge allowlist. App E is listed for the sandbox control probe (P-11). The main-repo allowlist during the transition is the owner's decision at S1 apply time; App A is never listed."
+  },
+  "name": "main-update",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "rules": [
+    { "type": "update", "parameters": { "update_allows_fetch_and_merge": false } }
+  ],
+  "bypass_actors": [
+    { "actor_id": "${app:osstack-merger}", "actor_type": "Integration", "bypass_mode": "pull_request" }
+  ]
+}
