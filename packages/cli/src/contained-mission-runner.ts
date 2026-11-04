@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { CODEX_PROXY_END_MARKER, type CodexProxyRun, type CodexQualification } from '@osstack/agents';
 import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import { classifyMissionPatch, parseMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
+import { formatMissionMarker, renderBodyLine } from './contained-mission-marker.js';
 import { applyContainedPatchFile } from './contained-patch-apply.js';
 
 export interface ContainedMissionSpec {
@@ -441,11 +442,13 @@ export class ContainedMissionRunner {
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number; evidence: string } : undefined;
     return [
       `Contained Mission \`${m.mission_id}\`, opened by OSStack. Review before merging; OSStack never merges.`, '',
-      `**Goal:** ${redactSecrets(spec.goal).slice(0, 2000)}`, '',
+      `**Goal:** ${renderBodyLine(redactSecrets(spec.goal), 2000)}`, '',
       `- Candidate: \`${m.candidate_head}\` (tree \`${m.candidate_tree}\`) from \`${spec.start_commit}\``,
-      `- Verification: \`${spec.verify.argv.join(' ')}\` exited ${r?.exit_code ?? 'unknown'} in a no-network container (${r?.evidence ?? 'no receipt'})`,
+      `- Verification: \`${renderBodyLine(redactSecrets(spec.verify.argv.join(' ')), 2000)}\` exited ${r?.exit_code ?? 'unknown'} in a no-network container (${r?.evidence ?? 'no receipt'})`,
       `- Spec digest: \`${m.spec_digest}\``, '',
-      'The authoritative delivery evidence is the `delivery_evidence` event in the OSStack ledger for this Mission.',
+      'The authoritative delivery evidence is the `delivery_evidence` event in the OSStack ledger for this Mission.', '',
+      // Locator only: the body is editable, so readers check the first line agrees and the ledger stays authoritative.
+      formatMissionMarker({ id: m.mission_id, spec_digest: m.spec_digest, head: m.candidate_head ?? '', start: spec.start_commit }),
     ].join('\n');
   }
   /** Every event of the Mission, page by page; decisions must never be made from a truncated history. */

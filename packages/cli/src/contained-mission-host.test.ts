@@ -333,3 +333,51 @@ describe("ContainedMissionHost reconciliation decisions", () => {
     expect(f.store.get(m.mission_id).state).toBe("needs_reconciliation");
   });
 });
+
+describe("ContainedMissionHost status publication", () => {
+  const pr = { number: 7, url: "https://github.com/o/r/pull/7", reused: false };
+  const evidence = (digest: string, head: string) => ({ schema_version: 1, head, base_head: "e".repeat(40), pr, evidence_digest: digest });
+
+  it("is null before anything was published", async () => {
+    const f = fixture(); const m = await f.start();
+    expect(f.host.status(f.principal, m.mission_id).publication).toBeNull();
+  });
+
+  it("joins pr_opened with its delivery_evidence, past the event tail", async () => {
+    const f = fixture(); const m = await f.start();
+    f.store.record(m.mission_id, "delivery_evidence", evidence("1".repeat(64), "a".repeat(40)), f.now());
+    f.store.record(m.mission_id, "delivery_evidence", evidence("2".repeat(64), "b".repeat(40)), f.now());
+    f.store.record(m.mission_id, "pr_opened", { pr, evidence_digest: "2".repeat(64) }, f.now());
+    for (let i = 0; i < 60; i++) f.store.record(m.mission_id, "noise", { i }, f.now());
+    expect(f.host.status(f.principal, m.mission_id).publication).toEqual({ kind: "opened", pr, evidence_digest: "2".repeat(64), pushed_commit: "b".repeat(40), base_head: "e".repeat(40) });
+  });
+
+  it("reports missing evidence instead of throwing", async () => {
+    const f = fixture(); const m = await f.start();
+    f.store.record(m.mission_id, "pr_opened", { pr, evidence_digest: "3".repeat(64) }, f.now());
+    expect(f.host.status(f.principal, m.mission_id).publication).toEqual({ kind: "evidence_missing", pr, evidence_digest: "3".repeat(64) });
+  });
+
+  it("reports a PR opened before a cancel with the evidence recorded before it", async () => {
+    const f = fixture(); const m = await f.start();
+    f.store.record(m.mission_id, "delivery_evidence", evidence("4".repeat(64), "c".repeat(40)), f.now());
+    f.store.record(m.mission_id, "pr_opened_before_cancel", { pr }, f.now());
+    expect(f.host.status(f.principal, m.mission_id).publication).toEqual({ kind: "opened_before_cancel", pr, pushed_commit: "c".repeat(40), base_head: "e".repeat(40) });
+  });
+
+  it("finds the matching evidence across pages and stays valid with an unterminated key header", async () => {
+    const f = fixture(); const m = await f.start();
+    f.store.record(m.mission_id, "delivery_evidence", { ...evidence("5".repeat(64), "d".repeat(40)), verify: { argv: ["-----BEGIN PRIVATE KEY-----"] } }, f.now());
+    for (let i = 0; i < 45; i++) f.store.record(m.mission_id, "delivery_evidence", evidence(i.toString(16).padStart(64, "f"), "a".repeat(40)), f.now());
+    f.store.record(m.mission_id, "pr_opened", { pr, evidence_digest: "5".repeat(64) }, f.now());
+    expect(f.host.status(f.principal, m.mission_id).publication).toEqual({ kind: "opened", pr, evidence_digest: "5".repeat(64), pushed_commit: "d".repeat(40), base_head: "e".repeat(40) });
+  });
+
+  it("redacts secrets and still requires read scope", async () => {
+    const f = fixture(); const m = await f.start();
+    const token = "ghp" + "_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8";
+    f.store.record(m.mission_id, "pr_opened_before_cancel", { pr: { ...pr, url: `https://x-access-token:${token}@github.com/o/r/pull/7` } }, f.now());
+    expect(JSON.stringify(f.host.status(f.principal, m.mission_id).publication)).not.toContain(token);
+    expect(() => f.host.status({ ...f.principal, read_scopes: [] }, m.mission_id)).toThrow("permission_denied");
+  });
+});
