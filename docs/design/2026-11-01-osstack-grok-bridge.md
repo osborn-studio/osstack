@@ -1,7 +1,7 @@
 # osstack × Grok Bots 双循环接通设计
 
 日期：2026-11-01（北京时间）。状态：v3。**首期只落地零代码部分**（第三部分开头的“首期落地范围”：Mission 定位标记与事件约定）；修订链（§8.3、§8.5–§8.8 及相关阶段）**暂缓**，保留为后续设计。已按 Codex CLI（gpt-6-astra，medium，只读）审计修订（§14）；其余部分实施前需用户确认 §12 的决定。
-基线：`main` `648606a7`。上位文档：[v3 双循环设计](2026-10-30-osstack-dual-loop-factory.md) §2、[受限单执行器 Mission 路径](2026-10-31-contained-mission-path.md)、[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)。取代《osstack × Grok Bots 打通设计草稿》（下称“草稿”）。
+基线：`main` `648606a7`。上位文档：[v3 双循环设计](2026-10-30-osstack-dual-loop-factory.md) §2、[受限单执行器 Mission 路径](2026-10-31-contained-mission-path.md)、[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)。取代《osstack × Grok Bots 打通设计草稿》（下称“草稿”）。实施方案与使用说明见 [2026-11-02 实施方案](../plans/2026-11-02-osstack-grok-bridge-implementation.md)。
 
 本文分三部分：第一部分说明这个领域的顶尖专家会怎么做（方法、原始素材、工具、独立证明）；第二部分是按这些要求重写的题目；第三部分是详细的技术与产品方案。
 
