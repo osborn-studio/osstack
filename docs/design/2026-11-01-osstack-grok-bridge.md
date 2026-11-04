@@ -457,11 +457,13 @@ awaiting_review ──合格 CHANGES_REQUESTED，rounds_used < 额度──▶ r
 | S5 同 PR 修订（暂缓） | **前置：W13 已合并。** 预留、子 Mission 工作区、`publishRevision`、`grant-revisions`、崩溃恢复 | cloud agent；先出实现细节并审计 | §10.3 除 W14 级验收外全部通过；沙箱两轮修订 + 第 3 次转人 |
 | S6 Grok Bots 适配 | Watcher 改为 App C，对所有 PR 发 `grok/verify-osstack`，`main` ruleset 加入该必需检查；Reviewer 改为 App D | Grok Bots 运营者 + 人改 ruleset | 沙箱与主仓库上该检查由 App C 产生；若 S2 显示 App review 不计入批准或不能解决线程，则批准与解决由人完成并写入 runbook |
 | S7 主仓库上线（暂缓） | `OSSTACK_BRIDGE=1`，先只对单个 scope；runbook 合并 | 人 | 连续 5 条链无异常；§6 指标可读 |
-| 推迟 | 出站 webhook；bot 合并；合并队列；签名证据 | — | 有真实需求再做 |
+| 推迟 | 出站 webhook；普通 PR 的 bot 合并（Mission PR 见 ADR-006 的 App E 影子合并）；合并队列；签名证据 | — | 有真实需求再做 |
 
 **运行手册（S7 前合并）要点：** 关闭开关 `OSSTACK_BRIDGE=0` 只停止新的预留与派发，在途子 Mission 走现有取消路径，`pending` 意图仍在下次启动时对账；吊销 App A 安装可立即阻止推送；`awaiting_decision` 每种原因的处理步骤。
 
 ### 12. 需要用户做的决定
+
+**已决定（2026-11-04），见 [ADR-006](../decisions/ADR-006-bridge-s0-decisions.md)：** 1 仅 Mission PR 可由独立的 App E `osstack-merger` 在严格门槛下合并，先影子运行；2 同意用 GitHub App；3 除 `gilosbornhello` 外 6 个账号是自动化（人事后抽查），App 上线后再降权；4 同意 S1，先在沙箱；5 随修订链推迟。下面保留原题目。
 
 1. **合并权：** 维持“人合并”（推荐）；并说明 `Rubebun-Jadeem`、`gilberthello` 是人还是 bot。
 2. **身份方案：** 同意用 4 个 GitHub App（加 1 个沙箱测试评审 App）取代个人账号与共享账号。

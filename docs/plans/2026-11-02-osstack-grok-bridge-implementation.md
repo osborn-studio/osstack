@@ -14,14 +14,14 @@
 | 本文阶段 | 内容 | 草稿 | 设计 | 改代码 | 开工条件 | 状态 |
 |---|---|---|---|---|---|---|
 | 阶段 0 | 首期约定上线：Mission PR 识别、事件约定、人工修订、验收演练 | S0、S1 | 首期 A–E、S0a | 否 | ADR-005 已 Accepted | **可执行** |
-| 阶段 1 | PR 机器标记、`mission status` 的发布字段 | S2 | 首期 A.4（预留） | 是，小 | 用户同意（§8 决定 1） | 待决定 |
-| 阶段 2 | 决定 ADR、ruleset 基线、沙箱仓库、GitHub App 与平台探针 | S0 | S0、S1、S2 | 只有脚本 | 设计 §12 决定 | 待决定 |
+| 阶段 1 | PR 机器标记、`mission status` 的发布字段 | S2 | 首期 A.4 | 是，小 | 用户同意（§8 决定 1） | **已完成**（#368） |
+| 阶段 2 | 决定 ADR、ruleset 基线、沙箱仓库、GitHub App 与平台探针 | S0 | S0、S1、S2 | 只有脚本 | 设计 §12 决定（ADR-006） | **可执行** |
 | 阶段 3 | 证据：Publisher App 推送、`osstack/verify` check run | — | S3 | 是，中 | 阶段 2 完成 | 待决定 |
 | 阶段 4 | 影子对账器、链表与意图日志、回放语料、模型检查 | S3 前半 | S4 | 是，大 | 用户取消暂缓 | **暂缓** |
 | 阶段 5 | 同 PR 受控修订 | S3、S4 | S5 | 是，大 | 阶段 4；W13 已合并 | **暂缓** |
 | 阶段 6 | Grok Bots 改用 App 身份、`grok/verify-osstack` 必需检查 | S1 的 routine 修改 | S6 | 否（平台侧） | 阶段 2、阶段 3 沙箱验收 | 待决定 |
 | 阶段 7 | 主仓库开启 `OSSTACK_BRIDGE=1` 与运行手册 | — | S7 | 文档 | 阶段 5、6 | **暂缓** |
-| 不做 | 出站 webhook、bot 合并、Grok Bot 在 osstack 主机执行 CLI | S5、S6、S4 中的“调 CLI” | 推迟项、§7 差异表 | — | 有真实需求再提 | 已否决或推迟 |
+| 不做 | 出站 webhook、普通 PR 的 bot 合并（Mission PR 的影子合并见 ADR-006）、Grok Bot 在 osstack 主机执行 CLI | S5、S6、S4 中的“调 CLI” | 推迟项、§7 差异表 | — | 有真实需求再提 | 已否决或推迟 |
 
 草稿与设计的三处主要差异照设计执行：
 - Grok Bot 不在 osstack 主机上执行 `mission revise`，修订由人发起（阶段 0）或由 osstack 自己的对账器发起（阶段 5）。
@@ -388,14 +388,14 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 ### 阶段 2　决定、平台基线与身份探针（设计 S0、S1、S2）
 
-**前置：** 设计 §12 的决定 2–5 由用户给出（决定 1“人合并”已由 ADR-005 的合并者名单确定）。
+**前置：** 设计 §12 的决定已写入 [ADR-006](../decisions/ADR-006-bridge-s0-decisions.md)（2026-11-04）。注意 ADR-006 更正了 ADR-005：除 `gilosbornhello` 外的账号都是自动化，合并者名单不代表人做了决定。
 
 | 任务 | 产出 | 谁做 | 验收 |
 |---|---|---|---|
 | 2.1 ADR-006 | 身份方案（4 个 App + 测试评审 App）、ruleset 改造、默认额度与预算；取代 ADR-005 中“用户账号”的部分时另起 ADR，不改 ADR-005 原文 | 人决定；会话起草 | ADR 合并 |
-| 2.2 ruleset 以代码管理 | 三个文件：`.github/rulesets/main.json`（`REQUIRED_CHECKS` 的五个检查为必需且绑定 `integration_id` 15368、1 个批准、会话解决、最后推送批准、禁止 force-push 与删除）、`mission-writers.json`（`osstack/mission/**` 只允许 App A 更新，App A 为 bypass）、`mission-history.json`（`osstack/mission/**` 禁止 force-push 与删除，**无** bypass）。`scripts/rulesets-check.mjs`：分页列出 `GET /repos/<repo>/rulesets`，再逐个 `GET /repos/<repo>/rulesets/{id}` 取完整内容，规范化后比较 target、conditions、rules、bypass_actors、enforcement；只读，不一致时非零退出 | 会话写文件与脚本；**人**执行创建或更新（对外操作，执行前先停下告诉用户） | 三个 ruleset 读回与文件一致；沙箱中作者自批被拒 |
+| 2.2 ruleset 以代码管理 | 四个文件：`.github/rulesets/main.json`（即 ADR-006 的 `main-quality`，**无** bypass：`REQUIRED_CHECKS` 的五个检查为必需且绑定 `integration_id` 15368、1 个批准、会话解决、最后推送批准、禁止 force-push 与删除）、`main-update.json`（限制谁能更新 `main`；bypass 名单即合并者 allowlist，开启真实合并后含 App E，永不含 App A；过渡期名单由用户在 S1 上主仓库时决定）、`mission-writers.json`（`osstack/mission/**` 只允许 App A 更新，App A 为 bypass）、`mission-history.json`（`osstack/mission/**` 禁止 force-push 与删除，**无** bypass）。`scripts/rulesets-check.mjs`：分页列出 `GET /repos/<repo>/rulesets`，再逐个 `GET /repos/<repo>/rulesets/{id}` 取完整内容，规范化后比较 target、conditions、rules、bypass_actors、enforcement；只读，不一致时非零退出 | 会话写文件与脚本；**人**执行创建或更新（对外操作，执行前先停下告诉用户） | 四个 ruleset 读回与文件一致；沙箱中作者自批被拒 |
 | 2.3 沙箱仓库 | 一个独立测试仓库，套同一份 ruleset；名字由用户决定 | 人建仓库 | `scripts/rulesets-check.mjs --repo <沙箱>` 通过 |
-| 2.4 GitHub App | App A `osstack-publisher`、B `osstack-evidence`、C `grok-pr-watcher`、D `grok-pr-reviewer`、测试评审 App；权限按设计 §8.1；私钥只放主机或平台密钥库，不进仓库 | 人建 App 并安装到沙箱 | 每个 App 的安装 id 记入 ADR-006 |
+| 2.4 GitHub App | App A `osstack-publisher`、B `osstack-evidence`、C `grok-pr-watcher`、D `grok-pr-reviewer`、E `osstack-merger`（ADR-006 决定 2，先影子）、测试评审 App；权限按设计 §8.1；私钥只放主机或平台密钥库，不进仓库 | 人建 App 并安装到沙箱 | 每个 App 的安装 id 记入 ADR-006 |
 | 2.5 平台探针 | `scripts/bridge-probe-github.mjs --repo <沙箱>`：逐项尝试并记录结果（JSON），见下表。探针会做破坏性尝试，只允许对 ADR-006 中登记的沙箱仓库运行（白名单，不是只拒绝主仓库名） | 会话写脚本；人提供令牌并运行 | 每项都有记录的结论，回写设计 §12、§13 |
 
 平台探针清单（每项记录“允许 / 被拒 / 错误码”）：
@@ -411,7 +411,9 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 | P-7 | 另一个 App 发名为 `check` 的检查，PR 是否显示满足必需检查 | 不满足 |
 | P-8 | App B 推送或评论 | 被拒 |
 | P-9 | App A、B 的 App id 与安装 id 是否与 ADR-006 登记一致 | 一致（App id 用于检查归属，安装 id 用于换取令牌，不能混用） |
-| P-10 | 三个 ruleset 全部启用时，用现有发布路径（阶段 3 修改前）发布一个 Mission | 被 `delivery.ts` L863–872 拒绝（确认冲突存在）；阶段 3 修改后重跑应成功 |
+| P-10 | `main-quality` 与两个 Mission 分支 ruleset 全部启用时，用现有发布路径（阶段 3 修改前）发布一个 Mission | 被 `delivery.ts` L863–872 拒绝（确认冲突存在）；阶段 3 修改后重跑应成功 |
+| P-11 | 沙箱里先把 App E 加入 `main-update` 的 bypass（只限沙箱），再用 App E 令牌：①对检查全过、已批准的 PR merge（对照组）；②对有失败检查的 PR merge；③对缺批准的 PR merge；④直接推送 `main` | ①成功；②③④逐项被拒（`main-quality` 无 bypass）。没有对照组成功时本项不算通过，因为 `main-update` 本身就能挡住所有尝试 |
+| P-12 | App A 令牌在 `main-update` 启用后 merge | 被拒 |
 
 ### 阶段 3　证据与发布身份（设计 S3）
 
