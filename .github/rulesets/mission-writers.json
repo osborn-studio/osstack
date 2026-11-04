@@ -1,0 +1,18 @@
+{
+  "_osstack": {
+    "adr": "ADR-006 decision 5; design §8.1",
+    "apply_to": ["sandbox"],
+    "note": "Only App A may create or update Mission branches. Main repo only after the plan phase 3 delivery fix and a passing P-10 rerun."
+  },
+  "name": "mission-writers",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["refs/heads/osstack/mission/**"], "exclude": [] } },
+  "rules": [
+    { "type": "creation" },
+    { "type": "update", "parameters": { "update_allows_fetch_and_merge": false } }
+  ],
+  "bypass_actors": [
+    { "actor_id": "${app:osstack-publisher}", "actor_type": "Integration", "bypass_mode": "always" }
+  ]
+}
