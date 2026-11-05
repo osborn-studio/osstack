@@ -109,7 +109,7 @@ Agreed: S1 replaces `main`'s classic branch protection with a ruleset, **in the 
 
 That last step also waits for the phase 3 delivery fix. Today's publisher treats any applicable ruleset on a Mission branch as protection and refuses to publish (plan phase 3, probe P-10). So the main repository gets the Mission-branch rulesets only after that fix merges and P-10 succeeds on rerun. Its existing branch protection stays until the replacement is ready.
 
-The repository admin performs every change to GitHub settings. An agent session writes the ruleset files and the read-back script, and stops before each external change.
+The repository admin performs every change to GitHub settings. An agent session writes the ruleset files and the read-back script, and stops before each external change. **Exception (2026-11-04):** the owner explicitly told an agent session to do the sandbox work itself. That session created the sandbox repository and the Apps of decision 3, and applied the four rulesets to the sandbox only. The exception covers nothing on this repository: applying rulesets here, changing repository roles and installing Apps on other repositories still need the owner.
 
 **Ruleset layout.** A bypass actor bypasses every rule in its ruleset, so `main` needs two rulesets, not one:
 

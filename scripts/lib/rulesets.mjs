@@ -77,7 +77,11 @@ function normalizeActors(actors) {
   return (actors ?? []).map(a => ({ actor_id: a.actor_id, actor_type: a.actor_type, bypass_mode: a.bypass_mode }))
     .sort((a, b) => `${a.actor_type}:${a.actor_id}`.localeCompare(`${b.actor_type}:${b.actor_id}`));
 }
+// GitHub omits these parameters when they hold their default, so both sides are compared with the default filled in;
+// a live value weaker than the default (for example update_allows_fetch_and_merge: true) then shows up as a difference.
+const PARAMETER_DEFAULTS = { update: { update_allows_fetch_and_merge: false } };
 function normalizeParameters(type, parameters) {
+  if (PARAMETER_DEFAULTS[type]) return { ...PARAMETER_DEFAULTS[type], ...parameters };
   if (type !== 'required_status_checks' || !parameters) return parameters ?? {};
   const checks = (parameters.required_status_checks ?? []).map(c => ({ context: c.context, integration_id: c.integration_id ?? null }))
     .sort((a, b) => a.context.localeCompare(b.context));
