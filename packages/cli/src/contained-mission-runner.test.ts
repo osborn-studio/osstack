@@ -375,3 +375,54 @@ describe("ContainedMissionRunner long histories", () => {
     expect(m.state).toBe("awaiting_decision");
   });
 });
+
+describe("ContainedMissionRunner verify check (bridge)", () => {
+  const publication = { remote: "origin", repository: "o/r", base: "main", draft: true, preauthorized: true };
+  const toOpened = async (f: ReturnType<typeof setup>) => { let m = await drive(f, 3); m = await f.runner.step(m.mission_id); return f.runner.step(m.mission_id); };
+
+  it("records verify_check_published after the PR opened", async () => {
+    const seen: string[] = [];
+    const f = setup({ publishVerifyCheck: async m => { seen.push(m.state); return { check_run_id: 101, created: true }; } }, { publication });
+    const m = await toOpened(f);
+    expect(m.state).toBe("pr_opened"); expect(seen).toEqual(["pr_opened"]);
+    const event = f.store.events(m.mission_id, 0, 500).find(e => e.kind === "verify_check_published")!;
+    expect(JSON.parse(event.payload_json)).toEqual({ check_run_id: 101, created: true, head: "b".repeat(40) });
+    expect(f.kinds().indexOf("pr_opened")).toBeLessThan(f.kinds().indexOf("verify_check_published"));
+  });
+
+  it("keeps the Mission pr_opened and records verify_check_failed when the check port fails", async () => {
+    const f = setup({ publishVerifyCheck: async () => { throw new Error(`CONTAINED_VERIFY_CHECK_HTTP:403 ${FAKE_TOKEN}`); } }, { publication });
+    const m = await toOpened(f);
+    expect(m.state).toBe("pr_opened"); expect(f.store.get(m.mission_id).state).toBe("pr_opened");
+    const event = f.store.events(m.mission_id, 0, 500).find(e => e.kind === "verify_check_failed")!;
+    expect(JSON.parse(event.payload_json)).toEqual({ code: "CONTAINED_VERIFY_CHECK_HTTP" });
+    expect(f.kinds()).not.toContain("verify_check_published");
+    expect(f.allPayloads()).not.toContain(FAKE_TOKEN);
+  });
+
+  it("records no check event without the port", async () => {
+    const f = setup({}, { publication });
+    const m = await toOpened(f);
+    expect(m.state).toBe("pr_opened");
+    expect(f.kinds().filter(k => k.startsWith("verify_check"))).toEqual([]);
+  });
+
+  it("a ledger failure while recording the outcome never fails delivery", async () => {
+    const f = setup({ publishVerifyCheck: async () => { throw new Error("CONTAINED_VERIFY_CHECK_NETWORK"); } }, { publication });
+    const realRecord = f.store.record.bind(f.store);
+    f.store.record = ((id: string, kind: string, ...rest: unknown[]) => { if (kind.startsWith("verify_check")) throw new Error("ledger"); return (realRecord as (...a: unknown[]) => unknown)(id, kind, ...rest); }) as typeof f.store.record;
+    const m = await toOpened(f);
+    expect(m.state).toBe("pr_opened");
+  });
+
+  it("retryVerifyCheck republishes for a pr_opened Mission and rejects other states or a missing port", async () => {
+    let calls = 0;
+    const f = setup({ publishVerifyCheck: async () => { calls++; return { check_run_id: 5, created: calls === 1 }; } }, { publication });
+    await expect(f.runner.retryVerifyCheck(f.mission.mission_id)).rejects.toThrow("mission_not_pr_opened");
+    await toOpened(f);
+    expect(await f.runner.retryVerifyCheck(f.mission.mission_id)).toEqual({ check_run_id: 5, created: false });
+    expect(f.kinds().filter(k => k === "verify_check_published")).toHaveLength(2);
+    const bare = setup({}, { publication }); await toOpened(bare);
+    await expect(bare.runner.retryVerifyCheck(bare.mission.mission_id)).rejects.toThrow("bridge_not_configured");
+  });
+});

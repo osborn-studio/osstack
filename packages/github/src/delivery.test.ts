@@ -37,6 +37,9 @@ function result(
   return { stdout, stderr, exitCode };
 }
 
+/** Branch the default scenario reports; the Mission describe switches it to a Mission branch. */
+let scenarioBranch = "osstack/task-123";
+
 class ScenarioRunner implements DeliveryCommandRunner {
   readonly calls: RecordedCall[] = [];
   prExists = false;
@@ -65,14 +68,14 @@ class ScenarioRunner implements DeliveryCommandRunner {
       first === "check-ref-format" &&
       second === "--branch"
     ) {
-      return result("osstack/task-123");
+      return result(scenarioBranch);
     }
     if (
       call.command === "git" &&
       first === "branch" &&
       second === "--show-current"
     ) {
-      return result("osstack/task-123\n");
+      return result(`${scenarioBranch}\n`);
     }
     if (
       call.command === "git" &&
@@ -110,7 +113,7 @@ class ScenarioRunner implements DeliveryCommandRunner {
       call.command === "gh" &&
       first === "pr" &&
       second === "view" &&
-      third === "osstack/task-123"
+      third === scenarioBranch
     ) {
       return this.prExists
         ? result(
@@ -142,7 +145,7 @@ class ScenarioRunner implements DeliveryCommandRunner {
       call.command === "gh" &&
       first === "api" &&
       call.args.some((arg) =>
-        arg.includes("/branches/osstack%2Ftask-123/protection"),
+        arg.includes(`/branches/${encodeURIComponent(scenarioBranch)}/protection`),
       )
     ) {
       return result("", 1, "HTTP 404: Branch not protected");
@@ -151,7 +154,7 @@ class ScenarioRunner implements DeliveryCommandRunner {
       call.command === "gh" &&
       first === "api" &&
       call.args.some((arg) =>
-        arg.includes("/rules/branches/osstack%2Ftask-123"),
+        arg.includes(`/rules/branches/${encodeURIComponent(scenarioBranch)}`),
       )
     ) {
       return result("[]");
@@ -794,14 +797,14 @@ function evidenceRunner(override?: Override): ScenarioRunner {
     if (custom !== undefined) return custom;
     if (call.command === "git" && call.args[0] === "ls-remote")
       return result(
-        `${HEAD_SHA}\trefs/heads/osstack/task-123\n${OTHER_SHA}\trefs/heads/main\n`,
+        `${HEAD_SHA}\trefs/heads/${scenarioBranch}\n${OTHER_SHA}\trefs/heads/main\n`,
       );
     if (call.args.includes("headRefOid,baseRefName,headRefName"))
       return result(
         JSON.stringify({
           headRefOid: HEAD_SHA,
           baseRefName: "main",
-          headRefName: "osstack/task-123",
+          headRefName: scenarioBranch,
         }),
       );
     return undefined;
@@ -1126,6 +1129,71 @@ describe("contract PR-only publication", () => {
   it("does not claim draft publication when an existing PR is ready", async () => {
     const r = runner(); await expect(openPullRequestToGitHub(input(), { ...scope, draft: true }, r)).rejects.toThrow("draft scope mismatch");
     expect(commandStrings(r).some(c => c.includes("pr merge"))).toBe(false);
+  });
+  describe("Mission ruleset exception", () => {
+    const MISSION_IDS = [26577637, 26577638];
+    const MISSION_BRANCH = "osstack/mission/task-123";
+    beforeEach(() => { scenarioBranch = MISSION_BRANCH; });
+    afterEach(() => { scenarioBranch = "osstack/task-123"; });
+    const rule = (type: string, rulesetId?: number) => ({ type, ...(rulesetId === undefined ? {} : { ruleset_id: rulesetId, ruleset_source_type: "Repository", ruleset_source: "gilosbornhello/osstack" }) });
+    const missionRules = [rule("deletion", 26577637), rule("non_fast_forward", 26577637), rule("creation", 26577638), rule("update", 26577638)];
+    const withRules = (rules: unknown[], legacy = false) => (call: RecordedCall) => {
+      if (call.command !== "gh" || call.args[0] !== "api") return undefined;
+      if (call.args.some(a => a.includes("/rules/branches/osstack%2Fmission%2Ftask-123"))) return result(JSON.stringify(rules));
+      if (legacy && call.args.some(a => a.includes("/branches/osstack%2Fmission%2Ftask-123/protection"))) return result(JSON.stringify({ url: "x" }));
+      return undefined;
+    };
+    const pushed = (r: ScenarioRunner) => commandStrings(r).some(c => c.startsWith("git push"));
+    const REFUSE = "refusing to push an effectively protected candidate branch";
+    it("publishes when every rule is a registered Mission lifecycle rule", async () => {
+      const r = runner(withRules(missionRules));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), { ...scope, missionRulesetIds: MISSION_IDS }, r)).resolves.toBeDefined();
+      expect(pushed(r)).toBe(true);
+    });
+    it("refuses an extra rule from an unregistered ruleset", async () => {
+      const r = runner(withRules([...missionRules, rule("update", 999)]));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), { ...scope, missionRulesetIds: MISSION_IDS }, r)).rejects.toThrow(REFUSE);
+      expect(pushed(r)).toBe(false);
+    });
+    it.each(["required_status_checks", "pull_request"])("refuses a registered ruleset carrying %s", async type => {
+      const r = runner(withRules([...missionRules, rule(type, 26577637)]));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), { ...scope, missionRulesetIds: MISSION_IDS }, r)).rejects.toThrow();
+      expect(pushed(r)).toBe(false);
+    });
+    it("refuses a rule without ruleset_id", async () => {
+      const r = runner(withRules([...missionRules, rule("update")]));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), { ...scope, missionRulesetIds: MISSION_IDS }, r)).rejects.toThrow(REFUSE);
+      expect(pushed(r)).toBe(false);
+    });
+    it("refuses when legacy protection exists even with registered ids", async () => {
+      const r = runner(withRules(missionRules, true));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), { ...scope, missionRulesetIds: MISSION_IDS }, r)).rejects.toThrow(REFUSE);
+      expect(pushed(r)).toBe(false);
+    });
+    it.each(["feature/x", "osstack/task-123", "osstack/mission"])("refuses registered rules on a non-Mission branch %s", async branch => {
+      scenarioBranch = branch;
+      const r = runner(call => {
+        if (call.command === "gh" && call.args[0] === "api" && call.args.some(a => a.includes("/rules/branches/"))) return result(JSON.stringify(missionRules));
+        return undefined;
+      });
+      await expect(openPullRequestToGitHub(input({ branch }), { ...scope, missionRulesetIds: MISSION_IDS }, r)).rejects.toThrow(REFUSE);
+      expect(pushed(r)).toBe(false);
+    });
+    it("refuses without missionRulesetIds", async () => {
+      const r = runner(withRules(missionRules));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), scope, r)).rejects.toThrow(REFUSE);
+      expect(pushed(r)).toBe(false);
+    });
+    it.each([[[]], [[1.5]], [[0]], [[-3]]])("rejects invalid missionRulesetIds %j", async ids => {
+      const r = runner(withRules(missionRules));
+      await expect(openPullRequestToGitHub(input({ branch: MISSION_BRANCH }), { ...scope, missionRulesetIds: ids as number[] }, r)).rejects.toThrow();
+      expect(r.calls).toHaveLength(0);
+    });
+    it("deliverToGitHub still refuses Mission rules", async () => {
+      const r = evidenceRunner(withRules(missionRules));
+      await expect(deliverToGitHub(input({ branch: MISSION_BRANCH }), r)).rejects.toThrow(REFUSE);
+      expect(pushed(r)).toBe(false);
+    });
   });
   it("rechecks destination before push and refuses remote changes", async () => {
     let reads = 0; const r = runner(call => call.args[0] === "remote" && ++reads === 2 ? result("git@github.com:foreign/repo.git") : undefined);

@@ -12,6 +12,7 @@ import { defaultDeliveryCommandRunner, openPullRequestToGitHub, type DeliveryCom
 import { redactSecrets } from '@osstack/governance';
 import { containedBindingCanonical, containedCommandFromArgv, containedOwnerPort, missionVerificationBinding, prepareContainedCandidateImage, registerContainedExecution, reopenContainedExecution, type ContainedOwnerIdentity } from './contained-verification.js';
 import { parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
+import type { BridgeKit, BridgeOptions, DeliveryEvidenceFacts } from './contained-mission-bridge.js';
 
 export interface ContainedMissionPortsOptions {
   store: ContainedMissionStore; now?: () => number;
@@ -24,6 +25,8 @@ export interface ContainedMissionPortsOptions {
   /** Command runner for the PR-only publication; the default uses the host's own git and gh credentials. */
   delivery?: { runner?: DeliveryCommandRunner };
   git?: HardenedGitContext;
+  /** GitHub Apps bridge (plan phase 3). App mode applies only to the configured repository; without this the host's own gh/git credentials are used. */
+  bridge?: BridgeOptions;
 }
 export type ContainedVerificationStop = { stopped: true; proof: 'container_removed' | 'never_launched'; evidence: string } | { stopped: false };
 export interface ContainedMissionHostPorts extends ContainedMissionPorts {
@@ -69,7 +72,7 @@ const FORBIDDEN_GH = new Set(['merge', 'edit', 'close', 'ready', 'review', 'comm
 /** Wraps the delivery runner: every push and PR creation passes the Mission's publication fence first, git runs without
  * hooks or fsmonitor and only over https/ssh, and no gh subcommand that changes a PR other than creating it can run. */
 export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteMutation: (kind: 'push' | 'pr_create') => void,
-  destination?: { remote: string; repository: string }): DeliveryCommandRunner {
+  destination?: { remote: string; repository: string; httpsOnly?: boolean }): DeliveryCommandRunner {
   const git = (args: readonly string[], runOptions: Parameters<DeliveryCommandRunner['run']>[2]) => inner.run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
     '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', ...args], runOptions);
   return {
@@ -83,6 +86,8 @@ export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteM
           const urls = await git(['remote', 'get-url', '--push', '--all', '--', destination.remote], runOptions);
           const list = urls.exitCode === 0 ? urls.stdout.split('\n').map(u => u.trim()).filter(Boolean) : [];
           if (list.length === 0 || list.some(url => githubRepositoryOf(url)?.toLowerCase() !== destination.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
+          // Bridge mode: re-checked at push time, so a remote switched to ssh can never push with the host's own key.
+          if (destination.httpsOnly && list.some(url => !/^https:\/\/github\.com\//i.test(url))) throw Error('CONTAINED_BRIDGE_REQUIRES_HTTPS');
         }
         beforeRemoteMutation('push');
       }
@@ -143,6 +148,20 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     return text(await run(['rev-parse', '--verify', '-q', `refs/heads/${branch}`]));
   };
 
+  // The bridge module and its token sources load once, on first use.
+  let kitPromise: Promise<BridgeKit> | undefined;
+  const bridgeKit = (): Promise<BridgeKit> => {
+    kitPromise ??= import('./contained-mission-bridge.js').then(m => m.createBridgeKit(options.bridge!));
+    return kitPromise;
+  };
+  const deliveryEvidenceFacts = (missionId: string): DeliveryEvidenceFacts | undefined => {
+    const event = containedEvents(store, missionId).filter(e => e.kind === 'delivery_evidence').at(-1);
+    if (!event) return undefined;
+    const p = eventPayload(event) as Partial<DeliveryEvidenceFacts>;
+    if (typeof p.head !== 'string' || typeof p.repository !== 'string' || typeof p.evidence_digest !== 'string' || !Array.isArray(p.verify?.argv) || typeof p.verify.exit_code !== 'number') return undefined;
+    return { head: p.head, repository: p.repository, evidence_digest: p.evidence_digest, verify: { argv: p.verify.argv.map(String), exit_code: p.verify.exit_code } };
+  };
+
   const ports: ContainedMissionHostPorts = {
     store, now,
     createWorkspace: async (spec, signal) => {
@@ -160,25 +179,39 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     qualify: (worktree, gitDir) => executor(worktree).qualify(worktree, gitDir),
     publish: async ({ mission, spec, permit, body, beforeRemoteMutation }) => {
       const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
+      // A configured bridge confines publication to its repository: never fall back to host credentials for another one.
+      if (options.bridge !== undefined && options.bridge.config.repository.toLowerCase() !== p.repository.toLowerCase()) throw Error('CONTAINED_BRIDGE_REPOSITORY');
       // The repository config that made the workspace safe must still hold before anything leaves the machine.
       await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), ctx);
       if (await branchHead(spec.worktree_path, spec.branch) !== permit.head) throw Error('CONTAINED_PUBLICATION_HEAD_MISMATCH');
       // Every URL git would push to (pushurl included) must be the granted repository, before anything is pushed.
       const pushUrls = text(await git(spec.worktree_path)(['remote', 'get-url', '--push', '--all', '--', p.remote])).split('\n').filter(Boolean);
       if (pushUrls.length === 0 || pushUrls.some(url => githubRepositoryOf(url)?.toLowerCase() !== p.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
+      // App mode: only the bridge repository, and only over plain https so the App token never meets an ssh or userinfo URL.
+      const app = options.bridge !== undefined ? await bridgeKit() : undefined;
+      if (app) {
+        const httpsUrl = new RegExp(`^https://github\\.com/${p.repository.replace(/[.]/g, '\\.')}(?:\\.git)?/?$`, 'i');
+        if (pushUrls.some(url => !httpsUrl.test(url.trim()))) throw Error('CONTAINED_BRIDGE_REQUIRES_HTTPS');
+      }
       const bodyFile = join(runtimeDir(spec.worktree_path), `pr-body-${permit.revision}.md`);
       writeFileSync(bodyFile, body, { mode: 0o600 });
-      const runner = fencedDeliveryRunner(options.delivery?.runner ?? defaultDeliveryCommandRunner, beforeRemoteMutation, { remote: p.remote, repository: p.repository });
+      const hostRunner = options.delivery?.runner ?? defaultDeliveryCommandRunner;
+      // The credential runner sits inside the fence, so the fence still runs before every mutation.
+      const { appCredentialRunner } = app ? await import('./contained-mission-bridge.js') : { appCredentialRunner: undefined };
+      const inner = app && appCredentialRunner ? appCredentialRunner(hostRunner, () => app.publisherToken(), app.exec) : hostRunner;
+      const runner = fencedDeliveryRunner(inner, beforeRemoteMutation, { remote: p.remote, repository: p.repository, ...(app ? { httpsOnly: true } : {}) });
       // The title is published verbatim, so it is redacted like the body; control characters never reach gh.
       const title = redactSecrets(p.title ?? `Contained Mission ${mission.mission_id.slice(3, 11)}: ${spec.goal.replace(/\s+/g, ' ').slice(0, 72)}`)
         // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.
         .replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 200);
       const opened = await openPullRequestToGitHub({ workspacePath: spec.worktree_path, remote: p.remote, base: p.base, branch: spec.branch, title, bodyFile,
-        mergeStrategy: 'squash', ciTimeoutMs: 60_000 }, { repository: p.repository, headCommit: permit.head, draft: p.draft }, runner);
+        mergeStrategy: 'squash', ciTimeoutMs: 60_000 }, { repository: p.repository, headCommit: permit.head, draft: p.draft,
+        ...(app ? { missionRulesetIds: app.config.mission_ruleset_ids } : {}) }, runner);
       const listed = await runner.run('git', ['ls-remote', '--', p.remote, `refs/heads/${p.base}`], { cwd: spec.worktree_path, timeoutMs: 30_000 });
       const baseHead = listed.exitCode === 0 ? /^([0-9a-f]{40}|[0-9a-f]{64})\s/.exec(listed.stdout)?.[1] ?? null : null;
       return { pushed_commit: opened.pushedCommit, pr: opened.pr, base_head: baseHead };
     },
+    ...(options.bridge ? { publishVerifyCheck: async (mission: ContainedMission) => (await bridgeKit()).publishVerifyCheck(mission, deliveryEvidenceFacts(mission.mission_id)) } : {}),
     execute: input => executor(input.worktree).run({ worktree: input.worktree, prompt: input.prompt, signal: input.signal, onLaunched: input.onLaunched }),
     readFile: async (worktree, path) => {
       try { return utf8((await safeReadFile(worktree, path)).bytes, 'CONTAINED_FILE_NOT_UTF8'); }

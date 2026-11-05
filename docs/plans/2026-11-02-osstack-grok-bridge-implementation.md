@@ -15,10 +15,10 @@
 |---|---|---|---|---|---|---|
 | 阶段 0 | 首期约定上线：Mission PR 识别、事件约定、人工修订、验收演练 | S0、S1 | 首期 A–E、S0a | 否 | ADR-005 已 Accepted | **可执行** |
 | 阶段 1 | PR 机器标记、`mission status` 的发布字段 | S2 | 首期 A.4 | 是，小 | 用户同意（§8 决定 1） | **已完成**（#368） |
-| 阶段 2 | 决定 ADR、ruleset 基线、沙箱仓库、GitHub App 与平台探针 | S0 | S0、S1、S2 | 只有脚本 | 设计 §12 决定（ADR-006） | **可执行** |
-| 阶段 3 | 证据：Publisher App 推送、`osstack/verify` check run | — | S3 | 是，中 | 阶段 2 完成 | 待决定 |
-| 阶段 4 | 影子对账器、链表与意图日志、回放语料、模型检查 | S3 前半 | S4 | 是，大 | 用户取消暂缓 | **暂缓** |
-| 阶段 5 | 同 PR 受控修订 | S3、S4 | S5 | 是，大 | 阶段 4；W13 已合并 | **暂缓** |
+| 阶段 2 | 决定 ADR、ruleset 基线、沙箱仓库、GitHub App 与平台探针 | S0 | S0、S1、S2 | 只有脚本 | 设计 §12 决定（ADR-006） | **已完成**（#369–#372；P-10 端到端已在阶段 3 验收中通过） |
+| 阶段 3 | 证据：Publisher App 推送、`osstack/verify` check run | — | S3 | 是，中 | 阶段 2 完成 | **已实现**（沙箱发布路径验收通过；完整 Mission 端到端待 Docker 环境） |
+| 阶段 4 | 影子对账器、链表与意图日志、回放语料、模型检查 | S3 前半 | S4 | 是，大 | 用户取消暂缓（2026-11-04 已取消） | **可执行**（只做影子记录，不预留、不派发、不写 GitHub） |
+| 阶段 5 | 同 PR 受控修订 | S3、S4 | S5 | 是，大 | 阶段 4；W13 已合并 | 已取消暂缓（2026-11-04），等阶段 4 |
 | 阶段 6 | Grok Bots 改用 App 身份、`grok/verify-osstack` 必需检查 | S1 的 routine 修改 | S6 | 否（平台侧） | 阶段 2、阶段 3 沙箱验收 | 待决定 |
 | 阶段 7 | 主仓库开启 `OSSTACK_BRIDGE=1` 与运行手册 | — | S7 | 文档 | 阶段 5、6 | **暂缓** |
 | 不做 | 出站 webhook、普通 PR 的 bot 合并（Mission PR 的影子合并见 ADR-006）、Grok Bot 在 osstack 主机执行 CLI | S5、S6、S4 中的“调 CLI” | 推迟项、§7 差异表 | — | 有真实需求再提 | 已否决或推迟 |
@@ -431,6 +431,8 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 验收：沙箱中一个 Mission PR 的作者是 App A，`osstack/verify` 的 `head_sha` 与账本 `candidate_head` 一致；探针 P-1 在接入后重跑结果不变。
 
+验收记录（2026-11-05，沙箱 PR #13，`accept-20261105T052308`）：用真实的 `delivery.ts`、`appCredentialRunner`、`fencedDeliveryRunner` 与 App 令牌模块直接走发布路径（本机 Docker 未运行，没有跑完整 Mission，`candidate_head` 取自本地提交而非账本）。结果：主机凭证推送 Mission 分支被 ruleset 拒绝；App A 推送并开 PR 成功，作者 `osstack-publisher[bot]`，head 一致；栅栏先于 push 与 pr_create 运行；App B 的 `osstack/verify` 为 success、`head_sha` 一致，第二次调用更新同一条 check run（未新增）。P-10 端到端通过。未做：完整 Mission（执行器 + 容器验证）走一遍，以及接入后重跑 P-1（本阶段没有改 App 权限）。
+
 ### 阶段 4　影子对账器（设计 S4，暂缓）
 
 用户取消暂缓后按下表开工；开工前把实现细节写成设计附录并做一次独立审计（设计 §14 末尾的要求）。
@@ -491,7 +493,8 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 1. **是否开工阶段 1**（机器标记与 `publication` 字段）。不开工也不影响阶段 0。
 2. **设计 §12 的决定 2–5**（App 身份方案、ruleset 改造、默认额度/预算/截止时间；协作者人/bot 已在 ADR-005 中回答）。阶段 2 及之后都等这一项。
 3. **沙箱仓库的名字和归属**。（已决定：用户授权会话创建，`osborn-studio/osstack-bridge-sandbox`，见 ADR-006。）
-4. **是否取消修订链的暂缓**。不取消时，阶段 4、5、7 不开工，修订一直按使用说明 1.3 由人发起。
+4. **是否取消修订链的暂缓**。（已决定，2026-11-04：阶段 4、5 取消暂缓；阶段 4 只做影子记录，不执行任何动作；阶段 7 仍暂缓。阶段 3 先做。）
+5. **Mission PR 计入的批准由谁给**（探针 P-5：App 批准不计入）。（已决定，2026-11-04：由用户本人账号 `gilosbornhello` 给，见 ADR-006 风险 4。）
 
 ### 9. 风险与未确认项
 

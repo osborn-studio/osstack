@@ -50,6 +50,9 @@ const GitHubDeliveryInputSchema = z
   })
   .strict();
 
+/** The Mission ruleset exception applies only to branches in this namespace. */
+const MISSION_BRANCH_PREFIX = "osstack/mission/";
+
 export interface DeliveryCommandResult {
   stdout: string;
   stderr: string;
@@ -226,6 +229,7 @@ const RecoveredMergedPullRequest = MergedPullRequest.extend({
 const RulesetRule = z
   .object({
     type: z.string().min(1),
+    ruleset_id: z.number().optional(),
     parameters: z.unknown().optional(),
   })
   .passthrough();
@@ -233,7 +237,31 @@ const RulesetRule = z
 interface ProtectionEvidence {
   protected: boolean;
   requiredChecks: string[];
+  legacyProtected: boolean;
+  rules: z.infer<typeof RulesetRule>[];
 }
+
+const MISSION_RULE_TYPES: ReadonlySet<string> = new Set([
+  "creation",
+  "update",
+  "deletion",
+  "non_fast_forward",
+]);
+
+/** True iff every rule is a lifecycle rule from a registered Mission ruleset. */
+function missionRulesOnly(
+  rules: readonly z.infer<typeof RulesetRule>[],
+  missionRulesetIds: ReadonlySet<number>,
+): boolean {
+  return rules.every(
+    (rule) =>
+      typeof rule.ruleset_id === "number" &&
+      missionRulesetIds.has(rule.ruleset_id) &&
+      MISSION_RULE_TYPES.has(rule.type),
+  );
+}
+
+const MissionRulesetIds = z.array(z.number().int().positive()).nonempty();
 
 function commandFailure(
   operation: string,
@@ -582,6 +610,8 @@ async function readEffectiveProtection(
   return {
     protected: legacyValue !== undefined || rules.data.length > 0,
     requiredChecks: [...new Set(requiredChecks)].sort(),
+    legacyProtected: legacyValue !== undefined,
+    rules: rules.data,
   };
 }
 
@@ -752,16 +782,17 @@ export async function deliverToGitHub(value: GitHubDeliveryInput,
 /** Existing push/PR implementation with a hard return before CI/merge/deploy.
  * The caller must already hold the existing publish authority and writer lease. */
 export async function openPullRequestToGitHub(value: GitHubDeliveryInput,
-  scope: { repository: string; headCommit: string; draft: boolean },
+  scope: { repository: string; headCommit: string; draft: boolean; missionRulesetIds?: readonly number[] },
   runner: DeliveryCommandRunner = defaultDeliveryCommandRunner): Promise<GitHubPullRequestResult> {
   const checked = z.object({ repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/),
-    headCommit: GitCommitSha, draft: z.boolean() }).strict().parse(scope);
+    headCommit: GitCommitSha, draft: z.boolean(),
+    missionRulesetIds: MissionRulesetIds.optional() }).strict().parse(scope);
   return await runGitHubDelivery(value, runner, checked);
 }
 async function runGitHubDelivery(
   value: GitHubDeliveryInput,
   runner: DeliveryCommandRunner,
-  openOnly?: { repository: string; headCommit: string; draft: boolean },
+  openOnly?: { repository: string; headCommit: string; draft: boolean; missionRulesetIds?: readonly number[] | undefined },
 ): Promise<GitHubDeliveryResult | GitHubPullRequestResult> {
   const input = GitHubDeliveryInputSchema.parse(value);
   if (
@@ -866,7 +897,14 @@ async function runGitHubDelivery(
     repo,
     input.branch,
   );
-  if (candidateProtection.protected) {
+  const missionIds = openOnly?.missionRulesetIds;
+  const missionContained =
+    missionIds !== undefined &&
+    input.branch.startsWith(MISSION_BRANCH_PREFIX) &&
+    input.branch.length > MISSION_BRANCH_PREFIX.length &&
+    !candidateProtection.legacyProtected &&
+    missionRulesOnly(candidateProtection.rules, new Set(missionIds));
+  if (candidateProtection.protected && !missionContained) {
     throw new Error(
       "refusing to push an effectively protected candidate branch",
     );
