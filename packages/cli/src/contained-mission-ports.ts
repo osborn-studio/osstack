@@ -72,7 +72,7 @@ const FORBIDDEN_GH = new Set(['merge', 'edit', 'close', 'ready', 'review', 'comm
 /** Wraps the delivery runner: every push and PR creation passes the Mission's publication fence first, git runs without
  * hooks or fsmonitor and only over https/ssh, and no gh subcommand that changes a PR other than creating it can run. */
 export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteMutation: (kind: 'push' | 'pr_create') => void,
-  destination?: { remote: string; repository: string }): DeliveryCommandRunner {
+  destination?: { remote: string; repository: string; httpsOnly?: boolean }): DeliveryCommandRunner {
   const git = (args: readonly string[], runOptions: Parameters<DeliveryCommandRunner['run']>[2]) => inner.run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
     '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', '-c', 'protocol.ssh.allow=always', ...args], runOptions);
   return {
@@ -86,6 +86,8 @@ export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteM
           const urls = await git(['remote', 'get-url', '--push', '--all', '--', destination.remote], runOptions);
           const list = urls.exitCode === 0 ? urls.stdout.split('\n').map(u => u.trim()).filter(Boolean) : [];
           if (list.length === 0 || list.some(url => githubRepositoryOf(url)?.toLowerCase() !== destination.repository.toLowerCase())) throw Error('CONTAINED_PUBLICATION_DESTINATION');
+          // Bridge mode: re-checked at push time, so a remote switched to ssh can never push with the host's own key.
+          if (destination.httpsOnly && list.some(url => !/^https:\/\/github\.com\//i.test(url))) throw Error('CONTAINED_BRIDGE_REQUIRES_HTTPS');
         }
         beforeRemoteMutation('push');
       }
@@ -197,7 +199,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       // The credential runner sits inside the fence, so the fence still runs before every mutation.
       const { appCredentialRunner } = app ? await import('./contained-mission-bridge.js') : { appCredentialRunner: undefined };
       const inner = app && appCredentialRunner ? appCredentialRunner(hostRunner, () => app.publisherToken(), app.exec) : hostRunner;
-      const runner = fencedDeliveryRunner(inner, beforeRemoteMutation, { remote: p.remote, repository: p.repository });
+      const runner = fencedDeliveryRunner(inner, beforeRemoteMutation, { remote: p.remote, repository: p.repository, ...(app ? { httpsOnly: true } : {}) });
       // The title is published verbatim, so it is redacted like the body; control characters never reach gh.
       const title = redactSecrets(p.title ?? `Contained Mission ${mission.mission_id.slice(3, 11)}: ${spec.goal.replace(/\s+/g, ' ').slice(0, 72)}`)
         // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.

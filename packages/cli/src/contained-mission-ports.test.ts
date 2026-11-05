@@ -231,6 +231,21 @@ describe("fencedDeliveryRunner destination", () => {
     await good.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
     expect(pushes).toEqual([["push", "origin", "x:refs/heads/b"]]);
   });
+  it("in bridge mode refuses, at push time, a push URL that is no longer https", async () => {
+    const pushes: string[][] = [];
+    const inner = (pushUrl: string) => ({ run: async (_c: string, args: readonly string[]) => {
+      const a = args.filter((_, i) => i >= 10);
+      if (a[0] === "remote" && a[1] === "get-url") return { exitCode: 0, stdout: `${pushUrl}\n`, stderr: "" };
+      if (a[0] === "push") pushes.push([...a]);
+      return { exitCode: 0, stdout: "", stderr: "" };
+    } });
+    const switched = fencedDeliveryRunner(inner("git@github.com:o/r.git"), () => {}, { remote: "origin", repository: "o/r", httpsOnly: true });
+    await expect(switched.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_BRIDGE_REQUIRES_HTTPS");
+    expect(pushes).toEqual([]);
+    const https = fencedDeliveryRunner(inner("https://github.com/o/r.git"), () => {}, { remote: "origin", repository: "o/r", httpsOnly: true });
+    await https.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
+    expect(pushes).toEqual([["push", "origin", "x:refs/heads/b"]]);
+  });
 });
 
 describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
