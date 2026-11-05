@@ -78,7 +78,7 @@ function parse<T>(schema: z.ZodType<T>, text: string, file: string): T {
 
 async function checkKey(role: 'publisher' | 'evidence', path: string): Promise<void> {
   const fail = (): Error => new Error(`BRIDGE_KEY_PERMISSIONS:${role}`);
-  let stat;
+  let stat: Awaited<ReturnType<typeof lstat>>;
   try {
     stat = await lstat(path);
   } catch {
