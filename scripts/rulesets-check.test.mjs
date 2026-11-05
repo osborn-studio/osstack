@@ -104,9 +104,9 @@ const DEFAULT_BRANCH = { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] }
 const MISSION = { ref_name: { include: ['refs/heads/osstack/mission/**'], exclude: [] } };
 const POLICY = {
   'main-quality': { name: 'main-quality', target: 'branch', enforcement: 'active', conditions: DEFAULT_BRANCH, rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }, PR_RULE, CHECKS_RULE], bypass_actors: [] },
-  'main-update': { name: 'main-update', target: 'branch', enforcement: 'active', conditions: DEFAULT_BRANCH, rules: [{ type: 'update', parameters: { update_allows_fetch_and_merge: false } }],
+  'main-update': { name: 'main-update', target: 'branch', enforcement: 'active', conditions: DEFAULT_BRANCH, rules: [{ type: 'update' }],
     bypass_actors: [{ actor_id: '${app:osstack-merger}', actor_type: 'Integration', bypass_mode: 'pull_request' }] },
-  'mission-writers': { name: 'mission-writers', target: 'branch', enforcement: 'active', conditions: MISSION, rules: [{ type: 'creation' }, { type: 'update', parameters: { update_allows_fetch_and_merge: false } }],
+  'mission-writers': { name: 'mission-writers', target: 'branch', enforcement: 'active', conditions: MISSION, rules: [{ type: 'creation' }, { type: 'update' }],
     bypass_actors: [{ actor_id: '${app:osstack-publisher}', actor_type: 'Integration', bypass_mode: 'always' }] },
   'mission-history': { name: 'mission-history', target: 'branch', enforcement: 'active', conditions: MISSION, rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }], bypass_actors: [] },
 };
@@ -125,6 +125,7 @@ test('each kind of drift fails the check', () => {
     'approvals lowered': l => { l.find(r => r.name === 'main-quality').rules.find(r => r.type === 'pull_request').parameters.required_approving_review_count = 0; },
     'condition widened': l => { l.find(r => r.name === 'mission-writers').conditions.ref_name.include = ['~ALL']; },
     'enforcement off': l => { l.find(r => r.name === 'mission-history').enforcement = 'disabled'; },
+    'update allows fetch and merge': l => { l.find(r => r.name === 'main-update').rules.find(r => r.type === 'update').parameters = { update_allows_fetch_and_merge: true }; },
     'ruleset missing': l => { l.splice(l.findIndex(r => r.name === 'mission-writers'), 1); },
     'ruleset duplicated': l => { l.push({ ...l[0], id: 999 }); },
     'unknown ruleset': l => { l.push({ id: 998, name: 'org-wide', source_type: 'Organization', target: 'branch', enforcement: 'active', rules: [{ type: 'update' }], bypass_actors: [] }); },
