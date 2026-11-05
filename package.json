@@ -77,6 +77,8 @@
     "test:pr-stack-candidate": "node --test scripts/report-pr-stack-candidate.test.mjs",
     "inspect:pr-stack-candidate": "node scripts/report-pr-stack-candidate.mjs",
     "test:rulesets-check": "node --test scripts/rulesets-check.test.mjs",
+    "test:bridge-probe": "node --test scripts/bridge-probe-github.test.mjs",
+    "bridge:probe": "node scripts/bridge-probe-github.mjs",
     "rulesets:check": "node scripts/rulesets-check.mjs"
   },
   "devDependencies": {
