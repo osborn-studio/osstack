@@ -144,12 +144,12 @@ Deferred together with the revision chain (stages S4/S5). These settings are dec
 | P-7 | Check runs that App C posts under the five required names do not satisfy the required checks ("were not set by the expected GitHub apps"). |
 | P-8 | App B can neither push nor comment (403). |
 | P-9 | The live App ids and installation ids of App A and App B match decision 3. |
-| P-10 | Decision-level: the current publisher's protection lookup (`GET rules/branches/<branch>`, `delivery.ts` `readEffectiveProtection`) returns `deletion, non_fast_forward, creation, update` for a new Mission branch, so today's publisher would refuse to publish. The end-to-end publish rerun belongs to phase 3. |
+| P-10 | Decision-level: the current publisher's protection lookup (`GET rules/branches/<branch>`, `delivery.ts` `readEffectiveProtection`) returns `deletion, non_fast_forward, creation, update` for a new Mission branch, so today's publisher would refuse to publish. **End-to-end rerun with the phase 3 publisher (2026-11-05, sandbox PR #13):** with `missionRulesetIds` = the two Mission rulesets, App A pushed `osstack/mission/accept-20261105T052308` and opened the PR (author `osstack-publisher[bot]`); the same push with the host's own credentials was refused ("creations being restricted"). |
 | P-11 | ① App E merged a green, approved PR (the control). ② It was refused with failing checks, and ③ refused without an approval. ④ It cannot push `main` directly. |
 | P-12 | App A is refused a merge on a green PR that has a counted approval ("Cannot update this protected ref"). |
 
 Consequences for decision 2:
-- **Gate 6 cannot be met by App D.** Until another arrangement is decided, the approval that `main-quality` requires must come from a user account. Only `gilosbornhello` is a person, and the automation accounts are users whose approvals do count. Risk 4 below has happened.
+- **Gate 6 cannot be met by App D.** The approval that `main-quality` requires must come from a user account; the owner decided it is `gilosbornhello` (risk 4). Only `gilosbornhello` is a person, and the automation accounts are users whose approvals do count. Risk 4 below has happened.
 - **App D cannot resolve review threads either.** Whatever clears an unresolved thread before merge must be a user account.
 
 ## Consequences
@@ -163,4 +163,4 @@ Consequences for decision 2:
 1. **No human gate on `main`.** Approvals and merges on every PR, not only Mission PRs, are made by automation that a person checks only afterwards. The required approval on `main` is not evidence that a person reviewed anything, and S1 does not change that (decision 5). Requiring human review would be a separate owner decision.
 2. **One human account.** `gilosbornhello` is the only person and is also the current publisher. GitHub refuses an author's approval of their own PR, so before App A takes over publishing, an approval on a Mission PR can only come from automation.
 3. **Ordinary PRs stay outside the gates.** Decision 2 narrows automated merging only for Mission PRs. Whether to gate ordinary PRs the same way is a separate decision.
-4. **App reviews do not count (confirmed by probe P-5, 2026-11-05).** App D's approvals do not count toward the required approval, so gate 6 must be met by the one human account or another counted reviewer. Today that means a user account. How Mission PRs get their counted approval is an open owner decision.
+4. **App reviews do not count (confirmed by probe P-5, 2026-11-05).** App D's approvals do not count toward the required approval, so gate 6 must be met by the one human account or another counted reviewer. Today that means a user account. **Owner decision (2026-11-04):** the counted approval on Mission PRs is given by the owner's own account, `gilosbornhello`, after reading the PR; no automation account and no App is used for it. The Reviewer bot's review stays advisory.
