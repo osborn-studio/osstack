@@ -437,6 +437,8 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 用户取消暂缓后按下表开工；开工前把实现细节写成设计附录并做一次独立审计（设计 §14 末尾的要求）。
 
+实现附录：[阶段 4 影子对账器](../design/2026-11-05-bridge-shadow-reconciler.md)（2026-11-05，两轮 Codex 审计）。附录把本阶段拆成 4-A 至 4-D 四个 PR，并记录了与下表的偏差（另加两张表、读取器文件名、影子链不模拟轮次）。
+
 | 任务 | 文件 | 验收 |
 |---|---|---|
 | 4.1 迁移 | 新文件 `packages/core/src/state/engineering-revision-chain-ddl.ts` 写设计 §8.3 的三张表（与现有 `engineering-contained-ddl.ts` 分开）；`migrations.ts` 追加一条引用它（当前最后一条是 50 `engineering_contained_missions`）；升级测试中的版本号随之更新 | 迁移门禁与升级保持测试通过 |
