@@ -104,9 +104,9 @@ const DEFAULT_BRANCH = { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] }
 const MISSION = { ref_name: { include: ['refs/heads/osstack/mission/**'], exclude: [] } };
 const POLICY = {
   'main-quality': { name: 'main-quality', target: 'branch', enforcement: 'active', conditions: DEFAULT_BRANCH, rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }, PR_RULE, CHECKS_RULE], bypass_actors: [] },
-  'main-update': { name: 'main-update', target: 'branch', enforcement: 'active', conditions: DEFAULT_BRANCH, rules: [{ type: 'update', parameters: { update_allows_fetch_and_merge: false } }],
+  'main-update': { name: 'main-update', target: 'branch', enforcement: 'active', conditions: DEFAULT_BRANCH, rules: [{ type: 'update' }],
     bypass_actors: [{ actor_id: '${app:osstack-merger}', actor_type: 'Integration', bypass_mode: 'pull_request' }] },
-  'mission-writers': { name: 'mission-writers', target: 'branch', enforcement: 'active', conditions: MISSION, rules: [{ type: 'creation' }, { type: 'update', parameters: { update_allows_fetch_and_merge: false } }],
+  'mission-writers': { name: 'mission-writers', target: 'branch', enforcement: 'active', conditions: MISSION, rules: [{ type: 'creation' }, { type: 'update' }],
     bypass_actors: [{ actor_id: '${app:osstack-publisher}', actor_type: 'Integration', bypass_mode: 'always' }] },
   'mission-history': { name: 'mission-history', target: 'branch', enforcement: 'active', conditions: MISSION, rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }], bypass_actors: [] },
 };

@@ -71,7 +71,20 @@ Agreed: replace personal and shared accounts with GitHub Apps. There are four fr
 | D `grok-pr-reviewer` | `pull_requests: write` | submits reviews |
 | E `osstack-merger` | `contents: write` (required by the merge endpoint), `pull_requests: read`, `checks: read` | evaluates the decision 2 gates; merges once enabled |
 
-There is also one sandbox-only test-review App (plan 2.4). App ids and installation ids are recorded here when the owner creates the Apps. Private keys live only on the host or in the platform's secret store, never in the repository.
+There is also one sandbox-only test-review App (plan 2.4). Private keys live only on the host or in the platform's secret store, never in the repository.
+
+**Registry (created 2026-11-04 by an agent session acting on the owner's explicit instruction; owner `osborn-studio`).** Each App is private to the organization, has its webhook off and subscribes to no events. Each is installed on the sandbox repository **only**, and adding any other repository is an owner decision. The logical names are the ones used here and in `.github/rulesets` (`${app:<name>}`). C and D use different GitHub names because `grok-pr-watcher` was already taken on GitHub.
+
+| Logical name | GitHub App (slug) | App id | Installation id (sandbox) | Granted permissions (read back from an installation token) |
+|---|---|---|---|---|
+| A `osstack-publisher` | `osstack-publisher` | 5620012 | 178741375 | `contents: write`, `pull_requests: write`, `metadata: read` |
+| B `osstack-evidence` | `osstack-evidence` | 5620053 | 178742088 | `checks: write`, `metadata: read` |
+| C `grok-pr-watcher` | `osborn-grok-pr-watcher` | 5620065 | 178742326 | `checks: write`, `contents: read`, `metadata: read` |
+| D `grok-pr-reviewer` | `osborn-grok-pr-reviewer` | 5620078 | 178742542 | `pull_requests: write`, `metadata: read` |
+| E `osstack-merger` | `osstack-merger` | 5620091 | 178742757 | `contents: write`, `pull_requests: read`, `checks: read`, `metadata: read` |
+| test reviewer `osstack-sandbox-test-reviewer` | `osstack-sandbox-test-reviewer` | 5620098 | 178742954 | `pull_requests: write`, `metadata: read` |
+
+**Sandbox repository (plan 2.3).** `osborn-studio/osstack-bridge-sandbox` (repository id 1446327922, private). This is the **only** repository that destructive probes (plan 2.5) may target. Its CI is a stub that reports the same five required check names as this repository's CI, all from GitHub Actions (integration 15368). A commit containing a `PROBE_FAIL` file makes every check fail. All four rulesets are applied there and read back as matching their files (`main-quality` 26575831, `main-update` 26577634, `mission-writers` 26577637, `mission-history` 26577639). A direct push to its `main` by an organization owner was rejected.
 
 ### 4. Collaborators (design §12.3)
 
