@@ -157,6 +157,9 @@ jobs:
       - name: Ruleset files contract (offline)
         run: pnpm test:rulesets-check
 
+      - name: Bridge probe allowlist contract (offline)
+        run: pnpm test:bridge-probe
+
       # Startup budget gate: median-of-5 spawns of the built dist/bin.js.
       # Budgets are looser than the local defaults (150/500ms) because CI
       # runners spawn node slower; they still catch the eager-import class

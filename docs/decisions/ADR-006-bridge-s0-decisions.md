@@ -84,7 +84,7 @@ There is also one sandbox-only test-review App (plan 2.4). Private keys live onl
 | E `osstack-merger` | `osstack-merger` | 5620091 | 178742757 | `contents: write`, `pull_requests: read`, `checks: read`, `metadata: read` |
 | test reviewer `osstack-sandbox-test-reviewer` | `osstack-sandbox-test-reviewer` | 5620098 | 178742954 | `pull_requests: write`, `metadata: read` |
 
-**Sandbox repository (plan 2.3).** `osborn-studio/osstack-bridge-sandbox` (repository id 1446327922, private). This is the **only** repository that destructive probes (plan 2.5) may target. Its CI is a stub that reports the same five required check names as this repository's CI, all from GitHub Actions (integration 15368). A commit containing a `PROBE_FAIL` file makes every check fail. All four rulesets are applied there and read back as matching their files (`main-quality` 26575831, `main-update` 26577634, `mission-writers` 26577637, `mission-history` 26577639). A direct push to its `main` by an organization owner was rejected.
+**Sandbox repository (plan 2.3).** `osborn-studio/osstack-bridge-sandbox` (repository id 1446327922). It was created private; the owner made it public on 2026-11-04. It holds no secrets and no production code. This is the **only** repository that destructive probes (plan 2.5) may target. Its CI is a stub that reports the same five required check names as this repository's CI, all from GitHub Actions (integration 15368). A commit containing a `PROBE_FAIL` file makes every check fail. All four rulesets are applied there and read back as matching their files (`main-quality` 26575831, `main-update` 26577634, `mission-writers` 26577637, `mission-history` 26577639). A direct push to its `main` by an organization owner was rejected.
 
 ### 4. Collaborators (design §12.3)
 
@@ -129,6 +129,29 @@ Probes are added to plan 2.5:
 
 Deferred together with the revision chain (stages S4/S5). These settings are decided when S5 starts. They do not block S1–S3 or S6.
 
+## Platform probe results (plan 2.5, 2026-11-05)
+
+`scripts/bridge-probe-github.mjs` was run against the sandbox with every ruleset active. All 25 attempts in the final run met the plan's expectations. Each run leaves one `osstack/mission/probe-<time>` branch, because `mission-history` forbids deleting it.
+
+| Probe | Result |
+|---|---|
+| P-1 | App A **cannot** push `main` (422), approve its own PR (422) or merge (405). App A **can** post a COMMENT review and a PR comment (its `pull_requests: write` permission allows both). **Only the publisher code stops App A from commenting or posting non-approving reviews.** |
+| P-2 | App A can create a Mission branch and fast-forward it. |
+| P-3 | App A cannot force-push or delete a Mission branch (`mission-history` has no bypass). |
+| P-4 | App E can neither update nor create a Mission branch. |
+| P-5 | **An App's approval does not count toward the required approval.** With only the test-review App's `APPROVE` on the head, App E's merge is refused with "New changes require approval from someone other than the last pusher". The probe then used the `gh` account (`gilosbornhello`) as the approver. |
+| P-6 | The test-review App cannot resolve a review thread (`pull_requests: write` is not enough; the call returns "Resource not accessible by integration"). |
+| P-7 | Check runs that App C posts under the five required names do not satisfy the required checks ("were not set by the expected GitHub apps"). |
+| P-8 | App B can neither push nor comment (403). |
+| P-9 | The live App ids and installation ids of App A and App B match decision 3. |
+| P-10 | Decision-level: the current publisher's protection lookup (`GET rules/branches/<branch>`, `delivery.ts` `readEffectiveProtection`) returns `deletion, non_fast_forward, creation, update` for a new Mission branch, so today's publisher would refuse to publish. The end-to-end publish rerun belongs to phase 3. |
+| P-11 | ① App E merged a green, approved PR (the control). ② It was refused with failing checks, and ③ refused without an approval. ④ It cannot push `main` directly. |
+| P-12 | App A is refused a merge on a green PR that has a counted approval ("Cannot update this protected ref"). |
+
+Consequences for decision 2:
+- **Gate 6 cannot be met by App D.** Until another arrangement is decided, the approval that `main-quality` requires must come from a user account. Only `gilosbornhello` is a person, and the automation accounts are users whose approvals do count. Risk 4 below has happened.
+- **App D cannot resolve review threads either.** Whatever clears an unresolved thread before merge must be a user account.
+
 ## Consequences
 
 - Plan stage 2 (tasks 2.2–2.5) may start. Its precondition no longer cites ADR-005 for merge rights, since decision 2 above replaces that. Task 2.2 gains the `main-update` ruleset file, and task 2.5 gains probes P-11 and P-12.
@@ -140,4 +163,4 @@ Deferred together with the revision chain (stages S4/S5). These settings are dec
 1. **No human gate on `main`.** Approvals and merges on every PR, not only Mission PRs, are made by automation that a person checks only afterwards. The required approval on `main` is not evidence that a person reviewed anything, and S1 does not change that (decision 5). Requiring human review would be a separate owner decision.
 2. **One human account.** `gilosbornhello` is the only person and is also the current publisher. GitHub refuses an author's approval of their own PR, so before App A takes over publishing, an approval on a Mission PR can only come from automation.
 3. **Ordinary PRs stay outside the gates.** Decision 2 narrows automated merging only for Mission PRs. Whether to gate ordinary PRs the same way is a separate decision.
-4. **App review counting is unconfirmed** (design §13.1). If App D's reviews do not count toward the required approval, gate 6 must be met by the one human account or another counted reviewer; probe P-5 settles this.
+4. **App reviews do not count (confirmed by probe P-5, 2026-11-05).** App D's approvals do not count toward the required approval, so gate 6 must be met by the one human account or another counted reviewer. Today that means a user account. How Mission PRs get their counted approval is an open owner decision.
