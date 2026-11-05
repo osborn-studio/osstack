@@ -381,3 +381,59 @@ describe("ContainedMissionHost status publication", () => {
     expect(() => f.host.status({ ...f.principal, read_scopes: [] }, m.mission_id)).toThrow("permission_denied");
   });
 });
+
+describe("ContainedMissionHost publishCheck", () => {
+  const publication = { remote: "origin", repository: "o/r", base: "main", draft: true, preauthorized: true };
+  const publish: ContainedMissionHostPorts["publish"] = async input => {
+    input.beforeRemoteMutation("push"); input.beforeRemoteMutation("pr_create");
+    return { pushed_commit: input.permit.head, pr: { number: 7, url: "https://github.com/o/r/pull/7", reused: false }, base_head: "e".repeat(40) };
+  };
+  async function opened(over: Partial<ContainedMissionHostPorts> = {}) {
+    const f = fixture({ publish, ...over });
+    const scopeId = f.principal.write_scopes[0]!;
+    const worktreesRoot = join(f.root, "worktrees");
+    const base = await resolveContainedMissionStart({ goal: "say hello", repo_path: f.repo, base_ref: "main", allowed_paths: ["src/**"], verify: { argv: ["true"] }, publication }, { worktreesRoot });
+    const m = f.host.start(f.principal, { scope_id: scopeId, spec: base });
+    for (let i = 0; i < 12 && f.store.get(m.mission_id).state !== "pr_opened"; i++) await f.host.tick();
+    return { f, id: m.mission_id };
+  }
+
+  it("republishes idempotently for a pr_opened Mission with write scope", async () => {
+    let calls = 0;
+    const { f, id } = await opened({ publishVerifyCheck: async () => { calls++; return { check_run_id: 9, created: calls === 1 }; } });
+    expect(f.store.get(id).state).toBe("pr_opened");
+    expect(await f.host.publishCheck(f.principal, id)).toEqual({ check_run_id: 9, created: false });
+    expect(await f.host.publishCheck(f.principal, id)).toEqual({ check_run_id: 9, created: false });
+    expect(f.store.get(id).state).toBe("pr_opened");
+    expect(f.store.events(id, 0, 500).filter(e => e.kind === "verify_check_published").length).toBe(3);
+  });
+
+  it("is refused without write scope, even with read and stop scopes", async () => {
+    const { f, id } = await opened({ publishVerifyCheck: async () => ({ check_run_id: 9, created: true }) });
+    const readOnly = { ...f.principal, write_scopes: [], stop_scopes: f.principal.read_scopes };
+    await expect(f.host.publishCheck(readOnly, id)).rejects.toThrow("permission_denied");
+    const other = { ...f.principal, read_scopes: [], write_scopes: [] };
+    await expect(f.host.publishCheck(other, id)).rejects.toThrow();
+  });
+
+  it("is refused when the Mission is not pr_opened", async () => {
+    const f = fixture({ publishVerifyCheck: async () => ({ check_run_id: 9, created: true }) });
+    const m = await f.start();
+    await expect(f.host.publishCheck(f.principal, m.mission_id)).rejects.toThrow("mission_not_pr_opened");
+  });
+
+  it("is refused when the bridge is not configured", async () => {
+    const { f, id } = await opened();
+    expect(f.store.get(id).state).toBe("pr_opened");
+    await expect(f.host.publishCheck(f.principal, id)).rejects.toThrow("bridge_not_configured");
+  });
+
+  it("surfaces the check error and records verify_check_failed", async () => {
+    let fail = false;
+    const { f, id } = await opened({ publishVerifyCheck: async () => { if (fail) throw new Error("CONTAINED_VERIFY_CHECK_HTTP:502"); return { check_run_id: 9, created: true }; } });
+    fail = true;
+    await expect(f.host.publishCheck(f.principal, id)).rejects.toThrow("CONTAINED_VERIFY_CHECK_HTTP:502");
+    expect(f.store.events(id, 0, 500).some(e => e.kind === "verify_check_failed")).toBe(true);
+    expect(f.store.get(id).state).toBe("pr_opened");
+  });
+});

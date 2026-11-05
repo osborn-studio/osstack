@@ -25,6 +25,7 @@ export const ContainedMissionRpcRequests = {
   }).strict(),
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
+  'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.decide': z.object({ credential: Credential, mission_id: MissionId,
     decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'retry_stop_check']) }).strict(),
 } as const;
@@ -99,6 +100,10 @@ export class ContainedMissionService {
         const p = ContainedMissionRpcRequests['mission.cancel'].parse(params);
         return view(await host.cancel(actor, p.mission_id));
       }
+      case 'mission.publish_check': {
+        const p = ContainedMissionRpcRequests['mission.publish_check'].parse(params);
+        return host.publishCheck(actor, p.mission_id);
+      }
       case 'mission.decide': {
         const p = ContainedMissionRpcRequests['mission.decide'].parse(params);
         if (!PRODUCES_WORK.has(p.decision)) return view(await host.decide(actor, p.mission_id, { kind: p.decision }));
@@ -136,8 +141,11 @@ export async function createContainedMissionService(deps: {
   ]);
   const { join } = await import('node:path');
   const store = new ContainedMissionStore(deps.attention, deps.owner);
+  // A bridge config error must stop the service (fail closed), never fall back to host credentials.
+  const { loadBridgeConfig } = await import('./contained-mission-github-app.js');
+  const bridge = await loadBridgeConfig(deps.home);
   const ports = createContainedMissionPorts({
-    store,
+    store, ...(bridge ? { bridge: { config: bridge } } : {}),
     codex: { bin: need('OSSTACK_CONTAINED_CODEX_BIN'), sourceCodexHome: need('OSSTACK_CONTAINED_CODEX_HOME'),
       ...(env['OSSTACK_CONTAINED_CODEX_IDENTITY'] ? { identityBinary: env['OSSTACK_CONTAINED_CODEX_IDENTITY'] } : {}),
       ...(env['OSSTACK_CONTAINED_CODEX_MODEL'] ? { model: env['OSSTACK_CONTAINED_CODEX_MODEL'] } : {}) },

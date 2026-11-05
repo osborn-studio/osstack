@@ -30,6 +30,7 @@ function setup(draining = false, decideDelay = 0) {
     status: (_principal: unknown, id: string) => { calls.push(["status", id]); return { mission, events: [] }; },
     cancel: async (_principal: unknown, id: string) => { calls.push(["cancel", id]); return mission; },
     decide: async (_principal: unknown, _id: string, d: unknown) => { calls.push(["decide", d]); if (decideDelay) await new Promise(r => setTimeout(r, decideDelay)); return mission; },
+    publishCheck: async (_principal: unknown, id: string) => { calls.push(["publish_check", id]); return { check_run_id: 7, created: false }; },
     tick: () => { ticks++; return new Promise<void>(resolve => { release = resolve; }); },
     recover: async () => { calls.push(["recover", null]); },
     close: async () => { calls.push(["close", null]); },
@@ -112,3 +113,19 @@ describe("ContainedMissionService", () => {
     await expect(f.service.handle("mission.status", { credential, mission_id: MID })).rejects.toThrow("mission_unavailable");
   });
 });
+
+describe("mission.publish_check", () => {
+  it("authenticates, routes to the host and returns the check result", async () => {
+    const f = setup();
+    expect(await f.service.handle("mission.publish_check", { credential, mission_id: MID })).toEqual({ check_run_id: 7, created: false });
+    expect(f.calls).toContainEqual(["publish_check", MID]);
+  });
+  it("rejects bad credentials and unknown fields", async () => {
+    const f = setup();
+    await expect(f.service.handle("mission.publish_check", { credential: "x".repeat(40), mission_id: MID })).rejects.toThrow();
+    await expect(f.service.handle("mission.publish_check", { credential, mission_id: MID, force: true })).rejects.toThrow("bad_request");
+    await expect(f.service.handle("mission.publish_check", { credential, mission_id: "nope" })).rejects.toThrow("bad_request");
+    expect(f.calls.some(c => c[0] === "publish_check")).toBe(false);
+  });
+});
+

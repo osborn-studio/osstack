@@ -38,6 +38,18 @@ describe("osstack mission", () => {
     expect(failed.code).toBe(1); expect(failed.err.join("\n")).toContain("permission_denied"); expect(failed.err.join("\n")).not.toContain(credential);
   });
 
+  it("sends publish-check as mission.publish_check and rejects unknown flags", async () => {
+    const r = await run(["publish-check", "--mission", MID, "--json"]);
+    expect(r.code).toBe(0);
+    expect(r.calls).toEqual([{ method: "mission.publish_check", params: { mission_id: MID, credential } }]);
+    expect((await run(["publish-check", "--mission", MID, "--force", "1"])).err.join("\n")).toContain("unknown_flag:--force");
+    const missing = await run(["publish-check"]);
+    expect(missing.err.join("\n")).toContain("required:--mission"); expect(missing.reads).toBe(0);
+    expect((await run(["publish-check", "--mission", "nope"])).err.join("\n")).toContain("invalid_request");
+    const help: string[] = []; await handleContainedMissionCommand(["help"], { stdout: l => help.push(l) });
+    expect(help.join("\n")).toContain("publish-check --mission ID");
+  });
+
   it("prints help without a daemon", async () => {
     const r = await handleContainedMissionCommand(["--help"], { stdout: () => {}, stderr: () => {} });
     expect(r).toBe(0);

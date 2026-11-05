@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync } from "node:crypto";
 import { dirname, join } from "node:path";
 import { hardenedGitEnvironment } from "@osstack/agents";
 import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb } from "@osstack/core";
@@ -230,5 +230,112 @@ describe("fencedDeliveryRunner destination", () => {
     const good = fencedDeliveryRunner(inner("git@github.com:O/R.git"), () => {}, { remote: "origin", repository: "o/r" });
     await good.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
     expect(pushes).toEqual([["push", "origin", "x:refs/heads/b"]]);
+  });
+});
+
+describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
+  const PUB = "ghs_PUBLISHERTOKEN0001";
+  const REPO = "acme/widgets";
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const rule = (type: string, id: number) => ({ type, ruleset_id: id, ruleset_source_type: "Repository", ruleset_source: REPO });
+  const missionRules = [rule("deletion", 5), rule("non_fast_forward", 5), rule("creation", 6), rule("update", 6)];
+  const stripC = (args: readonly string[]) => { let i = 0; while (args[i] === "-c") i += 2; return args.slice(i); };
+
+  async function bridged(opts: { remoteUrl?: string; repository?: string; rules?: unknown[] } = {}) {
+    const f = fixture();
+    const remoteUrl = opts.remoteUrl ?? `https://github.com/${REPO}.git`;
+    sh(f.repo, "remote", "add", "origin", remoteUrl);
+    const key = join(f.root, "key.pem"); writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
+    const repository = opts.repository ?? REPO;
+    const inner: Array<[string, readonly string[]]> = []; const executed: Array<{ command: string; args: readonly string[]; env: NodeJS.ProcessEnv }> = [];
+    const order: string[] = []; let tokenCalls = 0; let prCreated = false;
+    const spec = { ...f.spec, publication: { remote: "origin", repository, base: "main", draft: false } };
+    const out = (stdout = "", exitCode = 0) => ({ stdout, stderr: "", exitCode });
+    const innerRunner = { run: async (command: string, args: readonly string[]) => {
+      inner.push([command, args]); const a = stripC(args);
+      if (command === "gh" && a[0] === "auth") return out("ok");
+      if (command === "gh" && a[0] === "repo") return out(JSON.stringify({ nameWithOwner: repository }));
+      if (command === "gh" && a[0] === "api") return a.some(x => x.includes("/rules/branches/")) ? out(JSON.stringify(opts.rules ?? missionRules)) : { stdout: "", stderr: "HTTP 404: Branch not protected", exitCode: 1 };
+      if (command === "gh" && a[0] === "pr" && a[1] === "view") {
+        if (!prCreated) return { stdout: "", stderr: "no pull requests found", exitCode: 1 };
+        const all: Record<string, unknown> = { number: 9, url: `https://github.com/${repository}/pull/9`, headRefOid: f.start, state: "OPEN", isDraft: false, baseRefName: "main", headRefName: spec.branch };
+        return out(JSON.stringify(Object.fromEntries(String(a[a.indexOf("--json") + 1]).split(",").map(k => [k, all[k]]))));
+      }
+      if (command === "git" && a[0] === "branch") return out(`${spec.branch}\n`);
+      if (command === "git" && a[0] === "status") return out("");
+      if (command === "git" && a[0] === "remote") return out(`${remoteUrl}\n`);
+      if (command === "git" && a[0] === "rev-parse") return out(`${f.start}\n`);
+      if (command === "git" && a[0] === "ls-remote") return out(`${f.start}\trefs/heads/${a[3] ?? "main"}\n`);
+      return out("");
+    } };
+    const exec = async (command: string, args: readonly string[], options: { env: NodeJS.ProcessEnv }) => {
+      executed.push({ command, args, env: options.env });
+      if (command === "gh") { prCreated = true; return { stdout: `https://github.com/${repository}/pull/9\n`, stderr: "", exitCode: 0 }; }
+      return { stdout: "pushed", stderr: "", exitCode: 0 };
+    };
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      if (/access_tokens$/.test(url)) { tokenCalls++; const body = JSON.parse(String(init.body)); return new Response(JSON.stringify({ token: PUB, expires_at: new Date(1_800_003_600_000).toISOString(), permissions: { ...body.permissions, metadata: "read" }, repositories: [{ full_name: REPO }] }), { status: 201 }); }
+      return new Response("{}", { status: 404 });
+    }) as unknown as typeof fetch;
+    const config = { repository: REPO, publisher: { app_id: 11, installation_id: 21, private_key_path: key }, evidence: { app_id: 12, installation_id: 22, private_key_path: key }, mission_ruleset_ids: [5, 6] };
+    const ports = createContainedMissionPorts({ store: f.store, now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
+      verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
+      delivery: { runner: innerRunner }, bridge: { config, exec, fetchImpl, now: () => 1_800_000_000_000 } });
+    let m = f.authorize();
+    const ws = await ports.createWorkspace(spec, signal());
+    m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
+    const permit = { mission_id: m.mission_id, revision: m.revision, head: f.start, tree: "t", spec_digest: m.spec_digest };
+    const publish = () => ports.publish({ mission: m, spec, permit, body: "b", beforeRemoteMutation: kind => { order.push(`fence:${kind}`); }, signal: signal() });
+    const labelled = () => [...executed.map(e => e.command + ":" + stripC(e.args).slice(0, 2).join(" "))];
+    return { f, publish, inner, executed, order, tokenCalls: () => tokenCalls, labelled, ports };
+  }
+
+  it("pushes and opens the PR with App A: token only in the child env, reads on host credentials, fence first", async () => {
+    const b = await bridged();
+    const done = await b.publish();
+    expect(done.pr.number).toBe(9);
+    const push = b.executed.find(e => e.command === "git")!; const create = b.executed.find(e => e.command === "gh")!;
+    expect(push.args.slice(0, 2)).toEqual(["-c", "credential.helper="]);
+    expect(push.args.join("\n")).not.toContain(PUB);
+    expect(push.env["OSSTACK_BRIDGE_PUSH_TOKEN"]).toBe(PUB);
+    expect(create.env["GH_TOKEN"]).toBe(PUB); expect(create.env["GITHUB_TOKEN"]).toBeUndefined();
+    expect(b.order).toEqual(["fence:push", "fence:pr_create"]);
+    // Reads never carry the token and none of them is a push or pr create.
+    const innerText = JSON.stringify(b.inner);
+    expect(innerText).not.toContain(PUB);
+    expect(b.inner.some(([c, a]) => c === "gh" && a[0] === "auth")).toBe(true);
+    expect(b.inner.some(([c, a]) => c === "gh" && a[0] === "api" && a.some(x => x.includes("/protection")))).toBe(true);
+    expect(b.inner.some(([c, a]) => c === "git" && stripC(a)[0] === "push")).toBe(false);
+    expect(b.inner.some(([c, a]) => c === "gh" && a[0] === "pr" && a[1] === "create")).toBe(false);
+    // Remote config on disk never holds the token.
+    expect(sh(b.f.repo, "config", "--list")).not.toContain(PUB);
+    expect(b.tokenCalls()).toBe(1);
+  });
+
+  it("passes the Mission ruleset ids: an unregistered ruleset on the branch still refuses before any push", async () => {
+    const b = await bridged({ rules: [...missionRules, rule("pull_request", 77)] });
+    await expect(b.publish()).rejects.toThrow("protected candidate branch");
+    expect(b.executed).toEqual([]);
+    expect(b.order).toEqual([]);
+  });
+
+  it("rejects an ssh remote in App mode before anything is pushed or any token is minted", async () => {
+    for (const remoteUrl of [`git@github.com:${REPO}.git`, `ssh://git@github.com/${REPO}.git`, `https://user@github.com/${REPO}.git`]) {
+      const b = await bridged({ remoteUrl });
+      await expect(b.publish()).rejects.toThrow("CONTAINED_BRIDGE_REQUIRES_HTTPS");
+      expect(b.inner).toEqual([]); expect(b.executed).toEqual([]); expect(b.tokenCalls()).toBe(0);
+    }
+  });
+
+  it("another repository is refused with CONTAINED_BRIDGE_REPOSITORY before any runner, token, push or PR", async () => {
+    const b = await bridged({ repository: "o/r", remoteUrl: "git@github.com:o/r.git", rules: missionRules });
+    await expect(b.publish()).rejects.toThrow("CONTAINED_BRIDGE_REPOSITORY");
+    expect(b.tokenCalls()).toBe(0); expect(b.executed).toEqual([]); expect(b.inner).toEqual([]); expect(b.order).toEqual([]);
+  });
+
+  it("matches the configured repository case-insensitively", async () => {
+    const b = await bridged({ repository: "Acme/Widgets" });
+    await expect(b.publish()).resolves.toMatchObject({ pr: { number: 9 } });
+    expect(b.tokenCalls()).toBe(1);
   });
 });

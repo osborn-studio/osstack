@@ -10,6 +10,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
          [--publish-draft true|false] [--publish-title TEXT] [--publish-preauthorized]]
   status --mission ID                (includes publication: the opened PR and pushed commit, if any)
   cancel --mission ID
+  publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|retry_stop_check
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
 OSSTACK_CONTAINED_CODEX_BIN, OSSTACK_CONTAINED_CODEX_HOME and the OSSTACK_CONTAINED_DOCKER_* settings.
@@ -17,11 +18,12 @@ The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No 
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "status" | "cancel" | "decide";
+type Command = "start" | "status" | "cancel" | "decide" | "publish-check";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   status: { single: ["mission"], repeated: [] },
   cancel: { single: ["mission"], repeated: [] },
+  "publish-check": { single: ["mission"], repeated: [] },
   decide: { single: ["mission", "decision"], repeated: [] },
 };
 
@@ -82,7 +84,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     } else {
       params = { mission_id: required("mission") };
     }
-    const method = `mission.${command}` as const;
+    const method = (command === "publish-check" ? "mission.publish_check" : `mission.${command}`) as `mission.${Exclude<Command, "publish-check">}` | "mission.publish_check";
     // Validate locally before reading the credential, so a typo never needs the secret.
     const probe = ContainedMissionRpcRequests[method].safeParse({ ...params, credential: "x".repeat(32) });
     if (!probe.success) throw new Error(`invalid_request:${probe.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).join(",")}`);

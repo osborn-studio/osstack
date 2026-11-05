@@ -127,6 +127,15 @@ export class ContainedMissionHost {
     return this.runner.cancel(missionId);
   }
 
+  /** Re-publish the `osstack/verify` check of a pr_opened Mission. Needs write scope; never touches the branch or PR. */
+  async publishCheck(principal: EngineeringPrincipal, missionId: string): Promise<{ check_run_id: number; created: boolean }> {
+    const mission = this.store.readable(principal, missionId);
+    if (!principal.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
+    if (mission.state !== 'pr_opened') throw Error('mission_not_pr_opened');
+    if (!this.options.ports.publishVerifyCheck) throw Error('bridge_not_configured');
+    return this.runner.retryVerifyCheck(missionId);
+  }
+
   async decide(principal: EngineeringPrincipal, missionId: string, decision: ContainedHostDecision): Promise<ContainedMission> {
     const mission = this.store.readable(principal, missionId);
     if (!principal.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');

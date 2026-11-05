@@ -40,6 +40,8 @@ export interface ContainedMissionPorts {
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
   /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
   publish: (input: { mission: ContainedMission; spec: ContainedMissionSpec; permit: ContainedPublicationPermit; body: string; beforeRemoteMutation: (kind: 'push' | 'pr_create') => void; signal: AbortSignal }) => Promise<ContainedPublicationResult>;
+  /** Present only when the GitHub Apps bridge is configured: publish (or refresh) the `osstack/verify` check on the opened PR's head. Idempotent; never touches the branch or PR. */
+  publishVerifyCheck?: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>;
 }
 export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' } | { kind: 'discard_changes' } | { kind: 'adopt_worktree' };
 const OUTPUT_EXCERPT = 4_000;
@@ -421,7 +423,32 @@ export class ContainedMissionRunner {
       this.ports.store.record(m.mission_id, 'pr_opened_before_cancel', { pr: result.pr }, this.ports.now());
       return this.settleCancel(current) ?? current;
     }
-    return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: { pr: result.pr, evidence_digest: evidence.evidence_digest } } }, this.ports.now());
+    const opened = this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: { pr: result.pr, evidence_digest: evidence.evidence_digest } } }, this.ports.now());
+    // The Mission stays pr_opened whatever happens to the check; a failure is a recorded event and a manual retry.
+    if (this.ports.publishVerifyCheck) await this.attemptVerifyCheck(opened);
+    return opened;
+  }
+
+  /** Publish the check and record the outcome; recording problems never escape. */
+  private async attemptVerifyCheck(m: ContainedMission): Promise<{ ok: true; result: { check_run_id: number; created: boolean } } | { ok: false; error: unknown }> {
+    let outcome: { ok: true; result: { check_run_id: number; created: boolean } } | { ok: false; error: unknown };
+    try { outcome = { ok: true, result: await this.ports.publishVerifyCheck!(m) }; }
+    catch (error) { outcome = { ok: false, error }; }
+    try {
+      if (outcome.ok) this.ports.store.record(m.mission_id, 'verify_check_published', { check_run_id: outcome.result.check_run_id, created: outcome.result.created, head: m.candidate_head }, this.ports.now());
+      else this.ports.store.record(m.mission_id, 'verify_check_failed', { code: code(outcome.error) }, this.ports.now());
+    } catch { /* the ledger row for pr_opened is the authority; a lost note never fails delivery */ }
+    return outcome;
+  }
+
+  /** Manual retry of the check for a pr_opened Mission. Throws the check's own error after recording it. */
+  async retryVerifyCheck(missionId: string): Promise<{ check_run_id: number; created: boolean }> {
+    const m = this.ports.store.get(missionId);
+    if (m.state !== 'pr_opened') throw Error('mission_not_pr_opened');
+    if (!this.ports.publishVerifyCheck) throw Error('bridge_not_configured');
+    const outcome = await this.attemptVerifyCheck(m);
+    if (!outcome.ok) throw outcome.error instanceof Error ? outcome.error : Error('CONTAINED_VERIFY_CHECK_FAILED');
+    return outcome.result;
   }
 
   /** v3 §2 delivery evidence. The ledger copy is authoritative; the PR body is only a display copy. */
