@@ -110,7 +110,7 @@ export async function runProbes({ repo, registry, apps, human, log = () => {}, c
     const missionName = `osstack/mission/${run}`;
     const rules = await A.request('GET', `repos/${repo}/rules/branches/${missionName.split('/').map(encodeURIComponent).join('/')}`);
     const refused = Array.isArray(rules.body) && rules.body.length > 0;
-    add({ id: 'P-10', attempt: `current publisher check on ${missionName}: ${Array.isArray(rules.body) ? rules.body.map(r => r.type).join(',') : 'n/a'}`, expected: 'refused', outcome: refused ? 'refused' : 'allowed', status: rules.status,
+    add({ id: 'P-10', attempt: `partial (decision level): current publisher check on ${missionName}: ${Array.isArray(rules.body) ? rules.body.map(r => r.type).join(',') : 'n/a'}`, expected: 'refused', outcome: refused ? 'refused' : 'allowed', status: rules.status,
       reason: 'decision-level reproduction of delivery.ts (rules.length > 0 means protected, publish refused); the end-to-end rerun belongs to phase 3', pass: refused });
 
     // P-2 / P-3 / P-4: Mission branch writers and history.
@@ -198,13 +198,20 @@ export async function runProbes({ repo, registry, apps, human, log = () => {}, c
     const skipPr = await openPr(skipped, `probe ${run}: impostor checks`); opened.push(skipPr);
     for (const name of REQUIRED_CHECKS) must(await C.request('POST', `repos/${repo}/check-runs`, { name, head_sha: skipSha, status: 'completed', conclusion: 'success' }), `App C posts ${name}`);
     await sleep(pollMs);
-    const actionsRuns = (await E.request('GET', `repos/${repo}/commits/${skipSha}/check-runs?per_page=100`)).body?.check_runs?.filter(c => c.app?.id === ACTIONS_APP_ID) ?? [];
-    if (actionsRuns.length) add({ id: 'P-7', attempt: 'App C check runs named like the required checks', expected: 'n/a', outcome: 'inconclusive', status: null, reason: 'Actions ran despite [skip ci]', pass: false });
+    const skipRuns = (await E.request('GET', `repos/${repo}/commits/${skipSha}/check-runs?per_page=100`)).body?.check_runs ?? [];
+    const actionsRuns = skipRuns.filter(c => c.app?.id === ACTIONS_APP_ID);
+    const impostors = skipRuns.filter(c => c.app?.id === registry.apps['grok-pr-watcher'].appId && REQUIRED_CHECKS.includes(c.name) && c.conclusion === 'success');
+    const p7 = 'App C check runs named like the required checks';
+    if (actionsRuns.length) add({ id: 'P-7', attempt: p7, expected: 'n/a', outcome: 'inconclusive', status: null, reason: 'Actions ran despite [skip ci]', pass: false });
+    else if (impostors.length !== REQUIRED_CHECKS.length) add({ id: 'P-7', attempt: p7, expected: 'n/a', outcome: 'inconclusive', status: null, reason: `${impostors.length} of ${REQUIRED_CHECKS.length} App C runs found on the head`, pass: false });
     else if (approver) {
       must(await approve(approver, skipPr, skipSha), 'approve impostor PR');
       const state = await decision(skipPr);
-      add({ ...record('P-7', `App E merges with only App C's same-name checks (mergeStateStatus ${state.mergeStateStatus ?? 'n/a'})`, 'rejected', await merge(E, skipPr, skipSha)) });
-    } else add({ id: 'P-7', attempt: 'App C check runs named like the required checks', expected: 'n/a', outcome: 'inconclusive', status: null, reason: 'no approval that counts', pass: false });
+      const r = record('P-7', `App E merges with only App C's same-name checks (mergeStateStatus ${state.mergeStateStatus ?? 'n/a'})`, 'rejected', await merge(E, skipPr, skipSha));
+      // Only a refusal that names check provenance shows the integration binding; any other refusal proves nothing here.
+      const provenance = /not set by the expected GitHub apps?/i.test(r.reason);
+      add(r.outcome === 'rejected' && !provenance ? { ...r, outcome: 'inconclusive', pass: false, reason: `refused for another reason: ${r.reason}` } : r);
+    } else add({ id: 'P-7', attempt: p7, expected: 'n/a', outcome: 'inconclusive', status: null, reason: 'no approval that counts', pass: false });
 
     // P-6: can the test-review App resolve a review thread opened by App D?
     const threadPr = skipPr;
@@ -228,7 +235,9 @@ export async function runProbes({ repo, registry, apps, human, log = () => {}, c
 function ghClient() {
   return {
     request: (method, path, body) => new Promise(resolve => {
-      const child = spawn('gh', ['api', '--method', method, path, '--input', '-'], { stdio: ['pipe', 'pipe', 'pipe'] });
+      // Pinned to github.com: the sandbox id was checked there, and GH_HOST must not redirect this write elsewhere.
+      const env = { ...process.env }; delete env.GH_HOST; delete env.GH_ENTERPRISE_TOKEN; delete env.GITHUB_ENTERPRISE_TOKEN;
+      const child = spawn('gh', ['api', '--hostname', 'github.com', '--method', method, path, '--input', '-'], { stdio: ['pipe', 'pipe', 'pipe'], env });
       let stdout = ''; let stderr = '';
       child.stdout.on('data', d => { stdout += d; }); child.stderr.on('data', d => { stderr += d; });
       child.on('close', code => {

@@ -73,7 +73,7 @@ export function classify(response) {
 export function reason(response) {
   const body = response.body ?? {};
   const parts = [body.message, ...(Array.isArray(body.errors) ? body.errors.map(e => (typeof e === 'string' ? e : e.message ?? e.code)) : [])];
-  return parts.filter(Boolean).join('; ').replace(/\s+/g, ' ').trim().replace(/gh[pousr]_[A-Za-z0-9]+/g, '[token]').slice(0, 300);
+  return parts.filter(Boolean).join('; ').replace(/\s+/g, ' ').trim().replace(/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/g, '[token]').slice(0, 300);
 }
 
 /** One probe record. `pass` compares the observed outcome with the plan's expectation; `record` expectations always pass. */

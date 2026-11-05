@@ -38,7 +38,7 @@ test('outcomes: 2xx allowed, refusals rejected, anything else is an error and ne
 });
 
 test('reasons never carry tokens', () => {
-  assert.equal(reason({ body: { message: 'bad ghs_abcDEF123 and ghp_x9' } }), 'bad [token] and [token]');
+  assert.equal(reason({ body: { message: 'bad ghs_abcDEF123 and ghp_x9 and github_pat_11AB_cd9' } }), 'bad [token] and [token] and [token]');
   assert.equal(reason({ body: { message: 'Validation Failed', errors: [{ message: 'Can not approve your own pull request' }] } }), 'Validation Failed; Can not approve your own pull request');
 });
 
