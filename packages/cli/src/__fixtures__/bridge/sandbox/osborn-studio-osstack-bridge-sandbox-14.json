@@ -1,0 +1,299 @@
+{
+  "version": 1,
+  "registry": {
+    "publisher": [
+      {
+        "actor_id": 1,
+        "app_id": 1
+      }
+    ],
+    "reviewers": [
+      {
+        "actor_id": 2,
+        "app_id": 2
+      }
+    ]
+  },
+  "snapshots": [
+    {
+      "pr_state": "OPEN",
+      "head": "1b414710c6d21ca460b5cce49da77710c425e680",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966074159,
+      "reviews": [],
+      "complete": true,
+      "moved": false
+    },
+    {
+      "pr_state": "OPEN",
+      "head": "1b414710c6d21ca460b5cce49da77710c425e680",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966080417,
+      "reviews": [
+        {
+          "review_id": 5799712862,
+          "state": "COMMENTED",
+          "submitted_at": 1793966078000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "efe2b4b769b2cd56ada9546202eb85c43dc92734030a18ba9da4beb8228f684c"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    },
+    {
+      "pr_state": "OPEN",
+      "head": "1b414710c6d21ca460b5cce49da77710c425e680",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966086973,
+      "reviews": [
+        {
+          "review_id": 5799712862,
+          "state": "COMMENTED",
+          "submitted_at": 1793966078000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "efe2b4b769b2cd56ada9546202eb85c43dc92734030a18ba9da4beb8228f684c"
+        },
+        {
+          "review_id": 5799713893,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966085000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "c2a31f2c3935ebadf497099d5352e05ed2db15c36df1daff44fe04a26223f387"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    },
+    {
+      "pr_state": "OPEN",
+      "head": "1b414710c6d21ca460b5cce49da77710c425e680",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966093217,
+      "reviews": [
+        {
+          "review_id": 5799712862,
+          "state": "COMMENTED",
+          "submitted_at": 1793966078000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "efe2b4b769b2cd56ada9546202eb85c43dc92734030a18ba9da4beb8228f684c"
+        },
+        {
+          "review_id": 5799713893,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966085000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "c2a31f2c3935ebadf497099d5352e05ed2db15c36df1daff44fe04a26223f387"
+        },
+        {
+          "review_id": 5799715086,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966091000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "8c6d8b52feb15c8bb17a5e906dce50f73b11266de63517ad0a46d183fa1c2707"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    },
+    {
+      "pr_state": "OPEN",
+      "head": "4d005b87f4125432020309dc044ff8fb0a538f3c",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966102623,
+      "reviews": [
+        {
+          "review_id": 5799712862,
+          "state": "COMMENTED",
+          "submitted_at": 1793966078000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "efe2b4b769b2cd56ada9546202eb85c43dc92734030a18ba9da4beb8228f684c"
+        },
+        {
+          "review_id": 5799713893,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966085000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "c2a31f2c3935ebadf497099d5352e05ed2db15c36df1daff44fe04a26223f387"
+        },
+        {
+          "review_id": 5799715086,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966091000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "8c6d8b52feb15c8bb17a5e906dce50f73b11266de63517ad0a46d183fa1c2707"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    },
+    {
+      "pr_state": "OPEN",
+      "head": "4d005b87f4125432020309dc044ff8fb0a538f3c",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966108992,
+      "reviews": [
+        {
+          "review_id": 5799712862,
+          "state": "COMMENTED",
+          "submitted_at": 1793966078000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "efe2b4b769b2cd56ada9546202eb85c43dc92734030a18ba9da4beb8228f684c"
+        },
+        {
+          "review_id": 5799713893,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966085000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "c2a31f2c3935ebadf497099d5352e05ed2db15c36df1daff44fe04a26223f387"
+        },
+        {
+          "review_id": 5799715086,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966091000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "8c6d8b52feb15c8bb17a5e906dce50f73b11266de63517ad0a46d183fa1c2707"
+        },
+        {
+          "review_id": 5799717772,
+          "state": "APPROVED",
+          "submitted_at": 1793966107000,
+          "review_commit": "4d005b87f4125432020309dc044ff8fb0a538f3c",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "958e1cd76ddd86760c43b279d948f4523098a9f9d1399c8d2bf49d7b1f88f3fb"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    },
+    {
+      "pr_state": "CLOSED",
+      "head": "4d005b87f4125432020309dc044ff8fb0a538f3c",
+      "base_sha": "48ff2f8b367dce341a48a257d1b3eca483ba5e29",
+      "base_ref": "main",
+      "observed_at": 1793966116061,
+      "reviews": [
+        {
+          "review_id": 5799712862,
+          "state": "COMMENTED",
+          "submitted_at": 1793966078000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "efe2b4b769b2cd56ada9546202eb85c43dc92734030a18ba9da4beb8228f684c"
+        },
+        {
+          "review_id": 5799713893,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966085000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "c2a31f2c3935ebadf497099d5352e05ed2db15c36df1daff44fe04a26223f387"
+        },
+        {
+          "review_id": 5799715086,
+          "state": "CHANGES_REQUESTED",
+          "submitted_at": 1793966091000,
+          "review_commit": "1b414710c6d21ca460b5cce49da77710c425e680",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "8c6d8b52feb15c8bb17a5e906dce50f73b11266de63517ad0a46d183fa1c2707"
+        },
+        {
+          "review_id": 5799717772,
+          "state": "APPROVED",
+          "submitted_at": 1793966107000,
+          "review_commit": "4d005b87f4125432020309dc044ff8fb0a538f3c",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": 2
+          },
+          "has_feedback": true,
+          "feedback_digest": "958e1cd76ddd86760c43b279d948f4523098a9f9d1399c8d2bf49d7b1f88f3fb"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    }
+  ]
+}

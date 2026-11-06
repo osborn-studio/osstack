@@ -1,0 +1,134 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sandbox Mission corpus > 'osborn-studio-osstack-bridge-sandbox-…' > replays through the reconciler: discovery, one would_reserve, attribution_unknown stop, nothing after 1`] = `
+{
+  "events": [
+    {
+      "kind": "chain_created",
+    },
+    {
+      "action": undefined,
+      "decision": "none",
+      "discards": [],
+      "kind": "observation_cycle",
+      "reason": "no_review",
+    },
+    {
+      "action": undefined,
+      "decision": "none",
+      "discards": [],
+      "kind": "observation_cycle",
+      "reason": "no_review",
+    },
+    {
+      "action": "would_reserve",
+      "decision": undefined,
+      "discards": [],
+      "kind": "observation_cycle",
+      "reason": undefined,
+    },
+    {
+      "action": undefined,
+      "decision": "would_reserve",
+      "discards": [],
+      "kind": "observation_cycle",
+      "reason": "changes_requested",
+    },
+    {
+      "action": undefined,
+      "decision": "none",
+      "discards": [],
+      "kind": "observation_cycle",
+      "reason": "head_already_reserved",
+    },
+    {
+      "kind": "transition",
+    },
+    {
+      "action": "would_stop",
+      "decision": "stop",
+      "discards": [],
+      "kind": "observation_cycle",
+      "reason": "attribution_unknown",
+    },
+  ],
+  "sequence": [
+    {
+      "chain_state": "awaiting_review",
+      "decisions": [],
+      "reads": {
+        "reads": 1,
+        "second": 0,
+      },
+      "step": "a",
+    },
+    {
+      "chain_state": "awaiting_review",
+      "decisions": [],
+      "reads": {
+        "reads": 2,
+        "second": 0,
+      },
+      "step": "b",
+    },
+    {
+      "chain_state": "awaiting_review",
+      "decisions": [
+        "would_reserve",
+      ],
+      "reads": {
+        "reads": 3,
+        "second": 1,
+      },
+      "step": "c",
+    },
+    {
+      "chain_state": "awaiting_review",
+      "decisions": [
+        "would_reserve",
+      ],
+      "reads": {
+        "reads": 4,
+        "second": 1,
+      },
+      "step": "d",
+    },
+    {
+      "chain_state": "awaiting_decision",
+      "decisions": [
+        "would_reserve",
+        "would_stop",
+      ],
+      "reads": {
+        "reads": 5,
+        "second": 1,
+      },
+      "step": "e",
+    },
+    {
+      "chain_state": "awaiting_decision",
+      "decisions": [
+        "would_reserve",
+        "would_stop",
+      ],
+      "reads": {
+        "reads": 5,
+        "second": 1,
+      },
+      "step": "f",
+    },
+    {
+      "chain_state": "awaiting_decision",
+      "decisions": [
+        "would_reserve",
+        "would_stop",
+      ],
+      "reads": {
+        "reads": 5,
+        "second": 1,
+      },
+      "step": "g",
+    },
+  ],
+}
+`;
