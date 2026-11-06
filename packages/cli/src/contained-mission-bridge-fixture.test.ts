@@ -1,4 +1,4 @@
-import { stat } from 'node:fs/promises';
+import { chmod, mkdir, readdir, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type PrSnapshot, type ProducerRegistry, createScratchDir } from '@osstack/core';
 import { describe, expect, it } from 'vitest';
@@ -127,6 +127,70 @@ describe('stable pseudonym map (item: append consistency)', () => {
     await writeFixtureMap(path, map);
     expect(await readFixtureMap(path)).toEqual(map);
     expect((await stat(path)).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe('sidecar location and atomic write', () => {
+  const map = () => pseudonymizeSnapshot(snapshot, registry).map;
+  const env = (dir: string) => ({ OSSTACK_FIXTURE_MAP_DIR: dir });
+
+  it('refuses a relative directory and any directory inside a git work tree, including via a symlink', async () => {
+    expect(() => fixtureMapPath('o/r', 1, env('maps'))).toThrow('FIXTURE_MAP_DIR_NOT_ABSOLUTE');
+    const outer = await createScratchDir('tests', 'fixture-repo');
+    await writeFile(join(outer, '.git'), 'gitdir: x\n'); // a worktree marker
+    await mkdir(join(outer, 'deep'), { recursive: true });
+    expect(() => fixtureMapPath('o/r', 1, env(join(outer, 'maps')))).toThrow('FIXTURE_MAP_DIR_IN_REPOSITORY');
+    expect(() => fixtureMapPath('o/r', 1, env(join(outer, 'deep', 'a', 'b')))).toThrow('FIXTURE_MAP_DIR_IN_REPOSITORY');
+    const elsewhere = await createScratchDir('tests', 'fixture-link');
+    await symlink(join(outer, 'deep'), join(elsewhere, 'link'));
+    expect(() => fixtureMapPath('o/r', 1, env(join(elsewhere, 'link', 'maps')))).toThrow('FIXTURE_MAP_DIR_IN_REPOSITORY');
+  });
+
+  it('creates the directory 0700 and writes the file 0600 atomically with no temp file left', async () => {
+    const base = await createScratchDir('tests', 'fixture-atomic');
+    const path = fixtureMapPath('o/r', 2, env(join(base, 'new', 'maps')));
+    await writeFixtureMap(path, map());
+    expect((await stat(join(base, 'new', 'maps'))).mode & 0o777).toBe(0o700);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    const again = map();
+    await writeFixtureMap(path, again);
+    expect(await readFixtureMap(path)).toEqual(again);
+    expect(await readdir(join(base, 'new', 'maps'))).toEqual(['o-r-2.json']);
+  });
+
+  it('refuses a symlink or non-regular target, on write and on read', async () => {
+    const base = await createScratchDir('tests', 'fixture-symlink');
+    const dir = join(base, 'maps');
+    await mkdir(dir, { mode: 0o700 });
+    const path = fixtureMapPath('o/r', 3, env(dir));
+    await writeFile(join(base, 'victim'), 'keep');
+    await symlink(join(base, 'victim'), path);
+    await expect(writeFixtureMap(path, map())).rejects.toThrow('FIXTURE_MAP_TARGET');
+    await expect(readFixtureMap(path)).rejects.toThrow('FIXTURE_MAP_TARGET');
+    expect((await import('node:fs')).readFileSync(join(base, 'victim'), 'utf8')).toBe('keep');
+    const asDir = fixtureMapPath('o/r', 4, env(dir));
+    await mkdir(asDir);
+    await expect(writeFixtureMap(asDir, map())).rejects.toThrow('FIXTURE_MAP_TARGET');
+  });
+
+  it('refuses an existing directory that group or others can access', async () => {
+    const base = await createScratchDir('tests', 'fixture-perms');
+    const dir = join(base, 'maps');
+    await mkdir(dir);
+    for (const mode of [0o755, 0o750, 0o701]) {
+      await chmod(dir, mode);
+      await expect(writeFixtureMap(fixtureMapPath('o/r', 5, env(dir)), map())).rejects.toThrow('FIXTURE_MAP_DIR_PERMISSIONS');
+    }
+    expect(await readdir(dir)).toEqual([]);
+    await chmod(dir, 0o700);
+    await writeFixtureMap(fixtureMapPath('o/r', 5, env(dir)), map());
+  });
+
+  it('refuses a directory that is itself a symlink', async () => {
+    const base = await createScratchDir('tests', 'fixture-dirlink');
+    await mkdir(join(base, 'real'), { mode: 0o700 });
+    await symlink(join(base, 'real'), join(base, 'link'));
+    await expect(writeFixtureMap(join(base, 'link', 'o-r-6.json'), map())).rejects.toThrow('FIXTURE_MAP_DIR_INVALID');
   });
 });
 

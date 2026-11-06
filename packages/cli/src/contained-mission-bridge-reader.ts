@@ -37,7 +37,7 @@ export const PULL_REQUEST_QUERY = `query BridgePullRequest($owner: String!, $nam
           id isResolved
           comments(first: ${PAGE}) {
             pageInfo { hasNextPage endCursor }
-            nodes { databaseId pullRequestReview { databaseId } body author { __typename ... on User { databaseId } ... on Bot { databaseId } } }
+            nodes { databaseId createdAt pullRequestReview { databaseId } body author { __typename ... on User { databaseId } ... on Bot { databaseId } } }
           }
         }
       }
@@ -58,7 +58,7 @@ export const THREAD_COMMENTS_QUERY = `query BridgeThreadComments($id: ID!, $afte
     ... on PullRequestReviewThread {
       comments(first: ${PAGE}, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { databaseId pullRequestReview { databaseId } body author { __typename ... on User { databaseId } ... on Bot { databaseId } } }
+        nodes { databaseId createdAt pullRequestReview { databaseId } body author { __typename ... on User { databaseId } ... on Bot { databaseId } } }
       }
     }
   }
@@ -134,6 +134,7 @@ const rawReviewSchema = z.object({
 });
 const rawCommentSchema = z.object({
   databaseId: z.number().int(),
+  createdAt: z.string().refine((value) => Number.isFinite(Date.parse(value)), 'createdAt'),
   pullRequestReview: z.object({ databaseId: z.number().int() }).nullable(),
   body: z.string(),
   author: authorSchema,
@@ -348,12 +349,16 @@ export function normalizeSnapshot(read: PullRequestRead, registry: ProducerRegis
     return { pr_state: 'OPEN', head: '', base_sha: '', base_ref: '', observed_at: observedAt, reviews: [], complete: false, moved: false };
   }
   const { pr } = read;
-  // A thread belongs to the review of its FIRST comment (lowest databaseId). A thread whose first comment has no review
+  // A thread belongs to the review of its FIRST comment (earliest createdAt, then lowest databaseId). A thread whose first comment has no review
   // belongs to no review. All of the thread's non-empty comments are that review's feedback, whoever replied.
   const unresolved = new Map<number, { threadId: string; databaseId: number; body: string }[]>();
   for (const thread of pr.threads) {
     if (thread.isResolved || thread.comments.length === 0) continue;
-    const first = thread.comments.reduce((a, b) => (b.databaseId < a.databaseId ? b : a));
+    const earlier = (a: RawComment, b: RawComment): RawComment => {
+      const delta = Date.parse(b.createdAt) - Date.parse(a.createdAt);
+      return delta < 0 || (delta === 0 && b.databaseId < a.databaseId) ? b : a;
+    };
+    const first = thread.comments.reduce(earlier);
     const owner = first.pullRequestReview?.databaseId;
     if (owner === undefined) continue;
     const list = unresolved.get(owner) ?? [];

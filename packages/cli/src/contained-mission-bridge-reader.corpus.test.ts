@@ -171,7 +171,7 @@ describe('synthetic read -> normalize -> pseudonymize against a hand-written fix
         { databaseId: 8, state: 'APPROVED', submittedAt: '2026-11-01T00:00:20Z', commit: { oid: HEAD }, author: { __typename: 'User', databaseId: 500 }, body: '' },
       ] },
       reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'T', isResolved: false, comments: { pageInfo: { hasNextPage: false, endCursor: null },
-        nodes: [{ databaseId: 70, pullRequestReview: { databaseId: 7 }, body: 'here', author: { __typename: 'User', databaseId: 900 } }] } }] },
+        nodes: [{ databaseId: 70, createdAt: '2026-11-01T00:00:05Z', pullRequestReview: { databaseId: 7 }, body: 'here', author: { __typename: 'User', databaseId: 900 } }] } }] },
       commits: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ commit: { oid: HEAD } }] },
       timelineItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
     } } },

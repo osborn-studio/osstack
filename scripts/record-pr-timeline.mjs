@@ -10,6 +10,17 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const USAGE = `Usage: node scripts/record-pr-timeline.mjs --repo owner/name --pr N [--pr N …] [--append] [--out dir] [--registry producers.json]
+
+Records one de-identified PrSnapshot per PR. Actor ids, App ids and non-main base refs become pseudonyms and feedback digests
+are salted; the real-id -> pseudonym map and the salt are kept in a PRIVATE sidecar (0600) outside the repository:
+  $OSSTACK_FIXTURE_MAP_DIR (absolute, outside any git work tree), default ~/.config/osstack-bridge/fixture-maps/.
+
+--append adds a snapshot to an existing fixture and needs that sidecar. A fresh checkout does not have it, so it CANNOT --append to
+committed fixtures: this is the privacy trade-off, not a bug. The alternative is to re-record the whole fixture without --append,
+which assigns new pseudonyms and a new salt (the old sidecar, if any, is replaced).
+`;
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'packages', 'cli', 'dist');
 for (const file of ['bridge-reader.js', 'bridge-fixture.js']) {
@@ -37,7 +48,8 @@ function parseArgs(argv) {
     else if (arg === '--append') out.append = true;
     else if (arg === '--out') out.out = resolve(argv[++i]);
     else if (arg === '--registry') out.registry = resolve(argv[++i]);
-    else throw new Error(`unknown argument: ${arg}`);
+    else if (arg === '--help' || arg === '-h') { console.log(USAGE); process.exit(0); }
+    else throw new Error(`unknown argument: ${arg}\n${USAGE}`);
   }
   if (!out.repo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(out.repo)) throw new Error('--repo owner/name is required');
   if (out.prs.length === 0 || out.prs.some((n) => !Number.isInteger(n) || n <= 0)) throw new Error('at least one valid --pr is required');
@@ -99,7 +111,7 @@ for (const number of args.prs) {
     if (args.append && existsSync(path)) {
       existing = JSON.parse(await readFile(path, 'utf8'));
       priorMap = await fixture.readFixtureMap(mapPath);
-      if (!priorMap) throw new Error('private pseudonym map missing; --append fails closed (re-record without --append)');
+      if (!priorMap) throw new Error('private pseudonym map missing: a fresh checkout cannot --append to committed fixtures (privacy trade-off); re-record the whole fixture without --append instead, which assigns new pseudonyms and a new salt');
     }
     const pseudonymised = fixture.pseudonymizeSnapshot(snapshot, registry, priorMap);
     for (const k of Object.keys(pseudonymised.map.actors)) ids.add(Number(k.split(':')[1]));

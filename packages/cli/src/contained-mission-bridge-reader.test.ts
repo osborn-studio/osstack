@@ -2,6 +2,8 @@ import { type ProducerRegistry, decideChainStep, type ChainView } from '@osstack
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_READ_LIMITS,
+  PULL_REQUEST_QUERY,
+  THREAD_COMMENTS_QUERY,
   type GhExec,
   type GraphqlTransport,
   type RawAuthor,
@@ -30,7 +32,7 @@ const review = (id: number, over: Partial<RawReview> = {}): RawReview => ({
   databaseId: id, state: 'COMMENTED', submittedAt: new Date(T0 + id * 1000).toISOString(), commit: { oid: HEAD }, author: user(100), body: '', ...over,
 });
 const comment = (id: number, reviewId: number | null, body: string): RawComment => ({
-  databaseId: id, pullRequestReview: reviewId === null ? null : { databaseId: reviewId }, body, author: user(100),
+  databaseId: id, createdAt: new Date(T0 + id * 1000).toISOString(), pullRequestReview: reviewId === null ? null : { databaseId: reviewId }, body, author: user(100),
 });
 
 interface Model {
@@ -135,6 +137,41 @@ describe('readPullRequest', () => {
     expect(await readPullRequest(async () => ({ data: { repository: { pullRequest: { state: 'WAT' } } } }), REF)).toEqual({ complete: false, reason: 'malformed_response' });
     expect(await readPullRequest(async () => ({ data: { repository: { pullRequest: null } } }), REF)).toEqual({ complete: false, reason: 'pull_request_not_found' });
     expect(await readPullRequest(async () => 'nonsense', REF)).toEqual({ complete: false, reason: 'malformed_response' });
+  });
+
+  it('picks the first comment by createdAt, not by databaseId', async () => {
+    const early = { ...comment(90, 2, 'created first, higher id'), createdAt: '2026-10-01T00:00:00Z' };
+    const late = { ...comment(10, 1, 'created later, lower id'), createdAt: '2026-10-02T00:00:00Z' };
+    const s = normalizeSnapshot((await read({
+      reviews: [review(1, { state: 'CHANGES_REQUESTED' }), review(2, { state: 'CHANGES_REQUESTED' })],
+      threads: [{ id: 'T', isResolved: false, comments: [late, early] }],
+    })).result, registry, 1);
+    expect(s.reviews.map((r) => r.has_feedback)).toEqual([false, true]);
+    expect(s.reviews[1]!.feedback_digest).toBe(feedbackDigest('', [{ threadId: 'T', databaseId: 10, body: 'created later, lower id' }, { threadId: 'T', databaseId: 90, body: 'created first, higher id' }]));
+  });
+
+  it('breaks createdAt ties by databaseId', async () => {
+    const a = { ...comment(5, 1, 'a'), createdAt: '2026-10-01T00:00:00Z' };
+    const b = { ...comment(4, 2, 'b'), createdAt: '2026-10-01T00:00:00Z' };
+    const s = normalizeSnapshot((await read({
+      reviews: [review(1, { state: 'CHANGES_REQUESTED' }), review(2, { state: 'CHANGES_REQUESTED' })],
+      threads: [{ id: 'T', isResolved: false, comments: [a, b] }],
+    })).result, registry, 1);
+    expect(s.reviews.map((r) => r.has_feedback)).toEqual([false, true]);
+  });
+
+  it('treats a comment with a missing or invalid createdAt as malformed, inline and on node() pages', async () => {
+    for (const bad of [undefined, 'not a date']) {
+      const broken = { ...comment(1, 1, 'x'), createdAt: bad } as unknown as RawComment;
+      expect(await readPullRequest(server({ threads: [{ id: 'T', isResolved: false, comments: [broken] }] }), REF)).toEqual({ complete: false, reason: 'malformed_response' });
+      const many = [...Array.from({ length: 100 }, (_, i) => comment(i + 1, 1, 'x')), broken];
+      expect(await readPullRequest(server({ threads: [{ id: 'T', isResolved: false, comments: many }] }), REF)).toEqual({ complete: false, reason: 'malformed_response' });
+    }
+  });
+
+  it('requests createdAt on comments in both queries', () => {
+    expect(PULL_REQUEST_QUERY).toMatch(/comments\(first: 100\) \{[\s\S]*nodes \{ databaseId createdAt/u);
+    expect(THREAD_COMMENTS_QUERY).toContain('databaseId createdAt');
   });
 
   it('treats a null node in any connection as malformed, never complete', async () => {

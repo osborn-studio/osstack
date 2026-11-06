@@ -1,9 +1,10 @@
 // De-identification and validation for recorded PrSnapshot fixtures (appendix §5.4). Used by
 // scripts/record-pr-timeline.mjs (through dist/bridge-fixture.js) and by tests; lazy-imported only.
 import { createHmac, randomBytes } from 'node:crypto';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync, realpathSync } from 'node:fs';
+import { lstat, mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, parse, resolve } from 'node:path';
 import type { PrSnapshot, ProducerIdentity, ProducerRegistry } from '@osstack/core';
 import { z } from 'zod';
 
@@ -125,33 +126,92 @@ const mapSchema = z
   })
   .strict();
 
-/** Sidecar location: `$OSSTACK_FIXTURE_MAP_DIR`, else `~/.config/osstack-bridge/fixture-maps`. Not the scratch root, because
- * scratch is routinely cleaned and the map must outlive the recording session to keep `--append` consistent. */
-export function fixtureMapPath(repo: string, pr: number, env: Readonly<Record<string, string | undefined>> = process.env): string {
-  const dir = env['OSSTACK_FIXTURE_MAP_DIR']?.trim() || join(homedir(), '.config', 'osstack-bridge', 'fixture-maps');
-  return join(dir, `${repo.replace(/[^A-Za-z0-9._-]+/gu, '-')}-${pr}.json`);
+const mapError = (code: string): Error => new Error(`FIXTURE_MAP_${code}`);
+
+/** True when `dir` (which may not exist yet) resolves, through symlinks, to a place inside a git work tree or repository. */
+function insideRepository(dir: string): boolean {
+  let probe = resolve(dir);
+  const tail: string[] = [];
+  while (!existsSync(probe)) {
+    if (probe === parse(probe).root) break;
+    tail.unshift(probe.slice(dirname(probe).length + 1));
+    probe = dirname(probe);
+  }
+  let real = join(realpathSync(probe), ...tail);
+  for (;;) {
+    if (existsSync(join(real, '.git'))) return true;
+    const up = dirname(real);
+    if (up === real) return false;
+    real = up;
+  }
 }
 
-/** Missing sidecar returns undefined; the caller must fail closed when it needs one (append). */
+/** Sidecar location: `$OSSTACK_FIXTURE_MAP_DIR`, else `~/.config/osstack-bridge/fixture-maps`. Not the scratch root, because
+ * scratch is routinely cleaned and the map must outlive the recording session to keep `--append` consistent. The directory must
+ * be absolute and must not resolve (realpath) into any git work tree: the map holds real ids and the salt. */
+export function fixtureMapPath(repo: string, pr: number, env: Readonly<Record<string, string | undefined>> = process.env): string {
+  const dir = env['OSSTACK_FIXTURE_MAP_DIR']?.trim() || join(homedir(), '.config', 'osstack-bridge', 'fixture-maps');
+  if (!isAbsolute(dir)) throw mapError('DIR_NOT_ABSOLUTE');
+  if (insideRepository(dir)) throw mapError('DIR_IN_REPOSITORY');
+  return join(resolve(dir), `${repo.replace(/[^A-Za-z0-9._-]+/gu, '-')}-${pr}.json`);
+}
+
+/** Missing sidecar returns undefined; the caller must fail closed when it needs one (append). A symlink or non-file is refused. */
 export async function readFixtureMap(path: string): Promise<FixtureMap | undefined> {
+  try {
+    const info = await lstat(path);
+    if (!info.isFile()) throw mapError('TARGET');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    if (error instanceof Error && error.message === 'FIXTURE_MAP_TARGET') throw error;
+    throw mapError('UNREADABLE');
+  }
   let text: string;
   try {
     text = await readFile(path, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
-    throw new Error('FIXTURE_MAP_UNREADABLE');
+  } catch {
+    throw mapError('UNREADABLE');
   }
   try {
     return mapSchema.parse(JSON.parse(text));
   } catch {
-    throw new Error('FIXTURE_MAP_INVALID');
+    throw mapError('INVALID');
   }
 }
 
+/** Atomic private write: the directory is created 0700 (or must already be a real directory owned by this user with no group or
+ * other access), the target must be absent or a regular file, and the content goes to an exclusive 0600 temp file that is
+ * fsynced and renamed over the target. */
 export async function writeFixtureMap(path: string, map: FixtureMap): Promise<void> {
-  await mkdir(join(path, '..'), { recursive: true, mode: 0o700 });
-  await writeFile(path, `${JSON.stringify(map)}\n`, { mode: 0o600 });
-  await chmod(path, 0o600);
+  const dir = dirname(path);
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const info = await lstat(dir);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw mapError('DIR_INVALID');
+  if (typeof process.getuid === 'function' && info.uid !== process.getuid()) throw mapError('DIR_OWNER');
+  if ((info.mode & 0o077) !== 0) throw mapError('DIR_PERMISSIONS');
+  try {
+    const target = await lstat(path);
+    if (!target.isFile()) throw mapError('TARGET');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error instanceof Error && error.message === 'FIXTURE_MAP_TARGET' ? error : mapError('UNREADABLE');
+  }
+  const temp = join(dir, `.tmp-${process.pid}-${randomBytes(6).toString('hex')}`);
+  const handle = await open(temp, 'wx', 0o600);
+  try {
+    await handle.writeFile(`${JSON.stringify(map)}\n`);
+    await handle.sync();
+  } catch (error) {
+    await handle.close();
+    await unlink(temp).catch(() => undefined);
+    throw error;
+  }
+  await handle.close();
+  try {
+    await rename(temp, path);
+  } catch (error) {
+    await unlink(temp).catch(() => undefined);
+    throw error;
+  }
 }
 
 export interface LeakProbes {
