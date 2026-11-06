@@ -125,37 +125,77 @@ export function evaluateMergeGates(input: {
 新文件 `packages/core/src/state/engineering-merger-shadow-ddl.ts`；`migrations.ts` 追加 `{ id: 52, name: "engineering_merger_shadow", sql: ENGINEERING_MERGER_SHADOW_DDL }`。升级测试里写死的版本号按 `git grep` 从 51 改为 52。只新增表。
 
 ```sql
+-- 每个 PR 一行的观察栅栏（§4.1 并发）。不是只追加表：两个计数器只增不减，禁止删除
+CREATE TABLE engineering_merger_shadow_watermarks (
+  repository TEXT NOT NULL, pr_number INTEGER NOT NULL CHECK(pr_number>0),
+  issued_seq INTEGER NOT NULL CHECK(issued_seq>=0),    -- 已发出的最大观察号（读取开始前分配）
+  accepted_seq INTEGER NOT NULL CHECK(accepted_seq>=0), -- 已接受的最大观察号（落库时推进）
+  updated_at INTEGER NOT NULL,                          -- 本机时间，只用于报告
+  PRIMARY KEY(repository,pr_number),
+  CHECK(accepted_seq<=issued_seq)
+);
+CREATE TRIGGER engineering_merger_watermark_monotonic BEFORE UPDATE ON engineering_merger_shadow_watermarks
+WHEN NEW.repository IS NOT OLD.repository OR NEW.pr_number IS NOT OLD.pr_number
+  OR NEW.issued_seq < OLD.issued_seq OR NEW.accepted_seq < OLD.accepted_seq
+BEGIN SELECT RAISE(ABORT,'merger_watermark_regressed'); END;
+-- 落库的观察号必须大于已接受的观察号：晚到的旧观察被拒，无论它的结论会不会被去重
+CREATE TRIGGER engineering_merger_watermark_stale BEFORE UPDATE OF accepted_seq ON engineering_merger_shadow_watermarks
+WHEN NEW.accepted_seq <= OLD.accepted_seq
+BEGIN SELECT RAISE(ABORT,'merger_stale_observation'); END;
+CREATE TRIGGER engineering_merger_watermark_no_delete BEFORE DELETE ON engineering_merger_shadow_watermarks
+BEGIN SELECT RAISE(ABORT,'merger_shadow_immutable'); END;
+-- 新行只能是第一次取号的形状 (1,0)。注意：`INSERT OR REPLACE` 的隐式删除不触发 DELETE 触发器（recursive_triggers 关闭时），
+-- 这条触发器也挡不住用 (1,0) 覆盖已有行，所以“禁止 REPLACE”是写入者约束，见 §4.1
+CREATE TRIGGER engineering_merger_watermark_insert BEFORE INSERT ON engineering_merger_shadow_watermarks
+WHEN NEW.issued_seq IS NOT 1 OR NEW.accepted_seq IS NOT 0
+BEGIN SELECT RAISE(ABORT,'merger_watermark_insert'); END;
+
 CREATE TABLE engineering_merger_shadow_decisions (
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   repository TEXT NOT NULL, pr_number INTEGER NOT NULL CHECK(pr_number>0),
   mission_id TEXT NOT NULL REFERENCES engineering_contained_missions(mission_id),
+  observation_seq INTEGER NOT NULL CHECK(observation_seq>0), -- 栅栏号；排序依据
   head_sha TEXT NOT NULL CHECK(length(head_sha) IN (40,64)),
   base_sha TEXT,                 -- 实时 base tip；读不到时为 NULL（只可能出现在 unevaluated）
   verdict TEXT NOT NULL CHECK(verdict IN ('would_merge','refused','unevaluated')),
   codes_json TEXT NOT NULL CHECK(json_valid(codes_json) AND length(codes_json)<=4096),
-  codes_digest TEXT NOT NULL,    -- sha256(codes_json)；would_merge 时为 sha256('[]')
+  codes_digest TEXT NOT NULL CHECK(length(codes_digest)=64), -- sha256(codes_json)；would_merge 时为 sha256('[]')
   gates_json TEXT NOT NULL CHECK(json_valid(gates_json) AND length(gates_json)<=16384),
   merge_request_json TEXT,       -- would_merge：{"sha":…,"merge_method":"squash"}
-  evidence_digest TEXT NOT NULL,
-  observed_at INTEGER NOT NULL, created_at INTEGER NOT NULL,
-  CHECK(json_type(codes_json)='array'),
+  evidence_digest TEXT NOT NULL CHECK(length(evidence_digest)=64),
+  observed_at INTEGER NOT NULL, created_at INTEGER NOT NULL, -- 本机时间，只用于报告，不用于排序
+  CHECK(json_type(codes_json) IS 'array'),
   CHECK((verdict='would_merge') = (merge_request_json IS NOT NULL)),
-  CHECK(verdict<>'would_merge' OR (json_array_length(codes_json)=0
-    AND length(base_sha) IN (40,64) AND json_valid(merge_request_json)
+  -- 每个可能为 NULL 的操作数都用 IS / IS NOT NULL / COALESCE 包住：SQLite 把结果为 NULL 的 CHECK 当作通过
+  CHECK(verdict<>'would_merge' OR COALESCE(json_array_length(codes_json)=0
+    AND base_sha IS NOT NULL AND length(base_sha) IN (40,64)
+    AND json_valid(merge_request_json)
     AND json_extract(merge_request_json,'$.sha') IS head_sha
-    AND json_extract(merge_request_json,'$.merge_method') IS 'squash')),
-  CHECK(verdict='would_merge' OR json_array_length(codes_json)>0),
+    AND json_extract(merge_request_json,'$.merge_method') IS 'squash', 0)),
+  CHECK(verdict='would_merge' OR COALESCE(json_array_length(codes_json)>0, 0)),
+  CHECK(verdict='unevaluated' OR base_sha IS NOT NULL),
   CHECK(base_sha IS NULL OR length(base_sha) IN (40,64))
 );
-CREATE INDEX engineering_merger_decisions_pr ON engineering_merger_shadow_decisions(repository,pr_number,seq);
--- 过期观察：observed_at（第 1 步开始读取的时刻）早于该 PR 已记录的最新 observed_at 时拒绝
-CREATE TRIGGER engineering_merger_decision_stale BEFORE INSERT ON engineering_merger_shadow_decisions
-WHEN NEW.observed_at < (SELECT MAX(observed_at) FROM engineering_merger_shadow_decisions
-                        WHERE repository=NEW.repository AND pr_number=NEW.pr_number)
-BEGIN SELECT RAISE(ABORT,'merger_stale_observation'); END;
--- 去重：与同一 PR 的上一条记录 head、verdict、codes_digest 都相同时，静默丢弃（只记变化）
+CREATE UNIQUE INDEX engineering_merger_decisions_obs ON engineering_merger_shadow_decisions(repository,pr_number,observation_seq);
+-- 决定只能由刚推进栅栏的那次观察写入（同一事务中先推进 accepted_seq，再插入）
+CREATE TRIGGER engineering_merger_decision_fenced BEFORE INSERT ON engineering_merger_shadow_decisions
+WHEN NEW.observation_seq IS NOT (SELECT accepted_seq FROM engineering_merger_shadow_watermarks
+                                 WHERE repository=NEW.repository AND pr_number=NEW.pr_number)
+BEGIN SELECT RAISE(ABORT,'merger_unfenced_decision'); END;
+-- 合并是终点：PR 已有 merged 片段后不再接受决定（“合并前的决定”= observation_seq 小于 merged 片段的观察号）
+CREATE TRIGGER engineering_merger_decision_after_merge BEFORE INSERT ON engineering_merger_shadow_decisions
+WHEN EXISTS (SELECT 1 FROM engineering_merger_shadow_outcomes
+             WHERE repository=NEW.repository AND pr_number=NEW.pr_number AND outcome='merged')
+BEGIN SELECT RAISE(ABORT,'merger_pr_merged'); END;
+-- 去重：与同一 PR 的上一条记录 head、verdict、codes_digest 都相同时，静默丢弃（栅栏已推进，不受影响）。
+-- 条件里重复栅栏检查：SQLite 同类触发器的执行顺序不由文档保证，未持栅栏号的重复行必须落到上面的 ABORT，
+-- 而不是被这里的 IGNORE 吞掉
 CREATE TRIGGER engineering_merger_decision_dedupe BEFORE INSERT ON engineering_merger_shadow_decisions
-WHEN EXISTS (SELECT 1 FROM engineering_merger_shadow_decisions d
+WHEN NEW.observation_seq IS (SELECT accepted_seq FROM engineering_merger_shadow_watermarks
+                             WHERE repository=NEW.repository AND pr_number=NEW.pr_number)
+ AND NOT EXISTS (SELECT 1 FROM engineering_merger_shadow_outcomes
+                 WHERE repository=NEW.repository AND pr_number=NEW.pr_number AND outcome='merged')
+ AND EXISTS (SELECT 1 FROM engineering_merger_shadow_decisions d
   WHERE d.seq=(SELECT MAX(seq) FROM engineering_merger_shadow_decisions
                WHERE repository=NEW.repository AND pr_number=NEW.pr_number)
     AND d.head_sha=NEW.head_sha AND d.verdict=NEW.verdict AND d.codes_digest=NEW.codes_digest)
@@ -166,7 +206,7 @@ BEGIN SELECT RAISE(IGNORE); END;
 CREATE TABLE engineering_merger_shadow_cycles (
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL,
-  prs_json TEXT NOT NULL CHECK(json_valid(prs_json) AND length(prs_json)<=4096) -- 本周期评估过的 [repository, pr, head, verdict] 列表
+  prs_json TEXT NOT NULL CHECK(json_valid(prs_json) AND length(prs_json)<=4096) -- 本周期评估过的 [repository, pr, observation_seq, head, verdict] 列表
 );
 -- 只追加，同上
 
@@ -174,31 +214,50 @@ CREATE TABLE engineering_merger_shadow_outcomes (
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   repository TEXT NOT NULL, pr_number INTEGER NOT NULL CHECK(pr_number>0),
   mission_id TEXT NOT NULL REFERENCES engineering_contained_missions(mission_id),
+  observation_seq INTEGER NOT NULL CHECK(observation_seq>0), -- 与决定共用同一个栅栏
   outcome TEXT NOT NULL CHECK(outcome IN ('merged','closed_unmerged','reopened','observation_expired')),
-  head_at_close TEXT NOT NULL,   -- 合并/关闭时 PR 的 headRefOid
+  head_at_close TEXT NOT NULL CHECK(length(head_at_close) IN (40,64)), -- 合并/关闭时 PR 的 headRefOid
   merged_at TEXT, merge_commit TEXT,
-  merged_by_actor_id INTEGER, merged_by_type TEXT CHECK(merged_by_type IN ('User','Bot') OR merged_by_type IS NULL),
-  owner_approved_head INTEGER CHECK(owner_approved_head IN (0,1)),  -- NULL：本仓库的批准不作为检查证据（§5.2 inspection_evidence=false）
+  merged_by_actor_id INTEGER, merged_by_type TEXT CHECK(merged_by_type IS NULL OR merged_by_type IN ('User','Bot')),
+  owner_approved_head INTEGER CHECK(owner_approved_head IS NULL OR owner_approved_head IN (0,1)),  -- NULL：本仓库的批准不作为检查证据（§5.2 inspection_evidence=false）
   facts_json TEXT NOT NULL CHECK(json_valid(facts_json) AND length(facts_json)<=8192),
   observed_at INTEGER NOT NULL, created_at INTEGER NOT NULL,
-  CHECK((outcome='merged') = (merged_at IS NOT NULL AND merge_commit IS NOT NULL AND merged_by_actor_id IS NOT NULL))
+  CHECK((outcome='merged') IS (merged_at IS NOT NULL AND merge_commit IS NOT NULL AND length(merge_commit) IN (40,64)
+    AND merged_by_actor_id IS NOT NULL AND merged_by_type IS NOT NULL)),
+  CHECK(outcome='merged' OR (merged_at IS NULL AND merge_commit IS NULL AND merged_by_actor_id IS NULL AND merged_by_type IS NULL))
 );
--- 片段转换：（无）→ closed_unmerged|merged；closed_unmerged → reopened|observation_expired；
+-- 片段转换：（无）→ closed_unmerged|merged；closed_unmerged → reopened|merged|observation_expired；
 -- reopened → closed_unmerged|merged；merged、observation_expired 是终点
+-- closed_unmerged → merged 是“两次每小时轮询之间被重开并合并”：观察到的 MERGED 由 GitHub 的 mergedAt 证明，
+-- 写入时 facts_json 记 reopen_unobserved=true，不重建中间的 reopened 片段
 CREATE TRIGGER engineering_merger_outcome_transition BEFORE INSERT ON engineering_merger_shadow_outcomes
 WHEN NOT (
   COALESCE((SELECT outcome FROM engineering_merger_shadow_outcomes
             WHERE repository=NEW.repository AND pr_number=NEW.pr_number ORDER BY seq DESC LIMIT 1), '')
-  || '>' || NEW.outcome IN ('>closed_unmerged','>merged','closed_unmerged>reopened',
+  || '>' || NEW.outcome IN ('>closed_unmerged','>merged','closed_unmerged>reopened','closed_unmerged>merged',
     'closed_unmerged>observation_expired','reopened>closed_unmerged','reopened>merged'))
 BEGIN SELECT RAISE(ABORT,'merger_outcome_transition'); END;
+-- 结果片段也要过栅栏：晚到的旧 CLOSED 观察不能覆盖较新的 reopened
+CREATE TRIGGER engineering_merger_outcome_fenced BEFORE INSERT ON engineering_merger_shadow_outcomes
+WHEN NEW.observation_seq IS NOT (SELECT accepted_seq FROM engineering_merger_shadow_watermarks
+                                 WHERE repository=NEW.repository AND pr_number=NEW.pr_number)
+BEGIN SELECT RAISE(ABORT,'merger_unfenced_outcome'); END;
+CREATE UNIQUE INDEX engineering_merger_outcomes_obs ON engineering_merger_shadow_outcomes(repository,pr_number,observation_seq);
 -- 只追加，同上
 ```
 
 - **去重**：同一 PR 在 5 分钟一轮的扫描里会被评估很多次。去重触发器只丢弃与该 PR **上一条**记录（含 head）完全相同的结论，所以表里是该 PR 结论的变化序列：`refused(A) → would_merge → refused(A)` 三条都在；head 来回变化（A→B→A）时三条也都在，最后一条总是最新观察。
-- **并发与过期观察**：写入事务（`BEGIN IMMEDIATE`）只串行化写，不串行化之前的 GitHub 读取。所以另有两层：服务内对同一 PR 一次只跑一个评估（按 PR 的进程内锁）；数据库拒绝 `observed_at` 早于该 PR 最新记录的插入（`merger_stale_observation`，该周期结果丢弃并写服务日志）。对照按 `observed_at` 再按 `seq` 排序。结论没变时不写决定行，但周期表 `engineering_merger_shadow_cycles` 记下“这一轮看过这个 PR、结论是什么”，对照用它确认合并前的最后一次观察离合并有多近。
+- **并发与过期观察（观察栅栏）**：写入事务（`BEGIN IMMEDIATE`）只串行化写，不串行化之前的 GitHub 读取；进程内锁也管不到另一个进程。所以栅栏放在数据库里，按 PR 一行（`engineering_merger_shadow_watermarks`），只用数据库发出的整数，不用本机时间：
+  1. 读取开始前，一个短事务：`INSERT INTO … VALUES(…,1,0,…) ON CONFLICT DO UPDATE SET issued_seq = issued_seq + 1 … RETURNING issued_seq`，**提交成功后**才把 `n` 交给调用方（`RETURNING` 不是提交；回滚的取号会被重新发出）。取号后崩溃只留下一个空号，后面的号照常可用。
+  2. 读 GitHub、评估（§3.4）。读到 `MERGED`/`CLOSED`/重开时，本次观察的产物是结果片段而不是决定。
+  3. 落库事务：先 `UPDATE … SET accepted_seq = n`——`n ≤ accepted_seq` 时触发器报 `merger_stale_observation`；再插入决定行或结果片段（都带 `observation_seq = n`，触发器要求它等于 `accepted_seq`）；决定行可能被去重静默丢弃，但栅栏已经推进。**`RAISE(ABORT)` 只撤销出错的那条语句，不回滚事务**：写入者在任一语句出错时必须显式 `ROLLBACK`，否则已推进的栅栏会随后续 `COMMIT` 留下。
+  
+  数据库保证的是：已接受的观察号只增不减；每一行决定或片段带的是当前已接受的最大号；同一观察号最多一行决定、一行片段（唯一索引）；PR 合并后不再接受决定。数据库**不**保证“这个号是在本事务里刚推进的”：一次被去重的观察之后，持同一号的另一条不同决定仍能写入。这一条与“不使用 `REPLACE`”一样，是写入者约束：`MergerShadowWriter` 是唯一写入路径，四条 SQL 语句固定；它的测试扫描写入者源码，出现 `REPLACE`、`OR REPLACE` 或其他 `ON CONFLICT DO UPDATE` 即失败（`INSERT OR REPLACE` 在 `recursive_triggers` 关闭时不触发 DELETE 触发器，可以把栅栏重置为 (1,0)，同样能绕过另几张表的只追加触发器）。
+  
+  于是 `refused@1`、`refused@3`（被去重）之后，晚到的 `would_merge@2` 在第 3 步被拒。时钟回拨或多机时钟偏差不影响顺序；`observed_at` 只用于报告与 `mergedAt` 的对照。决定按 `observation_seq` 排序，对照（§4.3）里“合并前”也按观察号判断，不比较本机时间与 GitHub 时间。服务内仍按 PR 加锁，减少无谓的被拒。结论没变时不写决定行，但周期表 `engineering_merger_shadow_cycles` 记下“这一轮看过这个 PR、结论是什么”，对照用它确认合并前的最后一次观察离合并有多近。
+- **校验在写入前**：去重触发器是 `BEFORE INSERT … RAISE(IGNORE)`，比 CHECK 先执行，所以一条与上一条相同但本身不合法的行会被静默丢弃而不是报错。没有写入任何东西，但写入者仍要先在代码里按同一组约束校验行（`MergerShadowWriter` 的 zod schema），不依赖 CHECK 报错。
 - **不入库**：正文、login、URL、文件路径（G4b 只记布尔与计数）、令牌。`gates_json` 用 4-C 同样的白名单 schema 校验后写入。
-- **写入者**：`MergerShadowWriter { recordDecision(row), recordOutcome(row), recordCycle(row) }`，只有这三个方法；不暴露 Mission store、链 store。
+- **写入者**：`MergerShadowWriter { beginObservation(repository, pr) → n, recordDecision(n, row), recordOutcome(n, row), recordCycle(row) }`，只有这四个方法；不暴露 Mission store、链 store。
 - **周期表的体积**：每 5 分钟一行，`prs_json` 每轮最多 10 个 PR，一年约 10 万行、几十 MB 以内；超过保留期的清理不在本附录范围（只追加表的清理需要单独的迁移与决定）。
 
 ### 4.2 记录内容（`gates_json`）
@@ -210,15 +269,15 @@ BEGIN SELECT RAISE(ABORT,'merger_outcome_transition'); END;
 
 ADR-006 要求在启用真实合并前，把影子决定与实际发生的合并对照，并记录每次是否有人检查过。对照方式是**提案**，由后续 ADR 决定是否采纳、怎样抽样：
 
-- **何时记录结果**：结果表是片段序列，转换由触发器限定。周期中读到 PR `state` 为 `MERGED`，读一次 `mergedAt`、`mergeCommit{oid}`、`mergedBy{__typename ... on User{databaseId} ... on Bot{databaseId}}`、`headRefOid` 与 reviews，写一条 `merged`（部分唯一索引保证只写一次），之后不再读该 PR。读到 `CLOSED`（未合并）写一条 `closed_unmerged`，但**不停止**观察：已关闭的 PR 每小时读一次 `state`（一个字段），重新打开时写 `reopened` 并恢复 5 分钟评估；关闭超过 30 天后写 `observation_expired` 并停止观察；报告把它单列为 `closed_expired`，明确“之后是否重开未知”。合并后 GitHub 不允许重开，所以 `merged` 与 `observation_expired` 是仅有的两个终点。
+- **何时记录结果**：结果表是片段序列，转换由触发器限定。周期中读到 PR `state` 为 `MERGED`，读一次 `mergedAt`、`mergeCommit{oid}`、`mergedBy{__typename ... on User{databaseId} ... on Bot{databaseId}}`、`headRefOid` 与 reviews，写一条 `merged`（转换触发器使它成为终点，只能写一次），之后不再读该 PR。读到 `CLOSED`（未合并）写一条 `closed_unmerged`，但**不停止**观察：已关闭的 PR 每小时读一次 `state`（一个字段），重新打开时写 `reopened` 并恢复 5 分钟评估；两次轮询之间被重开**并**合并时，下一次轮询读到 `MERGED`，直接写 `merged`（`facts_json.reopen_unobserved = true`），这期间没有影子评估，报告归入 `merged_unobserved`；关闭超过 30 天后写 `observation_expired` 并停止观察；报告把它单列为 `closed_expired`，明确“之后是否重开未知”。合并后 GitHub 不允许重开，所以 `merged` 与 `observation_expired` 是仅有的两个终点。
 - **是否有人检查**：GitHub 无法直接说明。提案以“`gilosbornhello`（登记表 `counted_approvers`）在 `head_at_close` 上有一条 `APPROVED`，且 `submittedAt < mergedAt`”作为**有人阅读过**的证据（风险 4：所有者承诺读过 PR 才批准），写 `owner_approved_head`。这条证据只在登记表 `inspection_evidence = true` 的仓库成立：沙箱的场景脚本会用同一账号自动批准（§5.4），那些批准不是人读过，所以沙箱的 `merger.json` 设 `inspection_evidence = false`，`owner_approved_head` 写 `NULL`。合并者按数字 id 分类：`merged_by` 等于 `gilosbornhello`（269190136）、等于 App E 的 bot 用户 id（登记表 `merger.actor_id`；GitHub 返回的是 bot 用户 id，不是 App id 5620091）、或其他自动化账号，记在 `facts_json`。不能从 GitHub 读出的“人工抽查”（ADR-006 决定 1 的 spot-check）由所有者事后补录：提案为 `osstack mission merger attest --pr <n> --inspected yes|no`（交互终端、write scope），写入单独的只追加表；这一项不在 M-C 范围内，等后续 ADR 决定。
 - **分类**（`osstack mission merger report --json`，read scope，只读）：
 
 | 分类 | 定义 | 含义 |
 |---|---|---|
 | `merged_other_head` | 合并时的 head 不是发布的 head | 有人推送过；G2c 必然拒绝 |
-| `merged_unobserved` | 已合并，`mergedAt` 之前 15 分钟（三个扫描间隔）内的周期表里没有这个 PR | 影子当时没在看（服务停了、排队），不计入一致率 |
-| `agree_merge` | 已合并，`mergedAt` 之前**最后一条**决定（按 `observed_at`、`seq`，`observed_at < mergedAt`）是 `head_at_close` 上的 `would_merge` | 影子在合并前最后一次观察时会合并同一个 head |
+| `merged_unobserved` | 已合并，`merged` 片段之前的三个周期（按周期表的 `seq`，即三个扫描间隔）里没有这个 PR，或 `reopen_unobserved = true` | 影子当时没在看（服务停了、排队），不计入一致率 |
+| `agree_merge` | 已合并，合并前**最后一条**决定（`observation_seq` 小于 `merged` 片段观察号的决定中最大的一条；合并后的决定被 `merger_pr_merged` 拒绝，所以“合并前”不依赖本机时钟）是 `head_at_close` 上的 `would_merge` | 影子在合并前最后一次观察时会合并同一个 head |
 | `merged_while_refused` | 已合并，合并前最后一条决定是 `refused`（无论之前是否有过 `would_merge`；“曾经可合并”另列为 `ever_would_merge=true`） | 真实合并时门槛不成立；列出码。是门槛过严还是真实合并有风险，逐条人工判断 |
 | `merged_unevaluated` | 已合并，合并前最后一条决定是 `unevaluated`，或 `head_at_close` 上没有决定 | 影子没看清，不计入一致率 |
 | `closed_expired` | 关闭后观察到期（`observation_expired`） | 结局未知，不计入一致率 |
@@ -227,7 +286,7 @@ ADR-006 要求在启用真实合并前，把影子决定与实际发生的合并
 | `closed_unevaluated` | 未合并就关闭，关闭前最后一条决定是 `unevaluated` | 影子没看清，不计入一致率 |
 | `agree_no_merge` | 未合并就关闭，关闭前最后一条决定是 `refused` | 一致（另列 `ever_would_merge`） |
 
-  分类互斥，按表中顺序取第一个匹配。每类附：`ever_would_merge`、合并者类别、`owner_approved_head`、`would_merge` 与 `mergedAt` 的时间差（本机时钟对 GitHub 时间戳，分辨率为扫描间隔 5 分钟）。
+  分类互斥，按表中顺序取第一个匹配。每类附：`ever_would_merge`、合并者类别、`owner_approved_head`、`would_merge` 与 `mergedAt` 的时间差（仅作参考：本机时钟对 GitHub 时间戳，分辨率为扫描间隔 5 分钟，不参与分类）。
 - **报告不做判断**：不给出“可以启用”的结论；是否启用、需要多少条 `agree_merge`、人工抽样比例，都是后续 ADR 的内容。
 
 ## 5. 读取与运行
@@ -288,14 +347,14 @@ ADR-006 要求在启用真实合并前，把影子决定与实际发生的合并
 
 | PR | 测试 | 通过标准 |
 |---|---|---|
-| M-A | DDL：三张表只追加（UPDATE/DELETE 被拒）；去重触发器：与上一条相同的结论被丢弃，`refused(A)→would_merge→refused(A)` 三条都保留；`closed_unmerged→reopened→merged` 序列可写入；`would_merge` 必须带 `merge_request_json.sha = head_sha`、`codes_json='[]'`、`base_sha` 非空；`refused`/`unevaluated` 必须有非空数组码（`'{}'`、`'[]'` 被拒）；`would_merge` 的 `base_sha` 长度与 `merge_method='squash'`；同一 PR 上一条相同的结论被丢弃，head A→B→A 的三条都保留；`observed_at` 倒退被拒；结果片段：`closed_unmerged→closed_unmerged`、`merged→reopened`、`observation_expired→reopened` 被拒 | 全部通过 |
+| M-A | DDL：三张表只追加（UPDATE/DELETE 被拒）；去重触发器：与上一条相同的结论被丢弃，`refused(A)→would_merge→refused(A)` 三条都保留；`closed_unmerged→reopened→merged` 序列可写入；`would_merge` 必须带 `merge_request_json.sha = head_sha`、`codes_json='[]'`、`base_sha` 非空；`refused`/`unevaluated` 必须有非空数组码（`'{}'`、`'[]'` 被拒）；`would_merge` 的 `base_sha` 长度与 `merge_method='squash'`；同一 PR 上一条相同的结论被丢弃，head A→B→A 的三条都保留；观察栅栏：`refused@1`、`refused@3`（被去重）后 `would_merge@2` 被拒（`merger_stale_observation`），本机时间倒退（`observed_at` 100 之后 99）而观察号递增时照常接受，未推进栅栏的插入被拒（`merger_unfenced_decision`），计数器回退被拒；`would_merge` 的 `base_sha` 为 `NULL` 被拒；结果片段：`closed_unmerged→merged` 可写入，`closed_unmerged→closed_unmerged`、`merged→reopened`、`observation_expired→reopened` 被拒；非 `merged` 片段带合并字段被拒；结果片段过栅栏：`closed_unmerged`、晚到的旧 `closed_unmerged` 在较新的 `reopened` 之后被拒；`merged` 之后的决定被拒（`merger_pr_merged`）；未持栅栏号、与上一条相同的决定报 `merger_unfenced_decision` 而不是被静默丢弃（与触发器创建顺序无关：调换创建顺序再跑一遍）；栅栏新行不是 (1,0) 被拒；写入者：任一语句出错后事务被显式回滚、取号在提交后才返回、源码中没有 `REPLACE` 与多余的 `ON CONFLICT DO UPDATE` | 全部通过 |
 | M-A | **ADR-006 要求的负向用例**（纯函数，每条单独一个用例，期望 `refused` 且含对应码）：① 非 Mission PR：快照 PR 号或仓库与证据不符 → `G2.*_mismatch`；② 复制的标记：另一 PR 的正文带本 Mission 的合法标记，但 PR 号、分支、作者不符 → `G2.*`；本 PR 标记被改（`spec_digest`/`start`/`id` 任一）→ `G2.marker_mismatch`；③ head 不符：实时 head ≠ `pushed_commit`、≠ `candidate_head`、≠ 标记 `head`、≠ check `head_sha`，各一例 → `G2.head_mismatch:<方>`；④ base 移动 → `G5.base_moved`；`base_head=null` → `G5.base_head_missing`；⑤ 批准早于最后一次推送：Mission ruleset 缺一条 → `G6.last_push_unprovable:rulesets`；时间线有强推 → `G6.force_push_observed`；批准在旧 head 上 → `G6.approval_stale_head`；⑥ App 的批准：只有 Bot（测试评审 App、App D）`APPROVED` → `G6.approval_by_app`；⑦ 错误生产者的检查：`osstack/verify` 只来自 App C 或 15368 → `G3.wrong_producer_only`；必需检查 `check` 来自非 15368 → `G4.wrong_producer:check`；必需集合多一条或少一条 → `G4.required_set_drift`；PR 改了 `.github/workflows/` → `G4.workflow_paths_changed` | 每条都只因被测门槛失败（其余门槛在夹具中成立）；另有一个全部成立的对照用例得到 `would_merge` |
 | M-A | 其余门槛各一例：目标分支不是登记 `base_ref` → `G2.base_not_registered`；必需检查集合正确但来自另一个 ruleset → `G4.checks_bypassable`；`main-update` 里没有 App E 或含 App A → `G8.*`；G3 的 suite 数超上限 → `U.read_incomplete:G3`；ruleset 配置里 `bypass_actors` 缺失或多一个 actor → `G6.last_push_unprovable:bypass` / `G6.platform_rules_bypass`；旧式保护返回 404 时按空集合处理（只有 ruleset 的仓库能得到 `would_merge`），返回 403 → `U.read_failed`；`G1.not_opened:*`（三种 kind）、`G1.evidence_digest_mismatch`、`G0.join_ambiguous`、`G3.not_success`、`G3` 重复时取最小 id（最小 id 失败、较大 id 成功 → 拒绝）、`G6.changes_requested`（旧 head 上未 dismiss 的要求修改仍有效；同一作者之后的批准取代它）、`G6.unresolved_threads`（outdated 线程计入）、`G6.approval_superseded`、`G6.platform_rules_missing`、`G7.*`、`skipped`/`neutral` 必需检查被拒；`unevaluated` 的四种码 | 全部通过 |
 | M-A | 属性（fast-check，复用 4-A 的依赖）：随机生成证据与快照，断言 `would_merge` ⇒ 每条门槛的谓词独立成立（用一份逐条写的参考实现对比）；任意一个字段扰动（head、base、review 作者、check app id、external_id）都不会得到 `would_merge` | `pnpm test` 1 000 次，`OSSTACK_PROPERTY_RUNS=10000` 时 10 000 次 |
-| M-A | 变异检查（手工，记入 PR 描述）：去掉 G2c 的任一方、去掉 G3 的 `app.id` 或 `external_id` 比较、G6a 接受 Bot、G6b 不查 ruleset、G5 改用 `baseRefOid`、去重触发器改回按（PR，head）、去掉过期观察触发器、G4 接受来自其他 ruleset 的必需检查、去掉 G8 | 每个变异都有测试失败 |
+| M-A | 变异检查（手工，记入 PR 描述）：去掉 G2c 的任一方、去掉 G3 的 `app.id` 或 `external_id` 比较、G6a 接受 Bot、G6b 不查 ruleset、G5 改用 `baseRefOid`、去重触发器改回按（PR，head）、去掉观察栅栏触发器、把栅栏改回按 `observed_at`、G4 接受来自其他 ruleset 的必需检查、去掉 G8 | 每个变异都有测试失败 |
 | M-B | 读取器：分页与上限、`errors` 放弃、`body` 不进入快照（快照 JSON 中搜不到正文中的任意 token）、`files` 只留布尔；`redactBridge` 移动后 `contained-mission-bridge.test.ts` 不变通过；REST 传输：argv 恒含 `--method GET` 且不含 `-f`/`-F`/`--input`/`-X`，白名单外路径、他仓库路径被拒；`merger.json`：缺失、无效、带 `private_key_path`、`counted_approvers` 带 `app_id`、与 `producers.json` 不一致 | 全部通过 |
 | M-C | **隔离负向集成测试**（复用 4-D 的装配）：在真实服务装配里跑影子周期，对 `createInstallationTokenSource`、`createBridgeKit`、`loadBridgeConfig`、Mission store 每个写方法、链 store 每个写方法、runner/派发、GraphQL 中任何 `mutation`、REST 中任何非 `GET` 打桩计数，断言全部为 0；`fs` 打开的文件里没有 `apps.json`、`rulesets.json` 或任何 `.pem`；Mission 账本与链表在运行前后逐行相同；import 图静态测试 | 全部通过 |
-| M-C | 并发与 TOCTOU：在第 1 与第 4 步之间注入 head 变化、base 变化、新 review、线程重新打开、check 重跑失败，各一例 → `unevaluated`（`U.snapshot_moved:*`），不产生 `would_merge`；同一 PR 两个周期并发：较早开始读取的周期在较晚的 `refused` 写入后才落库 → 被 `merger_stale_observation` 拒绝，最新记录仍是 `refused` | 全部通过 |
+| M-C | 并发与 TOCTOU：在第 1 与第 4 步之间注入 head 变化、base 变化、新 review、线程重新打开、check 重跑失败，各一例 → `unevaluated`（`U.snapshot_moved:*`），不产生 `would_merge`；同一 PR 两个周期（含两个进程）并发：较早取号的周期在较晚取号的周期落库后才落库 → 被 `merger_stale_observation` 拒绝，最新记录仍是较晚的结论，较晚结论被去重时也一样 | 全部通过 |
 | M-C | 开关矩阵（未设、`0`、`shadow`、`1`、`live`、缺 `merger.json`、无效 `merger.json`）；对照分类（§4.3）每类一个夹具，含 `would_merge` 之后又 `refused` 再合并（应为 `merged_while_refused`、`ever_would_merge=true`）、关闭后重开再合并、合并前 15 分钟无周期（`merged_unobserved`）、App E 按 bot 用户 id 识别；`report --json` 只读（同样打桩计数） | 全部通过 |
 | M-D | 沙箱场景回放：每个负向场景得到对应码；对照组得到 `would_merge`，之后由主机 `gh` 合并，outcome 为 `agree_merge` 且 `owner_approved_head` 为 `NULL`（沙箱不作检查证据） | 全部通过 |
 
@@ -364,4 +423,32 @@ ADR-006 要求在启用真实合并前，把影子决定与实际发生的合并
 | 部分 / P3 合并者禁止 import `contained-mission-bridge.ts`，却要用其中的 `redactBridge` | 属实（`contained-mission-bridge.ts` L47 是唯一定义） | M-B 把 `redactBridge` 移到 `contained-mission-redact.ts`，原模块再导出 |
 | P3 测试计划仍写“outcome 每 PR 一行”“去掉 `would_merge` 唯一索引” | 属实 | §6 改为片段转换、去重序列、过期观察的用例与新变异 |
 
-按要求在第 2 轮后停止审计。第 2 轮的修订没有再经过独立审计；M-A 开工前的 Codex 只读审查（方案 §7）应覆盖 §4.1 的 DDL。
+**第 3 轮（Codex CLI gpt-6-astra，medium，只读，由协调会话对已提交的 `ba30b1a3` 运行）：** 第 2 轮 10 项中 7 项已解决、3 项部分解决（过期观察、关闭后的片段、DDL 校验）；新增 3 个 P2，无 P1。审计在内存 SQLite 中复现了每一条。逐条核对后全部接受，修订后的 DDL 在内存 SQLite（3.53.1）中重跑了下列序列：
+
+| 发现 | 核对 | 处理 |
+|---|---|---|
+| P2 去重让过期观察检查失效：`refused@10`、`refused@30`（被去重，没留下 30）后，晚到的 `would_merge@20` 被接受 | 属实；检查只看已存的决定行 | 新增 `engineering_merger_shadow_watermarks`：每 PR 一行，`issued_seq`（读取前分配）与 `accepted_seq`（落库时推进），与决定的去重无关；落库事务先推进 `accepted_seq`，`n ≤ accepted_seq` 报 `merger_stale_observation` 并回滚；决定行加 `observation_seq`，触发器要求它等于刚推进的 `accepted_seq`（`merger_unfenced_decision`）。复跑：`refused@1`、`refused@3`（去重）后 `would_merge@2` 被拒，栅栏停在 3 |
+| P2 转换触发器禁止 `closed_unmerged → merged`，而每小时轮询可能漏掉“重开后合并” | 属实 | 选更简单的一种：允许观察到的 `closed_unmerged → merged`（合并由 GitHub 的 `mergedAt` 证明），`facts_json.reopen_unobserved = true`，报告归入 `merged_unobserved`；不从时间线重建中间片段 |
+| P2 用本机时间排序，时钟回拨或多机偏差会拒绝真实的较晚观察 | 属实；审计用 100 之后 99 复现 | 并发与排序只用数据库发出的观察号；`observed_at` 只用于报告与 `mergedAt` 对照。复跑：本机时间倒退、观察号递增时照常接受 |
+| 部分：`would_merge` 带 `base_sha = NULL` 能写入（结果为 NULL 的 CHECK 被当作通过） | 属实 | 加 `base_sha IS NOT NULL`，并把 `would_merge` 与 `refused` 的组合条件包进 `COALESCE(…, 0)`；逐条检查其余 CHECK 的 NULL 情况：`json_type` 比较改用 `IS`；`merged_by_type`、`owner_approved_head` 写明 `IS NULL OR`；结果表的合并条件改用 `IS`，并要求非 `merged` 片段的合并字段全为 `NULL`；`refused` 必须有 `base_sha`；`codes_digest`、`evidence_digest`、`head_at_close`、`merge_commit` 加长度检查。复跑：`would_merge` 的 `base_sha` 为 `NULL`、空串，`merge_method` 不对，缺 `merge_request_json`，都被拒；对照组接受 |
+| 测试发现（本会话）：去重触发器先于 CHECK 执行，相同但不合法的行被静默丢弃 | 属实（复跑中出现） | 无数据写入，不改 DDL；§4.1 写明写入者在代码里先校验 |
+| 部分：§4.3 仍写“部分唯一索引保证 `merged` 只写一次”，该索引在第 2 轮已换成转换触发器 | 本会话核对时发现 | 改为由转换触发器保证 |
+
+**第 4 轮（Codex CLI gpt-6-astra，medium，只读，只审第 3 轮修订相对 `ba30b1a3` 的差异）：** 第 3 轮 4 项中 3 项已解决，1 项部分解决；新增 1 个 P2、2 个 P3，无 P1。审计在内存 SQLite 3.53.1 中执行了 DDL。逐条核对后全部接受，修订后的 DDL 在内存 SQLite 中重跑了每个反例：
+
+| 发现 | 核对 | 处理 |
+|---|---|---|
+| 部分 / P2 排序已不用本机时间，但 §4.3 分类仍用 `observed_at < mergedAt` 过滤“合并前”；本机时钟快时会漏掉合并前最后一条 `refused`，误判 `agree_merge` | 属实 | “合并前”改为观察号小于 `merged` 片段的观察号；新触发器 `engineering_merger_decision_after_merge` 拒绝合并后的决定（`merger_pr_merged`）；`merged_unobserved` 按周期表 `seq` 判断；时间差只作参考 |
+| P2 结果片段不过栅栏：A 读到 CLOSED 后停顿，B 记 `reopened`，A 晚到的 `closed_unmerged` 被接受 | 属实 | 结果表加 `observation_seq`、触发器 `engineering_merger_outcome_fenced` 与唯一索引 `engineering_merger_outcomes_obs`；`recordOutcome` 带观察号。复跑：晚到的 `closed_unmerged` 报 `merger_stale_observation` |
+| P3 栅栏触发器与去重触发器的执行顺序决定结果：未持栅栏号的重复行被 `RAISE(IGNORE)` 静默吞掉；被去重的观察号可再写一条不同决定 | 属实（审计调换创建顺序复现） | 去重触发器的条件里重复栅栏检查，不依赖执行顺序；复跑：未持号的重复行报 `merger_unfenced_decision`。“号是本事务刚推进的”数据库不保证，§4.1 收窄说法，列为写入者约束并加测试 |
+| P3 `INSERT OR REPLACE` 绕过栅栏的单调与禁删（`recursive_triggers` 关闭时隐式删除不触发 DELETE 触发器） | 属实；另几张只追加表同理 | 加栅栏新行形状触发器 (1,0)；§4.1 写明数据库挡不住 `REPLACE`，写入者只用四条固定语句，测试扫描源码拒绝 `REPLACE` |
+| 附注：`RAISE(ABORT)` 只撤销出错语句、不回滚事务；`RETURNING` 不是提交 | 属实（复跑：ABORT 后事务仍打开） | §4.1 协议写明：出错显式 `ROLLBACK`；取号提交后才返回 |
+
+协调会话要求在第 4 轮后停止审计。第 4 轮的修订没有再经过独立审计；M-A 的 PR 前 Codex 只读审查应覆盖本节最终的 DDL。
+
+**相对 `ba30b1a3` 的 schema 变化（M-A 需要同步，第 3、4 轮合计）：**
+- 新表 `engineering_merger_shadow_watermarks`（`repository`、`pr_number`、`issued_seq`、`accepted_seq`、`updated_at`，主键（`repository`，`pr_number`））及触发器 `engineering_merger_watermark_monotonic`、`_stale`、`_no_delete`、`_insert`。
+- `engineering_merger_shadow_decisions`：新列 `observation_seq`；新唯一索引 `engineering_merger_decisions_obs`；新触发器 `engineering_merger_decision_fenced`、`engineering_merger_decision_after_merge`；去重触发器 `engineering_merger_decision_dedupe` 的条件加栅栏与“未合并”检查；删除 `engineering_merger_decision_stale`；CHECK 收紧（`base_sha IS NOT NULL`、`COALESCE`、`json_type … IS`、`refused` 需 `base_sha`、digest 长度）。
+- `engineering_merger_shadow_outcomes`：新列 `observation_seq`；新唯一索引 `engineering_merger_outcomes_obs`；新触发器 `engineering_merger_outcome_fenced`；转换触发器允许 `closed_unmerged>merged`；CHECK 收紧（`head_at_close`、`merge_commit` 长度，非 `merged` 片段合并字段全为 `NULL`）。
+- `MergerShadowWriter`：新增 `beginObservation`；`recordDecision`、`recordOutcome` 多一个观察号参数。
+- 其他表名、列名不变。

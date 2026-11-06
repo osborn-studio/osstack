@@ -40,6 +40,27 @@ export interface ContainedMissionServiceOptions {
   ackMs?: number;
   /** Resolves `base_ref` and picks branch/worktree; injectable for tests. */
   resolveStart?: typeof resolveContainedMissionStart;
+  /** Bridge shadow reconciler (OSSTACK_BRIDGE=shadow): started after recovery, stopped on close. Never on the tick path. */
+  shadow?: import('./contained-mission-bridge-shadow.js').ShadowHandle;
+  /** Read-only shadow chain view for `mission.status`; null when the Mission has none. */
+  chainOf?: (missionId: string) => ChainStatus | null;
+}
+
+/** What `mission status --json` reports as `chain`. No bodies, no digests, no identities. */
+export interface ChainStatus {
+  chain_id: string; mode: string; state: string; stop_reason: string | null; repository: string; pr_number: number;
+  published_head: string; published_base: string; base_ref: string; updated_at: number;
+  shadow_decisions: Array<{ head_sha: string; base_sha: string; action: string; reason: string; review_ids: number[]; observed_at: number }>;
+}
+const STATUS_DECISIONS = 10;
+
+export type BridgeMode = 'off' | 'shadow';
+/** `OSSTACK_BRIDGE`: unset or `0` -> off; `shadow` -> read-only shadow; `1` (live) is not implemented in phase 4; anything else is invalid. */
+export function parseBridgeMode(value: string | undefined): BridgeMode {
+  if (value === undefined || value === '0') return 'off';
+  if (value === 'shadow') return 'shadow';
+  if (value === '1') throw new Error('BRIDGE_LIVE_NOT_IMPLEMENTED');
+  throw new Error('BRIDGE_MODE_INVALID');
 }
 
 /** Owns the timer. RPC handlers never run a step inline: they write the ledger, and the tick advances it. */
@@ -53,6 +74,7 @@ export class ContainedMissionService {
 
   async start(): Promise<void> {
     await this.options.host.recover();
+    this.options.shadow?.start();
     this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
     this.timer.unref();
   }
@@ -64,6 +86,7 @@ export class ContainedMissionService {
   }
   async close(): Promise<void> {
     this.closed = true; if (this.timer) clearInterval(this.timer);
+    await this.options.shadow?.stop();
     await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
   }
 
@@ -94,7 +117,8 @@ export class ContainedMissionService {
       }
       case 'mission.status': {
         const p = ContainedMissionRpcRequests['mission.status'].parse(params);
-        return host.status(actor, p.mission_id);
+        const status = host.status(actor, p.mission_id);
+        return { ...status, chain: this.options.chainOf?.(p.mission_id) ?? null };
       }
       case 'mission.cancel': {
         const p = ContainedMissionRpcRequests['mission.cancel'].parse(params);
@@ -133,8 +157,21 @@ export async function createContainedMissionService(deps: {
   attention: ConstructorParameters<typeof import('@osstack/core').ContainedMissionStore>[0];
   owner: ConstructorParameters<typeof import('@osstack/core').ContainedMissionStore>[1];
   access: EngineeringAccess; home: string; draining: () => boolean; env?: NodeJS.ProcessEnv;
+  /** Service log lines (default: stderr). */
+  log?: (line: string) => void;
+  /** Test seams for the shadow reconciler; production callers pass nothing. */
+  shadow?: { transport?: import('./contained-mission-bridge-reader.js').GraphqlTransport; now?: () => number };
 }): Promise<ContainedMissionService> {
   const env = deps.env ?? process.env;
+  const log = deps.log ?? ((line: string) => { process.stderr.write(`${line}\n`); });
+  // Fail before anything is built: live is not implemented in phase 4, and an unknown value never degrades to off.
+  const bridgeMode = parseBridgeMode(env['OSSTACK_BRIDGE']);
+  let registry: import('./contained-mission-bridge-registry.js').ProducerRegistryConfig | undefined;
+  if (bridgeMode === 'shadow') {
+    // Present but invalid -> BRIDGE_CONFIG_INVALID:producers.json:* stops the service; missing -> shadow stays off.
+    registry = await (await import('./contained-mission-bridge-registry.js')).loadProducerRegistry(deps.home);
+    if (!registry) log('osstack: bridge shadow: off (no bridge/producers.json)');
+  }
   const need = (key: string) => { const v = env[key]; if (!v) throw new Error(`contained_config_required:${key}`); return v; };
   const [{ ContainedMissionStore }, { createContainedMissionPorts }, { ContainedMissionHost }] = await Promise.all([
     import('@osstack/core'), import('./contained-mission-ports.js'), import('./contained-mission-host.js'),
@@ -154,5 +191,29 @@ export async function createContainedMissionService(deps: {
     author: { name: env['OSSTACK_CONTAINED_AUTHOR_NAME'] ?? 'OSStack Mission', email: env['OSSTACK_CONTAINED_AUTHOR_EMAIL'] ?? 'mission@osstack.invalid' },
   });
   const host = new ContainedMissionHost({ ports });
-  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining });
+  // Shadow bridge (appendix §5.3): independent of loadBridgeConfig above, which belongs to Mission publication. The reconciler is
+  // built from a read-only Mission view, the shadow chain writer, a query-only transport and the producer registry, and nothing else.
+  const { RevisionChainStore, shadowChainWriter } = await import('@osstack/core');
+  const chainStore = new RevisionChainStore(deps.attention, deps.owner);
+  let shadow: import('./contained-mission-bridge-shadow.js').ShadowHandle | undefined;
+  if (bridgeMode === 'shadow' && registry) {
+    const [{ ShadowReconciler, createShadowMissionView }, { ghGraphqlTransport }] = await Promise.all([
+      import('./contained-mission-bridge-shadow.js'), import('./contained-mission-bridge-reader.js'),
+    ]);
+    shadow = new ShadowReconciler({
+      missions: createShadowMissionView(store), chains: shadowChainWriter(chainStore), transport: deps.shadow?.transport ?? ghGraphqlTransport(),
+      registry, now: deps.shadow?.now ?? Date.now, log,
+    });
+  }
+  const chainOf = (missionId: string): ChainStatus | null => {
+    const chain = chainStore.chainForMission(missionId, 'shadow');
+    if (!chain) return null;
+    return {
+      chain_id: chain.chain_id, mode: chain.mode, state: chain.state, stop_reason: chain.stop_reason, repository: chain.repository, pr_number: chain.pr_number,
+      published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref, updated_at: chain.updated_at,
+      shadow_decisions: chainStore.shadowDecisions(chain.chain_id).slice(-STATUS_DECISIONS).map(d => ({
+        head_sha: d.head_sha, base_sha: d.base_sha, action: d.action, reason: d.reason, review_ids: JSON.parse(d.review_ids_json) as number[], observed_at: d.observed_at })),
+    };
+  };
+  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}) });
 }

@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "registry": {
+    "publisher": [
+      {
+        "actor_id": 1,
+        "app_id": null
+      }
+    ],
+    "reviewers": [
+      {
+        "actor_id": 2,
+        "app_id": null
+      },
+      {
+        "actor_id": 3,
+        "app_id": null
+      },
+      {
+        "actor_id": 4,
+        "app_id": null
+      },
+      {
+        "actor_id": 5,
+        "app_id": null
+      },
+      {
+        "actor_id": 6,
+        "app_id": null
+      },
+      {
+        "actor_id": 7,
+        "app_id": null
+      }
+    ]
+  },
+  "snapshots": [
+    {
+      "pr_state": "MERGED",
+      "head": "8b685dc385250d0477d6cc83354423ce8bf4f8ed",
+      "base_sha": "7f0f5c398c15b89d25bde82fee6379259159a06d",
+      "base_ref": "main",
+      "observed_at": 1793953432768,
+      "reviews": [
+        {
+          "review_id": 5725558051,
+          "state": "DISMISSED",
+          "submitted_at": 1793491809000,
+          "review_commit": "48549cd910879caffe18bb622e20fc51edb500d9",
+          "reviewer": {
+            "actor_id": 3,
+            "app_id": null
+          },
+          "has_feedback": true,
+          "feedback_digest": "79ac571d5b7a5fb6cc94a24b5af2ede366af2f51dc6c0c412a046cfc387a7c4e"
+        },
+        {
+          "review_id": 5725719902,
+          "state": "DISMISSED",
+          "submitted_at": 1793494054000,
+          "review_commit": "48549cd910879caffe18bb622e20fc51edb500d9",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": null
+          },
+          "has_feedback": false,
+          "feedback_digest": null
+        },
+        {
+          "review_id": 5725724998,
+          "state": "DISMISSED",
+          "submitted_at": 1793494107000,
+          "review_commit": "48549cd910879caffe18bb622e20fc51edb500d9",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": null
+          },
+          "has_feedback": false,
+          "feedback_digest": null
+        },
+        {
+          "review_id": 5725730826,
+          "state": "DISMISSED",
+          "submitted_at": 1793494168000,
+          "review_commit": "48549cd910879caffe18bb622e20fc51edb500d9",
+          "reviewer": {
+            "actor_id": 3,
+            "app_id": null
+          },
+          "has_feedback": true,
+          "feedback_digest": "79ac571d5b7a5fb6cc94a24b5af2ede366af2f51dc6c0c412a046cfc387a7c4e"
+        },
+        {
+          "review_id": 5725790142,
+          "state": "DISMISSED",
+          "submitted_at": 1793494712000,
+          "review_commit": "48549cd910879caffe18bb622e20fc51edb500d9",
+          "reviewer": {
+            "actor_id": 2,
+            "app_id": null
+          },
+          "has_feedback": false,
+          "feedback_digest": null
+        },
+        {
+          "review_id": 5725870248,
+          "state": "APPROVED",
+          "submitted_at": 1793496212000,
+          "review_commit": "8b685dc385250d0477d6cc83354423ce8bf4f8ed",
+          "reviewer": {
+            "actor_id": 3,
+            "app_id": null
+          },
+          "has_feedback": true,
+          "feedback_digest": "e63e7a27e638201f2f1462b5d240a89389e7aa848ab241eafd1e96aec54ff42f"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    }
+  ]
+}

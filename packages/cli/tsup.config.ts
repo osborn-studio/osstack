@@ -7,7 +7,18 @@ export default defineConfig({
   // the command surface, then lazily imports bin.ts (emitted as a split
   // chunk) for everything else. The output keeps the dist/bin.js name that
   // package.json#bin points at.
-  entry: { bin: "src/cli-entry.ts", "graph-maintenance": "src/graph-maintenance.ts" },
+  entry: {
+    bin: "src/cli-entry.ts",
+    "graph-maintenance": "src/graph-maintenance.ts",
+    // Bridge shadow reader + fixture tooling: lazy-loaded by the reconciler (4-D) and imported by
+    // scripts/record-pr-timeline.mjs, which keeps one source of truth for the query and normalisation.
+    "bridge-reader": "src/contained-mission-bridge-reader.ts",
+    "bridge-fixture": "src/contained-mission-bridge-fixture.ts",
+    // Real publication path pieces for scripts/sandbox-bridge-scenario.mjs (sandbox corpus, 4-D); never imported by the CLI itself.
+    "bridge-kit": "src/contained-mission-bridge.ts",
+    "bridge-github-app": "src/contained-mission-github-app.ts",
+    "bridge-ports": "src/contained-mission-ports.ts",
+  },
   format: ["esm"],
   target: "node20",
   // Managed runtime identity must not be replaceable by a launch environment.
