@@ -1,7 +1,7 @@
 # W13 设计：守护进程崩溃后存活的主机子进程
 
 日期：2026-11-06。基线：`main` `b706367b`（含 #377 阶段 4-C）。行号均指该基线。
-上位文档：[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)（下称“计划”）第 33 行 W13；[受限 Mission 路径设计](2026-10-31-contained-mission-path.md)（下称“Mission 设计”）§9 与“实现说明（M8）”；[阶段 5 附录](2026-11-06-bridge-same-pr-revision.md)（下称“5 附录”，分支 `docs/bridge-phase5-appendix`，撰写中）§2“阶段 5 对 W13 验收的额外要求”。
+上位文档：[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)（下称“计划”）第 33 行 W13；[受限 Mission 路径设计](2026-10-31-contained-mission-path.md)（下称“Mission 设计”）§9 与“实现说明（M8）”；阶段 5 附录 `docs/design/2026-11-06-bridge-same-pr-revision.md`（下称“5 附录”，PR #382，未合并前不加链接）§2“阶段 5 对 W13 验收的额外要求”。
 
 5 附录第 48 行约定：两份文档对“放行”“登记回执”的定义不一致时以本文为准。本文 §6 列出需要回改 5 附录的地方。
 
