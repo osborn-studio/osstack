@@ -207,3 +207,18 @@ it("upgrades a 49 home to 50 additively and reopens cleanly", () => {
   db.close();
   const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION); reopened.close();
 });
+
+it("lists only pr_opened Missions in cursor order, without writing", () => {
+  const f = setup();
+  const a = executing(f);
+  const b = f.store.authorize(f.principal, { scope_id: f.scope.scope_id, spec: { goal: "b" }, claim: { repo_identity: "repo2", branch: "osstack/m/2", worktree_identity: "wt2" } }, 1001);
+  expect(f.store.listPrOpened()).toEqual([]);
+  // Walk the first Mission to pr_opened through the state machine.
+  let m = apply(f, a); m = verifyDone(f, m); m = step(f, m, "verified"); m = step(f, m, "revalidating"); m = step(f, m, "delivering"); m = step(f, m, "pr_opened");
+  expect(m.state).toBe("pr_opened");
+  expect(f.store.listPrOpened()).toEqual([{ mission_id: a.mission_id, created_at: a.created_at }]);
+  expect(f.store.listPrOpened(1, { created_at: a.created_at, mission_id: a.mission_id })).toEqual([]);
+  expect(f.store.listPrOpened().map(r => r.mission_id)).not.toContain(b.mission_id);
+  expect(() => f.store.listPrOpened(0)).toThrow("invalid_limit");
+  expect(() => f.store.listPrOpened(101)).toThrow("invalid_limit");
+});
