@@ -35,17 +35,21 @@
 
 结论：W13 未合并。它对阶段 5 的意义是第 5.5 节的回执对账：崩溃前发出的 `git push` 若还在运行，恢复读到 `expected_old_head` 后判为 `failed`，而旧推送随后落地，会产生一个没有 `confirmed` 意图的提交（不变式 6）。阶段 5 的推送因此必须走 W13 的“记录 pgid、恢复前确认进程组已空”（§5.5 第 1 条）。
 
-**阶段 5 对 W13 验收的额外要求**（W13 的计划条目只写了“pgid 记入账本或启动日志”，不够）：
+**阶段 5 对 W13 的要求，及 W13 设计的落实**（W13 的计划条目只写了“pgid 记入账本或启动日志”，不够）。W13 设计已写成并提交：worktree `.worktrees/osstack/w13-git-survival`，`docs/design/2026-11-06-w13-host-git-survival.md`（`0d997a7a`，下称“W13 设计”）。本附录按它的 §3–§5 与 §6.3 的六条回改；两份文档不一致时以 W13 设计为准。W13 设计的第 3 轮审计仍在进行，若它改动 §6.3，本附录随之回改。
 
-1. **先登记、后变更，放行即授权。** 推送前先在账本写一条操作记录（意图 id 即操作 id）；先 spawn 一个只等待放行信号的包装进程（之后由它 exec `git push`），父进程把它的 pid/pgid 持久写入这条记录，**然后**在同一个同步调用链里执行完整的推送栅栏（§5.4）；通过后，**先**在 owner 栅栏下把操作记录持久改为 `may_have_been_released`（`synchronous=FULL` 的一次提交），**再**写放行信号（stdin 管道）。栅栏失败 → 杀掉包装进程组，不放行，记录改为 `never_released`。所以真正的授权边界是“放行”，不是 spawn。恢复只在记录为 `registered`（从未进入 `may_have_been_released`）或 `never_released` 时才能断定“没有推送”；记录为 `may_have_been_released` 即视为可能已推送，无论包装进程是否真的收到信号。崩溃若发生在“spawn 之后、放行之前”，包装进程没有推送，且没有放行信号会在超时后自行退出。
-2. **没有登记回执即视为未知。** 恢复时，意图 `pending` 而操作记录没有 pgid → 不能判为“已停止”，按 `stop_unknown` 处理（与 `host.ts` L243–247 对执行器“未记录启动”的处理不同：那里能按 argv 找进程，`git push` 不行）。
-3. **测试**：在 spawn 与登记之间崩溃；在写 `may_have_been_released` 之前与之后、写放行信号之前与之后各崩溃一次（前者恢复判 `failed`，后两者不得判 `failed`）；在登记之后、放行之前崩溃或取消、授权到期、owner 被接管；放行之后、推送退出之前崩溃。前两种要求没有推送；第三种要求恢复把意图判为 `uncertain`（§5.3 第 5 步），不判 `failed`。
+1. **先登记、后变更，放行即授权**（W13 设计 §4.1–§4.2 的 L0–L8）。每个推送经常量 `/bin/sh` 包装进程启动，它读到 stdin 上的 `op_id` 行才 `exec git push`；父进程死亡则写端关闭，sh 读到 EOF 以 97 退出、不 `exec`，不需要超时。登记写在迁移 54 的新表 `engineering_host_processes`（W13 设计 §3.3），**`op_id`（`hp_…`）是独立的主键**，以 `intent_id` 列绑定本附录的推送意图（部分唯一索引 `engineering_host_process_intent`）——不是“意图 id 即操作 id”。顺序：L1 `launching`（插入门禁：子 Mission 非终态、非 `stop_unknown`/`cancel_requested`、`stop_obligation=0`）→ L2 spawn → L4 `registered`（pid/pgid/启动时间）→ L5 `journal.release(op_id, fence)`：**一个顶层事务内**先跑调用方的同步 `fence`（本附录的 `beforeRemoteMutation` + `assertPublishable`，§5.4），再写 `released_at` → L6 紧接着（无 `await`）写放行字节。`fence` 抛错 → 事务回滚，仍为 `registered`，杀进程组并证明后 `stopped(never_released)`。
+2. **远端是否可能被写，与进程是否已停止，分开判断**（W13 设计 §6.3 表第 2 行，取代初稿“没有登记回执即视为未知”）：
+   - ①**远端结果只看 `released_at`。** 没有登记行（意图写入之后、L1 之前崩溃），或 `released_at IS NULL` ⇒ 放行字节从未写出 ⇒ `git` 从未运行，意图可以判 `failed`，**不要求**进程已被证明停止。`released_at IS NOT NULL` ⇒ 可能已推送，只能按远端读取与 §5.3 第 5 步的规则结算，绝不因“没看到”而判 `failed`。
+   - ②**进程是否停止只看 `state='stopped'`**（W13 设计 §5.2 的判定表：进程组为空且持有标记无人持有，等等）。证明不了即 `unknown`：意图不结算、链保持阻塞，等下一次恢复或 `retry_stop_check`。终态的子 Mission 不转 `stop_unknown`；未结登记由 W13 的触发器阻止认领释放（`engineering_claim_release_host_processes`）与转 `cancelled`/`pr_opened`（`engineering_contained_host_process_gate`）。
+3. **测试**：用 W13 设计 §8 T3、T15 覆盖四个崩溃点：(a) spawn 与登记之间；(b) 登记之后、L5 提交之前（含取消、授权到期、owner 接管使 `fence` 失败）；(c) L5 提交之后、L6 写字节之前；(d) 放行之后、推送退出之前。(a)(b) 没有推送且 `released_at IS NULL`，意图判 `failed`；(c) 实际没有推送，但账上 `released_at` 已设，按第 2 条①不判 `failed`，读到旧 head 时保持 `uncertain` 交人（保守方向）；(d) 不判 `failed`。另加“`stopped` 已提交、确认事务未提交”的崩溃点（§5.3 第 6 步，W13 T15）：恢复看到登记 `stopped`、意图 `pending`，按 §5.5 读远端结算。
+4. **事务边界**（W13 设计 §3.4、§6.3 第 3 条）：`launching`、`registered`、`release`、`stopped` 必须是**顶层事务**（入口检查 `db.inTransaction`，为真抛 `host_process_nested_transaction`），不能放进 `chainStore.transaction`。顺序固定：推送退出 → `stopped` 单独提交 → 读回 → §5.3 第 6 步的确认事务。
+5. **同一远端分支串行**（W13 设计 §6.3 第 5 条）：部分唯一索引 `engineering_host_process_remote_open(remote_target) WHERE state<>'stopped'` 让同一远端分支在上一条推送登记证明停止之前插不进新登记，跨 Mission 生效（修订子 Mission 推的是根 Mission 的远端分支）。这是链级推送串行的数据库层保证；`assertPublishable` 在 L1 之前先查一次，报更清楚的 `CONTAINED_REVISION_PUSH_IN_FLIGHT`。
+6. **依赖**：5-C 依赖 **W13-C2**（远端写入接入：`DeliveryCommandRunner`/`BridgeExec` 的 `gate`、`fencedDeliveryRunner` 拒绝未门控 runner、`signal` 传递、App 模式的配置隔离；W13 设计 §11）。W13-C2 依赖 W13-C1、W13-A、W13-B。
 
 **P-2 至 P-4 的证据与缺口。** ADR-006“Platform probe results”：P-2 App A 能创建并快进 Mission 分支，P-3 不能强推或删除，P-4 App E 不能写 Mission 分支，均通过。但 `scripts/bridge-probe-github.mjs` L118–123 用的是 REST `git/refs`（`PATCH … force:false|true`），不是 `git push`。阶段 5 用 `git push --force-with-lease`（智能 HTTP 推送、App A 安装令牌）。“带租约的快进被 `mission-history` 接受、带租约的非快进被拒绝、过期租约被拒绝”**没有实测**。§3 的 5-P 补这一项探针（P-13），在第一个会推送的 PR（5-C）合并前跑完。
 
 **还没有的东西。** `OSSTACK_BRIDGE` 在 `main` 上尚未出现；PR #378（4-D）引入它：未设或 `0` 关闭，`shadow` 影子，`1` 以 `BRIDGE_LIVE_NOT_IMPLEMENTED` 拒绝服务启动，其他值 `BRIDGE_MODE_INVALID`（`parseBridgeMode`，见 #378 的 changeset）。#378 不加迁移，只给 `RevisionChainStore` 加只读的 `chainForMission`/`chainForPr`。阶段 5 在 5-E 才解除 `1` 的拒绝（§6）。
 
-**W13 的设计**由另一会话在 worktree `.worktrees/osstack/w13-git-survival` 中撰写：`docs/design/2026-11-06-w13-host-git-survival.md`，以下面三条要求为输入。5-C 的推送路径按该设计的接口实现；两份文档对“放行”“登记回执”的定义若不一致，以 W13 设计为准，并回改本附录。
 
 ## 3. PR 拆分
 
@@ -54,17 +58,17 @@
 | PR | 方案任务 | 内容 | 依赖 |
 |---|---|---|---|
 | 5-0 | — | 本附录（含审计结果） | — |
-| W13 | （v3 计划 W13） | 主机 git 与推送子进程的 pgid 记账；`recover()` 先证明进程组已空（设计：`docs/design/2026-11-06-w13-host-git-survival.md`，撰写中）。不属于阶段 5，但是硬前置 | — |
+| W13-0…C2 | （v3 计划 W13） | W13 设计（`docs/design/2026-11-06-w13-host-git-survival.md`，`0d997a7a`）自己拆成 W13-0（设计）、W13-A（迁移 54 与 store）、W13-B（包装进程与探针，与 A 并行）、W13-C1（本地写入）、W13-C2（远端写入）。不属于阶段 5，但是硬前置 | 见 W13 设计 §11 |
 | 5-P | （探针） | `bridge-probe-github.mjs` 加 P-13：真实 `git push --force-with-lease` 的快进、非快进、过期租约三种情况 | 5-0；需用户授权在沙箱用 App A 私钥（§8 决定 6） |
 | 5-A | 5.1 | 迁移 53（只加触发器）、grant 解析与签名校验、`grant-revisions`、`chain-decide`、对应 RPC；store 新方法 | 4-D（#378，同改 `contained-mission-command.ts`、`-rpc.ts`）；App E 的 M-A（迁移 52）先合并（§4.2） |
 | 5-B | 5.2 | 修订子 Mission：规格字段 `publish_target`/`revision_feedback`、子规格构造、执行器提示、单事务派发、声明释放 | 5-A、4-C（读评审正文） |
-| 5-C | 5.3 | `publishRevision`（7 个子步骤）、`ports.publish` 拒绝修订规格、令牌预取、确认事务、check 意图 | 5-B、W13、5-P |
+| 5-C | 5.3 | `publishRevision`（7 个子步骤）、`ports.publish` 拒绝修订规格、确认事务、check 意图 | 5-B、**W13-C2**、5-P |
 | 5-D | 5.4 | runner 按 `publish_target` 分派每次发布尝试；`beforeRemoteMutation` 加链与授权检查 | 5-C |
 | 5-E | 5.5（+ live 对账器） | live 对账周期、子 Mission → 链状态同步、启动时回执对账、`OSSTACK_BRIDGE=1` | 5-D |
 | 5-F | 5.6 | 故障注入与变异测试；TLA 模型扩展到 live（派发、发布、崩溃、取消） | 5-E；TLA 部分依赖 4-B（正在用 TLC v1.7.4 检查） |
 | 5-G | 5.7 | 沙箱端到端脚本与记录 | 5-F；Docker、Codex、App 私钥（§8 决定 7） |
 
-**并行：** 5-P 与 W13 与 5-A→5-B 三条线互不依赖，可并行。5-C 起串行。若用户选择严格解释“W13 是阶段 5 的硬前置”（§8 决定 4），5-A、5-B 也等 W13。
+**并行：** 5-P、W13（W13-A ∥ W13-B → C1 → C2）、5-A→5-B 三条线互不依赖，可并行。5-C 起串行，且要等 W13-C2。若用户选择严格解释“W13 是阶段 5 的硬前置”（§8 决定 4），5-A、5-B 也等 W13。
 
 **每个 PR 的通用要求**（方案 §7）：`pnpm build`、`pnpm typecheck`、受影响包测试、CLI 启动预算、Codex 只读审查。新模块从 `contained-mission-rpc.ts` 懒加载，不进 `cli-entry.ts`/`bin.ts` 的顶层导入。
 
@@ -97,15 +101,16 @@
    | `awaiting_decision` | 任意 | 意图 `confirmed`；`published_head` 更新（事实）；预留若仍 `dispatched` 且子已终态则 `void('published')`；`stop_reason` 不变 |
    | `closed` | 任意 | 只结算意图并记事件（意图表不受链终态触发器 DDL L49–51 约束）；预留由 `voidReservation` 结算（它不改 `closed` 链，store L176–178） |
    | 子仍 `delivering`、链 `publishing`、PR 仍满足第 6 步读回 | `delivering` | 不走本方法，走 §5.3 第 6 步的确认事务 |
+   | 链 `publishing`，子为 `stop_unknown` 或 `awaiting_decision`（W13 恢复把发布中的子 Mission 转 `stop_unknown`，证明后转 `awaiting_decision(publication_failed:host_process_recovered)`，W13 设计 §5.5） | 保持 | 同一事务内先 `stopLive('intent_uncertain')`（链离开 `publishing`，不再满足 `settleIntent` 的改链条件，store L226），再按 `awaiting_decision` 行确认推送事实；子 Mission 的停机原样保留，人用 `mission decide` 处理；**不**调用会把链拉回 `awaiting_review` 的 `settleIntent` 正常路径 |
    | 子仍 `delivering`、链 `publishing`、PR 已关闭或 base 已变 | `delivering` → `awaiting_decision` | 同一事务内先转链（`closed`/`base_changed`）、停子 Mission，再按上面 `awaiting_decision`/`closed` 行结算 |
 
-   推送进程的停止证明与 Mission 的停止义务分开记账：推送操作记录（§2 W13 要求 1）自己有 `stopped` 状态，不复用 `stop_obligation`；所以已终态的子 Mission 不会被置为 `stop_unknown`（终态不可转换，`engineering-contained-store.ts` L136），未证明的推送只让**意图**保持未结算、链保持 `awaiting_decision(intent_uncertain)`，并阻止该链任何新的派发与推送。
+   推送进程的停止证明与 Mission 的停止义务分开记账：推送的登记行（`engineering_host_processes`，§2 第 1 条）自己有 `stopped` 状态，不复用 `stop_obligation`；所以已终态的子 Mission 不会被置为 `stop_unknown`（终态不可转换，`engineering-contained-store.ts` L136），未证明的推送只让**意图**保持未结算、链保持 `awaiting_decision(intent_uncertain)`，并阻止该链任何新的派发与推送。
 4. **check 意图的生命周期。** 新增 `recordCheckIntent(chainId, {new_head, child_mission_id, external_id}, now)`：在 live 链的任何状态都可写，**包括 `closed`**（DDL 的意图插入触发器 L129–136 只查 live 与仓库、PR 绑定，不查链状态），前提是该 head 有 `confirmed` 推送意图且对应子 Mission 为 `pr_opened`；同一（链、head、`external_id`）同时最多一条 `pending`。它只是证据投递，不带任何推送权。`failed` 是终态（DDL L150–153），重试即新写一条 check 意图。
 5. **live 链需要的写入**：`replaceGrant`（再授一轮）、`stopLive`（live 专用停止原因，见 4.3）、`closeLive`（人放弃或接管）、`transaction(fn)`（在链 store 的 `BEGIN IMMEDIATE` 与 owner 栅栏内运行回调，让 §5.2、§5.3 的跨 store 事务成立；两个 store 共用 `attention.db`，`ContainedMissionStore` 的 `attention.write` 在已有事务中直接运行，`attention-store.ts` L86–90）。
 
 ### 4.2 迁移 53（5-A，只加触发器）
 
-迁移号 52 已由 App E 影子合并设计占用（`docs/design/2026-11-06-bridge-shadow-merger.md` §4.1，M-A：`{ id: 52, name: "engineering_merger_shadow" }`，分支 `docs/bridge-shadow-merger` `ba30b1a3`）。本附录的迁移定为 **53**，以 App E 的 M-A 先合并为依赖：迁移按 id 顺序执行，53 在 52 不存在时迁移门禁与升级测试的版本断言会失败。备选：由先就绪者占 52，后合并者在开 PR 前改号并重跑升级测试；两条迁移都只新增对象、互不依赖，对调不影响内容（§8 决定 9）。
+**迁移号分配：52 App E 影子合并（M-A）、53 本附录（5-A）、54 W13（W13-A，`engineering_host_processes`）。** `runMigrations` 跳过 `id <= user_version` 的迁移（W13 设计 §3.2 引 `db.ts` L139–141），所以编号必须按**合并顺序**连续，不能留空号等别人补；谁先合并谁占当时的下一个空号，其余两份文档顺延。迁移号 52 已由 App E 影子合并设计占用（`docs/design/2026-11-06-bridge-shadow-merger.md` §4.1，M-A：`{ id: 52, name: "engineering_merger_shadow" }`，分支 `docs/bridge-shadow-merger` `ba30b1a3`）。本附录的迁移定为 **53**，以 App E 的 M-A 先合并为依赖：迁移按 id 顺序执行，53 在 52 不存在时迁移门禁与升级测试的版本断言会失败。备选：由先就绪者占 52，后合并者在开 PR 前改号并重跑升级测试；两条迁移都只新增对象、互不依赖，对调不影响内容（§8 决定 9）。
 
 `migrations.ts` 追加 `{ id: 53, name: "engineering_revision_grant_monotonic", sql: … }`，升级测试里写死的版本号随之改为 53（按 4 附录 §3.1 的方法 `git grep` 逐个核对）。
 
@@ -142,8 +147,8 @@
 
 | 原因 | 来源 | 链 | 子 Mission |
 |---|---|---|---|
-| `grant_expired`、`grant_invalid` | 派发前或推送栅栏中复核失败（§5.1） | `awaiting_decision` | 在途时请求取消 |
-| `budget_exhausted` | 派发前剩余预算不足一轮上限（§5.2） | `awaiting_decision` | — |
+| `grant_expired`、`grant_invalid` | 派发前、`chargeLaunch` 或推送栅栏中复核失败（§5.1） | `awaiting_decision` | **不取消**；在途子 Mission 停 `awaiting_decision(grant_stopped:<原因>)`，保留给再授后恢复（下文“链停止时是否取消”） |
+| `budget_exhausted` | 派发前剩余预算不足一轮上限，或 `chargeLaunch` 时子分配不足（§5.2） | `awaiting_decision` | **不取消**；在途子 Mission 停 `awaiting_decision(budget_exhausted)` |
 | `protected_set_changed` | 当前 `missionProtectedSetDigest()` 与 grant 不同（守护进程升级） | `awaiting_decision` | — |
 | `child_halted` | 子 Mission 进入 `awaiting_decision`/`needs_reconciliation`/`stop_unknown` | `awaiting_decision` | 保持，人用 `mission decide` 处理同一个子 Mission |
 | `child_cancelled`、`child_failed` | 子 Mission 终态 `cancelled`/`failed`/`abandoned` | `awaiting_decision`，预留 `void` | 终态 |
@@ -183,7 +188,7 @@
 
 - 预览 RPC `mission.revision_grant_renew_preview`，输入链 id 与链的 `revision`；条件：链为 `awaiting_review`/`ready_for_human`，或为 `awaiting_decision` 且停止原因属于下面“可再授的停止原因”；在途状态（`revision_reserved`/`revising`/`publishing`）与 `closed` 拒绝；live PR 读取比较的是链当前的 `published_head`/`published_base`。
 - 可变字段只有：`rounds`（≥ 旧值，≤ 2）、`expires_at`、`review_deadline_ms`、`principal_id`/`client_session_id`（新授予人必须对同一 `scope_id` 有 write）、`issued_at`、`grant_id`、签名相关字段。`root_mission_id`、`repository`、`pr_number`、`branch`、`base_ref`、`scope_id`、`protected_set_digest` 不变；`budget` 只能增加，`spent_json` 与预算的时间起点（首次 `issued_at`，另存为 `budget_origin`）保留。
-- 可再授的停止原因：`rounds_exhausted`、`grant_expired`、`grant_invalid`（新授予人或恢复后的授权文件重新校验 write scope）、`budget_exhausted`（新 grant 增加预算）。前提：链没有 `pending`/`uncertain` 推送意图。再授**只对未来生效**，按当前子 Mission 分两种：(a) `current_mission_id` 为空，或子 Mission 已终态、停止已证明、claim 已释放 → 链回到 `awaiting_review`；若当前 `published_head` 已有预留（含被 `void` 的），这个 head 不会再派发（不变式 2），链只在之后出现新 head 时才可能再修订——实际上新 head 只来自本链的推送，所以这种情况下再授只对 `rounds_exhausted` 以外的停止有意义，命令应提示“当前 head 已消耗”；(b) 子 Mission 仍非终态（因授权或预算被停在 `awaiting_decision`，§4.4 不取消它）→ 链回到它停止前的在途状态（`revising` 或 `publishing`），人随后用 `mission decide` 恢复同一个子 Mission，`acknowledgeAdvance` 照常校验。其他停止原因（`external_write`、`base_changed`、`intent_uncertain` 等）不能靠再授恢复，只能 `chain-decide`。
+- 可再授的停止原因：`rounds_exhausted`、`grant_expired`、`grant_invalid`（新授予人或恢复后的授权文件重新校验 write scope）、`budget_exhausted`（新 grant 增加预算）。前提：链没有 `pending`/`uncertain` 推送意图。再授**只对未来生效**，按当前子 Mission 分两种：(a) `current_mission_id` 为空，或子 Mission 已终态、停止已证明、claim 已释放 → 链回到 `awaiting_review`；若当前 `published_head` 已有预留（含被 `void` 的），这个 head 不会再派发（不变式 2），链只在之后出现新 head 时才可能再修订——实际上新 head 只来自本链的推送，所以这种情况下再授只对 `rounds_exhausted` 以外的停止有意义，命令应提示“当前 head 已消耗”；(b) 子 Mission 仍非终态（因授权或预算被停在 `awaiting_decision`，§4.4 不取消它）→ 链回到它停止前的在途状态（`revising` 或 `publishing`），人随后用 `mission decide --decision resume_budget|resume_grant`（§5.2 末）恢复同一个子 Mission，`acknowledgeAdvance` 照常校验；预算原因的再授同时给该子 Mission 追加分配。其他停止原因（`external_write`、`base_changed`、`intent_uncertain` 等）不能靠再授恢复，只能 `chain-decide`。
 - 第 6 步重算预览时再比较一次链的 `revision`；第 7 步为 `replaceGrant`（迁移 53 的触发器兜底），链按上一条回到相应状态，`review_deadline` 重新起算。
 
 **复核（设计 §8.7 第 1 条）：** 新函数 `assertGrantLive(chain, access, now)`（`contained-mission-grant.ts`）同步执行：`now < expires_at`；`now < budget_origin + max_wall_clock_hours`；`access.refresh(principal_id, client_session_id)`（`engineering-access.ts` L82–86，每次重读授权文件）不抛错且 `write_scopes` 含 `scope_id`。调用点只有两个：派发事务之前（§5.2 第 3 步）与推送栅栏之内（§5.4）。失败分别转 `grant_expired`/`grant_invalid`（§4.4）。
@@ -262,6 +267,7 @@ REVIEW-FEEDBACK-<nonce>>>>
 - 派发事务里把本轮分配写入链的 `spent_json.allocations[<子 id>] = { executor_seconds, container_seconds }`（默认 = 一轮上限，见 §8 决定 1）。
 - 新端口 `ports.revision.chargeLaunch(child, kind:'executor'|'verify')`，在 runner 每个启动点之前同步调用：执行器回合（`workspace_ready`、修复、`extra_repair`、`discard_changes`）与验证（`verify()`，含 `adopt_worktree` 之后的再验证）。剩余分配不足一个回合超时（执行器为 Codex 代理的 `timeoutMs`）或一次验证上限 → 抛错，子 Mission 停 `awaiting_decision(budget_exhausted)`，链 `stopLive('budget_exhausted')`。扣款写在启动前，回合结束后按实际用时退回差额。
 - 每回合的实际时长仍由 Codex 代理超时强制；验证容器若没有按次的超时（`ContainedMissionSpec` 没有超时字段），5-B 先核对 `contained-verification.ts`，没有就在端口里加固定上限，否则 `max_container_seconds` 只能结算、不能强制。
+- **预算耗尽后的恢复。** `chargeLaunch` 抛错时，子 Mission 停 `awaiting_decision(budget_exhausted)`，事件负载记下被拦住的启动类型与原路由（`executor:workspace_ready|repair|extra_repair|discard_changes` 或 `verify`）。现有 `decide()`（`runner.ts` L101–116）没有能从这个原因出来的决定，所以 5-B 新增决定 `resume_budget`：前提是 `awaiting_decision(budget_exhausted)`、链已因再授回到在途状态、子分配余额足够一个回合；按记录的原路由重走同一入口（经 `acknowledgeAdvance` 与 `chargeLaunch`），`stop_obligation=1` 时先要停止证明。再授（§5.1 情况 b）在同一事务里给**同一个子 Mission** 追加分配（`spent_json.allocations[<子 id>]` 增加，已用量不清零）。测试：执行器启动前与验证启动前各耗尽一次，再授并 `resume_budget` 后成功推进；未再授时 `resume_budget` 被拒。授权原因（`grant_stopped:*`）的恢复同理，用 `resume_grant`，前提是新 grant 已生效。
 - `max_wall_clock_hours` 从 `budget_origin` 算，在 `assertGrantLive` 中检查（派发前与推送栅栏内），也在 `chargeLaunch` 中检查。
 
 ### 5.3 `publishRevision`（5-C）
@@ -285,14 +291,14 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 | 1 | owner 栅栏下 `recordIntent(kind:'push')`：`branch = remote_branch`，`expected_old_head = published_head`，`new_head = permit.head`，`expected_base_sha = published_base`，`child_mission_id`；`binding_json`：仓库、PR 号、PR 的 head 仓库、远端分支、本地分支、`expected_base_ref`、子 Mission revision、`spec_digest`。链 → `publishing` | 绑定不符（`intent_binding_mismatch`，L202–203 与 L138–143）或链不在 `revising`/`publishing` → 未写意图；子 `publication_failed:<code>`，链 `stopLive('publish_refused:…')` |
 | 2 | 读 PR（主机凭证，只读；GraphQL `pullRequest(number)` 按**号**读，不按分支名——现有 `resolvePullRequest` 用 `gh pr view <branch>`，`delivery.ts` L368–411，不复用）：`state=OPEN`、`headRepository = repository`、`headRefName = remote_branch`、`headRefOid = expected_old_head`、`baseRefName = expected_base_ref`、`baseRefOid = expected_base_sha`；再 `git ls-remote <remote> refs/heads/<remote_branch>` 等于 `expected_old_head` | 意图 `failed`；PR 关闭/合并 → 链 `closed`；base 不符 → `base_changed`；head 不符 → `external_write`（新 head 不是 `published_head` 的后代时 `head_regressed`）；子 `publication_failed:<code>` |
 | 3 | `git merge-base --is-ancestor expected_old_head new_head`（hardened git，本地） | 意图 `failed`，链 `stopLive('publish_refused:not_descendant')`，子同上 |
-| 4 | **先**取 App A 令牌（`app.publisherToken()`，可能联网），得到令牌字符串；用新的 `tokenCredentialRunner(inner, token: string, exec)`（`bridge.ts` 新增，与 `appCredentialRunner` L75–117 相同的环境处理，但 `run()` 内**没有任何 `await`** 直到调用 `exec`）。然后进入 `fencedDeliveryRunner`：push URL 复查（`ports.ts` L86–90，异步）→ spawn 包装进程并登记 pgid（§2 W13 要求 1）→ `beforeRemoteMutation('push')`（§5.4，同步）→ 同一同步调用链内写放行信号 | 栅栏抛错 → 杀包装进程组，不放行，没有推送；意图 `failed`；子按栅栏原因停 |
-| 5 | **只推一次**：`git push --porcelain --force-with-lease=refs/heads/<rb>:<expected_old_head> <remote> <new_head>:refs/heads/<rb>`（不复用 `pushCandidate` 的 3 次重试循环，`delivery.ts` L413–432） | 非零退出时只有**服务端或客户端明确拒绝**才判 `failed`：`--porcelain` 输出该引用为 `!`（`[rejected]`、`[remote rejected]`、`stale info`），或认证在任何引用更新前失败（被吊销的令牌在此），且读到的远端等于 `expected_old_head` → 意图 `failed`，链 `stopLive('publish_refused:push_rejected')`。读到 `new_head` → 进第 6 步。其余情况（超时、传输中断、进程被杀、输出不完整）一律 `uncertain`，链转人（4-A L233）；多次读到旧 head 只作诊断，不使意图终结，因为已发出的引用更新可能稍后才在服务端完成，而 `failed` 不可再改（DDL L150–153） |
-| 6 | 读回：PR open、`headRefOid = new_head`（GitHub 更新 PR 有延迟，最多读 5 次、间隔 2 秒）、base ref 与 SHA 未变、`ls-remote` 等于 `new_head` → **一个事务**（`chainStore.transaction`），顺序固定：①`settleIntent(push,'confirmed')`（链为 `publishing` 时 → `awaiting_review`，`published_head = new_head`）②`resetReviewDeadline` ③`voidReservation(head = 旧 published_head, 'published')`（§4.1 第 1 条）④子 Mission `delivery_evidence` 事件 ⑤子 `delivering → pr_opened` ⑥**最后**才 `recordCheckIntent`（§4.1 第 4 条，它要求已有 `confirmed` 推送意图与 `pr_opened` 子 Mission，同一事务内前面的写入对它可见）。5-C 用真实 store 测这一顺序。子已 `cancel_requested` 时：①–③照做（推送是事实），④记 `revision_pushed_before_cancel`，子转 `cancelled`，链再 `stopLive('child_cancelled')`，**不写** check 意图（`publishVerifyCheck` 只接受 `pr_opened`，`bridge.ts` L173）。确认时链已不在 `publishing`（期间被停止或关闭）→ 改走 `reconcileReceipt`（§4.1 第 3 条） | 读回不符 → 意图 `uncertain`，链转人；子 `publication_failed:readback_mismatch` |
+| 4 | 取 App A 令牌（可能联网，在 spawn 之前）；进入 W13-C2 改过的 `fencedDeliveryRunner`：push URL 复查（`ports.ts` L86–90，异步，在 spawn 之前）→ W13 L1 `launching(intent_id)` → L2 spawn 包装进程 → L4 `registered` → L5 `journal.release(op_id, fence)`，`fence` = `beforeRemoteMutation('push')` + `assertPublishable`（§5.4，同步）→ L6 写放行字节。`fencedDeliveryRunner` 把栅栏作为 `gate.fence` 传下去，不再在 `inner.run` 之前调用；`inner.gated !== true` 即拒绝（W13 设计 §4.3） | L1 被唯一索引拒绝（同一远端分支有未结推送）→ 没有推送，意图 `failed`，子 `publication_failed:push_in_flight`；`fence` 抛错 → L5 回滚、杀进程组、证明后 `stopped(never_released)`，意图 `failed`；子按栅栏原因停 |
+| 5 | **只推一次**：`git push --porcelain --force-with-lease=refs/heads/<rb>:<expected_old_head> <remote> <new_head>:refs/heads/<rb>`（不复用 `pushCandidate` 的 3 次重试循环，`delivery.ts` L413–432）。推送退出后 W13 L8 在线证明停止并**单独提交** `stopped`；证明不成立 → 登记保持 `released`，子 Mission 停 `stop_unknown`（W13 设计 §6.1），意图不结算，链 `stopLive('intent_uncertain')` | 非零退出时只有**服务端或客户端明确拒绝**才判 `failed`：`--porcelain` 输出该引用为 `!`（`[rejected]`、`[remote rejected]`、`stale info`），或认证在任何引用更新前失败（被吊销的令牌在此），且读到的远端等于 `expected_old_head` → 意图 `failed`，链 `stopLive('publish_refused:push_rejected')`。读到 `new_head` → 进第 6 步。其余情况（超时、传输中断、进程被杀、输出不完整）一律 `uncertain`，链转人（4-A L233）；多次读到旧 head 只作诊断，不使意图终结，因为已发出的引用更新可能稍后才在服务端完成，而 `failed` 不可再改（DDL L150–153） |
+| 6 | `stopped` 已提交之后（§2 第 4 条）读回：PR open、`headRefOid = new_head`（GitHub 更新 PR 有延迟，最多读 5 次、间隔 2 秒）、base ref 与 SHA 未变、`ls-remote` 等于 `new_head` → **一个事务**（`chainStore.transaction`），顺序固定：①`settleIntent(push,'confirmed')`（链为 `publishing` 时 → `awaiting_review`，`published_head = new_head`）②`resetReviewDeadline` ③`voidReservation(head = 旧 published_head, 'published')`（§4.1 第 1 条）④子 Mission `delivery_evidence` 事件 ⑤子 `delivering → pr_opened` ⑥**最后**才 `recordCheckIntent`（§4.1 第 4 条，它要求已有 `confirmed` 推送意图与 `pr_opened` 子 Mission，同一事务内前面的写入对它可见）。5-C 用真实 store 测这一顺序。子已 `cancel_requested` 时：①–③照做（推送是事实），④记 `revision_pushed_before_cancel`，子转 `cancelled`，链再 `stopLive('child_cancelled')`，**不写** check 意图（`publishVerifyCheck` 只接受 `pr_opened`，`bridge.ts` L173）。确认时链已不在 `publishing`（期间被停止或关闭）→ 改走 `reconcileReceipt`（§4.1 第 3 条） | 读回时先分事实：远端分支为 `new_head` 且 `compare` 范围等于 `push_range`，但 PR 已关闭或 base 已变 → 与 §5.5 同一路由：一个事务内先转链（`closed` 或 `stopLive('base_changed')`）并停子 Mission（`publication_failed:pr_changed_after_push`），再 `reconcileReceipt` 确认推送事实；远端或范围不符 → 意图 `uncertain`，链转人，子 `publication_failed:readback_mismatch` |
 | 7 | App B check：沿用 `attemptVerifyCheck`（`runner.ts` L432–443）与 `publishVerifyCheck`（`bridge.ts` L172–227，key 为 `<子 Mission id>:<head>`，按 App id + `external_id` + head 查重），结果结算该 check 意图 `confirmed`/`failed`；不影响链状态（`settleIntent` 只对推送意图改链，L226） | 失败 → 意图 `failed`（终态）；`mission publish-check --mission <子>` 重试时先 `recordCheckIntent` 新写一条，再调 `publishVerifyCheck` |
 
 第 6 步的事务替代 runner 现在 L417–427 的“先记证据、再转 `pr_opened`”两次写入，所以“意图确认、`published_head` 更新、子 Mission 终态”同时成立或同时不成立（设计 §8.7 第 4.6 步）。runner 在修订路径上调用新的 `ports.revision.confirm(...)`（由 5-C 的 `contained-mission-revision.ts` 提供），不再自己写这两步。
 
-**令牌预取的理由：** `appCredentialRunner`（`bridge.ts` L94–105）在栅栏之后 `await publisherToken()`（L98），令牌源有缓存但过期会联网刷新（`contained-mission-github-app.ts` L146、L162）；即使返回已完成的 Promise，`await` 也会让出事件循环，取消或链停止可以落在栅栏与 spawn 之间。设计 §8.7 第 4.4 步要求“栅栏与推送之间不再有异步读取”。修订路径因此在栅栏之前取令牌，并用不含 `await` 的 `tokenCredentialRunner`；`fencedDeliveryRunner.run` 在栅栏（L92）之后直接 `return git(args)`（L94），中间也没有 `await`。测试：在栅栏返回后排一个微任务做取消，断言放行信号已经写出（插桩的包装进程记录顺序）；在包装进程 spawn 之后、放行之前分别注入取消、授权到期、owner 接管，断言不放行、不推送；去掉这一结构的变异会失败。首轮发布路径（阶段 3）不改。
+**栅栏与推送之间没有异步：** 设计 §8.7 第 4.4 步要求“栅栏与推送之间不再有异步读取”。在 W13 之下，真正的授权边界是放行（L5–L6），栅栏在 `journal.release` 的同一事务里同步运行，之后无 `await` 直接写放行字节；令牌的 `await`（`appCredentialRunner` L98，令牌源过期会联网刷新，`contained-mission-github-app.ts` L146、L162）发生在 spawn 之前，不在栅栏与放行之间。所以第 1 轮为此设计的 `tokenCredentialRunner` 不再必需（W13 设计 §6.3 第 4 条），保留无害，5-C 可以不做。测试：在 `fence` 返回后排一个微任务做取消，断言放行字节已经写出（插桩的包装进程记录顺序）；在包装进程 spawn 之后、放行之前分别注入取消、授权到期、owner 接管，断言不放行、不推送；去掉这一结构的变异会失败。首轮发布路径（阶段 3）不改。
 
 **每次推送引入的提交范围**（不变式 6）：一轮子 Mission 可能有多个修复提交（`plumbing.ts` L297–306 每次以 `expectedHead` 为父），一次推送会引入 `expected_old_head..new_head` 的全部提交。`git rev-list --reverse expected_old_head..new_head` 的提交列表（上限 64 个，超出则拒绝发布）写进同一事务里的链事件 `push_range{intent_id, commits}`（事件上限 32 KiB；64 个 64 位 SHA 约 4.3 KB），`binding_json` 只放提交数与列表的 sha256（`binding_json` 上限 4 096，DDL L122；store 测试加最长 SHA 与最大元数据的用例）；第 3 步重算并比较；第 6 步读回后 `GET /repos/{repo}/compare/{old}...{new}` 的提交列表必须相同，否则 `uncertain`。根 Mission 首轮发布的范围是 `start_commit..pushed_commit`，取自其 `delivery_evidence`（`runner.ts` 的 `deliveryEvidence`，含 `start_commit` 与 `head`）。为让不变式 6 不打折扣，**建 live 链的同一事务里写一条基线意图**：store 新方法 `recordBaselineIntent`（只在建链事务中可用），`kind='open_pr'`，`new_head = pushed_commit`，绑定根 Mission 的 `evidence_digest` 与首轮范围的摘要（范围本身写 `push_range` 事件），先以 `pending` 插入（DDL L132–135 要求）再在同一事务里结算为 `confirmed`。建链前 `grant_revisions` 已读过 live PR 与远端分支，`compare` 的提交列表必须等于该范围，否则拒绝授权。这样分支上的每个提交都有一条 `confirmed` 意图。
 
@@ -314,7 +320,7 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 - live 开关仍为 `1`（运行时读取同一个配置对象，不读环境变量快照之外的东西）；
 - 子 Mission 不是 `cancel_requested`（已由现有 `state !== 'delivering'` 覆盖）。
 
-全部是同步数据库读与一次同步文件读（`EngineeringAccess.read`，L44–63）。修订路径上这个栅栏在包装进程登记之后、写放行信号之前运行（§2 W13 要求 1），之后同步写放行信号；放行才是授权边界。任一失败抛 `CONTAINED_REVISION_FENCE:<code>`；没有推送；`deliverRevision` 把意图结算为 `failed`，子 Mission `publication_failed:<code>`，链按 §4.4 停止。
+全部是同步数据库读与一次同步文件读（`EngineeringAccess.read`，L44–63）。修订路径上它作为 `fence` 传给 W13 的 `journal.release(op_id, fence)`：在登记之后、放行之前、放行记账的同一顶层事务里运行（§2 第 1 条）；之后同步写放行字节，放行才是授权边界。同一远端分支的串行由 W13 的 `engineering_host_process_remote_open` 索引保证（§2 第 5 条）。任一失败抛 `CONTAINED_REVISION_FENCE:<code>`；没有推送；`deliverRevision` 把意图结算为 `failed`，子 Mission `publication_failed:<code>`，链按 §4.4 停止。
 
 **验收（方案 5.4）：** 取消子 Mission 后重启不推送——取消后子 Mission 为 `cancel_requested`，`recover()` 结算为 `cancelled`（`host.ts` L205–226）；即使有 `pending` 推送意图，§5.5 只读对账判为 `failed`；栅栏的 `state === 'delivering'` 检查兜底。测试在第 1 步之后、第 4 步之前各注入一次取消与重启。
 
@@ -327,12 +333,12 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 
 | 意图 | 前提 | 读取 | 判定 → 结果 |
 |---|---|---|---|
-| 推送 `pending` | 看推送操作记录（§2 W13 要求 1）：操作记录为 `registered`/`never_released` 且包装进程组已证明为空 → 意图 `failed`（确定没有推送，§2 W13 要求 1）；记录为 `may_have_been_released` 但进程组未证明为空，或没有任何登记回执 → 本意图本轮不结算，链 `stopLive('intent_uncertain')` 并阻止新的派发与推送，下次启动再试 | `ls-remote`；`compare` 提交列表；按号读 PR（只用于链状态） | 已放行且远端 = `new_head`、提交列表等于 `push_range`：链为 `publishing` 且子为 `delivering` 且 PR 读回满足第 6 步 → 第 6 步的确认事务；链为 `publishing`、子为 `delivering` 但 PR 已关闭或 base 已变 → 一个事务内先按事实转链（`closed` 或 `stopLive('base_changed')`）、子 Mission 停 `awaiting_decision(publication_failed:pr_changed_after_push)`，再 `reconcileReceipt`；其他组合 → `reconcileReceipt`（§4.1 第 3 条的表）。已放行但远端不是 `new_head` → `uncertain`，链转人（不判 `failed`，理由见 §5.3 第 5 步）|
+| 推送 `pending` | 先由 `host.recover()` 按 W13 设计 §5.2 处理登记行（只观察，不发信号）。然后按 §2 第 2 条：**没有登记行**或 `released_at IS NULL` → 意图 `failed`（`git` 从未运行；不要求进程已证明停止，未证明的包装进程仍阻止认领释放与下一次登记）；`released_at IS NOT NULL` 且登记未 `stopped` → 本意图本轮不结算，链 `stopLive('intent_uncertain')`，等下一次恢复或 `retry_stop_check`；`released_at IS NOT NULL` 且已 `stopped` → 读远端（右两列） | `ls-remote`；`compare` 提交列表；按号读 PR（只用于链状态） | 已放行且远端 = `new_head`、提交列表等于 `push_range`：链为 `publishing` 且子为 `delivering` 且 PR 读回满足第 6 步 → 第 6 步的确认事务；链为 `publishing`、子为 `delivering` 但 PR 已关闭或 base 已变 → 一个事务内先按事实转链（`closed` 或 `stopLive('base_changed')`）、子 Mission 停 `awaiting_decision(publication_failed:pr_changed_after_push)`，再 `reconcileReceipt`；其他组合 → `reconcileReceipt`（§4.1 第 3 条的表）。已放行但远端不是 `new_head` → `uncertain`，链转人（不判 `failed`，理由见 §5.3 第 5 步）|
 | 推送 `uncertain` | 同上 | 不自动读 | 只由 `chain-decide --decision reconcile` 发起一次同样的读取；远端为 `new_head` 且范围相符 → 经 `reconcileReceipt` 结算 `confirmed`；人确认该推送不会再落地（例如分支已被人改动且已决定接管）→ `chain-decide takeover` 时可结算为 `failed`；链保持 `awaiting_decision` 或 `closed` |
 | check `pending` | `OSSTACK_BRIDGE=1` | `publishVerifyCheck`（查重后写） | 按第 7 步重试，结算 `confirmed`/`failed`；不影响链 |
 | 基线 `open_pr` | 建链事务内已 `confirmed` | — | 无需恢复；根 Mission 的首轮发布仍由现有 `delivering` 重试路径对账（§7 偏差 4） |
 
-**不变式 6 的检查**（设计 §10.2：对账完成后，Mission 分支上的每个提交都对应一条 `confirmed` 意图）。按**提交范围**而不是只看分支顶端：只在对账完成时检查：链若还有已放行（`may_have_been_released`）而未结算的 `pending`/`uncertain` 推送意图，结果为 `reconciliation_incomplete`，保持原停止原因，不做下面的比较；远端 head 等于某条未结算意图的 `new_head` 时也不判为外人写入。其余情况下，对每条非终态 live 链，`ls-remote` 远端分支必须等于 `published_head`，且 `GET compare/{root.start_commit}...{published_head}` 的提交列表必须恰好是各条 `confirmed` 意图（建链时的基线 `open_pr` 意图加上各轮推送意图）按顺序记录的范围的拼接（§5.3）。不成立 → `stopLive('external_write')`。属性测试与 5-G 的时间线比较用同一定义。
+**不变式 6 的检查**（设计 §10.2：对账完成后，Mission 分支上的每个提交都对应一条 `confirmed` 意图）。按**提交范围**而不是只看分支顶端：只在对账完成时检查：链若还有已放行（登记行 `released_at IS NOT NULL`）而未结算的 `pending`/`uncertain` 推送意图，结果为 `reconciliation_incomplete`，保持原停止原因，不做下面的比较；远端 head 等于某条未结算意图的 `new_head` 时也不判为外人写入。其余情况下，对每条非终态 live 链，`ls-remote` 远端分支必须等于 `published_head`，且 `GET compare/{root.start_commit}...{published_head}` 的提交列表必须恰好是各条 `confirmed` 意图（建链时的基线 `open_pr` 意图加上各轮推送意图）按顺序记录的范围的拼接（§5.3）。不成立 → `stopLive('external_write')`。属性测试与 5-G 的时间线比较用同一定义。
 
 **live 对账周期**（方案没有单列任务，放在 5-E）：`packages/cli/src/contained-mission-bridge-live.ts`（新），与 4-D 的影子对账器同样只从 `contained-mission-rpc.ts` 懒加载、独立定时器、不阻塞 Mission tick。默认每 60 秒（设计 §9），每次最多 10 条链，游标续扫；GitHub 限流或 5xx 时指数退避，退避期间不写任何东西。每条链一个周期：
 
@@ -353,7 +359,7 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 | base 变化 | 子 Mission 执行期间、第 3 与第 6 步之间 | `base_changed`；不推送或 `uncertain` |
 | PR 关闭 | 执行期间、推送前 | `closed`，不推送 |
 | API 5xx、限流 | 读取与读回 | 退避，无写入；读回耗尽 → `uncertain` |
-| 崩溃 | 意图 `pending` 后；推送 spawn 后退出前（W13 记录的进程组仍在）；推送后确认事务前；确认后 check 前；派发事务中途 | 按 §5.5 完成或转人；派发事务回滚无残留 |
+| 崩溃 | 意图 `pending` 后；推送 spawn 后退出前（W13 记录的进程组仍在）；推送后确认事务前；确认后 check 前；派发事务中途；`host.recover()` 之后、`revisionRecovery()` 之前（之后证明停止并结算回执） | 按 §5.5 完成或转人；派发事务回滚无残留 |
 | 令牌吊销 | 推送返回 403 | 意图 `failed`，链转人 |
 | 授权到期、授权文件删掉 write scope | 派发前；第 1 与第 4 步之间 | `grant_expired`/`grant_invalid`，不推送 |
 | 1 轮额度 | 第二个合格 `CHANGES_REQUESTED` | `rounds_exhausted`；不派发 |
@@ -492,4 +498,15 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 | 部分：再授条件前后不一致；取消过的子 Mission 所在 head 不能再预留 | 属实，DDL L74 主键、store L271 | §4.4：授权与预算原因不取消子 Mission；§5.1：再授只对未来生效，分“无在途子”与“在途子被停住”两种恢复 |
 | 措辞：`G2.join_ambiguous` 应为 `G0.join_ambiguous` | 属实，`ba30b1a3` 中 L53 | 已改；补充推送后被取消的子 Mission 由 G2c 拒绝 |
 
-第 3 轮的修改（放行记录状态、确认事务顺序、`reconciliation_incomplete`、再授的两种恢复）未再审计。W13 的设计（`docs/design/2026-11-06-w13-host-git-survival.md`）落定后，§2 W13 要求与 §5.3 第 4–5 步需要按它对齐并复核一次。
+第 3 轮之后，§2、§3、§4.1、§4.2、§5.3 第 4–6 步、§5.4、§5.5 按已提交的 W13 设计（`0d997a7a`）回改：独立的 `op_id` 以 `intent_id` 绑定意图；“从未放行”只看 `released_at`，“已停止”只看 `state='stopped'`；`stopped` 在确认事务之前单独提交；同一远端分支的推送由 W13 的部分唯一索引串行；5-C 依赖 W13-C2；迁移号 52 App E、53 本附录、54 W13。第 3 轮的 `may_have_been_released` 方案由 W13 的 `released_at` 取代。
+
+**第 4 轮（Codex CLI gpt-6-astra，medium，只读，全文，重点为第 3 轮修改与 W13 设计 `0d997a7a` 的接入）：** 第 3 轮 7 项中 5 项判为已解决，2 项部分解决；W13 接入的各项（独立 `op_id` 经 `intent_id` 绑定、`released_at` 与 `state='stopped'` 分工、无行或 `released_at IS NULL` 判 `failed`、顶层事务与 `stopped` 先提交、远端分支串行、5-C 依赖 W13-C2、迁移 52/53/54 按合并顺序连续）判为一致。新增 0 个 P1、2 个 P2。逐条核对后全部接受：
+
+| 发现 | 核对 | 处理 |
+|---|---|---|
+| 部分：在线第 6 步读回发现 PR 关闭或 base 变化时仍一律 `uncertain`，与 §5.5 的“先转链再结算回执”矛盾 | 属实 | §5.3 第 6 步失败列先分事实，与 §5.5 同一路由 |
+| 部分：§4.4 停止原因表仍写授权原因“在途时请求取消”，与下文“不取消”矛盾 | 属实（表行未随第 3 轮修改） | 表行改为不取消，并写明子 Mission 的停机原因 |
+| 新 P2 预算耗尽后没有能恢复子 Mission 的决定，再授也不给该子 Mission 追加分配 | 属实，`runner.ts` L101–116 | §5.2 新增 `resume_budget`/`resume_grant` 决定与按原路由恢复；再授同事务追加分配；加测试 |
+| 新 P2 回执表漏了 W13 恢复产生的“链 `publishing`、子 `stop_unknown`/`awaiting_decision`” | 属实，W13 设计 §5.5；store L226–233 会把链拉回 `awaiting_review` | §4.1 第 3 条加一行：先 `stopLive`，再只确认推送事实；加“`host.recover()` 与 `revisionRecovery()` 之间崩溃”的测试 |
+
+第 4 轮的四处修改未再审计。W13 设计第 3 轮审计若改动其 §6.3，本附录 §2、§5.3 第 4–6 步、§5.5 需随之复核。
