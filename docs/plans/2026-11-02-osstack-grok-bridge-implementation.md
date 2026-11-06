@@ -453,6 +453,8 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 **硬前置：** 阶段 4 完成；W13（主机 git 子进程在守护进程崩溃后存活）已合并；阶段 2 探针 P-2 至 P-4 通过。生产级验收另需 W14。
 
+实现附录：[阶段 5 同 PR 受控修订](../design/2026-11-06-bridge-same-pr-revision.md)（2026-11-06，三轮 Codex 审计）。附录把本阶段拆成 5-P、5-A 至 5-G，核对了前置条件（W13 未实现；P-2 至 P-4 未覆盖带租约的 `git push`），并列出需要用户做的决定。
+
 | 任务 | 文件 | 验收 |
 |---|---|---|
 | 5.1 授权 | `contained-mission-command.ts` 加 `grant-revisions --mission <root> --rounds 1\|2 --expires <时长>`，只能在交互终端执行并要求输入确认（与 `issue-grant` 相同） | 非 TTY 被拒；`grant` 绑定 principal、client session、scope、仓库与 base |
