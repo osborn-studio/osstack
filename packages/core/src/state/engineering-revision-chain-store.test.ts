@@ -375,7 +375,7 @@ it("rolls back the whole decision when the surrounding transaction fails after i
 it("exposes only the narrow writer to the shadow reconciler", () => {
   const f = setup();
   const writer = shadowChainWriter(f.store);
-  expect(Object.keys(writer).sort()).toEqual(["appendEvent", "applyShadowDecision", "createShadowChain", "get", "listOpenShadowChains", "shadowDecisions"]);
+  expect(Object.keys(writer).sort()).toEqual(["appendEvent", "applyShadowDecision", "createShadowChain", "get", "listOpenShadowChains", "shadowChainForMission", "shadowChainForPr", "shadowDecisions"]);
   for (const forbidden of ["reserve", "dispatch", "voidReservation", "recordIntent", "settleIntent", "createLiveChain", "applyDecision", "clearCurrentMission"]) {
     expect((writer as unknown as Record<string, unknown>)[forbidden]).toBeUndefined();
   }
@@ -641,4 +641,19 @@ it("refuses an old stop once the chain has advanced, even when the caller re-rea
   // A base-only move is stale too.
   const s = f.shadow();
   expect(code(() => f.store.applyDecision(s.chain_id, 1, { ...stopDecision(), from_base: B2 } as ChainDecision, 8))).toBe("stale_decision");
+});
+
+it("looks up shadow chains by Mission and by PR in any state, (read-only, through the shadow writer)", () => {
+  const f = setup(); const w = shadowChainWriter(f.store);
+  const s = f.shadow({ pr_number: 77 }); const l = f.live(2, { pr_number: 78 });
+  expect(w.shadowChainForMission(s.root_mission_id)?.chain_id).toBe(s.chain_id);
+  expect(w.shadowChainForPr("o/r", 77)?.chain_id).toBe(s.chain_id);
+  expect(w.shadowChainForMission(l.root_mission_id)).toBeUndefined();
+  expect(w.shadowChainForPr("o/r", 78)).toBeUndefined();
+  expect(w.shadowChainForPr("o/r", 999)).toBeUndefined();
+  // A closed chain is not listed as open but is still found, so a second Mission on its PR is refused.
+  f.store.applyDecision(s.chain_id, 1, { kind: "transition", to: "closed", reason: "pr_merged", from_head: s.published_head, from_base: s.published_base, head: s.published_head, base: s.published_base, discards: [], review_ids: [] }, 2);
+  expect(w.listOpenShadowChains().map(c => c.chain_id)).not.toContain(s.chain_id);
+  expect(w.shadowChainForPr("o/r", 77)?.state).toBe("closed");
+  expect(f.store.chainForMission(s.root_mission_id, "live")).toBeUndefined();
 });

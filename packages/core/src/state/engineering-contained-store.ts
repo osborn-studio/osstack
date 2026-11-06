@@ -88,6 +88,14 @@ export class ContainedMissionStore {
       .all(after?.created_at ?? -1, after?.created_at ?? -1, after?.mission_id ?? "", limit) as Array<{ mission_id: string; created_at: number }>;
   }
 
+  /** Missions in `pr_opened`, in (created_at, mission_id) order, for the read-only shadow reconciler's cursor scan. */
+  listPrOpened(limit = 100, after?: { created_at: number; mission_id: string }): Array<{ mission_id: string; created_at: number }> {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || (after && (!Number.isSafeInteger(after.created_at) || after.created_at < 0 || !after.mission_id))) throw Error("invalid_limit");
+    return this.db.prepare(`SELECT mission_id,created_at FROM engineering_contained_missions WHERE state='pr_opened'
+      AND (created_at>? OR (created_at=? AND mission_id>?)) ORDER BY created_at,mission_id LIMIT ?`)
+      .all(after?.created_at ?? -1, after?.created_at ?? -1, after?.mission_id ?? "", limit) as Array<{ mission_id: string; created_at: number }>;
+  }
+
   authorize(principal: EngineeringPrincipal, input: ContainedAuthorizeInput, now: number): ContainedMission {
     this.clock(now);
     if (!principal.principal_id || !principal.client_session_id || !principal.write_scopes.includes(input.scope_id)) throw Error("permission_denied");

@@ -9,8 +9,10 @@ import { processGroupEmpty, runHardenedGit, type HardenedGitContext } from '@oss
 import { scratchPath, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { ContainedMissionRunner, parseContainedMissionSpec, type ContainedDecision, type ContainedMissionSpec } from './contained-mission-runner.js';
+import { readMissionPublication, type MissionPublication } from './contained-mission-publication.js';
 import { containedEvents, eventPayload, lastTransitionTo, type ContainedMissionHostPorts } from './contained-mission-ports.js';
 
+export type { MissionPublication } from './contained-mission-publication.js';
 export type ContainedHostDecision = ContainedDecision | { kind: 'retry_stop_check' };
 export interface ContainedMissionHostOptions {
   ports: ContainedMissionHostPorts;
@@ -33,12 +35,7 @@ const TERMINAL = new Set<ContainedMission['state']>(['pr_opened', 'cancelled', '
 // States whose next move is a runner step. Halts wait for a decision; executing/verifying only exist inside a step.
 const STEPPABLE = new Set<ContainedMission['state']>(['authorized', 'workspace_ready', 'candidate_ready', 'verify_failed', 'verified', 'revalidating', 'delivering']);
 const BRANCH = /^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const EVENT_TAIL = 50; const EVENT_EXCERPT = 2_000; const EVIDENCE_PAGE = 20; const EVIDENCE_PAGES = 10;
-type PrRef = { number: number; url: string; reused: boolean };
-export type MissionPublication =
-  | { kind: 'opened'; pr: PrRef; evidence_digest: string; pushed_commit: string; base_head: string | null }
-  | { kind: 'opened_before_cancel'; pr: PrRef; pushed_commit: string | null; base_head: string | null }
-  | { kind: 'evidence_missing'; pr: PrRef; evidence_digest: string };
+const EVENT_TAIL = 50; const EVENT_EXCERPT = 2_000;
 const code = (error: unknown) => error instanceof Error ? (error.message.split(':')[0] ?? 'error').slice(0, 64) : 'error';
 
 /** Resolve a start request into a full spec: `start_commit` from `base_ref` through the hardened runner, a fresh branch and worktree path. */
@@ -88,38 +85,7 @@ export class ContainedMissionHost {
   }
 
   /** The PR this Mission opened, read by event kind so it never depends on the bounded event tail. */
-  private publication(missionId: string): MissionPublication | null {
-    const last = (kind: string, beforeSeq = Number.MAX_SAFE_INTEGER) => this.store.db.prepare(
-      'SELECT seq,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind=? AND seq<? ORDER BY seq DESC LIMIT 1')
-      .get(missionId, kind, beforeSeq) as { seq: number; payload_json: string } | undefined;
-    // Parse the stored JSON and redact only the strings returned: redacting the raw payload can break the JSON.
-    const text = (x: unknown) => typeof x === 'string' ? redactSecrets(x) : null;
-    const prRef = (x: unknown): PrRef => { const r = (x ?? {}) as Record<string, unknown>; return { number: Number(r['number']), url: text(r['url']) ?? '', reused: r['reused'] === true }; };
-    const evidenceOf = (row: { payload_json: string }) => { const e = JSON.parse(row.payload_json) as Record<string, unknown>; return { head: text(e['head']), base_head: text(e['base_head']), digest: e['evidence_digest'] }; };
-    const opened = last('pr_opened');
-    if (opened) {
-      const p = JSON.parse(opened.payload_json) as { pr: unknown; evidence_digest: unknown };
-      const digest = text(p.evidence_digest) ?? '';
-      // delivery_evidence is recorded just before pr_opened; look back a bounded number of pages.
-      let before = opened.seq; let match: ReturnType<typeof evidenceOf> | undefined;
-      for (let page = 0; page < EVIDENCE_PAGES && !match; page++) {
-        const rows = this.store.db.prepare("SELECT seq,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind='delivery_evidence' AND seq<? ORDER BY seq DESC LIMIT ?")
-          .all(missionId, before, EVIDENCE_PAGE) as Array<{ seq: number; payload_json: string }>;
-        match = rows.map(evidenceOf).find(e => e.digest === p.evidence_digest);
-        if (rows.length < EVIDENCE_PAGE) break;
-        before = rows.at(-1)!.seq;
-      }
-      return match?.head
-        ? { kind: 'opened', pr: prRef(p.pr), evidence_digest: digest, pushed_commit: match.head, base_head: match.base_head }
-        : { kind: 'evidence_missing', pr: prRef(p.pr), evidence_digest: digest };
-    }
-    const cancelled = last('pr_opened_before_cancel');
-    if (!cancelled) return null;
-    const prior = last('delivery_evidence', cancelled.seq);
-    const evidence = prior ? evidenceOf(prior) : undefined;
-    return { kind: 'opened_before_cancel', pr: prRef((JSON.parse(cancelled.payload_json) as { pr: unknown }).pr), pushed_commit: evidence?.head ?? null, base_head: evidence?.base_head ?? null };
-  }
-
+  publication(missionId: string): MissionPublication | null { return readMissionPublication(this.store, missionId); }
 
   async cancel(principal: EngineeringPrincipal, missionId: string): Promise<ContainedMission> {
     const mission = this.store.readable(principal, missionId);
