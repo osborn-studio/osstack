@@ -14,6 +14,10 @@ export default defineConfig({
     // scripts/record-pr-timeline.mjs, which keeps one source of truth for the query and normalisation.
     "bridge-reader": "src/contained-mission-bridge-reader.ts",
     "bridge-fixture": "src/contained-mission-bridge-fixture.ts",
+    // Real publication path pieces for scripts/sandbox-bridge-scenario.mjs (sandbox corpus, 4-D); never imported by the CLI itself.
+    "bridge-kit": "src/contained-mission-bridge.ts",
+    "bridge-github-app": "src/contained-mission-github-app.ts",
+    "bridge-ports": "src/contained-mission-ports.ts",
   },
   format: ["esm"],
   target: "node20",
