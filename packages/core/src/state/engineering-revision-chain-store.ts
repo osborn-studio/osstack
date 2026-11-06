@@ -280,6 +280,8 @@ export class RevisionChainStore {
    * protect a caller that re-reads the chain after deciding). */
   private validateDecision(chain: RevisionChain, d: ChainDecision): void {
     if (d.kind === "none") return;
+    // Every decision names the chain state it was computed from; a decision about an earlier state is never applied.
+    if (d.from_head !== chain.published_head || d.from_base !== chain.published_base) fail("stale_decision");
     const refSame = d.base_ref === undefined || d.base_ref === chain.base_ref;
     const onPublished = d.head === chain.published_head && d.base === chain.published_base && refSame;
     const stale = (): never => fail("stale_decision");

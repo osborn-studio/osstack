@@ -306,9 +306,9 @@ it("keeps events and shadow decisions append-only and shadow decisions shadow-on
     VALUES(?,?,?,'bogus','r','[]',1,1)`).run(s.chain_id, H2, B1))).toMatch(/CHECK/);
 });
 
-const wouldReserve = (over: Partial<Extract<ChainDecision, { kind: "would_reserve" }>> = {}): ChainDecision => ({ kind: "would_reserve", head: H1, base: B1, discards: [], review_ids: [7], feedback_digest: "d".repeat(64), back_to_review: false, ...over });
+const wouldReserve = (over: Partial<Extract<ChainDecision, { kind: "would_reserve" }>> = {}): ChainDecision => ({ kind: "would_reserve", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [7], feedback_digest: "d".repeat(64), back_to_review: false, ...over });
 const stopDecision = (reason: "attribution_unknown" | "base_changed" = "attribution_unknown", over: Record<string, unknown> = {}): ChainDecision =>
-  ({ kind: "stop", to: "awaiting_decision", reason, head: H2, base: B1, discards: [], review_ids: [], shadow_action: "would_stop", ...over }) as ChainDecision;
+  ({ kind: "stop", to: "awaiting_decision", reason, from_head: H1, from_base: B1, head: H2, base: B1, discards: [], review_ids: [], shadow_action: "would_stop", ...over }) as ChainDecision;
 
 it("applies shadow decisions in one transaction and stays idempotent across a restart", () => {
   const f = setup(); const s = f.shadow();
@@ -332,7 +332,7 @@ it("applies shadow decisions in one transaction and stays idempotent across a re
 
 it("writes transitions, stops and ready decisions with their events and shadow rows", () => {
   const f = setup(); const s = f.shadow();
-  const ready: ChainDecision = { kind: "transition", to: "ready_for_human", reason: "all_participating_approved", head: H1, base: B1, discards: [], review_ids: [3, 4], shadow_action: "would_mark_ready" };
+  const ready: ChainDecision = { kind: "transition", to: "ready_for_human", reason: "all_participating_approved", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [3, 4], shadow_action: "would_mark_ready" };
   const r = f.store.applyDecision(s.chain_id, 1, ready, 50);
   expect(r).toMatchObject({ state: "ready_for_human", revision: 2, stop_reason: null });
   expect(f.store.shadowDecisions(s.chain_id)).toMatchObject([{ action: "would_mark_ready", review_ids_json: "[3,4]", feedback_digest: null }]);
@@ -344,7 +344,7 @@ it("writes transitions, stops and ready decisions with their events and shadow r
   expect(f.store.shadowDecisions(s.chain_id).map(d => d.action).sort()).toEqual(["would_mark_ready", "would_reserve", "would_stop"]);
   const t = f.store.events(s.chain_id).filter(e => e.kind === "transition").map(e => JSON.parse(e.payload_json));
   expect(t.map(x => [x.from, x.to])).toEqual([["awaiting_review", "ready_for_human"], ["ready_for_human", "awaiting_review"], ["awaiting_review", "awaiting_decision"]]);
-  const closed = f.store.applyDecision(s.chain_id, 4, { kind: "transition", to: "closed", reason: "pr_merged", head: H1, base: B1, discards: [], review_ids: [] }, 80);
+  const closed = f.store.applyDecision(s.chain_id, 4, { kind: "transition", to: "closed", reason: "pr_merged", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [] }, 80);
   expect(closed.state).toBe("closed");
   expect(code(() => f.store.applyDecision(s.chain_id, 5, stopDecision(), 90))).toMatch(/chain_terminal/);
   // none changes nothing.
@@ -365,7 +365,7 @@ it("rolls back the whole decision when the surrounding transaction fails after i
   expect(f.store.shadowDecisions(s.chain_id)).toHaveLength(1);
   // A write refused by a trigger leaves no event or decision behind.
   const k = f.shadow();
-  f.store.applyDecision(k.chain_id, 1, { kind: "transition", to: "closed", reason: "pr_closed", head: H1, base: B1, discards: [], review_ids: [] }, 5);
+  f.store.applyDecision(k.chain_id, 1, { kind: "transition", to: "closed", reason: "pr_closed", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [] }, 5);
   const events = f.store.events(k.chain_id).length;
   expect(code(() => f.store.applyDecision(k.chain_id, 2, stopDecision(), 6))).toMatch(/chain_terminal/);
   expect(f.store.events(k.chain_id)).toHaveLength(events);
@@ -380,7 +380,7 @@ it("exposes only the narrow writer to the shadow reconciler", () => {
     expect((writer as unknown as Record<string, unknown>)[forbidden]).toBeUndefined();
   }
   const s = writer.createShadowChain(f.input(), 5);
-  const live: ChainDecision = { kind: "reserve", head: H1, base: B1, discards: [], review_ids: [1], feedback_digest: "d" };
+  const live: ChainDecision = { kind: "reserve", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [1], feedback_digest: "d" };
   expect(code(() => writer.applyShadowDecision(s.chain_id, 1, live, 6))).toBe("bridge_shadow_write_denied");
   writer.appendEvent(s.chain_id, "read_failed", { code: "x" }, 7);
   expect(writer.applyShadowDecision(s.chain_id, 1, wouldReserve(), 8).revision).toBe(1);
@@ -597,18 +597,18 @@ it("advances published_head on settle only while the intent's bindings still mat
 it("rejects decisions that no longer describe the chain row, and reservations on another head", () => {
   const f = setup(); const l = f.live(2); const c1 = f.child("executing");
   const base = { base: B1, discards: [], review_ids: [7] };
-  const reserve = (head: string): ChainDecision => ({ kind: "reserve", head, feedback_digest: "d", ...base });
+  const reserve = (head: string): ChainDecision => ({ kind: "reserve", from_head: H1, from_base: B1, head, feedback_digest: "d", ...base });
   const rev = () => f.store.get(l.chain_id).revision;
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), reserve(H2), 2))).toBe("stale_decision");
   expect(code(() => f.store.reserve(l.chain_id, rev(), reserveInput(H2), 2))).toBe("head_mismatch");
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), { ...reserve(H1), base: B2 } as ChainDecision, 2))).toBe("stale_decision");
-  const ready: ChainDecision = { kind: "transition", to: "ready_for_human", reason: "x", head: H2, base: B1, discards: [], review_ids: [] };
+  const ready: ChainDecision = { kind: "transition", to: "ready_for_human", reason: "x", from_head: H1, from_base: B1, head: H2, base: B1, discards: [], review_ids: [] };
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), ready, 2))).toBe("stale_decision");
-  const stop = (reason: "external_write" | "reviewer_conflict" | "base_changed", head: string, b = B1): ChainDecision => ({ kind: "stop", to: "awaiting_decision", reason, head, base: b, discards: [], review_ids: [] });
+  const stop = (reason: "external_write" | "reviewer_conflict" | "base_changed", head: string, b = B1): ChainDecision => ({ kind: "stop", to: "awaiting_decision", reason, from_head: H1, from_base: B1, head, base: b, discards: [], review_ids: [] });
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), stop("external_write", H1), 2))).toBe("stale_decision"); // the "observed" head is the published one
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), stop("reviewer_conflict", H2), 2))).toBe("stale_decision");
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), stop("base_changed", H1, B1), 2))).toBe("stale_decision");
-  const accept: ChainDecision = { kind: "transition", to: "awaiting_review", reason: "push_confirmed", head: H2, base: B1, published_head: H2, published_base: B1, discards: [], review_ids: [] };
+  const accept: ChainDecision = { kind: "transition", to: "awaiting_review", reason: "push_confirmed", from_head: H1, from_base: B1, head: H2, base: B1, published_head: H2, published_base: B1, discards: [], review_ids: [] };
   expect(code(() => f.store.applyDecision(l.chain_id, rev(), accept, 2))).toBe("stale_decision"); // no confirmed push intent produced H2
   expect(f.store.get(l.chain_id)).toMatchObject({ state: "awaiting_review", published_head: H1, revision: 1 });
   // A stop that carries the observed head records it without making it the published head.
@@ -622,4 +622,23 @@ it("rejects decisions that no longer describe the chain row, and reservations on
   f.store.applyDecision(s.chain_id, 1, wouldReserve(), 4);
   expect(code(() => f.store.applyDecision(s.chain_id, 1, wouldReserve({ base: B2 }), 5))).toBe("stale_decision");
   void c1;
+});
+
+it("refuses an old stop once the chain has advanced, even when the caller re-reads the revision", () => {
+  const f = setup(); const l = f.live(2); const c1 = f.child("executing");
+  const r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, c1, 3);
+  // Computed against H1/B1: someone else wrote H3 to the branch.
+  const oldStop: ChainDecision = { kind: "stop", to: "awaiting_decision", reason: "external_write", from_head: H1, from_base: B1, head: H3, base: B1, discards: [], review_ids: [] };
+  // Meanwhile the publisher's confirmed push advanced the chain to H2.
+  const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c1 }, 4);
+  const settled = f.store.settleIntent(pi.intent.intent_id, "confirmed", 5);
+  expect(settled.chain.published_head).toBe(H2);
+  expect(code(() => f.store.applyDecision(l.chain_id, f.store.get(l.chain_id).revision, oldStop, 6))).toBe("stale_decision");
+  expect(f.store.get(l.chain_id).state).toBe("awaiting_review");
+  // The same observation computed against the current state is applied.
+  expect(f.store.applyDecision(l.chain_id, f.store.get(l.chain_id).revision, { ...oldStop, from_head: H2 } as ChainDecision, 7).state).toBe("awaiting_decision");
+  // A base-only move is stale too.
+  const s = f.shadow();
+  expect(code(() => f.store.applyDecision(s.chain_id, 1, { ...stopDecision(), from_base: B2 } as ChainDecision, 8))).toBe("stale_decision");
 });

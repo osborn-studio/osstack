@@ -61,7 +61,10 @@ export interface DecisionOptions {
 }
 
 export interface Discard { review_id: number; reason: DiscardReason }
-interface Common { head: string; base: string; /** Observed base ref; the store compares it with the chain's. */ base_ref?: string; discards: readonly Discard[] }
+interface Common {
+  /** The chain row this decision was computed from; the store refuses it once either has moved. */
+  from_head: string; from_base: string;
+  head: string; base: string; /** Observed base ref; the store compares it with the chain's. */ base_ref?: string; discards: readonly Discard[] }
 export type ChainDecision =
   | { kind: "none"; reason: NoneReason; discards: readonly Discard[] }
   | (Common & { kind: "transition"; to: ChainState; reason: string; published_head?: string; published_base?: string;
@@ -114,7 +117,7 @@ function combineDigests(digests: readonly string[]): string {
 export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry: ProducerRegistry, now: number, opts: DecisionOptions = {}): ChainDecision {
   const shadow = chain.mode === "shadow";
   const none = (reason: NoneReason, discards: readonly Discard[] = []): ChainDecision => ({ kind: "none", reason, discards });
-  const base = { head: snapshot.head, base: snapshot.base_sha, base_ref: snapshot.base_ref };
+  const base = { from_head: chain.published_head, from_base: chain.published_base, head: snapshot.head, base: snapshot.base_sha, base_ref: snapshot.base_ref };
   const stop = (reason: StopReason, discards: readonly Discard[] = [], review_ids: readonly number[] = []): ChainDecision => ({
     kind: "stop", to: "awaiting_decision", reason, ...base, discards, review_ids, ...(shadow ? { shadow_action: "would_stop" as const } : {}),
   });
@@ -175,6 +178,11 @@ export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry
 
   // Nobody participates (the deadline only bounds an unanswered wait). A chain that was ready lost its approvals (dismissed): back to waiting.
   if (chain.state === "ready_for_human") {
+    // Readiness is not withdrawn by the clock: when the approvals are gone only because they aged out (and nobody dismissed
+    // anything), the chain stays ready. A dismissal on the head still withdraws it.
+    const onHead = snapshot.reviews.filter(r => r.review_commit === chain.published_head && registry.reviewers.some(p => sameProducer(p, r.reviewer)));
+    const expiredIds = new Set(discards.filter(d => d.reason === "expired").map(d => d.review_id));
+    if (onHead.some(r => r.state === "APPROVED" && expiredIds.has(r.review_id)) && !onHead.some(r => r.state === "DISMISSED")) return none("already_ready", discards);
     return { kind: "transition", to: "awaiting_review", reason: "approval_withdrawn", ...base, discards, review_ids: [] };
   }
   if (waiting && chain.review_deadline !== null && now >= chain.review_deadline) return stop("review_deadline", discards);

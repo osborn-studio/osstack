@@ -196,18 +196,16 @@ describe("ready_for_human (appendix 4.2 item 1)", () => {
     const oldRequest = review("CHANGES_REQUESTED", B, { submitted_at: NOW - REVIEW_TTL_MS - 5 });
     expect(decide(chain(), snap([oldRequest, review("APPROVED", A)]))).toMatchObject({ kind: "transition", to: "ready_for_human" });
   });
-  it("leaves a reviewer with no state when the latest review expired", () => {
+  it("leaves a reviewer with no state when the latest review expired (awaiting_review)", () => {
     const latestExpired = review("APPROVED", A, { submitted_at: NOW - REVIEW_TTL_MS - 1 });
     expectNone(decide(chain(), snap([latestExpired])), "expired");
-    // A ready chain whose only approval expired falls back to waiting for review.
-    expect(decide(chain({ state: "ready_for_human" }), snap([latestExpired]))).toMatchObject({ kind: "transition", to: "awaiting_review", reason: "approval_withdrawn" });
   });
 });
 
 describe("reserve selection (rules 4 and 6)", () => {
   it("reserves a live chain on a qualifying request and binds head, base and digest", () => {
     const r = review("CHANGES_REQUESTED", A, { feedback_digest: "f".repeat(64) });
-    expect(decide(chain(), snap([r]))).toEqual({ kind: "reserve", head: HEAD, base: BASE, base_ref: "main", discards: [], review_ids: [r.review_id], feedback_digest: "f".repeat(64) });
+    expect(decide(chain(), snap([r]))).toEqual({ kind: "reserve", from_head: HEAD, from_base: BASE, head: HEAD, base: BASE, base_ref: "main", discards: [], review_ids: [r.review_id], feedback_digest: "f".repeat(64) });
   });
   it("only records would_reserve in shadow mode and never reserves", () => {
     const d = decide(shadow(), snap([review("CHANGES_REQUESTED")]));
@@ -282,5 +280,34 @@ describe("stop decisions carry what the store needs", () => {
     expect(d).toMatchObject({ kind: "stop", head: HEAD2, base: BASE2 });
     const m = decide(chain(), snap([], { pr_state: "MERGED", head: HEAD2 }));
     expect(m).toMatchObject({ kind: "transition", head: HEAD2, base: BASE });
+  });
+});
+
+describe("readiness is not withdrawn by the clock", () => {
+  const aged = (r: ReturnType<typeof review>) => ({ ...r, submitted_at: NOW - REVIEW_TTL_MS - 1 });
+  it("keeps a ready chain ready when every approval expired", () => {
+    for (const c of [chain({ state: "ready_for_human" }), shadow({ state: "ready_for_human" })]) {
+      expectNone(decide(c, snap([aged(review("APPROVED", A)), aged(review("APPROVED", B))])), "already_ready");
+    }
+    // ...but expired approvals still do not enter ready from awaiting_review.
+    expectNone(decide(chain(), snap([aged(review("APPROVED", A))])), "expired");
+    // A deadline never fires on a ready chain.
+    expectNone(decide(chain({ state: "ready_for_human", review_deadline: NOW - 1 }), snap([aged(review("APPROVED", A))])), "already_ready");
+  });
+  it("still withdraws on a dismissal, fresh or itself expired", () => {
+    expect(decide(chain({ state: "ready_for_human" }), snap([review("APPROVED", A), review("DISMISSED", A)]))).toMatchObject({ kind: "transition", to: "awaiting_review", reason: "approval_withdrawn" });
+    expect(decide(chain({ state: "ready_for_human" }), snap([aged(review("APPROVED", A)), aged(review("DISMISSED", A))]))).toMatchObject({ kind: "transition", to: "awaiting_review", reason: "approval_withdrawn" });
+    expect(decide(shadow({ state: "ready_for_human" }), snap([]))).toMatchObject({ kind: "transition", to: "awaiting_review" });
+  });
+  it("sends a fresh change request through the reserve path, without a conflict from the expired approval", () => {
+    const rs = [aged(review("APPROVED", A)), review("CHANGES_REQUESTED", B)];
+    expect(decide(chain({ state: "ready_for_human" }), snap(rs))).toMatchObject({ kind: "reserve" });
+    expect(decide(shadow({ state: "ready_for_human" }), snap(rs))).toMatchObject({ kind: "would_reserve", back_to_review: true });
+  });
+  it("stops a ready chain on head change, base change and close as before", () => {
+    const old = [aged(review("APPROVED", A))];
+    expect(decide(chain({ state: "ready_for_human" }), snap(old, { head: HEAD2 }))).toMatchObject({ kind: "stop", reason: "external_write" });
+    expect(decide(chain({ state: "ready_for_human" }), snap(old, { base_sha: BASE2 }))).toMatchObject({ kind: "stop", reason: "base_changed" });
+    expect(decide(chain({ state: "ready_for_human" }), snap(old, { pr_state: "MERGED" }))).toMatchObject({ kind: "transition", to: "closed" });
   });
 });
