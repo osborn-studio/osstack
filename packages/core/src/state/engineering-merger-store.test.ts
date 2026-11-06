@@ -486,7 +486,7 @@ it("gives the same results with the trigger creation order reversed", () => {
 });
 
 it("treats migrations as the single source for the merger DDL export", () => {
-  expect(MIGRATIONS.at(-1)).toMatchObject({ id: 52, name: "engineering_merger_shadow", sql: ENGINEERING_MERGER_DDL });
+  expect(MIGRATIONS.find(m => m.id === 52)).toMatchObject({ id: 52, name: "engineering_merger_shadow", sql: ENGINEERING_MERGER_DDL });
 });
 
 it("rejects nested sensitive or unknown gate fields at any depth", () => {

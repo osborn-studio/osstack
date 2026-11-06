@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AttentionOwner, AttentionStore } from "./attention-store.js";
 import type { ChainDecision, ChainMode, ChainState, ShadowAction } from "../bridge/revision-chain.js";
+import { LIVE_STOP_REASONS, RENEWABLE_STOP_REASONS, grantBindsChain, parseStoredGrant, type RevisionGrant } from "../bridge/revision-grant.js";
 
 export type ReservationState = "reserved" | "dispatched" | "void";
 export type IntentKind = "push" | "open_pr" | "check";
@@ -34,7 +35,12 @@ export interface NewChainInput {
   root_mission_id: string; repository: string; pr_number: number; branch: string; base_ref: string;
   published_head: string; published_base: string; trace_id: string; review_deadline?: number | null;
 }
-export interface NewLiveChainInput extends NewChainInput { grant: { rounds: 1 | 2 } & Record<string, unknown> }
+export interface NewLiveChainInput extends NewChainInput {
+  grant: { rounds: 1 | 2 } & Record<string, unknown>;
+  /** Start of the chain's wall-clock budget (ms). Kept in `budget_json`, not in the replaceable grant. Defaults to the creation time. */
+  budget_origin?: number;
+}
+export interface ReplaceGrantResult { chain: RevisionChain; /** The published head already has a reservation, so it will not be revised again (appendix §5.1). */ head_consumed: boolean }
 export interface ReserveInput { head: string; review_ids: readonly number[]; feedback_digest: string }
 export interface NewIntentInput {
   kind: IntentKind; branch: string; expected_old_head?: string; new_head?: string; expected_base_sha?: string;
@@ -121,7 +127,7 @@ export class RevisionChainStore {
     return this.create("shadow", input, { kind: "shadow_hypothetical" }, now);
   }
   createLiveChain(input: NewLiveChainInput, now: number): RevisionChain {
-    return this.create("live", input, { ...input.grant, kind: "live" }, now);
+    return this.create("live", input, { ...input.grant, kind: "live" }, now, input.budget_origin ?? now);
   }
 
   /** One transaction: the chain write, its event and (shadow) its decision row. Revision mismatch throws `version_conflict`. */
@@ -248,12 +254,100 @@ export class RevisionChainStore {
     });
   }
 
+
+  /** Run `fn` inside one `BEGIN IMMEDIATE` under the owner fence. Store methods called from `fn` become savepoints, so a
+   * dispatch can span the chain store and the Mission store (both live on `attention.db`) and roll back together. `fn` must be
+   * synchronous and make no I/O. */
+  transaction<T>(fn: () => T): T { return this.write(fn); }
+
+  /** Replace a live chain's grant (appendix §5.1 "再授"). Only for `awaiting_review`/`ready_for_human`, or `awaiting_decision`
+   * stopped by `rounds_exhausted`/`grant_expired`/`grant_invalid`/`budget_exhausted`, with no unsettled push intent. The new grant
+   * keeps the binding and scope, never lowers the allowance or a budget limit, and must carry `renews = {chain, ifRevision}`.
+   * Authenticity (signature, live PR facts, principal) is the caller's; the store enforces monotonicity and the state contract. */
+  replaceGrant(chainId: string, ifRevision: number, grant: RevisionGrant, now: number): ReplaceGrantResult {
+    this.clock(now);
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live") fail("bridge_shadow_write_denied");
+      if (chain.state === "closed") fail("chain_terminal");
+      const next = (() => { try { return parseStoredGrant(JSON.stringify(grant)); } catch { return fail("grant_invalid"); } })();
+      const old = (() => { try { return parseStoredGrant(chain.grant_json); } catch { return fail("chain_grant_unreadable"); } })();
+      const reason = chain.stop_reason ?? "";
+      const stopped = chain.state === "awaiting_decision" && RENEWABLE_STOP_REASONS.has(reason);
+      if (!stopped && chain.state !== "awaiting_review" && chain.state !== "ready_for_human") fail("state_denied");
+      if (this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain') LIMIT 1").get(chainId)) fail("intent_unsettled");
+      if (!grantBindsChain(next, chain) || next.scope_id !== old.scope_id || next.protected_set_digest !== old.protected_set_digest
+        || next.renews?.chain_id !== chainId || next.renews.revision !== ifRevision || next.grant_id === old.grant_id) fail("grant_binding_mismatch");
+      if (next.rounds < old.rounds || chain.rounds_used > next.rounds || next.budget.max_executor_seconds < old.budget.max_executor_seconds
+        || next.budget.max_container_seconds < old.budget.max_container_seconds || next.budget.max_wall_clock_hours < old.budget.max_wall_clock_hours) fail("grant_not_monotonic");
+      if (next.expires_at <= now || next.issued_at > now) fail("grant_expired");
+      if (reason === "rounds_exhausted" && next.rounds <= chain.rounds_used) fail("rounds_not_raised");
+      if (reason === "budget_exhausted" && !(next.budget.max_executor_seconds > old.budget.max_executor_seconds
+        || next.budget.max_container_seconds > old.budget.max_container_seconds || next.budget.max_wall_clock_hours > old.budget.max_wall_clock_hours)) fail("budget_not_raised");
+      let to: ChainState = chain.state;
+      if (stopped) {
+        if (chain.current_mission_id === null) to = "awaiting_review";
+        else {
+          const child = this.db.prepare("SELECT m.state state,m.stop_obligation stop,c.state claim FROM engineering_contained_missions m LEFT JOIN engineering_workspace_claims c ON c.mission_id=m.mission_id WHERE m.mission_id=?")
+            .get(chain.current_mission_id) as { state: string; stop: number; claim: string | null } | undefined;
+          if (!child) fail("not_found");
+          else if (["pr_opened", "cancelled", "abandoned", "failed"].includes(child.state)) {
+            if (child.stop !== 0) fail("child_stop_unproven");
+            if (child.claim === "active") fail("child_claim_unreleased");
+            to = "awaiting_review";
+          } else {
+            // The child was parked by the grant or budget stop, not cancelled: resume the state it was stopped from.
+            const pushed = this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? LIMIT 1").get(chainId, chain.current_mission_id);
+            to = pushed ? "publishing" : "revising";
+          }
+        }
+      }
+      const headConsumed = Boolean(this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, chain.published_head));
+      const updated = this.update(chain, { state: to, grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms }, "grant_replaced",
+        { head: chain.published_head, base: chain.published_base }, now);
+      this.event(chainId, "grant_replaced", {
+        grant_id: next.grant_id, from_grant_id: old.grant_id, rounds: { from: old.rounds, to: next.rounds }, expires_at: next.expires_at, budget: next.budget,
+        restored_state: to, head_consumed: headConsumed,
+      }, now);
+      return { chain: updated, head_consumed: headConsumed };
+    });
+  }
+
+  /** Stop a live chain for a human (appendix §4.4): any non-terminal, non-stopped state -> `awaiting_decision(reason)`. */
+  stopLive(chainId: string, ifRevision: number, reason: string, now: number): RevisionChain {
+    this.clock(now);
+    const base = reason.split(":")[0] ?? "";
+    if (reason.length > 64 || !/^[a-z_]+(:[A-Za-z0-9_.-]{1,48})?$/.test(reason)
+      || !((LIVE_STOP_REASONS as readonly string[]).includes(reason) || (base === "publish_refused" && reason.includes(":")))) fail("invalid_reason");
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live") fail("bridge_shadow_write_denied");
+      if (chain.state === "closed" || chain.state === "awaiting_decision") fail("state_denied");
+      return this.update(chain, { state: "awaiting_decision", stop_reason: reason }, reason, { head: chain.published_head, base: chain.published_base }, now);
+    });
+  }
+
+  /** Close a live chain (human abandon or takeover, appendix §5.1). Any in-flight reservation is voided in the same transaction; the
+   * caller requests cancellation of the current child afterwards. */
+  closeLive(chainId: string, ifRevision: number, reason: string, now: number): RevisionChain {
+    this.clock(now);
+    if (!/^[a-z_]+(:[A-Za-z0-9_.-]{1,48})?$/.test(reason) || reason.length > 64) fail("invalid_reason");
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live") fail("bridge_shadow_write_denied");
+      if (chain.state === "closed") fail("chain_terminal");
+      this.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason=?,updated_at=? WHERE chain_id=? AND state IN ('reserved','dispatched')")
+        .run(`chain_closed:${reason}`.slice(0, 64), now, chainId);
+      return this.update(chain, { state: "closed" }, reason, { head: chain.published_head, base: chain.published_base }, now);
+    });
+  }
+
   appendEvent(chainId: string, kind: string, payload: unknown, now: number): number {
     this.clock(now);
     return this.write(() => { this.get(chainId); return this.event(chainId, kind, payload, now); });
   }
 
-  private create(mode: ChainMode, input: NewChainInput, grant: Record<string, unknown>, now: number): RevisionChain {
+  private create(mode: ChainMode, input: NewChainInput, grant: Record<string, unknown>, now: number, budgetOrigin?: number): RevisionChain {
     this.clock(now);
     for (const v of [input.root_mission_id, input.repository, input.branch, input.base_ref, input.published_head, input.published_base, input.trace_id]) {
       if (typeof v !== "string" || v.length === 0 || v.length > 1024) fail("invalid_chain");
@@ -261,12 +355,15 @@ export class RevisionChainStore {
     if (!Number.isSafeInteger(input.pr_number) || input.pr_number < 1) fail("invalid_chain");
     const deadline = input.review_deadline ?? null;
     if (deadline !== null && (!Number.isSafeInteger(deadline) || deadline < 0)) fail("invalid_chain");
+    if (budgetOrigin !== undefined && (!Number.isSafeInteger(budgetOrigin) || budgetOrigin < 0)) fail("invalid_chain");
+    const budgetJson = budgetOrigin === undefined ? null : JSON.stringify({ origin: budgetOrigin });
+    const spentJson = budgetOrigin === undefined ? null : JSON.stringify({ allocations: {} });
     return this.write(() => {
       const chainId = `rc_${randomUUID()}`;
       this.db.prepare(`INSERT INTO engineering_revision_chains(chain_id,mode,root_mission_id,repository,pr_number,branch,base_ref,published_head,published_base,
-        grant_json,rounds_used,state,review_deadline,trace_id,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,'awaiting_review',?,?,1,?,?)`)
+        grant_json,rounds_used,state,review_deadline,budget_json,spent_json,trace_id,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,'awaiting_review',?,?,?,?,1,?,?)`)
         .run(chainId, mode, input.root_mission_id, input.repository, input.pr_number, input.branch, input.base_ref, input.published_head, input.published_base,
-          JSON.stringify(grant), deadline, input.trace_id, now, now);
+          JSON.stringify(grant), deadline, budgetJson, spentJson, input.trace_id, now, now);
       this.event(chainId, "chain_created", { mode, repository: input.repository, pr_number: input.pr_number, head: input.published_head, base: input.published_base }, now);
       return this.get(chainId);
     });
@@ -318,9 +415,12 @@ export class RevisionChainStore {
   private update(chain: RevisionChain, patch: Patch, reason: string, at: { head: string; base: string }, now: number): RevisionChain {
     const next = { ...chain, ...patch };
     const stop = next.state === "awaiting_decision" ? (patch.stop_reason ?? chain.stop_reason) : null;
+    // grant_json is named in the SET list only for a re-grant, so every other update stays clear of the grant triggers.
+    const grant = patch.grant_json !== undefined;
     this.db.prepare(`UPDATE engineering_revision_chains SET state=?,stop_reason=?,published_head=?,published_base=?,rounds_used=?,current_mission_id=?,
-      revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?`)
-      .run(next.state, stop, next.published_head, next.published_base, next.rounds_used, next.current_mission_id, now, chain.chain_id, chain.revision);
+      ${grant ? "grant_json=?,review_deadline=?," : ""}revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?`)
+      .run(next.state, stop, next.published_head, next.published_base, next.rounds_used, next.current_mission_id,
+        ...(grant ? [patch.grant_json, patch.review_deadline ?? chain.review_deadline] : []), now, chain.chain_id, chain.revision);
     this.event(chain.chain_id, "transition", { from: chain.state, to: next.state, reason, head: at.head, base: at.base, ...(stop ? { stop_reason: stop } : {}) }, now);
     return this.get(chain.chain_id);
   }
@@ -360,7 +460,7 @@ export class RevisionChainStore {
 
 interface Patch {
   state?: ChainState; stop_reason?: string | null; published_head?: string; published_base?: string;
-  rounds_used?: number; current_mission_id?: string | null;
+  rounds_used?: number; current_mission_id?: string | null; grant_json?: string; review_deadline?: number | null;
 }
 
 /** Upgrade holds for revision chains: reservations and intents recovery would still visit. */

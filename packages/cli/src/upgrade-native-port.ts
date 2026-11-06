@@ -16,7 +16,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 52;
+export const UPGRADE_QUALIFIED_SCHEMA = 53;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -141,9 +141,14 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // intents) counts in engineeringUpgradeHolds.
       // 52 adds the shadow-merger ledger: append-only evidence plus per-PR ordering counters. It holds no in-flight
       // side effect (nothing is dispatched or published), so engineeringUpgradeHolds does not count it.
+      // 53 adds two triggers on engineering_revision_chains (grant monotonicity). No table and no in-flight side effect of its own:
+      // a live chain's reservations and push intents are already counted by engineeringUpgradeHolds. The triggers are the guard,
+      // so a schema-53 home without them (or an older home that has them) is refused below.
       if(schema>=52)expected.push('engineering_merger_shadow_watermarks','engineering_merger_shadow_cycles','engineering_merger_shadow_decisions','engineering_merger_shadow_outcomes');
       if(schema>=51)expected.push('engineering_revision_chains','engineering_revision_reservations','engineering_publication_intents','engineering_revision_chain_events','engineering_shadow_decisions');
-      if(expected.some(name=>!tables.has(name)))throw Error('upgrade_schema_tables_missing');
+      const triggers = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='trigger'").all() as {name:string}[]).map(r=>r.name));
+      const grantTriggers=['engineering_chain_grant_monotonic','engineering_chain_grant_shadow_fixed'];
+      if(expected.some(name=>!tables.has(name))||(schema>=53&&grantTriggers.some(name=>!triggers.has(name))))throw Error('upgrade_schema_tables_missing');
       if((db.prepare("SELECT count(*) n FROM improvement_executions WHERE state IN ('claimed','running')").get() as {n:number}).n>0)throw Error('upgrade_unknown_actions');
       if(graphUpgradeHolds(db)>0)throw Error('upgrade_graph_holds');
       if((db.prepare("SELECT count(*) n FROM graph_actions WHERE state IN ('running','unknown','cancel_pending')").get() as {n:number}).n>0
@@ -154,6 +159,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema<49&&(tables.has('attention_item_settlements')||tables.has('attention_dead_letters')))throw Error('upgrade_schema_unqualified');
       if(schema<50&&(tables.has('engineering_contained_missions')||tables.has('engineering_workspace_claims')))throw Error('upgrade_schema_unqualified');
       if(schema<51&&(tables.has('engineering_revision_chains')||tables.has('engineering_revision_reservations')||tables.has('engineering_publication_intents')||tables.has('engineering_revision_chain_events')||tables.has('engineering_shadow_decisions')))throw Error('upgrade_schema_unqualified');
+      if(schema<53&&grantTriggers.some(name=>triggers.has(name)))throw Error('upgrade_schema_unqualified');
       if(schema<52&&(tables.has('engineering_merger_shadow_watermarks')||tables.has('engineering_merger_shadow_cycles')||tables.has('engineering_merger_shadow_decisions')||tables.has('engineering_merger_shadow_outcomes')))throw Error('upgrade_schema_unqualified');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
       this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
