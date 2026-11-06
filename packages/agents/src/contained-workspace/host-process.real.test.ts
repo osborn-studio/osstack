@@ -395,10 +395,15 @@ describe("holders, groups and the escaped holder (T7)", () => {
 
   it("a replaced marker (same path, new inode) is lost", async () => {
     const { fd, marker } = makeMarker("replaced.hold");
-    closeSync(fd);
+    // Keep the old inode alive while the path is replaced, so the file system cannot hand the same inode
+    // number to the new file (Linux ext4/tmpfs reuse it immediately after unlink).
     unlinkSync(marker.path);
     writeFileSync(marker.path, "");
-    expect(await createHostProcessProbe().markerIdentity(marker)).toBe("lost");
+    try {
+      expect(await createHostProcessProbe().markerIdentity(marker)).toBe("lost");
+    } finally {
+      closeSync(fd);
+    }
   });
 
   it("a marker replaced between the identity check and the scan makes the scan unavailable (never an 'unheld' answer)", async () => {
@@ -433,7 +438,8 @@ describe("holders, groups and the escaped holder (T7)", () => {
     expect(processGroupPresent(leaderPid)).toBe(false);
   });
 
-  it("T7: a released command that leaves a detached fd-3 holder behind is unknown(escaped_holder) until the holder exits", { timeout: SLOW }, async () => {
+  // macOS only: the W13 probe targets macOS lsof (the Linux probe is parser-tested only, design §5).
+  it.skipIf(process.platform !== "darwin")("T7: a released command that leaves a detached fd-3 holder behind is unknown(escaped_holder) until the holder exits", { timeout: SLOW }, async () => {
     const j = journal();
     const result = await run(
       j,
