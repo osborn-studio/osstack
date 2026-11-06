@@ -4,7 +4,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import type { PrSnapshot, PrState, ProducerRegistry, ReviewState, SnapshotReview } from '@osstack/core';
-import { redactSecrets } from '@osstack/governance';
 import { z } from 'zod';
 
 export type GraphqlTransport = (query: string, variables: Record<string, unknown>) => Promise<unknown>;
@@ -65,11 +64,11 @@ export const THREAD_COMMENTS_QUERY = `query BridgeThreadComments($id: ID!, $afte
   }
 }`;
 
-export const SECOND_READ_QUERY = `query BridgeSecondRead($owner: String!, $name: String!, $number: Int!) {
+export const SECOND_READ_QUERY = `query BridgeSecondRead($owner: String!, $name: String!, $number: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
       headRefOid baseRefOid baseRefName
-      reviews(first: ${PAGE}) { nodes { databaseId state } }
+      reviews(first: ${PAGE}, after: $after) { pageInfo { hasNextPage endCursor } nodes { databaseId state } }
     }
   }
 }`;
@@ -98,9 +97,6 @@ const defaultGhExec: GhExec = (args, options) =>
     });
   });
 
-const printable = (text: string): string => Array.from(text, (ch) => (ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) === 0x7f ? ' ' : ch)).join('');
-const scrub = (text: string): string => printable(redactSecrets(text).replace(/gh[pousr]_[A-Za-z0-9_]+/gu, '[REDACTED]')).slice(0, 200);
-
 /** `gh api graphql` with the host's own gh authentication (no App token is ever added). Strings go as raw `-f`, numbers and booleans as typed `-F`. */
 export function ghGraphqlTransport(exec: GhExec = defaultGhExec, timeoutMs = 30_000): GraphqlTransport {
   return async (query, variables) => {
@@ -110,14 +106,14 @@ export function ghGraphqlTransport(exec: GhExec = defaultGhExec, timeoutMs = 30_
       if (value === null || value === undefined) continue;
       if (typeof value === 'string') args.push('-f', `${key}=${value}`);
       else if (typeof value === 'number' || typeof value === 'boolean') args.push('-F', `${key}=${String(value)}`);
-      else throw new Error('GH_GRAPHQL_VARIABLE_TYPE');
+      else throw new Error('BRIDGE_READ_VARIABLE_TYPE');
     }
     const done = await exec(args, { timeoutMs });
-    if (done.exitCode !== 0) throw new Error(`GH_GRAPHQL_FAILED:${done.exitCode}:${scrub(done.stderr)}`);
+    if (done.exitCode !== 0) throw new Error(`BRIDGE_READ_GH_FAILED:${done.exitCode}`);
     try {
       return JSON.parse(done.stdout) as unknown;
     } catch {
-      throw new Error('GH_GRAPHQL_MALFORMED');
+      throw new Error('BRIDGE_READ_GH_MALFORMED');
     }
   };
 }
@@ -126,7 +122,7 @@ export function ghGraphqlTransport(exec: GhExec = defaultGhExec, timeoutMs = 30_
 
 const authorSchema = z.object({ __typename: z.string(), databaseId: z.number().int().optional() }).nullable();
 const pageInfoSchema = z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() });
-const connection = <T extends z.ZodTypeAny>(node: T) => z.object({ pageInfo: pageInfoSchema, nodes: z.array(node.nullable()) });
+const connection = <T extends z.ZodTypeAny>(node: T) => z.object({ pageInfo: pageInfoSchema, nodes: z.array(node) });
 
 const rawReviewSchema = z.object({
   databaseId: z.number().int(),
@@ -260,11 +256,11 @@ export async function readPullRequest(transport: GraphqlTransport, ref: PullRequ
       pending = still;
     }
     if (!first) throw new Incomplete('malformed_response');
-    const nodesOf = <T>(name: ConnectionName): T[] => pages.get(name)!.nodes.filter((n) => n !== null) as T[];
+    const nodesOf = <T>(name: ConnectionName): T[] => pages.get(name)!.nodes as T[];
     const threadsRaw = nodesOf<z.infer<typeof rawThreadSchema>>('reviewThreads');
     const threads: RawThread[] = [];
     for (const thread of threadsRaw) {
-      const comments = thread.comments.nodes.filter((n): n is RawComment => n !== null);
+      const comments: RawComment[] = [...thread.comments.nodes];
       let { hasNextPage, endCursor } = thread.comments.pageInfo;
       let pageCount = 1;
       while (hasNextPage) {
@@ -274,7 +270,7 @@ export async function readPullRequest(transport: GraphqlTransport, ref: PullRequ
         const conn = parsed.success ? parsed.data.data?.node?.comments : undefined;
         if (!conn) throw new Incomplete('malformed_response');
         pageCount += 1;
-        comments.push(...conn.nodes.filter((n): n is RawComment => n !== null));
+        comments.push(...conn.nodes);
         ({ hasNextPage, endCursor } = conn.pageInfo);
       }
       threads.push({ id: thread.id, isResolved: thread.isResolved, comments });
@@ -352,18 +348,20 @@ export function normalizeSnapshot(read: PullRequestRead, registry: ProducerRegis
     return { pr_state: 'OPEN', head: '', base_sha: '', base_ref: '', observed_at: observedAt, reviews: [], complete: false, moved: false };
   }
   const { pr } = read;
+  // A thread belongs to the review of its FIRST comment (lowest databaseId). A thread whose first comment has no review
+  // belongs to no review. All of the thread's non-empty comments are that review's feedback, whoever replied.
   const unresolved = new Map<number, { threadId: string; databaseId: number; body: string }[]>();
   for (const thread of pr.threads) {
-    if (thread.isResolved) continue;
+    if (thread.isResolved || thread.comments.length === 0) continue;
+    const first = thread.comments.reduce((a, b) => (b.databaseId < a.databaseId ? b : a));
+    const owner = first.pullRequestReview?.databaseId;
+    if (owner === undefined) continue;
+    const list = unresolved.get(owner) ?? [];
     for (const comment of thread.comments) {
-      const reviewId = comment.pullRequestReview?.databaseId;
-      if (reviewId === undefined) continue;
       const body = normalizeBody(comment.body);
-      if (body === '') continue;
-      const list = unresolved.get(reviewId) ?? [];
-      list.push({ threadId: thread.id, databaseId: comment.databaseId, body });
-      unresolved.set(reviewId, list);
+      if (body !== '') list.push({ threadId: thread.id, databaseId: comment.databaseId, body });
     }
+    unresolved.set(owner, list);
   }
   const reviews: SnapshotReview[] = [];
   for (const raw of pr.reviews) {
@@ -391,39 +389,55 @@ export function normalizeSnapshot(read: PullRequestRead, registry: ProducerRegis
 const secondReadSchema = z.object({
   data: z
     .object({
-      repository: z.object({
-        pullRequest: z
-          .object({
-            headRefOid: z.string(),
-            baseRefOid: z.string(),
-            baseRefName: z.string(),
-            reviews: z.object({ nodes: z.array(z.object({ databaseId: z.number().int(), state: z.string() }).nullable()) }),
-          })
-          .nullable(),
-      }).nullable(),
+      repository: z
+        .object({
+          pullRequest: z
+            .object({
+              headRefOid: z.string(),
+              baseRefOid: z.string(),
+              baseRefName: z.string(),
+              reviews: z.object({ pageInfo: pageInfoSchema, nodes: z.array(z.object({ databaseId: z.number().int(), state: z.string() })) }),
+            })
+            .nullable(),
+        })
+        .nullable(),
     })
     .nullable()
     .optional(),
   errors: z.array(z.unknown()).optional(),
 });
 
-/** One small query before a would_reserve / would_mark_ready is recorded. Returns true ("moved") when the head, base sha,
- * base ref or any selected review's state differs, when a selected review is not on the first page of reviews, and on any
- * failure: a decision that cannot be confirmed is discarded. */
+/** Small queries before a would_reserve / would_mark_ready is recorded. Pages `reviews` until every selected review is found.
+ * Returns true ("moved") when the head, base sha, base ref or any selected review's state differs, when a selected review is
+ * never found, when the request cap is hit, and on any failure: a decision that cannot be confirmed is discarded. */
 export async function secondRead(
   transport: GraphqlTransport,
   ref: PullRequestRef,
   expected: { head: string; base_sha: string; base_ref: string; reviews: readonly { review_id: number; state: ReviewState }[] },
+  limits: Pick<ReadLimits, 'maxRequests'> = DEFAULT_READ_LIMITS,
 ): Promise<boolean> {
   try {
-    const parsed = secondReadSchema.safeParse(await transport(SECOND_READ_QUERY, { owner: ref.owner, name: ref.name, number: ref.number }));
-    if (!parsed.success || (parsed.data.errors?.length ?? 0) > 0) return true;
-    const pr = parsed.data.data?.repository?.pullRequest;
-    if (!pr) return true;
-    if (pr.headRefOid !== expected.head || pr.baseRefOid !== expected.base_sha || pr.baseRefName !== expected.base_ref) return true;
-    const states = new Map<number, string>();
-    for (const node of pr.reviews.nodes) if (node) states.set(node.databaseId, node.state);
-    return expected.reviews.some((r) => states.get(r.review_id) !== r.state);
+    const wanted = new Map(expected.reviews.map((r) => [r.review_id, r.state as string]));
+    let after: string | null = null;
+    for (let request = 0; request < limits.maxRequests; request += 1) {
+      const variables: Record<string, unknown> = { owner: ref.owner, name: ref.name, number: ref.number };
+      if (after) variables['after'] = after;
+      const parsed = secondReadSchema.safeParse(await transport(SECOND_READ_QUERY, variables));
+      if (!parsed.success || (parsed.data.errors?.length ?? 0) > 0) return true;
+      const pr = parsed.data.data?.repository?.pullRequest;
+      if (!pr) return true;
+      if (pr.headRefOid !== expected.head || pr.baseRefOid !== expected.base_sha || pr.baseRefName !== expected.base_ref) return true;
+      for (const node of pr.reviews.nodes) {
+        const state = wanted.get(node.databaseId);
+        if (state === undefined) continue;
+        if (state !== node.state) return true;
+        wanted.delete(node.databaseId);
+      }
+      if (wanted.size === 0) return false;
+      if (!pr.reviews.pageInfo.hasNextPage || !pr.reviews.pageInfo.endCursor) return true;
+      after = pr.reviews.pageInfo.endCursor;
+    }
+    return true;
   } catch {
     return true;
   }

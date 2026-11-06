@@ -1,6 +1,8 @@
-import type { PrSnapshot, ProducerRegistry } from '@osstack/core';
+import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { type PrSnapshot, type ProducerRegistry, createScratchDir } from '@osstack/core';
 import { describe, expect, it } from 'vitest';
-import { assertFixtureFile, fixtureWith, pseudonymizeSnapshot, scanForLeaks } from './contained-mission-bridge-fixture.js';
+import { assertFixtureFile, fixtureMapPath, fixtureWith, newFixtureMap, pseudonymizeSnapshot, readFixtureMap, scanForLeaks, writeFixtureMap } from './contained-mission-bridge-fixture.js';
 
 const HEAD = 'a'.repeat(40);
 const registry: ProducerRegistry = {
@@ -48,7 +50,7 @@ describe('allowlist schema', () => {
   it('rejects a real-looking actor id, a non-hex oid and an odd base ref', () => {
     const real = good(); real.snapshots[0]!.reviews[0]!.reviewer.actor_id = 160148718;
     const oid = good(); oid.snapshots[0]!.head = 'not-a-sha';
-    const ref = good(); ref.snapshots[0]!.base_ref = 'https://x.example/@y';
+    const ref = good(); ref.snapshots[0]!.base_ref = 'release-2026';
     for (const bad of [real, oid, ref]) expect(() => assertFixtureFile(bad)).toThrow(/FIXTURE_REJECTED/u);
   });
   it('does not echo the rejected value', () => {
@@ -85,5 +87,70 @@ describe('fixtureWith', () => {
     expect(second.snapshots.map((s) => s.observed_at)).toEqual([1_700_000_000_000, 1_700_000_100_000]);
     const other: ProducerRegistry = { publisher: registry.publisher, reviewers: [registry.reviewers[0]!] };
     expect(() => fixtureWith(first, pseudonymizeSnapshot(snapshot, other))).toThrow('FIXTURE_REJECTED:registry_mismatch');
+  });
+});
+
+describe('stable pseudonym map (item: append consistency)', () => {
+  const later: PrSnapshot = {
+    ...snapshot, observed_at: 1_700_000_100_000,
+    reviews: [
+      { ...snapshot.reviews[0]!, reviewer: { actor_id: 111111111, app_id: null }, review_id: 21 }, // sorts before 777777777
+      snapshot.reviews[1]!,
+    ],
+  };
+
+  it('keeps an unregistered actor on the same pseudonym across recordings, even when new actors sort before it', () => {
+    const first = pseudonymizeSnapshot(snapshot, registry);
+    const second = pseudonymizeSnapshot(later, registry, first.map);
+    const stranger = (p: ReturnType<typeof pseudonymizeSnapshot>) => p.snapshot.reviews.find((r) => r.review_id === 12)!.reviewer;
+    expect(stranger(second)).toEqual(stranger(first));
+    expect(second.snapshot.reviews.find((r) => r.review_id === 21)!.reviewer.actor_id).not.toBe(stranger(first).actor_id);
+    expect(() => fixtureWith(fixtureWith(undefined, first), second)).not.toThrow();
+  });
+
+  it('does not mutate the previous map, and the fixture never contains the map', () => {
+    const map = newFixtureMap();
+    const out = pseudonymizeSnapshot(snapshot, registry, map);
+    expect(map.actors).toEqual({});
+    const text = JSON.stringify(fixtureWith(undefined, out));
+    for (const id of [269190136, 777777777]) expect(text).not.toContain(String(id));
+    expect(text).not.toContain(map.salt);
+    expect(text).not.toContain(out.map.salt);
+  });
+
+  it('round-trips the sidecar privately and reports a missing one', async () => {
+    const dir = await createScratchDir('tests', 'fixture-map');
+    const path = fixtureMapPath('o/r', 7, { OSSTACK_FIXTURE_MAP_DIR: join(dir, 'maps') });
+    expect(path).toBe(join(dir, 'maps', 'o-r-7.json'));
+    expect(await readFixtureMap(path)).toBeUndefined();
+    const { map } = pseudonymizeSnapshot(snapshot, registry);
+    await writeFixtureMap(path, map);
+    expect(await readFixtureMap(path)).toEqual(map);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe('digest salting and refs', () => {
+  const withDigest = (digest: string | null, base_ref = 'main'): PrSnapshot => ({ ...snapshot, base_ref, reviews: [{ ...snapshot.reviews[1]!, feedback_digest: digest }] });
+
+  it('replaces digests with a salted HMAC: equal inside a file, different across salts, never the raw digest', () => {
+    const map = newFixtureMap('00'.repeat(32));
+    const a = pseudonymizeSnapshot(withDigest('c'.repeat(64)), registry, map).snapshot.reviews[0]!.feedback_digest;
+    const b = pseudonymizeSnapshot(withDigest('c'.repeat(64)), registry, map).snapshot.reviews[0]!.feedback_digest;
+    const c = pseudonymizeSnapshot(withDigest('c'.repeat(64)), registry, newFixtureMap('11'.repeat(32))).snapshot.reviews[0]!.feedback_digest;
+    expect(a).toBe(b);
+    expect(a).not.toBe('c'.repeat(64));
+    expect(c).not.toBe(a);
+    expect(pseudonymizeSnapshot(withDigest(null), registry).snapshot.reviews[0]!.feedback_digest).toBeNull();
+  });
+
+  it('keeps main and pseudonymises every other base ref consistently', () => {
+    expect(pseudonymizeSnapshot(withDigest(null, 'main'), registry).snapshot.base_ref).toBe('main');
+    const one = pseudonymizeSnapshot(withDigest(null, 'feature/secret-login'), registry);
+    expect(one.snapshot.base_ref).toBe('ref1');
+    const two = pseudonymizeSnapshot(withDigest(null, 'other'), registry, one.map);
+    expect(two.snapshot.base_ref).toBe('ref2');
+    expect(pseudonymizeSnapshot(withDigest(null, 'feature/secret-login'), registry, two.map).snapshot.base_ref).toBe('ref1');
+    expect(JSON.stringify(one.snapshot)).not.toContain('secret');
   });
 });

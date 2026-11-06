@@ -137,6 +137,35 @@ describe('readPullRequest', () => {
     expect(await readPullRequest(async () => 'nonsense', REF)).toEqual({ complete: false, reason: 'malformed_response' });
   });
 
+  it('treats a null node in any connection as malformed, never complete', async () => {
+    const good = server({ reviews: [review(1)], threads: [{ id: 'T', isResolved: false, comments: [comment(1, 1, 'x')] }], commits: [HEAD], timeline: ['MERGED_EVENT'] });
+    const cases: [string, (pr: Record<string, { nodes: unknown[] }>) => void][] = [
+      ['reviews', (pr) => pr['reviews']!.nodes.push(null)],
+      ['threads', (pr) => pr['reviewThreads']!.nodes.push(null)],
+      ['commits', (pr) => pr['commits']!.nodes.push(null)],
+      ['timeline', (pr) => pr['timelineItems']!.nodes.push(null)],
+      ['inline comments', (pr) => (pr['reviewThreads']!.nodes[0] as { comments: { nodes: unknown[] } }).comments.nodes.push(null)],
+    ];
+    for (const [, mutate] of cases) {
+      const t: GraphqlTransport = async (q, v) => {
+        const body = (await good(q, v)) as { data: { repository: { pullRequest: Record<string, { nodes: unknown[] }> } } };
+        mutate(body.data.repository.pullRequest);
+        return body;
+      };
+      expect(await readPullRequest(t, REF)).toEqual({ complete: false, reason: 'malformed_response' });
+    }
+  });
+
+  it('treats a null node on a node() comment page as malformed', async () => {
+    const inner = server({ threads: [{ id: 'T', isResolved: false, comments: Array.from({ length: 150 }, (_, i) => comment(i + 1, 1, 'x')) }] });
+    const t: GraphqlTransport = async (q, v) => {
+      const body = (await inner(q, v)) as { data: { node?: { comments: { nodes: unknown[] } } } };
+      if (q.includes('BridgeThreadComments')) body.data.node!.comments.nodes.push(null);
+      return body;
+    };
+    expect(await readPullRequest(t, REF)).toEqual({ complete: false, reason: 'malformed_response' });
+  });
+
   it('enforces the per-connection page cap', async () => {
     const reviews = Array.from({ length: 1001 }, (_, i) => review(i + 1));
     expect(await read({ reviews })).toMatchObject({ result: { complete: false, reason: 'page_cap' } });
@@ -222,14 +251,32 @@ describe('normalizeSnapshot', () => {
       threads: [
         { id: 'T1', isResolved: false, comments: [comment(10, 4, 'inline'), comment(11, 1, 'reply from other review')] },
         { id: 'T2', isResolved: true, comments: [comment(12, 5, 'resolved')] },
-        { id: 'T3', isResolved: false, comments: [comment(13, 6, '  \n'), comment(14, null, 'orphan')] },
+        { id: 'T3', isResolved: false, comments: [comment(13, 6, '  \n'), comment(14, null, 'orphan reply')] },
       ],
     });
-    expect(s.reviews.map((r) => r.has_feedback)).toEqual([true, false, false, true, false, false]);
-    expect(s.reviews.map((r) => r.feedback_digest === null)).toEqual([false, true, true, false, true, true]);
-    // review 1 owns a thread comment too, so its digest differs from a body-only digest
-    expect(s.reviews[0]!.feedback_digest).toBe(feedbackDigest('please fix', [{ threadId: 'T1', databaseId: 11, body: 'reply from other review' }]));
-    expect(s.reviews[3]!.feedback_digest).toBe(feedbackDigest('', [{ threadId: 'T1', databaseId: 10, body: 'inline' }]));
+    expect(s.reviews.map((r) => r.has_feedback)).toEqual([true, false, false, true, false, true]);
+    expect(s.reviews.map((r) => r.feedback_digest === null)).toEqual([false, true, true, false, true, false]);
+    // The thread belongs to the review of its first comment: review 1 keeps only its body, review 4 owns both T1 comments.
+    expect(s.reviews[0]!.feedback_digest).toBe(feedbackDigest('please fix', []));
+    expect(s.reviews[3]!.feedback_digest).toBe(feedbackDigest('', [{ threadId: 'T1', databaseId: 10, body: 'inline' }, { threadId: 'T1', databaseId: 11, body: 'reply from other review' }]));
+    expect(s.reviews[5]!.feedback_digest).toBe(feedbackDigest('', [{ threadId: 'T3', databaseId: 14, body: 'orphan reply' }]));
+  });
+
+  it('assigns a thread to its first comment only: reply in a later review, null-review reply, thread started outside any review', async () => {
+    const s = await snap({
+      reviews: [
+        review(1, { state: 'CHANGES_REQUESTED' }), review(2, { state: 'CHANGES_REQUESTED' }), review(3, { state: 'CHANGES_REQUESTED' }),
+      ],
+      threads: [
+        { id: 'A', isResolved: false, comments: [comment(30, 1, 'starter'), comment(31, 2, 'later review reply'), comment(32, null, 'plain reply')] },
+        // started outside any review (e.g. a single comment): nobody owns it, even though review 3 replied
+        { id: 'B', isResolved: false, comments: [comment(40, null, 'standalone'), comment(41, 3, 'review reply')] },
+      ],
+    });
+    expect(s.reviews.map((r) => r.has_feedback)).toEqual([true, false, false]);
+    expect(s.reviews[0]!.feedback_digest).toBe(feedbackDigest('', [
+      { threadId: 'A', databaseId: 30, body: 'starter' }, { threadId: 'A', databaseId: 31, body: 'later review reply' }, { threadId: 'A', databaseId: 32, body: 'plain reply' },
+    ]));
   });
 
   it('digest is stable across CRLF, trailing whitespace and thread/comment arrival order, and changes with content', async () => {
@@ -294,10 +341,9 @@ describe('ghGraphqlTransport', () => {
 
   it('turns non-zero exits and bad output into scrubbed errors', async () => {
     const fail: GhExec = async () => ({ stdout: '', stderr: 'bad credentials ghp_abcdef123456', exitCode: 1 });
-    await expect(ghGraphqlTransport(fail)('query { x }', {})).rejects.toThrow(/GH_GRAPHQL_FAILED:1:.*\[REDACTED\]/u);
-    await expect(ghGraphqlTransport(fail)('query { x }', {})).rejects.not.toThrow(/ghp_/u);
+    await expect(ghGraphqlTransport(fail)('query { x }', {})).rejects.toThrow(/^BRIDGE_READ_GH_FAILED:1$/u);
     const junk: GhExec = async () => ({ stdout: 'not json', stderr: '', exitCode: 0 });
-    await expect(ghGraphqlTransport(junk)('query { x }', {})).rejects.toThrow('GH_GRAPHQL_MALFORMED');
+    await expect(ghGraphqlTransport(junk)('query { x }', {})).rejects.toThrow('BRIDGE_READ_GH_MALFORMED');
   });
 
   it('the reader never emits a mutation through a real-shaped transport (denial surfaces as incomplete)', async () => {
@@ -308,8 +354,9 @@ describe('ghGraphqlTransport', () => {
 
 describe('secondRead', () => {
   const expected = { head: HEAD, base_sha: BASE, base_ref: 'main', reviews: [{ review_id: 2, state: 'CHANGES_REQUESTED' as const }] };
-  const answer = (over: Record<string, unknown> = {}, nodes: unknown[] = [{ databaseId: 1, state: 'COMMENTED' }, { databaseId: 2, state: 'CHANGES_REQUESTED' }]) =>
-    async () => ({ data: { repository: { pullRequest: { headRefOid: HEAD, baseRefOid: BASE, baseRefName: 'main', reviews: { nodes }, ...over } } } });
+  const nodes = [{ databaseId: 1, state: 'COMMENTED' }, { databaseId: 2, state: 'CHANGES_REQUESTED' }];
+  const answer = (over: Record<string, unknown> = {}, list: unknown[] = nodes, pageInfo = { hasNextPage: false, endCursor: null as string | null }) =>
+    async () => ({ data: { repository: { pullRequest: { headRefOid: HEAD, baseRefOid: BASE, baseRefName: 'main', reviews: { pageInfo, nodes: list }, ...over } } } });
 
   it('is not moved when nothing changed', async () => {
     expect(await secondRead(answer(), REF, expected)).toBe(false);
@@ -321,9 +368,29 @@ describe('secondRead', () => {
   ])('is moved when the %s changed', async (_n, over) => {
     expect(await secondRead(answer(over), REF, expected)).toBe(true);
   });
-  it('is moved when a selected review changed state or is not on the first page', async () => {
+  it('is moved when a selected review changed state or never appears', async () => {
     expect(await secondRead(answer({}, [{ databaseId: 2, state: 'DISMISSED' }]), REF, expected)).toBe(true);
     expect(await secondRead(answer({}, [{ databaseId: 1, state: 'COMMENTED' }]), REF, expected)).toBe(true);
+  });
+  it('pages reviews until every selected review is found', async () => {
+    const all = Array.from({ length: 250 }, (_, i) => ({ databaseId: i + 1, state: i + 1 === 230 ? 'CHANGES_REQUESTED' : 'COMMENTED' }));
+    const calls: Record<string, unknown>[] = [];
+    const t: GraphqlTransport = async (_q, v) => {
+      calls.push(v);
+      const start = typeof v['after'] === 'string' ? Number(v['after']) : 0;
+      const end = Math.min(start + 100, all.length);
+      return answer({}, all.slice(start, end), { hasNextPage: end < all.length, endCursor: end < all.length ? String(end) : null })();
+    };
+    const want = { ...expected, reviews: [{ review_id: 230, state: 'CHANGES_REQUESTED' as const }] };
+    expect(await secondRead(t, REF, want)).toBe(false);
+    expect(calls.map((c) => c['after'])).toEqual([undefined, '100', '200']);
+    expect(await secondRead(t, REF, { ...want, reviews: [{ review_id: 230, state: 'APPROVED' as const }] })).toBe(true);
+  });
+  it('is moved when the request cap is hit before the selected review is found', async () => {
+    let n = 0;
+    const t: GraphqlTransport = async () => answer({}, [{ databaseId: ++n + 1000, state: 'COMMENTED' }], { hasNextPage: true, endCursor: String(n) })();
+    expect(await secondRead(t, REF, expected, { maxRequests: 3 })).toBe(true);
+    expect(n).toBe(3);
   });
   it('is moved on transport failure, GraphQL errors and malformed output', async () => {
     expect(await secondRead(async () => { throw new Error('x'); }, REF, expected)).toBe(true);

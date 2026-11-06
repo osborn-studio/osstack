@@ -1,5 +1,9 @@
 // De-identification and validation for recorded PrSnapshot fixtures (appendix §5.4). Used by
 // scripts/record-pr-timeline.mjs (through dist/bridge-fixture.js) and by tests; lazy-imported only.
+import { createHmac, randomBytes } from 'node:crypto';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import type { PrSnapshot, ProducerIdentity, ProducerRegistry } from '@osstack/core';
 import { z } from 'zod';
 
@@ -25,7 +29,8 @@ export const fixtureSnapshotSchema = z
     pr_state: z.enum(['OPEN', 'MERGED', 'CLOSED']),
     head: oid,
     base_sha: oid,
-    base_ref: z.string().regex(/^[A-Za-z0-9._/-]{1,100}$/u),
+    /** Only `main` is kept verbatim; every other ref is a per-file pseudonym (ref1, ref2, …). */
+    base_ref: z.string().regex(/^(?:main|ref[1-9][0-9]{0,2})$/u),
     observed_at: z.number().int().positive(),
     reviews: z.array(fixtureReviewSchema),
     complete: z.boolean(),
@@ -54,44 +59,99 @@ export function assertFixtureFile(value: unknown): FixtureFile {
   return result.data;
 }
 
+export const SAFE_REFS: ReadonlySet<string> = new Set(['main']);
+
 const key = (id: { actor_id: number; app_id: number | null }): string => `${id.app_id ?? 'u'}:${id.actor_id}`;
+
+/** Real-id -> pseudonym state of one fixture file. It contains real ids and the digest salt, so it must NEVER be written into
+ * the repository: it lives in a private sidecar (see fixtureMapPath) and is what keeps `--append` consistent. */
+export interface FixtureMap {
+  version: 1;
+  salt: string;
+  actors: Record<string, number>;
+  apps: Record<string, number>;
+  refs: Record<string, number>;
+}
+export const newFixtureMap = (salt: string = randomBytes(32).toString('hex')): FixtureMap => ({ version: 1, salt, actors: {}, apps: {}, refs: {} });
 
 export interface Pseudonymized {
   readonly snapshot: FixtureSnapshot;
   readonly registry: { publisher: ProducerIdentity[]; reviewers: ProducerIdentity[] };
+  /** The input map extended with whatever this snapshot introduced; persist it to the sidecar. */
+  readonly map: FixtureMap;
 }
 
-/** Replaces every actor id and App id with a small integer. Registered identities are numbered by registry order
- * (publisher first), so they are identical in every file recorded with the same registry; identities outside the registry
- * follow in ascending real-id order and are consistent within the snapshot. */
-export function pseudonymizeSnapshot(snapshot: PrSnapshot, registry: ProducerRegistry): Pseudonymized {
+/** Replaces every actor id, App id and non-allowlisted base ref with a small pseudonym, and each feedback digest with
+ * HMAC-SHA256(digest, per-file salt) so short bodies cannot be guessed from a fixture while equality inside a file survives.
+ * Registered identities are numbered by registry order (publisher first); anyone else takes the next free number, in ascending
+ * real-id order within the snapshot. Numbers are stable across recordings because they are kept in `map`. */
+export function pseudonymizeSnapshot(snapshot: PrSnapshot, registry: ProducerRegistry, previous: FixtureMap = newFixtureMap()): Pseudonymized {
   if (snapshot.observed_at === undefined) throw failure('missing:observed_at');
-  const actors = new Map<string, number>();
-  const apps = new Map<number, number>();
-  const app = (id: number | null): number | null => {
-    if (id === null) return null;
-    let mapped = apps.get(id);
-    if (mapped === undefined) { mapped = apps.size + 1; apps.set(id, mapped); }
-    return mapped;
+  const map: FixtureMap = { ...previous, actors: { ...previous.actors }, apps: { ...previous.apps }, refs: { ...previous.refs } };
+  const number = (table: Record<string, number>, k: string): number => {
+    const existing = table[k];
+    if (existing !== undefined) return existing;
+    const next = Object.keys(table).length + 1;
+    table[k] = next;
+    return next;
   };
+  const app = (id: number | null): number | null => (id === null ? null : number(map.apps, String(id)));
   const identity = (id: { actor_id: number; app_id: number | null }): ProducerIdentity => {
-    const k = key(id);
-    let mapped = actors.get(k);
-    if (mapped === undefined) { mapped = actors.size + 1; actors.set(k, mapped); }
-    return { actor_id: mapped, app_id: app(id.app_id) };
+    return { actor_id: number(map.actors, key(id)), app_id: app(id.app_id) };
   };
+  const ref = (name: string): string => (SAFE_REFS.has(name) ? name : `ref${number(map.refs, name)}`);
   const out = { publisher: registry.publisher.map(identity), reviewers: registry.reviewers.map(identity) };
   const others = snapshot.reviews.map((r) => r.reviewer).sort((a, b) => (a.app_id ?? 0) - (b.app_id ?? 0) || a.actor_id - b.actor_id);
   for (const o of others) identity(o);
+  const salted = (digest: string | null): string | null => (digest === null ? null : createHmac('sha256', Buffer.from(map.salt, 'hex')).update(digest).digest('hex'));
   const reviews = snapshot.reviews.map((r) => ({
     review_id: r.review_id, state: r.state, submitted_at: r.submitted_at, review_commit: r.review_commit,
-    reviewer: identity(r.reviewer), has_feedback: r.has_feedback, feedback_digest: r.feedback_digest,
+    reviewer: identity(r.reviewer), has_feedback: r.has_feedback, feedback_digest: salted(r.feedback_digest),
   }));
   const pseudo = {
-    pr_state: snapshot.pr_state, head: snapshot.head, base_sha: snapshot.base_sha, base_ref: snapshot.base_ref,
+    pr_state: snapshot.pr_state, head: snapshot.head, base_sha: snapshot.base_sha, base_ref: ref(snapshot.base_ref),
     observed_at: snapshot.observed_at, reviews, complete: snapshot.complete, moved: snapshot.moved,
   };
-  return { snapshot: assertFixtureFile({ version: 1, registry: out, snapshots: [pseudo] }).snapshots[0]!, registry: out };
+  return { snapshot: assertFixtureFile({ version: 1, registry: out, snapshots: [pseudo] }).snapshots[0]!, registry: out, map };
+}
+
+const mapSchema = z
+  .object({
+    version: z.literal(1),
+    salt: z.string().regex(/^[0-9a-f]{64}$/u),
+    actors: z.record(z.number().int().positive()),
+    apps: z.record(z.number().int().positive()),
+    refs: z.record(z.number().int().positive()),
+  })
+  .strict();
+
+/** Sidecar location: `$OSSTACK_FIXTURE_MAP_DIR`, else `~/.config/osstack-bridge/fixture-maps`. Not the scratch root, because
+ * scratch is routinely cleaned and the map must outlive the recording session to keep `--append` consistent. */
+export function fixtureMapPath(repo: string, pr: number, env: Readonly<Record<string, string | undefined>> = process.env): string {
+  const dir = env['OSSTACK_FIXTURE_MAP_DIR']?.trim() || join(homedir(), '.config', 'osstack-bridge', 'fixture-maps');
+  return join(dir, `${repo.replace(/[^A-Za-z0-9._-]+/gu, '-')}-${pr}.json`);
+}
+
+/** Missing sidecar returns undefined; the caller must fail closed when it needs one (append). */
+export async function readFixtureMap(path: string): Promise<FixtureMap | undefined> {
+  let text: string;
+  try {
+    text = await readFile(path, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw new Error('FIXTURE_MAP_UNREADABLE');
+  }
+  try {
+    return mapSchema.parse(JSON.parse(text));
+  } catch {
+    throw new Error('FIXTURE_MAP_INVALID');
+  }
+}
+
+export async function writeFixtureMap(path: string, map: FixtureMap): Promise<void> {
+  await mkdir(join(path, '..'), { recursive: true, mode: 0o700 });
+  await writeFile(path, `${JSON.stringify(map)}\n`, { mode: 0o600 });
+  await chmod(path, 0o600);
 }
 
 export interface LeakProbes {

@@ -50,28 +50,29 @@ async function loadRegistry(path) {
   return { publisher: parsed.publisher, reviewers: parsed.reviewers };
 }
 
-const LOGINS_QUERY = `query BridgeRecorderLogins($owner: String!, $name: String!, $number: Int!) {
+const LOGINS_QUERY = `query BridgeRecorderLogins($owner: String!, $name: String!, $number: Int!, $after: String) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) {
     author { login }
-    reviews(first: 100) { nodes { author { login } } }
-    reviewThreads(first: 100) { nodes { comments(first: 100) { nodes { author { login } } } } }
+    reviews(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { author { login } } }
   } }
 }`;
+const MAX_LOGIN_PAGES = 20;
 
-/** Logins seen on the PR, in memory only, so the final scan can look for them. */
+/** Logins of everyone who can appear in the snapshot (the PR author and every review author), in memory only, so the final
+ * scan can look for them. Pages every review; any failure, error or cap throws, which fails the PR closed. */
 async function sourceLogins(transport, ref) {
   const found = new Set(ADR_005_LOGINS);
-  try {
-    const body = await transport(LOGINS_QUERY, { owner: ref.owner, name: ref.name, number: ref.number });
+  let after = null;
+  for (let page = 0; page < MAX_LOGIN_PAGES; page += 1) {
+    const body = await transport(LOGINS_QUERY, { owner: ref.owner, name: ref.name, number: ref.number, ...(after ? { after } : {}) });
     const pr = body?.data?.repository?.pullRequest;
-    const add = (a) => { if (a?.login) found.add(a.login); };
-    add(pr?.author);
-    for (const r of pr?.reviews?.nodes ?? []) add(r?.author);
-    for (const t of pr?.reviewThreads?.nodes ?? []) for (const c of t?.comments?.nodes ?? []) add(c?.author);
-  } catch {
-    // The built-in list still applies; a failed lookup must not weaken the schema checks.
+    if ((body?.errors?.length ?? 0) > 0 || !pr || !Array.isArray(pr.reviews?.nodes)) throw new Error('login lookup failed');
+    if (page === 0 && pr.author?.login) found.add(pr.author.login);
+    for (const r of pr.reviews.nodes) if (r?.author?.login) found.add(r.author.login);
+    if (!pr.reviews.pageInfo.hasNextPage) return [...found];
+    after = pr.reviews.pageInfo.endCursor;
   }
-  return [...found];
+  throw new Error('login lookup exceeded page cap');
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -91,13 +92,23 @@ for (const number of args.prs) {
     const logins = await sourceLogins(transport, ref);
     const ids = new Set([...registry.publisher, ...registry.reviewers].flatMap((p) => [p.actor_id, p.app_id]));
     for (const r of snapshot.reviews) { ids.add(r.reviewer.actor_id); ids.add(r.reviewer.app_id); }
-    ids.delete(null); ids.delete(0);
-    const pseudonymised = fixture.pseudonymizeSnapshot(snapshot, registry);
     const path = join(args.out, `${owner}-${name}-${number}.json`);
+    const mapPath = fixture.fixtureMapPath(args.repo, number);
     let existing;
-    if (args.append && existsSync(path)) existing = JSON.parse(await readFile(path, 'utf8'));
+    let priorMap;
+    if (args.append && existsSync(path)) {
+      existing = JSON.parse(await readFile(path, 'utf8'));
+      priorMap = await fixture.readFixtureMap(mapPath);
+      if (!priorMap) throw new Error('private pseudonym map missing; --append fails closed (re-record without --append)');
+    }
+    const pseudonymised = fixture.pseudonymizeSnapshot(snapshot, registry, priorMap);
+    for (const k of Object.keys(pseudonymised.map.actors)) ids.add(Number(k.split(':')[1]));
+    for (const k of Object.keys(pseudonymised.map.apps)) ids.add(Number(k));
+    ids.delete(null); ids.delete(0); // null app ids and the ghost actor 0 are not identifying
     const text = `${JSON.stringify(fixture.fixtureWith(existing, pseudonymised), null, 2)}\n`;
     fixture.scanForLeaks(text, { logins, ids: [...ids] });
+    // The map holds real ids and the digest salt: it goes to a private sidecar (0600), never into the repository.
+    await fixture.writeFixtureMap(mapPath, pseudonymised.map);
     await writeFile(path, text);
     console.log(`${label}: recorded (${snapshot.pr_state}, ${snapshot.reviews.length} reviews, ${read.pr.requests} requests)`);
   } catch (error) {

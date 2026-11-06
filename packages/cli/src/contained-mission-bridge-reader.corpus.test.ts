@@ -18,8 +18,10 @@ import {
   reduceReviewers,
   sameProducer,
 } from '@osstack/core';
+import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { type FixtureFile, assertFixtureFile } from './contained-mission-bridge-fixture.js';
+import { feedbackDigest, normalizeSnapshot, readPullRequest } from './contained-mission-bridge-reader.js';
+import { type FixtureFile, assertFixtureFile, newFixtureMap, pseudonymizeSnapshot } from './contained-mission-bridge-fixture.js';
 
 const dir = new URL('./__fixtures__/bridge/', import.meta.url);
 const files = readdirSync(fileURLToPath(dir)).filter((f) => f.endsWith('.json')).sort((a, b) => Number(/-(\d+)\.json$/u.exec(a)?.[1]) - Number(/-(\d+)\.json$/u.exec(b)?.[1]));
@@ -45,8 +47,8 @@ const summarize = (d: ChainDecision) => ({
 });
 
 describe('historical decision corpus', () => {
-  it('has the whole recorded corpus (#340-#363), one snapshot per file', () => {
-    expect(loaded).toHaveLength(24);
+  it('has exactly PRs 340-363, one snapshot per file', () => {
+    expect(loaded.map((l) => l.name)).toEqual(Array.from({ length: 24 }, (_, i) => `osborn-studio-osstack-${340 + i}.json`));
     for (const { file } of loaded) expect(file.snapshots).toHaveLength(1);
   });
 
@@ -111,5 +113,84 @@ describe('historical decision corpus', () => {
 
   it('keeps the decisions stable (regression snapshot)', () => {
     expect({ as_recorded: regular, forced_open: forcedOpen }).toMatchSnapshot();
+  });
+});
+
+// Hand-checked facts. These expectations were read off the recorded reviews by a person (review ids, states and commits as
+// GitHub reported them, reviewer pseudonyms as numbered by the ADR-005 registry order) and do not call the decision code to
+// produce their expected values.
+describe('hand-checked corpus facts', () => {
+  const pr = (n: number) => loaded.find((l) => l.name.endsWith(`-${n}.json`))!.file;
+  const open = (n: number) => ({ ...pr(n).snapshots[0]!, pr_state: 'OPEN' as const });
+  const participants = (n: number, headPrefix: string) => {
+    const f = pr(n);
+    const head = f.snapshots[0]!.reviews.map((r) => r.review_commit).find((c) => c.startsWith(headPrefix))!;
+    const { participating } = reduceReviewers(head, f.snapshots[0]!.reviews, f.registry, 0);
+    return [...participating.entries()].map(([actor, v]) => [actor, v.state, v.review.review_id]).sort();
+  };
+  const decide = (n: number) => {
+    const snap = open(n);
+    return summarize(decideChainStep(chainFor(snap), snap, pr(n).registry, replayClock(snap)));
+  };
+  const ready = (ids: number[], discards: string[]) => ({
+    kind: 'transition', reason: 'all_participating_approved', to: 'ready_for_human', shadow_action: 'would_mark_ready', review_ids: ids, discards,
+  });
+
+  it('#340 (simple): one approval from reviewer 2', () => {
+    expect(pr(340).snapshots[0]!.head.startsWith('52a8616')).toBe(true);
+    expect(participants(340, '52a8616')).toEqual([[2, 'APPROVED', 5725712517]]);
+    expect(decide(340)).toEqual(ready([5725712517], []));
+  });
+
+  it('#345 (DISMISSED): the dismissed review is on the old head 8e4e12b; only the head approval counts', () => {
+    expect(participants(345, '11ee8ae')).toEqual([[3, 'APPROVED', 5724335109]]);
+    expect(participants(345, '8e4e12b')).toEqual([]);
+    expect(decide(345)).toEqual(ready([5724335109], ['5724194737:head_mismatch']));
+  });
+
+  it('#352 (several reviewers): two reviewers both approve the head', () => {
+    expect(participants(352, 'c9b2bd6')).toEqual([[2, 'APPROVED', 5725716794], [3, 'APPROVED', 5725302936]]);
+    expect(decide(352)).toEqual(ready([5725302936, 5725716794], []));
+  });
+
+  it('#353 (five DISMISSED reviews on the old head 48549cd, one approval on the head)', () => {
+    expect(participants(353, '8b685dc')).toEqual([[3, 'APPROVED', 5725870248]]);
+    expect(participants(353, '48549cd')).toEqual([]);
+    expect(decide(353)).toEqual(ready([5725870248], [5725558051, 5725719902, 5725724998, 5725730826, 5725790142].map((id) => `${id}:head_mismatch`)));
+  });
+});
+
+describe('synthetic read -> normalize -> pseudonymize against a hand-written fixture', () => {
+  const HEAD = '1'.repeat(40);
+  const BASE = '2'.repeat(40);
+  const page = {
+    data: { repository: { pullRequest: {
+      state: 'OPEN', merged: false, closed: false, headRefName: 'topic', headRefOid: HEAD, headRepository: { nameWithOwner: 'o/r' }, baseRefName: 'release-9', baseRefOid: BASE,
+      reviews: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [
+        { databaseId: 7, state: 'CHANGES_REQUESTED', submittedAt: '2026-11-01T00:00:10Z', commit: { oid: HEAD }, author: { __typename: 'User', databaseId: 900 }, body: 'fix it\r\n' },
+        { databaseId: 8, state: 'APPROVED', submittedAt: '2026-11-01T00:00:20Z', commit: { oid: HEAD }, author: { __typename: 'User', databaseId: 500 }, body: '' },
+      ] },
+      reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'T', isResolved: false, comments: { pageInfo: { hasNextPage: false, endCursor: null },
+        nodes: [{ databaseId: 70, pullRequestReview: { databaseId: 7 }, body: 'here', author: { __typename: 'User', databaseId: 900 } }] } }] },
+      commits: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ commit: { oid: HEAD } }] },
+      timelineItems: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+    } } },
+  };
+
+  it('produces exactly the hand-written fixture', async () => {
+    const registry = { publisher: [{ actor_id: 1, app_id: null }], reviewers: [{ actor_id: 500, app_id: null }] };
+    const read = await readPullRequest(async () => page, { owner: 'o', name: 'r', number: 1 });
+    const snapshot = normalizeSnapshot(read, registry, 1_800_000_000_000);
+    const map = newFixtureMap('ab'.repeat(32));
+    const out = pseudonymizeSnapshot(snapshot, registry, map);
+    const digest = createHmac('sha256', Buffer.from('ab'.repeat(32), 'hex')).update(feedbackDigest('fix it', [{ threadId: 'T', databaseId: 70, body: 'here' }])).digest('hex');
+    expect(out.registry).toEqual({ publisher: [{ actor_id: 1, app_id: null }], reviewers: [{ actor_id: 2, app_id: null }] });
+    expect(out.snapshot).toEqual({
+      pr_state: 'OPEN', head: HEAD, base_sha: BASE, base_ref: 'ref1', observed_at: 1_800_000_000_000, complete: true, moved: false,
+      reviews: [
+        { review_id: 7, state: 'CHANGES_REQUESTED', submitted_at: Date.parse('2026-11-01T00:00:10Z'), review_commit: HEAD, reviewer: { actor_id: 3, app_id: null }, has_feedback: true, feedback_digest: digest },
+        { review_id: 8, state: 'APPROVED', submitted_at: Date.parse('2026-11-01T00:00:20Z'), review_commit: HEAD, reviewer: { actor_id: 2, app_id: null }, has_feedback: false, feedback_digest: null },
+      ],
+    });
   });
 });
