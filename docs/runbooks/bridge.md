@@ -30,7 +30,7 @@
 | 阶段 5：`grant-revisions`、`chain-decide`、修订子 Mission、`publishRevision`、`OSSTACK_BRIDGE=1` | **未实现**（只有附录） | 5-P、5-A … 5-G |
 | W13：主机 git 子进程登记、`host_process_unproven`、`marker_lost`、`resume_workspace` | **未实现**（只有设计） | W13-A、W13-B、W13-C1、W13-C2 |
 | 阶段 6：Watcher/Reviewer 改用 App C/D，`grok/verify-osstack` 必需检查 | 待决定（平台侧） | — |
-| `osstack stats` 的链指标（设计 §6、§9） | **未实现**，还没有分配 PR | 阶段 7 的前置（§7） |
+| `osstack stats` 的链指标（设计 §6、§9） | **【计划：PR 分支 `feat/bridge-observability`】**：按模式与状态计数、停止原因、影子决定、周期与读取失败；每轮耗时、对账周期耗时等需阶段 5 的数据，届时为 null 并注明原因 | 阶段 7 的前置（§7） |
 
 ---
 
@@ -194,7 +194,7 @@ jq '.chain | if . == null then "no shadow chain" else
 - `publication` 按事件种类读取，不受 50 条的限制。
 - `chain` 今天只返回**影子**链（`chainForMission(missionId, 'shadow')`，`contained-mission-rpc.ts` L209），字段为 `chain_id`、`mode`、`state`、`stop_reason`、`repository`、`pr_number`、`published_head`、`published_base`、`base_ref`、`updated_at` 与最近 10 条 `shadow_decisions`。不含正文、摘要或身份。live 链字段（`rounds_used`、`grant.rounds`、`expires_at`、`current_mission_id`）**【计划：5-A】**。
 - 链挂在**根 Mission** 上。查修订子 Mission 的 `chain` 得到 `null` 是正常的。
-- 影子链的事件（`observation_cycle`、`read_failed`、`transition`）今天**没有任何读取入口**：不打日志，`mission status` 也不返回。能看到的只有链的 `state`、`stop_reason`、`updated_at` 与影子决定。一条链长期停在 `awaiting_review` 且 `updated_at` 不变，可能是读取持续失败，也可能只是没有新评审，今天无法区分；先用 §4.4 的 `gh api rate_limit` 与手工 `gh pr view` 排除 GitHub 侧问题。事件查询入口随 `osstack stats` 的链指标一起提供 **【计划：未分配 PR】**。按状态计数、`awaiting_decision` 原因分布、对账周期耗时与失败次数要等 `osstack stats` 的链指标（§1 最后一行）。
+- 影子链的事件（`observation_cycle`、`read_failed`、`transition`）今天**没有任何读取入口**：不打日志，`mission status` 也不返回。能看到的只有链的 `state`、`stop_reason`、`updated_at` 与影子决定。一条链长期停在 `awaiting_review` 且 `updated_at` 不变，可能是读取持续失败，也可能只是没有新评审，今天无法区分；先用 §4.4 的 `gh api rate_limit` 与手工 `gh pr view` 排除 GitHub 侧问题。`mission status --json` 返回最近 10 条链事件（只含白名单字段）与事件总数 **【计划：PR 分支 `feat/bridge-observability`】**。按状态计数、`awaiting_decision` 原因分布与读取失败次数见 `osstack stats` 的 bridge 段（同一 PR）；对账周期耗时目前没有记录。
 
 ### 4.3 正常是什么样子
 
@@ -452,7 +452,7 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 - [ ] 用户已决定：`ready_for_human` 规则；阶段 5 附录偏差 6、7；W13 设计 §10 决定 2、5、6；App A/B 是否安装到主仓库；主仓库的 `main-update` 名单。
 - [ ] 主仓库已套用 `main-quality`、`mission-writers`、`mission-history`，`rulesets-check.mjs` 读回一致；`bridge/rulesets.json` 只登记主仓库的两个 Mission ruleset id。
 - [ ] 主仓库 serving home 的 `apps.json`、`producers.json`、`revision-issuer.json` 与私钥按 §2 配置并核对过权限；`gilosbornhello` 的 `gh` 登录可用（阶段 0 流程在上线期间仍是回退路径）。
-- [ ] `osstack stats` 能读出：链按状态计数、每轮耗时、`awaiting_decision` 原因分布、对账周期耗时与失败次数（设计 §9）。**今天没有实现，也还没有分配 PR**；它本身是阶段 7 的阻塞项。
+- [ ] `osstack stats` 能读出：链按状态计数、每轮耗时、`awaiting_decision` 原因分布、对账周期耗时与失败次数（设计 §9）。状态计数、原因分布与失败次数由 PR 分支 `feat/bridge-observability` 提供；每轮耗时与对账周期耗时尚未记录（需阶段 5），在它们可读之前仍是阶段 7 的阻塞项。
 
 **演练（在沙箱 serving home 上做一遍）**
 
