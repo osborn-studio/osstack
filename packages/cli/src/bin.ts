@@ -11191,6 +11191,15 @@ interface StatsResult {
   per_agent: AgentStatsRow[];
   loops?: LoopStatsSummary;
   rpc?: RpcLatencyRow[];
+  bridge?: BridgeStatsView | null;
+}
+
+interface BridgeStatsView {
+  available: boolean; window_ms: number;
+  chains: { total: number; by_mode_state: Array<{ mode: string; state: string; count: number }>; awaiting_decision_by_reason: Array<{ mode: string; reason: string; count: number }>; open_past_deadline: number; rounds_over_grant: number };
+  shadow_decisions: { total_by_action: Array<{ action: string; count: number }>; window_by_action: Array<{ action: string; count: number }> };
+  reconciliation: { window_observation_cycles: number; window_read_failed: number; window_read_failed_ratio: number | null; read_failed_by_code: Array<{ code: string; count: number }>; window_truncated: boolean };
+  deferred: Record<string, { value: null; reason: string }>;
 }
 
 interface RpcLatencyRow {
@@ -12632,6 +12641,7 @@ function printStats(result: unknown): void {
   }
 
   if (s.loops === undefined) {
+    printBridgeStats(s.bridge);
     printRpcLatency(s.rpc);
     return;
   }
@@ -12655,7 +12665,23 @@ function printStats(result: unknown): void {
     }
   }
 
+  printBridgeStats(s.bridge);
   printRpcLatency(s.rpc);
+}
+
+/** Bridge section: omitted when the ledger has no revision-chain tables; one line per group, so it stays short with no bridge activity. */
+function printBridgeStats(b: BridgeStatsView | null | undefined): void {
+  if (!b || !b.available) return;
+  const group = (rows: Array<{ count: number }>, label: (r: never) => string): string =>
+    rows.length === 0 ? "-" : rows.map(r => `${label(r as never)}=${r.count}`).join(" ");
+  const hours = b.window_ms / 3600000;
+  console.log();
+  console.log(`bridge_chains=${b.chains.total} by_state: ${group(b.chains.by_mode_state, (r: { mode: string; state: string }) => `${r.mode}/${r.state}`)}`);
+  console.log(`bridge_awaiting_decision: ${group(b.chains.awaiting_decision_by_reason, (r: { mode: string; reason: string }) => `${r.mode}/${r.reason}`)}  open_past_deadline=${b.chains.open_past_deadline} rounds_over_grant=${b.chains.rounds_over_grant}`);
+  console.log(`bridge_shadow_decisions ${hours}h: ${group(b.shadow_decisions.window_by_action, (r: { action: string }) => r.action)}  total: ${group(b.shadow_decisions.total_by_action, (r: { action: string }) => r.action)}`);
+  const rc = b.reconciliation;
+  console.log(`bridge_reconcile ${hours}h: cycles=${rc.window_observation_cycles} read_failed=${rc.window_read_failed} ratio=${rc.window_read_failed_ratio === null ? "-" : rc.window_read_failed_ratio.toFixed(3)} by_code: ${group(rc.read_failed_by_code, (r: { code: string }) => r.code)}${rc.window_truncated ? " (window truncated)" : ""}`);
+  console.log(`bridge_deferred: ${Object.keys(b.deferred).join(", ")} (null: not yet recorded or needs phase 5)`);
 }
 
 /** RPC latency section: sorted by the daemon (descending p95), sliding window ≤512. */

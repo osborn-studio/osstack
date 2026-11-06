@@ -5,6 +5,7 @@ import type { ContainedMissionStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
+import { chainEventsView } from './bridge-chain-events.js';
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: request text must not carry control characters into the ledger.
 const Text = (max: number) => z.string().min(1).max(max).refine(v => !/[\u0000-\u001f\u007f]/.test(v), 'control');
@@ -51,6 +52,8 @@ export interface ChainStatus {
   chain_id: string; mode: string; state: string; stop_reason: string | null; repository: string; pr_number: number;
   published_head: string; published_base: string; base_ref: string; updated_at: number;
   shadow_decisions: Array<{ head_sha: string; base_sha: string; action: string; reason: string; review_ids: number[]; observed_at: number }>;
+  /** Latest chain events (allow-listed fields only, oldest first) and the chain's total event count. */
+  events: import('./bridge-chain-events.js').ChainEventView[]; events_total: number; events_total_capped: boolean;
 }
 const STATUS_DECISIONS = 10;
 
@@ -208,11 +211,13 @@ export async function createContainedMissionService(deps: {
   const chainOf = (missionId: string): ChainStatus | null => {
     const chain = chainStore.chainForMission(missionId, 'shadow');
     if (!chain) return null;
+    const events = chainEventsView(chainStore.db, chain.chain_id);
     return {
       chain_id: chain.chain_id, mode: chain.mode, state: chain.state, stop_reason: chain.stop_reason, repository: chain.repository, pr_number: chain.pr_number,
       published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref, updated_at: chain.updated_at,
       shadow_decisions: chainStore.shadowDecisions(chain.chain_id).slice(-STATUS_DECISIONS).map(d => ({
         head_sha: d.head_sha, base_sha: d.base_sha, action: d.action, reason: d.reason, review_ids: JSON.parse(d.review_ids_json) as number[], observed_at: d.observed_at })),
+      events: events.latest, events_total: events.total, events_total_capped: events.total_capped,
     };
   };
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}) });
