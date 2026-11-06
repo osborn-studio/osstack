@@ -140,7 +140,7 @@ describe("reviewer reduction (selection rules 3 and 4)", () => {
     expect(decide(chain(), snap([review("APPROVED", A, { review_commit: "old" }), review("CHANGES_REQUESTED", B)]))).toMatchObject({ kind: "reserve" });
   });
   it("exposes the reduction for reuse", () => {
-    const r = reduceReviewers(HEAD, [review("APPROVED", A), review("CHANGES_REQUESTED", B)], REGISTRY);
+    const r = reduceReviewers(HEAD, [review("APPROVED", A), review("CHANGES_REQUESTED", B)], REGISTRY, NOW);
     expect([...r.participating.values()].map(p => p.state).sort()).toEqual(["APPROVED", "CHANGES_REQUESTED"]);
   });
 });
@@ -183,15 +183,31 @@ describe("ready_for_human (appendix 4.2 item 1)", () => {
     expect(decide(shadow({ state: "ready_for_human" }), snap(rs))).toMatchObject({ kind: "would_reserve", back_to_review: true });
     expect(decide(shadow(), snap(rs))).toMatchObject({ kind: "would_reserve", back_to_review: false });
   });
-  it("does not expire an approval", () => {
-    expect(decide(chain(), snap([review("APPROVED", A, { submitted_at: T0 - 10 * REVIEW_TTL_MS })]))).toMatchObject({ kind: "transition", to: "ready_for_human" });
+  it("expires an approval like any other review (rule 6): it neither marks ready nor creates a conflict", () => {
+    const old = review("APPROVED", A, { submitted_at: NOW - REVIEW_TTL_MS });
+    const d = decide(chain(), snap([old]));
+    expectNone(d, "expired");
+    expect((d as unknown as { discards: unknown[] }).discards).toEqual([{ review_id: old.review_id, reason: "expired" }]);
+    expect(decide(chain(), snap([review("APPROVED", A, { submitted_at: NOW - REVIEW_TTL_MS + 1 })]))).toMatchObject({ kind: "transition", to: "ready_for_human" });
+    // An expired approval does not conflict with a fresh request, and the request proceeds.
+    expect(decide(chain(), snap([old, review("CHANGES_REQUESTED", B)]))).toMatchObject({ kind: "reserve" });
+    expect(decide(shadow(), snap([old, review("CHANGES_REQUESTED", B)]))).toMatchObject({ kind: "would_reserve" });
+    // An expired request does not conflict with a fresh approval either.
+    const oldRequest = review("CHANGES_REQUESTED", B, { submitted_at: NOW - REVIEW_TTL_MS - 5 });
+    expect(decide(chain(), snap([oldRequest, review("APPROVED", A)]))).toMatchObject({ kind: "transition", to: "ready_for_human" });
+  });
+  it("leaves a reviewer with no state when the latest review expired", () => {
+    const latestExpired = review("APPROVED", A, { submitted_at: NOW - REVIEW_TTL_MS - 1 });
+    expectNone(decide(chain(), snap([latestExpired])), "expired");
+    // A ready chain whose only approval expired falls back to waiting for review.
+    expect(decide(chain({ state: "ready_for_human" }), snap([latestExpired]))).toMatchObject({ kind: "transition", to: "awaiting_review", reason: "approval_withdrawn" });
   });
 });
 
 describe("reserve selection (rules 4 and 6)", () => {
   it("reserves a live chain on a qualifying request and binds head, base and digest", () => {
     const r = review("CHANGES_REQUESTED", A, { feedback_digest: "f".repeat(64) });
-    expect(decide(chain(), snap([r]))).toEqual({ kind: "reserve", head: HEAD, base: BASE, discards: [], review_ids: [r.review_id], feedback_digest: "f".repeat(64) });
+    expect(decide(chain(), snap([r]))).toEqual({ kind: "reserve", head: HEAD, base: BASE, base_ref: "main", discards: [], review_ids: [r.review_id], feedback_digest: "f".repeat(64) });
   });
   it("only records would_reserve in shadow mode and never reserves", () => {
     const d = decide(shadow(), snap([review("CHANGES_REQUESTED")]));

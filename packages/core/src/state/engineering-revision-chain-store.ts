@@ -118,6 +118,7 @@ export class RevisionChainStore {
     this.clock(now);
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
+      this.validateDecision(chain, decision);
       switch (decision.kind) {
         case "none": return chain;
         case "reserve": return this.reserveInner(chain, { head: decision.head, review_ids: decision.review_ids, feedback_digest: decision.feedback_digest }, now).chain;
@@ -194,6 +195,13 @@ export class RevisionChainStore {
       const chain = this.checked(chainId, ifRevision);
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
       if (chain.state !== "revising" && chain.state !== "publishing") fail("state_denied");
+      if (input.kind === "push") {
+        // The intent must extend exactly what the chain published, on the chain's branch, for its dispatched child.
+        const dispatched = chain.current_mission_id !== null && this.db.prepare(
+          "SELECT 1 FROM engineering_revision_reservations WHERE chain_id=? AND child_mission_id=? AND state='dispatched'").get(chainId, chain.current_mission_id);
+        if (input.branch !== chain.branch || input.expected_old_head !== chain.published_head || input.expected_base_sha !== chain.published_base
+          || !input.new_head || input.child_mission_id === undefined || input.child_mission_id !== chain.current_mission_id || !dispatched) fail("intent_binding_mismatch");
+      }
       const intentId = `pi_${randomUUID()}`;
       const binding = JSON.stringify(input.binding ?? {});
       this.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,expected_old_head,new_head,
@@ -215,7 +223,9 @@ export class RevisionChainStore {
       const before = this.intent(intentId);
       this.db.prepare("UPDATE engineering_publication_intents SET state=?,detail=?,updated_at=? WHERE intent_id=?").run(to, detail ?? null, now, intentId);
       let chain = this.get(before.chain_id);
-      if (before.kind === "push" && chain.state === "publishing" && chain.published_head === before.expected_old_head) {
+      const bound = before.kind === "push" && chain.state === "publishing" && chain.published_head === before.expected_old_head
+        && chain.published_base === before.expected_base_sha && chain.branch === before.branch && chain.current_mission_id === before.child_mission_id;
+      if (bound) {
         if (to === "confirmed") {
           chain = this.update(chain, { state: "awaiting_review", published_head: before.new_head!, published_base: before.expected_base_sha! }, "push_confirmed",
             { head: before.new_head!, base: before.expected_base_sha! }, now);
@@ -259,10 +269,37 @@ export class RevisionChainStore {
     if (!input.head || input.head.length > 128 || !input.feedback_digest || input.review_ids.length === 0) fail("invalid_reservation");
     if (this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE chain_id=? AND state IN ('reserved','dispatched')").get(chain.chain_id)) fail("chain_busy");
     if (this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, input.head)) fail("head_already_reserved");
+    if (input.head !== chain.published_head) fail("head_mismatch");
     this.db.prepare(`INSERT INTO engineering_revision_reservations(repository,pr_number,head_sha,chain_id,review_ids_json,feedback_digest,state,created_at,updated_at)
       VALUES(?,?,?,?,?,?,'reserved',?,?)`).run(chain.repository, chain.pr_number, input.head, chain.chain_id, JSON.stringify([...input.review_ids]), input.feedback_digest, now, now);
     const next = this.update(chain, { state: "revision_reserved", rounds_used: chain.rounds_used + 1 }, "reserved", { head: input.head, base: chain.published_base }, now);
     return { chain: next, reservation: this.reservation(chain, input.head) };
+  }
+
+  /** A decision was computed against some chain row; refuse it unless it still describes this one (revision alone does not
+   * protect a caller that re-reads the chain after deciding). */
+  private validateDecision(chain: RevisionChain, d: ChainDecision): void {
+    if (d.kind === "none") return;
+    const refSame = d.base_ref === undefined || d.base_ref === chain.base_ref;
+    const onPublished = d.head === chain.published_head && d.base === chain.published_base && refSame;
+    const stale = (): never => fail("stale_decision");
+    switch (d.kind) {
+      case "reserve": case "would_reserve": if (!onPublished) stale(); return;
+      case "transition":
+        if (d.to === "closed") return;
+        if (d.published_head !== undefined) {
+          // Accepting a new head: live only, and only for a head a confirmed push intent produced.
+          if (chain.mode !== "live" || d.base !== chain.published_base || !refSame || !this.confirmedPushHeads(chain.chain_id).includes(d.published_head)) stale();
+          return;
+        }
+        if (!onPublished) stale();
+        return;
+      case "stop":
+        if (d.reason === "attribution_unknown" || d.reason === "external_write" || d.reason === "head_regressed") { if (d.head === chain.published_head) stale(); }
+        else if (d.reason === "base_changed") { if (d.base === chain.published_base && refSame && d.head === chain.published_head) stale(); }
+        else if (!onPublished) stale();
+        return;
+    }
   }
 
   private update(chain: RevisionChain, patch: Patch, reason: string, at: { head: string; base: string }, now: number): RevisionChain {

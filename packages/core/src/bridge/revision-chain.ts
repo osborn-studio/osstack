@@ -61,7 +61,7 @@ export interface DecisionOptions {
 }
 
 export interface Discard { review_id: number; reason: DiscardReason }
-interface Common { head: string; base: string; discards: readonly Discard[] }
+interface Common { head: string; base: string; /** Observed base ref; the store compares it with the chain's. */ base_ref?: string; discards: readonly Discard[] }
 export type ChainDecision =
   | { kind: "none"; reason: NoneReason; discards: readonly Discard[] }
   | (Common & { kind: "transition"; to: ChainState; reason: string; published_head?: string; published_base?: string;
@@ -80,7 +80,7 @@ interface Reduced { review: SnapshotReview; state: "APPROVED" | "CHANGES_REQUEST
 
 /** Design §8.4 rule 4: per registered reviewer, the latest APPROVED / CHANGES_REQUESTED on the current head.
  * COMMENTED changes nothing; DISMISSED clears. Reviews on other commits or from unregistered actors are discarded. */
-export function reduceReviewers(head: string, reviews: readonly SnapshotReview[], registry: ProducerRegistry):
+export function reduceReviewers(head: string, reviews: readonly SnapshotReview[], registry: ProducerRegistry, now: number):
   { participating: Map<number, Reduced>; discards: Discard[] } {
   const discards: Discard[] = [];
   const byReviewer = new Map<number, SnapshotReview[]>();
@@ -88,6 +88,9 @@ export function reduceReviewers(head: string, reviews: readonly SnapshotReview[]
     const registered = registry.reviewers.some(r => sameProducer(r, review.reviewer));
     if (!registered) { discards.push({ review_id: review.review_id, reason: "unregistered_reviewer" }); continue; }
     if (review.review_commit !== head) { discards.push({ review_id: review.review_id, reason: "head_mismatch" }); continue; }
+    // Rule 6 applies to every review used: an expired review is gone before reduction, so it can neither approve nor conflict.
+    // Submission times are monotone, so an expired latest review means every older one is expired too (no fallback).
+    if (now >= review.submitted_at + REVIEW_TTL_MS) { discards.push({ review_id: review.review_id, reason: "expired" }); continue; }
     const list = byReviewer.get(review.reviewer.actor_id) ?? [];
     list.push(review); byReviewer.set(review.reviewer.actor_id, list);
   }
@@ -111,7 +114,7 @@ function combineDigests(digests: readonly string[]): string {
 export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry: ProducerRegistry, now: number, opts: DecisionOptions = {}): ChainDecision {
   const shadow = chain.mode === "shadow";
   const none = (reason: NoneReason, discards: readonly Discard[] = []): ChainDecision => ({ kind: "none", reason, discards });
-  const base = { head: snapshot.head, base: snapshot.base_sha };
+  const base = { head: snapshot.head, base: snapshot.base_sha, base_ref: snapshot.base_ref };
   const stop = (reason: StopReason, discards: readonly Discard[] = [], review_ids: readonly number[] = []): ChainDecision => ({
     kind: "stop", to: "awaiting_decision", reason, ...base, discards, review_ids, ...(shadow ? { shadow_action: "would_stop" as const } : {}),
   });
@@ -138,7 +141,7 @@ export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry
   }
   if (IN_FLIGHT.has(chain.state)) return none("in_flight");
 
-  const { participating, discards } = reduceReviewers(chain.published_head, snapshot.reviews, registry);
+  const { participating, discards } = reduceReviewers(chain.published_head, snapshot.reviews, registry, now);
   const states = [...participating.values()];
   const approved = states.filter(s => s.state === "APPROVED");
   const requested = states.filter(s => s.state === "CHANGES_REQUESTED");
@@ -159,10 +162,8 @@ export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry
 
   if (requested.length > 0) {
     if (chain.reserved_heads.includes(chain.published_head)) return none("head_already_reserved", discards);
-    const fresh = requested.filter(s => now < s.review.submitted_at + REVIEW_TTL_MS);
-    if (fresh.length === 0) return none("expired", [...discards, ...requested.map(s => ({ review_id: s.review.review_id, reason: "expired" as const }))]);
-    const withFeedback = fresh.filter(s => s.review.has_feedback && s.review.feedback_digest);
-    if (withFeedback.length === 0) return stop("no_feedback", discards, fresh.map(s => s.review.review_id));
+    const withFeedback = requested.filter(s => s.review.has_feedback && s.review.feedback_digest);
+    if (withFeedback.length === 0) return stop("no_feedback", discards, requested.map(s => s.review.review_id));
     if (!shadow && chain.grant_rounds !== null && chain.rounds_used >= chain.grant_rounds) return stop("rounds_exhausted", discards, ids);
     if (snapshot.moved) return none("snapshot_moved", discards);
     const review_ids = withFeedback.map(s => s.review.review_id).sort((a, b) => a - b);
@@ -178,6 +179,7 @@ export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry
   }
   if (waiting && chain.review_deadline !== null && now >= chain.review_deadline) return stop("review_deadline", discards);
   const reason: NoneReason = discards.some(d => d.reason === "unregistered_reviewer") ? "unregistered_reviewer"
+    : discards.some(d => d.reason === "expired") ? "expired"
     : discards.some(d => d.reason === "head_mismatch") ? "head_mismatch" : "no_review";
   return none(reason, discards);
 }

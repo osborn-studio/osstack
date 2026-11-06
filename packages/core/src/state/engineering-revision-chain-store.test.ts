@@ -11,8 +11,10 @@ import { openDb } from "./db.js";
 import { RevisionChainError, RevisionChainStore, revisionChainUpgradeHolds, shadowChainWriter, type NewChainInput } from "./engineering-revision-chain-store.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
+const BRANCH = "osstack/mission/x";
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
+const B2 = "c".repeat(40);
 const H1 = "1".repeat(40); const H2 = "2".repeat(40); const H3 = "3".repeat(40); const B1 = "b".repeat(40);
 
 function setup() {
@@ -186,15 +188,15 @@ it("swaps current_mission_id to the next dispatched child only when the previous
   let r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 20);
   r = f.store.dispatch(l.chain_id, r.chain.revision, H1, c1, 21);
   // Publish confirmed: the chain re-opens for review on a new head and the first reservation settles.
-  const pi = f.store.recordIntent(l.chain_id, r.chain.revision, { kind: "push", branch: "b", expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c1 }, 22);
+  const pi = f.store.recordIntent(l.chain_id, r.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c1 }, 22);
   const settled = f.store.settleIntent(pi.intent.intent_id, "confirmed", 23);
   expect(settled.chain).toMatchObject({ state: "awaiting_review", published_head: H2, published_base: B1 });
   const v = f.store.voidReservation(l.chain_id, settled.chain.revision, H1, "completed", 24);
   expect(v.chain.revision).toBe(settled.chain.revision); // settled chain untouched
-  const r2 = f.store.reserve(l.chain_id, v.chain.revision, reserveInput(H2), 25);
-  expect(code(() => f.store.dispatch(l.chain_id, r2.chain.revision, H2, c2, 26))).toMatch(/chain_current_child_busy/); // c1 still executing
+  expect(code(() => f.store.reserve(l.chain_id, v.chain.revision, reserveInput(H2), 25))).toMatch(/reservation_child_busy/); // c1 still executing
   expect(f.store.get(l.chain_id).current_mission_id).toBe(c1);
   f.finish(c1);
+  const r2 = f.store.reserve(l.chain_id, v.chain.revision, reserveInput(H2), 25);
   const d2 = f.store.dispatch(l.chain_id, r2.chain.revision, H2, c2, 27);
   expect(d2.chain.current_mission_id).toBe(c2);
 });
@@ -223,14 +225,18 @@ it("denies reservations and intents on shadow chains and freezes chain and key f
   const f = setup(); const s = f.shadow(); const l = f.live(2); const l2 = f.live(2);
   const insRes = (c: { chain_id: string; repository: string; pr_number: number }, head: string) => code(() => f.db.prepare(`INSERT INTO engineering_revision_reservations(repository,pr_number,head_sha,chain_id,review_ids_json,feedback_digest,state,created_at,updated_at)
     VALUES(?,?,?,?,'[1]','d','reserved',1,1)`).run(c.repository, c.pr_number, head, c.chain_id));
-  const insIntent = (c: { chain_id: string; repository: string; pr_number: number }) => code(() => f.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,expected_old_head,new_head,expected_base_sha,binding_json,state,created_at,updated_at)
-    VALUES(?,?,'push',?,?,'b',?,?,?,'{}','pending',1,1)`).run(`pi_${Math.random()}`, c.chain_id, c.repository, c.pr_number, H1, H2, B1));
+  const insIntent = (c: { chain_id: string; repository: string; pr_number: number }, kid: string | null = null) => code(() => f.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,expected_old_head,new_head,expected_base_sha,child_mission_id,binding_json,state,created_at,updated_at)
+    VALUES(?,?,'push',?,?,?,?,?,?,?,'{}','pending',1,1)`).run(`pi_${Math.random()}`, c.chain_id, c.repository, c.pr_number, BRANCH, H1, H2, B1, kid));
   expect(insRes(s, H1)).toMatch(/bridge_shadow_write_denied/);
   expect(insIntent(s)).toMatch(/bridge_shadow_write_denied/);
   expect(code(() => f.store.reserve(s.chain_id, 1, reserveInput(), 1))).toBe("bridge_shadow_write_denied");
-  expect(code(() => f.store.recordIntent(s.chain_id, 1, { kind: "push", branch: "b" }, 1))).toBe("bridge_shadow_write_denied");
-  expect(insRes(l, H1)).toBe("no_error");
-  expect(insIntent(l)).toBe("no_error");
+  expect(code(() => f.store.recordIntent(s.chain_id, 1, { kind: "push", branch: BRANCH }, 1))).toBe("bridge_shadow_write_denied");
+  expect(insIntent(l, null)).toMatch(/intent_binding_mismatch/); // no dispatched child yet
+  const lc = f.child("executing");
+  const lr = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  f.store.dispatch(l.chain_id, lr.chain.revision, H1, lc, 3);
+  expect(insRes(l, H2)).toMatch(/UNIQUE|reservation_child_busy/);
+  expect(insIntent(l, lc)).toBe("no_error");
   // A live row cannot be re-pointed at a shadow chain, nor at another chain, nor have its key changed.
   const updRes = (set: string) => code(() => f.db.prepare(`UPDATE engineering_revision_reservations SET ${set} WHERE chain_id=?`).run(l.chain_id));
   expect(updRes(`chain_id='${s.chain_id}'`)).toMatch(/reservation_immutable/);
@@ -281,7 +287,7 @@ it("limits reservation and intent state transitions", () => {
   expect(code(() => f.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,binding_json,state,created_at,updated_at)
     VALUES('pi_z',?,'check',?,?,'b','{}','confirmed',1,1)`).run(l2.chain_id, l2.repository, l2.pr_number))).toMatch(/intent_insert_denied/);
   expect(code(() => f.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,binding_json,state,created_at,updated_at)
-    VALUES('pi_y',?,'push',?,?,'b','{}','pending',1,1)`).run(l2.chain_id, l2.repository, l2.pr_number))).toMatch(/CHECK/);
+    VALUES('pi_y',?,'push',?,?,'b','{}','pending',1,1)`).run(l2.chain_id, l2.repository, l2.pr_number))).toMatch(/CHECK|intent_binding_mismatch/);
 });
 
 it("keeps events and shadow decisions append-only and shadow decisions shadow-only", () => {
@@ -319,8 +325,8 @@ it("applies shadow decisions in one transaction and stays idempotent across a re
   expect(store2.shadowDecisions(s.chain_id)[0]).toMatchObject({ head_sha: H1, base_sha: B1, action: "would_reserve", observed_at: 100 });
   expect(store2.events(s.chain_id).map(e => e.kind)).toEqual(["chain_created", "observation_cycle"]); // no second event either
   // A different head is a different decision.
-  store2.applyDecision(s.chain_id, 1, wouldReserve({ head: H2 }), 300);
-  expect(store2.shadowDecisions(s.chain_id)).toHaveLength(2);
+  expect(code(() => store2.applyDecision(s.chain_id, 1, wouldReserve({ head: H2 }), 300))).toBe("stale_decision");
+  expect(store2.shadowDecisions(s.chain_id)).toHaveLength(1);
   expect(code(() => f.store.applyDecision(s.chain_id, 9, wouldReserve(), 1))).toBe("version_conflict");
 });
 
@@ -396,7 +402,7 @@ it("walks a live chain through reserve, dispatch, publish and settle and then re
     expect(r.reservation).toMatchObject({ state: "reserved", child_mission_id: null, review_ids_json: "[7]" });
     const c = f.child("executing");
     const d = f.store.dispatch(l.chain_id, r.chain.revision, head, c, 110 + round);
-    const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: "b", expected_old_head: head, new_head: next, expected_base_sha: B1, child_mission_id: c }, 120 + round);
+    const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: head, new_head: next, expected_base_sha: B1, child_mission_id: c }, 120 + round);
     expect(pi.chain.state).toBe("publishing");
     const done = f.store.settleIntent(pi.intent.intent_id, "confirmed", 130 + round, "ok");
     expect(done.chain).toMatchObject({ state: "awaiting_review", published_head: next });
@@ -418,7 +424,7 @@ it("guards live APIs by chain state and by revision", () => {
   const f = setup(); const l = f.live(1);
   expect(code(() => f.store.reserve(l.chain_id, 99, reserveInput(), 1))).toBe("version_conflict");
   expect(code(() => f.store.dispatch(l.chain_id, 1, H1, f.child(), 1))).toBe("state_denied");
-  expect(code(() => f.store.recordIntent(l.chain_id, 1, { kind: "push", branch: "b", expected_old_head: H1, new_head: H2, expected_base_sha: B1 }, 1))).toBe("state_denied");
+  expect(code(() => f.store.recordIntent(l.chain_id, 1, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1 }, 1))).toBe("state_denied");
   expect(code(() => f.store.reserve(l.chain_id, 1, { head: "", review_ids: [1], feedback_digest: "d" }, 1))).toBe("invalid_reservation");
   expect(code(() => f.store.reserve(l.chain_id, 1, { head: H1, review_ids: [], feedback_digest: "d" }, 1))).toBe("invalid_reservation");
   const r = f.store.reserve(l.chain_id, 1, reserveInput(), 2);
@@ -452,8 +458,9 @@ it("uses the rounds grant, the in-flight guard and the head guard in the store a
 it("stops a chain whose push intent is uncertain and lets a human reconcile it later", () => {
   const f = setup(); const l = f.live(2);
   const r = f.store.reserve(l.chain_id, 1, reserveInput(), 2);
-  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, f.child("executing"), 3);
-  const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: "b", expected_old_head: H1, new_head: H2, expected_base_sha: B1 }, 4);
+  const kid = f.child("executing");
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, kid, 3);
+  const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: kid }, 4);
   expect(revisionChainUpgradeHolds(f.db)).toBe(2); // one dispatched reservation, one pending intent
   const u = f.store.settleIntent(pi.intent.intent_id, "uncertain", 5, "readback mismatch");
   expect(u.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "intent_uncertain" });
@@ -509,13 +516,110 @@ it("serialises a second writer behind the first one's write lock instead of corr
   const db2 = openDb({ path: f.path }); db2.pragma("synchronous=FULL"); db2.pragma("busy_timeout=0"); cleanup.push(() => { db2.close(); });
   const store2 = new RevisionChainStore(new AttentionStore(db2, f.path), f.owner);
   f.db.exec("BEGIN IMMEDIATE");
-  const attempt = code(() => store2.reserve(l.chain_id, 1, reserveInput(H2), 5));
+  const attempt = code(() => store2.reserve(l.chain_id, 1, reserveInput(H1), 5));
   expect(attempt).toMatch(/database is locked|SQLITE_BUSY/i);
   f.db.exec("ROLLBACK");
-  expect(store2.reserve(l.chain_id, 1, reserveInput(H2), 6).chain.rounds_used).toBe(1);
+  expect(store2.reserve(l.chain_id, 1, reserveInput(H1), 6).chain.rounds_used).toBe(1);
   expect(f.store.reservations(l.chain_id)).toHaveLength(1);
 });
 
 it("treats migrations as the single source for the DDL export", () => {
   expect(MIGRATIONS.at(-1)).toMatchObject({ id: 51, name: "engineering_revision_chains" });
+});
+
+it("keeps one child at a time even after the dispatched reservation is voided while its child still runs (invariant 3)", () => {
+  const f = setup(); const l = f.live(2); const c1 = f.child("executing");
+  const r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, c1, 3);
+  const v = f.store.voidReservation(l.chain_id, d.chain.revision, H1, "operator_void", 4);
+  const insert = (head: string) => code(() => f.db.prepare(`INSERT INTO engineering_revision_reservations(repository,pr_number,head_sha,chain_id,review_ids_json,feedback_digest,state,created_at,updated_at)
+    VALUES(?,?,?,?,'[1]','d','reserved',1,1)`).run(l.repository, l.pr_number, head, l.chain_id));
+  // The void freed the in-flight slot, but c1 is still executing and is still the chain's current child.
+  expect(f.store.get(l.chain_id).current_mission_id).toBe(c1);
+  expect(insert(H2)).toMatch(/reservation_child_busy/);
+  // Through the store, once a human has re-opened the chain for review on a new head.
+  f.db.prepare("UPDATE engineering_revision_chains SET state='awaiting_review',stop_reason=NULL,published_head=?,revision=revision+1 WHERE chain_id=?").run(H2, l.chain_id);
+  expect(code(() => f.store.reserve(l.chain_id, v.chain.revision + 1, reserveInput(H2), 5))).toMatch(/reservation_child_busy/);
+  expect(f.store.reservations(l.chain_id)).toHaveLength(1);
+  // The pointer is not what protects the chain: clear it only after c1 is done and the guard opens by itself.
+  f.finish(c1);
+  expect(insert(H2)).toBe("no_error");
+});
+
+it("refuses to dispatch a reservation while any other child of the chain still runs", () => {
+  const f = setup(); const l = f.live(2); const c1 = f.child("executing"); const c2 = f.child("executing");
+  const r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, c1, 3);
+  f.store.voidReservation(l.chain_id, d.chain.revision, H1, "operator_void", 4);
+  // Defence in depth: even with the insert guard out of the way, the dispatch guard holds.
+  f.db.exec("DROP TRIGGER engineering_reservation_child_exclusive_insert");
+  f.db.prepare(`INSERT INTO engineering_revision_reservations(repository,pr_number,head_sha,chain_id,review_ids_json,feedback_digest,state,created_at,updated_at)
+    VALUES(?,?,?,?,'[1]','d','reserved',1,1)`).run(l.repository, l.pr_number, H2, l.chain_id);
+  expect(code(() => f.db.prepare("UPDATE engineering_revision_reservations SET state='dispatched',child_mission_id=? WHERE head_sha=?").run(c2, H2))).toMatch(/reservation_child_busy/);
+});
+
+it("binds a push intent to the chain's branch, heads, base and dispatched child", () => {
+  const f = setup(); const l = f.live(2); const c1 = f.child("executing"); const other = f.child("executing");
+  const r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, c1, 3);
+  const ok = { kind: "push" as const, branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c1 };
+  const attempt = (over: Record<string, unknown>) => code(() => f.store.recordIntent(l.chain_id, d.chain.revision, { ...ok, ...over } as typeof ok, 4));
+  expect(attempt({ branch: "other" })).toBe("intent_binding_mismatch");
+  expect(attempt({ expected_old_head: H3 })).toBe("intent_binding_mismatch");
+  expect(attempt({ expected_base_sha: B1.replace("b", "c") })).toBe("intent_binding_mismatch");
+  expect(attempt({ child_mission_id: other })).toBe("intent_binding_mismatch");
+  expect(attempt({ child_mission_id: undefined })).toBe("intent_binding_mismatch");
+  expect(attempt({ new_head: undefined })).toBe("intent_binding_mismatch");
+  expect(f.store.intents(l.chain_id)).toHaveLength(0);
+  // The database enforces the same at INSERT, independent of the store.
+  const raw = (o: Record<string, unknown>) => code(() => f.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,expected_old_head,new_head,expected_base_sha,child_mission_id,binding_json,state,created_at,updated_at)
+    VALUES(@id,@chain,'push',@repo,@pr,@branch,@old,@new,@base,@child,'{}','pending',1,1)`).run({ id: `pi_${Math.random()}`, chain: l.chain_id, repo: l.repository, pr: l.pr_number, branch: BRANCH, old: H1, new: H2, base: B1, child: c1, ...o }));
+  expect(raw({ branch: "other" })).toMatch(/intent_binding_mismatch/);
+  expect(raw({ old: H3 })).toMatch(/intent_binding_mismatch/);
+  expect(raw({ base: "zz" })).toMatch(/intent_binding_mismatch/);
+  expect(raw({ child: other })).toMatch(/intent_binding_mismatch/);
+  expect(raw({ child: null })).toMatch(/intent_binding_mismatch/);
+  expect(raw({})).toBe("no_error");
+});
+
+it("advances published_head on settle only while the intent's bindings still match the chain", () => {
+  const f = setup(); const l = f.live(2); const c1 = f.child("executing");
+  const r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, c1, 3);
+  const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c1 }, 4);
+  // The base moved under the intent (a human edit); the confirmation must not republish the chain on the old base.
+  f.db.prepare("UPDATE engineering_revision_chains SET published_base=?,revision=revision+1 WHERE chain_id=?").run(B2, l.chain_id);
+  const out = f.store.settleIntent(pi.intent.intent_id, "confirmed", 5);
+  expect(out.intent.state).toBe("confirmed");
+  expect(out.chain).toMatchObject({ state: "publishing", published_head: H1, published_base: B2 });
+});
+
+it("rejects decisions that no longer describe the chain row, and reservations on another head", () => {
+  const f = setup(); const l = f.live(2); const c1 = f.child("executing");
+  const base = { base: B1, discards: [], review_ids: [7] };
+  const reserve = (head: string): ChainDecision => ({ kind: "reserve", head, feedback_digest: "d", ...base });
+  const rev = () => f.store.get(l.chain_id).revision;
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), reserve(H2), 2))).toBe("stale_decision");
+  expect(code(() => f.store.reserve(l.chain_id, rev(), reserveInput(H2), 2))).toBe("head_mismatch");
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), { ...reserve(H1), base: B2 } as ChainDecision, 2))).toBe("stale_decision");
+  const ready: ChainDecision = { kind: "transition", to: "ready_for_human", reason: "x", head: H2, base: B1, discards: [], review_ids: [] };
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), ready, 2))).toBe("stale_decision");
+  const stop = (reason: "external_write" | "reviewer_conflict" | "base_changed", head: string, b = B1): ChainDecision => ({ kind: "stop", to: "awaiting_decision", reason, head, base: b, discards: [], review_ids: [] });
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), stop("external_write", H1), 2))).toBe("stale_decision"); // the "observed" head is the published one
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), stop("reviewer_conflict", H2), 2))).toBe("stale_decision");
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), stop("base_changed", H1, B1), 2))).toBe("stale_decision");
+  const accept: ChainDecision = { kind: "transition", to: "awaiting_review", reason: "push_confirmed", head: H2, base: B1, published_head: H2, published_base: B1, discards: [], review_ids: [] };
+  expect(code(() => f.store.applyDecision(l.chain_id, rev(), accept, 2))).toBe("stale_decision"); // no confirmed push intent produced H2
+  expect(f.store.get(l.chain_id)).toMatchObject({ state: "awaiting_review", published_head: H1, revision: 1 });
+  // A stop that carries the observed head records it without making it the published head.
+  // A ref-only base change is carried by base_ref, so the same sha under a new ref is not stale.
+    expect(code(() => f.store.applyDecision(l.chain_id, rev(), { ...stop("base_changed", H1), base_ref: "main" } as ChainDecision, 2))).toBe("stale_decision");
+  const moved = f.store.applyDecision(l.chain_id, rev(), stop("external_write", H3), 3);
+  expect(moved).toMatchObject({ state: "awaiting_decision", stop_reason: "external_write", published_head: H1 });
+  expect(JSON.parse(f.store.events(l.chain_id).at(-1)!.payload_json)).toMatchObject({ head: H3 });
+  // A decision computed before the chain advanced is stale once it has (shadow: ready, then a stale would_reserve on another base).
+  const s = f.shadow();
+  f.store.applyDecision(s.chain_id, 1, wouldReserve(), 4);
+  expect(code(() => f.store.applyDecision(s.chain_id, 1, wouldReserve({ base: B2 }), 5))).toBe("stale_decision");
+  void c1;
 });

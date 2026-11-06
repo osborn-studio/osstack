@@ -85,6 +85,21 @@ CREATE TRIGGER engineering_reservation_insert BEFORE INSERT ON engineering_revis
 WHEN NEW.state<>'reserved' OR NOT EXISTS (SELECT 1 FROM engineering_revision_chains c WHERE c.chain_id=NEW.chain_id
   AND c.repository=NEW.repository AND c.pr_number=NEW.pr_number)
 BEGIN SELECT RAISE(ABORT,'reservation_insert_denied'); END;
+-- Invariant 3 in the database: no new reservation, and no reservation becoming dispatched, while any child this chain
+-- ever dispatched (or its current_mission_id) is not terminal with the stop proven. Voiding a reservation therefore never
+-- frees the chain while a child may still run, whatever the current_mission_id pointer says.
+CREATE TRIGGER engineering_reservation_child_exclusive_insert BEFORE INSERT ON engineering_revision_reservations
+WHEN (EXISTS (SELECT 1 FROM engineering_revision_chains c JOIN engineering_contained_missions m ON m.mission_id=c.current_mission_id
+    WHERE c.chain_id=NEW.chain_id AND NOT (m.state IN ('pr_opened','cancelled','abandoned','failed') AND m.stop_obligation=0))
+  OR EXISTS (SELECT 1 FROM engineering_revision_reservations r JOIN engineering_contained_missions m ON m.mission_id=r.child_mission_id
+    WHERE r.chain_id=NEW.chain_id AND r.head_sha<>NEW.head_sha AND NOT (m.state IN ('pr_opened','cancelled','abandoned','failed') AND m.stop_obligation=0)))
+BEGIN SELECT RAISE(ABORT,'reservation_child_busy'); END;
+CREATE TRIGGER engineering_reservation_child_exclusive_dispatch BEFORE UPDATE ON engineering_revision_reservations
+WHEN NEW.state='dispatched' AND OLD.state<>'dispatched' AND (EXISTS (SELECT 1 FROM engineering_revision_chains c JOIN engineering_contained_missions m ON m.mission_id=c.current_mission_id
+    WHERE c.chain_id=NEW.chain_id AND NOT (m.state IN ('pr_opened','cancelled','abandoned','failed') AND m.stop_obligation=0))
+  OR EXISTS (SELECT 1 FROM engineering_revision_reservations r JOIN engineering_contained_missions m ON m.mission_id=r.child_mission_id
+    WHERE r.chain_id=NEW.chain_id AND r.head_sha<>NEW.head_sha AND NOT (m.state IN ('pr_opened','cancelled','abandoned','failed') AND m.stop_obligation=0)))
+BEGIN SELECT RAISE(ABORT,'reservation_child_busy'); END;
 CREATE TRIGGER engineering_reservation_fixed BEFORE UPDATE ON engineering_revision_reservations
 WHEN OLD.chain_id<>NEW.chain_id OR OLD.repository<>NEW.repository OR OLD.pr_number<>NEW.pr_number OR OLD.head_sha<>NEW.head_sha
   OR OLD.review_ids_json<>NEW.review_ids_json OR OLD.feedback_digest<>NEW.feedback_digest OR OLD.created_at<>NEW.created_at
@@ -118,6 +133,14 @@ CREATE TRIGGER engineering_intent_insert BEFORE INSERT ON engineering_publicatio
 WHEN NEW.state<>'pending' OR NOT EXISTS (SELECT 1 FROM engineering_revision_chains c WHERE c.chain_id=NEW.chain_id
   AND c.repository=NEW.repository AND c.pr_number=NEW.pr_number)
 BEGIN SELECT RAISE(ABORT,'intent_insert_denied'); END;
+-- A push intent is bound to the chain it extends: same branch, old head and base as published, and the chain's
+-- current child holding a dispatched reservation.
+CREATE TRIGGER engineering_intent_push_binding BEFORE INSERT ON engineering_publication_intents
+WHEN NEW.kind='push' AND (SELECT mode FROM engineering_revision_chains WHERE chain_id=NEW.chain_id)='live' AND NOT EXISTS (SELECT 1 FROM engineering_revision_chains c
+  JOIN engineering_revision_reservations r ON r.chain_id=c.chain_id AND r.child_mission_id=c.current_mission_id AND r.state='dispatched'
+  WHERE c.chain_id=NEW.chain_id AND c.branch=NEW.branch AND c.published_head=NEW.expected_old_head
+    AND c.published_base=NEW.expected_base_sha AND c.current_mission_id IS NEW.child_mission_id AND NEW.child_mission_id IS NOT NULL)
+BEGIN SELECT RAISE(ABORT,'intent_binding_mismatch'); END;
 CREATE TRIGGER engineering_intent_fixed BEFORE UPDATE ON engineering_publication_intents
 WHEN OLD.intent_id<>NEW.intent_id OR OLD.chain_id<>NEW.chain_id OR OLD.kind<>NEW.kind OR OLD.repository<>NEW.repository
   OR OLD.pr_number<>NEW.pr_number OR OLD.branch<>NEW.branch OR OLD.expected_old_head IS NOT NEW.expected_old_head

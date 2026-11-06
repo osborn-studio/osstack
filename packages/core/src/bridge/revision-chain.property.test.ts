@@ -69,6 +69,12 @@ class World {
     for (let h: string | null | undefined = head; h !== null && h !== undefined; h = this.parent.get(h)) if (h === ancestor) return true;
     return false;
   }
+  /** Every commit on the modelled branch beyond the root, newest first: the full history of what the branch holds right now. */
+  branchCommits(): string[] {
+    const out: string[] = [];
+    for (let h: string | null | undefined = this.head; h !== null && h !== undefined && h !== "h0"; h = this.parent.get(h)) out.push(h);
+    return out;
+  }
   moveBase(ref: boolean): void { this.bn += 1; if (ref) this.base_ref = `dev${this.bn}`; else this.base_sha = `b${this.bn}`; }
 }
 
@@ -151,7 +157,7 @@ function pendingPush(r: Run): PublicationIntent | undefined {
   return storeA.intents(r.chainId).find(i => i.kind === "push" && i.state === "pending");
 }
 function recordPush(r: Run, c: RevisionChain, newHead: string): PublicationIntent {
-  return storeA.recordIntent(c.chain_id, c.revision, { kind: "push", branch: "b", expected_old_head: c.published_head, new_head: newHead, expected_base_sha: c.published_base, child_mission_id: c.current_mission_id! }, r.now).intent;
+  return storeA.recordIntent(c.chain_id, c.revision, { kind: "push", branch: c.branch, expected_old_head: c.published_head, new_head: newHead, expected_base_sha: c.published_base, child_mission_id: c.current_mission_id! }, r.now).intent;
 }
 
 function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"): void {
@@ -162,7 +168,7 @@ function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"
     storeA.dispatch(c.chain_id, c.revision, res.head_sha, mission(), r.now);
   } else if (c.state === "revising") {
     const next = r.w.fresh();
-    if (mode === "nointent") { if (r.w.state === "OPEN") r.w.push(next); return; } // pushed without an intent: indistinguishable from an outsider
+    if (mode === "nointent") { if (r.w.state === "OPEN") { r.w.push(next); } return; } // pushed without an intent: indistinguishable from an outsider
     recordPush(r, c, next);
   } else if (c.state === "publishing") {
     const intent = pendingPush(r);
@@ -171,6 +177,8 @@ function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"
     if (r.w.state !== "OPEN" || r.w.head !== intent.expected_old_head || r.w.base_sha !== intent.expected_base_sha || r.w.base_ref !== c.base_ref) {
       storeA.settleIntent(intent.intent_id, "failed", r.now, "precondition"); return; // the lease / pre-read refuses the push
     }
+    // Nothing the publisher pushes may land on a branch that already carries a commit it did not push.
+    for (const commit of r.w.branchCommits()) expect(r.ourHeads, `foreign commit ${commit} under a publisher push`).toContain(commit);
     r.w.push(intent.new_head!); r.ourHeads.push(intent.new_head!);
     if (mode === "nosettle") return; // crash after the push, before the receipt
     if (mode === "uncertain") { storeA.settleIntent(intent.intent_id, "uncertain", r.now); return; }
@@ -221,7 +229,7 @@ function apply(r: Run, op: Op): void {
     case "forcePush": {
       // A publisher that ignores the machine: the store must refuse an intent outside revising/publishing.
       const c = storeA.get(r.chainId);
-      const attempt = (): void => { storeA.recordIntent(c.chain_id, c.revision, { kind: "push", branch: "b", expected_old_head: c.published_head, new_head: "zz", expected_base_sha: c.published_base }, r.now); };
+      const attempt = (): void => { storeA.recordIntent(c.chain_id, c.revision, { kind: "push", branch: c.branch, expected_old_head: c.published_head, new_head: "zz", expected_base_sha: c.published_base }, r.now); };
       if (r.mode === "shadow") expect(attempt).toThrow("bridge_shadow_write_denied");
       else if (c.state === "revising" || c.state === "publishing") { /* legitimate; covered by progress */ }
       else expect(attempt).toThrow("state_denied");
@@ -301,6 +309,18 @@ function checkStopOnUnexplainedHead(r: Run): void {
   if (!explained) expect(c.state).toBe("awaiting_decision");
 }
 
+/** The modelled branch is the ground truth: while the chain is still active, every commit on it beyond the root was pushed by the
+ * publisher under a confirmed intent; any other commit must already have stopped the chain. (The publisher's own pushes are checked
+ * at push time in `progress`: never onto a branch holding a foreign commit.) */
+function checkBranch(r: Run): void {
+  const c = storeA.get(r.chainId);
+  const confirmed = storeA.intents(r.chainId).filter(i => i.kind === "push" && i.state === "confirmed").map(i => i.new_head!);
+  if (r.w.state === "OPEN" && c.state !== "awaiting_decision" && c.state !== "closed") {
+    expect(r.w.head).toBe(c.published_head);
+    for (const commit of r.w.branchCommits()) expect(confirmed, `commit ${commit} on the branch`).toContain(commit);
+  }
+}
+
 function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "none" | "past" | "future" }, ops: Op[]): void {
   const w = new World(); const now = 5 * HOUR;
   counter += 1;
@@ -322,9 +342,12 @@ function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "non
   coverage.confirmed += storeA.intents(r.chainId).filter(i => i.state === "confirmed").length;
   coverage.uncertain += storeA.intents(r.chainId).filter(i => i.state === "uncertain").length;
   coverage.shadowReserve += storeA.shadowDecisions(r.chainId).filter(d => d.action === "would_reserve").length;
-  // Reconcile, then a last complete cycle: 6. every commit the publisher pushed has a confirmed intent unless a human must decide.
+  // Reconcile, then one last complete cycle, then judge the branch as a whole (invariants 4 and 6).
+  recover(r);
+  if (r.w.state === "OPEN") cycle(r, storeA, false, false);
   recover(r);
   checkInvariants(r);
+  checkBranch(r);
   if (r.mode === "live") {
     const intents = storeA.intents(r.chainId).filter(i => i.kind === "push");
     for (const head of r.ourHeads) {

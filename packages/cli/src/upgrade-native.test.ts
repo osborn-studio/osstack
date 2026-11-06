@@ -93,8 +93,8 @@ describe('managed native upgrade actual filesystem/process boundaries',()=>{
     const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_unknown_actions'});expect(f.starts()).toBe(2);}finally{await port.close();}
   },30000);
-  it('fails closed when a pre51 home contains an unexpected revision-chain ledger',async()=>{
-    const f=await fixture(50,50);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec('CREATE TABLE engineering_revision_reservations(chain_id TEXT,state TEXT)');db.close();
+  it.each(['engineering_revision_chains','engineering_revision_reservations','engineering_publication_intents','engineering_revision_chain_events','engineering_shadow_decisions'])('fails closed when a pre51 home contains an unexpected %s table',async table=>{
+    const f=await fixture(50,50);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec(`CREATE TABLE ${table}(chain_id TEXT,state TEXT)`);db.close();
     const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
   },30000);

@@ -150,7 +150,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema<48&&tables.has('attention_reminders'))throw Error('upgrade_schema_unqualified');
       if(schema<49&&(tables.has('attention_item_settlements')||tables.has('attention_dead_letters')))throw Error('upgrade_schema_unqualified');
       if(schema<50&&(tables.has('engineering_contained_missions')||tables.has('engineering_workspace_claims')))throw Error('upgrade_schema_unqualified');
-      if(schema<51&&(tables.has('engineering_revision_chains')||tables.has('engineering_revision_reservations')||tables.has('engineering_publication_intents')))throw Error('upgrade_schema_unqualified');
+      if(schema<51&&(tables.has('engineering_revision_chains')||tables.has('engineering_revision_reservations')||tables.has('engineering_publication_intents')||tables.has('engineering_revision_chain_events')||tables.has('engineering_shadow_decisions')))throw Error('upgrade_schema_unqualified');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
       this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
     }catch(error){db.close();throw error;}
