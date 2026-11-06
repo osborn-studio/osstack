@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import type { GatedProcessOptions } from "./host-process.js";
 
 export const HARDENED_GIT_CONFIG_ARGS = Object.freeze([
   "-c",
@@ -52,7 +53,12 @@ export interface HardenedGitContext {
   signal?: AbortSignal;
 }
 
+/** W13: run the command through the gated launcher (register, fence, release, prove stop). Needs no `input`. */
+export type HardenedGitGate = Pick<GatedProcessOptions, "journal" | "markerDir" | "launch" | "fence" | "probe">;
+
 export interface HardenedGitOptions extends HardenedGitContext {
+  /** Optional gated launch (see host-process.ts). Without it behaviour is unchanged. */
+  gate?: HardenedGitGate;
   cwd: string;
   /** Extra `-c key=value` pairs appended after the fixed hardening prefix. */
   config?: readonly (readonly [string, string])[];
@@ -112,6 +118,7 @@ export function runHardenedGit(args: readonly string[], options: HardenedGitOpti
   const okExitCodes = options.okExitCodes ?? [0];
   const { signal } = options;
   if (signal?.aborted) return Promise.reject(new HardenedGitError("HARDENED_GIT_ABORTED", args));
+  if (options.gate !== undefined) return runGatedHardenedGit(argv, args, options, options.gate, limit, okExitCodes);
   return new Promise((resolve, reject) => {
     // Own process group, so a timeout or abort also kills helpers git spawned.
     const child = spawn(options.gitBinary ?? "git", argv, {
@@ -171,4 +178,42 @@ export function runHardenedGit(args: readonly string[], options: HardenedGitOpti
       settle(undefined, { stdout: Buffer.concat(stdout), stderr, exitCode });
     });
   });
+}
+
+async function runGatedHardenedGit(
+  argv: readonly string[],
+  args: readonly string[],
+  options: HardenedGitOptions,
+  gate: HardenedGitGate,
+  maxOutputBytes: number,
+  okExitCodes: readonly number[],
+): Promise<HardenedGitResult> {
+  if (options.input !== undefined) throw new HardenedGitError("HARDENED_GIT_INVALID_ARGS", args);
+  // Lazy: keeps the launcher out of every non-gated invocation.
+  const { runGatedProcess, HostProcessError, HostProcessUnprovenError } = await import("./host-process.js");
+  let result: Awaited<ReturnType<typeof runGatedProcess>>;
+  try {
+    result = await runGatedProcess(options.gitBinary ?? "git", argv, {
+      cwd: options.cwd,
+      env: hardenedGitEnvironment(options.env, options.home ?? options.env?.HOME ?? process.env.HOME, options.gitEnv),
+      timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      maxOutputBytes,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+      ...gate,
+    });
+  } catch (error) {
+    if (error instanceof HostProcessError && error.code === "HOST_PROCESS_SPAWN_FAILED") {
+      throw new HardenedGitError("HARDENED_GIT_SPAWN_FAILED", args);
+    }
+    if (error instanceof HostProcessError && error.code === "HOST_PROCESS_ABORTED") throw new HardenedGitError("HARDENED_GIT_ABORTED", args);
+    throw error;
+  }
+  if (result.proof === null) throw new HostProcessUnprovenError(result.op_id, result.released);
+  if (result.terminated === "timeout") throw new HardenedGitError("HARDENED_GIT_TIMEOUT", args, null, result.stderr);
+  if (result.terminated === "abort") throw new HardenedGitError("HARDENED_GIT_ABORTED", args, null, result.stderr);
+  if (result.terminated === "output_limit") throw new HardenedGitError("HARDENED_GIT_OUTPUT_LIMIT", args, null, result.stderr);
+  if (result.exitCode === null || !okExitCodes.includes(result.exitCode)) {
+    throw new HardenedGitError("HARDENED_GIT_FAILED", args, result.exitCode, result.stderr);
+  }
+  return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
 }
