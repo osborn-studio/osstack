@@ -30,11 +30,14 @@ beforeEach(async () => {
 });
 afterEach(async () => { await rm(dir, { recursive: true, force: true }); });
 
-interface FakeRun { id: number; name: string; head_sha: string; external_id: string; app: { id: number }; status: string; conclusion: string; output: { title: string; summary: string } }
+interface FakeSuite { id: number; head_sha: string; app: { id: number } }
+interface FakeRun { suite: number; id: number; name: string; head_sha: string; external_id: string; app: { id: number }; status: string; conclusion: string; output: { title: string; summary: string } }
 /** In-memory GitHub: token minting plus the check-runs REST surface. */
-function fakeGitHub(opts: { failWith?: number; loseReceipt?: boolean; barrier?: number } = {}) {
+function fakeGitHub(opts: { returnForeignSuites?: boolean; failWith?: number; loseReceipt?: boolean; barrier?: number } = {}) {
   let arrived = 0; let open: () => void = () => {}; const gate = new Promise<void>(resolve => { open = resolve; });
   const runs: FakeRun[] = [];
+  const suites: FakeSuite[] = [];
+  const ensureSuite = (id: number, app = 12, head = HEAD) => { if (!suites.some(x => x.id === id)) suites.push({ id, head_sha: head, app: { id: app } }); };
   const log: Array<{ method: string; path: string; auth: string; body: unknown }> = [];
   let nextId = 100;
   const fetchImpl = (async (url: string, init: RequestInit) => {
@@ -52,18 +55,26 @@ function fakeGitHub(opts: { failWith?: number; loseReceipt?: boolean; barrier?: 
     }
     log.push({ method, path: u.pathname + u.search, auth, body });
     if (opts.failWith) return json(opts.failWith, { message: `denied ${EVIDENCE_TOKEN}` });
-    if (method === 'GET' && /\/commits\/[0-9a-f]+\/check-runs$/.test(u.pathname)) {
-      const name = u.searchParams.get('check_name'); const app = Number(u.searchParams.get('app_id'));
-      const sha = /commits\/([0-9a-f]+)\//.exec(u.pathname)![1];
+    const paged = <T,>(items: T[]) => {
+      const perPage = Number(u.searchParams.get('per_page') ?? 30); const page = Number(u.searchParams.get('page') ?? 1);
+      return items.slice((page - 1) * perPage, page * perPage);
+    };
+    if (method === 'GET' && /\/commits\/[0-9a-f]+\/check-suites$/.test(u.pathname)) {
+      const app = Number(u.searchParams.get('app_id')); const sha = /commits\/([0-9a-f]+)\//.exec(u.pathname)![1];
       // The first `barrier` lookups all answer before any POST can land: the race the design names.
       if (opts.barrier && arrived < opts.barrier) { arrived++; if (arrived === opts.barrier) open(); await gate; }
-      // GitHub's app_id filter is honoured here; other Apps' checks are added by tests with their own ids.
-      const all = runs.filter(r => r.head_sha === sha && r.name === name && (app === 0 || true));
-      const perPage = Number(u.searchParams.get('per_page') ?? 30); const page = Number(u.searchParams.get('page') ?? 1);
-      return json(200, { total_count: all.length, check_runs: all.slice((page - 1) * perPage, page * perPage) });
+      const all = suites.filter(x => (opts.returnForeignSuites || (x.head_sha === sha && x.app.id === app)));
+      return json(200, { total_count: all.length, check_suites: paged(all) });
+    }
+    const suiteRuns = /\/check-suites\/(\d+)\/check-runs$/.exec(u.pathname);
+    if (method === 'GET' && suiteRuns) {
+      const name = u.searchParams.get('check_name');
+      const all = runs.filter(r => r.suite === Number(suiteRuns[1]) && r.name === name);
+      return json(200, { total_count: all.length, check_runs: paged(all) });
     }
     if (method === 'POST' && u.pathname.endsWith('/check-runs')) {
-      const run: FakeRun = { id: nextId++, name: body.name, head_sha: body.head_sha, external_id: body.external_id, app: { id: 12 }, status: body.status, conclusion: body.conclusion, output: body.output };
+      ensureSuite(5000);
+      const run: FakeRun = { suite: 5000, id: nextId++, name: body.name, head_sha: body.head_sha, external_id: body.external_id, app: { id: 12 }, status: body.status, conclusion: body.conclusion, output: body.output };
       runs.push(run);
       if (opts.loseReceipt) { opts.loseReceipt = false; throw new Error('socket hang up'); }
       return json(201, run);
@@ -76,7 +87,7 @@ function fakeGitHub(opts: { failWith?: number; loseReceipt?: boolean; barrier?: 
     }
     return json(404, {});
   }) as unknown as typeof fetch;
-  return { runs, log, fetchImpl };
+  return { runs, suites, ensureSuite, log, fetchImpl };
 }
 
 const mission = (over: Partial<ContainedMission> = {}) => ({ mission_id: MID, state: 'pr_opened', candidate_head: HEAD, ...over }) as unknown as ContainedMission;
@@ -96,8 +107,10 @@ describe('verify check (App B)', () => {
     expect(gh.runs[0]!.output.summary).toContain('d'.repeat(64));
     expect(gh.runs[0]!.output.summary).toContain('node check.mjs');
     expect(gh.runs[0]!.output.summary).toContain('authoritative');
-    const lookup = gh.log.find(l => l.method === 'GET')!;
-    expect(lookup.path).toBe(`/repos/acme/widgets/commits/${HEAD}/check-runs?check_name=osstack%2Fverify&app_id=12&filter=all&per_page=100&page=1`);
+    const gets = gh.log.filter(l => l.method === 'GET');
+    expect(gets[0]!.path).toBe(`/repos/acme/widgets/commits/${HEAD}/check-suites?app_id=12&per_page=100&page=1`);
+    expect(gh.log.some(l => l.path.includes('/commits/') && l.path.includes('/check-runs'))).toBe(false);
+    expect(gets.find(g => g.path.includes('/check-suites/5000/'))!.path).toBe('/repos/acme/widgets/check-suites/5000/check-runs?check_name=osstack%2Fverify&filter=all&per_page=100&page=1');
     expect(gh.log.every(l => l.auth === `Bearer ${EVIDENCE_TOKEN}`)).toBe(true);
   });
 
@@ -131,8 +144,10 @@ describe('verify check (App B)', () => {
     expect(gh.runs.find(r => r.id === 100)?.conclusion).toBe('success');
   });
 
-  const seedRun = (gh: ReturnType<typeof fakeGitHub>, id: number, external = `${MID}:${HEAD}`) =>
-    gh.runs.push({ id, name: 'osstack/verify', head_sha: HEAD, external_id: external, app: { id: 12 }, status: 'completed', conclusion: 'success', output: { title: 't', summary: 's' } });
+  const seedRun = (gh: ReturnType<typeof fakeGitHub>, id: number, external = `${MID}:${HEAD}`, suite = 5000) => {
+    gh.ensureSuite(suite);
+    gh.runs.push({ suite, id, name: 'osstack/verify', head_sha: HEAD, external_id: external, app: { id: 12 }, status: 'completed', conclusion: 'success', output: { title: 't', summary: 's' } });
+  };
 
   it('follows pagination: matching runs on page 2, lowest id included, are found and duplicates neutralised', async () => {
     const gh = fakeGitHub();
@@ -143,20 +158,105 @@ describe('verify check (App B)', () => {
     expect(gh.runs.find(r => r.id === 501)?.conclusion).toBe('neutral');
     expect(gh.runs.find(r => r.id === 500)?.conclusion).toBe('success');
     expect(gh.runs).toHaveLength(102);
-    expect(gh.log.filter(l => l.method === 'GET').map(l => /[&?]page=(\d+)/.exec(l.path)?.[1])).toEqual(['1', '2']);
+    expect(gh.log.filter(l => l.path.includes('/check-runs?')).map(l => /[&?]page=(\d+)/.exec(l.path)?.[1])).toEqual(['1', '2']);
   });
 
-  it('more than 10 full pages of check runs fails with CONTAINED_VERIFY_CHECK_LIMIT and writes nothing', async () => {
+  it('more than 10 full pages of check runs in a suite fails with CONTAINED_VERIFY_CHECK_LIMIT and writes nothing', async () => {
     const gh = fakeGitHub();
     for (let i = 0; i < 1001; i++) seedRun(gh, 1000 + i, `other:${i}`);
     expect(await errorOf(kit(gh).publishVerifyCheck(mission(), facts()))).toContain('CONTAINED_VERIFY_CHECK_LIMIT');
     expect(gh.log.filter(l => l.method !== 'GET')).toEqual([]);
-    expect(gh.log.filter(l => l.method === 'GET')).toHaveLength(10);
+    expect(gh.log.filter(l => l.path.includes('/check-runs?'))).toHaveLength(10);
+  });
+
+  it('finds an existing check in a non-first suite and does not create another', async () => {
+    const gh = fakeGitHub();
+    seedRun(gh, 900, 'other:x', 4000);
+    seedRun(gh, 700, `${MID}:${HEAD}`, 6000);
+    const result = await kit(gh).publishVerifyCheck(mission(), facts());
+    expect(result).toEqual({ check_run_id: 700, created: false });
+    expect(gh.log.filter(l => l.method === 'POST')).toHaveLength(0);
+    expect(gh.runs).toHaveLength(2);
+  });
+
+  it('pages through check suites (matching suite on page 2)', async () => {
+    const gh = fakeGitHub();
+    for (let i = 0; i < 100; i++) gh.ensureSuite(8000 + i);
+    seedRun(gh, 600, `${MID}:${HEAD}`, 9000);
+    const result = await kit(gh).publishVerifyCheck(mission(), facts());
+    expect(result).toEqual({ check_run_id: 600, created: false });
+    expect(gh.log.filter(l => l.path.includes('/check-suites?')).map(l => /[&?]page=(\d+)/.exec(l.path)?.[1])).toEqual(['1', '2']);
+  });
+
+  it('more than 10 full pages of check suites fails with CONTAINED_VERIFY_CHECK_LIMIT and writes nothing', async () => {
+    const gh = fakeGitHub();
+    for (let i = 0; i < 1001; i++) gh.ensureSuite(8000 + i);
+    expect(await errorOf(kit(gh).publishVerifyCheck(mission(), facts()))).toContain('CONTAINED_VERIFY_CHECK_LIMIT');
+    expect(gh.log.filter(l => l.method !== 'GET')).toEqual([]);
+    expect(gh.log.filter(l => l.path.includes('/check-suites?'))).toHaveLength(10);
+  });
+
+  it('ignores a suite owned by another App even if it holds a matching run', async () => {
+    const gh = fakeGitHub();
+    gh.ensureSuite(7000, 999); seedRun(gh, 7, `${MID}:${HEAD}`, 7000);
+    const result = await kit(gh).publishVerifyCheck(mission(), facts());
+    expect(result).toEqual({ check_run_id: 100, created: true });
+    expect(gh.runs.find(r => r.id === 7)?.output.title).toBe('t');
+    expect(gh.log.some(l => l.path.includes('/check-suites/7000/'))).toBe(false);
+  });
+
+  it('a retry after create finds the check on a later suite page and does not create a duplicate', async () => {
+    const gh = fakeGitHub(); const k = kit(gh);
+    for (let i = 0; i < 100; i++) gh.ensureSuite(1 + i);
+    expect((await k.publishVerifyCheck(mission(), facts())).created).toBe(true);
+    expect((await k.publishVerifyCheck(mission(), facts())).created).toBe(false);
+    expect(gh.log.filter(l => l.method === 'POST')).toHaveLength(1);
+    expect(gh.runs).toHaveLength(1);
+  });
+
+  it('ignores suites of another App or head, or with a non-integer id, even when the API returns them', async () => {
+    const gh = fakeGitHub({ returnForeignSuites: true });
+    gh.ensureSuite(7000, 999); seedRun(gh, 7, `${MID}:${HEAD}`, 7000);
+    gh.ensureSuite(7100, 12, 'c'.repeat(40)); seedRun(gh, 8, `${MID}:${HEAD}`, 7100);
+    gh.suites.push({ id: 'x' as unknown as number, head_sha: HEAD, app: { id: 12 } });
+    const result = await kit(gh).publishVerifyCheck(mission(), facts());
+    expect(result).toEqual({ check_run_id: 100, created: true });
+    expect(gh.log.filter(l => /\/check-suites\/(7000|7100|x)\//.test(l.path))).toEqual([]);
+    expect(gh.runs.find(r => r.id === 7)?.output.title).toBe('t');
+    expect(gh.runs.find(r => r.id === 8)?.output.title).toBe('t');
+  });
+
+  it('keeps the smallest id across suites and neutralises every other match without creating', async () => {
+    const gh = fakeGitHub();
+    for (let i = 0; i < 100; i++) gh.ensureSuite(1000 + i);
+    seedRun(gh, 900, `${MID}:${HEAD}`, 1000); seedRun(gh, 800, `${MID}:${HEAD}`, 1050); seedRun(gh, 300, `${MID}:${HEAD}`, 6000);
+    const result = await kit(gh).publishVerifyCheck(mission(), facts());
+    expect(result).toEqual({ check_run_id: 300, created: false });
+    expect(gh.log.filter(l => l.method === 'POST')).toHaveLength(0);
+    expect(gh.runs.filter(r => r.conclusion === 'neutral').map(r => r.id).sort()).toEqual([800, 900]);
+    expect(gh.runs.find(r => r.id === 300)?.conclusion).toBe('success');
+  });
+
+  it('bounds the total run-page requests across suites with CONTAINED_VERIFY_CHECK_LIMIT and writes nothing', async () => {
+    const gh = fakeGitHub();
+    for (let s = 0; s < 501; s++) for (let r = 0; r < 101; r++) seedRun(gh, 100_000 + s * 1000 + r, `other:${s}:${r}`, 2000 + s);
+    expect(await errorOf(kit(gh).publishVerifyCheck(mission(), facts()))).toContain('CONTAINED_VERIFY_CHECK_LIMIT');
+    expect(gh.log.filter(l => l.method !== 'GET')).toEqual([]);
+    expect(gh.log.filter(l => l.path.includes('/check-runs?'))).toHaveLength(1000);
+  }, 60_000);
+
+  it('a full 1,000th page of check suites cannot prove completeness (998 plus the created suite is fine)', async () => {
+    const ok = fakeGitHub();
+    for (let i = 0; i < 998; i++) ok.ensureSuite(8000 + i);
+    expect((await kit(ok).publishVerifyCheck(mission(), facts())).created).toBe(true);
+    const full = fakeGitHub();
+    for (let i = 0; i < 1000; i++) full.ensureSuite(8000 + i);
+    expect(await errorOf(kit(full).publishVerifyCheck(mission(), facts()))).toContain('CONTAINED_VERIFY_CHECK_LIMIT');
   });
 
   it('ignores a same-named check from another App', async () => {
     const gh = fakeGitHub();
-    gh.runs.push({ id: 7, name: 'osstack/verify', head_sha: HEAD, external_id: `${MID}:${HEAD}`, app: { id: 999 }, status: 'completed', conclusion: 'success', output: { title: 't', summary: 's' } });
+    gh.ensureSuite(5000); gh.runs.push({ suite: 5000, id: 7, name: 'osstack/verify', head_sha: HEAD, external_id: `${MID}:${HEAD}`, app: { id: 999 }, status: 'completed', conclusion: 'success', output: { title: 't', summary: 's' } });
     const result = await kit(gh).publishVerifyCheck(mission(), facts());
     expect(result).toEqual({ check_run_id: 100, created: true });
     expect(gh.runs.find(r => r.id === 7)?.output.title).toBe('t');
@@ -164,7 +264,7 @@ describe('verify check (App B)', () => {
 
   it('ignores a check with another external id or head', async () => {
     const gh = fakeGitHub();
-    gh.runs.push({ id: 7, name: 'osstack/verify', head_sha: HEAD, external_id: 'cm_other:' + HEAD, app: { id: 12 }, status: 'completed', conclusion: 'success', output: { title: 't', summary: 's' } });
+    gh.ensureSuite(5000); gh.runs.push({ suite: 5000, id: 7, name: 'osstack/verify', head_sha: HEAD, external_id: 'cm_other:' + HEAD, app: { id: 12 }, status: 'completed', conclusion: 'success', output: { title: 't', summary: 's' } });
     expect((await kit(gh).publishVerifyCheck(mission(), facts())).created).toBe(true);
   });
 
