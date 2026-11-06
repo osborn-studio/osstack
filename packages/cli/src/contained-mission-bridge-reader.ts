@@ -27,6 +27,7 @@ export const PULL_REQUEST_QUERY = `query BridgePullRequest($owner: String!, $nam
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
       state merged closed headRefName headRefOid headRepository { nameWithOwner } baseRefName baseRefOid
+      author { __typename ... on User { databaseId } ... on Bot { databaseId } }
       reviews(first: ${PAGE}, after: $reviewsAfter) @include(if: $reviews) {
         pageInfo { hasNextPage endCursor }
         nodes { databaseId state submittedAt commit { oid } author { __typename ... on User { databaseId } ... on Bot { databaseId } } body }
@@ -149,6 +150,8 @@ const prSchema = z.object({
   headRepository: z.object({ nameWithOwner: z.string() }).nullable(),
   baseRefName: z.string(),
   baseRefOid: z.string(),
+  /** Absent in older recordings; a missing author is treated as no registered publisher. */
+  author: authorSchema.optional(),
   reviews: connection(rawReviewSchema).optional(),
   reviewThreads: connection(rawThreadSchema).optional(),
   commits: connection(z.object({ commit: z.object({ oid: z.string() }) })).optional(),
@@ -181,6 +184,8 @@ export interface RawPullRequest {
   readonly headRepository: string | null;
   readonly baseRefName: string;
   readonly baseRefOid: string;
+  /** PR author, used only to check discovery against the registered publisher. Never copied into a PrSnapshot. */
+  readonly author: RawAuthor | undefined;
   readonly reviews: readonly RawReview[];
   readonly threads: readonly RawThread[];
   readonly commits: readonly string[];
@@ -287,6 +292,7 @@ export async function readPullRequest(transport: GraphqlTransport, ref: PullRequ
         headRepository: first.headRepository?.nameWithOwner ?? null,
         baseRefName: first.baseRefName,
         baseRefOid: first.baseRefOid,
+        author: first.author ?? null,
         reviews: nodesOf<RawReview>('reviews'),
         threads,
         commits: nodesOf<{ commit: { oid: string } }>('commits').map((n) => n.commit.oid),
@@ -331,7 +337,8 @@ export function feedbackDigest(topLevel: string, comments: readonly { threadId: 
 
 const REVIEW_STATES: ReadonlySet<string> = new Set<ReviewState>(['APPROVED', 'CHANGES_REQUESTED', 'COMMENTED', 'DISMISSED']);
 
-function reviewerOf(author: RawAuthor, registry: ProducerRegistry): { app_id: number | null; actor_id: number } {
+/** Numeric identity of a GitHub actor (Apps resolved through the registry by actor id); `actor_id` 0 means unknown. */
+export function reviewerOf(author: RawAuthor | undefined, registry: ProducerRegistry): { app_id: number | null; actor_id: number } {
   if (!author || author.databaseId === undefined || author.databaseId <= 0) return { app_id: null, actor_id: 0 };
   if (author.__typename === 'Bot') {
     const entry = [...registry.reviewers, ...registry.publisher].find((p) => p.actor_id === author.databaseId);
@@ -412,15 +419,18 @@ const secondReadSchema = z.object({
   errors: z.array(z.unknown()).optional(),
 });
 
+/** Result of the second read: the same facts unchanged, something moved, or the confirmation could not be obtained. */
+export type SecondReadOutcome = 'unchanged' | 'moved' | 'failed';
+
 /** Small queries before a would_reserve / would_mark_ready is recorded. Pages `reviews` until every selected review is found.
- * Returns true ("moved") when the head, base sha, base ref or any selected review's state differs, when a selected review is
- * never found, when the request cap is hit, and on any failure: a decision that cannot be confirmed is discarded. */
-export async function secondRead(
+ * `moved`: the head, base sha, base ref or a selected review's state differs, or a selected review is never found.
+ * `failed`: a transport error, GraphQL errors, a malformed page, a missing PR or the request cap. Either way the decision is discarded. */
+export async function secondReadOutcome(
   transport: GraphqlTransport,
   ref: PullRequestRef,
   expected: { head: string; base_sha: string; base_ref: string; reviews: readonly { review_id: number; state: ReviewState }[] },
   limits: Pick<ReadLimits, 'maxRequests'> = DEFAULT_READ_LIMITS,
-): Promise<boolean> {
+): Promise<SecondReadOutcome> {
   try {
     const wanted = new Map(expected.reviews.map((r) => [r.review_id, r.state as string]));
     let after: string | null = null;
@@ -428,22 +438,34 @@ export async function secondRead(
       const variables: Record<string, unknown> = { owner: ref.owner, name: ref.name, number: ref.number };
       if (after) variables['after'] = after;
       const parsed = secondReadSchema.safeParse(await transport(SECOND_READ_QUERY, variables));
-      if (!parsed.success || (parsed.data.errors?.length ?? 0) > 0) return true;
+      if (!parsed.success || (parsed.data.errors?.length ?? 0) > 0) return 'failed';
       const pr = parsed.data.data?.repository?.pullRequest;
-      if (!pr) return true;
-      if (pr.headRefOid !== expected.head || pr.baseRefOid !== expected.base_sha || pr.baseRefName !== expected.base_ref) return true;
+      if (!pr) return 'failed';
+      if (pr.headRefOid !== expected.head || pr.baseRefOid !== expected.base_sha || pr.baseRefName !== expected.base_ref) return 'moved';
       for (const node of pr.reviews.nodes) {
         const state = wanted.get(node.databaseId);
         if (state === undefined) continue;
-        if (state !== node.state) return true;
+        if (state !== node.state) return 'moved';
         wanted.delete(node.databaseId);
       }
-      if (wanted.size === 0) return false;
-      if (!pr.reviews.pageInfo.hasNextPage || !pr.reviews.pageInfo.endCursor) return true;
+      if (wanted.size === 0) return 'unchanged';
+      // Reviews exhausted without the selected one: it is gone (moved). A next page that cannot be followed is a failed confirmation.
+      if (!pr.reviews.pageInfo.hasNextPage) return 'moved';
+      if (!pr.reviews.pageInfo.endCursor) return 'failed';
       after = pr.reviews.pageInfo.endCursor;
     }
-    return true;
+    return 'failed';
   } catch {
-    return true;
+    return 'failed';
   }
+}
+
+/** Boolean form for callers that treat "moved" and "could not confirm" alike: true unless the facts were confirmed unchanged. */
+export async function secondRead(
+  transport: GraphqlTransport,
+  ref: PullRequestRef,
+  expected: { head: string; base_sha: string; base_ref: string; reviews: readonly { review_id: number; state: ReviewState }[] },
+  limits: Pick<ReadLimits, 'maxRequests'> = DEFAULT_READ_LIMITS,
+): Promise<boolean> {
+  return (await secondReadOutcome(transport, ref, expected, limits)) !== 'unchanged';
 }

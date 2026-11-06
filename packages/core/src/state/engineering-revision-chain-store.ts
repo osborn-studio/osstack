@@ -57,6 +57,9 @@ export interface ShadowChainWriter {
   get(chainId: string): RevisionChain;
   shadowDecisions(chainId: string): ShadowDecisionRow[];
   listOpenShadowChains(limit?: number, after?: { created_at: number; chain_id: string }): RevisionChain[];
+  /** Read-only lookups for chain discovery: the shadow chain rooted at a Mission, and the one on a (repository, PR), in any state. */
+  shadowChainForMission(rootMissionId: string): RevisionChain | undefined;
+  shadowChainForPr(repository: string, prNumber: number): RevisionChain | undefined;
 }
 export function shadowChainWriter(store: RevisionChainStore): ShadowChainWriter {
   return {
@@ -69,6 +72,8 @@ export function shadowChainWriter(store: RevisionChainStore): ShadowChainWriter 
     get: chainId => store.get(chainId),
     shadowDecisions: chainId => store.shadowDecisions(chainId),
     listOpenShadowChains: (limit, after) => store.listOpen("shadow", limit, after),
+    shadowChainForMission: rootMissionId => store.chainForMission(rootMissionId, "shadow"),
+    shadowChainForPr: (repository, prNumber) => store.chainForPr(repository, prNumber, "shadow"),
   };
 }
 
@@ -97,6 +102,12 @@ export class RevisionChainStore {
   }
   confirmedPushHeads(chainId: string): string[] {
     return (this.db.prepare("SELECT new_head FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state='confirmed' ORDER BY created_at,intent_id").all(chainId) as Array<{ new_head: string }>).map(r => r.new_head);
+  }
+  chainForMission(rootMissionId: string, mode: ChainMode = "shadow"): RevisionChain | undefined {
+    return this.db.prepare("SELECT * FROM engineering_revision_chains WHERE root_mission_id=? AND mode=?").get(rootMissionId, mode) as RevisionChain | undefined;
+  }
+  chainForPr(repository: string, prNumber: number, mode: ChainMode = "shadow"): RevisionChain | undefined {
+    return this.db.prepare("SELECT * FROM engineering_revision_chains WHERE repository=? AND pr_number=? AND mode=? ORDER BY created_at,chain_id LIMIT 1").get(repository, prNumber, mode) as RevisionChain | undefined;
   }
   /** Non-closed chains of one mode in (created_at, chain_id) order, for cursor scans. */
   listOpen(mode: ChainMode, limit = 100, after?: { created_at: number; chain_id: string }): RevisionChain[] {

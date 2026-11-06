@@ -1,7 +1,7 @@
 # W13 设计：守护进程崩溃后存活的主机子进程
 
 日期：2026-11-06。基线：`main` `b706367b`（含 #377 阶段 4-C）。行号均指该基线。
-上位文档：[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)（下称“计划”）第 33 行 W13；[受限 Mission 路径设计](2026-10-31-contained-mission-path.md)（下称“Mission 设计”）§9 与“实现说明（M8）”；[阶段 5 附录](2026-11-06-bridge-same-pr-revision.md)（下称“5 附录”，分支 `docs/bridge-phase5-appendix`，撰写中）§2“阶段 5 对 W13 验收的额外要求”。
+上位文档：[v3 执行计划](../plans/2026-10-31-osstack-v3-execution-plan.md)（下称“计划”）第 33 行 W13；[受限 Mission 路径设计](2026-10-31-contained-mission-path.md)（下称“Mission 设计”）§9 与“实现说明（M8）”；阶段 5 附录 `docs/design/2026-11-06-bridge-same-pr-revision.md`（下称“5 附录”，PR #382，未合并前不加链接）§2“阶段 5 对 W13 验收的额外要求”。
 
 5 附录第 48 行约定：两份文档对“放行”“登记回执”的定义不一致时以本文为准。本文 §6 列出需要回改 5 附录的地方。
 
@@ -353,6 +353,8 @@ M8 演练（`contained-mission-recovery.test.ts`）里，僵尸 owner 的每次�
 | 8 | `authorized` 的孤儿恢复补写 `workspace_created` 并新增决定 `resume_workspace` | 否则只有主机登记的 `stop_unknown` 无法证明、也无法回到执行（§5.5） |
 
 ## 10. 需要用户做的决定
+
+**已决定（2026-11-06，用户本人）：** 决定 1 确认：恢复只观察、从不杀进程，无法证明已停止的孤儿推送让 Mission 停在 `stop_unknown`，由人手工结束进程；决定 3：迁移号 54，按合并顺序在 52（App E）、53（阶段 5）之后。其余决定仍待定。
 
 1. **恢复不发信号（已定为设计，不是选项）**：第 1 轮审计后去掉了“身份核对后由恢复杀进程”的方案（§5.2 末）。需要你确认的是后果：已放行的孤儿（例如卡住的 `git push`）没有上限地运行时，Mission 一直是 `stop_unknown`，只能由人在宿主机上自行结束该进程（`mission status` 显示 pgid 与命令种类）后 `retry_stop_check`。
 2. **低频复查。** (a) 推荐：服务 tick 每 60 秒对有未结登记的 Mission 跑一次 §5.2（先 `kill(-pgid,0)`，空了才跑 `lsof`），证明成立即结算；(b) 只在重启与 `retry_stop_check` 时结算（与执行器的现有做法一致）。

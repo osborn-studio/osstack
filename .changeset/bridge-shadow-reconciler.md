@@ -1,0 +1,6 @@
+---
+"@osstack/core": patch
+"@osstack/cli": patch
+---
+
+Add the Grok bridge shadow reconciler (phase 4-D). With `OSSTACK_BRIDGE=shadow` and a host-private `$OSSTACK_HOME/bridge/producers.json`, the contained-Mission service observes `pr_opened` Mission PRs read-only (host `gh` credentials, query documents only) and records what the bridge would do as shadow revision-chain events and decisions: a chain per Mission PR on first sight, a scan every five minutes over at most ten open chains, a second read before `would_reserve` / `would_mark_ready`, and fixed-code `read_failed` events. It never uses App credentials, never writes the Mission ledger and is never awaited on the Mission tick. `OSSTACK_BRIDGE` unset or `0` is off, `shadow` without `producers.json` is off with a log line, `1` fails the service start with `BRIDGE_LIVE_NOT_IMPLEMENTED` and any other value with `BRIDGE_MODE_INVALID`. `osstack mission status --json` gains a `chain` field (shadow chain state, stop reason, published head and latest shadow decisions; `null` when none). The PR reader now also fetches the PR author for discovery. Core gains read-only lookups: `ContainedMissionStore.listPrOpened`, `RevisionChainStore.chainForMission` / `chainForPr` and the matching `ShadowChainWriter` members.

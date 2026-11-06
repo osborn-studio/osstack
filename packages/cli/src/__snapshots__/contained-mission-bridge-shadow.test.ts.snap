@@ -1,0 +1,1175 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`historical corpus through the shadow reconciler > keeps the shadow event sequences stable (regression snapshot) 1`] = `
+{
+  "osborn-studio-osstack-340.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5725712517,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-341.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5723777659,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-342.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724153179,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-343.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724152835,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-344.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724194300,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-345.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724335109,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [
+          "5724194737:head_mismatch",
+        ],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [
+          "5724194737:head_mismatch",
+        ],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-346.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724458506,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-347.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724458922,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-348.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724650361,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-349.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724737280,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-350.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5724984144,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-351.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5725302558,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-352.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5725302936,
+          5725716794,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-353.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5725870248,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [
+          "5725558051:head_mismatch",
+          "5725719902:head_mismatch",
+          "5725724998:head_mismatch",
+          "5725730826:head_mismatch",
+          "5725790142:head_mismatch",
+        ],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [
+          "5725558051:head_mismatch",
+          "5725719902:head_mismatch",
+          "5725724998:head_mismatch",
+          "5725730826:head_mismatch",
+          "5725790142:head_mismatch",
+        ],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-354.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5726013166,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-355.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5726013404,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-356.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5726249071,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-357.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5726249314,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-358.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5726506654,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-359.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5726729030,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-360.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5727330792,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-361.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5727527378,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-362.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5727817622,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+  "osborn-studio-osstack-363.json": {
+    "decisions": [
+      {
+        "action": "would_mark_ready",
+        "reason": "all_participating_approved",
+        "review_ids": [
+          5728033579,
+        ],
+      },
+      {
+        "action": "would_stop",
+        "reason": "attribution_unknown",
+        "review_ids": [],
+      },
+    ],
+    "events": [
+      {
+        "kind": "chain_created",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_mark_ready",
+        "decision": "transition",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "all_participating_approved",
+      },
+      {
+        "action": undefined,
+        "decision": "none",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "already_ready",
+      },
+      {
+        "kind": "transition",
+      },
+      {
+        "action": "would_stop",
+        "decision": "stop",
+        "discards": [],
+        "kind": "observation_cycle",
+        "reason": "attribution_unknown",
+      },
+    ],
+  },
+}
+`;

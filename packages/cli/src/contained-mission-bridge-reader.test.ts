@@ -16,6 +16,7 @@ import {
   normalizeSnapshot,
   readPullRequest,
   secondRead,
+  secondReadOutcome,
 } from './contained-mission-bridge-reader.js';
 
 const REF = { owner: 'o', name: 'r', number: 7 };
@@ -101,6 +102,20 @@ describe('readPullRequest', () => {
     expect(result.pr.timeline).toEqual(['MERGED_EVENT']);
     expect(calls[0]!.query).toContain('HEAD_REF_FORCE_PUSHED_EVENT, BASE_REF_CHANGED_EVENT, BASE_REF_FORCE_PUSHED_EVENT, MERGED_EVENT, CLOSED_EVENT, REOPENED_EVENT');
     expect(calls[0]!.query).not.toMatch(/mutation|subscription/iu);
+  });
+
+  it('asks for the PR author and carries it only on the raw page, never into a snapshot', async () => {
+    const calls: { query: string; variables: Record<string, unknown> }[] = [];
+    const transport = server({ reviews: [review(1)] }, calls);
+    const withAuthor: GraphqlTransport = async (q, v) => {
+      const body = (await transport(q, v)) as { data?: { repository?: { pullRequest?: Record<string, unknown> } } };
+      if (body.data?.repository?.pullRequest) body.data.repository.pullRequest['author'] = { __typename: 'Bot', databaseId: 1 };
+      return body;
+    };
+    const result = await readPullRequest(withAuthor, REF);
+    expect(calls[0]!.query).toContain('author { __typename ... on User { databaseId } ... on Bot { databaseId } }');
+    expect(result.complete && result.pr.author).toEqual({ __typename: 'Bot', databaseId: 1 });
+    expect(JSON.stringify(normalizeSnapshot(result, registry, T0))).not.toContain('Bot');
   });
 
   it('pages top-level connections to the end, fetching only unfinished ones', async () => {
@@ -434,6 +449,19 @@ describe('secondRead', () => {
     expect(await secondRead(async () => ({ errors: [{}], data: null }), REF, expected)).toBe(true);
     expect(await secondRead(async () => ({ data: { repository: { pullRequest: null } } }), REF, expected)).toBe(true);
     expect(await secondRead(async () => 42, REF, expected)).toBe(true);
+  });
+  it('distinguishes a confirmed move from a confirmation that could not be obtained', async () => {
+    expect(await secondReadOutcome(answer(), REF, expected)).toBe('unchanged');
+    expect(await secondReadOutcome(answer({ headRefOid: 'c'.repeat(40) }), REF, expected)).toBe('moved');
+    expect(await secondReadOutcome(answer({}, [{ databaseId: 1, state: 'COMMENTED' }]), REF, expected)).toBe('moved');
+    expect(await secondReadOutcome(async () => { throw new Error('x'); }, REF, expected)).toBe('failed');
+    expect(await secondReadOutcome(async () => ({ errors: [{}], data: null }), REF, expected)).toBe('failed');
+    expect(await secondReadOutcome(async () => ({ data: { repository: { pullRequest: null } } }), REF, expected)).toBe('failed');
+    expect(await secondReadOutcome(async () => 42, REF, expected)).toBe('failed');
+    expect(await secondReadOutcome(answer({}, [{ databaseId: 1, state: 'COMMENTED' }], { hasNextPage: true, endCursor: null }), REF, expected)).toBe('failed');
+    let n = 0;
+    const endless: GraphqlTransport = async () => answer({}, [{ databaseId: ++n + 1000, state: 'COMMENTED' }], { hasNextPage: true, endCursor: String(n) })();
+    expect(await secondReadOutcome(endless, REF, expected, { maxRequests: 3 })).toBe('failed');
   });
   it('asks only for the small field set', async () => {
     let query = '';
