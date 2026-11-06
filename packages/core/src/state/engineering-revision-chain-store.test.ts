@@ -9,6 +9,7 @@ import { ContainedMissionStore } from "./engineering-contained-store.js";
 import type { EngineeringPrincipal } from "./engineering-store.js";
 import { openDb } from "./db.js";
 import { RevisionChainError, RevisionChainStore, revisionChainUpgradeHolds, shadowChainWriter, type NewChainInput } from "./engineering-revision-chain-store.js";
+import { ENGINEERING_REVISION_CHAIN_DDL } from "./engineering-revision-chain-ddl.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
 const BRANCH = "osstack/mission/x";
@@ -74,15 +75,15 @@ it("adds the five tables in migration 51 additively and reopens cleanly from sch
   const before = (old.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as Array<{ name: string }>).map(t => t.name);
   old.close();
   const db = openDb({ path });
-  expect(CURRENT_SCHEMA_VERSION).toBe(51);
-  expect(db.pragma("user_version", { simple: true })).toBe(51);
+  expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(51);
+  expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   const after = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as Array<{ name: string }>).map(t => t.name);
-  expect(after.filter(t => !before.includes(t))).toEqual([
+  expect(after.filter(t => !before.includes(t) && !t.startsWith("engineering_merger_shadow_"))).toEqual([
     "engineering_publication_intents", "engineering_revision_chain_events", "engineering_revision_chains", "engineering_revision_reservations", "engineering_shadow_decisions",
   ]);
   expect(db.pragma("foreign_key_check")).toEqual([]);
   db.close();
-  const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(51); reopened.close();
+  const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION); reopened.close();
 });
 
 it("creates shadow and live chains with a created event and unique roots", () => {
@@ -524,7 +525,7 @@ it("serialises a second writer behind the first one's write lock instead of corr
 });
 
 it("treats migrations as the single source for the DDL export", () => {
-  expect(MIGRATIONS.at(-1)).toMatchObject({ id: 51, name: "engineering_revision_chains" });
+  expect(MIGRATIONS.find(m => m.id === 51)).toMatchObject({ id: 51, name: "engineering_revision_chains", sql: ENGINEERING_REVISION_CHAIN_DDL });
 });
 
 it("keeps one child at a time even after the dispatched reservation is voided while its child still runs (invariant 3)", () => {
