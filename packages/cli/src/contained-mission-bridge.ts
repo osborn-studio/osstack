@@ -14,6 +14,8 @@ import {
 
 const PAGE_SIZE = 100;
 const MAX_LOOKUP_PAGES = 10;
+/** Total check-run page requests per lookup, across all suites (bounds a worst case of suites x pages). */
+const MAX_RUN_PAGE_REQUESTS = PAGE_SIZE * MAX_LOOKUP_PAGES;
 
 export type BridgeExec = (
   command: string,
@@ -122,6 +124,11 @@ interface CheckRun {
   external_id?: string | null;
   app?: { id?: number } | null;
 }
+interface CheckSuite {
+  id: number;
+  head_sha?: string;
+  app?: { id?: number } | null;
+}
 const flat = (text: string, max: number): string =>
   // biome-ignore lint/suspicious/noControlCharactersInRegex: check summaries must not carry control characters.
   redactBridge(text).replace(/[\u0000-\u0008\u000b-\u001f\u007f]/gu, ' ').slice(0, max);
@@ -188,22 +195,41 @@ export function createBridgeKit(options: BridgeOptions): BridgeKit {
       ].join('\n'), 4000),
     };
     const success = { status: 'completed', conclusion: 'success', output };
-    const lookup = async (): Promise<number[]> => {
-      const found: CheckRun[] = [];
+    // GET /commits/{ref}/check-runs only covers a ref's 1,000 most recent check suites, so an existing check could
+    // be missed (and duplicated). Walk this App's suites for the head, then each suite's runs, both paged and capped.
+    const pageAll = async <T>(path: string, query: string, pick: (body: unknown) => T[], spend: () => void = () => {}): Promise<T[]> => {
+      const out: T[] = [];
       for (let page = 1; ; page++) {
-        // A repository with more than MAX_LOOKUP_PAGES full pages is not safe to deduplicate against.
+        // More than MAX_LOOKUP_PAGES full pages is not safe to deduplicate against.
         if (page > MAX_LOOKUP_PAGES) throw new Error('CONTAINED_VERIFY_CHECK_LIMIT');
-        const query = `check_name=${encodeURIComponent(CHECK_NAME)}&app_id=${config.evidence.app_id}&filter=all&per_page=${PAGE_SIZE}&page=${page}`;
-        const body = (await api('GET', `/repos/${repo}/commits/${head}/check-runs?${query}`)) as { check_runs?: CheckRun[] } | null;
-        const runs = body?.check_runs ?? [];
-        found.push(...runs);
-        if (runs.length < PAGE_SIZE) break;
+        spend();
+        const items = pick(await api('GET', `${path}?${query}&per_page=${PAGE_SIZE}&page=${page}`));
+        out.push(...items);
+        if (items.length < PAGE_SIZE) break;
       }
-      return found
-        // Another App's same-named check never counts.
-        .filter((run) => run.app?.id === config.evidence.app_id && run.external_id === key && run.head_sha === head && Number.isInteger(run.id))
-        .map((run) => run.id)
-        .sort((a, b) => a - b);
+      return out;
+    };
+    const lookup = async (): Promise<number[]> => {
+      let runRequests = 0;
+      const spendRunRequest = (): void => {
+        if (++runRequests > MAX_RUN_PAGE_REQUESTS) throw new Error('CONTAINED_VERIFY_CHECK_LIMIT');
+      };
+      const suites = await pageAll<CheckSuite>(`/repos/${repo}/commits/${head}/check-suites`, `app_id=${config.evidence.app_id}`,
+        (body) => (body as { check_suites?: CheckSuite[] } | null)?.check_suites ?? []);
+      // Another App's suite never counts.
+      const suiteIds = [...new Set(suites
+        .filter((suite) => suite.app?.id === config.evidence.app_id && suite.head_sha === head && Number.isInteger(suite.id))
+        .map((suite) => suite.id))];
+      const found = new Set<number>();
+      for (const suiteId of suiteIds) {
+        const runs = await pageAll<CheckRun>(`/repos/${repo}/check-suites/${suiteId}/check-runs`, `check_name=${encodeURIComponent(CHECK_NAME)}&filter=all`,
+          (body) => (body as { check_runs?: CheckRun[] } | null)?.check_runs ?? [], spendRunRequest);
+        for (const run of runs) {
+          // Another App's same-named check never counts.
+          if (run.app?.id === config.evidence.app_id && run.external_id === key && run.head_sha === head && Number.isInteger(run.id)) found.add(run.id);
+        }
+      }
+      return [...found].sort((a, b) => a - b);
     };
 
     let ids = await lookup();
