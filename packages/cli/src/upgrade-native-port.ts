@@ -16,7 +16,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 51;
+export const UPGRADE_QUALIFIED_SCHEMA = 52;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -139,6 +139,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema>=50)expected.push('engineering_contained_missions','engineering_contained_events','engineering_workspace_claims');
       // 51 adds the revision-chain ledger. Its in-flight work (reserved/dispatched reservations, pending/uncertain
       // intents) counts in engineeringUpgradeHolds.
+      // 52 adds the shadow-merger ledger: append-only evidence plus per-PR ordering counters. It holds no in-flight
+      // side effect (nothing is dispatched or published), so engineeringUpgradeHolds does not count it.
+      if(schema>=52)expected.push('engineering_merger_shadow_watermarks','engineering_merger_shadow_cycles','engineering_merger_shadow_decisions','engineering_merger_shadow_outcomes');
       if(schema>=51)expected.push('engineering_revision_chains','engineering_revision_reservations','engineering_publication_intents','engineering_revision_chain_events','engineering_shadow_decisions');
       if(expected.some(name=>!tables.has(name)))throw Error('upgrade_schema_tables_missing');
       if((db.prepare("SELECT count(*) n FROM improvement_executions WHERE state IN ('claimed','running')").get() as {n:number}).n>0)throw Error('upgrade_unknown_actions');
@@ -151,6 +154,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema<49&&(tables.has('attention_item_settlements')||tables.has('attention_dead_letters')))throw Error('upgrade_schema_unqualified');
       if(schema<50&&(tables.has('engineering_contained_missions')||tables.has('engineering_workspace_claims')))throw Error('upgrade_schema_unqualified');
       if(schema<51&&(tables.has('engineering_revision_chains')||tables.has('engineering_revision_reservations')||tables.has('engineering_publication_intents')||tables.has('engineering_revision_chain_events')||tables.has('engineering_shadow_decisions')))throw Error('upgrade_schema_unqualified');
+      if(schema<52&&(tables.has('engineering_merger_shadow_watermarks')||tables.has('engineering_merger_shadow_cycles')||tables.has('engineering_merger_shadow_decisions')||tables.has('engineering_merger_shadow_outcomes')))throw Error('upgrade_schema_unqualified');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
       this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
     }catch(error){db.close();throw error;}
