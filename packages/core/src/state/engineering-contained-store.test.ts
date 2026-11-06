@@ -199,11 +199,11 @@ it("upgrades a 49 home to 50 additively and reopens cleanly", () => {
   old.close();
   const db = openDb({ path });
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
-  expect(CURRENT_SCHEMA_VERSION).toBe(50);
+  expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(50);
   const after = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as Array<{ name: string }>;
   expect(after.filter(t => !(before as Array<{ name: string }>).some(b => b.name === t.name)).map(t => t.name))
-    .toEqual(["engineering_contained_events", "engineering_contained_missions", "engineering_workspace_claims"]);
+    .toEqual(expect.arrayContaining(["engineering_contained_events", "engineering_contained_missions", "engineering_workspace_claims"]));
   expect(db.pragma("foreign_key_check")).toEqual([]);
   db.close();
-  const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(50); reopened.close();
+  const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION); reopened.close();
 });

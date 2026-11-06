@@ -1,10 +1,10 @@
 import type Database from "better-sqlite3";
-import { containedUpgradeHolds, isEngineeringCancelledBeforeDispatch } from "@osstack/core";
+import { containedUpgradeHolds, isEngineeringCancelledBeforeDispatch, revisionChainUpgradeHolds } from "@osstack/core";
 
 /** Pure read used before stopping a daemon and again under the stopped-home
  * database lock. Only proven completion or proven non-dispatch clears a hold. */
 export function engineeringUpgradeHolds(db: Database.Database): number {
-  return sessionDispatchHolds(db) + containedUpgradeHolds(db);
+  return sessionDispatchHolds(db) + containedUpgradeHolds(db) + revisionChainUpgradeHolds(db);
 }
 
 function sessionDispatchHolds(db: Database.Database): number {
