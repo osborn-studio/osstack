@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "registry": {
+    "publisher": [
+      {
+        "actor_id": 1,
+        "app_id": null
+      }
+    ],
+    "reviewers": [
+      {
+        "actor_id": 2,
+        "app_id": null
+      },
+      {
+        "actor_id": 3,
+        "app_id": null
+      },
+      {
+        "actor_id": 4,
+        "app_id": null
+      },
+      {
+        "actor_id": 5,
+        "app_id": null
+      },
+      {
+        "actor_id": 6,
+        "app_id": null
+      },
+      {
+        "actor_id": 7,
+        "app_id": null
+      }
+    ]
+  },
+  "snapshots": [
+    {
+      "pr_state": "MERGED",
+      "head": "11ee8aef156e56e609ab816a57f5f9698f9e0485",
+      "base_sha": "178b8dfd1af0cff995d95290669a796c0fff4db8",
+      "base_ref": "main",
+      "observed_at": 1793952488755,
+      "reviews": [
+        {
+          "review_id": 5724194737,
+          "state": "DISMISSED",
+          "submitted_at": 1793469921000,
+          "review_commit": "8e4e12b32afec84260b5e144df653d342868b89a",
+          "reviewer": {
+            "actor_id": 3,
+            "app_id": null
+          },
+          "has_feedback": true,
+          "feedback_digest": "f2533d48b47cd2a4b82e7e2f4b57fc847d662700a3fa1e32ee6559c67f84e96f"
+        },
+        {
+          "review_id": 5724335109,
+          "state": "APPROVED",
+          "submitted_at": 1793471905000,
+          "review_commit": "11ee8aef156e56e609ab816a57f5f9698f9e0485",
+          "reviewer": {
+            "actor_id": 3,
+            "app_id": null
+          },
+          "has_feedback": true,
+          "feedback_digest": "b068b68fd755f9d0a1e12dbb33a41e38d9668d64ba85cb98d5261c02518a5e81"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    }
+  ]
+}

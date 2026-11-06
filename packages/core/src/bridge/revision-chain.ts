@@ -34,6 +34,8 @@ export interface SnapshotReview {
 }
 export interface PrSnapshot {
   pr_state: PrState; head: string; base_sha: string; base_ref: string;
+  /** Epoch ms at which the reader observed the PR; optional so decision-only callers can omit it. The decision function never reads it. */
+  observed_at?: number;
   reviews: readonly SnapshotReview[];
   /** Every connection was read to the end (design §8.4 rule 1). */
   complete: boolean;

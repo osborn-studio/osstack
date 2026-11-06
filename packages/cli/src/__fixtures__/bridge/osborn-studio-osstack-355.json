@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "registry": {
+    "publisher": [
+      {
+        "actor_id": 1,
+        "app_id": null
+      }
+    ],
+    "reviewers": [
+      {
+        "actor_id": 2,
+        "app_id": null
+      },
+      {
+        "actor_id": 3,
+        "app_id": null
+      },
+      {
+        "actor_id": 4,
+        "app_id": null
+      },
+      {
+        "actor_id": 5,
+        "app_id": null
+      },
+      {
+        "actor_id": 6,
+        "app_id": null
+      },
+      {
+        "actor_id": 7,
+        "app_id": null
+      }
+    ]
+  },
+  "snapshots": [
+    {
+      "pr_state": "MERGED",
+      "head": "05d192d7eb0730c30a90b76d8fda4c5570a04d21",
+      "base_sha": "bef1c06ab698c862577684374bd88a252b7bac6a",
+      "base_ref": "main",
+      "observed_at": 1793952507838,
+      "reviews": [
+        {
+          "review_id": 5726013404,
+          "state": "APPROVED",
+          "submitted_at": 1793499749000,
+          "review_commit": "05d192d7eb0730c30a90b76d8fda4c5570a04d21",
+          "reviewer": {
+            "actor_id": 3,
+            "app_id": null
+          },
+          "has_feedback": true,
+          "feedback_digest": "225d82fdc41eb10ce6dcae822b92e9b2f396b8c23d85e1ad2f2e43631a227fca"
+        }
+      ],
+      "complete": true,
+      "moved": false
+    }
+  ]
+}
