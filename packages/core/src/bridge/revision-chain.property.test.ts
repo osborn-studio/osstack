@@ -31,12 +31,12 @@ type Op =
   | { t: "cycle"; incomplete: boolean; moved: boolean; who: "A" | "B" }
   | { t: "race" }
   | { t: "crash" }
-  | { t: "progress"; mode: "normal" | "nosettle" | "nointent" | "uncertain" }
+  | { t: "progress"; mode: "normal" | "nosettle" | "nointent" | "uncertain" | "failed" }
   | { t: "forcePush" }
   | { t: "recover" }
   | { t: "cancel" }
   | { t: "expireGrant" }
-  | { t: "goodRound"; who: number; approve: boolean; last: "normal" | "nosettle" | "nointent" | "uncertain" };
+  | { t: "goodRound"; who: number; approve: boolean; last: "normal" | "nosettle" | "nointent" | "uncertain" | "failed" };
 
 // Biased towards the productive path (registered reviewer, current head, real feedback) so that reservations, dispatch, publish and
 // settle are reached often; the hostile operations are rarer but still frequent enough to interleave with every phase.
@@ -50,12 +50,12 @@ const opArb: fc.Arbitrary<Op> = fc.oneof(
   { weight: 9, arbitrary: fc.record({ t: fc.constant("cycle" as const), incomplete: fc.nat(9).map(n => n === 0), moved: fc.nat(9).map(n => n === 0), who: fc.constantFrom("A" as const, "B" as const) }) },
   { weight: 2, arbitrary: fc.constant({ t: "race" as const }) },
   { weight: 2, arbitrary: fc.constant({ t: "crash" as const }) },
-  { weight: 9, arbitrary: fc.record({ t: fc.constant("progress" as const), mode: fc.constantFrom("normal" as const, "normal" as const, "normal" as const, "normal" as const, "nosettle" as const, "nointent" as const, "uncertain" as const) }) },
+  { weight: 9, arbitrary: fc.record({ t: fc.constant("progress" as const), mode: fc.constantFrom("normal" as const, "normal" as const, "normal" as const, "normal" as const, "nosettle" as const, "nointent" as const, "uncertain" as const, "failed" as const) }) },
   { weight: 1, arbitrary: fc.constant({ t: "forcePush" as const }) },
   { weight: 2, arbitrary: fc.constant({ t: "recover" as const }) },
   { weight: 1, arbitrary: fc.constant({ t: "cancel" as const }) },
   { weight: 1, arbitrary: fc.constant({ t: "expireGrant" as const }) },
-  { weight: 5, arbitrary: fc.record({ t: fc.constant("goodRound" as const), who: fc.nat(1), approve: fc.nat(4).map(n => n === 0), last: fc.constantFrom("normal" as const, "normal" as const, "normal" as const, "nosettle" as const, "nointent" as const, "uncertain" as const) }) },
+  { weight: 5, arbitrary: fc.record({ t: fc.constant("goodRound" as const), who: fc.nat(1), approve: fc.nat(4).map(n => n === 0), last: fc.constantFrom("normal" as const, "normal" as const, "normal" as const, "nosettle" as const, "nointent" as const, "uncertain" as const, "failed" as const) }) },
 );
 const configArb = fc.record({
   mode: fc.constantFrom("shadow" as const, "live" as const, "live" as const),
@@ -167,7 +167,7 @@ function recordPush(r: Run, c: RevisionChain, newHead: string, commits: string[]
   return intent;
 }
 
-function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"): void {
+function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain" | "failed"): void {
   if (r.mode !== "live") return;
   const c = storeA.get(r.chainId);
   if (c.state === "revision_reserved") {
@@ -186,6 +186,7 @@ function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"
     if (r.w.state !== "OPEN" || r.w.head !== intent.expected_old_head || r.w.base_sha !== intent.expected_base_sha || r.w.base_ref !== c.base_ref) {
       storeA.settleIntent(intent.intent_id, "failed", r.now, "precondition"); return; // the lease / pre-read refuses the push
     }
+    if (mode === "failed") { storeA.settleIntent(intent.intent_id, "failed", r.now, "push_rejected"); return; }
     // Nothing the publisher pushes may land on a branch that already carries a commit it did not push.
     for (const commit of r.w.branchCommits()) expect(r.ourHeads, `foreign commit ${commit} under a publisher push`).toContain(commit);
     for (const commit of r.ranges.get(intent.intent_id)!) { r.w.push(commit); r.ourHeads.push(commit); }
@@ -417,8 +418,13 @@ function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "non
   }
 }
 
-it(`keeps the chain invariants over ${RUNS} random interleavings`, () => {
-  fc.assert(fc.property(configArb, fc.array(opArb, { minLength: 1, maxLength: 36 }), (config, ops) => { runOne(config, ops); }),
+it(`keeps the chain invariants over ${RUNS} random interleavings`, async () => {
+  await fc.assert(fc.asyncProperty(configArb, fc.array(opArb, { minLength: 1, maxLength: 36 }), async (config, ops) => {
+    runOne(config, ops);
+    // Let Vitest deliver worker RPC updates during long generated property runs.
+    // CPU contention must not turn a passing synchronous property into a 60s RPC timeout.
+    await new Promise<void>(resolve => setImmediate(resolve));
+  }),
     { numRuns: RUNS, ...(SEED !== undefined ? { seed: SEED } : {}) });
   if (process.env.OSSTACK_PROPERTY_COVERAGE) console.log(JSON.stringify({ ...coverage, stops: Object.fromEntries(coverage.stops) }));
   // The generator must actually reach the interesting states, or the invariants above prove nothing.

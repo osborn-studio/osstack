@@ -383,6 +383,32 @@ it('leaves a pending intent for recovery when W13 loses the owner before release
   vi.restoreAllMocks();
 });
 
+it.each(['exhausted', 'HTTP 503', 'HTTP 429'] as const)('keeps %s readback uncertain after one stopped push', async failure => {
+  let f!: Awaited<ReturnType<typeof publishFixture>>;
+  let pushes = 0;
+  f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = releasePush(journal, intentId, f.id, fence, true);
+    pushes++;
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  });
+  const initialRead = f.deps.readPr;
+  let reads = 0;
+  f.deps.readPr = async (...args) => {
+    reads++;
+    if (pushes && failure !== 'exhausted') throw Error(failure);
+    // A lagging read keeps returning the old head through every bounded retry.
+    return initialRead(...args);
+  };
+  f.deps.remoteHead = async () => pushes ? next : old;
+  const sleep = vi.fn(async () => {}); f.deps.sleep = sleep;
+  await expect(f.call()).rejects.toThrow('CONTAINED_REVISION_READBACK_MISMATCH');
+  expect(pushes).toBe(1);
+  expect(reads).toBe(failure === 'exhausted' ? 6 : 2);
+  expect(sleep).toHaveBeenCalledTimes(failure === 'exhausted' ? 4 : 0);
+  expect(f.deps.chains.intents(f.chain.chain_id).filter(i => i.kind === 'push')).toMatchObject([{ state: 'uncertain' }]);
+  expect(f.deps.chains.get(f.chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'intent_uncertain' });
+});
+
 it('a second daemon owner claim fences an in-flight publisher before remote release', async () => {
   let f!: Awaited<ReturnType<typeof publishFixture>>;
   let second: ReturnType<typeof openDb> | undefined;
