@@ -138,7 +138,10 @@ export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry
   if (snapshot.head !== chain.published_head) {
     if (shadow) return stop("attribution_unknown");
     if (opts.confirmed_push_head === snapshot.head) headAccepted = true;
-    else if (opts.pending_push_head === snapshot.head) return none("publish_in_progress");
+    else if (opts.pending_push_head === snapshot.head) {
+      if (snapshot.base_sha !== chain.published_base || snapshot.base_ref !== chain.base_ref) return stop("base_changed");
+      return none("publish_in_progress");
+    }
     else return stop(opts.head_is_descendant === false ? "head_regressed" : "external_write");
   }
   if (snapshot.base_sha !== chain.published_base || snapshot.base_ref !== chain.base_ref) return stop("base_changed");
