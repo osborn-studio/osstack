@@ -1,6 +1,7 @@
 // Phase 5-E live observation service. Production wiring is a separate gate; this module does not enable live mode.
 import { decideChainStep, parseStoredGrant, SAME_CHILD_RESUMABLE, type RevisionChain } from '@osstack/core';
 import { normalizeSnapshot, type PullRequestRead, type PullRequestRef } from './contained-mission-bridge-reader.js';
+import { BridgeReadLimiter } from './contained-mission-bridge-read-limiter.js';
 import { dispatchRevision, type DispatchRevisionDeps } from './contained-mission-revision.js';
 
 export interface LiveReconcilerOptions {
@@ -14,6 +15,7 @@ export interface LiveReconcilerOptions {
   log: (message: string) => void;
   /** Optional transport cancellation; late results are discarded even if the underlying reader cannot abort. */
   readPr?: (ref: PullRequestRef, signal: AbortSignal) => Promise<PullRequestRead>;
+  readLimiter?: BridgeReadLimiter;
   intervalMs?: number;
   chainsPerScan?: number;
 }
@@ -66,11 +68,12 @@ export class LiveReconciler {
   private readonly abort = new AbortController();
   private cursor: Cursor | undefined;
   private settledCursor: Cursor | undefined;
-  private readonly due = new Map<string, { at: number; failures: number }>();
+  private readonly readLimiter: BridgeReadLimiter;
   private readonly interval: number;
   private readonly limit: number;
 
   constructor(private readonly options: LiveReconcilerOptions) {
+    this.readLimiter = options.readLimiter ?? new BridgeReadLimiter();
     this.interval = options.intervalMs ?? 60_000;
     this.limit = Math.max(1, Math.min(10, Math.floor(options.chainsPerScan ?? 10)));
     if (!Number.isFinite(this.interval) || this.interval <= 0 || !Number.isFinite(this.limit)) throw Error('invalid_live_schedule');
@@ -106,7 +109,7 @@ export class LiveReconciler {
 
   private active(): boolean { return !this.stopped && this.options.dispatch.enabled(); }
   private readPr(ref: PullRequestRef): Promise<PullRequestRead> {
-    return this.interruptible(() => this.options.readPr ? this.options.readPr(ref, this.abort.signal) : this.options.dispatch.readPr(ref));
+    return this.options.readPr ? this.options.readPr(ref, this.abort.signal) : this.options.dispatch.readPr(ref);
   }
   private interruptible<T>(operation: () => Promise<T>): Promise<T> {
     const signal = this.abort.signal;
@@ -138,8 +141,9 @@ export class LiveReconciler {
     for (const chain of rows) {
       if (!this.active()) return;
       this.cursor = { created_at: chain.created_at, chain_id: chain.chain_id };
-      if ((this.due.get(chain.chain_id)?.at ?? 0) > this.options.dispatch.now()) continue;
-      try { await this.cycle(chain); } catch { this.backoff(chain.chain_id); this.log('cycle_failed'); }
+      try {
+        await this.readLimiter.run(chain.chain_id, { now: this.options.dispatch.now, gapMs: this.interval, signal: this.abort.signal }, () => this.cycle(chain));
+      } catch { this.log('cycle_failed'); }
     }
     if (rows.length < this.limit) this.cursor = undefined;
     // Local cleanup also visits stopped and closed chains. It performs no GitHub reads; the separate D7 service owns those.
@@ -150,7 +154,6 @@ export class LiveReconciler {
     for (const row of settled) {
       if (!this.active()) return;
       this.settledCursor = { created_at: row.created_at, chain_id: row.chain_id };
-      if ((this.due.get(row.chain_id)?.at ?? 0) > this.options.dispatch.now()) continue;
       try {
         syncLiveChild(this.options.dispatch, row.chain_id, this.options.isBusy);
         const fresh = chains.get(row.chain_id);
@@ -167,14 +170,12 @@ export class LiveReconciler {
   }
 
   private backoff(chainId: string): void {
-    const failures = Math.min(6, (this.due.get(chainId)?.failures ?? 0) + 1);
-    this.due.set(chainId, { failures, at: this.options.dispatch.now() + Math.min(3_600_000, this.interval * 2 ** (failures - 1)) });
+    this.readLimiter.fail(chainId, this.options.dispatch.now(), this.interval);
   }
 
   private async cycle(listed: RevisionChain): Promise<void> {
     const { dispatch: deps } = this.options;
     const { chains, registry } = deps;
-    this.due.set(listed.chain_id, { at: deps.now() + this.interval, failures: this.due.get(listed.chain_id)?.failures ?? 0 });
     const parts = listed.repository.split('/');
     if (parts.length !== 2 || !parts[0] || !parts[1]) return;
     const ref = { owner: parts[0], name: parts[1], number: listed.pr_number };
@@ -194,7 +195,6 @@ export class LiveReconciler {
       if (reason) {
         chain = chains.stopLive(chain.chain_id, chain.revision, reason, deps.now());
         if (chain.current_mission_id) await this.cancel(chain, reason);
-        this.due.set(chain.chain_id, { failures: 0, at: deps.now() + this.interval });
         return;
       }
     }
@@ -232,7 +232,6 @@ export class LiveReconciler {
         await this.cancel(chain, decision.reason);
       }
     }
-    this.due.set(chain.chain_id, { failures: 0, at: deps.now() + this.interval });
   }
 }
 

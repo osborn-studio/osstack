@@ -2,6 +2,7 @@
 import { parseStoredGrant, scanStoppedChains, type EngineeringPrincipal, type RevisionChain, type RevisionChainStore, type StoppedPrFacts } from '@osstack/core';
 import { ghGraphqlTransport, type GraphqlTransport } from './contained-mission-bridge-reader.js';
 import { readRevisionPr } from './contained-mission-revision-publication.js';
+import { BridgeReadLimiter } from './contained-mission-bridge-read-limiter.js';
 import { recordChildCancelFailure, safeReasonCode } from './contained-mission-bridge-cancel-failure.js';
 
 const TEN_MINUTES = 600_000;
@@ -16,6 +17,7 @@ export interface StoppedChainScanOptions {
   cancelChild: (principal: EngineeringPrincipal | null, missionId: string) => Promise<unknown>;
   readPr: (chain: RevisionChain, signal: AbortSignal) => Promise<StoppedPrFacts>;
   log: (line: string) => void;
+  readLimiter?: BridgeReadLimiter;
   intervalMs?: number;
   initialDelayMs?: number;
   batchLimit?: number;
@@ -26,16 +28,10 @@ export interface StoppedChainScanOptions {
 export function stoppedChainPrReader(transport: GraphqlTransport = ghGraphqlTransport()): (chain: RevisionChain, signal: AbortSignal) => Promise<StoppedPrFacts> {
   return async (chain, signal) => {
     if (signal.aborted) throw Error('scan_stopped');
-    let onAbort: (() => void) | undefined;
-    try {
-      const pr = await Promise.race([
-        readRevisionPr(chain.repository, chain.pr_number, transport),
-        new Promise<never>((_, reject) => { onAbort = () => reject(Error('scan_stopped')); signal.addEventListener('abort', onAbort, { once: true }); }),
-      ]);
-      if (signal.aborted) throw Error('scan_stopped');
-      return { pr_state: pr.state, head: pr.headRefOid, head_repository: pr.repository,
-        head_ref: pr.headRefName, base_sha: pr.baseRefOid, base_ref: pr.baseRefName, complete: true };
-    } finally { if (onAbort) signal.removeEventListener('abort', onAbort); }
+    const pr = await readRevisionPr(chain.repository, chain.pr_number, transport);
+    if (signal.aborted) throw Error('scan_stopped');
+    return { pr_state: pr.state, head: pr.headRefOid, head_repository: pr.repository,
+      head_ref: pr.headRefName, base_sha: pr.baseRefOid, base_ref: pr.baseRefName, complete: true };
   };
 }
 
@@ -46,17 +42,21 @@ export class StoppedChainScanService {
   private stopped = false;
   private cursor: Cursor | undefined;
   private closedCursor: Cursor | undefined;
-  private readonly lastRead = new Map<string, number>();
-  private readonly backoffUntil = new Map<string, number>();
+  private readonly readLimiter: BridgeReadLimiter;
   private readonly abort = new AbortController();
   private readFailures = 0;
   private readonly intervalMs: number;
   private readonly gapMs: number;
   private readonly limit: number;
   constructor(private readonly options: StoppedChainScanOptions) {
+    this.readLimiter = options.readLimiter ?? new BridgeReadLimiter();
     this.intervalMs = options.intervalMs ?? TEN_MINUTES;
     this.gapMs = options.minReadGapMs ?? TEN_MINUTES;
     this.limit = Math.max(1, Math.min(10, Math.floor(options.batchLimit ?? 10)));
+    if (!Number.isFinite(this.intervalMs) || this.intervalMs <= 0 || !Number.isFinite(this.gapMs) || this.gapMs <= 0
+      || !Number.isFinite(this.limit) || (options.initialDelayMs !== undefined && (!Number.isFinite(options.initialDelayMs) || options.initialDelayMs < 0))) {
+      throw Error('invalid_stopped_scan_schedule');
+    }
   }
   start(): void {
     if (this.started || this.stopped || !this.options.enabled()) return;
@@ -126,16 +126,18 @@ export class StoppedChainScanService {
       },
       readPr: async chain => {
         if (this.stopped || !this.options.enabled()) throw Error('scan_stopped');
-        const now = this.options.now();
-        if (now < (this.backoffUntil.get(chain.chain_id) ?? 0) ||
-          (this.lastRead.has(chain.chain_id) && now - this.lastRead.get(chain.chain_id)! < this.gapMs)) throw Error('read_gap');
         try {
-          const facts = await this.options.readPr(chain, this.abort.signal);
-          if (facts.complete) this.lastRead.set(chain.chain_id, this.options.now());
+          const facts = await this.readLimiter.run(chain.chain_id, {
+            now: this.options.now, gapMs: this.gapMs, signal: this.abort.signal,
+          }, async () => {
+            const result = await this.options.readPr(chain, this.abort.signal);
+            if (!result.complete) this.readLimiter.fail(chain.chain_id, this.options.now(), this.gapMs);
+            return result;
+          });
+          if (!facts) throw Error('read_gap');
           return facts;
         } catch (error) {
-          if (!this.abort.signal.aborted) {
-            this.backoffUntil.set(chain.chain_id, this.options.now() + this.intervalMs);
+          if (!this.abort.signal.aborted && safeReasonCode(error) !== 'read_gap') {
             this.readFailures++;
             this.log(`read_failed chain=${chain.chain_id} reason=${safeReasonCode(error)} count=${this.readFailures}`);
           }
