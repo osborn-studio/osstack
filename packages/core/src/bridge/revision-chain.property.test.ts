@@ -8,7 +8,7 @@ import {
 } from "../state/engineering-revision-chain-store.js";
 import { decideChainStep, type ChainView, type PrSnapshot, type ProducerRegistry, type ReviewState, type SnapshotReview } from "./revision-chain.js";
 
-/** Random interleavings against a real ledger (design §10.2 invariants 1-4 and 6; invariant 5 is phase 5).
+/** Random interleavings against a real ledger (design §10.2 invariants 1-4 and 6; invariant 5 is the CLI spec-constructor property).
  * The world is a tiny model of GitHub: a head lineage, a base, a PR state and a review list. The reconciler under test
  * is `decideChainStep` + `RevisionChainStore`; the "publisher" drives live chains through the store's live API. */
 
@@ -346,11 +346,16 @@ function checkBranch(r: Run): void {
 function assertExactPublicationRanges(commits: string[], intents: PublicationIntent[], ranges: Map<string, string[]>): void {
   const baseline = intents.filter(i => i.kind === "open_pr");
   expect(baseline, "one confirmed baseline intent").toHaveLength(1);
-  const ordered = [...intents].sort((a, b) => {
-    if (a.kind === "open_pr") return -1;
-    if (b.kind === "open_pr") return 1;
-    return commits.indexOf(a.new_head!) - commits.indexOf(b.new_head!);
-  });
+  expect(baseline[0]!.expected_old_head).toBe("root-start");
+  const ordered = [baseline[0]!];
+  const remaining = intents.filter(i => i.kind === "push");
+  while (remaining.length) {
+    const previous = ordered.at(-1)!;
+    const next = remaining.filter(i => i.expected_old_head === previous.new_head);
+    expect(next, `one confirmed extension of ${previous.new_head}`).toHaveLength(1);
+    ordered.push(next[0]!);
+    remaining.splice(remaining.indexOf(next[0]!), 1);
+  }
   const journaled = ordered.flatMap(i => {
     const range = ranges.get(i.intent_id);
     expect(range, `range for ${i.intent_id}`).toBeDefined();
@@ -361,12 +366,13 @@ function assertExactPublicationRanges(commits: string[], intents: PublicationInt
 }
 
 it("rejects a missing baseline, missing intermediate commit and reordered range", () => {
-  const baseline = { intent_id: "baseline", kind: "open_pr", state: "confirmed", new_head: "root" } as PublicationIntent;
-  const push = { intent_id: "push", kind: "push", state: "confirmed", new_head: "last" } as PublicationIntent;
+  const baseline = { intent_id: "baseline", kind: "open_pr", state: "confirmed", new_head: "root", expected_old_head: "root-start" } as PublicationIntent;
+  const push = { intent_id: "push", kind: "push", state: "confirmed", new_head: "last", expected_old_head: "root" } as PublicationIntent;
   const ranges = new Map([["baseline", ["root"]], ["push", ["middle", "last"]]]);
   expect(() => assertExactPublicationRanges(["root", "middle", "last"], [push], ranges)).toThrow();
   expect(() => assertExactPublicationRanges(["root", "middle", "last"], [baseline, push], new Map([["baseline", ["root"]], ["push", ["last"]]]))).toThrow();
   expect(() => assertExactPublicationRanges(["root", "middle", "last"], [baseline, push], new Map([["baseline", ["root"]], ["push", ["last", "middle"]]]))).toThrow();
+  expect(() => assertExactPublicationRanges(["root", "middle", "last"], [baseline, { ...push, expected_old_head: "foreign" }], ranges)).toThrow();
   assertExactPublicationRanges(["root", "middle", "last"], [baseline, push], ranges);
 });
 
