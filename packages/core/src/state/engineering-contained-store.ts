@@ -44,8 +44,9 @@ const NEXT: Readonly<Record<ContainedMissionState, readonly ContainedMissionStat
   verified: ["revalidating"],
   revalidating: ["delivering", "candidate_ready"],
   delivering: ["pr_opened", "candidate_ready"],
+  // candidate_ready: only the same candidate, to resume a launch the budget or grant stopped before it began (revision children).
   // workspace_ready: W13 `resume_workspace` after an orphaned worktree add was proven stopped (the runner checks the halt reason).
-  awaiting_decision: ["executing", "revalidating", "abandoned", "workspace_ready"],
+  awaiting_decision: ["executing", "revalidating", "abandoned", "candidate_ready", "workspace_ready"],
   needs_reconciliation: ["executing", "candidate_ready", "abandoned"],
   stop_unknown: ["needs_reconciliation", "abandoned"],
   cancel_requested: ["cancelled"],
@@ -145,6 +146,9 @@ export class ContainedMissionStore {
       if (TERMINAL.has(mission.state)) throw Error("mission_terminal");
       const from = mission.state; const to = step.to;
       if (!NEXT[from].includes(to) && !HALTS.includes(to)) throw Error("transition_denied");
+      // A halted Mission may re-enter candidate_ready only with the very candidate it halted on; it can never swap in another.
+      if (from === "awaiting_decision" && to === "candidate_ready" && (mission.candidate_head === null || step.candidate?.head !== mission.candidate_head
+        || step.candidate.tree !== mission.candidate_tree || step.candidate.diff_digest !== mission.candidate_diff_digest)) throw Error("candidate_unexpected");
       // No new execution and no host write while a previous executor may still be running.
       if ((to === "cancelled" || to === "executing" || to === "candidate_ready") && mission.stop_obligation === 1) throw Error("stop_evidence_required");
       if ((to === "revalidating" || to === "delivering") && mission.candidate_verified !== 1) throw Error("verification_required");

@@ -232,6 +232,8 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     }),
     qualify: (worktree, gitDir) => executor(worktree).qualify(worktree, gitDir),
     publish: async ({ mission, spec, permit, body, beforeRemoteMutation }) => {
+      // A revision child updates its PR's own branch through the revision publisher (phase 5-C); this path opens PRs and must never serve it.
+      if (spec.publish_target) throw Error('CONTAINED_PUBLISH_TARGET_REQUIRES_REVISION');
       const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
       // A configured bridge confines publication to its repository: never fall back to host credentials for another one.
       if (options.bridge !== undefined && options.bridge.config.repository.toLowerCase() !== p.repository.toLowerCase()) throw Error('CONTAINED_BRIDGE_REPOSITORY');
@@ -347,6 +349,11 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         store.attention.assertOwner(store.owner);
         const current = store.get(mission.mission_id);
         if (current.verify_attempts !== mission.verify_attempts || current.candidate_head !== mission.candidate_head || (start && current.state !== 'verifying')) throw Error('CONTAINED_VERIFY_FENCE');
+        // A revision child's container starts only while its chain still wants the work; image preparation awaits between the charge and here.
+        if (start && spec.publish_target) {
+          if (!ports.revision) throw Error('CONTAINED_VERIFY_FENCE');
+          ports.revision.assertActive(current, spec);
+        }
       };
       store.record(mission.mission_id, 'verify_invocation', { invocation_id: invocationId, journal_root: verification.journalRoot, daemon_id: verification.daemonId, base_image_id: verification.baseImageId, command }, now());
       const image = await prepareContainedCandidateImage(verification, spec.worktree_path, mission.candidate_head!, fence(true));

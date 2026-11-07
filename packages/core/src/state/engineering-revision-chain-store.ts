@@ -41,6 +41,10 @@ export interface NewLiveChainInput extends NewChainInput {
   budget_origin?: number;
 }
 export interface ReplaceGrantResult { chain: RevisionChain; /** The published head already has a reservation, so it will not be revised again (appendix §5.1). */ head_consumed: boolean }
+/** One revision child's slice of the chain budget (appendix §5.2 "预算"). `*_used` is charged before each launch and refunded down to the actual time afterwards. */
+export interface ChildAllocation { executor_seconds: number; container_seconds: number; executor_used: number; container_used: number }
+export type LaunchKind = "executor" | "container";
+const TERMINAL_CHILD = "('pr_opened','cancelled','abandoned','failed')";
 export interface ReserveInput { head: string; review_ids: readonly number[]; feedback_digest: string }
 export interface NewIntentInput {
   kind: IntentKind; branch: string; expected_old_head?: string; new_head?: string; expected_base_sha?: string;
@@ -315,6 +319,7 @@ export class RevisionChainStore {
       if (reason === "budget_exhausted" && !(next.budget.max_executor_seconds > old.budget.max_executor_seconds
         || next.budget.max_container_seconds > old.budget.max_container_seconds || next.budget.max_wall_clock_hours > old.budget.max_wall_clock_hours)) fail("budget_not_raised");
       let to: ChainState = chain.state;
+      let spentJson: string | undefined; let topUp: { executor_seconds: number; container_seconds: number } | undefined;
       if (stopped) {
         if (chain.current_mission_id === null) to = "awaiting_review";
         else {
@@ -329,15 +334,25 @@ export class RevisionChainStore {
             // The child was parked by the grant or budget stop, not cancelled: resume the state it was stopped from.
             const pushed = this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? LIMIT 1").get(chainId, chain.current_mission_id);
             to = pushed ? "publishing" : "revising";
+            // A budget stop parked this child with its slice used up: the raise the human just signed becomes more slice for the same child (used is kept).
+            if (reason === "budget_exhausted") {
+              const allocations = this.allocationsOf(chain);
+              const slice = allocations[chain.current_mission_id];
+              if (slice) {
+                topUp = { executor_seconds: next.budget.max_executor_seconds - old.budget.max_executor_seconds, container_seconds: next.budget.max_container_seconds - old.budget.max_container_seconds };
+                allocations[chain.current_mission_id] = { ...slice, executor_seconds: slice.executor_seconds + topUp.executor_seconds, container_seconds: slice.container_seconds + topUp.container_seconds };
+                spentJson = JSON.stringify({ allocations });
+              }
+            }
           }
         }
       }
       const headConsumed = Boolean(this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, chain.published_head));
-      const updated = this.update(chain, { state: to, grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms }, "grant_replaced",
+      const updated = this.update(chain, { state: to, grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms, ...(spentJson !== undefined ? { spent_json: spentJson } : {}) }, "grant_replaced",
         { head: chain.published_head, base: chain.published_base }, now);
       this.event(chainId, "grant_replaced", {
         grant_id: next.grant_id, from_grant_id: old.grant_id, rounds: { from: old.rounds, to: next.rounds }, expires_at: next.expires_at, budget: next.budget,
-        restored_state: to, head_consumed: headConsumed,
+        restored_state: to, head_consumed: headConsumed, ...(topUp ? { top_up: topUp } : {}),
       }, now);
       return { chain: updated, head_consumed: headConsumed };
     });
@@ -370,6 +385,97 @@ export class RevisionChainStore {
         .run(`chain_closed:${reason}`.slice(0, 64), now, chainId);
       return this.update(chain, { state: "closed" }, reason, { head: chain.published_head, base: chain.published_base }, now);
     });
+  }
+
+  /** Every child's slice of this chain's budget. */
+  allocations(chainId: string): Record<string, ChildAllocation> { return this.allocationsOf(this.get(chainId)); }
+
+  /** What a new child could still be given: the grant's totals minus every slice, where a child that is terminal with its stop proven only
+   * counts what it actually used (the unspent rest is returned), and any other child counts its whole slice. */
+  remainingBudget(chainId: string): { executor_seconds: number; container_seconds: number } {
+    const chain = this.get(chainId);
+    if (chain.mode !== "live") fail("bridge_shadow_write_denied");
+    const limits = this.budgetOf(chain);
+    let executor = limits.max_executor_seconds; let container = limits.max_container_seconds;
+    for (const [child, slice] of Object.entries(this.allocationsOf(chain))) {
+      const settled = this.db.prepare(`SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state IN ${TERMINAL_CHILD} AND stop_obligation=0`).get(child);
+      executor -= settled ? slice.executor_used : slice.executor_seconds;
+      container -= settled ? slice.container_used : slice.container_seconds;
+    }
+    return { executor_seconds: Math.max(0, executor), container_seconds: Math.max(0, container) };
+  }
+
+  /** Give the chain's current child its slice. Part of the dispatch transaction: the child must already be `current_mission_id`, may have only one
+   * slice, and the slice must fit what remains of the grant's budget (`budget_exhausted`). */
+  allocateChild(chainId: string, ifRevision: number, childMissionId: string, slice: { executor_seconds: number; container_seconds: number }, now: number): RevisionChain {
+    this.clock(now);
+    for (const v of [slice.executor_seconds, slice.container_seconds]) if (!Number.isSafeInteger(v) || v < 1) fail("invalid_allocation");
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live") fail("bridge_shadow_write_denied");
+      if (chain.current_mission_id !== childMissionId) fail("allocation_child_mismatch");
+      const allocations = this.allocationsOf(chain);
+      if (allocations[childMissionId]) fail("allocation_exists");
+      const left = this.remainingBudget(chainId);
+      if (slice.executor_seconds > left.executor_seconds || slice.container_seconds > left.container_seconds) fail("budget_exhausted");
+      allocations[childMissionId] = { ...slice, executor_used: 0, container_used: 0 };
+      this.event(chainId, "child_allocated", { child: childMissionId, ...slice }, now);
+      return this.update(chain, { spent_json: JSON.stringify({ allocations }) }, "child_allocated", { head: chain.published_head, base: chain.published_base }, now);
+    });
+  }
+
+  /** Charge `seconds` against the child's slice before a launch. The slice never goes over: `budget_exhausted`. Only a live, non-closed chain whose
+   * current child this is can be charged. */
+  chargeLaunch(chainId: string, childMissionId: string, kind: LaunchKind, seconds: number, now: number): ChildAllocation {
+    this.clock(now);
+    if (!Number.isSafeInteger(seconds) || seconds < 1) fail("invalid_allocation");
+    return this.write(() => {
+      const chain = this.get(chainId);
+      if (chain.mode !== "live") fail("bridge_shadow_write_denied");
+      if (chain.current_mission_id !== childMissionId) fail("allocation_child_mismatch");
+      const allocations = this.allocationsOf(chain);
+      const slice = allocations[childMissionId] ?? fail("allocation_missing");
+      const used = kind === "executor" ? slice.executor_used : slice.container_used;
+      const cap = kind === "executor" ? slice.executor_seconds : slice.container_seconds;
+      if (used + seconds > cap) fail("budget_exhausted");
+      const next = kind === "executor" ? { ...slice, executor_used: used + seconds } : { ...slice, container_used: used + seconds };
+      allocations[childMissionId] = next;
+      this.update(chain, { spent_json: JSON.stringify({ allocations }) }, "launch_charged", { head: chain.published_head, base: chain.published_base }, now);
+      return next;
+    });
+  }
+
+  /** Give back the unused part of a charge once the launch ended. Never below zero; the slice itself is not changed. */
+  refundLaunch(chainId: string, childMissionId: string, kind: LaunchKind, seconds: number, now: number): ChildAllocation {
+    this.clock(now);
+    if (!Number.isSafeInteger(seconds) || seconds < 0) fail("invalid_allocation");
+    return this.write(() => {
+      const chain = this.get(chainId);
+      const allocations = this.allocationsOf(chain);
+      const slice = allocations[childMissionId] ?? fail("allocation_missing");
+      const next = kind === "executor" ? { ...slice, executor_used: Math.max(0, slice.executor_used - seconds) } : { ...slice, container_used: Math.max(0, slice.container_used - seconds) };
+      allocations[childMissionId] = next;
+      this.update(chain, { spent_json: JSON.stringify({ allocations }) }, "launch_refunded", { head: chain.published_head, base: chain.published_base }, now);
+      return next;
+    });
+  }
+
+  private allocationsOf(chain: RevisionChain): Record<string, ChildAllocation> {
+    if (chain.spent_json === null) return {};
+    try {
+      const raw = (JSON.parse(chain.spent_json) as { allocations?: unknown }).allocations;
+      if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return fail("spent_unreadable");
+      const out: Record<string, ChildAllocation> = {};
+      for (const [child, v] of Object.entries(raw as Record<string, Partial<ChildAllocation>>)) {
+        const fields = [v.executor_seconds, v.container_seconds, v.executor_used, v.container_used];
+        if (!fields.every(n => Number.isSafeInteger(n) && (n as number) >= 0)) return fail("spent_unreadable");
+        out[child] = { executor_seconds: v.executor_seconds!, container_seconds: v.container_seconds!, executor_used: v.executor_used!, container_used: v.container_used! };
+      }
+      return out;
+    } catch (error) { return error instanceof RevisionChainError ? fail(error.code) : fail("spent_unreadable"); }
+  }
+  private budgetOf(chain: RevisionChain) {
+    try { return parseStoredGrant(chain.grant_json).budget; } catch { return fail("chain_grant_unreadable"); }
   }
 
   appendEvent(chainId: string, kind: string, payload: unknown, now: number): number {
@@ -480,10 +586,11 @@ export class RevisionChainStore {
     const stop = next.state === "awaiting_decision" ? (patch.stop_reason ?? chain.stop_reason) : null;
     // grant_json is named in the SET list only for a re-grant, so every other update stays clear of the grant triggers.
     const grant = patch.grant_json !== undefined;
+    const spent = patch.spent_json !== undefined;
     this.db.prepare(`UPDATE engineering_revision_chains SET state=?,stop_reason=?,published_head=?,published_base=?,rounds_used=?,current_mission_id=?,
-      ${grant ? "grant_json=?,review_deadline=?," : ""}revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?`)
+      ${grant ? "grant_json=?,review_deadline=?," : ""}${spent ? "spent_json=?," : ""}revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?`)
       .run(next.state, stop, next.published_head, next.published_base, next.rounds_used, next.current_mission_id,
-        ...(grant ? [patch.grant_json, patch.review_deadline ?? chain.review_deadline] : []), now, chain.chain_id, chain.revision);
+        ...(grant ? [patch.grant_json, patch.review_deadline ?? chain.review_deadline] : []), ...(spent ? [patch.spent_json] : []), now, chain.chain_id, chain.revision);
     this.event(chain.chain_id, "transition", { from: chain.state, to: next.state, reason, head: at.head, base: at.base, ...(stop ? { stop_reason: stop } : {}) }, now);
     return this.get(chain.chain_id);
   }
@@ -523,7 +630,7 @@ export class RevisionChainStore {
 
 interface Patch {
   state?: ChainState; stop_reason?: string | null; published_head?: string; published_base?: string;
-  rounds_used?: number; current_mission_id?: string | null; grant_json?: string; review_deadline?: number | null;
+  rounds_used?: number; current_mission_id?: string | null; grant_json?: string; review_deadline?: number | null; spent_json?: string;
 }
 
 /** Upgrade holds for revision chains: reservations and intents recovery would still visit. */

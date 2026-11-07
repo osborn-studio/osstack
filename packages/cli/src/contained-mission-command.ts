@@ -11,7 +11,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
   status --mission ID                (includes publication: the opened PR and pushed commit, if any)
   cancel --mission ID
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
-  decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check
+  decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check|resume_budget|resume_grant
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
   merger report [--json]             (shadow merger: classify shadow decisions against real outcomes; read-only, no recommendation)
   chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain; never merges)

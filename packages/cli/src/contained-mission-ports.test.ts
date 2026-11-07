@@ -194,13 +194,13 @@ describe("githubRepositoryOf", () => {
 });
 
 describe("contained Mission ports: publication destination", () => {
-  async function prepared(configure: (repo: string) => void) {
+  async function prepared(configure: (repo: string) => void, specOver: Record<string, unknown> = {}) {
     const f = fixture(); configure(f.repo);
     const calls: Array<[string, readonly string[]]> = [];
     const ports = createContainedMissionPorts({ store: f.store, hostProcess: hostProcessOptions(f.root), now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
       verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
       delivery: { runner: { run: async (command, args) => { calls.push([command, args]); throw new Error("stop-here"); } } } });
-    const spec = { ...f.spec, publication: { remote: "origin", repository: "o/r", base: "main", draft: true } };
+    const spec = { ...f.spec, publication: { remote: "origin", repository: "o/r", base: "main", draft: true }, ...specOver };
     let m = f.authorize();
     const ws = await ports.createWorkspace(spec, signal(), { mission_id: m.mission_id, fence: () => {} });
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
@@ -211,6 +211,12 @@ describe("contained Mission ports: publication destination", () => {
   it("refuses a remote whose push URL leaves the granted repository, before any push", async () => {
     const p = await prepared(repo => { sh(repo, "remote", "add", "origin", "https://github.com/o/r.git"); sh(repo, "remote", "set-url", "--add", "--push", "origin", "https://evil.example/x.git"); });
     await expect(p.publish()).rejects.toThrow("CONTAINED_PUBLICATION_DESTINATION");
+    expect(p.calls).toEqual([]);
+  });
+  it("refuses a revision spec outright: this path opens PRs and never serves a publish_target, before any command runs", async () => {
+    const target = { kind: "revision", chain_id: "rc_00000000-0000-4000-8000-000000000001", pr: 7, remote_branch: "topic", round: 1, chain_start_commit: "a".repeat(40) };
+    const p = await prepared(repo => { sh(repo, "remote", "add", "origin", "git@github.com:o/r.git"); }, { publish_target: target });
+    await expect(p.publish()).rejects.toThrow("CONTAINED_PUBLISH_TARGET_REQUIRES_REVISION");
     expect(p.calls).toEqual([]);
   });
   it("proceeds to delivery when every push URL is the granted repository", async () => {

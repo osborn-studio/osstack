@@ -108,6 +108,8 @@ export interface RigMission {
   head: string;
   /** Null means the delivery evidence carries no base head. */
   base_head: string | null;
+  /** Extra spec fields (a full spec for revision tests). */
+  spec?: Record<string, unknown>;
   /** Merger tests: the full `delivery_evidence` payload (including `evidence_digest`), built once the Mission id and spec digest exist. */
   evidence?: (mission: { mission_id: string; spec_digest: string }) => Record<string, unknown>;
 }
@@ -150,7 +152,7 @@ export function createRig(): Rig {
     const branch = m.branch ?? `osstack/mission/m${n}`;
     const mission = missions.authorize(principal, {
       scope_id: scope.scope_id,
-      spec: { goal: `g${n}`, branch, publication: { remote: 'origin', repository: m.repository ?? 'o/r', base: m.base_ref ?? 'main', draft: true } },
+      spec: { goal: `g${n}`, branch, publication: { remote: 'origin', repository: m.repository ?? 'o/r', base: m.base_ref ?? 'main', draft: true }, ...(m.spec ?? {}) },
       claim: { repo_identity: `repo${n}`, branch, worktree_identity: `wt${n}` },
     }, clock);
     const full = m.evidence?.({ mission_id: mission.mission_id, spec_digest: mission.spec_digest });

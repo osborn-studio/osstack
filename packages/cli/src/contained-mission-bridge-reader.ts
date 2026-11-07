@@ -348,16 +348,9 @@ export function reviewerOf(author: RawAuthor | undefined, registry: ProducerRegi
   return { app_id: null, actor_id: author.databaseId };
 }
 
-/** Raw pages -> PrSnapshot. Bodies, paths, logins and URLs are dropped here. An incomplete read yields a snapshot with
- * `complete: false` and empty facts, which decideChainStep treats as "decide nothing". PENDING reviews (never visible
- * to others) and reviews without a usable timestamp are skipped. */
-export function normalizeSnapshot(read: PullRequestRead, registry: ProducerRegistry, observedAt: number): PrSnapshot {
-  if (!read.complete) {
-    return { pr_state: 'OPEN', head: '', base_sha: '', base_ref: '', observed_at: observedAt, reviews: [], complete: false, moved: false };
-  }
-  const { pr } = read;
-  // A thread belongs to the review of its FIRST comment (earliest createdAt, then lowest databaseId). A thread whose first comment has no review
-  // belongs to no review. All of the thread's non-empty comments are that review's feedback, whoever replied.
+/** A thread belongs to the review of its FIRST comment (earliest createdAt, then lowest databaseId). A thread whose first comment has no review
+ * belongs to no review. All of the thread's non-empty comments are that review's feedback, whoever replied. */
+export function unresolvedFeedbackByReview(pr: RawPullRequest): Map<number, { threadId: string; databaseId: number; body: string }[]> {
   const unresolved = new Map<number, { threadId: string; databaseId: number; body: string }[]>();
   for (const thread of pr.threads) {
     if (thread.isResolved || thread.comments.length === 0) continue;
@@ -375,6 +368,33 @@ export function normalizeSnapshot(read: PullRequestRead, registry: ProducerRegis
     }
     unresolved.set(owner, list);
   }
+  return unresolved;
+}
+
+/** The feedback of the selected reviews, straight from the raw read, with each review's digest recomputed by `feedbackDigest`. */
+export function reviewFeedbackOf(pr: RawPullRequest, reviewIds: readonly number[]):
+  Array<{ review_id: number; top_level: string; comments: Array<{ threadId: string; databaseId: number; body: string }>; digest: string }> | undefined {
+  const unresolved = unresolvedFeedbackByReview(pr);
+  const out = [];
+  for (const id of [...reviewIds].sort((a, b) => a - b)) {
+    const raw = pr.reviews.find(r => r.databaseId === id);
+    if (!raw) return undefined;
+    const top = normalizeBody(raw.body);
+    const comments = unresolved.get(id) ?? [];
+    out.push({ review_id: id, top_level: top, comments, digest: feedbackDigest(top, comments) });
+  }
+  return out;
+}
+
+/** Raw pages -> PrSnapshot. Bodies, paths, logins and URLs are dropped here. An incomplete read yields a snapshot with
+ * `complete: false` and empty facts, which decideChainStep treats as "decide nothing". PENDING reviews (never visible
+ * to others) and reviews without a usable timestamp are skipped. */
+export function normalizeSnapshot(read: PullRequestRead, registry: ProducerRegistry, observedAt: number): PrSnapshot {
+  if (!read.complete) {
+    return { pr_state: 'OPEN', head: '', base_sha: '', base_ref: '', observed_at: observedAt, reviews: [], complete: false, moved: false };
+  }
+  const { pr } = read;
+  const unresolved = unresolvedFeedbackByReview(pr);
   const reviews: SnapshotReview[] = [];
   for (const raw of pr.reviews) {
     if (!REVIEW_STATES.has(raw.state) || raw.submittedAt === null) continue;
