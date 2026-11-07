@@ -7,6 +7,7 @@ import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb } f
 import { parseMissionPatch } from "@osstack/governance";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ContainedMissionSpec } from "./contained-mission-runner.js";
+import { ensureHostProcessLedger, hostProcessOptions } from "./contained-mission-host-process.testkit.js";
 import { containedVerifyInvocationId, createContainedMissionPorts, fencedDeliveryRunner, githubRepositoryOf, removalProven } from "./contained-mission-ports.js";
 
 const cleanup: Array<() => void> = [];
@@ -23,7 +24,7 @@ function fixture() {
   chmodSync(join(repo, "bin/run.sh"), 0o755);
   sh(repo, "init", "-q", "-b", "main"); sh(repo, "add", "-A"); sh(repo, "commit", "-q", "-m", "initial");
   const start = sh(repo, "rev-parse", "HEAD");
-  const path = join(root, "state.db"); const db = openDb({ path }); db.pragma("synchronous=FULL");
+  const path = join(root, "state.db"); const db = openDb({ path }); db.pragma("synchronous=FULL"); ensureHostProcessLedger(db);
   cleanup.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   const attention = new AttentionStore(db, path); const owner = attention.claimOwner("owner");
@@ -31,13 +32,17 @@ function fixture() {
   const store = new ContainedMissionStore(attention, owner);
   const journalRoot = join(root, "journal"); mkdirSync(journalRoot);
   let clock = 1000;
-  const ports = createContainedMissionPorts({ store, now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
+  const ports = createContainedMissionPorts({ store, hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
     verification: { socketPath: join(root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot }, author: AUTHOR });
   const spec: ContainedMissionSpec = { goal: "g", repo_path: repo, base_ref: "main", start_commit: start, branch: "osstack/mission/t1", worktree_path: join(root, "worktrees", "mission-t1"),
     allowed_paths: ["src/**"], verify: { argv: ["true"] } };
   const principal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [], operator_scopes: [] };
-  const authorize = () => store.authorize(principal, { scope_id: scope.scope_id, spec: spec as unknown as Record<string, unknown>, claim: { repo_identity: repo, branch: spec.branch, worktree_identity: spec.worktree_path } }, ++clock);
-  return { root, repo, start, store, ports, spec, authorize, journalRoot, now: () => ++clock };
+  const authorizeOnce = () => store.authorize(principal, { scope_id: scope.scope_id, spec: spec as unknown as Record<string, unknown>, claim: { repo_identity: repo, branch: spec.branch, worktree_identity: spec.worktree_path } }, ++clock);
+  let current: ReturnType<typeof authorizeOnce> | undefined;
+  const authorize = () => (current ??= authorizeOnce());
+  /** The Mission the direct port calls belong to (authorized on first use); fences never trip here. */
+  const write = () => ({ mission_id: authorize().mission_id, fence: () => {} });
+  return { root, repo, start, store, ports, spec, authorize, write, journalRoot, now: () => ++clock };
 }
 const signal = () => new AbortController().signal;
 const indexDigest = (worktree: string) => createHash("sha256").update(readFileSync(join(sh(worktree, "rev-parse", "--absolute-git-dir"), "index"))).digest("hex");
@@ -45,7 +50,7 @@ const indexDigest = (worktree: string) => createHash("sha256").update(readFileSy
 describe("contained Mission ports: workspace", () => {
   it("creates a no-checkout worktree at start_commit and reports the common git dir", async () => {
     const f = fixture();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     expect(ws).toMatchObject({ worktree: f.spec.worktree_path, gitDir: realpathSync(join(f.repo, ".git")), head: f.start });
     expect(ws.configDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(readFileSync(join(ws.worktree, "src/a.txt"), "utf8")).toBe("hi\n");
@@ -55,20 +60,20 @@ describe("contained Mission ports: workspace", () => {
   it("rejects a repository whose config declares a filter, before creating anything", async () => {
     const f = fixture();
     sh(f.repo, "config", "filter.x.clean", "cat");
-    await expect(f.ports.createWorkspace(f.spec, signal())).rejects.toThrow("CONTAINED_REPO_CONFIG_REJECTED:REPO_CONFIG_FILTER");
+    await expect(f.ports.createWorkspace(f.spec, signal(), f.write())).rejects.toThrow("CONTAINED_REPO_CONFIG_REJECTED:REPO_CONFIG_FILTER");
     expect(existsSync(f.spec.worktree_path)).toBe(false);
   });
 
   it("rejects a start_commit the repository does not have", async () => {
     const f = fixture();
-    await expect(f.ports.createWorkspace({ ...f.spec, start_commit: "f".repeat(40) }, signal())).rejects.toThrow("CONTAINED_START_COMMIT_MISSING");
+    await expect(f.ports.createWorkspace({ ...f.spec, start_commit: "f".repeat(40) }, signal(), f.write())).rejects.toThrow("CONTAINED_START_COMMIT_MISSING");
   });
 });
 
 describe("contained Mission ports: files and commits", () => {
   it("reads files safely and maps a missing file to null", async () => {
     const f = fixture();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     expect(await f.ports.readFile(ws.worktree, "src/a.txt")).toBe("hi\n");
     expect(await f.ports.readFile(ws.worktree, "src/none.txt")).toBeNull();
     expect(await f.ports.readFile(ws.worktree, "nodir/none.txt")).toBeNull();
@@ -78,7 +83,7 @@ describe("contained Mission ports: files and commits", () => {
 
   it("computes the cumulative diff on a temp index without touching worktree, index, HEAD or branch", async () => {
     const f = fixture();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     const before = { a: readFileSync(join(ws.worktree, "src/a.txt"), "utf8"), index: indexDigest(ws.worktree), head: sh(ws.worktree, "rev-parse", "HEAD"), status: sh(ws.worktree, "status", "--porcelain") };
     const diff = await f.ports.cumulativeDiff({ worktree: ws.worktree, startCommit: f.start, expectedHead: f.start,
       files: [{ path: "src/a.txt", action: "write", content: "hello\n" }, { path: "src/b.txt", action: "delete" }, { path: "src/new.txt", action: "write", content: "n\n" }] });
@@ -93,7 +98,7 @@ describe("contained Mission ports: files and commits", () => {
 
   it("never runs a configured clean filter while hashing", async () => {
     const f = fixture();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     const canary = join(f.root, "canary");
     writeFileSync(join(ws.worktree, ".gitattributes"), "* filter=x\n");
     sh(f.repo, "config", "filter.x.clean", `touch "${canary}"; cat`);
@@ -106,7 +111,7 @@ describe("contained Mission ports: files and commits", () => {
 
   it("keeps an executable file's mode in the cumulative diff", async () => {
     const f = fixture();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     const diff = await f.ports.cumulativeDiff({ worktree: ws.worktree, startCommit: f.start, expectedHead: f.start, files: [{ path: "bin/run.sh", action: "write", content: "#!/bin/sh\necho ok\n" }] });
     expect(diff).toContain("index "); expect(diff).not.toContain("old mode");
   });
@@ -114,23 +119,23 @@ describe("contained Mission ports: files and commits", () => {
   it("commits with plumbing against the recorded config digest, keeping file modes", async () => {
     const f = fixture();
     const m = f.authorize();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     // Without a recorded workspace the commit has no digest to check and is refused.
-    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m", fence: () => {} })).rejects.toThrow("CONTAINED_WORKSPACE_UNRECORDED");
+    await expect(f.ports.commit({ mission_id: f.write().mission_id, worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m", fence: () => {} })).rejects.toThrow("CONTAINED_WORKSPACE_UNRECORDED");
     f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
     const files = [{ path: "src/a.txt", action: "write" as const, content: "hello\n" }, { path: "src/b.txt", action: "delete" as const }, { path: "bin/run.sh", action: "write" as const, content: "#!/bin/sh\necho ok\n" }];
     // The fence runs before each file and before the ref update; refusing at the last one leaves the branch where it was.
     let fences = 0;
-    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained", files,
+    await expect(f.ports.commit({ mission_id: f.write().mission_id, worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained", files,
       fence: () => { if (++fences === files.length + 1) throw new Error("stale_owner"); } })).rejects.toThrow("stale_owner");
     expect(sh(f.repo, "rev-parse", `refs/heads/${f.spec.branch}`)).toBe(f.start);
-    const commit = await f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained", files, fence: () => {} });
+    const commit = await f.ports.commit({ mission_id: f.write().mission_id, worktree: ws.worktree, branch: f.spec.branch, expectedHead: f.start, message: "contained", files, fence: () => {} });
     expect(sh(f.repo, "rev-parse", `refs/heads/${f.spec.branch}`)).toBe(commit.head);
     expect(sh(f.repo, "show", `${commit.head}:src/a.txt`)).toBe("hello");
     expect(sh(f.repo, "ls-tree", "--name-only", "-r", commit.head)).not.toContain("src/b.txt");
     expect(sh(f.repo, "ls-tree", commit.head, "bin/run.sh")).toMatch(/^100755 /);
     sh(f.repo, "config", "core.sshCommand", "evil");
-    await expect(f.ports.commit({ worktree: ws.worktree, branch: f.spec.branch, expectedHead: commit.head, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m", fence: () => {} })).rejects.toThrow("REPO_CONFIG_CHANGED");
+    await expect(f.ports.commit({ mission_id: f.write().mission_id, worktree: ws.worktree, branch: f.spec.branch, expectedHead: commit.head, files: [{ path: "src/a.txt", action: "write", content: "x\n" }], message: "m", fence: () => {} })).rejects.toThrow("REPO_CONFIG_CHANGED");
   });
 });
 
@@ -148,7 +153,7 @@ describe("contained Mission ports: verification", () => {
   it("refuses to run when Docker is unavailable, so the runner holds stop_unknown", async () => {
     const f = fixture();
     let m = f.authorize();
-    const ws = await f.ports.createWorkspace(f.spec, signal());
+    const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "executing", expected_head: f.start, event: { kind: "executor_launch_intent", payload: {} } }, f.now());
     m = f.store.recordStopEvidence(m.mission_id, m.revision, { stop_proof: "never_launched" }, f.now());
@@ -192,12 +197,12 @@ describe("contained Mission ports: publication destination", () => {
   async function prepared(configure: (repo: string) => void) {
     const f = fixture(); configure(f.repo);
     const calls: Array<[string, readonly string[]]> = [];
-    const ports = createContainedMissionPorts({ store: f.store, now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
+    const ports = createContainedMissionPorts({ store: f.store, hostProcess: hostProcessOptions(f.root), now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
       verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
       delivery: { runner: { run: async (command, args) => { calls.push([command, args]); throw new Error("stop-here"); } } } });
     const spec = { ...f.spec, publication: { remote: "origin", repository: "o/r", base: "main", draft: true } };
     let m = f.authorize();
-    const ws = await ports.createWorkspace(spec, signal());
+    const ws = await ports.createWorkspace(spec, signal(), { mission_id: m.mission_id, fence: () => {} });
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
     const permit = { mission_id: m.mission_id, revision: m.revision, head: f.start, tree: "t", spec_digest: m.spec_digest };
     const publish = () => ports.publish({ mission: m, spec, permit, body: "b", beforeRemoteMutation: () => {}, signal: signal() });
@@ -293,11 +298,11 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
       return new Response("{}", { status: 404 });
     }) as unknown as typeof fetch;
     const config = { repository: REPO, publisher: { app_id: 11, installation_id: 21, private_key_path: key }, evidence: { app_id: 12, installation_id: 22, private_key_path: key }, mission_ruleset_ids: [5, 6] };
-    const ports = createContainedMissionPorts({ store: f.store, now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
+    const ports = createContainedMissionPorts({ store: f.store, hostProcess: hostProcessOptions(f.root), now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
       verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
       delivery: { runner: innerRunner }, bridge: { config, exec, fetchImpl, now: () => 1_800_000_000_000 } });
     let m = f.authorize();
-    const ws = await ports.createWorkspace(spec, signal());
+    const ws = await ports.createWorkspace(spec, signal(), { mission_id: m.mission_id, fence: () => {} });
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
     const permit = { mission_id: m.mission_id, revision: m.revision, head: f.start, tree: "t", spec_digest: m.spec_digest };
     const publish = () => ports.publish({ mission: m, spec, permit, body: "b", beforeRemoteMutation: kind => { order.push(`fence:${kind}`); }, signal: signal() });
