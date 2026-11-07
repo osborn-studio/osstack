@@ -184,8 +184,8 @@ export class LiveReconciler {
     if (chains.get(listed.chain_id).revision !== listed.revision) return;
     syncLiveChild(deps, listed.chain_id, this.options.isBusy);
     let chain = chains.get(listed.chain_id);
-    if (chain.state === 'closed' || chain.state === 'awaiting_decision') return;
     const snapshot = normalizeSnapshot(read, registry, deps.now());
+    if (chain.state === 'closed' || (chain.state === 'awaiting_decision' && snapshot.pr_state === 'OPEN')) return;
     if (snapshot.pr_state === 'OPEN') {
       const reason = read.pr.headRefName !== chain.branch || read.pr.headRepository?.toLowerCase() !== chain.repository.toLowerCase()
         ? 'publish_refused:pr_head_ref_changed'
@@ -200,7 +200,7 @@ export class LiveReconciler {
     const confirmed = chains.nextConfirmedPushHead(chain.chain_id);
     const pending = chains.intents(chain.chain_id).find(i => i.kind === 'push' && ['pending', 'uncertain'].includes(i.state)
       && i.expected_old_head === chain.published_head && i.expected_base_sha === chain.published_base && i.new_head === snapshot.head)?.new_head;
-    const descendant = snapshot.head === chain.published_head || snapshot.head === confirmed || snapshot.head === pending
+    const descendant = snapshot.pr_state !== 'OPEN' || snapshot.head === chain.published_head || snapshot.head === confirmed || snapshot.head === pending
       ? undefined : await this.interruptible(() => this.options.headIsDescendant(chain, snapshot.head, this.abort.signal));
     if (!this.active() || chains.get(chain.chain_id).revision !== chain.revision) return;
     const view = {

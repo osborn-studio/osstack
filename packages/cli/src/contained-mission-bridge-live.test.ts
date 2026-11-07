@@ -7,11 +7,12 @@ function service(f = setup()) {
   const isBusy = vi.fn(() => false);
   const cancelChild = vi.fn(async () => {});
   const readPr = vi.fn(f.deps.readPr);
+  const headIsDescendant = vi.fn(async () => true);
   const live = new LiveReconciler({
     dispatch: { ...f.deps, readPr }, isBusy, cancelChild,
-    headIsDescendant: async () => true, log: () => {},
+    headIsDescendant, log: () => {},
   });
-  return { f, live, isBusy, cancelChild, readPr };
+  return { f, live, isBusy, cancelChild, readPr, headIsDescendant };
 }
 
 describe('live reconciler', () => {
@@ -32,6 +33,20 @@ describe('live reconciler', () => {
     await live.scan();
     expect(f.rig.chains.get(f.chain.chain_id).stop_reason).toBe('base_changed');
     expect(cancelChild).toHaveBeenCalledWith(expect.objectContaining({ current_mission_id: child.child_mission_id }), 'base_changed', expect.any(AbortSignal));
+  });
+
+  it.each([false, true])('closes a PR without fetching ancestry (halted child: %s)', async halted => {
+    const f = setup();
+    const child = await dispatched(f);
+    if (halted) f.rig.db.prepare("UPDATE engineering_contained_missions SET state='awaiting_decision',revision=revision+1 WHERE mission_id=?").run(child.child_mission_id);
+    const { live, headIsDescendant, cancelChild } = service(f);
+    f.pr.state = 'CLOSED';
+    f.pr.head = oid('f');
+    headIsDescendant.mockRejectedValue(Error('branch_deleted'));
+    await live.scan();
+    expect(f.rig.chains.get(f.chain.chain_id).state).toBe('closed');
+    expect(headIsDescendant).not.toHaveBeenCalled();
+    expect(cancelChild).toHaveBeenCalled();
   });
 
   it('does not mutate the ledger on a failed read and backs off before another read', async () => {
