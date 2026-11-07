@@ -9,7 +9,7 @@ Baseline `5602b901`. This branch adds tests, model transitions and reproducible 
 - Invariant 6 now checks a confirmed root `open_pr` baseline plus exact ordered range concatenation, including intermediate commits. Missing baseline, missing middle commit and reordered ranges are rejected. Range ordering follows each intent's `expected_old_head` to `new_head` binding, and rejects a foreign predecessor. The range journal is test-model state; production validation must be verified separately.
 - Invariant 5: 10,000 generated root specifications and hostile review texts pass the real spec constructor. Root scope, caps, verification command, verification paths and repair limits stay equal; cloned arrays and caps do not alias the root.
 - CLI focused suite: 272 tests in six files pass. The subsequent token-order suite passes 24 tests. A real second-daemon owner claim and the 503/429/readback-exhaustion matrix add four passing cases. Core and CLI typechecks pass after correcting unused fixture locals and explicit callback parameter types; inventory is fresh. Targeted Biome check passes after removing two unused fixture locals.
-- Nineteen real TypeScript/DDL source mutants are killed (eighteen in this branch plus the baseline-omission mutant in the parent integration tree); [source-mutants.json](source-mutants.json) records commands and outcomes. The parent baseline run used production node `bcd20732` and its signed-grant test; the harness reported killed and exited zero. TLA mutants are reported separately.
+- Nineteen real TypeScript/DDL source mutants are killed (eighteen in this branch plus the baseline-omission mutant in the parent integration tree); `source-mutants.json` records commands and outcomes. The parent baseline run used production node `bcd20732` and its signed-grant test; the harness reported killed and exited zero. TLA mutants are reported separately.
 - Revised bounded exhaustive TLC: 2,068,903 generated / 303,148 distinct states, depth 23, empty queue. Bounds: one reviewer, one review submission, one attempt, one outsider write, two-round hard cap. Shadow: 67,673 generated / 11,897 distinct, depth 13. No simulation result is used as model-checking evidence.
 
 ## Failure history and limits
@@ -24,7 +24,7 @@ All fourteen guard configs produce invariant counterexamples on final model comm
 
 Model limits remain: one commit per modeled push, assumed root baseline, exact closed-state reservation cleanup and some R2 reason rewrites. These are explicit abstractions, not implementation proof. The TypeScript property covers real ordered multi-commit ranges and the baseline separately.
 
-5-G real sandbox acceptance is not run. Local Docker/fake GitHub can rehearse process and ledger behavior but cannot establish real GitHub App attribution, installation permissions or ruleset enforcement. See [gaps.md](gaps.md) for the exact required-versus-existing matrix. Phase 5 remains incomplete until the remaining model and real sandbox gates pass.
+5-G real sandbox acceptance is not run. Local Docker/fake GitHub can rehearse process and ledger behavior but cannot establish real GitHub App attribution, installation permissions or ruleset enforcement. See `gaps.md` for the exact required-versus-existing matrix. Phase 5 remains incomplete until the remaining model and real sandbox gates pass.
 
 ## Reproduction
 
@@ -35,4 +35,6 @@ TLA2TOOLS_JAR=/path/to/tla2tools.jar JAVA=/path/to/java \
 # --mutants runs model mutants; --main runs main, shadow and rounds exhaustively.
 ```
 
-The full nineteen-entry source manifest requires the production baseline node `bcd20732`; on this standalone verification branch, select the eighteen other mutant names. The mutation runner restores each source file in `finally` and on handled SIGINT/SIGTERM/exit. It requires a passing baseline, distinguishes assertion failures from invalid imports, and writes command results and full logs under the canonical scratch root. Raw logs stay in scratch; [evidence.json](evidence.json) records hashes and concise results.
+The full nineteen-entry source manifest requires the production baseline node `bcd20732`; on this standalone verification branch, select the eighteen other mutant names. The mutation runner restores each source file in `finally` and on handled SIGINT/SIGTERM/exit. It requires a passing baseline, distinguishes assertion failures from invalid imports, and writes command results and full logs under the canonical scratch root. Raw logs stay in scratch; `evidence.json` records hashes and concise results.
+
+`model-checks.json` records completed bounded/shadow checks and all fourteen model-mutant counterexamples. `pending-tlc.json` identifies the two broad searches; process scheduling may suspend them during serialized acceptance testing.
