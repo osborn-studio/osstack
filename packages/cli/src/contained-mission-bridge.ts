@@ -1,7 +1,7 @@
 // Bridge-only effects for contained Missions (plan phase 3): App A credentials for the PR-only
 // publication and the App B `osstack/verify` check run. Loaded lazily, only when a bridge is configured.
 import { execFile } from 'node:child_process';
-import { githubDeliveryEnvironment, type DeliveryCommandResult, type DeliveryCommandRunner } from '@osstack/github';
+import { githubDeliveryEnvironment, type DeliveryCommandResult, type DeliveryCommandRunner, type DeliveryRunOptions, type DeliveryWriteGate } from '@osstack/github';
 import type { ContainedMission } from '@osstack/core';
 import { redactBridge } from './contained-mission-redact.js';
 import {
@@ -17,11 +17,14 @@ const MAX_LOOKUP_PAGES = 10;
 /** Total check-run page requests per lookup, across all suites (bounds a worst case of suites x pages). */
 const MAX_RUN_PAGE_REQUESTS = PAGE_SIZE * MAX_LOOKUP_PAGES;
 
-export type BridgeExec = (
+export type BridgeExec = ((
   command: string,
   args: readonly string[],
-  options: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv },
-) => Promise<DeliveryCommandResult>;
+  options: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv; signal?: AbortSignal; gate?: DeliveryWriteGate },
+) => Promise<DeliveryCommandResult>) & {
+  /** True only for a launcher that registers the process in the host-process ledger and honours `gate` (W13). */
+  readonly gated?: true;
+};
 export interface BridgeOptions {
   config: BridgeConfig;
   /** `OSSTACK_BRIDGE=0` kill switch: publication for the configured repository is refused (BRIDGE_DISABLED) before any token, push or check. */
@@ -49,14 +52,17 @@ const PUSH_HELPER = `!f() { test "$1" = get || exit 0; echo username=x-access-to
 
 export { redactBridge };
 
+/** Ungated: the contained publication fence refuses a write through it. Kept for tooling that never publishes a Mission. */
 export const defaultBridgeExec: BridgeExec = (command, args, options) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
+    if (options.gate !== undefined) return reject(new Error('CONTAINED_PUBLICATION_UNGATED'));
     execFile(
       command,
       [...args],
-      { cwd: options.cwd, timeout: options.timeoutMs, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, env: options.env },
+      { cwd: options.cwd, timeout: options.timeoutMs, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, env: options.env, ...(options.signal === undefined ? {} : { signal: options.signal }) },
       (error, stdout, stderr) => {
         if (!error) return resolve({ stdout, stderr, exitCode: 0 });
+        if (options.signal?.aborted) return reject(new Error('CONTAINED_PUBLICATION_ABORTED'));
         const failure = error as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
         const timedOut = failure.killed === true || failure.signal === 'SIGTERM' || failure.code === 'ETIMEDOUT';
         resolve({ stdout: String(stdout ?? ''), stderr: String(stderr ?? ''), exitCode: timedOut ? 124 : typeof failure.code === 'number' ? failure.code : 1 });
@@ -71,29 +77,50 @@ function gitSubcommandIndex(args: readonly string[]): number {
   return i;
 }
 
+/** App mode never reads the user's git configuration for a credentialed command: no global or system file, no ssh agent. */
+function isolate(env: NodeJS.ProcessEnv): void {
+  env['GIT_CONFIG_GLOBAL'] = '/dev/null';
+  env['GIT_CONFIG_NOSYSTEM'] = '1';
+  delete env['SSH_AUTH_SOCK'];
+  delete env['XDG_CONFIG_HOME'];
+}
+
 /**
- * Only `git push` and `gh pr create` carry App A's token; every other command (all reads) goes to `inner`
- * with the host's own credentials. Place this INSIDE the publication fence.
+ * Only `git push` and `gh pr create` carry App A's token; every other command (all reads) goes to `inner` with the host's own
+ * credentials. Place this INSIDE the publication fence. W13-C2: the two writes go to `exec` with the gate the fence attached, in an
+ * isolated git configuration plus the fixed `transport` pairs (`-c` proxy/CA settings read from the host config at preflight, also
+ * applied to `remote get-url` and `ls-remote` so the destination re-check and the push read the same transport).
  */
 export function appCredentialRunner(
   inner: DeliveryCommandRunner,
   publisherToken: () => Promise<string>,
   exec: BridgeExec,
+  transport: readonly string[] = [],
 ): DeliveryCommandRunner {
   const credentialed = async (
     command: string,
     args: readonly string[],
-    options: { cwd: string; timeoutMs: number },
+    options: DeliveryRunOptions,
     env: NodeJS.ProcessEnv,
   ): Promise<DeliveryCommandResult> => {
     try {
-      const done = await exec(command, args, { ...options, env });
-      return { stdout: redactBridge(done.stdout), stderr: redactBridge(done.stderr), exitCode: done.exitCode };
+      const done = await exec(command, args, {
+        cwd: options.cwd, timeoutMs: options.timeoutMs, env,
+        ...(options.signal === undefined ? {} : { signal: options.signal }), ...(options.gate === undefined ? {} : { gate: options.gate }),
+      });
+      return { stdout: redactBridge(done.stdout), stderr: redactBridge(done.stderr), exitCode: done.exitCode, ...(done.opId === undefined ? {} : { opId: done.opId }) };
     } catch (error) {
-      throw new Error(redactBridge(error instanceof Error ? error.message : String(error)));
+      if (error instanceof Error && error.name === 'HostProcessUnprovenError') throw error;
+      const failure = new Error(redactBridge(error instanceof Error ? error.message : String(error)));
+      throw failure;
     }
   };
+  const withTransport = (args: readonly string[]): string[] => {
+    const at = gitSubcommandIndex(args);
+    return [...args.slice(0, at), ...transport, ...args.slice(at)];
+  };
   return {
+    ...(exec.gated === true ? { gated: true as const } : {}),
     async run(command, args, options) {
       if (command === 'git') {
         const at = gitSubcommandIndex(args);
@@ -102,14 +129,17 @@ export function appCredentialRunner(
           const env = githubDeliveryEnvironment();
           delete env['GH_TOKEN'];
           delete env['GITHUB_TOKEN'];
+          isolate(env);
           env[PUSH_TOKEN_ENV] = token;
           // Clear both the generic list and the github.com-specific one (`gh auth setup-git` writes the latter).
-          return credentialed('git', ['-c', 'credential.helper=', '-c', 'credential.https://github.com.helper=', '-c', `credential.helper=${PUSH_HELPER}`, ...args], options, env);
+          return credentialed('git', ['-c', 'credential.helper=', '-c', 'credential.https://github.com.helper=', '-c', `credential.helper=${PUSH_HELPER}`, ...transport, ...args], options, env);
         }
+        if (args[at] === 'remote' || args[at] === 'ls-remote') return inner.run(command, withTransport(args), options);
       } else if (command === 'gh' && args[0] === 'pr' && args[1] === 'create') {
         const token = await publisherToken();
         const env = githubDeliveryEnvironment();
         for (const key of ['GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN']) delete env[key];
+        isolate(env);
         env['GH_TOKEN'] = token;
         env['GH_HOST'] = 'github.com';
         return credentialed('gh', args, options, env);

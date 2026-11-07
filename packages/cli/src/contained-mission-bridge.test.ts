@@ -293,7 +293,7 @@ describe('appCredentialRunner', () => {
     const inner: Array<[string, readonly string[]]> = [];
     const executed: Array<{ command: string; args: readonly string[]; env: NodeJS.ProcessEnv }> = [];
     const innerRunner: DeliveryCommandRunner = { run: async (command, args) => { inner.push([command, args]); return result('inner'); } };
-    const exec: BridgeExec = async (command, args, options) => { executed.push({ command, args, env: options.env }); return execOut(command); };
+    const exec: BridgeExec = Object.assign(async (command: string, args: readonly string[], options: { env: NodeJS.ProcessEnv }) => { executed.push({ command, args, env: options.env }); return execOut(command); }, { gated: true as const });
     return { inner, executed, runner: appCredentialRunner(innerRunner, async () => PUBLISHER_TOKEN, exec) };
   }
   const opts = { cwd: '/', timeoutMs: 1 };

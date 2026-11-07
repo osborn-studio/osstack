@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { AttentionStore, createScratchDirSync, openDb } from "@osstack/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { EngineeringAccess } from "./engineering-access.js";
-import { createContainedMissionService } from "./contained-mission-rpc.js";
+import { HOST_PROCESS_RECHECK_MS, createContainedMissionService } from "./contained-mission-rpc.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -23,10 +23,25 @@ function setup() {
   const env = { OSSTACK_CONTAINED_CODEX_BIN: "/bin/true", OSSTACK_CONTAINED_CODEX_HOME: root, OSSTACK_CONTAINED_DOCKER_SOCKET: join(root, "d.sock"),
     OSSTACK_CONTAINED_DOCKER_DAEMON_ID: "d", OSSTACK_CONTAINED_BASE_IMAGE_ID: "sha256:" + "0".repeat(64) };
   const logs: string[] = [];
-  const create = (extra: Record<string, string> = {}) => createContainedMissionService({ attention, owner, access: new EngineeringAccess(authFile), home, draining: () => false, env: { ...env, ...extra }, log: line => { logs.push(line); } });
+  const deps = { attention, owner, access: new EngineeringAccess(authFile), home, draining: () => false, env, log: (line: string) => { logs.push(line); } };
+  const create = (extra: Record<string, string> = {}) => createContainedMissionService({ ...deps, env: { ...env, ...extra } });
   const portsOf = (service: unknown) => (service as { options: { host: { options: { ports: Record<string, unknown> } } } }).options.host.options.ports;
-  return { root, home, create, portsOf, logs };
+  return { root, home, create, portsOf, deps, logs };
 }
+
+describe("createContainedMissionService host process re-check", () => {
+  const recheckOf = (service: unknown) => (service as { options: { host: { recheckMs: number | undefined } } }).options.host.recheckMs;
+  it("re-checks unproven host-process records every 60 seconds by default and accepts an injected interval", async () => {
+    const f = setup();
+    expect(HOST_PROCESS_RECHECK_MS).toBe(60_000);
+    const service = await f.create();
+    expect(recheckOf(service)).toBe(60_000);
+    await service.close();
+    const injected = await createContainedMissionService({ ...f.deps, hostProcessRecheckMs: 5 });
+    expect(recheckOf(injected)).toBe(5);
+    await injected.close();
+  });
+});
 
 describe("createContainedMissionService bridge wiring", () => {
   it("builds ports without the bridge when no config files exist", async () => {
@@ -70,7 +85,8 @@ describe("createContainedMissionService bridge wiring", () => {
     type Publish = (input: unknown) => Promise<unknown>;
     const attempt = async (f: ReturnType<typeof setup>, service: unknown, repository: string): Promise<string> => {
       const publish = f.portsOf(service)["publish"] as Publish;
-      try { await publish({ spec: { repository, publication: { remote: "origin", repository, base: "main", draft: false } } }); return "ok"; }
+      // W13-C2: publish runs inside the host-process guard, which is keyed by the Mission id.
+      try { await publish({ mission: { mission_id: "cm_00000000-0000-4000-8000-000000000001" }, spec: { repository, publication: { remote: "origin", repository, base: "main", draft: false } } }); return "ok"; }
       catch (error) { return (error as Error).message; }
     };
     const modes: Array<[string, Record<string, string>]> = [["unset", {}], ["0", { OSSTACK_BRIDGE: "0" }], ["shadow", { OSSTACK_BRIDGE: "shadow" }]];

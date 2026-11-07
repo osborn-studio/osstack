@@ -1112,6 +1112,25 @@ describe("contract PR-only publication", () => {
     expect(published.pushedCommit).toBe(HEAD_SHA);
     expect(commandStrings(r).some(c => c.includes("pr merge") || c.includes("pr checks"))).toBe(false);
   });
+  it("W13-C2: threads the AbortSignal to every command of the publication and keeps the runner's gated declaration", async () => {
+    const controller = new AbortController();
+    const r = runner(); const gated = { gated: true as const, run: r.run.bind(r) };
+    await openPullRequestToGitHub(input(), { ...scope, signal: controller.signal }, gated);
+    const seen = r.calls.map(c => (c.options as { signal?: AbortSignal }).signal);
+    expect(seen.length).toBeGreaterThan(5);
+    expect(seen.every(signal => signal === controller.signal)).toBe(true);
+    // without a signal nothing is added to the options
+    const plain = runner(); await openPullRequestToGitHub(input(), scope, plain);
+    expect(plain.calls.every(c => (c.options as { signal?: AbortSignal }).signal === undefined)).toBe(true);
+  });
+  it("W13-C2: the default runner is never gated, refuses a gate, and does not run once aborted", async () => {
+    const { defaultDeliveryCommandRunner } = await import("./delivery.js");
+    expect(defaultDeliveryCommandRunner.gated).toBeUndefined();
+    const gate = { missionId: "m", kind: "git_push" as const, remoteTarget: "o/r#refs/heads/b", localTarget: "x", fence: () => {} };
+    await expect(defaultDeliveryCommandRunner.run("true", [], { cwd: tmpdir(), timeoutMs: 1000, gate })).rejects.toThrow("DELIVERY_RUNNER_UNGATED");
+    const controller = new AbortController(); controller.abort();
+    await expect(defaultDeliveryCommandRunner.run("true", [], { cwd: tmpdir(), timeoutMs: 1000, signal: controller.signal })).rejects.toThrow("DELIVERY_ABORTED");
+  });
   it("rejects repository and candidate mismatches before pushing", async () => {
     for (const bad of [{ ...scope, repository: "foreign/repo" }, { ...scope, headCommit: OTHER_SHA }]) {
       const r = runner(); await expect(openPullRequestToGitHub(input(), bad, r)).rejects.toThrow(/mismatch/);
