@@ -857,7 +857,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "mission") {
     const { handleContainedMissionCommand } = await import("./contained-mission-command.js");
-    return await handleContainedMissionCommand(args.slice(1), { rpc });
+    return await handleContainedMissionCommand(args.slice(1), { rpc, home: osstackHome() });
   }
 
   if (cmd === "attention") {
