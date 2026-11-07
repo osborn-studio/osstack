@@ -176,7 +176,8 @@ function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"
   } else if (c.state === "revising") {
     const next = r.w.fresh();
     if (mode === "nointent") { if (r.w.state === "OPEN") { r.w.push(next); } return; } // pushed without an intent: indistinguishable from an outsider
-    // Multi-commit revisions make the range assertion stronger than head membership.
+    // Harness ranges strengthen store linearization beyond head membership.
+    // Production range journaling is covered by the CLI publication/ledger suites.
     const commits = counter % 2 === 0 ? [next, r.w.fresh(), r.w.fresh()] : [next];
     recordPush(r, c, commits.at(-1)!, commits);
   } else if (c.state === "publishing") {

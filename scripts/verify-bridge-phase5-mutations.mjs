@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createScratchDir } from './lib/scratch.mjs';
+import { classifyMutationResult } from './lib/bridge-mutation-result.mjs';
 
 const publication = 'packages/cli/src/contained-mission-revision-publication.ts';
 const store = 'packages/core/src/state/engineering-revision-chain-store.ts';
@@ -42,7 +43,7 @@ function run(pkg, tests, label) {
   const result = spawnSync('pnpm', ['--filter', pkg, 'test', ...tests], { cwd: root, encoding: 'utf8', env: process.env, timeout: 180000 });
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
   writeFileSync(resolve(out, `${label}.log`), output);
-  return { status: result.status, signal: result.signal, output };
+  return { status: result.status, signal: result.signal, error: result.error, output };
 }
 const suites = new Set();
 for (const [name, file, from, to, pkg, tests] of mutants) {
@@ -62,10 +63,8 @@ for (const [name, file, from, to, pkg, tests] of mutants) {
   try {
     writeFileSync(path, original.replace(from, to));
     const result = run(pkg, tests, name);
-    const assertion = /FAIL\s+src\/[^\n]+ >/.test(result.output);
-    const invalid = /Transform failed|Failed to load|Cannot find module|SyntaxError:|Parse failure/.test(result.output);
-    const verdict = result.status === 0 ? 'survived' : assertion && !invalid ? 'killed' : 'invalid';
-    results.push({ name, file, command: ['pnpm', '--filter', pkg, 'test', ...tests], verdict, status: result.status });
+    const verdict = classifyMutationResult(result);
+    results.push({ name, file, command: ['pnpm', '--filter', pkg, 'test', ...tests], verdict, status: result.status, signal: result.signal, spawn_error: result.error?.code ?? null });
     writeFileSync(resolve(out, 'results.json'), `${JSON.stringify(results, null, 2)}\n`);
     console.log(`${name}: ${verdict}`);
   } finally {

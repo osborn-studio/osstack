@@ -6,6 +6,20 @@ import type { ContainedMissionSpec } from './contained-mission-runner.js';
 const runs = Number(process.env.OSSTACK_PROPERTY_RUNS ?? 1000);
 const seed = Number(process.env.OSSTACK_PROPERTY_SEED ?? 51007);
 
+function assertExactTarget(actual: unknown, chainStart: string, round: number): void {
+  expect(actual).toEqual({ kind: 'revision', chain_id: 'rc_00000000-0000-4000-8000-000000000001', pr: 7,
+    remote_branch: 'topic', round, chain_start_commit: chainStart, root_tier: 'T0' });
+}
+
+it('rejects extra capability metadata in a revision publish target', () => {
+  const valid = { kind: 'revision', chain_id: 'rc_00000000-0000-4000-8000-000000000001', pr: 7,
+    remote_branch: 'topic', round: 1, chain_start_commit: 'a'.repeat(40), root_tier: 'T0' };
+  assertExactTarget(valid, 'a'.repeat(40), 1);
+  for (const extension of [{ allowed_paths: ['**'] }, { write_scope: 'all' }, { verify: { argv: ['true'] } }]) {
+    expect(() => assertExactTarget({ ...valid, ...extension }, 'a'.repeat(40), 1)).toThrow();
+  }
+});
+
 it(`preserves invariant 5 through ${runs} generated root specifications and hostile reviews`, () => {
   fc.assert(fc.property(fc.record({
     goal: fc.string({ minLength: 1, maxLength: 80 }).filter(s => s.trim().length > 0),
@@ -31,7 +45,7 @@ it(`preserves invariant 5 through ${runs} generated root specifications and host
       ids: { id: '123456abcdef', nonce: 'd'.repeat(32) }, rootTier: 'T0', worktreesRoot: '/worktrees',
     });
     for (const key of ['goal', 'repo_path', 'base_ref', 'allowed_paths', 'caps', 'verify', 'verification_paths', 'max_repair_cycles'] as const) expect(spec[key], key).toEqual(before[key]);
-    expect(spec.publish_target).toMatchObject({ chain_start_commit: root.start_commit, root_tier: 'T0', remote_branch: 'topic', round: input.round + 1 });
+    assertExactTarget(spec.publish_target, root.start_commit, input.round + 1);
     expect(spec.publication).toEqual({ ...root.publication, preauthorized: true });
     expect(root).toEqual(before);
     expect(spec.allowed_paths).not.toBe(root.allowed_paths);

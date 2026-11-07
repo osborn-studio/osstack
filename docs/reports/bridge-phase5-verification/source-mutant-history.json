@@ -1,0 +1,325 @@
+{
+  "policy": "The final aggregate takes the latest observed result per unique mutant name. Initial survivors remain in this history; no survivor is silently called killed.",
+  "resolved_survivors": [
+    {
+      "name": "no-lease",
+      "initial": "survived",
+      "resolution": "Added a real bare-Git ancestor-reset race after precheck; rerun killed the ordinary-push mutant."
+    },
+    {
+      "name": "no-revision-spec-denial",
+      "initial": "survived",
+      "resolution": "Selected the real ports test rather than the runner mock suite; rerun killed the missing-denial mutant."
+    }
+  ],
+  "runs": [
+    {
+      "results": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/results.json",
+      "sha256": "5a3cdf182b2eee6772086156953e3eaf9d8ac7afaaf38458cb35dd4fd7dcd9f0",
+      "results_snapshot": [
+        {
+          "name": "no-lease",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "survived",
+          "status": 0
+        },
+        {
+          "name": "no-store-rounds-check",
+          "file": "packages/core/src/state/engineering-revision-chain-store.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-ddl-rounds-check",
+          "file": "packages/core/src/state/engineering-revision-chain-ddl.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-reservation-pk",
+          "file": "packages/core/src/state/engineering-revision-chain-ddl.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-grant-fence",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-completed-reservation-void",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-revision-spec-denial",
+          "file": "packages/cli/src/contained-mission-ports.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "survived",
+          "status": 0
+        },
+        {
+          "name": "no-feedback-delimiters",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-readback-range-check",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        }
+      ]
+    },
+    {
+      "results": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-bnvigq/results.json",
+      "sha256": "e0685850bc8fd11cd54933bb72f9e2e5227b4c4b03a012a886ab4b0eaa1311d7",
+      "results_snapshot": [
+        {
+          "name": "no-lease",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-revision-spec-denial",
+          "file": "packages/cli/src/contained-mission-ports.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-ports.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        }
+      ]
+    },
+    {
+      "results": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/results.json",
+      "sha256": "e809fef1a04e9aa45398ff576d68ccfb2a7a0a72f7c67c6bb55bcf20f44a555d",
+      "results_snapshot": [
+        {
+          "name": "no-precheck-base",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "split-dispatch-transaction",
+          "file": "packages/cli/src/contained-mission-revision.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-unsettled-publication-check",
+          "file": "packages/core/src/state/engineering-revision-chain-store.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-chain-classification",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-acknowledge-advance",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "interrupted-push-failed",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        }
+      ]
+    },
+    {
+      "results": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-Q2IINW/results.json",
+      "sha256": "a75776e38c945ce9af17a9ddb29040a61ff96c063e81d632a13da46865580112",
+      "results_snapshot": [
+        {
+          "name": "wrong-revision-publish-port",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "no-release-fence",
+          "file": "packages/core/src/state/engineering-host-process-store.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-host-process-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        },
+        {
+          "name": "token-after-fence",
+          "file": "packages/cli/src/contained-mission-bridge.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-bridge.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1
+        }
+      ]
+    },
+    {
+      "results": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-pYchuD/results.json",
+      "sha256": "047dd2cbeda83d7b076498ea5cfa62b0dfb10939d0a8512d3bd9bf8d7dc7e82f",
+      "results_snapshot": [
+        {
+          "name": "baseline-omission",
+          "file": "packages/cli/src/contained-mission-grant.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-grant.test.ts",
+            "-t",
+            "issues a signed grant"
+          ],
+          "verdict": "killed",
+          "status": 1
+        }
+      ]
+    }
+  ],
+  "final_unique_count": 19,
+  "final_killed_count": 19,
+  "final_aggregate_sha256": "b7e28cba83dfd4e7751860b4e955ac0cf807b3079c9fce93f5742f5715e7543a"
+}
