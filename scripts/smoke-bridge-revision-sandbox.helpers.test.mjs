@@ -152,3 +152,62 @@ test('malformed SHA probes and a redirected runtime mode fail before claiming ev
     appModule: { createInstallationTokenSource: () => {} }, provenance: { mode: 'checkout' } };
   await assert.rejects(driver.selectSandboxRuntime({ runtimePrefix: '/inactive/prefix' }, async () => selected), /bridge_runtime_selection_mismatch/);
 });
+
+
+function activityFixture() {
+  const chain = { chain_id: 'rc_helper', repository: driver.SANDBOX, branch, pr_number: 7 };
+  const intent = { ...chain, intent_id: 'pi_baseline', kind: 'open_pr', state: 'confirmed', expected_old_head: 'a'.repeat(40), new_head: sha };
+  const activity = { id: 10, activity_type: 'branch_creation', ref: `refs/heads/${branch}`,
+    before: '0'.repeat(40), after: sha, actor: { id: 123, type: 'Bot' } };
+  return { chain, intent, activity };
+}
+
+test('publication attribution binds repository identity and exact chain metadata before accepting remote actor evidence', async () => {
+  const { chain, intent, activity } = activityFixture(), calls = [];
+  const evidence = await driver.collectSandboxPublicationActivities({ chain, intents: [intent], publisherActorId: 123,
+    get: async (path, { signal }) => {
+      assert.ok(signal instanceof AbortSignal); calls.push(path);
+      return path === prefix ? { id: driver.SANDBOX_ID, full_name: driver.SANDBOX } : [activity];
+    } });
+  assert.equal(calls[0], prefix);
+  assert.match(calls[1], /activity\?per_page=100&ref=refs%2Fheads%2F/);
+  assert.deepEqual(evidence[0].actor, { id: 123, type: 'Bot' });
+  assert.equal(evidence[0].intent_id, intent.intent_id);
+});
+
+test('wrong repository identity and an intent from another chain never qualify attribution', async () => {
+  const { chain, intent, activity } = activityFixture();
+  await assert.rejects(driver.collectSandboxPublicationActivities({ chain, intents: [intent], publisherActorId: 123,
+    get: async () => ({ id: 1, full_name: driver.SANDBOX }) }), /activity_repository_mismatch/);
+  await assert.rejects(driver.collectSandboxPublicationActivities({ chain, intents: [{ ...intent, chain_id: 'other' }], publisherActorId: 123,
+    get: async path => path === prefix ? { id: driver.SANDBOX_ID, full_name: driver.SANDBOX } : [activity] }), /activity_intent_binding_mismatch/);
+});
+
+test('actor evidence never trusts a commit author in place of the repository activity actor', async () => {
+  const { chain, intent, activity } = activityFixture();
+  await assert.rejects(driver.collectSandboxPublicationActivities({ chain, intents: [intent], publisherActorId: 123,
+    get: async path => path === prefix ? { id: driver.SANDBOX_ID, full_name: driver.SANDBOX }
+      : [{ ...activity, author: { id: 123 }, actor: { id: 999, type: 'User' } }] }), /activity_actor_mismatch/);
+});
+
+test('cold handoff closes before worker exit and rebuilds fresh resources after exit', async () => {
+  const events = [];
+  const evidence = { ok: true };
+  const actual = await driver.handoffSandboxColdRestart({
+    close: async () => { events.push('old-services-host-db-closed'); },
+    restart: async () => { events.push('worker-exited'); return evidence; },
+    reopen: async () => { events.push('new-owner-stores-ports-host'); },
+  });
+  assert.equal(actual, evidence);
+  assert.deepEqual(events, ['old-services-host-db-closed', 'worker-exited', 'new-owner-stores-ports-host']);
+});
+
+test('cold handoff reopens after failed exited worker but never launches after failed shutdown', async () => {
+  const events = [];
+  const failure = Error('worker-failed');
+  await assert.rejects(driver.handoffSandboxColdRestart({ close: async () => {},
+    restart: async () => { events.push('worker'); throw failure; }, reopen: async () => { events.push('reopen'); } }), error => error === failure);
+  assert.deepEqual(events, ['worker', 'reopen']);
+  await assert.rejects(driver.handoffSandboxColdRestart({ close: async () => { throw Error('shutdown'); },
+    restart: async () => { assert.fail('must not launch'); }, reopen: async () => { assert.fail('must not reclaim active owner'); } }), /shutdown/);
+});

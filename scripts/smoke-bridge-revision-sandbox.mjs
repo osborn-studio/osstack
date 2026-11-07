@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash, generateKeyPairSync, randomBytes } from 'node:crypto';
-import { chmod, lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,8 @@ import { promisify } from 'node:util';
 import { assertSandbox, parseRegistry } from './lib/bridge-probe.mjs';
 import { createScratchDir } from './lib/scratch.mjs';
 import { loadBridgeRuntime } from './lib/bridge-installed-runtime.mjs';
+import { runSandboxColdRestart } from './lib/bridge-sandbox-cold-restart.mjs';
+import { readSandboxBranchActivities, assertSandboxPublicationActivities } from './lib/bridge-sandbox-activity.mjs';
 
 export const SANDBOX = 'osborn-studio/osstack-bridge-sandbox';
 export const SANDBOX_ID = 1446327922;
@@ -81,7 +83,7 @@ async function command(bin, args, options = {}) {
 }
 const gitEnv = () => ({ PATH: process.env.PATH, HOME: process.env.HOME, GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' });
 const gitArgs = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always'];
-const ghRead = async path => JSON.parse(await command('gh', ['api', path]));
+const ghRead = async (path, signal) => JSON.parse(await command('gh', ['api', path], { ...(signal ? { signal } : {}) }));
 async function keySafe(path) {
   const info = await lstat(path);
   assertThat(info.isFile() && !info.isSymbolicLink() && (info.mode & 0o077) === 0 && info.uid === process.getuid(), 'private_app_key_required');
@@ -188,6 +190,22 @@ export function assertHostWriterRulesetRefusal(result, branch) {
   assertThat(result.error?.code === 1 && !result.error?.signal && !result.error?.killed && rejected && policy, 'host_writer_not_ruleset_rejected');
 }
 
+/** Read attribution from repository activity, never from commit author metadata or an actor-filtered page. */
+export async function collectSandboxPublicationActivities({ chain, intents, publisherActorId, get, signal = AbortSignal.timeout(30_000) }) {
+  assertThat(chain.repository === SANDBOX && Number.isSafeInteger(chain.pr_number) && chain.pr_number > 0, 'activity_intent_binding_mismatch');
+  signal.throwIfAborted();
+  const metadata = await get(`repos/${SANDBOX}`, { signal });
+  assertThat(metadata?.id === SANDBOX_ID && metadata?.full_name?.toLowerCase() === SANDBOX, 'activity_repository_mismatch');
+  const confirmed = intents.filter(i => ['open_pr', 'push'].includes(i.kind) && i.state === 'confirmed').map(i => {
+    assertThat(i.chain_id === chain.chain_id && i.branch === chain.branch && i.repository === chain.repository && i.pr_number === chain.pr_number, 'activity_intent_binding_mismatch');
+    return { intent_id: i.intent_id, kind: i.kind, state: i.state, expected_old_head: i.expected_old_head, new_head: i.new_head,
+      chain_id: chain.chain_id, repository: chain.repository, branch: chain.branch, pr_number: chain.pr_number };
+  });
+  const scope = { repository: SANDBOX, repositoryId: SANDBOX_ID, branch: chain.branch };
+  const activities = await readSandboxBranchActivities({ ...scope, get, signal });
+  return assertSandboxPublicationActivities({ ...scope, publisherActorId, intents: confirmed, activities });
+}
+
 /** Bind final timeline evidence to the PR and actual branch ref observed now, not only a historical ledger tip. */
 export function assertCurrentPublicationHead(chain, pr, ref) {
   assertThat(typeof chain?.repository === 'string' && chain.repository.toLowerCase() === SANDBOX
@@ -213,17 +231,23 @@ export async function withSandboxCleanup(work) {
   return result;
 }
 
+/** Close all old resources before a worker; reclaim fresh resources after worker exit, including failure. */
+export async function handoffSandboxColdRestart({ close, restart, reopen }) {
+  await close();
+  try { return await restart(); } finally { await reopen(); }
+}
+
 export async function execute(opts, prepared) {
   assertThat(opts.execute, 'execute_required');
   // Revalidate repository identity directly before allocating any local write authority.
   assertSandbox(SANDBOX, { sandbox: { repo: SANDBOX, id: SANDBOX_ID } }, await ghRead(`repos/${SANDBOX}`));
-  const scratch = await createScratchDir('smoke', `bridge-revision-${opts.run}`, { OSSTACK_SCRATCH_ROOT: SMOKE_ROOT }); await chmod(scratch, 0o700);
+  const scratch = await realpath(await createScratchDir('smoke', `bridge-revision-${opts.run}`, { OSSTACK_SCRATCH_ROOT: SMOKE_ROOT })); await chmod(scratch, 0o700);
   const home = join(scratch, 'home'), runtimeRoot = join(scratch, 'scratch'), worktrees = join(runtimeRoot, 'worktrees'), repo = join(scratch, 'repository');
   for (const dir of [home, join(home, 'bridge'), runtimeRoot, worktrees]) await mkdir(dir, { mode: 0o700, recursive: true });
   const output = join(scratch, 'report.json'), owned = { execute: true, pullNumbers: [], branches: [] };
   const report = { schema_version: 1, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run, scratch, home,
     model: 'gpt-6.1-sol', real_executor: true, real_docker: true, real_apps: true, qualified: false, scenarios: [], chains: [],
-    required_acceptance_gaps: ['normal_push_actor_attribution', 'cancel_after_release_real_process_owner_restart', 'write_scope_revoked_at_publication_release'],
+    required_acceptance_gaps: ['normal_push_actor_attribution', 'cancel_real_process_owner_restart', 'write_scope_revoked_at_publication_release'],
     started_at: new Date().toISOString() };
   const save = () => privateJson(output, report);
   const previousEnv = { OSSTACK_HOME: process.env.OSSTACK_HOME, OSSTACK_SCRATCH_ROOT: process.env.OSSTACK_SCRATCH_ROOT };
@@ -291,20 +315,23 @@ export async function execute(opts, prepared) {
   const base = await git(['rev-parse', 'refs/heads/main']);
   const dbPath = join(home, 'control.db'); db = core.openDb({ path: dbPath });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('smoke','bridge revision sandbox','running',1,1)");
-  const attention = new core.AttentionStore(db, dbPath), owner = attention.claimOwner(`sandbox-${opts.run}`);
+  let attention = new core.AttentionStore(db, dbPath), owner = attention.claimOwner(`sandbox-${opts.run}`);
   const scope = attention.registerScope(owner, 'smoke', repo);
   missions = new core.ContainedMissionStore(attention, owner); chains = new core.RevisionChainStore(attention, owner);
   const credential = randomBytes(32).toString('hex'), authorityPath = join(home, 'authority.json');
   const principal = { principal_id: 'sandbox-owner', client_session_id: opts.run, read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [scope.scope_id], operator_scopes: [scope.scope_id] };
   const authority = () => privateJson(authorityPath, { version: 1, principals: [{ ...principal, credential_sha256: hash(credential) }] });
-  await authority(); const access = new prepared.runtime.EngineeringAccess(authorityPath);
-  const config = { repository: SANDBOX, publisher: prepared.apps.publisher, evidence: prepared.apps.evidence, mission_ruleset_ids: RULESETS };
-  const ports = prepared.runtime.createContainedMissionPorts({ store: missions, now: Date.now, runtimeRoot: join(runtimeRoot, 'runtime'),
-    codex: { bin: opts.codexBin, sourceCodexHome: opts.codexHome, model: 'gpt-6.1-sol',
-      ...(process.env.OSSTACK_CONTAINED_CODEX_IDENTITY ? { identityBinary: process.env.OSSTACK_CONTAINED_CODEX_IDENTITY } : {}) },
-    hostProcess: { markerDir: join(home, 'contained/host-processes') },
-    verification: { socketPath: opts.dockerSocket, daemonId: prepared.daemonId, baseImageId: prepared.imageId, journalRoot: join(home, 'verification') },
+  await authority(); let access = new prepared.runtime.EngineeringAccess(authorityPath);
+  const config = { repository: SANDBOX, publisher: { ...prepared.apps.publisher, private_key_path: await realpath(prepared.apps.publisher.private_key_path) }, evidence: { ...prepared.apps.evidence, private_key_path: await realpath(prepared.apps.evidence.private_key_path) }, mission_ruleset_ids: RULESETS };
+  await privateJson(join(home, 'bridge/apps.json'), { version: 1, repository: SANDBOX, publisher: config.publisher, evidence: config.evidence });
+  const codexOptions = { bin: await realpath(opts.codexBin), sourceCodexHome: await realpath(opts.codexHome), model: 'gpt-6.1-sol',
+    ...(process.env.OSSTACK_CONTAINED_CODEX_IDENTITY ? { identityBinary: await realpath(process.env.OSSTACK_CONTAINED_CODEX_IDENTITY) } : {}) };
+  const verificationOptions = { socketPath: await realpath(opts.dockerSocket), daemonId: prepared.daemonId, baseImageId: prepared.imageId };
+  const createPorts = () => prepared.runtime.createContainedMissionPorts({ store: missions, now: Date.now, runtimeRoot: join(runtimeRoot, 'runtime'),
+    codex: codexOptions, hostProcess: { markerDir: join(home, 'contained/host-processes') },
+    verification: { ...verificationOptions, journalRoot: join(home, 'verification') },
     author: { name: 'OSStack Sandbox', email: 'sandbox@osstack.invalid' }, bridge: { config } });
+  let ports = createPorts();
   host = new prepared.runtime.ContainedMissionHost({ ports, worktreesRoot: worktrees, hostProcessRecheckMs: 60_000 });
   const buildBridge = currentHost => prepared.runtime.createProductionLiveBridge({ home, chains, missions, ports, host: currentHost, access, enabled: () => enabled,
     now: Date.now, log: () => { logs.push({ code: 'bridge_diagnostic', at: Date.now() }); }, launchCaps: ports.revisionLaunchCaps });
@@ -356,6 +383,7 @@ export async function execute(opts, prepared) {
     owned.branches.push(branch);
     const mission = host.start(principal, { scope_id: scope.scope_id, spec });
     await until(() => { const m = missions.get(mission.mission_id); assertThat(!['awaiting_decision', 'stop_unknown', 'failed'].includes(m.state), `root_halted:${m.state}`); return m.state === 'pr_opened'; }, `root_${label}`);
+    await host.recover(); // Settle the terminal root claim before a recovery-only handoff.
     const publication = host.publication(mission.mission_id); assertThat(publication?.pr?.number, 'root_pr_missing');
     owned.pullNumbers.push(publication.pr.number);
     const preview = await bridge.grants.preview(principal, { mission_id: mission.mission_id, rounds: 2,
@@ -376,6 +404,43 @@ export async function execute(opts, prepared) {
     }
   };
     await save();
+    // Run cancellation first: the recovery-only child process refuses unrelated live chains.
+    const cancel = await rootMission('cancel'); await review(cancel.chain, `Update ${cancel.file} to stage 1.`);
+    const cancelledChild = await dispatchChild(cancel.chain.chain_id);
+    await host.cancel(principal, cancelledChild);
+    const previousOwner = { home_id: owner.home_id, instance_id: owner.instance_id, generation: owner.generation };
+    const coldEvidence = await handoffSandboxColdRestart({
+      close: async () => {
+        await bridge.checkRetry?.stop(); await bridge.live.stop(); await bridge.stoppedScan.stop(); await host.close();
+        db.close(); db = undefined; host = undefined; bridge = undefined; await chmod(dbPath, 0o600);
+      },
+      restart: async () => runSandboxColdRestart({ version: 1, repository: SANDBOX, repositoryId: SANDBOX_ID,
+        scratchPrefix: await realpath(SMOKE_ROOT), runRoot: scratch, runtimePrefix: prepared.provenance.root,
+        home, dbPath, scopeId: scope.scope_id, chainId: cancel.chain.chain_id, childMissionId: cancelledChild,
+        repositoryPath: repo, worktreesRoot: worktrees, authorityPath,
+        expectedBranch: cancel.chain.branch, expectedHead: cancel.chain.published_head,
+        modules: { runtime: prepared.provenance.entries.runtime, core: prepared.provenance.entries.core },
+        handoff: { parentPid: process.pid, servicesStopped: true, hostClosed: true, databaseClosed: true, previousOwner },
+        ports: { runtimeRoot: join(runtimeRoot, 'runtime'), markerDir: join(home, 'contained/host-processes'),
+          journalRoot: join(home, 'verification'), codex: codexOptions, verification: verificationOptions, bridgeConfig: config },
+        launchCaps: ports.revisionLaunchCaps }),
+      reopen: async () => {
+      // Reclaim even after a failed worker; never reuse a stale owner's resources.
+      db = core.openDb({ path: dbPath }); attention = new core.AttentionStore(db, dbPath);
+      owner = attention.claimOwner(`sandbox-parent-resumed-${opts.run}`);
+      missions = new core.ContainedMissionStore(attention, owner); chains = new core.RevisionChainStore(attention, owner);
+      access = new prepared.runtime.EngineeringAccess(authorityPath); ports = createPorts();
+      host = new prepared.runtime.ContainedMissionHost({ ports, worktreesRoot: worktrees, hostProcessRecheckMs: 60_000 });
+      bridge = await buildBridge(host);
+      },
+    });
+    assertThat(coldEvidence.ok === true && coldEvidence.childPid !== process.pid
+      && coldEvidence.readback.mission.state === 'cancelled', 'cold_restart_evidence_required');
+    assert.equal(missions.get(cancelledChild).state, 'cancelled');
+    assert.equal(chains.intents(cancel.chain.chain_id).filter(i => i.kind === 'push').length, 0);
+    report.cold_restart = coldEvidence;
+    report.required_acceptance_gaps = report.required_acceptance_gaps.filter(gap => gap !== 'cancel_real_process_owner_restart');
+    report.scenarios.push({ name: 'cancel_before_first_tick_new_process_new_owner_recovery_no_push', passed: true }); await save();
     const a = await rootMission('a'); await twoRounds(a);
     await review(chains.get(a.chain.chain_id), 'Approved after both requested stages.', 'APPROVE');
     await until(() => chains.get(a.chain.chain_id).state === 'ready_for_human', 'a_ready');
@@ -412,16 +477,6 @@ export async function execute(opts, prepared) {
       const events = missions.events(c.current_mission_id, 0, 500); return events.some(e => { if (e.kind !== 'halted') return false; const p = JSON.parse(e.payload_json); return p.reason === 'tier_escalated' && p.reasons?.includes('PROTECTED_PATH'); }); }, 'workflow_t2');
     assert.equal(chains.intents(injected.chain.chain_id).filter(i => i.kind === 'push').length, 0);
     report.scenarios.push({ name: 'workflow_injection_T2', passed: true }); await save();
-    const cancel = await rootMission('cancel'); await review(cancel.chain, `Update ${cancel.file} to stage 1.`);
-    const cancelledChild = await dispatchChild(cancel.chain.chain_id);
-    await host.cancel(principal, cancelledChild);
-    await bridge.checkRetry?.stop(); await bridge.live.stop(); await bridge.stoppedScan.stop(); await host.close();
-    host = new prepared.runtime.ContainedMissionHost({ ports, worktreesRoot: worktrees });
-    bridge = await buildBridge(host);
-    await host.recover(); await bridge.revisionRecovery(new AbortController().signal); await host.tick();
-    assertThat(['cancelled', 'cancel_requested'].includes(missions.get(cancelledChild).state), 'cancel_restart_state');
-    assert.equal(chains.intents(cancel.chain.chain_id).filter(i => i.kind === 'push').length, 0);
-    report.scenarios.push({ name: 'cancel_before_first_tick_host_recovery_no_push', passed: true }); await save();
     const revoked = await rootMission('revoke'); await review(revoked.chain, `Update ${revoked.file} to stage 1.`);
     const revokedChild = await dispatchChild(revoked.chain.chain_id);
     principal.write_scopes = []; await authority(); await host.tick();
@@ -446,8 +501,12 @@ export async function execute(opts, prepared) {
       }
       assertTimeline({ baseline: rangeMap.get(intents.find(i => i.kind === 'open_pr')?.intent_id)?.[0], remoteCommits: compared.commits.map(c => c.sha),
         intents, ranges: rangeMap, checks, evidenceAppId: prepared.apps.evidence.app_id });
+      const activities = await collectSandboxPublicationActivities({ chain: c, intents, publisherActorId: prepared.producers.publisher[0].actor_id,
+        get: (path, { signal }) => ghRead(path, signal) });
+      report.publication_activities ??= []; report.publication_activities.push({ chain_id: c.chain_id, evidence: activities });
       await observeCurrentHead(c);
     }
+    report.required_acceptance_gaps = report.required_acceptance_gaps.filter(gap => gap !== 'normal_push_actor_attribution');
     report.scenarios.push({ name: 'timeline_matches_confirmed_intents_and_AppB_checks', passed: true }); report.qualified = report.required_acceptance_gaps.length === 0;
     } catch (error) {
       report.failure_code = /^[A-Za-z0-9_:-]{1,160}$/.test(error?.message ?? '') ? error.message : 'sandbox_acceptance_failed';
