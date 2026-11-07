@@ -7,9 +7,7 @@ import { createScratchDir } from './lib/scratch.mjs';
 import * as driver from './smoke-bridge-revision-sandbox.mjs';
 
 test('fresh sandbox setup initializes the verification journal before runtime ports receive it', async t => {
-  const scratch = await realpath(await createScratchDir('tests', 'bridge-journal-root', {
-    OSSTACK_SCRATCH_ROOT: '/Volumes/AIMATE_WORK/tmp/osstack',
-  }));
+  const scratch = await realpath(await createScratchDir('tests', 'bridge-journal-root'));
   t.after(() => rm(scratch, { recursive: true, force: true }));
   await assert.rejects(lstat(join(scratch, 'home')), { code: 'ENOENT' });
   const { home, journalRoot } = await driver.initializeSandboxDirectories(scratch);
@@ -26,9 +24,7 @@ test('fresh sandbox setup initializes the verification journal before runtime po
 
 test('sandbox journal setup rejects existing entries and a non-private home', async t => {
   for (const entry of ['directory', 'file', 'symlink', 'public-home']) {
-    const scratch = await realpath(await createScratchDir('tests', 'bridge-journal-rejection', {
-      OSSTACK_SCRATCH_ROOT: '/Volumes/AIMATE_WORK/tmp/osstack',
-    }));
+    const scratch = await realpath(await createScratchDir('tests', 'bridge-journal-rejection'));
     t.after(() => rm(scratch, { recursive: true, force: true }));
     const home = join(scratch, 'home'), journalRoot = join(home, 'verification');
     await mkdir(home, { mode: 0o700 });
