@@ -708,7 +708,12 @@ export class ContainedMissionRunner {
     const m = this.ports.store.get(missionId);
     if (m.state !== 'pr_opened') throw Error('mission_not_pr_opened');
     if (!this.ports.publishVerifyCheck) throw Error('bridge_not_configured');
-    const outcome = await this.attemptVerifyCheck(m);
+    const spec = parseContainedMissionSpec(m.spec_json);
+    const publication = this.ports.revisionPublication;
+    if (spec.publish_target && !publication) throw Error('revision_publisher_unavailable');
+    const outcome = await this.attemptVerifyCheck(m, spec.publish_target
+      ? () => publication!.publishCheck(m.mission_id, this.ports.publishVerifyCheck!)
+      : undefined);
     if (!outcome.ok) throw outcome.error instanceof Error ? outcome.error : Error('CONTAINED_VERIFY_CHECK_FAILED');
     return outcome.result;
   }

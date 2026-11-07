@@ -128,6 +128,49 @@ describe('a revision child under the runner', () => {
   });
 
 
+  it('settles a manually retried revision check and reuses the confirmed result', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    h.ports.publishVerifyCheck = async () => { throw Error('check_unavailable'); };
+    expect((await h.step(5)).state).toBe('pr_opened');
+    const checkStates = () => h.f.rig.chains.intents(h.chain().chain_id).filter(i => i.kind === 'check').map(i => i.state);
+    expect(checkStates()).toEqual(['failed']);
+    const send = vi.fn(async () => ({ check_run_id: 41, created: true }));
+    h.ports.publishVerifyCheck = send;
+    expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 41, created: true });
+    expect(checkStates()).toEqual(['failed', 'confirmed']);
+    expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 41, created: false });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(h.chain().state).toBe('awaiting_review');
+  });
+
+  it('skips manual revision check retry on a closed chain and settles its pending intent', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    const chain = h.chain();
+    h.f.rig.chains.closeLive(chain.chain_id, chain.revision, 'pr_closed', ++h.f.clock.now);
+    const send = vi.fn(async () => ({ check_run_id: 42, created: true }));
+    h.ports.publishVerifyCheck = send;
+    expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 0, created: false, skipped: true });
+    expect(send).not.toHaveBeenCalled();
+    expect(h.f.rig.chains.intents(chain.chain_id).filter(i => i.kind === 'check')).toMatchObject([{ state: 'failed', detail: 'chain_closed' }]);
+    expect(h.events().filter(e => e.kind === 'verify_check_skipped').map(e => JSON.parse(e.payload_json)))
+      .toEqual([{ reason: 'chain_closed', head: h.get().candidate_head }]);
+  });
+
+  it('refuses manual revision check retry if its publication port is unavailable', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    delete h.ports.revisionPublication;
+    const send = vi.fn(async () => ({ check_run_id: 43, created: true }));
+    h.ports.publishVerifyCheck = send;
+    await expect(h.runner.retryVerifyCheck(h.childId)).rejects.toThrow('revision_publisher_unavailable');
+    expect(send).not.toHaveBeenCalled();
+    expect(h.f.rig.chains.intents(h.chain().chain_id).filter(i => i.kind === 'check')).toMatchObject([{ state: 'pending' }]);
+  });
+
   it('requests host cancellation when the PR closes before revision publication', async () => {
     const h = await harness();
     const wired = wireRevisionPublisher(h);
