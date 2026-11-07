@@ -108,6 +108,8 @@ export interface RigMission {
   head: string;
   /** Null means the delivery evidence carries no base head. */
   base_head: string | null;
+  /** Merger tests: the full `delivery_evidence` payload (including `evidence_digest`), built once the Mission id and spec digest exist. */
+  evidence?: (mission: { mission_id: string; spec_digest: string }) => Record<string, unknown>;
 }
 
 /** A migrated ledger with a registered scope, plus helpers to seed `pr_opened` Missions the way the publish path leaves them. */
@@ -151,7 +153,8 @@ export function createRig(): Rig {
       spec: { goal: `g${n}`, branch, publication: { remote: 'origin', repository: m.repository ?? 'o/r', base: m.base_ref ?? 'main', draft: true } },
       claim: { repo_identity: `repo${n}`, branch, worktree_identity: `wt${n}` },
     }, clock);
-    const digest = String(n).padStart(64, 'e');
+    const full = m.evidence?.({ mission_id: mission.mission_id, spec_digest: mission.spec_digest });
+    const digest = typeof full?.['evidence_digest'] === 'string' ? full['evidence_digest'] : String(n).padStart(64, 'e');
     // Walk the real state machine to pr_opened, as the runner does, then leave the delivery events the publish path writes.
     const id = mission.mission_id;
     let rev = mission.revision;
@@ -169,7 +172,7 @@ export function createRig(): Rig {
     step('verified');
     step('revalidating');
     step('delivering');
-    missions.record(id, 'delivery_evidence', { head: m.head, base_head: m.base_head, repository: m.repository ?? 'o/r', evidence_digest: digest, verify: { argv: ['true'], exit_code: 0 } }, ++clock);
+    missions.record(id, 'delivery_evidence', full ?? { head: m.head, base_head: m.base_head, repository: m.repository ?? 'o/r', evidence_digest: digest, verify: { argv: ['true'], exit_code: 0 } }, ++clock);
     // The runner records the evidence, then transitions with a `pr_opened` event that carries the PR (contained-mission-runner deliver()).
     clock += 1;
     missions.transition(id, { if_revision: rev, to: 'pr_opened', event: { kind: 'pr_opened', payload: { pr: { number: m.pr_number, url: `https://example.invalid/pull/${m.pr_number}`, reused: false }, evidence_digest: digest } } }, clock);
