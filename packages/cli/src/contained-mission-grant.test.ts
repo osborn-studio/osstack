@@ -707,6 +707,22 @@ describe('grant-revisions command', () => {
     expect(f.rig.chains.get(chain.chain_id).state).toBe('closed');
   });
 
+  it('previews and signs --chain for a halted child while keeping the chain awaiting_decision', async () => {
+    const f = await setup();
+    const { chain } = await granted(f, { rounds: 1 });
+    const reserved = f.rig.chains.reserve(chain.chain_id, chain.revision, { head: oid('1'), review_ids: [1], feedback_digest: 'd'.repeat(64) }, T0);
+    const child = f.rig.missions.authorize(f.rig.principal, { scope_id: f.scope, spec: { goal: 'child' },
+      claim: { repo_identity: 'rc', branch: 'bc', worktree_identity: 'wc' } }, 5).mission_id;
+    const dispatched = f.rig.chains.dispatch(chain.chain_id, reserved.chain.revision, oid('1'), child, T0).chain;
+    const stopped = f.rig.chains.stopLive(chain.chain_id, dispatched.revision, 'child_halted', T0);
+    const renewed = await runCommand(f, ['grant-revisions', '--chain', chain.chain_id, '--rounds', '2', '--json'],
+      { interactive: true, confirm: async () => true });
+    expect(renewed).toMatchObject({ code: 0, calls: ['mission.revision_grant_renew_preview', 'mission.grant_revisions'] });
+    expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_halted',
+      current_mission_id: child, revision: stopped.revision + 1 });
+    expect((JSON.parse(f.rig.chains.get(chain.chain_id).grant_json) as RevisionGrant).rounds).toBe(2);
+  });
+
   it('creates an issuer key pair on the host with grant-keygen, refusing to reuse an id', async () => {
     const f = await setup({ issuer: false });
     const run = await runCommand(f, ['grant-keygen', '--key', 'ops', '--max-validity', '2d']);

@@ -33,6 +33,14 @@ export const LIVE_STOP_REASONS = [
 export type LiveStopReason = (typeof LIVE_STOP_REASONS)[number];
 /** Stop reasons from which `grant-revisions --chain` may resume the chain (appendix §5.1 "可再授的停止原因"). */
 export const RENEWABLE_STOP_REASONS: ReadonlySet<string> = new Set(["rounds_exhausted", "grant_expired", "grant_invalid", "budget_exhausted"]);
+/** Publication refusals for which the same stopped child may make another attempt. */
+export const SAME_CHILD_RESUMABLE: ReadonlySet<string> = new Set([
+  "child_halted", "publish_refused:repo_config_changed", "publish_refused:local_head_mismatch",
+  "publish_refused:push_url_invalid", "publish_refused:transport_unsupported", "publish_refused:publisher_unavailable",
+  "publish_refused:token_unavailable", "publish_refused:push_in_flight", "publish_refused:bridge_live_disabled",
+  "publish_refused:never_released",
+]);
+export const REFRESHABLE_STOP_REASONS: ReadonlySet<string> = new Set([...RENEWABLE_STOP_REASONS, ...SAME_CHILD_RESUMABLE]);
 
 export type RevisionGrantErrorCode =
   | "grant_invalid" | "grant_expired" | "budget_exhausted" | "grant_terms_invalid" | "grant_signature_invalid";

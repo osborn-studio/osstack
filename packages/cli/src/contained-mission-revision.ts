@@ -6,7 +6,7 @@
 import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import {
-  RevisionChainError, RevisionGrantError, combineFeedbackDigests, decideChainStep, parseStoredGrant, reduceReviewers, scratchPath,
+  RevisionChainError, RevisionGrantError, SAME_CHILD_RESUMABLE, combineFeedbackDigests, decideChainStep, parseStoredGrant, reduceReviewers, scratchPath,
   type ChainDecision, type ChainView, type ContainedMissionStore, type PrSnapshot, type ProducerRegistry, type RevisionChain, type RevisionChainStore, type RevisionGrant,
 } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
@@ -107,12 +107,14 @@ export function buildRevisionChildSpec(root: ContainedMissionSpec, input: Revisi
 
 export interface RevisionLaunchDeps {
   chains: RevisionChainStore;
+  missions: ContainedMissionStore;
   access: Pick<EngineeringAccess, 'refresh'>;
   /** Synchronous view of the trusted issuer keys. The caller decides how fresh it is. */
   keys: () => ReadonlyMap<string, IssuerKey>;
   now: () => number;
   /** What one launch is charged: the Codex proxy's turn timeout and the verification container's own cap (both enforced elsewhere). */
   launchCaps: { executor_seconds: number; verify_seconds: number };
+  enabled?: () => boolean;
 }
 const IN_FLIGHT = new Set(['revising', 'publishing']);
 
@@ -166,6 +168,58 @@ export function createRevisionLaunchPort(deps: RevisionLaunchDeps): ContainedRev
       if (!slice) throw new RevisionLaunchRefused('allocation_missing');
       const left = blocked === 'executor' ? slice.executor_seconds - slice.executor_used : slice.container_seconds - slice.container_used;
       if (left < seconds(blocked)) throw new RevisionLaunchRefused('budget_exhausted');
+    },
+    acknowledgeAdvance(mission, spec, decision) {
+      const target = spec.publish_target;
+      if (!target) throw new RevisionLaunchRefused('not_revision_child');
+      if (!(deps.enabled?.() ?? process.env.OSSTACK_BRIDGE === '1')) throw new RevisionLaunchRefused('bridge_live_disabled');
+      let chain: RevisionChain;
+      try { chain = deps.chains.get(target.chain_id); } catch { throw new RevisionLaunchRefused('chain_missing'); }
+      if (chain.current_mission_id !== mission.mission_id) throw new RevisionLaunchRefused('not_current_child');
+      if (chain.state === 'closed') throw new RevisionLaunchRefused('chain_closed');
+      if (chain.state === 'revising' || chain.state === 'publishing') return 'in_flight';
+      if (chain.mode !== 'live' || chain.state !== 'awaiting_decision')
+        throw new RevisionLaunchRefused(`chain_not_resumable:${chain.stop_reason ?? chain.state}`);
+      const observation = deps.chains.db.prepare(
+        "SELECT payload_json FROM engineering_revision_chain_events WHERE chain_id=? AND kind='stopped_chain_observed' ORDER BY seq DESC LIMIT 1"
+      ).get(chain.chain_id) as { payload_json: string } | undefined;
+      if (observation) {
+        let facts: { pr_state?: string; head?: string; base_sha?: string; base_ref?: string };
+        try { facts = JSON.parse(observation.payload_json) as typeof facts; } catch { throw new RevisionLaunchRefused('facts_changed'); }
+        if (facts.pr_state !== 'OPEN' || facts.head !== chain.published_head || facts.base_sha !== chain.published_base || facts.base_ref !== chain.base_ref)
+          throw new RevisionLaunchRefused('facts_changed');
+      }
+      const halt = containedEvents(deps.missions, mission.mission_id).filter(e => e.kind === 'halted').at(-1);
+      const haltPayload = halt ? eventPayload(halt) : {};
+      const landed = deps.chains.intents(chain.chain_id).filter(i => i.kind === 'push' && i.child_mission_id === mission.mission_id);
+      const latest = landed.at(-1);
+      if (latest?.state === 'confirmed') {
+        const eligible = decision === 'approve_publication' && (chain.stop_reason === 'intent_uncertain' || SAME_CHILD_RESUMABLE.has(chain.stop_reason ?? ''))
+          && mission.state === 'awaiting_decision' && typeof haltPayload.reason === 'string' && haltPayload.reason.startsWith('publication_failed:')
+          && mission.candidate_head === latest.new_head && mission.stop_obligation === 0
+          && latest.new_head === chain.published_head && latest.expected_base_sha === chain.published_base
+          && !deps.chains.intents(chain.chain_id).some(i => i.kind === 'push' && (i.state === 'pending' || i.state === 'uncertain'))
+          && deps.chains.reservations(chain.chain_id).some(r => r.child_mission_id === mission.mission_id && r.state === 'dispatched')
+          && !deps.chains.db.prepare("SELECT 1 FROM engineering_host_processes WHERE mission_id=? AND state<>'stopped' LIMIT 1").get(mission.mission_id)
+          && !!deps.chains.db.prepare("SELECT 1 FROM engineering_workspace_claims WHERE mission_id=? AND state='active'").get(mission.mission_id);
+        if (!eligible) throw new RevisionLaunchRefused('round_landed');
+        return 'landed';
+      }
+      if (!SAME_CHILD_RESUMABLE.has(chain.stop_reason ?? ''))
+        throw new RevisionLaunchRefused(`chain_not_resumable:${chain.stop_reason ?? chain.state}`);
+      const blocked = haltPayload.blocked;
+      const kind: ContainedLaunchKind | undefined = decision === 'extra_repair' || decision === 'discard_changes' ? 'executor'
+        : decision === 'resume_budget' || decision === 'resume_grant' ? blocked === 'verify' ? 'verify' : 'executor' : undefined;
+      live(chain, false);
+      if (kind) {
+        const slice = deps.chains.allocations(chain.chain_id)[mission.mission_id];
+        if (!slice) throw new RevisionLaunchRefused('allocation_missing');
+        const left = kind === 'executor' ? slice.executor_seconds - slice.executor_used : slice.container_seconds - slice.container_used;
+        if (left < seconds(kind)) throw new RevisionLaunchRefused('budget_exhausted');
+      }
+      try { deps.chains.resumeChild(chain.chain_id, chain.revision, { child_mission_id: mission.mission_id, expected_stop_reason: chain.stop_reason!, decision }, deps.now()); }
+      catch (error) { throw new RevisionLaunchRefused(error instanceof RevisionChainError ? error.code : 'resume_failed'); }
+      return 'resumed';
     },
   };
 }

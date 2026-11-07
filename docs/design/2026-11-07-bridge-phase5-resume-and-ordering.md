@@ -112,7 +112,7 @@ acknowledgeAdvance: (mission: ContainedMission, spec: ContainedMissionSpec, deci
 
 1. `checked(chainId, ifRevision)`；按 §3.4 第 1–7 条检查。
 2. `update(chain, { state: 'revising', stop_reason: null }, 'child_resumed', { head: published_head, base: published_base }, now)`。目标恒为 `revising`：第 5、6 条保证这时该子没有未结或已确认的推送，`recordIntent`（L228）在下一次推送时把链转为 `publishing`。
-3. 链事件 `child_resumed { child, decision, from_reason, child_state, child_revision }`。
+3. 链事件 `child_resumed { child, decision, from_reason, child_state, child_revision }` 和 `round_resumed { child, from_reason }`。连同第 2 步的 `transition`，每次恢复写出三条事件。
 
 不改 `rounds_used`（同一轮）、不改 `current_mission_id`（不触发 L52–63 的触发器）、不改预留、不改 `spent_json`、不改 `review_deadline`（截止只约束 `awaiting_review`）。
 
@@ -192,7 +192,7 @@ W13 恢复把发布中的子 Mission 转到 `awaiting_decision(publication_faile
 
 ### 3.13 测试（5-E）
 
-- store：`resumeChild` 对 §3.4 第 1–7 条各一条拒绝用例；成功用例断言状态、事件、`rounds_used`/预留/`spent_json` 不变；有 `pending` 与 `uncertain` 意图时被 `intent_unsettled` 拒绝（经 `update` 的 D1，去掉 `resumeChild` 自己的检查后仍失败）；`replaceGrant` 新规则（`round_landed`、恢复为 `revising`）；`restopLive` 白名单。
+- store：`resumeChild` 对 §3.4 第 1–7 条各一条拒绝用例；成功用例断言状态、事件、`rounds_used`/预留/`spent_json` 不变；有 `pending` 与 `uncertain` 意图时被 `intent_unsettled` 拒绝（经 `update` 的 D1，去掉 `resumeChild` 自己的检查后仍失败）；`replaceGrant` 新规则（`round_landed`、子非终态时保持 `awaiting_decision(child_halted)`）；`restopLive` 白名单。
 - runner：对 §3.1 每一行的允许决定，在链为 `child_halted`、`publish_refused:<可>`、`publish_refused:<不可>`、`base_changed`、`closed` 时各跑一次：前两种恢复并推进；后三种抛 `resume_refused:*` 且子 Mission 的状态、原因、修订号不变（这条对 `discard_changes`、`adopt_worktree` 是回归测试：5-B 现在会把子停到 `chain_stopped:*`）。
 - 竞态：`resumeChild` 后、子转换前运行同步规则，`isBusy` 为真时不停链；模拟崩溃（清空 `inFlight`）后停链为 `child_halted`。
 - `stop_unknown` 子：守卫拒绝；`retry_stop_check` 证明后按 `route` 出口，再决定成功。
@@ -433,4 +433,3 @@ D8 的两条（保留 `in_flight`、base 检查前移）与 D10 的顺序是技�
 | 新 P2 只确认变体里 `published_head` 已推进到 `I.new_head`，按“旧 `published_head`”查预留会失败 | 属实，store L198–204、L608–611 | §6.1 第 0、3 步：三种变体都以 `I.expected_old_head` 为键 |
 
 第 2 轮之后的修改未再审计（按要求两轮后停止）。
-

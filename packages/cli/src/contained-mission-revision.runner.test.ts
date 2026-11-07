@@ -41,7 +41,7 @@ async function harness(opts: { revision?: boolean; chainDiff?: () => string; wor
     commitWorktree: async () => ({ head: 'e'.repeat(40), tree: 'd'.repeat(40) }),
     verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? 'ok' : '1 failed', cancelled: false, evidence: 'docker-removed:x', stopped: true }; },
     publish: async input => { calls.publish++; input.beforeRemoteMutation('push'); return { pushed_commit: input.permit.head, pr: { number: 9, url: 'https://github.com/o/r/pull/9', reused: false }, base_head: null }; },
-    ...(opts.revision === false ? {} : { revision: createRevisionLaunchPort({ chains: f.rig.chains, access: f.deps.access, keys: f.deps.keys, now: f.deps.now, launchCaps: f.deps.launchCaps }) }),
+    ...(opts.revision === false ? {} : { revision: createRevisionLaunchPort({ chains: f.rig.chains, missions: f.rig.missions, access: f.deps.access, keys: f.deps.keys, now: f.deps.now, launchCaps: f.deps.launchCaps, enabled: () => f.flags.enabled }) }),
   };
   const runner = new ContainedMissionRunner(ports);
   const get = (): ContainedMission => f.rig.missions.get(childId);
@@ -239,7 +239,7 @@ describe('a revision child under the runner', () => {
     for (const [chainDiff, tree, reason] of [[() => manyFiles(8), 'd'.repeat(40), undefined], [() => PATCH, '1'.repeat(40), 'CHAIN_DIFF_UNSTABLE']] as const) {
       const h = await harness({ chainDiff, worktreeTree: () => tree });
       await h.step();
-      h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'test' } } }, 20_000);
+      h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'stop_evidence_recovered' } } }, 20_000);
       const m = await h.runner.decide(h.childId, { kind: 'adopt_worktree' });
       expect(m.state).toBe('awaiting_decision');
       expect(h.lastHalt()).toMatchObject({ reason: 'tier_escalated', chain_cumulative: true, ...(reason ? { reasons: [reason] } : {}) });
@@ -294,6 +294,68 @@ describe('a revision child under the runner', () => {
 
   describe('budget and grant stops', () => {
     const exhaustExecutor = (h: Harness) => h.use('executor', 1200);
+    const regrantStoppedChild = async () => {
+      const h = await harness();
+      await h.step(); exhaustExecutor(h); await h.step();
+      const stopped = h.chain();
+      h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision,
+        h.f.renew({ budget: { max_executor_seconds: 4200, max_container_seconds: 3600, max_wall_clock_hours: 48 } }), T0);
+      return h;
+    };
+
+    it.each(['bridge_live_disabled', 'facts_changed', 'decision_not_allowed', 'grant_expired'] as const)(
+      'refuses %s before a child resume and preserves both ledgers', async failure => {
+        const h = await regrantStoppedChild();
+        if (failure === 'bridge_live_disabled') h.f.flags.enabled = false;
+        if (failure === 'facts_changed') h.f.rig.db.prepare(
+          "INSERT INTO engineering_revision_chain_events(chain_id,kind,payload_json,created_at) VALUES(?,'stopped_chain_observed',?,?)"
+        ).run(h.chain().chain_id, JSON.stringify({ pr_state: 'OPEN', head: oid('f'), base_sha: oid('a'), base_ref: 'main' }), T0);
+        if (failure === 'grant_expired') h.f.clock.now = T0 + 49 * H;
+        const beforeChild = h.get(); const beforeChain = h.chain();
+        const decision = failure === 'decision_not_allowed' ? 'extra_repair' : 'resume_budget';
+        await expect(h.runner.decide(h.childId, { kind: decision })).rejects.toThrow(`resume_refused:${failure}`);
+        expect(h.get()).toEqual(beforeChild);
+        expect(h.chain()).toEqual(beforeChain);
+        expect(h.calls.execute).toEqual([]);
+      });
+
+    it('keeps the resumed chain in flight while the accepted decision advances its child', async () => {
+      const h = await regrantStoppedChild();
+      h.ports.execute = async input => {
+        expect(h.chain().state).toBe('revising');
+        expect(h.get().state).toBe('executing');
+        input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 });
+        return run();
+      };
+      expect((await h.runner.decide(h.childId, { kind: 'resume_budget' })).state).toBe('candidate_ready');
+      expect(h.chain().state).toBe('revising');
+      expect(h.f.rig.chains.events(h.chain().chain_id).map(e => e.kind)).toContain('round_resumed');
+    });
+
+    it('keeps a live-cycle stop that races a resumed decision', async () => {
+      const h = await regrantStoppedChild();
+      h.ports.execute = async input => {
+        input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 });
+        const active = h.chain();
+        expect(active.state).toBe('revising');
+        h.f.rig.chains.stopLive(active.chain_id, active.revision, 'external_write', T0);
+        return run();
+      };
+      await h.runner.decide(h.childId, { kind: 'resume_budget' });
+      expect(h.chain()).toMatchObject({ state: 'awaiting_decision', stop_reason: 'external_write' });
+      expect(h.calls.publish).toBe(0);
+    });
+
+    it('re-stops a chain when a failed decision leaves the child halted', async () => {
+      const h = await regrantStoppedChild();
+      h.ports.qualify = async () => { throw Error('probe_failed'); };
+      await expect(h.runner.decide(h.childId, { kind: 'resume_budget' })).rejects.toThrow('probe_failed');
+      expect(h.get().state).toBe('awaiting_decision');
+      expect(h.chain().state).toBe('revising');
+      const inFlight = h.chain();
+      h.f.rig.chains.stopLive(inFlight.chain_id, inFlight.revision, 'child_halted', T0);
+      expect(h.chain()).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_halted' });
+    });
 
     it('halts with the blocked route when the slice is spent, stops the chain, and refuses resume_budget until a re-grant', async () => {
       const h = await harness();
@@ -304,8 +366,8 @@ describe('a revision child under the runner', () => {
       expect(h.lastHalt()).toMatchObject({ reason: 'budget_exhausted', blocked: 'executor:workspace_ready' });
       expect(h.calls.execute).toEqual([]);
       expect(h.chain()).toMatchObject({ state: 'awaiting_decision', stop_reason: 'budget_exhausted' });
-      await expect(h.runner.decide(h.childId, { kind: 'resume_budget' })).rejects.toThrow('resume_refused:budget_exhausted');
-      await expect(h.runner.decide(h.childId, { kind: 'resume_grant' })).rejects.toThrow('CONTAINED_DECISION_NOT_ALLOWED');
+      await expect(h.runner.decide(h.childId, { kind: 'resume_budget' })).rejects.toThrow('resume_refused:chain_not_resumable:budget_exhausted');
+      await expect(h.runner.decide(h.childId, { kind: 'resume_grant' })).rejects.toThrow('resume_refused:chain_not_resumable:budget_exhausted');
       expect(h.calls.execute).toEqual([]);
     });
 
@@ -317,10 +379,11 @@ describe('a revision child under the runner', () => {
       const before = h.f.rig.chains.allocations(h.f.chain.chain_id)[h.childId]!;
       const next = h.f.renew({ budget: { max_executor_seconds: 4200, max_container_seconds: 3600, max_wall_clock_hours: 48 } });
       const stopped = h.chain();
-      expect(h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, next, T0).chain.state).toBe('revising');
+      expect(h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, next, T0).chain).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_halted' });
       expect(h.f.rig.chains.allocations(h.f.chain.chain_id)[h.childId]).toMatchObject({ executor_seconds: before.executor_seconds + 600, executor_used: before.executor_used });
       const m = await h.runner.decide(h.childId, { kind: 'resume_budget' });
       expect(m.state).toBe('candidate_ready');
+      expect(h.chain().state).toBe('revising');
       expect(h.calls.execute).toHaveLength(1);
       expect(h.events().map(e => e.kind)).toContain('decision_resume');
     });
@@ -338,8 +401,10 @@ describe('a revision child under the runner', () => {
       await expect(h.runner.decide(h.childId, { kind: 'resume_budget' })).rejects.toThrow('resume_refused');
       const stopped = h.chain();
       h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, h.f.renew({ budget: { max_executor_seconds: 3600, max_container_seconds: 3720, max_wall_clock_hours: 48 } }), T0);
+      expect(h.chain()).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_halted' });
       const m = await h.runner.decide(h.childId, { kind: 'resume_budget' });
       expect(m).toMatchObject({ state: 'verified', candidate_head: candidate, candidate_verified: 1 });
+      expect(h.chain().state).toBe('revising');
       expect(h.calls.verify).toBe(1);
     });
 
@@ -354,8 +419,10 @@ describe('a revision child under the runner', () => {
       await expect(h.runner.decide(h.childId, { kind: 'resume_grant' })).rejects.toThrow('resume_refused');
       const stopped = h.chain();
       h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, h.f.renew(), h.f.clock.now);
+      expect(h.chain()).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_halted' });
       const m = await h.runner.decide(h.childId, { kind: 'resume_grant' });
       expect(m.state).toBe('candidate_ready');
+      expect(h.chain().state).toBe('revising');
       expect(h.calls.execute).toHaveLength(1);
     });
 
@@ -367,18 +434,74 @@ describe('a revision child under the runner', () => {
       expect(h.f.rig.chains.allocations(h.f.chain.chain_id)[h.childId]!.executor_used).toBe(600);
     });
 
-    it('refuses to adopt a worktree once the chain has been closed or stopped', async () => {
+    it('refuses to adopt a worktree once the chain has closed without changing the child', async () => {
       const h = await harness();
       await h.step();
       h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'test' } } }, 20_000);
       h.f.rig.chains.closeLive(h.f.chain.chain_id, h.chain().revision, 'takeover', T0);
-      const m = await h.runner.decide(h.childId, { kind: 'adopt_worktree' });
-      expect(m.state).toBe('awaiting_decision');
-      expect(h.lastHalt()).toMatchObject({ reason: 'chain_stopped:chain_closed', blocked: 'adopt_worktree' });
+      const before = h.get();
+      await expect(h.runner.decide(h.childId, { kind: 'adopt_worktree' })).rejects.toThrow('resume_refused:chain_closed');
+      expect(h.get()).toEqual(before);
       expect(h.events().map(e => e.kind)).not.toContain('candidate_committed');
     });
 
-    it('asks the chain again before an adopt write and before a discard launch, after the awaits in between', async () => {
+    it.each(['restore', 'probe', 'diff'] as const)('keeps %s reconciliation retryable when the grant expires during the await', async at => {
+      const h = await harness();
+      await h.step();
+      h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'stop_evidence_recovered' } } }, 20_000);
+      const decision = at === 'diff' ? 'adopt_worktree' : 'discard_changes';
+      const expire = () => { h.f.clock.now = T0 + 24 * H; };
+      if (at === 'restore') h.ports.restoreWorkspace = async () => { expire(); };
+      if (at === 'probe') h.ports.qualify = async () => { expire(); return qualified; };
+      if (at === 'diff') {
+        const original = h.ports.worktreeDiff;
+        h.ports.worktreeDiff = async input => { const result = await original(input); expire(); return result; };
+      }
+      const before = h.get();
+      await expect(h.runner.decide(h.childId, { kind: decision })).rejects.toThrow('resume_refused:grant_expired');
+      expect(h.get()).toEqual(before);
+      expect(h.calls.execute).toEqual([]);
+      expect(h.events().map(e => e.kind)).not.toContain('candidate_committed');
+
+      const chain = h.chain();
+      h.f.rig.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', h.f.clock.now);
+      const stopped = h.chain();
+      h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, h.f.renew(), h.f.clock.now);
+      expect(h.chain()).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_halted' });
+      const retried = await h.runner.decide(h.childId, { kind: decision });
+      expect(retried.state).toBe('candidate_ready');
+      expect(h.chain().state).toBe('revising');
+    });
+
+    it.each(['restore', 'probe', 'diff'] as const)('keeps %s reconciliation retryable when write scope is revoked during the await', async at => {
+      const h = await harness();
+      await h.step();
+      h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'stop_evidence_recovered' } } }, 20_000);
+      const decision = at === 'diff' ? 'adopt_worktree' : 'discard_changes';
+      let revoked = false;
+      const revoke = () => { if (!revoked) { h.f.principal.write_scopes.splice(0); revoked = true; } };
+      if (at === 'restore') h.ports.restoreWorkspace = async () => { revoke(); };
+      if (at === 'probe') h.ports.qualify = async () => { revoke(); return qualified; };
+      if (at === 'diff') {
+        const original = h.ports.worktreeDiff;
+        h.ports.worktreeDiff = async input => { const result = await original(input); revoke(); return result; };
+      }
+      const before = h.get();
+      await expect(h.runner.decide(h.childId, { kind: decision })).rejects.toThrow('resume_refused:grant_invalid');
+      expect(h.get()).toEqual(before);
+      expect(h.events().map(e => e.kind)).not.toContain('candidate_committed');
+
+      const chain = h.chain();
+      h.f.rig.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', h.f.clock.now);
+      const stopped = h.chain();
+      h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, h.f.renew(), h.f.clock.now);
+      h.f.principal.write_scopes.push(h.f.rig.scope.scope_id);
+      const retried = await h.runner.decide(h.childId, { kind: decision });
+      expect(retried.state).toBe('candidate_ready');
+      expect(h.chain().state).toBe('revising');
+    });
+
+    it('halts when the chain closes during an adopt diff or discard restore await', async () => {
       const closeDuring = (h: Harness) => { if (h.chain().state === 'closed') return; h.f.rig.chains.closeLive(h.f.chain.chain_id, h.chain().revision, 'takeover', T0); };
       const adopt = await harness();
       await adopt.step();
