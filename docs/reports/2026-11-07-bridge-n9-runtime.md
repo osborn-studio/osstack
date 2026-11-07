@@ -76,3 +76,41 @@ N10 属性测试、TLA/变异工具、沙箱驱动和额外 graph deadline 测�
 > 验证：CLI 受影响 14 文件 419/419（publication 149/149），Core 108/108，import 隔离 9/9，均单 worker 无过滤；Core/CLI typecheck、CLI build、inventory、changeset coverage、diff check 通过。启动 eager graph 保持轻量；version/help 中位 35/97ms。未运行全仓或真实沙箱 execute。独立模型审阅与实际测试证据分别记录在本报告。
 
 主会话审阅此分支后再决定推送和创建 PR；本报告没有执行这些动作。
+
+## 后续锁等待边界修复（第二次回执收敛修正）
+
+冻结 `824b7c4a` 后，独立 CLI 用真实子进程 SQLite writer 复现同一有效 owner
+的并发恢复：B 已持有 `BEGIN IMMEDIATE`，A 在锁前读取 pending，等待写锁期间 B
+完成确认；A 随后取得锁，原调用抛出 `confirm_route_changed`。数据库终态始终正确，
+该问题是调用结果未收敛；没有证据把它描述为普通 daemon 新 owner 重叠。
+
+独立测试原提交 `d64e23a7`，本分支为 `018b0a62`。本轮 source head
+`1503f6acaaa30d9b6ad4bfc412b74a44c8b2cc2a` 增加恢复路径的事务内确认状态重读。
+`RevisionChainStore.transaction` 在取得 IMMEDIATE 锁后先执行 owner fence，再运行
+回调：若 receipt 已 confirmed，本轮恢复结束，保留已提交结果；否则继续原
+`confirmRevisionPublication`。没有 catch 掩盖 route、owner 或取消错误，没有修改
+core 触发器或放宽数据库约束。直接确认 API 与 landed/cancelled 路由规则不变。
+
+本轮先运行新测试，真实 RED 为 `expected Error: confirm_route_changed to be
+undefined`，随后修复为 GREEN。两组完整定向运行均使用 `pnpm --filter @osstack/cli
+exec vitest run <files> --maxWorkers=1`，无 `-t`、无 skip：
+
+- publication、revision、runner、service wiring、production、ledger、live、stopped
+  scan、receipt adapter、原 recovery boundaries、新 recovery authority：11 文件
+  **341/341**，其中 publication **149/149**。
+- ports、grant、read process、read limiter：4 文件 **84/84**。
+
+合计本轮 CLI **15 文件 425/425**。CLI typecheck、CLI build、两处 TypeScript
+Biome 检查（0 warning）、diff check、changeset coverage（2 packages）及 inventory
+fresh 均通过。没有重跑全仓。首次使用 package test 转发参数时误扩大 CLI 选取，
+已 SIGINT 停止，未把该不完整运行计入上述结果。上文 Core 108、import 隔离9与
+启动预算是 `152a3320` 上的既有验证，本轮未重复，不能称为新 source 的重跑。
+
+`1f099d65` 的 GLM 静态复审由主会话确认通过，但该模型明确本锁边界不在其修复
+范围；本报告不把那份审阅扩展为 `1503f6ac` 的批准。新补丁的独立审阅另行记录。
+所有验收 gate 仍 CLOSED；没有沙箱 execute、推送、PR 或部署。
+
+当前 PR 验证摘要应使用：CLI 15 文件425/425（含publication149/149、真实 SQLite
+跨进程锁等待回归），CLI typecheck/build、Biome、inventory、changeset/diff pass；
+历史 Core/import/startup 证据按上述 source 绑定单列。#418/#419/#420 已合并，
+仍不需要 `merge after` 阻塞边。
