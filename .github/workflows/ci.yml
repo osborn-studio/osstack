@@ -293,6 +293,7 @@ jobs:
           scripts/inspect-bridge-operator-readiness.test.mjs
           scripts/verify-bridge-phase5-mutations.test.mjs
           scripts/bridge-sandbox-cold-restart.test.mjs
+          scripts/bridge-sandbox-database.test.mjs
           scripts/bridge-sandbox-activity.test.mjs
           scripts/bridge-sandbox-publication-hook.test.mjs
 
