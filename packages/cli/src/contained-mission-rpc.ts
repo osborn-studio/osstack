@@ -6,11 +6,20 @@ import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
 import { chainEventsView } from './bridge-chain-events.js';
+import type { RevisionGrantService } from './contained-mission-grant.js';
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: request text must not carry control characters into the ledger.
 const Text = (max: number) => z.string().min(1).max(max).refine(v => !/[\u0000-\u001f\u007f]/.test(v), 'control');
 const Credential = z.string().min(32).max(4096);
 const MissionId = z.string().regex(/^cm_[0-9a-f-]{36}$/);
+const ChainId = z.string().regex(/^rc_[0-9a-f-]{36}$/);
+const GrantTerms = {
+  rounds: z.union([z.literal(1), z.literal(2)]).optional(), expires_ms: z.number().int().min(1).max(7 * 24 * 3_600_000).optional(),
+  review_deadline_ms: z.number().int().min(60_000).max(7 * 24 * 3_600_000).optional(),
+  budget: z.object({ max_executor_seconds: z.number().int().min(1).max(86_400).optional(), max_container_seconds: z.number().int().min(1).max(86_400).optional(),
+    max_wall_clock_hours: z.number().int().min(1).max(168).optional() }).strict().optional(),
+  key_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/).optional(),
+};
 export const ContainedMissionRpcRequests = {
   'mission.start': z.object({
     credential: Credential, scope_id: Text(256), supersedes: MissionId.optional(),
@@ -29,6 +38,12 @@ export const ContainedMissionRpcRequests = {
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.decide': z.object({ credential: Credential, mission_id: MissionId,
     decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'retry_stop_check']) }).strict(),
+  // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
+  'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, ...GrantTerms }).strict(),
+  'mission.revision_grant_renew_preview': z.object({ credential: Credential, chain_id: ChainId, ...GrantTerms }).strict(),
+  'mission.grant_revisions': z.object({ credential: Credential, nonce: z.string().regex(/^[0-9a-f]{32}$/), preview_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    signature: z.string().regex(/^[A-Za-z0-9+/]{86}==$/) }).strict(),
+  'mission.chain_decide': z.object({ credential: Credential, chain_id: ChainId, decision: z.enum(['abandon', 'takeover', 'reconcile']) }).strict(),
 } as const;
 export type ContainedMissionRpcMethod = keyof typeof ContainedMissionRpcRequests;
 /** Decisions that probe, launch an executor or write a commit: refused while draining, acknowledged without waiting. */
@@ -43,7 +58,9 @@ export interface ContainedMissionServiceOptions {
   resolveStart?: typeof resolveContainedMissionStart;
   /** Bridge shadow reconciler (OSSTACK_BRIDGE=shadow): started after recovery, stopped on close. Never on the tick path. */
   shadow?: import('./contained-mission-bridge-shadow.js').ShadowHandle;
-  /** Read-only shadow chain view for `mission.status`; null when the Mission has none. */
+  /** Revision-grant service (phase 5-A). Absent until live is wired (5-E): the grant methods then answer `bridge_live_disabled`. */
+  grants?: Pick<RevisionGrantService, 'preview' | 'renewPreview' | 'grant' | 'chainDecide'>;
+  /** Chain view for `mission.status` (live chain first, else shadow); null when the Mission has none. */
   chainOf?: (missionId: string) => ChainStatus | null;
 }
 
@@ -51,6 +68,9 @@ export interface ContainedMissionServiceOptions {
 export interface ChainStatus {
   chain_id: string; mode: string; state: string; stop_reason: string | null; repository: string; pr_number: number;
   published_head: string; published_base: string; base_ref: string; updated_at: number;
+  /** Live chains only (phase 5-A): rounds used, current child, and the grant without signature, digest, nonce or identities. */
+  rounds_used: number; current_mission_id: string | null; review_deadline: number | null;
+  grant: import('@osstack/core').GrantSummary | null;
   shadow_decisions: Array<{ head_sha: string; base_sha: string; action: string; reason: string; review_ids: number[]; observed_at: number }>;
   /** Latest chain events (allow-listed fields only, oldest first) and the chain's total event count. */
   events: import('./bridge-chain-events.js').ChainEventView[]; events_total: number; events_total_capped: boolean;
@@ -131,6 +151,17 @@ export class ContainedMissionService {
         const p = ContainedMissionRpcRequests['mission.publish_check'].parse(params);
         return host.publishCheck(actor, p.mission_id);
       }
+      case 'mission.revision_grant_preview': case 'mission.revision_grant_renew_preview': case 'mission.grant_revisions': case 'mission.chain_decide': {
+        const grants = this.options.grants;
+        if (!grants) throw new Error('bridge_live_disabled');
+        if (this.options.draining()) throw new Error('draining');
+        const { credential: _credential, ...rest } = parsed.data as Record<string, unknown> & { credential: string };
+        // exactOptionalPropertyTypes: the service takes the parsed object as is.
+        if (method === 'mission.revision_grant_preview') return grants.preview(actor, rest as never);
+        if (method === 'mission.revision_grant_renew_preview') return grants.renewPreview(actor, rest as never);
+        if (method === 'mission.grant_revisions') return grants.grant(actor, rest as never);
+        return grants.chainDecide(actor, rest as never);
+      }
       case 'mission.decide': {
         const p = ContainedMissionRpcRequests['mission.decide'].parse(params);
         if (!PRODUCES_WORK.has(p.decision)) return view(await host.decide(actor, p.mission_id, { kind: p.decision }));
@@ -196,7 +227,7 @@ export async function createContainedMissionService(deps: {
   const host = new ContainedMissionHost({ ports });
   // Shadow bridge (appendix §5.3): independent of loadBridgeConfig above, which belongs to Mission publication. The reconciler is
   // built from a read-only Mission view, the shadow chain writer, a query-only transport and the producer registry, and nothing else.
-  const { RevisionChainStore, shadowChainWriter } = await import('@osstack/core');
+  const { RevisionChainStore, shadowChainWriter, grantSummary } = await import('@osstack/core');
   const chainStore = new RevisionChainStore(deps.attention, deps.owner);
   let shadow: import('./contained-mission-bridge-shadow.js').ShadowHandle | undefined;
   if (bridgeMode === 'shadow' && registry) {
@@ -209,13 +240,15 @@ export async function createContainedMissionService(deps: {
     });
   }
   const chainOf = (missionId: string): ChainStatus | null => {
-    const chain = chainStore.chainForMission(missionId, 'shadow');
+    const chain = chainStore.chainForMission(missionId, 'live') ?? chainStore.chainForMission(missionId, 'shadow');
     if (!chain) return null;
     const events = chainEventsView(chainStore.db, chain.chain_id);
     return {
+      rounds_used: chain.rounds_used, current_mission_id: chain.current_mission_id, review_deadline: chain.review_deadline,
+      grant: chain.mode === 'live' ? grantSummary(chain.grant_json) : null,
       chain_id: chain.chain_id, mode: chain.mode, state: chain.state, stop_reason: chain.stop_reason, repository: chain.repository, pr_number: chain.pr_number,
       published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref, updated_at: chain.updated_at,
-      shadow_decisions: chainStore.shadowDecisions(chain.chain_id).slice(-STATUS_DECISIONS).map(d => ({
+      shadow_decisions: chain.mode === 'live' ? [] : chainStore.shadowDecisions(chain.chain_id).slice(-STATUS_DECISIONS).map(d => ({
         head_sha: d.head_sha, base_sha: d.base_sha, action: d.action, reason: d.reason, review_ids: JSON.parse(d.review_ids_json) as number[], observed_at: d.observed_at })),
       events: events.latest, events_total: events.total, events_total_capped: events.total_capped,
     };

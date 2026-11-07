@@ -12,19 +12,22 @@ applies and commits it, verifies in a no-network container, and stops at publica
   cancel --mission ID
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|retry_stop_check
+  grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
+  chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain; never merges)
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
 OSSTACK_CONTAINED_CODEX_BIN, OSSTACK_CONTAINED_CODEX_HOME and the OSSTACK_CONTAINED_DOCKER_* settings.
 The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No daemon starts automatically.
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "status" | "cancel" | "decide" | "publish-check";
+type Command = "start" | "status" | "cancel" | "decide" | "publish-check" | "chain-decide";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   status: { single: ["mission"], repeated: [] },
   cancel: { single: ["mission"], repeated: [] },
   "publish-check": { single: ["mission"], repeated: [] },
   decide: { single: ["mission", "decision"], repeated: [] },
+  "chain-decide": { single: ["chain", "decision"], repeated: [] },
 };
 
 export interface ContainedMissionCommandDeps {
@@ -33,6 +36,10 @@ export interface ContainedMissionCommandDeps {
   rpc?: (method: string, params?: unknown, timeoutMs?: number) => Promise<unknown>;
   readCredential?: () => string;
   cwd?: string;
+  /** `$OSSTACK_HOME`, for the host-private issuer key used by grant-revisions. */
+  home?: string;
+  /** Test seams for grant-revisions (see its module). */
+  grant?: Pick<import("./contained-mission-grant-command.js").GrantCommandDeps, "interactive" | "confirm">;
 }
 
 function safeJson(value: unknown): string {
@@ -45,6 +52,16 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
   const err = deps.stderr ?? console.error;
   let credential = "";
   if (args.length === 0 || ["help", "--help", "-h"].includes(args[0]!)) { out(HELP); return 0; }
+  if (args[0] === "grant-revisions" || args[0] === "grant-keygen") {
+    const mod = await import("./contained-mission-grant-command.js");
+    const home = deps.home;
+    if (!home) { (deps.stderr ?? console.error)(`osstack mission: ${JSON.stringify("osstack_home_required")}`); return 1; }
+    const io = { ...(deps.stdout ? { stdout: (t: string) => deps.stdout!(t.replace(/\n$/, "")) } : {}), ...(deps.stderr ? { stderr: (t: string) => deps.stderr!(t.replace(/\n$/, "")) } : {}) };
+    if (args[0] === "grant-keygen") return await mod.handleGrantKeygenCommand(args.slice(1), { home, ...io });
+    if (!deps.rpc) { (deps.stderr ?? console.error)(`osstack mission: ${JSON.stringify("daemon_connection_required")}`); return 1; }
+    const credentialReader = deps.readCredential ?? (await import("./engineering-access.js")).readEngineeringCredential;
+    return await mod.handleGrantRevisionsCommand(args.slice(1), { home, rpc: deps.rpc, readCredential: credentialReader, ...io, ...deps.grant });
+  }
   try {
     const command = args[0]! as Command;
     if (!Object.hasOwn(flagsByCommand, command)) throw new Error("unknown_mission_command");
@@ -81,10 +98,12 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       if (!single.has("publish-repository") && [...single.keys(), ...(preauthorized ? ["publish-preauthorized"] : [])].some(k => k.startsWith("publish-"))) throw new Error("required:--publish-repository");
     } else if (command === "decide") {
       params = { mission_id: required("mission"), decision: required("decision") };
+    } else if (command === "chain-decide") {
+      params = { chain_id: required("chain"), decision: required("decision") };
     } else {
       params = { mission_id: required("mission") };
     }
-    const method = (command === "publish-check" ? "mission.publish_check" : `mission.${command}`) as `mission.${Exclude<Command, "publish-check">}` | "mission.publish_check";
+    const method = (command === "publish-check" ? "mission.publish_check" : command === "chain-decide" ? "mission.chain_decide" : `mission.${command}`) as `mission.${Exclude<Command, "publish-check" | "chain-decide">}` | "mission.publish_check" | "mission.chain_decide";
     // Validate locally before reading the credential, so a typo never needs the secret.
     const probe = ContainedMissionRpcRequests[method].safeParse({ ...params, credential: "x".repeat(32) });
     if (!probe.success) throw new Error(`invalid_request:${probe.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).join(",")}`);

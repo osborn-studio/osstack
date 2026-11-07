@@ -469,11 +469,15 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 **前置：** 阶段 2 完成，且阶段 3 已在沙箱验收（Publisher 已是 App A）。阶段 3 未完成时不能切换：否则 PR 作者仍是用户账号，而 ADR-005 已被取代。
 
+运营者规格：[阶段 6 运营者规格](../design/2026-11-06-bridge-phase6-operator.md)（2026-11-06，两轮 Codex 审计）：App C/D 的事件规则、不读账本的 Mission PR 识别、`grok/verify-osstack` check run 合同、`main-quality.json` 待审 diff（下文的 `main.json` 即该文件）、沙箱验收清单与回滚。
+
 平台侧工作，由 Grok Bots 运营者完成：Watcher 改为 App C，对所有 PR 发 `grok/verify-osstack` check run（取代阶段 0 的“结论以 review 形式提交”），并对 Mission PR 检查当前 head 上有 App B 产生的 `osstack/verify` 且为成功；Reviewer 改为 App D。之后由人把 `grok/verify-osstack` 加进 `main` 的必需检查（绑定 App C 的 integration id，改 `.github/rulesets/main.json` 并按 2.2 执行）。若探针 P-5、P-6 显示 App 的 review 不计入批准或不能解决线程，批准与解决仍由人完成，写进运行手册。ADR-005 被新的 ADR 取代。
 
 ### 阶段 7　主仓库上线（设计 S7，暂缓）
 
 运行手册 `docs/runbooks/bridge.md` 先合并（关闭开关、吊销 App A、`awaiting_decision` 每种原因的处理），再对单个 scope 开 `OSSTACK_BRIDGE=1`。验收：连续 5 条链无异常，设计 §6 的指标能用 `osstack stats` 读出。
+
+运行手册：[Bridge 运行手册](../runbooks/bridge.md)（2026-11-06 草稿，含上线前检查清单 §7；`osstack stats` 的链指标尚未实现，是本阶段的阻塞项）。
 
 ---
 
