@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { hardenedGitEnvironment, type CodexProxyRun, type CodexQualification } from "@osstack/agents";
 import { AttentionStore, ContainedMissionStore, containedUpgradeHolds, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { ensureHostProcessLedger, hostProcessOptions } from "./contained-mission-host-process.testkit.js";
 import { ContainedMissionHost, resolveContainedMissionStart } from "./contained-mission-host.js";
 import { createContainedMissionPorts, type ContainedMissionHostPorts } from "./contained-mission-ports.js";
 
@@ -35,7 +36,7 @@ function world() {
   const repo = join(root, "repo"); mkdirSync(repo);
   for (const [path, content] of Object.entries({ "src/a.txt": "hi\n", "package.json": "{}\n" })) { mkdirSync(dirname(join(repo, path)), { recursive: true }); writeFileSync(join(repo, path), content); }
   sh(repo, "init", "-q", "-b", "main"); sh(repo, "add", "-A"); sh(repo, "commit", "-q", "-m", "initial");
-  const path = join(root, "state.db"); const db = openDb({ path }); db.pragma("synchronous=FULL");
+  const path = join(root, "state.db"); const db = openDb({ path }); db.pragma("synchronous=FULL"); ensureHostProcessLedger(db);
   cleanup.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   const attention = new AttentionStore(db, path);
@@ -51,7 +52,7 @@ function world() {
     const owner = attention.claimOwner(name);
     scope ??= attention.registerScope(owner, "t", root);
     const store = new ContainedMissionStore(attention, owner);
-    const real = createContainedMissionPorts({ store, now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
+    const real = createContainedMissionPorts({ store, hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
       verification: { socketPath: join(root, "docker.sock"), daemonId: "d", baseImageId: `sha256:${"0".repeat(64)}`, journalRoot }, author: { name: "Mission Host", email: "host@example.invalid" } });
     const ports: ContainedMissionHostPorts = { ...real,
       qualify: async () => qualified,

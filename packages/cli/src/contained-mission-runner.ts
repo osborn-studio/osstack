@@ -7,6 +7,7 @@ import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import { classifyMissionPatch, parseMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
 import { formatMissionMarker, renderBodyLine } from './contained-mission-marker.js';
 import { applyContainedPatchFile } from './contained-patch-apply.js';
+import { HOST_PROCESS_UNPROVEN_PREFIX, WORKSPACE_RECOVERED, WORKSPACE_RECOVERY_FAILED, hostOnlyObligation, hostProcessRouteOf, unprovenOpId } from './contained-mission-host-process.js';
 
 export interface ContainedMissionSpec {
   goal: string; repo_path: string; base_ref: string; start_commit: string; branch: string; worktree_path: string;
@@ -19,23 +20,30 @@ export interface ContainedPublicationSpec { remote: string; repository: string; 
 /** Process-local, single-delivery-attempt binding; never serialized as authority (§8.1). */
 export interface ContainedPublicationPermit { readonly mission_id: string; readonly revision: number; readonly head: string; readonly tree: string; readonly spec_digest: string }
 export interface ContainedPublicationResult { pushed_commit: string; pr: { number: number; url: string; reused: boolean }; base_head: string | null }
+/** W13: identifies the Mission a covered host write belongs to and fences it (runs synchronously inside the release transaction). */
+export interface ContainedWriteContext { mission_id: string; fence: () => void; signal?: AbortSignal }
+export interface ContainedWorkspaceInfo { worktree: string; gitDir: string; head: string; configDigest: string }
 export interface ContainedMissionPorts {
   store: ContainedMissionStore; now: () => number;
-  createWorkspace: (spec: ContainedMissionSpec, signal: AbortSignal) => Promise<{ worktree: string; gitDir: string; head: string; configDigest: string }>;
+  createWorkspace: (spec: ContainedMissionSpec, signal: AbortSignal, write: ContainedWriteContext) => Promise<ContainedWorkspaceInfo>;
+  /** W13 `resume_workspace`: verify the worktree an interrupted creation left behind, re-materialize its start commit, and describe it. Throws when it cannot be verified. */
+  resumeWorkspace: (spec: ContainedMissionSpec, write: ContainedWriteContext) => Promise<ContainedWorkspaceInfo>;
+  /** True while a host child process of the Mission is not proven stopped. Absent in test doubles that start no processes. */
+  hasOpenHostProcess?: (missionId: string) => boolean;
   qualify: (worktree: string, gitDir: string) => Promise<CodexQualification>;
   execute: (input: { worktree: string; prompt: string; signal: AbortSignal; onLaunched: (launch: { pid: number; pgid: number; started_at: number }) => void }) => Promise<CodexProxyRun>;
   readFile: (worktree: string, path: string) => Promise<string | null>;
-  commit: (input: { worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string;
+  commit: (input: { mission_id: string; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string;
     /** Must run before every worktree write and the ref update; it throws once this owner or Mission revision is no longer current. */
     fence: () => void }) => Promise<{ head: string; tree: string }>;
   /** Unified diff from `startCommit` to the tree that `files` would produce on `expectedHead`, without touching the worktree. */
   cumulativeDiff: (input: { worktree: string; startCommit: string; expectedHead: string; files: ReadonlyArray<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }> }) => Promise<string>;
   /** Re-materialize `expectedHead` into the worktree, drop untracked files and any unrecorded commit on the branch. */
-  restoreWorkspace: (input: { worktree: string; branch: string; expectedHead: string }) => Promise<void>;
+  restoreWorkspace: (input: { mission_id: string; fence: () => void; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string }) => Promise<void>;
   /** Diff from `startCommit` to the worktree's current files, read safely and hashed without filters; unsafe entries are listed, not read. */
   worktreeDiff: (input: { worktree: string; startCommit: string }) => Promise<{ diff: string; tree: string; unsafe: string[] }>;
   /** Commit the worktree's current files on `expectedHead` (any unrecorded branch commit is dropped); the resulting tree must equal `tree`. */
-  commitWorktree: (input: { worktree: string; branch: string; expectedHead: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
+  commitWorktree: (input: { mission_id: string; fence: () => void; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
   /** `stopped` only when the verification container was proven removed. */
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
   /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
@@ -43,7 +51,7 @@ export interface ContainedMissionPorts {
   /** Present only when the GitHub Apps bridge is configured: publish (or refresh) the `osstack/verify` check on the opened PR's head. Idempotent; never touches the branch or PR. */
   publishVerifyCheck?: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>;
 }
-export type ContainedDecision = { kind: 'abandon' } | { kind: 'extra_repair' } | { kind: 'approve_publication' } | { kind: 'discard_changes' } | { kind: 'adopt_worktree' };
+export type ContainedDecision = { kind: 'abandon' } | { kind: 'resume_workspace' } | { kind: 'extra_repair' } | { kind: 'approve_publication' } | { kind: 'discard_changes' } | { kind: 'adopt_worktree' };
 const OUTPUT_EXCERPT = 4_000;
 const MAX_RECORDED_HITS = 32;
 const MAX_DELIVERY_ATTEMPTS = 3;
@@ -111,6 +119,7 @@ export class ContainedMissionRunner {
     }
     if (decision.kind === 'approve_publication' && m.state === 'awaiting_decision' && reason !== undefined
       && (reason === 'publication_pending' || reason.startsWith('publication_failed') || reason.startsWith('revalidation_failed'))) return go('revalidating', 'decision_approve_publication');
+    if (decision.kind === 'resume_workspace' && m.state === 'awaiting_decision' && reason === WORKSPACE_RECOVERED) return this.resumeWorkspace(m);
     if (decision.kind === 'discard_changes' && m.state === 'needs_reconciliation') return this.discardChanges(m, reason);
     if (decision.kind === 'adopt_worktree' && m.state === 'needs_reconciliation') return this.adoptWorktree(m);
     throw Error('CONTAINED_DECISION_NOT_ALLOWED');
@@ -121,7 +130,8 @@ export class ContainedMissionRunner {
     if (m.stop_obligation === 1) throw Error('stop_evidence_required');
     const spec = parseContainedMissionSpec(m.spec_json); const head = m.expected_head ?? spec.start_commit;
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
-    try { await this.ports.restoreWorkspace({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: head }); }
+    try { await this.ports.restoreWorkspace({ mission_id: m.mission_id, signal: controller.signal, fence: () => this.assertWriter(m, controller.signal), worktree: spec.worktree_path, branch: spec.branch, expectedHead: head }); }
+    catch (error) { return this.hostWriteFailed(m, error); }
     finally { this.live.delete(m.mission_id); }
     const current = this.ports.store.get(m.mission_id);
     if (current.revision !== m.revision) return this.settleCancel(current) ?? current;
@@ -154,7 +164,10 @@ export class ContainedMissionRunner {
       if (overall.tier === 'rejected' || overall.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: overall.reasons, cumulative: true, adopted: true });
       if (screenOutputs({ patch: snapshot.diff }).hits.length > 0) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: ['SECRET_DETECTED'], cumulative: true, adopted: true });
       const before = fenced(); if (before) return before;
-      const commit = await this.ports.commitWorktree({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head ?? spec.start_commit, tree: snapshot.tree, message: `contained mission ${m.mission_id} ${operationId} (adopted worktree)` });
+      let commit: { head: string; tree: string };
+      try { commit = await this.ports.commitWorktree({ mission_id: m.mission_id, signal: controller.signal, fence: () => this.assertWriter(m, controller.signal), worktree: spec.worktree_path, branch: spec.branch,
+        expectedHead: m.expected_head ?? spec.start_commit, tree: snapshot.tree, message: `contained mission ${m.mission_id} ${operationId} (adopted worktree)` }); }
+      catch (error) { return this.hostWriteFailed(m, error); }
       const after = fenced(); if (after) { this.ports.store.record(m.mission_id, 'commit_after_cancel', { operation_id: operationId, head: commit.head }, this.ports.now()); return after; }
       return this.commitCandidate(m, operationId, snapshot.diff, commit, overall.tier, totals);
     } finally { this.live.delete(m.mission_id); }
@@ -166,7 +179,8 @@ export class ContainedMissionRunner {
     const live = this.live.get(missionId);
     const requested = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'cancel_requested', event: { kind: 'cancel_requested', payload: {} } }, this.ports.now());
     if (live) { live.abort(); return requested; }
-    if (requested.stop_obligation === 0) return this.ports.store.transition(requested.mission_id, { if_revision: requested.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
+    // A host child process that is not proven stopped keeps the cancel open: recovery or `retry_stop_check` settles it.
+    if (requested.stop_obligation === 0 && !this.hasOpenHostProcess(missionId)) return this.ports.store.transition(requested.mission_id, { if_revision: requested.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
     return requested;
   }
 
@@ -175,8 +189,12 @@ export class ContainedMissionRunner {
     // Tracked like any other effect: a cancel waits for creation to settle before the claim can be released.
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
     let ws: Awaited<ReturnType<ContainedMissionPorts['createWorkspace']>>;
-    try { ws = await this.ports.createWorkspace(spec, controller.signal); }
-    catch (error) { return this.settleCancel(this.ports.store.get(m.mission_id)) ?? this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `workspace_failed:${code(error)}`); }
+    try { ws = await this.ports.createWorkspace(spec, controller.signal, { mission_id: m.mission_id, signal: controller.signal, fence: () => this.assertWriter(m, controller.signal) }); }
+    catch (error) {
+      const unproven = unprovenOpId(error);
+      if (unproven !== undefined) return this.haltUnproven(this.ports.store.get(m.mission_id), unproven);
+      return this.settleCancel(this.ports.store.get(m.mission_id)) ?? this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `workspace_failed:${code(error)}`);
+    }
     finally { this.live.delete(m.mission_id); }
     const cancelled = this.settleCancel(this.ports.store.get(m.mission_id)); if (cancelled) return cancelled;
     if (ws.head !== spec.start_commit) return this.halt(m, 'awaiting_decision', 'workspace_head_mismatch');
@@ -257,7 +275,7 @@ export class ContainedMissionRunner {
     // Host-write phase: cancel() aborts this controller, and every await is followed by a fence check.
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
     const fenced = () => { const now = this.ports.store.get(m.mission_id); return controller.signal.aborted || now.revision !== m.revision ? now : undefined; };
-    const settle = (now: ContainedMission) => now.state === 'cancel_requested'
+    const settle = (now: ContainedMission) => now.state === 'cancel_requested' && !this.hasOpenHostProcess(now.mission_id)
       ? this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'cancelled', event: { kind: 'cancelled', payload: { operation_id: operationId } } }, this.ports.now())
       : now;
     try {
@@ -283,9 +301,12 @@ export class ContainedMissionRunner {
       const before = fenced(); if (before) return settle(before);
       let commit: { head: string; tree: string };
       try {
-        commit = await this.ports.commit({ worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head!, files, message: `contained mission ${m.mission_id} ${operationId}`,
+        commit = await this.ports.commit({ mission_id: m.mission_id, signal: controller.signal, worktree: spec.worktree_path, branch: spec.branch, expectedHead: m.expected_head!, files, message: `contained mission ${m.mission_id} ${operationId}`,
           fence: () => this.assertWriter(m, controller.signal) });
       } catch (error) {
+        // A write whose process could not be proven stopped: nothing may write this branch again until it is.
+        const unproven = unprovenOpId(error);
+        if (unproven !== undefined) return this.haltUnproven(this.ports.store.get(m.mission_id), unproven);
         // A cancel that tripped the write fence is settled as a cancel; the branch was never moved.
         const now = this.ports.store.get(m.mission_id);
         if (now.state === 'cancel_requested') return settle(now);
@@ -346,6 +367,44 @@ export class ContainedMissionRunner {
   private classify(spec: ContainedMissionSpec, text: string) {
     return classifyMissionPatch({ allowedPaths: spec.allowed_paths, ...(spec.caps ? { caps: spec.caps } : {}), ...(spec.verification_paths ? { verificationPaths: spec.verification_paths } : {}) }, text);
   }
+  private hasOpenHostProcess(missionId: string): boolean { return this.ports.hasOpenHostProcess?.(missionId) ?? false; }
+
+  /** A covered host write left a process that is not proven stopped: `stop_unknown`, with the route that leads back out (design section 5.5). */
+  private haltUnproven(m: ContainedMission, opId: string): ContainedMission {
+    return this.halt(m, 'stop_unknown', `${HOST_PROCESS_UNPROVEN_PREFIX}${opId}`,
+      { op_id: opId, route: hostProcessRouteOf(m.state, this.haltReason(m)), prior_obligation: hostOnlyObligation(this.allEvents(m.mission_id)) ? 0 : m.stop_obligation });
+  }
+  /** A decision's host write failed: an unproven process stops the Mission; a write fence tripped by a cancel settles the cancel; anything else is the caller's error. */
+  private hostWriteFailed(m: ContainedMission, error: unknown): ContainedMission {
+    const current = this.ports.store.get(m.mission_id);
+    const unproven = unprovenOpId(error);
+    if (unproven !== undefined) return this.haltUnproven(current, unproven);
+    if (code(error) === 'CONTAINED_WRITE_FENCE' || code(error) === 'HARDENED_GIT_ABORTED') return this.settleCancel(current) ?? current;
+    throw error;
+  }
+
+  /** W13 section 5.5: the interrupted workspace creation was proven stopped; check what it left, materialize it again and continue. */
+  private async resumeWorkspace(m: ContainedMission): Promise<ContainedMission> {
+    if (m.stop_obligation === 1) throw Error('stop_evidence_required');
+    const spec = parseContainedMissionSpec(m.spec_json);
+    const controller = new AbortController(); this.live.set(m.mission_id, controller);
+    let ws: ContainedWorkspaceInfo;
+    try { ws = await this.ports.resumeWorkspace(spec, { mission_id: m.mission_id, signal: controller.signal, fence: () => this.assertWriter(m, controller.signal) }); }
+    catch (error) {
+      const unproven = unprovenOpId(error);
+      const current = this.ports.store.get(m.mission_id);
+      if (unproven !== undefined) return this.haltUnproven(current, unproven);
+      if (code(error) === 'CONTAINED_WRITE_FENCE' || code(error) === 'HARDENED_GIT_ABORTED') return this.settleCancel(current) ?? current;
+      // Nothing verifiable is left to resume: only `abandon` remains.
+      return this.halt(current, 'awaiting_decision', WORKSPACE_RECOVERY_FAILED, { detail: code(error) });
+    } finally { this.live.delete(m.mission_id); }
+    const current = this.ports.store.get(m.mission_id);
+    if (current.revision !== m.revision) return this.settleCancel(current) ?? current;
+    if (ws.head !== spec.start_commit) return this.halt(current, 'awaiting_decision', WORKSPACE_RECOVERY_FAILED, { detail: 'workspace_head_mismatch' });
+    return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'workspace_ready',
+      event: { kind: 'workspace_created', payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest, resumed: true } } }, this.ports.now());
+  }
+
   private halt(m: ContainedMission, to: 'awaiting_decision' | 'needs_reconciliation' | 'stop_unknown', reason: string, extra: Record<string, unknown> = {}) {
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: 'halted', payload: { reason, ...extra } } }, this.ports.now());
   }
@@ -488,7 +547,7 @@ export class ContainedMissionRunner {
     }
   }
   private settleCancel(m: ContainedMission): ContainedMission | undefined {
-    if (m.state !== 'cancel_requested' || m.stop_obligation === 1) return undefined;
+    if (m.state !== 'cancel_requested' || m.stop_obligation === 1 || this.hasOpenHostProcess(m.mission_id)) return undefined;
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
   }
   private openIntents(m: ContainedMission) {

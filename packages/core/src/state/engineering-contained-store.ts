@@ -44,7 +44,8 @@ const NEXT: Readonly<Record<ContainedMissionState, readonly ContainedMissionStat
   verified: ["revalidating"],
   revalidating: ["delivering", "candidate_ready"],
   delivering: ["pr_opened", "candidate_ready"],
-  awaiting_decision: ["executing", "revalidating", "abandoned"],
+  // workspace_ready: W13 `resume_workspace` after an orphaned worktree add was proven stopped (the runner checks the halt reason).
+  awaiting_decision: ["executing", "revalidating", "abandoned", "workspace_ready"],
   needs_reconciliation: ["executing", "candidate_ready", "abandoned"],
   stop_unknown: ["needs_reconciliation", "abandoned"],
   cancel_requested: ["cancelled"],

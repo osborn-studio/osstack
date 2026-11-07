@@ -11,6 +11,7 @@ import { scratchPath, type ContainedEvent, type ContainedMission, type Contained
 import { defaultDeliveryCommandRunner, openPullRequestToGitHub, type DeliveryCommandRunner } from '@osstack/github';
 import { redactSecrets } from '@osstack/governance';
 import { containedBindingCanonical, containedCommandFromArgv, containedOwnerPort, missionVerificationBinding, prepareContainedCandidateImage, registerContainedExecution, reopenContainedExecution, type ContainedOwnerIdentity } from './contained-verification.js';
+import { HostProcessKit, type HostProcessKitOptions } from './contained-mission-host-process.js';
 import { parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
 import type { BridgeKit, BridgeOptions, DeliveryEvidenceFacts } from './contained-mission-bridge.js';
 
@@ -25,6 +26,8 @@ export interface ContainedMissionPortsOptions {
   /** Command runner for the PR-only publication; the default uses the host's own git and gh credentials. */
   delivery?: { runner?: DeliveryCommandRunner };
   git?: HardenedGitContext;
+  /** W13: every covered local git write (ref update, worktree add, real-index write) is launched through the gated launcher and journaled here. Required: there is no ungated mode. */
+  hostProcess: HostProcessKitOptions;
   /** GitHub Apps bridge (plan phase 3). App mode applies only to the configured repository; without this the host's own gh/git credentials are used. */
   bridge?: BridgeOptions;
 }
@@ -32,6 +35,8 @@ export type ContainedVerificationStop = { stopped: true; proof: 'container_remov
 export interface ContainedMissionHostPorts extends ContainedMissionPorts {
   /** Recovery-only check that the Mission's last verification left no container; it never starts one. */
   verificationStopped: (mission: ContainedMission) => Promise<ContainedVerificationStop>;
+  /** Recovery-side access to the host child-process ledger and its probes (W13). */
+  hostProcesses: HostProcessKit;
 }
 type FileChange = { path: string; action: 'write'; content: string } | { path: string; action: 'delete' };
 type Git = (args: string[], extra?: Partial<HardenedGitOptions>) => Promise<{ stdout: Buffer; exitCode: number }>;
@@ -99,6 +104,7 @@ export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteM
 export function createContainedMissionPorts(options: ContainedMissionPortsOptions): ContainedMissionHostPorts {
   const { store, verification, author } = options; const ctx = options.git ?? {};
   const now = options.now ?? Date.now;
+  const kit = new HostProcessKit(store, options.hostProcess, now);
   const runtimeRoot = resolve(options.runtimeRoot ?? scratchPath('runtime'));
   const runtimeDir = (worktree: string) => {
     const dir = join(runtimeRoot, `mission-${sha(resolve(worktree)).slice(0, 16)}`);
@@ -162,9 +168,37 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     return { head: p.head, repository: p.repository, evidence_digest: p.evidence_digest, verify: { argv: p.verify.argv.map(String), exit_code: p.verify.exit_code } };
   };
 
+  // Re-materialize `expectedHead`: every ref update and real-index write below is a journaled, fenced launch.
+  const restore = async (input: { mission_id: string; fence: () => void; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string }): Promise<void> => {
+    assertSha(input.expectedHead);
+    const current = await branchHead(input.worktree, input.branch);
+    // A host commit the ledger never recorded is dropped from the branch (its objects stay in the repository).
+    if (current !== input.expectedHead) {
+      const ref = `refs/heads/${input.branch}`;
+      await git(input.worktree)(['update-ref', '-m', 'osstack: discard unrecorded commit', ref, input.expectedHead, current],
+        { ...signalOf(input), ...kit.hardened(input.mission_id, input.fence, 'git_update_ref', `${await gitDirOf(input.worktree)}#${ref}`) });
+    }
+    // Anything standing where a tracked file must go (a symlink, a directory, a hard link) is removed first, never followed.
+    const tracked = nulList(await git(input.worktree)(['ls-tree', '-r', '-z', '--name-only', '--full-tree', input.expectedHead]));
+    if (tracked.length > MAX_WORKTREE_FILES) throw Error('CONTAINED_WORKTREE_LIMIT');
+    for (const path of tracked) await clearObstruction(input.worktree, path, true);
+    // Every earlier writer of this worktree is proven stopped (one open record per Mission), and the claim is exclusive: a leftover
+    // lock (a timed-out or aborted index writer) is stale and would fail the read-tree below.
+    rmSync(join(await gitDirOf(input.worktree), 'index.lock'), { force: true });
+    await materializeCommit(input.worktree, input.expectedHead, { git: withSignal(input), gate: kit.gate(input.mission_id, input.fence) });
+    const config = await filterNeutralizingConfig(input.worktree, ctx);
+    const others = nulList(await runHardenedGit(['ls-files', '--others', '-z'], { ...ctx, config, cwd: input.worktree }));
+    if (others.length > MAX_WORKTREE_FILES) throw Error('CONTAINED_WORKTREE_LIMIT');
+    for (const path of others) await clearObstruction(input.worktree, path, false);
+  };
+  const withSignal = (input: { signal?: AbortSignal }): HardenedGitContext => input.signal ? { ...ctx, signal: input.signal } : ctx;
+  const signalOf = (input: { signal?: AbortSignal }): Partial<HardenedGitOptions> => input.signal ? { signal: input.signal } : {};
+  const gitDirOf = async (worktree: string) => text(await git(worktree)(['rev-parse', '--absolute-git-dir']));
+
   const ports: ContainedMissionHostPorts = {
-    store, now,
-    createWorkspace: async (spec, signal) => {
+    store, now, hostProcesses: kit,
+    hasOpenHostProcess: missionId => kit.hasOpen(missionId),
+    createWorkspace: (spec, signal, write) => kit.guard(write.mission_id, async () => {
       const context = { ...ctx, signal };
       const inspection = await inspectRepoConfig(spec.repo_path, context);
       if (inspection.rejections.length > 0) throw Error(`CONTAINED_REPO_CONFIG_REJECTED:${[...new Set(inspection.rejections.map(r => r.code))].join(',')}`);
@@ -172,10 +206,30 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       try { await runHardenedGit(['cat-file', '-e', `${spec.start_commit}^{commit}`], { ...context, cwd: spec.repo_path }); }
       catch { throw Error('CONTAINED_START_COMMIT_MISSING'); }
       const worktree = resolve(spec.worktree_path);
-      await createNoCheckoutWorktree({ repoPath: spec.repo_path, worktreePath: worktree, branch: spec.branch, startCommit: spec.start_commit, expectedConfigDigest: inspection.digest, git: context });
+      await createNoCheckoutWorktree({ repoPath: spec.repo_path, worktreePath: worktree, branch: spec.branch, startCommit: spec.start_commit, expectedConfigDigest: inspection.digest, git: context,
+        gate: kit.gate(write.mission_id, write.fence) });
       const head = text(await runHardenedGit(['rev-parse', '--verify', 'HEAD'], { ...context, cwd: worktree }));
       return { worktree, gitDir: inspection.gitDir, head, configDigest: inspection.digest };
-    },
+    }),
+    resumeWorkspace: (spec, write) => kit.guard(write.mission_id, async () => {
+      const worktree = resolve(spec.worktree_path);
+      const inspection = await inspectRepoConfig(spec.repo_path, ctx);
+      if (inspection.rejections.length > 0) throw Error(`CONTAINED_REPO_CONFIG_REJECTED:${[...new Set(inspection.rejections.map(r => r.code))].join(',')}`);
+      assertSha(spec.start_commit);
+      // The interrupted creation must have left exactly what a finished one has: a directory that git lists as a worktree of this repository,
+      // checked out on the Mission branch, which still points at start_commit. Anything else is not resumable.
+      const stat = await lstat(worktree).catch(() => undefined);
+      if (!stat?.isDirectory() || stat.isSymbolicLink()) throw Error('CONTAINED_RESUME_WORKTREE_MISSING');
+      const listed = text(await runHardenedGit(['worktree', 'list', '--porcelain'], { ...ctx, cwd: spec.repo_path })).split('\n')
+        .flatMap(line => line.startsWith('worktree ') ? [line.slice('worktree '.length)] : []);
+      const real = await realpath(worktree);
+      if (!(await Promise.all(listed.map(p => realpath(p).catch(() => p)))).includes(real)) throw Error('CONTAINED_RESUME_NOT_A_WORKTREE');
+      const run = git(worktree);
+      if (text(await run(['symbolic-ref', '-q', 'HEAD'], { okExitCodes: [0, 1] })) !== `refs/heads/${spec.branch}`) throw Error('CONTAINED_RESUME_BRANCH_MISMATCH');
+      if (text(await run(['rev-parse', '--verify', '-q', `refs/heads/${spec.branch}`], { okExitCodes: [0, 1] })) !== spec.start_commit) throw Error('CONTAINED_RESUME_HEAD_MISMATCH');
+      await restore({ ...write, worktree, branch: spec.branch, expectedHead: spec.start_commit });
+      return { worktree, gitDir: inspection.gitDir, head: text(await runHardenedGit(['rev-parse', '--verify', 'HEAD'], { ...ctx, cwd: worktree })), configDigest: inspection.digest };
+    }),
     qualify: (worktree, gitDir) => executor(worktree).qualify(worktree, gitDir),
     publish: async ({ mission, spec, permit, body, beforeRemoteMutation }) => {
       const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
@@ -217,13 +271,14 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       try { return utf8((await safeReadFile(worktree, path)).bytes, 'CONTAINED_FILE_NOT_UTF8'); }
       catch (error) { if (error instanceof SafeFileError && error.code === 'SAFE_PATH_NOT_FOUND') return null; throw error; }
     },
-    commit: async input => {
+    commit: input => kit.guard(input.mission_id, async () => {
       const expectedConfigDigest = recordedConfigDigest(input.worktree);
       const modes = await headModes(git(input.worktree), input.expectedHead, input.files.map(f => f.path));
       // Keep each file's committed mode; cumulativeDiff assumes the same, so what was classified is what is committed.
       const files = input.files.map(f => f.action === 'delete' ? f : { ...f, executable: modes.get(f.path) === '100755' });
-      return commitPlumbing({ worktree: input.worktree, branch: input.branch, expectedHead: input.expectedHead, files, message: input.message, author, expectedConfigDigest, git: ctx, fence: input.fence });
-    },
+      return commitPlumbing({ worktree: input.worktree, branch: input.branch, expectedHead: input.expectedHead, files, message: input.message, author, expectedConfigDigest, git: withSignal(input), fence: input.fence,
+        gate: kit.gate(input.mission_id, input.fence) });
+    }),
     cumulativeDiff: async input => {
       assertSha(input.startCommit); assertSha(input.expectedHead);
       for (const f of input.files) safeRelativePathSegments(f.path);
@@ -237,21 +292,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         return diffTrees(run, input.startCommit, text(await run(['write-tree'])));
       });
     },
-    restoreWorkspace: async input => {
-      assertSha(input.expectedHead);
-      const current = await branchHead(input.worktree, input.branch);
-      // A host commit the ledger never recorded is dropped from the branch (its objects stay in the repository).
-      if (current !== input.expectedHead) await git(input.worktree)(['update-ref', '-m', 'osstack: discard unrecorded commit', `refs/heads/${input.branch}`, input.expectedHead, current]);
-      // Anything standing where a tracked file must go (a symlink, a directory, a hard link) is removed first, never followed.
-      const tracked = nulList(await git(input.worktree)(['ls-tree', '-r', '-z', '--name-only', '--full-tree', input.expectedHead]));
-      if (tracked.length > MAX_WORKTREE_FILES) throw Error('CONTAINED_WORKTREE_LIMIT');
-      for (const path of tracked) await clearObstruction(input.worktree, path, true);
-      await materializeCommit(input.worktree, input.expectedHead, { git: ctx });
-      const config = await filterNeutralizingConfig(input.worktree, ctx);
-      const others = nulList(await runHardenedGit(['ls-files', '--others', '-z'], { ...ctx, config, cwd: input.worktree }));
-      if (others.length > MAX_WORKTREE_FILES) throw Error('CONTAINED_WORKTREE_LIMIT');
-      for (const path of others) await clearObstruction(input.worktree, path, false);
-    },
+    restoreWorkspace: input => kit.guard(input.mission_id, () => restore(input)),
     worktreeDiff: async input => {
       assertSha(input.startCommit);
       return withTempIndex(input.worktree, async run => {
@@ -275,23 +316,28 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         return { diff: unsafe.length > 0 ? '' : await diffTrees(run, input.startCommit, tree), tree, unsafe };
       });
     },
-    commitWorktree: async input => {
+    commitWorktree: input => kit.guard(input.mission_id, async () => {
       assertSha(input.tree);
       const expectedConfigDigest = recordedConfigDigest(input.worktree);
       assertSha(input.expectedHead);
       const current = await branchHead(input.worktree, input.branch);
       const run = git(input.worktree);
       // Only the ledger head is trusted ancestry: an unrecorded commit's history was never classified, so it is dropped.
-      if (current !== input.expectedHead) await run(['update-ref', '-m', 'osstack: drop unrecorded commit', `refs/heads/${input.branch}`, input.expectedHead, current]);
+      if (current !== input.expectedHead) {
+        const ref = `refs/heads/${input.branch}`;
+        await run(['update-ref', '-m', 'osstack: drop unrecorded commit', ref, input.expectedHead, current],
+          { ...signalOf(input), ...kit.hardened(input.mission_id, input.fence, 'git_update_ref', `${await gitDirOf(input.worktree)}#${ref}`) });
+      }
       const head = input.expectedHead;
       const status = nulList(await run(['diff-tree', '-r', '-z', '--no-renames', '--name-status', head, input.tree]));
       const files: Array<{ path: string; action: 'write' } | { path: string; action: 'delete' }> = [];
       for (let i = 0; i + 1 < status.length; i += 2) files.push({ path: status[i + 1]!, action: status[i] === 'D' ? 'delete' : 'write' });
       if (files.length === 0) return { head, tree: text(await run(['rev-parse', '--verify', `${head}^{tree}`])) };
-      const commit = await commitPlumbing({ worktree: input.worktree, branch: input.branch, expectedHead: head, files, message: input.message, author, expectedConfigDigest, git: ctx });
+      const commit = await commitPlumbing({ worktree: input.worktree, branch: input.branch, expectedHead: head, files, message: input.message, author, expectedConfigDigest, git: withSignal(input), fence: input.fence,
+        gate: kit.gate(input.mission_id, input.fence) });
       if (commit.tree !== input.tree) throw Error('CONTAINED_ADOPT_TREE_MISMATCH');
       return commit;
-    },
+    }),
     verify: async (mission, argv, signal) => {
       const spec = parseContainedMissionSpec(mission.spec_json);
       const binding = missionVerificationBinding(mission, { argv }); const { command } = containedCommandFromArgv(argv);
