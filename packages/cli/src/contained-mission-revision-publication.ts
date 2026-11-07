@@ -5,6 +5,7 @@ import { parseStoredGrant, type ContainedMission, type ContainedMissionStore, ty
 import type { DeliveryCommandRunner } from '@osstack/github';
 import { z } from 'zod';
 import { fencedDeliveryRunner } from './contained-mission-ports.js';
+import { assertGrantLive, type GrantLiveContext } from './contained-mission-grant.js';
 import { defaultGhExec, ghGraphqlTransport, type GhExec, type GraphqlTransport } from './contained-mission-bridge-reader.js';
 import type { HostProcessKit } from './contained-mission-host-process.js';
 import type { ContainedMissionSpec, ContainedPublicationPermit, ContainedPublicationResult } from './contained-mission-runner.js';
@@ -13,7 +14,7 @@ export type RevisionRefusalCode = 'repo_config_changed' | 'local_head_mismatch' 
   | 'start_mismatch' | 'publisher_unavailable' | 'intent_binding_mismatch' | 'grant_expired' | 'chain_state'
   | 'pr_closed' | 'pr_merged' | 'pr_head_ref_changed' | 'base_changed' | 'external_write' | 'head_regressed'
   | 'not_descendant' | 'range_too_large' | 'token_unavailable' | 'push_in_flight' | 'bridge_live_disabled'
-  | 'fence_chain_state' | 'fence_intent_moved' | 'fence_not_current_child' | 'push_rejected' | 'never_released';
+  | 'fence_chain_state' | 'fence_intent_moved' | 'fence_not_current_child' | 'grant_invalid' | 'budget_exhausted' | 'child_cancelled' | 'push_rejected' | 'never_released';
 /** D4/R5: only these local or transient refusals may resume on the same child after a human decision. */
 export const REVISION_SAME_CHILD_RESUMABLE: ReadonlySet<RevisionRefusalCode> = new Set([
   'repo_config_changed', 'local_head_mismatch', 'push_url_invalid', 'transport_unsupported', 'publisher_unavailable',
@@ -65,6 +66,10 @@ export interface RevisionPublicationDeps {
   compare: (repository: string, oldHead: string, newHead: string) => Promise<readonly string[]>;
   preflight: (spec: ContainedMissionSpec, permit: ContainedPublicationPermit) => Promise<void>;
   checkEnabled: boolean;
+  /** Required for a release. Read the current authority and live switch inside the W13 release transaction. */
+  fenceAuthority?: () => GrantLiveContext & { enabled: boolean };
+  /** Host cancellation for remote facts that invalidate the in-flight child. */
+  cancelChild: (missionId: string) => Promise<unknown>;
   sleep?: (ms: number) => Promise<void>;
 }
 export interface RevisionPublicationInput {
@@ -79,7 +84,35 @@ export interface RevisionPublicationPort {
   publishRevision: (input: RevisionPublicationInput) => Promise<RevisionPublicationResult>;
   confirm: (input: ConfirmRevisionInput) => ContainedMission;
   reconcileReceipt: (intentId: string, reason: 'pr_closed' | 'pr_merged' | 'base_changed' | 'route_changed') => void;
-  publishCheck: (childId: string, send: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>) => Promise<{ check_run_id: number; created: boolean }>;
+  publishCheck: (childId: string, send: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>) => Promise<{ check_run_id: number; created: boolean; skipped?: true }>;
+}
+
+/** Synchronous W13 release fence. Missing authority is a refusal, including in direct port calls. */
+export function assertRevisionPublishable(deps: RevisionPublicationDeps, input: RevisionPublicationInput, intentId: string): void {
+  const fail = (code: string): never => { throw Error(`CONTAINED_REVISION_FENCE:${code}`); };
+  try { deps.chains.attention.assertOwner(deps.chains.owner); } catch { fail('stale_owner'); }
+  const target = input.spec.publish_target;
+  if (!target) fail('chain_state');
+  const chain = deps.chains.get(target!.chain_id);
+  if (chain.mode !== 'live' || chain.state !== 'publishing') fail('chain_state');
+  if (chain.current_mission_id !== input.mission.mission_id) fail('not_current_child');
+  const intent = deps.chains.getIntent(intentId);
+  if (intent.kind !== 'push' || intent.state !== 'pending' || intent.chain_id !== chain.chain_id || intent.child_mission_id !== input.mission.mission_id
+    || intent.new_head !== input.permit.head || chain.published_head !== intent.expected_old_head || chain.published_base !== intent.expected_base_sha
+    || chain.branch !== intent.branch) fail('intent_moved');
+  const child = deps.missions.get(input.mission.mission_id);
+  const reservation = deps.chains.reservations(chain.chain_id).find(r => r.head_sha === intent.expected_old_head);
+  if (child.state === 'cancel_requested' || child.state === 'cancelled') fail('child_cancelled');
+  if (child.state !== 'delivering' || child.revision !== input.permit.revision || child.stop_obligation !== 0 || child.candidate_verified !== 1
+    || child.candidate_head !== input.permit.head || deps.missions.claim(child.mission_id).state !== 'active') fail('chain_state');
+  if (reservation?.state !== 'dispatched' || reservation.child_mission_id !== child.mission_id) fail('intent_moved');
+  let authority: ReturnType<NonNullable<RevisionPublicationDeps['fenceAuthority']>> | undefined;
+  try { authority = deps.fenceAuthority?.(); } catch { fail('grant_invalid'); }
+  if (!authority?.enabled) fail('bridge_live_disabled');
+  try { assertGrantLive(chain, { ...authority!, now: deps.now() }); } catch (error) {
+    const code = error instanceof Error ? error.message : 'grant_invalid';
+    fail(code === 'grant_expired' || code === 'budget_exhausted' ? code : 'grant_invalid');
+  }
 }
 export function createRevisionPublicationPort(deps: RevisionPublicationDeps): RevisionPublicationPort {
   return {
@@ -92,13 +125,21 @@ export function createRevisionPublicationPort(deps: RevisionPublicationDeps): Re
 
 /** Step 7: deliver App B's check after confirmation; a failed check never rolls the confirmed push back. */
 export async function publishRevisionCheck(deps: Pick<RevisionPublicationDeps, 'chains' | 'missions' | 'now'>, childId: string,
-  send: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>): Promise<{ check_run_id: number; created: boolean }> {
+  send: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>): Promise<{ check_run_id: number; created: boolean; skipped?: true }> {
   const mission = deps.missions.get(childId);
   if (mission.state !== 'pr_opened' || !mission.candidate_head) throw Error('CONTAINED_REVISION_CHECK_NOT_OPENED');
-  const chain = deps.chains.db.prepare('SELECT * FROM engineering_revision_chains WHERE mode=? AND current_mission_id=? LIMIT 1')
-    .get('live', childId) as ReturnType<RevisionChainStore['get']> | undefined;
-  if (!chain) throw Error('CONTAINED_REVISION_CHAIN_MISSING');
+  const target = (JSON.parse(mission.spec_json) as ContainedMissionSpec).publish_target;
+  if (!target) throw Error('CONTAINED_REVISION_CHAIN_MISSING');
+  const chain = deps.chains.get(target.chain_id);
+  const push = deps.chains.intents(chain.chain_id).find(i => i.kind === 'push' && i.state === 'confirmed'
+    && i.child_mission_id === childId && i.new_head === mission.candidate_head);
+  if (chain.mode !== 'live' || !push) throw Error('CONTAINED_REVISION_CHAIN_MISSING');
   const existing = deps.chains.intents(chain.chain_id).filter(i => i.kind === 'check' && i.child_mission_id === childId && i.new_head === mission.candidate_head).at(-1);
+  if (chain.state === 'closed') {
+    if (existing?.state === 'pending') deps.chains.settleIntent(existing.intent_id, 'failed', deps.now(), 'chain_closed');
+    deps.chains.appendEvent(chain.chain_id, 'check_skipped', { child: childId, reason: 'chain_closed', push_intent_id: push.intent_id }, deps.now());
+    return { check_run_id: 0, created: false, skipped: true };
+  }
   if (existing?.state === 'confirmed') return { check_run_id: Number(existing.detail ?? 0), created: false };
   if (existing?.state === 'uncertain') throw Error('CONTAINED_REVISION_CHECK_UNCERTAIN');
   const intent = existing?.state === 'pending' ? existing : deps.chains.recordCheckIntent(chain.chain_id, childId, mission.candidate_head, deps.now());
@@ -120,6 +161,14 @@ export interface ConfirmRevisionInput {
 const digest = (items: readonly string[]) => createHash('sha256').update(JSON.stringify(items)).digest('hex');
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const codeOf = (error: unknown) => error instanceof Error ? error.message : 'unknown';
+// Best effort: the note itself may fail (e.g. stale_owner during a handover); it must never
+// escape as an unhandled rejection from the fire-and-forget cancellation path.
+function recordCancelFailure(deps: RevisionPublicationDeps, chainId: string, childId: string, error: unknown): void {
+  try {
+    deps.chains.appendEvent(chainId, 'child_cancel_failed', { child: childId,
+      code: (error instanceof Error ? error.message.split(':')[0] ?? 'error' : 'error').slice(0, 64) }, deps.now());
+  } catch { /* the chain stop is already committed; the missing note is visible as no child_cancelled event */ }
+}
 
 function uncertainPublication(deps: RevisionPublicationDeps, intentId: string, childId: string, detail: string): void {
   deps.chains.transaction(() => {
@@ -149,7 +198,7 @@ export function refuseRevisionPublication(deps: Pick<RevisionPublicationDeps, 'c
     if (chain.state !== 'closed' && chain.state !== 'awaiting_decision') {
       if (code === 'pr_closed' || code === 'pr_merged') chain = deps.chains.closeLive(chainId, chain.revision, code, deps.now());
       else {
-        const reason = ['base_changed', 'external_write', 'head_regressed', 'grant_expired'].includes(code) ? code : `publish_refused:${code}`;
+        const reason = ['base_changed', 'external_write', 'head_regressed', 'grant_expired', 'grant_invalid', 'budget_exhausted', 'child_cancelled'].includes(code) ? code : `publish_refused:${code}`;
         chain = deps.chains.stopLive(chainId, chain.revision, reason, deps.now());
       }
     }
@@ -246,6 +295,10 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
   if (previous && previous.state !== 'failed') throw Error(`CONTAINED_REVISION_RECEIPT_${previous.state.toUpperCase()}`);
   const reject = (code: RevisionRefusalCode, intentId?: string): never => {
     refuseRevisionPublication(deps, chainId, mission.mission_id, intentId, code);
+    if (['pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'external_write', 'head_regressed'].includes(code)) {
+      void Promise.resolve().then(() => deps.cancelChild(mission.mission_id))
+        .catch(error => recordCancelFailure(deps, chainId, mission.mission_id, error));
+    }
     throw Error(`CONTAINED_REVISION_REFUSED:${code}`);
   };
   if (publication.repository.toLowerCase() !== chain.repository.toLowerCase() || target.pr !== chain.pr_number || target.remote_branch !== chain.branch) reject('intent_binding_mismatch');
@@ -295,7 +348,7 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
       deps.chains.appendEvent(chainId, 'push_range', { intent_id: intentId, commits }, deps.now());
     });
   } catch (error) { reject(codeOf(error) === 'grant_expired' ? 'grant_expired' : 'intent_binding_mismatch'); }
-  const runner = fencedDeliveryRunner(deps.runner, kind => { if (kind !== 'push') throw Error('CONTAINED_REVISION_PR_CREATE_DENIED'); input.beforeRemoteMutation(kind); },
+  const runner = fencedDeliveryRunner(deps.runner, kind => { if (kind !== 'push') throw Error('CONTAINED_REVISION_PR_CREATE_DENIED'); input.beforeRemoteMutation(kind); assertRevisionPublishable(deps, input, intentId); },
     { remote: publication.remote, repository: chain.repository, missionId: mission.mission_id, httpsOnly: true });
   const ref = `refs/heads/${chain.branch}`;
   let push: Awaited<ReturnType<DeliveryCommandRunner['run']>>;
@@ -306,8 +359,10 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
     if (!row || row.released_at === null) {
       const code = codeOf(error);
       const fence = /^CONTAINED_REVISION_FENCE:([a-z_]+)$/.exec(code)?.[1];
+      if (fence === 'stale_owner' || code === 'stale_owner') throw error;
       reject(code === 'CONTAINED_REMOTE_BRANCH_BUSY' ? 'push_in_flight' : code === 'CONTAINED_BRIDGE_TRANSPORT_UNSUPPORTED' ? 'transport_unsupported'
         : fence === 'grant_expired' ? 'grant_expired' : fence === 'base_changed' ? 'base_changed'
+          : fence === 'grant_invalid' ? 'grant_invalid' : fence === 'budget_exhausted' ? 'budget_exhausted' : fence === 'child_cancelled' ? 'child_cancelled'
           : fence === 'external_write' ? 'external_write' : fence === 'head_regressed' ? 'head_regressed'
             : fence === 'bridge_live_disabled' ? 'bridge_live_disabled'
           : fence === 'intent_moved' ? 'fence_intent_moved' : fence === 'not_current_child' ? 'fence_not_current_child'
@@ -357,6 +412,7 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
   if (readback.state !== 'OPEN' || readback.baseRefName !== chain.base_ref || readback.baseRefOid !== chain.published_base) {
     const reason = readback.state === 'MERGED' ? 'pr_merged' : readback.state === 'CLOSED' ? 'pr_closed' : 'base_changed';
     reconcileReceipt(deps, intentId, reason);
+    try { await deps.cancelChild(mission.mission_id); } catch (error) { recordCancelFailure(deps, chainId, mission.mission_id, error); }
     throw Error('CONTAINED_REVISION_PR_CHANGED_AFTER_PUSH');
   }
   return { pushed_commit: permit.head, pr: { number: chain.pr_number, url: readback.url, reused: true }, base_head: chain.published_base,

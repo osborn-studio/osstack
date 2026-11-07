@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HostProcessStore } from '@osstack/core';
 import { describe, expect, it, vi } from 'vitest';
-import { H, T0, dispatched, setup } from './contained-mission-revision.testkit.js';
-import { compareRevisionRange, confirmRevisionPublication, publishRevision, publishRevisionCheck, readRevisionPr, reconcileReceipt, refuseRevisionPublication, type RevisionPublicationDeps, type RevisionRefusalCode } from './contained-mission-revision-publication.js';
+import { H, T0, changesRequested, dispatched, setup } from './contained-mission-revision.testkit.js';
+import { oid } from './contained-mission-bridge-shadow.testkit.js';
+import { assertRevisionPublishable, compareRevisionRange, confirmRevisionPublication, publishRevision, publishRevisionCheck, readRevisionPr, reconcileReceipt, refuseRevisionPublication, type RevisionPublicationDeps, type RevisionRefusalCode } from './contained-mission-revision-publication.js';
 
 const old = '1'.repeat(40);
 const next = '2'.repeat(40);
@@ -25,9 +26,9 @@ it('reads a PR by number and a bounded compare range through read-only GitHub ca
   })).toEqual([next]);
 });
 
-async function fixture(options: { oldHead?: string; newHead?: string; intent?: boolean } = {}) {
+async function fixture(options: { oldHead?: string; newHead?: string; intent?: boolean; expiresIn?: number; rounds?: 1 | 2 } = {}) {
   const previousHead = options.oldHead ?? old; const candidateHead = options.newHead ?? next;
-  const f = setup({ head: previousHead });
+  const f = setup({ head: previousHead, ...(options.expiresIn ? { expiresIn: options.expiresIn } : {}), ...(options.rounds ? { rounds: options.rounds } : {}) });
   const out = await dispatched(f);
   const id = out.child_mission_id;
   const missions = f.rig.missions;
@@ -58,20 +59,21 @@ async function fixture(options: { oldHead?: string; newHead?: string; intent?: b
     runner: { gated: true, run: async () => ({ stdout: '', stderr: '', exitCode: 0 }) }, now: () => ++f.clock.now,
     readPr: async () => ({ state: 'OPEN', repository: 'o/r', headRefName: 'topic', headRefOid: candidateHead, baseRefName: 'main', baseRefOid: 'a'.repeat(40), url: 'https://example.invalid/pull/7' }),
     localGit: async () => ({ stdout: '', exitCode: 0 }), remoteHead: async () => candidateHead, compare: async () => [candidateHead], preflight: async () => {}, checkEnabled: true,
+    cancelChild: async () => {},
   };
   const input = { chain_id: chain.chain_id, intent_id: intent.intent_id, child_mission_id: id, permit_revision: m.revision,
     evidence: { evidence_digest: '6'.repeat(64), head: candidateHead, repository: 'o/r' }, pr: { number: 7, url: 'https://example.invalid/pull/7', reused: true as const }, range_sha256: '7'.repeat(64) };
   return { f, deps, input, id, intent };
 }
-async function fullFixture() {
-  const result = await fixture();
+async function fullFixture(options: { rounds?: 1 | 2 } = {}) {
+  const result = await fixture(options);
   if (!result.deps || !result.input || !result.intent) throw Error('fixture_incomplete');
   return { ...result, deps: result.deps, input: result.input, intent: result.intent };
 }
 
 async function publishFixture(runPush?: (intentId: string, journal: HostProcessStore, fence: () => void) => Promise<{ stdout: string; stderr: string; exitCode: number; opId?: string }>,
-  options: { localGit?: RevisionPublicationDeps['localGit']; readPr?: RevisionPublicationDeps['readPr'] } = {}) {
-  const base = await fixture({ intent: false });
+  options: { localGit?: RevisionPublicationDeps['localGit']; readPr?: RevisionPublicationDeps['readPr']; expiresIn?: number } = {}) {
+  const base = await fixture({ intent: false, ...(options.expiresIn ? { expiresIn: options.expiresIn } : {}) });
   const { f, id, mission, chain, journal } = base;
   if (!mission || !chain || !journal) throw Error('fixture_incomplete');
   const pr = { state: 'OPEN' as const, repository: 'o/r', headRefName: 'topic', headRefOid: old, baseRefName: 'main', baseRefOid: 'a'.repeat(40), url: 'https://example.invalid/pull/7' };
@@ -84,7 +86,8 @@ async function publishFixture(runPush?: (intentId: string, journal: HostProcessS
       return runPush(options.intentId, journal, options.gate.fence);
     } },
     readPr: options.readPr ?? (async () => pr), localGit: options.localGit ?? (async (_cwd, args) => ({ stdout: args[0] === 'rev-list' ? next : '', exitCode: 0 })),
-    remoteHead: async () => old, compare: async () => [next], preflight: async () => {}, checkEnabled: true,
+    remoteHead: async () => old, compare: async () => [next], preflight: async () => {}, checkEnabled: true, cancelChild: async () => {},
+    fenceAuthority: () => ({ access: f.deps.access, keys: f.deps.keys(), now: f.clock.now, enabled: f.flags.enabled }),
   };
   const spec = f.childSpec(id);
   const permit = { mission_id: id, revision: mission.revision, head: next, tree: '3'.repeat(40), spec_digest: mission.spec_digest };
@@ -101,6 +104,134 @@ function releasePush(journal: HostProcessStore, intentId: string, missionId: str
   if (stopped) journal.stopped(opId, { proof: 'group_empty+marker_unheld', detail: {}, exit_code: 0 });
   return opId;
 }
+
+it.each([
+  ['bridge_live_disabled', (f: Awaited<ReturnType<typeof publishFixture>>) => { f.f.flags.enabled = false; }],
+  ['grant_expired', (f: Awaited<ReturnType<typeof publishFixture>>) => { f.f.clock.now = T0 + 24 * H; }],
+  ['grant_invalid', (f: Awaited<ReturnType<typeof publishFixture>>) => { f.f.flags.access = false; }],
+  ['budget_exhausted', (f: Awaited<ReturnType<typeof publishFixture>>) => { f.f.clock.now = T0 + 48 * H; }],
+] as const)('release fence refuses %s after intent and before git', async (expected, mutate) => {
+  let fixture!: Awaited<ReturnType<typeof publishFixture>>;
+  let gitRan = false;
+  fixture = await publishFixture(async (intentId, journal, fence) => {
+    const opId = 'hp_releasefence';
+    journal.launching({ op_id: opId, mission_id: fixture.id, kind: 'git_push', remote_target: 'o/r#refs/heads/topic', local_target: '/tmp/repo#refs/heads/topic',
+      intent_id: intentId, argv_digest: '8'.repeat(64), boot_id: 'test', marker: { path: '/tmp/marker', dev: '1', ino: '1' } });
+    journal.registered(opId, { pid: 12345, pgid: 12345, leader_start: 'test' });
+    mutate(fixture);
+    try { journal.release(opId, fence); gitRan = true; }
+    catch (error) { journal.stopped(opId, { proof: 'never_released', detail: {} }); throw error; }
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  }, expected === 'budget_exhausted' ? { expiresIn: 72 * H } : {});
+  await expect(fixture.call()).rejects.toThrow(`CONTAINED_REVISION_REFUSED:${expected}`);
+  expect(gitRan).toBe(false);
+  const intent = fixture.deps.chains.intents(fixture.chain.chain_id).at(-1)!;
+  expect(intent).toMatchObject({ state: 'failed', detail: expected });
+  expect(fixture.deps.host.recordForIntent(intent.intent_id)).toMatchObject({ state: 'stopped', released_at: null });
+  expect(fixture.deps.chains.get(fixture.chain.chain_id).stop_reason).toBe(expected === 'bridge_live_disabled' ? 'publish_refused:bridge_live_disabled' : expected);
+  expect(fixture.deps.missions.events(fixture.id, 0, 500).filter(e => e.kind === 'halted').at(-1)?.payload_json).toContain(`publication_failed:${expected}`);
+});
+
+it('the release fence refuses a missing authority even when the caller callback is empty', async () => {
+  const f = await publishFixture();
+  const intent = f.deps.chains.recordIntent(f.chain.chain_id, f.chain.revision, { kind: 'push', branch: f.chain.branch,
+    expected_old_head: old, new_head: next, expected_base_sha: f.chain.published_base, child_mission_id: f.id }, ++f.f.clock.now).intent;
+  delete f.deps.fenceAuthority;
+  expect(() => assertRevisionPublishable(f.deps, { mission: f.deps.missions.get(f.id), spec: f.spec,
+    permit: { mission_id: f.id, revision: f.deps.missions.get(f.id).revision, head: next, tree: '3'.repeat(40), spec_digest: f.deps.missions.get(f.id).spec_digest },
+    beforeRemoteMutation: () => {}, signal: new AbortController().signal }, intent.intent_id)).toThrow('CONTAINED_REVISION_FENCE:bridge_live_disabled');
+});
+
+it('leaves a pending intent for recovery when W13 loses the owner before release', async () => {
+  let fixture!: Awaited<ReturnType<typeof publishFixture>>;
+  let gitRan = false;
+  fixture = await publishFixture(async (intentId, journal, fence) => {
+    const opId = 'hp_ownerchange';
+    journal.launching({ op_id: opId, mission_id: fixture.id, kind: 'git_push', remote_target: 'o/r#refs/heads/topic', local_target: '/tmp/repo#refs/heads/topic',
+      intent_id: intentId, argv_digest: '8'.repeat(64), boot_id: 'test', marker: { path: '/tmp/marker', dev: '1', ino: '1' } });
+    journal.registered(opId, { pid: 12345, pgid: 12345, leader_start: 'test' });
+    vi.spyOn(fixture.deps.chains.attention, 'assertOwner').mockImplementationOnce(() => { throw Error('stale_owner'); });
+    try { journal.release(opId, fence); gitRan = true; }
+    catch (error) { journal.stopped(opId, { proof: 'never_released', detail: {} }); throw error; }
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  });
+  await expect(fixture.call()).rejects.toThrow('stale_owner');
+  expect(gitRan).toBe(false);
+  const intent = fixture.deps.chains.intents(fixture.chain.chain_id).at(-1)!;
+  expect(intent.state).toBe('pending');
+  expect(fixture.deps.chains.get(fixture.chain.chain_id).state).toBe('publishing');
+  vi.restoreAllMocks();
+});
+
+it.each(['pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'external_write', 'head_regressed'] as const)(
+  'requests host cancellation for %s', async expected => {
+    const f = await publishFixture();
+    const cancel = vi.fn(async () => {});
+    f.deps.cancelChild = cancel;
+    f.deps.readPr = async () => ({ state: expected === 'pr_closed' ? 'CLOSED' : expected === 'pr_merged' ? 'MERGED' : 'OPEN',
+      repository: 'o/r', headRefName: expected === 'pr_head_ref_changed' ? 'other' : 'topic',
+      headRefOid: expected === 'external_write' || expected === 'head_regressed' ? oid('f') : old,
+      baseRefName: 'main', baseRefOid: expected === 'base_changed' ? oid('f') : oid('a'), url: 'https://example.invalid/pull/7' });
+    f.deps.localGit = async (_cwd, args) => ({ stdout: args[0] === 'rev-list' ? next : '',
+      exitCode: expected === 'head_regressed' && args[0] === 'merge-base' && args[3] === oid('f') ? 1 : 0 });
+    await expect(f.call()).rejects.toThrow(`CONTAINED_REVISION_REFUSED:${expected}`);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(cancel).toHaveBeenCalledWith(f.id);
+    expect(f.deps.chains.get(f.chain.chain_id).state).toBe(expected === 'pr_closed' || expected === 'pr_merged' ? 'closed' : 'awaiting_decision');
+  });
+
+it.each([
+  ['chain_state', 'fence_chain_state', (f: Awaited<ReturnType<typeof publishFixture>>) => {
+    const chain = f.deps.chains.get(f.chain.chain_id);
+    f.deps.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', ++f.f.clock.now);
+  }],
+  ['child_cancelled', 'child_cancelled', (f: Awaited<ReturnType<typeof publishFixture>>) => {
+    const child = f.deps.missions.get(f.id);
+    f.deps.missions.transition(f.id, { if_revision: child.revision, to: 'cancel_requested', event: { kind: 'cancel_requested', payload: {} } }, ++f.f.clock.now);
+  }],
+] as const)('release fence detects %s before git runs', async (_name, expected, mutate) => {
+  let f!: Awaited<ReturnType<typeof publishFixture>>;
+  let gitRan = false;
+  f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = 'hp_releasemutated';
+    journal.launching({ op_id: opId, mission_id: f.id, kind: 'git_push', remote_target: 'o/r#refs/heads/topic', local_target: '/tmp/repo#refs/heads/topic',
+      intent_id: intentId, argv_digest: '8'.repeat(64), boot_id: 'test', marker: { path: '/tmp/marker', dev: '1', ino: '1' } });
+    journal.registered(opId, { pid: 12345, pgid: 12345, leader_start: 'test' });
+    mutate(f);
+    try { journal.release(opId, fence); } catch (error) { journal.stopped(opId, { proof: 'never_released', detail: {} }); throw error; }
+    gitRan = true;
+    throw Error('git_ran');
+  });
+  await expect(f.call()).rejects.toThrow(`CONTAINED_REVISION_REFUSED:${expected}`);
+  expect(gitRan).toBe(false);
+  expect(f.deps.chains.intents(f.chain.chain_id).at(-1)).toMatchObject({ state: 'failed', detail: expected });
+});
+
+it('release fence checks the intent head, current child, and reservation binding', async () => {
+  const f = await fullFixture();
+  const mission = f.deps.missions.get(f.id);
+  const input = { mission, spec: f.f.childSpec(f.id), permit: { mission_id: f.id, revision: mission.revision,
+    head: next, tree: '3'.repeat(40), spec_digest: mission.spec_digest }, beforeRemoteMutation: () => {}, signal: new AbortController().signal };
+  expect(() => assertRevisionPublishable(f.deps, { ...input, permit: { ...input.permit, head: '9'.repeat(40) } }, f.intent.intent_id))
+    .toThrow('CONTAINED_REVISION_FENCE:intent_moved');
+  expect(() => assertRevisionPublishable(f.deps, { ...input, mission: { ...mission, mission_id: f.f.rootId } }, f.intent.intent_id))
+    .toThrow('CONTAINED_REVISION_FENCE:not_current_child');
+  f.f.rig.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason='test' WHERE chain_id=?").run(f.input.chain_id);
+  expect(() => assertRevisionPublishable(f.deps, input, f.intent.intent_id)).toThrow('CONTAINED_REVISION_FENCE:intent_moved');
+});
+
+it('release fence rejects a stale owner without changing any ledger', async () => {
+  const f = await fullFixture();
+  const mission = f.deps.missions.get(f.id);
+  const input = { mission, spec: f.f.childSpec(f.id), permit: { mission_id: f.id, revision: mission.revision,
+    head: next, tree: '3'.repeat(40), spec_digest: mission.spec_digest }, beforeRemoteMutation: () => {}, signal: new AbortController().signal };
+  const chainBefore = f.deps.chains.get(f.input.chain_id);
+  const owner = vi.spyOn(f.deps.chains.attention, 'assertOwner').mockImplementationOnce(() => { throw Error('stale_owner'); });
+  expect(() => assertRevisionPublishable(f.deps, input, f.intent.intent_id)).toThrow('CONTAINED_REVISION_FENCE:stale_owner');
+  owner.mockRestore();
+  expect(f.deps.chains.get(f.input.chain_id)).toEqual(chainBefore);
+  expect(f.deps.chains.getIntent(f.intent.intent_id).state).toBe('pending');
+});
 
 it.each(['pr_read', 'remote_head', 'merge_base'] as const)('leaves no ledger writes when %s fails before intent creation', async failure => {
   const f = await publishFixture();
@@ -267,20 +398,61 @@ describe('revision confirmation D10', () => {
     expect(deps.chains.get(input.chain_id).state).toBe('awaiting_review');
   });
 
-  it.each(['stopped', 'closed'] as const)('records a replacement check intent on a %s live chain', async state => {
+  it.each(['stopped', 'closed'] as const)('routes the confirmed child check on a %s live chain', async state => {
     const { deps, input, id } = await fullFixture();
     confirmRevisionPublication(deps, input);
     await expect(publishRevisionCheck(deps, id, async () => { throw Error('check_unavailable'); })).rejects.toThrow('check_unavailable');
     const chain = deps.chains.get(input.chain_id);
     if (state === 'closed') deps.chains.closeLive(chain.chain_id, chain.revision, 'pr_closed', T0 + H);
     else deps.chains.stopLive(chain.chain_id, chain.revision, 'base_changed', T0 + H);
-    expect(await publishRevisionCheck(deps, id, async () => ({ check_run_id: 29, created: true }))).toEqual({ check_run_id: 29, created: true });
-    expect(deps.chains.intents(input.chain_id).filter(i => i.kind === 'check').map(i => i.state)).toEqual(['failed', 'confirmed']);
+    const send = vi.fn(async () => ({ check_run_id: 29, created: true }));
+    expect(await publishRevisionCheck(deps, id, send)).toEqual(state === 'closed'
+      ? { check_run_id: 0, created: false, skipped: true } : { check_run_id: 29, created: true });
+    expect(send).toHaveBeenCalledTimes(state === 'closed' ? 0 : 1);
+    expect(deps.chains.intents(input.chain_id).filter(i => i.kind === 'check').map(i => i.state)).toEqual(state === 'closed' ? ['failed'] : ['failed', 'confirmed']);
+    if (state === 'closed') expect(deps.chains.events(input.chain_id, 0, 500).map(e => e.kind)).toContain('check_skipped');
     expect(deps.chains.get(input.chain_id).state).toBe(state === 'closed' ? 'closed' : 'awaiting_decision');
+  });
+
+  it('uses the confirmed push chain after current_mission_id moves to another child', async () => {
+    const { deps, input, id, f } = await fullFixture({ rounds: 2 });
+    confirmRevisionPublication(deps, input);
+    const confirmed = deps.chains.get(input.chain_id);
+    deps.chains.clearCurrentMission(input.chain_id, confirmed.revision, ++f.clock.now);
+    f.pr.head = next;
+    f.pr.reviews = [changesRequested(78, next)];
+    expect((await dispatched(f)).child_mission_id).not.toBe(id);
+    expect(await publishRevisionCheck(deps, id, async () => ({ check_run_id: 31, created: true }))).toEqual({ check_run_id: 31, created: true });
+    expect(deps.chains.intents(input.chain_id).filter(i => i.kind === 'check').map(i => i.state)).toEqual(['confirmed']);
   });
 });
 
 describe('revision refusal D4', () => {
+  it.each(['rejects', 'throws'] as const)('records child_cancel_failed when pre-push cancellation %s', async mode => {
+    const p = await publishFixture(undefined, { readPr: async () => ({ state: 'CLOSED', repository: 'o/r', headRefName: 'topic', headRefOid: old,
+      baseRefName: 'main', baseRefOid: 'a'.repeat(40), url: 'https://example.invalid/pull/7' }) });
+    p.deps.cancelChild = mode === 'throws' ? (() => { throw Error('cancel_conflict:revision'); }) : (async () => { throw Error('cancel_conflict:revision'); });
+    await expect(p.call()).rejects.toThrow('CONTAINED_REVISION_REFUSED:pr_closed');
+    await vi.waitFor(() => expect(p.deps.chains.events(p.chain.chain_id, 0, 500).filter(e => e.kind === 'child_cancel_failed').map(e => JSON.parse(e.payload_json)))
+      .toEqual([{ child: p.id, code: 'cancel_conflict' }]));
+  });
+
+  it('records child_cancel_failed after a pushed revision when cancellation rejects', async () => {
+    let remote = old;
+    const p = await publishFixture(async (intentId, journal, fence) => {
+      const opId = releasePush(journal, intentId, p.id, fence, true);
+      remote = next;
+      return { stdout: '', stderr: '', exitCode: 0, opId };
+    });
+    p.deps.remoteHead = async () => remote;
+    p.deps.readPr = async () => ({ state: remote === next ? 'CLOSED' : 'OPEN', repository: 'o/r', headRefName: 'topic', headRefOid: remote,
+      baseRefName: 'main', baseRefOid: 'a'.repeat(40), url: 'https://example.invalid/pull/7' });
+    p.deps.cancelChild = async () => { throw Error('cancel_conflict:revision'); };
+    await expect(p.call()).rejects.toThrow('CONTAINED_REVISION_PR_CHANGED_AFTER_PUSH');
+    expect(p.deps.chains.events(p.chain.chain_id, 0, 500).filter(e => e.kind === 'child_cancel_failed').map(e => JSON.parse(e.payload_json)))
+      .toEqual([{ child: p.id, code: 'cancel_conflict' }]);
+  });
+
   const codes: RevisionRefusalCode[] = ['repo_config_changed', 'local_head_mismatch', 'push_url_invalid', 'transport_unsupported',
     'start_mismatch', 'publisher_unavailable', 'intent_binding_mismatch', 'grant_expired', 'chain_state',
     'pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'external_write', 'head_regressed',
@@ -338,6 +510,7 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
     const { f, id, mission, chain, journal } = base;
     if (!mission || !chain || !journal) throw Error('fixture_incomplete');
     let pushes = 0; let attempts = 0; let baseChanged = false;
+    const cancel = vi.fn(async () => {});
     const remoteHead = () => git(repo, 'ls-remote', 'origin', 'refs/heads/topic').split(/\s/)[0]!;
     const deps: RevisionPublicationDeps = {
       chains: f.rig.chains, missions: f.rig.missions, now: () => ++f.clock.now,
@@ -371,7 +544,8 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
       remoteHead: async () => remoteHead(), compare: async (repository, oldHead, newHead) => threeCommits
         ? compareRevisionRange(repository, oldHead, newHead, async () => ({ stdout: JSON.stringify({ total_commits: 3,
           commits: [second, third, candidate].map(sha => ({ sha })) }), stderr: '', exitCode: 0 }))
-        : scenario === 'readback_mismatch' ? [] : [second], preflight: async () => {}, checkEnabled: true, sleep: async () => {},
+        : scenario === 'readback_mismatch' ? [] : [second], preflight: async () => {}, checkEnabled: true, sleep: async () => {}, cancelChild: cancel,
+      fenceAuthority: () => ({ access: f.deps.access, keys: f.deps.keys(), now: f.clock.now, enabled: f.flags.enabled }),
     };
     const spec = { ...f.childSpec(id), worktree_path: repo, repo_path: repo };
     const permit = { mission_id: id, revision: mission.revision, head: candidate, tree: '3'.repeat(40), spec_digest: mission.spec_digest };
@@ -398,6 +572,7 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
       expect(intent.state).toBe(scenario === 'readback_mismatch' || scenario === 'stale' ? 'uncertain' : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? 'failed' : 'confirmed');
       if (scenario === 'lease_rejected') expect(intent.detail).toBe('push_rejected');
       expect(deps.missions.get(id).state).toBe('awaiting_decision');
+      if (scenario === 'base_changed' || scenario === 'pr_closed') expect(cancel).toHaveBeenCalledWith(id);
     }
     expect(remoteHead()).toBe(scenario === 'stale' ? third : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? first : candidate);
     expect(pushes).toBe(scenario === 'base_changed_before_release' ? 0 : 1);

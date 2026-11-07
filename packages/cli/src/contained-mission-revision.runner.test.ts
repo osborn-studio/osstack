@@ -1,9 +1,10 @@
 import type { CodexProxyRun, CodexQualification } from '@osstack/agents';
-import type { ContainedMission } from '@osstack/core';
-import { describe, expect, it } from 'vitest';
+import { HostProcessStore, type ContainedMission } from '@osstack/core';
+import { describe, expect, it, vi } from 'vitest';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
 import { H, T0, dispatched, setup } from './contained-mission-revision.testkit.js';
 import { createRevisionLaunchPort } from './contained-mission-revision.js';
+import { createRevisionPublicationPort, type RevisionPublicationDeps } from './contained-mission-revision-publication.js';
 import { ContainedMissionRunner, parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
 
 const PATCH = '--- a/src/a.txt\n+++ b/src/a.txt\n@@ -1 +1 @@\n-hi\n+hello\n';
@@ -16,8 +17,8 @@ const run = (): CodexProxyRun => ({ launch: { pid: 4242, pgid: 4242, started_at:
   stdout_truncated: false, stderr_truncated: false });
 
 /** The runner over a real ledger (chain, grant, child) with scripted effects. */
-async function harness(opts: { revision?: boolean; chainDiff?: () => string; worktreeTree?: () => string } = {}) {
-  const f = setup();
+async function harness(opts: { revision?: boolean; chainDiff?: () => string; worktreeTree?: () => string; expiresIn?: number } = {}) {
+  const f = setup(opts.expiresIn ? { expiresIn: opts.expiresIn } : {});
   const out = await dispatched(f);
   const calls = { execute: [] as string[], verify: 0, publish: 0, cumulative: [] as string[] };
   let verifyExit = 0;
@@ -54,7 +55,137 @@ async function harness(opts: { revision?: boolean; chainDiff?: () => string; wor
 }
 type Harness = Awaited<ReturnType<typeof harness>>;
 
+function wireRevisionPublisher(h: Harness, beforeRelease: (intentId: string) => void = () => {}) {
+  const journal = new HostProcessStore(h.f.rig.attention, h.f.rig.owner, { clock: () => ++h.f.clock.now });
+  const candidate = 'b'.repeat(40);
+  let gitRan = false;
+  let remote = h.chain().published_head;
+  const deps: RevisionPublicationDeps = {
+    chains: h.f.rig.chains, missions: h.f.rig.missions, now: () => ++h.f.clock.now,
+    host: { recordForIntent: id => h.f.rig.db.prepare('SELECT * FROM engineering_host_processes WHERE intent_id=?').get(id) as ReturnType<typeof journal.get> | undefined },
+    runner: { gated: true, run: async (_command, args, options) => {
+      if (args.includes('get-url')) return { stdout: 'https://github.com/o/r.git\n', stderr: '', exitCode: 0 };
+      if (!args.includes('push') || !options.gate?.intentId) throw Error('unexpected_command');
+      const opId = 'hp_runnerrelease';
+      journal.launching({ op_id: opId, mission_id: h.childId, kind: 'git_push', remote_target: options.gate.remoteTarget,
+        local_target: options.gate.localTarget, intent_id: options.gate.intentId, argv_digest: '8'.repeat(64), boot_id: 'test',
+        marker: { path: '/tmp/marker', dev: '1', ino: '1' } });
+      journal.registered(opId, { pid: 12345, pgid: 12345, leader_start: 'test' });
+      beforeRelease(options.gate.intentId);
+      try { journal.release(opId, options.gate.fence); }
+      catch (error) { journal.stopped(opId, { proof: 'never_released', detail: {} }); throw error; }
+      gitRan = true;
+      remote = candidate;
+      journal.stopped(opId, { proof: 'group_empty+marker_unheld', detail: {}, exit_code: 0 });
+      return { stdout: '', stderr: '', exitCode: 0, opId };
+    } },
+    readPr: async () => ({ state: 'OPEN', repository: 'o/r', headRefName: 'topic', headRefOid: remote,
+      baseRefName: 'main', baseRefOid: oid('a'), url: 'https://example.invalid/pull/7' }),
+    localGit: async (_cwd, args) => ({ stdout: args[0] === 'rev-list' ? candidate : '', exitCode: 0 }),
+    remoteHead: async () => remote, compare: async () => [candidate], preflight: async () => {}, checkEnabled: false,
+    fenceAuthority: () => ({ access: h.f.deps.access, keys: h.f.deps.keys(), now: h.f.clock.now, enabled: h.f.flags.enabled }),
+    cancelChild: id => h.runner.cancel(id),
+  };
+  h.ports.revisionPublication = createRevisionPublicationPort(deps);
+  return { deps, journal, gitRan: () => gitRan };
+}
+
 describe('a revision child under the runner', () => {
+  it('publishes a same-PR revision through the real publication port and W13 release', async () => {
+    const h = await harness();
+    const wired = wireRevisionPublisher(h);
+    expect((await h.step(5)).state).toBe('pr_opened');
+    expect(wired.gitRan()).toBe(true);
+    expect(h.calls.publish).toBe(0);
+    expect(h.chain()).toMatchObject({ state: 'awaiting_review', published_head: 'b'.repeat(40) });
+  });
+
+  it('records a failed revision check on the opened Mission', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h);
+    h.ports.publishVerifyCheck = async () => { throw Error('check_http_failed'); };
+    expect((await h.step(5)).state).toBe('pr_opened');
+    expect(h.events().filter(e => e.kind === 'verify_check_failed').map(e => JSON.parse(e.payload_json))).toEqual([{ code: 'check_http_failed' }]);
+    expect(h.chain().state).toBe('awaiting_review');
+  });
+
+  it('skips the revision check when the chain closes after confirmation', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h);
+    const publication = h.ports.revisionPublication!;
+    h.ports.revisionPublication = { ...publication, confirm: input => {
+      const opened = publication.confirm(input);
+      const chain = h.chain();
+      h.f.rig.chains.closeLive(chain.chain_id, chain.revision, 'pr_closed', ++h.f.clock.now);
+      return opened;
+    } };
+    const send = vi.fn(async () => ({ check_run_id: 33, created: true }));
+    h.ports.publishVerifyCheck = send;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    expect(send).not.toHaveBeenCalled();
+    expect(h.events().map(e => e.kind)).toContain('verify_check_skipped');
+    expect(h.f.rig.chains.events(h.chain().chain_id, 0, 500).map(e => e.kind)).toContain('check_skipped');
+  });
+
+
+  it('requests host cancellation when the PR closes before revision publication', async () => {
+    const h = await harness();
+    const wired = wireRevisionPublisher(h);
+    wired.deps.readPr = async () => ({ state: 'CLOSED', repository: 'o/r', headRefName: 'topic', headRefOid: h.chain().published_head,
+      baseRefName: 'main', baseRefOid: oid('a'), url: 'https://example.invalid/pull/7' });
+    expect((await h.step(5)).state).toBe('cancel_requested');
+    expect(wired.gitRan()).toBe(false);
+    expect(h.chain().state).toBe('closed');
+    expect(h.events().map(e => e.kind)).toContain('cancel_requested');
+  });
+
+  it.each(['bridge_live_disabled', 'grant_expired', 'grant_invalid', 'budget_exhausted', 'child_cancelled', 'chain_state', 'intent_moved', 'not_current_child'] as const)(
+    'refuses %s at the real runner release fence before git runs', async expected => {
+      const h = await harness(expected === 'budget_exhausted' ? { expiresIn: 72 * H } : {});
+      let wired!: ReturnType<typeof wireRevisionPublisher>;
+      wired = wireRevisionPublisher(h, _intentId => {
+        if (expected === 'bridge_live_disabled') h.f.flags.enabled = false;
+        if (expected === 'grant_expired') h.f.clock.now = T0 + 24 * H;
+        if (expected === 'budget_exhausted') h.f.clock.now = T0 + 48 * H;
+        if (expected === 'grant_invalid') h.f.flags.access = false;
+        if (expected === 'child_cancelled') void h.runner.cancel(h.childId);
+        if (expected === 'chain_state' || expected === 'not_current_child') {
+          const original = wired.deps.chains.get.bind(wired.deps.chains);
+          vi.spyOn(wired.deps.chains, 'get').mockImplementationOnce(id => ({ ...original(id),
+            ...(expected === 'chain_state' ? { state: 'awaiting_decision' as const } : { current_mission_id: 'cm_other' }) }));
+        }
+        if (expected === 'intent_moved') {
+          const original = wired.deps.chains.getIntent.bind(wired.deps.chains);
+          vi.spyOn(wired.deps.chains, 'getIntent').mockImplementationOnce(id => ({ ...original(id), new_head: oid('f') }));
+        }
+      });
+      const result = await h.step(5);
+      expect(result.state).toBe(expected === 'child_cancelled' ? 'cancel_requested' : 'awaiting_decision');
+      expect(wired.gitRan()).toBe(false);
+      expect(h.calls.publish).toBe(0);
+      const intent = h.f.rig.chains.intents(h.chain().chain_id).at(-1)!;
+      expect(intent).toMatchObject({ state: 'failed', detail: expected.startsWith('grant_') || expected === 'budget_exhausted' || expected === 'bridge_live_disabled' || expected === 'child_cancelled' ? expected : `fence_${expected}` });
+      expect(wired.deps.host.recordForIntent(intent.intent_id)).toMatchObject({ state: 'stopped', released_at: null });
+    });
+
+  it.each(['reservation_moved', 'claim_released'] as const)('refuses %s at W13 release', async failure => {
+    const h = await harness();
+    let wired!: ReturnType<typeof wireRevisionPublisher>;
+    wired = wireRevisionPublisher(h, () => {
+      if (failure === 'reservation_moved') {
+        const original = wired.deps.chains.reservations.bind(wired.deps.chains);
+        vi.spyOn(wired.deps.chains, 'reservations').mockImplementationOnce(id => original(id).map(row => ({ ...row, child_mission_id: h.f.rootId })));
+      } else {
+        const original = wired.deps.missions.claim.bind(wired.deps.missions);
+        vi.spyOn(wired.deps.missions, 'claim').mockImplementationOnce(id => ({ ...original(id), state: 'released' }));
+      }
+    });
+    expect((await h.step(5)).state).toBe('awaiting_decision');
+    expect(wired.gitRan()).toBe(false);
+    const intent = h.f.rig.chains.intents(h.chain().chain_id).at(-1)!;
+    expect(intent).toMatchObject({ state: 'failed', detail: failure === 'reservation_moved' ? 'fence_intent_moved' : 'fence_chain_state' });
+  });
+
   it('carries the untrusted review block into the first turn and into the repair turn', async () => {
     const h = await harness(); h.setVerifyExit(1);
     await h.step(3); // workspace, executor, verify
@@ -135,6 +266,29 @@ describe('a revision child under the runner', () => {
     expect(again.state).toBe('revalidating');
     await h.step(2);
     expect(h.lastHalt().reason).toBe('publication_failed:revision_publisher_unavailable');
+    expect(h.calls.publish).toBe(0);
+  });
+
+  it('dispatches a wired revision target to publishRevision on the runner path', async () => {
+    const h = await harness();
+    let revisions = 0;
+    h.ports.revisionPublication = {
+      publishRevision: async input => {
+        revisions++;
+        input.beforeRemoteMutation('push');
+        return { pushed_commit: input.permit.head, pr: { number: 7, url: 'https://example.invalid/pull/7', reused: true }, base_head: oid('a'),
+          intent_id: 'pi_test', op_id: 'hp_test', push_range: [input.permit.head], range_sha256: 'a'.repeat(64) };
+      },
+      confirm: input => {
+        const current = h.get();
+        expect(input.child_mission_id).toBe(h.childId);
+        return h.ports.store.transition(h.childId, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: {} } }, 20_000);
+      },
+      reconcileReceipt: () => { throw Error('unexpected reconciliation'); },
+      publishCheck: async () => { throw Error('unexpected check'); },
+    };
+    expect((await h.step(5)).state).toBe('pr_opened');
+    expect(revisions).toBe(1);
     expect(h.calls.publish).toBe(0);
   });
 
