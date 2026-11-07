@@ -115,6 +115,11 @@ export class ContainedMissionHost {
     return this.runner.cancel(missionId);
   }
 
+  /** Daemon fallback only when the grant principal has lost stop permission. */
+  async cancelFromBridge(missionId: string): Promise<ContainedMission> {
+    return this.runner.cancel(missionId);
+  }
+
   /** Re-publish the `osstack/verify` check of a pr_opened Mission. Needs write scope; never touches the branch or PR. */
   async publishCheck(principal: EngineeringPrincipal, missionId: string): Promise<{ check_run_id: number; created: boolean }> {
     const mission = this.store.readable(principal, missionId);

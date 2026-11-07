@@ -12,6 +12,7 @@ import { constants } from 'node:fs';
 import { mkdir, open, rename, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
+import { recordChildCancelFailure } from './contained-mission-bridge-cancel-failure.js';
 import {
   GRANT_LIMITS,
   RENEWABLE_STOP_REASONS,
@@ -320,7 +321,7 @@ export class RevisionGrantService {
     if (child !== null && !TERMINAL.has(missions.state(child))) {
       cancel = 'failed';
       try { await this.options.cancelChild?.(actor, child); cancel = this.options.cancelChild ? 'requested' : 'failed'; }
-      catch (error) { chains.appendEvent(chain.chain_id, 'child_cancel_failed', { child, code: (error instanceof Error ? error.message.split(':')[0] ?? 'error' : 'error').slice(0, 64) }, this.options.now()); }
+      catch (error) { recordChildCancelFailure(chains, chain.chain_id, child, error, this.options.now(), actor.principal_id); }
     }
     return { chain_id: closed.chain_id, state: closed.state, decision: input.decision, child_cancel: cancel };
   }
@@ -442,4 +443,3 @@ export async function createGrantMissionView(store: ContainedMissionStore): Prom
   const view = createShadowMissionView(store);
   return { readable: (actor, id) => store.readable(actor, id), publication: id => view.publication(id), state: id => store.get(id).state };
 }
-

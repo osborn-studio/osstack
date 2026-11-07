@@ -162,6 +162,7 @@ export class RevisionChainStore {
         case "transition": case "stop": {
           const patch: Patch = { state: decision.to };
           if (decision.kind === "transition" && decision.to === "closed" && chain.mode === "live") {
+            patch.stop_reason = decision.reason;
             this.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason=?,updated_at=? WHERE chain_id=? AND state IN ('reserved','dispatched')")
               .run(`chain_closed:${decision.reason}`.slice(0, 64), now, chainId);
           }
@@ -616,7 +617,7 @@ export class RevisionChainStore {
     // D1: a stopped chain does not resume while a push receipt may still land (a pending push may be on the remote, an uncertain one is).
     if (chain.state === "awaiting_decision" && next.state !== "awaiting_decision" && next.state !== "closed"
       && this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain')").get(chain.chain_id)) fail("intent_unsettled");
-    const stop = next.state === "awaiting_decision" ? (patch.stop_reason ?? chain.stop_reason) : null;
+    const stop = next.state === "awaiting_decision" ? (patch.stop_reason ?? chain.stop_reason) : next.state === "closed" ? (patch.stop_reason ?? null) : null;
     // grant_json is named in the SET list only for a re-grant, so every other update stays clear of the grant triggers.
     const grant = patch.grant_json !== undefined;
     const spent = patch.spent_json !== undefined;
@@ -664,6 +665,14 @@ export class RevisionChainStore {
   listStoppedLive(limit = 10, after?: { updated_at: number; chain_id: string }): RevisionChain[] {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
     return this.db.prepare(`SELECT * FROM engineering_revision_chains WHERE mode='live' AND state='awaiting_decision'
+      AND (updated_at>? OR (updated_at=? AND chain_id>?)) ORDER BY updated_at,chain_id LIMIT ?`)
+      .all(after?.updated_at ?? -1, after?.updated_at ?? -1, after?.chain_id ?? "", limit) as RevisionChain[];
+  }
+  /** Closed PR chains whose child may still need a cancellation request. */
+  listClosedPrLive(limit = 10, after?: { updated_at: number; chain_id: string }): RevisionChain[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
+    return this.db.prepare(`SELECT * FROM engineering_revision_chains WHERE mode='live' AND state='closed'
+      AND stop_reason IN ('pr_merged','pr_closed') AND current_mission_id IS NOT NULL
       AND (updated_at>? OR (updated_at=? AND chain_id>?)) ORDER BY updated_at,chain_id LIMIT ?`)
       .all(after?.updated_at ?? -1, after?.updated_at ?? -1, after?.chain_id ?? "", limit) as RevisionChain[];
   }

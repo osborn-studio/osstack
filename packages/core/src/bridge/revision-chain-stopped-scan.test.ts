@@ -38,7 +38,7 @@ it.each(["MERGED", "CLOSED"] as const)("closes a stopped chain when the PR is %s
   const f = setup(); const c = f.chain();
   const report = await scanStoppedChains({ store: f.store, readPr: async () => facts(state), now: 30, limit: 10 });
   expect(report.chains).toMatchObject([{ chain_id: c.chain_id, action: "closed", reason: state === "MERGED" ? "pr_merged" : "pr_closed" }]);
-  expect(f.store.get(c.chain_id)).toMatchObject({ state: "closed", stop_reason: null });
+  expect(f.store.get(c.chain_id)).toMatchObject({ state: "closed", stop_reason: state === "MERGED" ? "pr_merged" : "pr_closed" });
   expect(f.store.events(c.chain_id).at(-1)).toMatchObject({ kind: "transition" });
   f.db.close();
 });
