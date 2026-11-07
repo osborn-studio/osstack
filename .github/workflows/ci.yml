@@ -270,6 +270,32 @@ jobs:
           OSSTACK_NEAT_DEEPSEEK_MODEL: ${{ vars.OSSTACK_NEAT_DEEPSEEK_MODEL }}
         run: node scripts/smoke-neat-semantic-live.mjs --provider deepseek-no-tools
 
+  bridge-offline-node-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      # Pure injected ports/local fixture modules only. No sandbox execution,
+      # credentials, GitHub requests, Docker or paid model calls.
+      - name: Bridge offline Node contracts
+        env:
+          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
+        run: >-
+          node --test --test-concurrency=1
+          scripts/smoke-bridge-revision-sandbox.test.mjs
+          scripts/smoke-bridge-revision-sandbox.helpers.test.mjs
+          scripts/bridge-installed-runtime.test.mjs
+          scripts/inspect-bridge-operator-readiness.test.mjs
+          scripts/verify-bridge-phase5-mutations.test.mjs
+          scripts/bridge-sandbox-cold-restart.test.mjs
+          scripts/bridge-sandbox-activity.test.mjs
+          scripts/bridge-sandbox-publication-hook.test.mjs
+
   graph-macos-fixtures:
     runs-on: macos-15
     timeout-minutes: 15
