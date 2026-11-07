@@ -37,6 +37,16 @@ Recent history follows Conventional Commits, for example `feat(loop): add loop e
 - `main` and `changeset-release/main` (owned by the release workflow) are never deleted.
 - `main` protection dismisses approvals whenever `main` moves. Approve and merge one PR at a time.
 
+## Gated Node Graph (multi-PR work)
+
+Work that spans several PRs runs as a graph of gated nodes. The bridge program's graph is `docs/plans/bridge-graph/` (`graph.md` for nodes, edges, gates and learned rules; `checks.md` for one verdict and evidence row per requirement; `progress.md` for state and the next step). On resume, read `graph.md` and `progress.md` first.
+
+- Define "done" and the execution limit before starting. One node is one PR with one output and its own checks; draw an edge only where one node uses another's output; nodes without edges run in parallel.
+- Open a gate only on evidence, in this order: deterministic checks (typecheck, targeted tests, `generate-inventory --check`, changeset coverage after commit, `biome check`, the CLI startup import graph, the docs audit test for docs, `git merge-tree` against every open branch, fixture leak scans), then the node's own report, then model review, then CI. Nothing deterministic is judged by a model.
+- A failed gate goes back only to the node that produced it, with "fix only this node". At most three fixes per node, then mark it unresolved and ask the owner. Never re-run a gate to force a pass.
+- Record failed attempts as well as successes in `progress.md`, and turn each lesson into a rule in `graph.md` §6. Two PRs that each pass CI can still break `main` together: test-merge every open branch and run the combined tests before asking for a merge.
+- Ask before publishing, deploying, spending, or changing repository settings or GitHub App installations. Humans merge `main`.
+
 ## Performance Budgets
 
 Startup and latency budgets (from `docs/design/2026-08-12-performance-hints-improvement-plan.md`, after Dean & Ghemawat's Performance Hints). CI enforces the first two via the "CLI startup budget" step (`scripts/bench-cli-startup.mjs`); check the rest with `osstack stats` (rpc section).
