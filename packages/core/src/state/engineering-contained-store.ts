@@ -45,7 +45,8 @@ const NEXT: Readonly<Record<ContainedMissionState, readonly ContainedMissionStat
   revalidating: ["delivering", "candidate_ready"],
   delivering: ["pr_opened", "candidate_ready"],
   // candidate_ready: only the same candidate, to resume a launch the budget or grant stopped before it began (revision children).
-  awaiting_decision: ["executing", "revalidating", "abandoned", "candidate_ready"],
+  // workspace_ready: W13 `resume_workspace` after an orphaned worktree add was proven stopped (the runner checks the halt reason).
+  awaiting_decision: ["executing", "revalidating", "abandoned", "candidate_ready", "workspace_ready"],
   needs_reconciliation: ["executing", "candidate_ready", "abandoned"],
   stop_unknown: ["needs_reconciliation", "abandoned"],
   cancel_requested: ["cancelled"],

@@ -37,6 +37,7 @@ function setup(over: Partial<ContainedMissionPorts> = {}, specOver: Partial<Cont
   const ports: ContainedMissionPorts = {
     store, now: () => ++clock,
     createWorkspace: async () => ({ worktree: join(root, "wt"), gitDir: join(root, "repo", ".git"), head: START, configDigest: "sha256:" + "0".repeat(64) }),
+    resumeWorkspace: async () => ({ worktree: join(root, "wt"), gitDir: join(root, "repo", ".git"), head: START, configDigest: "sha256:" + "0".repeat(64) }),
     qualify: async () => qualified,
     execute: async input => { calls.execute.push(input.prompt); input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 }); return run(); },
     readFile: async (_wt, p) => files.get(p) ?? null,

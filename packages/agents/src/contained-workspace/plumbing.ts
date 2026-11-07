@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { copyFile, lstat, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { type HardenedGitContext, HardenedGitError, type HardenedGitOptions, runHardenedGit } from "./hardened-git.js";
+import { type HardenedGitContext, HardenedGitError, type HardenedGitGate, type HardenedGitOptions, runHardenedGit } from "./hardened-git.js";
+import type { HostProcessJournal, HostProcessKind, HostProcessProbe } from "./host-process.js";
 import { assertRepoConfigUnchanged, filterNeutralizingConfig } from "./repo-config.js";
 import { SafeFileError, safeReadFile, safeRelativePathSegments, safeRemoveFile, safeWriteFile } from "./safe-write.js";
 
@@ -34,6 +35,34 @@ export class ContainedWorkspaceError extends Error {
 
 const FULL_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
+/**
+ * W13-C1: every covered local write (`update-ref`, `worktree add`, real-index `read-tree` and `update-index --refresh`)
+ * is launched through the gated launcher when a gate is given: registered in the journal before it can write, and
+ * released only after `fence()` passes inside the release transaction. Without a gate the behaviour is unchanged.
+ */
+export interface LocalWriteGate {
+  journal: HostProcessJournal;
+  /** `$OSSTACK_HOME/contained/host-processes`. */
+  markerDir: string;
+  mission_id: string;
+  boot_id: string;
+  probe?: HostProcessProbe;
+  /** Synchronous; throws once this owner or Mission revision is no longer current. Runs in the release transaction. */
+  fence: () => void;
+}
+export function gatedGit(gate: LocalWriteGate | undefined, kind: HostProcessKind, localTarget: string): { gate?: HardenedGitGate } {
+  if (gate === undefined) return {};
+  return {
+    gate: {
+      journal: gate.journal,
+      markerDir: gate.markerDir,
+      fence: gate.fence,
+      ...(gate.probe === undefined ? {} : { probe: gate.probe }),
+      launch: { mission_id: gate.mission_id, kind, local_target: localTarget.slice(0, 1024), boot_id: gate.boot_id },
+    },
+  };
+}
+
 export interface TreeLimits {
   maxFiles?: number;
   maxBlobBytes?: number;
@@ -49,6 +78,7 @@ export interface CreateNoCheckoutWorktreeOptions {
   expectedConfigDigest?: string;
   limits?: TreeLimits;
   git?: HardenedGitContext;
+  gate?: LocalWriteGate;
 }
 export interface MaterializedFile {
   path: string;
@@ -81,6 +111,8 @@ export interface CommitPlumbingOptions {
   git?: HardenedGitContext;
   /** Called before each worktree write and before the ref update; throwing aborts the commit with the ref unchanged. */
   fence?: () => void;
+  /** Gated launch of the ref update (design W13 4.3). Its `fence` also runs in the release transaction. */
+  gate?: LocalWriteGate;
 }
 export interface PlumbingCommitResult {
   head: string;
@@ -117,8 +149,8 @@ function blobId(bytes: Uint8Array, algorithm: "sha1" | "sha256"): string {
 }
 
 /** Refresh index stat data; `run` must come from {@link filterFreeGit}. */
-async function refreshIndex(run: Awaited<ReturnType<typeof filterFreeGit>>, indexFile?: string): Promise<number> {
-  const result = await run(["update-index", "--refresh"], { okExitCodes: [0, 1], ...(indexFile ? { gitEnv: { GIT_INDEX_FILE: indexFile } } : {}) });
+async function refreshIndex(run: Awaited<ReturnType<typeof filterFreeGit>>, indexFile?: string, gated: { gate?: HardenedGitGate } = {}): Promise<number> {
+  const result = await run(["update-index", "--refresh"], { okExitCodes: [0, 1], ...gated, ...(indexFile ? { gitEnv: { GIT_INDEX_FILE: indexFile } } : {}) });
   return result.exitCode;
 }
 
@@ -174,7 +206,7 @@ async function rejectReencodedPaths(run: Awaited<ReturnType<typeof filterFreeGit
 export async function materializeCommit(
   worktreePath: string,
   commit: string,
-  options: { limits?: TreeLimits; git?: HardenedGitContext } = {},
+  options: { limits?: TreeLimits; git?: HardenedGitContext; gate?: LocalWriteGate } = {},
 ): Promise<MaterializeResult> {
   assertCommitId(commit, commit);
   const context = options.git;
@@ -196,8 +228,10 @@ export async function materializeCommit(
     await safeWriteFile(worktreePath, entry.path, bytes, entry.mode === "100755" ? 0o755 : 0o644);
     files.push({ path: entry.path, mode: entry.mode, blob: entry.blob, size: bytes.length });
   }
-  await run(["read-tree", commit]);
-  if ((await refreshIndex(run)) !== 0) throw new ContainedWorkspaceError("WORKSPACE_INDEX_MISMATCH");
+  // The real index: each command is its own journaled launch (one open row per Mission, so they run one after the other).
+  const indexWrite = gatedGit(options.gate, "git_index_write", `${worktreePath}#index`);
+  await run(["read-tree", commit], indexWrite);
+  if ((await refreshIndex(run, undefined, indexWrite)) !== 0) throw new ContainedWorkspaceError("WORKSPACE_INDEX_MISMATCH");
   return { worktreePath, commit, files };
 }
 
@@ -210,8 +244,12 @@ export async function createNoCheckoutWorktree(options: CreateNoCheckoutWorktree
   const resolved = text(await git(repoPath, context, ["rev-parse", "--verify", "--end-of-options", `${startCommit}^{commit}`]));
   if (resolved !== startCommit) throw new ContainedWorkspaceError("WORKSPACE_INVALID_COMMIT", startCommit);
   const worktreePath = resolve(options.worktreePath);
-  await (await filterFreeGit(repoPath, context))(["worktree", "add", "--no-checkout", "-b", branch, "--", worktreePath, startCommit]);
-  return materializeCommit(worktreePath, startCommit, { ...(options.limits ? { limits: options.limits } : {}), ...(context ? { git: context } : {}) });
+  await (await filterFreeGit(repoPath, context))(["worktree", "add", "--no-checkout", "-b", branch, "--", worktreePath, startCommit], gatedGit(options.gate, "git_worktree_add", worktreePath));
+  return materializeCommit(worktreePath, startCommit, {
+    ...(options.limits ? { limits: options.limits } : {}),
+    ...(context ? { git: context } : {}),
+    ...(options.gate ? { gate: options.gate } : {}),
+  });
 }
 
 function identityEnv(prefix: "AUTHOR" | "COMMITTER", who: PlumbingCommitAuthor) {
@@ -303,7 +341,7 @@ export async function commitPlumbing(options: CommitPlumbingOptions): Promise<Pl
     assertCommitId(head, head);
     options.fence?.();
     try {
-      await run(["update-ref", "-m", "osstack: plumbing commit", ref, head, expectedHead]);
+      await run(["update-ref", "-m", "osstack: plumbing commit", ref, head, expectedHead], gatedGit(options.gate, "git_update_ref", `${gitDir}#${ref}`));
     } catch (error) {
       if (error instanceof HardenedGitError && error.code === "HARDENED_GIT_FAILED") throw new ContainedWorkspaceError("PLUMBING_COMMIT_STALE_HEAD", error.stderr.trim());
       throw error;

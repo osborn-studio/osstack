@@ -34,6 +34,8 @@ async function harness(opts: { revision?: boolean; chainDiff?: () => string; wor
     commit: async () => ({ head: 'b'.repeat(40), tree: 'c'.repeat(40) }),
     cumulativeDiff: async input => { calls.cumulative.push(input.startCommit); return input.startCommit === chainStart ? (opts.chainDiff?.() ?? PATCH) : PATCH; },
     restoreWorkspace: async () => {},
+    // W13 `resume_workspace` is not exercised by revision-child tests; fail loudly if a path reaches it.
+    resumeWorkspace: async () => { throw new Error('resumeWorkspace not expected in revision-child tests'); },
     worktreeDiff: async input => input.startCommit === chainStart ? { diff: opts.chainDiff?.() ?? PATCH, tree: opts.worktreeTree?.() ?? 'd'.repeat(40), unsafe: [] } : { diff: PATCH, tree: 'd'.repeat(40), unsafe: [] },
     commitWorktree: async () => ({ head: 'e'.repeat(40), tree: 'd'.repeat(40) }),
     verify: async () => { calls.verify++; return { exit_code: verifyExit, output: verifyExit === 0 ? 'ok' : '1 failed', cancelled: false, evidence: 'docker-removed:x', stopped: true }; },

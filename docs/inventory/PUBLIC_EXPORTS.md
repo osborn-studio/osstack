@@ -35,6 +35,7 @@ export {
 export {
 export {
 export {
+export {
 export function defaultAdapters(): AgentAdapter[] {
 export const AGENTS_VERSION = "0.0.0";
 export { createContainedCommandExecutor, createContainedCommandAdapter } from "./contained.js";
@@ -145,6 +146,7 @@ export { AttentionActions, reserveSessionInstruction } from "./state/attention-a
 export { EngineeringStore, engineeringSourceIdentity, type EngineeringPrincipal, type EngineeringMission, type EngineeringWait, type EngineeringActionReceipt, type EngineeringStopResult, type EngineeringObservationProof, type EngineeringDispatchPermit, type EngineeringHostEvidence } from "./state/engineering-store.js";
 export { getEngineeringDispatchPhase, isEngineeringCancelledBeforeDispatch, type EngineeringDispatchPhase } from "./state/engineering-dispatch.js";
 export { ContainedMissionStore, containedUpgradeHolds, type ContainedMission, type ContainedMissionState, type ContainedEvent, type WorkspaceClaim, type ContainedAuthorizeInput, type ContainedTransition } from "./state/engineering-contained-store.js";
+export { ENGINEERING_HOST_PROCESS_DDL } from "./state/engineering-host-process-ddl.js";
 export { HostProcessStore, HOST_PROCESS_KINDS, HOST_PROCESS_STOP_PROOFS, type HostProcessKind, type HostProcessStopProof, type HostProcessState, type HostProcessMarker, type HostProcessLaunchInput, type HostProcessIdentity, type HostProcessOutcome, type HostProcessRecord, type HostProcessExit, type HostProcessStoreOptions } from "./state/engineering-host-process-store.js";
 export { RevisionChainStore, RevisionChainError, shadowChainWriter, revisionChainUpgradeHolds, type ShadowChainWriter, type RevisionChain, type RevisionChainEvent, type RevisionReservation, type PublicationIntent, type ShadowDecisionRow, type NewChainInput, type NewLiveChainInput, type ReserveInput, type NewIntentInput, type ReplaceGrantResult, type ChildAllocation, type LaunchKind, type ReservationState, type IntentKind, type IntentState } from "./state/engineering-revision-chain-store.js";
 export { ENGINEERING_REVISION_CHAIN_DDL } from "./state/engineering-revision-chain-ddl.js";

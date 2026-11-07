@@ -54,7 +54,10 @@ export interface HardenedGitContext {
 }
 
 /** W13: run the command through the gated launcher (register, fence, release, prove stop). Needs no `input`. */
-export type HardenedGitGate = Pick<GatedProcessOptions, "journal" | "markerDir" | "launch" | "fence" | "probe">;
+export type HardenedGitGate = Pick<GatedProcessOptions, "journal" | "markerDir" | "fence" | "probe"> & {
+  /** `argv_digest` is computed from the program and the full hardened argv when the caller leaves it out. */
+  launch: Omit<GatedProcessOptions["launch"], "argv_digest"> & { argv_digest?: string };
+};
 
 export interface HardenedGitOptions extends HardenedGitContext {
   /** Optional gated launch (see host-process.ts). Without it behaviour is unchanged. */
@@ -190,16 +193,19 @@ async function runGatedHardenedGit(
 ): Promise<HardenedGitResult> {
   if (options.input !== undefined) throw new HardenedGitError("HARDENED_GIT_INVALID_ARGS", args);
   // Lazy: keeps the launcher out of every non-gated invocation.
-  const { runGatedProcess, HostProcessError, HostProcessUnprovenError } = await import("./host-process.js");
+  const { runGatedProcess, argvDigest, HostProcessError, HostProcessUnprovenError } = await import("./host-process.js");
+  const { launch, ...gateRest } = gate;
+  const program = options.gitBinary ?? "git";
   let result: Awaited<ReturnType<typeof runGatedProcess>>;
   try {
-    result = await runGatedProcess(options.gitBinary ?? "git", argv, {
+    result = await runGatedProcess(program, argv, {
       cwd: options.cwd,
       env: hardenedGitEnvironment(options.env, options.home ?? options.env?.HOME ?? process.env.HOME, options.gitEnv),
       timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
       maxOutputBytes,
       ...(options.signal === undefined ? {} : { signal: options.signal }),
-      ...gate,
+      ...gateRest,
+      launch: { ...launch, argv_digest: launch.argv_digest ?? argvDigest(program, argv) },
     });
   } catch (error) {
     if (error instanceof HostProcessError && error.code === "HOST_PROCESS_SPAWN_FAILED") {
