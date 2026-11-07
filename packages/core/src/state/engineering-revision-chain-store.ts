@@ -161,6 +161,10 @@ export class RevisionChainStore {
         }
         case "transition": case "stop": {
           const patch: Patch = { state: decision.to };
+          if (decision.kind === "transition" && decision.to === "closed" && chain.mode === "live") {
+            this.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason=?,updated_at=? WHERE chain_id=? AND state IN ('reserved','dispatched')")
+              .run(`chain_closed:${decision.reason}`.slice(0, 64), now, chainId);
+          }
           if (decision.kind === "stop") patch.stop_reason = decision.reason;
           if (decision.kind === "transition" && decision.published_head !== undefined) {
             patch.published_head = decision.published_head;
@@ -276,7 +280,7 @@ export class RevisionChainStore {
           chain = this.update(chain, { state: "awaiting_review", published_head: before.new_head!, published_base: before.expected_base_sha! }, "push_confirmed",
             { head: before.new_head!, base: before.expected_base_sha! }, now);
         }
-        // A closed chain leaves the reservation to the caller's explicit voidReservation (appendix 4.1 item 3, row `closed`).
+        // A closed chain's active reservations were already voided by the close itself (closeLive or a decided close).
         if (before.kind === "push" && chain.state !== "closed") this.settlePublishedReservation(before, bound, now);
       } else if (before.kind === "push" && chain.state !== "awaiting_decision" && chain.state !== "closed") {
         if (to === "uncertain") {
@@ -655,6 +659,14 @@ export class RevisionChainStore {
     return this.db.transaction(() => { this.attention.assertOwner(this.owner); return fn(); }).immediate();
   }
   private clock(now: number): void { if (!Number.isSafeInteger(now) || now < 0) fail("invalid_clock"); }
+
+  /** Stopped live chains in stable cursor order; open-chain scans retain their existing semantics. */
+  listStoppedLive(limit = 10, after?: { updated_at: number; chain_id: string }): RevisionChain[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
+    return this.db.prepare(`SELECT * FROM engineering_revision_chains WHERE mode='live' AND state='awaiting_decision'
+      AND (updated_at>? OR (updated_at=? AND chain_id>?)) ORDER BY updated_at,chain_id LIMIT ?`)
+      .all(after?.updated_at ?? -1, after?.updated_at ?? -1, after?.chain_id ?? "", limit) as RevisionChain[];
+  }
 }
 
 interface Patch {
