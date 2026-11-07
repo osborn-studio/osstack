@@ -24,6 +24,8 @@ export type BridgeExec = (
 ) => Promise<DeliveryCommandResult>;
 export interface BridgeOptions {
   config: BridgeConfig;
+  /** `OSSTACK_BRIDGE=0` kill switch: publication for the configured repository is refused (BRIDGE_DISABLED) before any token, push or check. */
+  disabled?: boolean;
   /** Runs the two credentialed commands (git push, gh pr create); injectable for tests. */
   exec?: BridgeExec;
   fetchImpl?: typeof fetch;

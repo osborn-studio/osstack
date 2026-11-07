@@ -237,6 +237,8 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
       // A configured bridge confines publication to its repository: never fall back to host credentials for another one.
       if (options.bridge !== undefined && options.bridge.config.repository.toLowerCase() !== p.repository.toLowerCase()) throw Error('CONTAINED_BRIDGE_REPOSITORY');
+      // Kill switch (OSSTACK_BRIDGE=0): refuse before the kit, any token source, any git/gh call. Never falls back to host credentials.
+      if (options.bridge?.disabled === true) throw Error('BRIDGE_DISABLED');
       // The repository config that made the workspace safe must still hold before anything leaves the machine.
       await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), ctx);
       if (await branchHead(spec.worktree_path, spec.branch) !== permit.head) throw Error('CONTAINED_PUBLICATION_HEAD_MISMATCH');
@@ -267,7 +269,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       const baseHead = listed.exitCode === 0 ? /^([0-9a-f]{40}|[0-9a-f]{64})\s/.exec(listed.stdout)?.[1] ?? null : null;
       return { pushed_commit: opened.pushedCommit, pr: opened.pr, base_head: baseHead };
     },
-    ...(options.bridge ? { publishVerifyCheck: async (mission: ContainedMission) => (await bridgeKit()).publishVerifyCheck(mission, deliveryEvidenceFacts(mission.mission_id)) } : {}),
+    ...(options.bridge && options.bridge.disabled !== true ? { publishVerifyCheck: async (mission: ContainedMission) => (await bridgeKit()).publishVerifyCheck(mission, deliveryEvidenceFacts(mission.mission_id)) } : {}),
     execute: input => executor(input.worktree).run({ worktree: input.worktree, prompt: input.prompt, signal: input.signal, onLaunched: input.onLaunched }),
     readFile: async (worktree, path) => {
       try { return utf8((await safeReadFile(worktree, path)).bytes, 'CONTAINED_FILE_NOT_UTF8'); }

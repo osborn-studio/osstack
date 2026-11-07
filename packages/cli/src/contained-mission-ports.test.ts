@@ -267,7 +267,7 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
   const missionRules = [rule("deletion", 5), rule("non_fast_forward", 5), rule("creation", 6), rule("update", 6)];
   const stripC = (args: readonly string[]) => { let i = 0; while (args[i] === "-c") i += 2; return args.slice(i); };
 
-  async function bridged(opts: { remoteUrl?: string; repository?: string; rules?: unknown[] } = {}) {
+  async function bridged(opts: { remoteUrl?: string; repository?: string; rules?: unknown[]; disabled?: boolean; configRepository?: string } = {}) {
     const f = fixture();
     const remoteUrl = opts.remoteUrl ?? `https://github.com/${REPO}.git`;
     sh(f.repo, "remote", "add", "origin", remoteUrl);
@@ -303,10 +303,10 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
       if (/access_tokens$/.test(url)) { tokenCalls++; const body = JSON.parse(String(init.body)); return new Response(JSON.stringify({ token: PUB, expires_at: new Date(1_800_003_600_000).toISOString(), permissions: { ...body.permissions, metadata: "read" }, repositories: [{ full_name: REPO }] }), { status: 201 }); }
       return new Response("{}", { status: 404 });
     }) as unknown as typeof fetch;
-    const config = { repository: REPO, publisher: { app_id: 11, installation_id: 21, private_key_path: key }, evidence: { app_id: 12, installation_id: 22, private_key_path: key }, mission_ruleset_ids: [5, 6] };
+    const config = { repository: opts.configRepository ?? REPO, publisher: { app_id: 11, installation_id: 21, private_key_path: key }, evidence: { app_id: 12, installation_id: 22, private_key_path: key }, mission_ruleset_ids: [5, 6] };
     const ports = createContainedMissionPorts({ store: f.store, hostProcess: hostProcessOptions(f.root), now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
       verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
-      delivery: { runner: innerRunner }, bridge: { config, exec, fetchImpl, now: () => 1_800_000_000_000 } });
+      delivery: { runner: innerRunner }, bridge: { config, exec, fetchImpl, now: () => 1_800_000_000_000, ...(opts.disabled ? { disabled: true } : {}) } });
     let m = f.authorize();
     const ws = await ports.createWorkspace(spec, signal(), { mission_id: m.mission_id, fence: () => {} });
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
@@ -363,5 +363,23 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
     const b = await bridged({ repository: "Acme/Widgets" });
     await expect(b.publish()).resolves.toMatchObject({ pr: { number: 9 } });
     expect(b.tokenCalls()).toBe(1);
+  });
+
+  it("kill switch (OSSTACK_BRIDGE=0): the configured repository is refused with BRIDGE_DISABLED before any token, runner, push, PR or check", async () => {
+    const b = await bridged({ disabled: true });
+    await expect(b.publish()).rejects.toThrow("BRIDGE_DISABLED");
+    expect(b.tokenCalls()).toBe(0); expect(b.executed).toEqual([]); expect(b.inner).toEqual([]); expect(b.order).toEqual([]);
+    expect(b.ports.publishVerifyCheck).toBeUndefined();
+  });
+
+  it("kill switch: a repository outside the bridge config keeps its current refusal (CONTAINED_BRIDGE_REPOSITORY), never host credentials", async () => {
+    const b = await bridged({ disabled: true, configRepository: "other/repo" });
+    await expect(b.publish()).rejects.toThrow("CONTAINED_BRIDGE_REPOSITORY");
+    expect(b.tokenCalls()).toBe(0); expect(b.executed).toEqual([]); expect(b.inner).toEqual([]);
+  });
+
+  it("without the kill switch the verify-check port stays present", async () => {
+    const b = await bridged();
+    expect(typeof b.ports.publishVerifyCheck).toBe("function");
   });
 });

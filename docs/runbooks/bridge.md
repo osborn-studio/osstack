@@ -132,7 +132,8 @@ node scripts/rulesets-check.mjs --repo osborn-studio/osstack --target main-repo-
 
 | 值 | 今天（`parseBridgeMode`，`contained-mission-rpc.ts` L59–64） | 5-E 合并之后 **【计划：5-E】**（阶段 5 附录 §6） |
 |---|---|---|
-| 未设、`0` | 关闭：不读 `producers.json`，不建影子链 | 关闭：授权 RPC 拒绝（`bridge_live_disabled`）；在途子 Mission 的推送被栅栏拒绝，子 Mission 停 `awaiting_decision(publication_failed:bridge_live_disabled)`；`revisionRecovery` 的推送回执对账照常运行 |
+| 未设 | 关闭：不读 `producers.json`，不建影子链。阶段 3 首轮发布不变：`apps.json` + `rulesets.json` 都在时用 App A/B，都缺时用主机 `gh` 凭证 | 关闭：授权 RPC 拒绝（`bridge_live_disabled`）；在途子 Mission 的推送被栅栏拒绝，子 Mission 停 `awaiting_decision(publication_failed:bridge_live_disabled)`；`revisionRecovery` 的推送回执对账照常运行 |
+| `0`（显式） | 关闭：不读 `producers.json`，不建影子链。**熔断（2026-11-07 用户决定）**：`bridge/` 配置存在时，对配置的仓库发布 Mission PR 被拒绝，固定码 `BRIDGE_DISABLED`；不取 App 令牌、不推送、不开 PR、不发 `osstack/verify`，也**不退回主机凭证**。配置外的仓库保持现状（`CONTAINED_BRIDGE_REPOSITORY`）；配置不存在时与未设相同（走主机凭证）。Mission 停 `awaiting_decision(publication_failed:BRIDGE_DISABLED)`（§5.1）。开关只在启动时读一次，改值后必须重启 | 关闭：授权 RPC 拒绝（`bridge_live_disabled`）；在途子 Mission 的推送被栅栏拒绝，子 Mission 停 `awaiting_decision(publication_failed:bridge_live_disabled)`；`revisionRecovery` 的推送回执对账照常运行 |
 | `shadow` | 影子：有 `producers.json` 时每 5 分钟只读扫描（§4.3），只写影子链表 | 同左 |
 | `1` | `serve` 启动失败：`BRIDGE_LIVE_NOT_IMPLEMENTED` | live：授权过的链由 live 对账器推进；未授权的根 Mission 仍影子记录。要求 `producers.json`、`apps.json`、`rulesets.json`、`revision-issuer.json` 全部有效，否则 `serve` 退出 |
 | 其他（含 `true`、`live`、空串、带空格） | `serve` 启动失败：`BRIDGE_MODE_INVALID` | 同左 |
@@ -147,9 +148,9 @@ node scripts/rulesets-check.mjs --repo osborn-studio/osstack --target main-repo-
 
 ### 3.3 隐含的开关：`apps.json`
 
-App A/B 发布不受 `OSSTACK_BRIDGE` 控制，只看 `bridge/apps.json` 与 `rulesets.json` 是否存在（§2.2）。所以：
+首轮 App A/B 发布看 `bridge/apps.json` 与 `rulesets.json` 是否存在（§2.2），并受 `OSSTACK_BRIDGE=0` 熔断约束。所以：
 
-- **`OSSTACK_BRIDGE=0` 不会阻止阶段 3 的首轮发布**（App A 推送并开 PR、App B 发 check）。要阻止首轮发布，见 §5.1 第 3 步。
+- **显式 `OSSTACK_BRIDGE=0` 会阻止阶段 3 的首轮发布**：配置存在时，对配置仓库的发布以 `BRIDGE_DISABLED` 被拒绝（App A 不推送、不开 PR，App B 不发 check），不退回主机凭证。开关只在 `osstack serve` 启动时读取一次，**改值后必须重启**。未设与 `shadow` 不阻止首轮发布。
 - 同时删除两个文件会**静默退回主机 `gh` 凭证**。沙箱上主机凭证推送 Mission 分支会被 `mission-writers` 拒绝（探针 P-10），但在没有 Mission ruleset 的仓库上会成功。不要用“删掉两个文件”来停用 App A。
 
 ---
@@ -224,12 +225,12 @@ gh api repos/<owner/repo>/pulls/<n>/commits --paginate --jq '.[].sha'           
 **今天（基线）：**
 
 1. 在运行 `osstack serve` 的终端按 Ctrl-C（或对 serve 进程发 `SIGTERM`）。守护进程会先置 draining、停影子对账器（最多等 5 秒）、等当前 Mission tick 结束再退出。不要用 `SIGKILL`：它会把在途的执行器或验证留成需要停止证明的状态（§5.3）。
-2. 以 `OSSTACK_BRIDGE=0`（或不设）重新启动 `osstack serve`。如果 serve 由 LaunchAgent 管理（`osstack serve --install`），环境来自 plist，用 `osstack serve --status` 查看，改 plist 后重新加载。
-3. **要同时阻止 App A 的首轮发布**（§3.3）：
+2. 以 `OSSTACK_BRIDGE=0` 重新启动 `osstack serve`。如果 serve 由 LaunchAgent 管理（`osstack serve --install`），环境来自 plist：用 `osstack serve --status` 找到 plist 路径，直接检查其 `EnvironmentVariables.OSSTACK_BRIDGE`（`--status` 本身不显示该值），改 plist 后重新加载，再按第 4 步用启动日志确认。
+3. **步骤 2 里显式的 `OSSTACK_BRIDGE=0` 重启已经同时阻止 App A 的首轮发布**（§3.3）：`bridge/` 配置存在时，对配置仓库的发布被拒绝，Mission 停 `awaiting_decision(publication_failed:BRIDGE_DISABLED)`，`mission status --json` 的停止原因里可见；未设不算熔断。恢复：去掉 `OSSTACK_BRIDGE=0`（改为未设或 `shadow`）后重启，再对停住的 Mission 执行 `approve_publication`，或 `abandon`。更强的选项：
    - 只想暂停：新 Mission 不加 `--publish-preauthorized`，并且不对停在 `publication_pending` 的 Mission 执行 `approve_publication`。已在 `delivering` 的 Mission 会在下一次 tick 重试发布。
-   - 要立即硬停：由管理员在 GitHub 上暂停（Suspend）或卸载 App A 的安装（§5.2）。这是平台级的阻止，不依赖 osstack 代码。
+   - 要立即硬停（比开关更强，不依赖 osstack 代码；怀疑泄露或被滥用时用这个）：由管理员在 GitHub 上暂停（Suspend）或卸载 App A 的安装（§5.2）。这是平台级的阻止，不依赖 osstack 代码。
    - 只删除 `bridge/apps.json`（保留 `rulesets.json`）会让 `serve` 以 `BRIDGE_CONFIG_INVALID:incomplete` 拒绝启动，同时停掉所有 Mission。只在要整体停机时用。不要两个文件都删（§3.3）。
-4. 核对：serve 日志不再出现 `osstack: bridge shadow:`；`mission status --json` 中已有的 `chain` 保持不变（影子链表只是记录，关掉后不需要清理）。
+4. 核对：serve 启动日志出现 `osstack: bridge: disabled by OSSTACK_BRIDGE=0`（`bridge/` 配置存在时才有；只有它能区分“显式 0”与“未设”，未设时发布仍走 App A）；`osstack: bridge shadow:` 不再出现；`mission status --json` 中已有的 `chain` 保持不变（影子链表只是记录，关掉后不需要清理）。
 
 **5-E 合并之后 【计划：5-E】：**
 
@@ -350,7 +351,7 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 | `awaiting_decision`（`workspace_failed:<码>`、`workspace_head_mismatch`、`workspace_unrecorded`） | worktree 建立失败或起点不符 | 只能 `abandon`；检查 `--base` 与 `$OSSTACK_SCRATCH_ROOT/worktrees/` 的空间与权限 |
 | `needs_reconciliation`（`stop_evidence_recovered`、`orphaned_executing`、`orphaned_verifying`、`commit_failed:<码>`） | 停止已证明，但工作区可能与账本不一致 | `discard_changes`（回到上一次提交的候选，重新执行一回合）、`adopt_worktree`（把 worktree 里的改动分类后当作候选）或 `abandon`。两者都要求停止义务已清，否则 `stop_evidence_required` |
 | `stop_unknown`（任何原因） | 见 §5.3 | 证明停止后 `retry_stop_check` |
-| `pr_opened` 且事件里有 `verify_check_failed` | PR 已开，`osstack/verify` 没发出去 | `osstack mission publish-check --mission <id>`（只重发 check，幂等；未配置 App B 时报 `bridge_not_configured`） |
+| `pr_opened` 且事件里有 `verify_check_failed` | PR 已开，`osstack/verify` 没发出去 | `osstack mission publish-check --mission <id>`（只重发 check，幂等；未配置 App B 时报 `bridge_not_configured`；`OSSTACK_BRIDGE=0` 熔断时同样报 `bridge_not_configured`，不是 `BRIDGE_DISABLED`，因为熔断下 check 端口不存在） |
 | `cancel_requested` 长期不变 | 取消在等执行器或验证停止（运行中的那一步收到中止后自己记证据并转 `cancelled`） | 先看 `stepping`（`mission status --json` 顶层字段）：为 `true` 说明那一步仍在运行，等它结束。守护进程重启过、`stepping` 为 `false` 仍不变时，`retry_stop_check` 不接受这个状态（只接受 `stop_unknown`）：按 §5.1 第 1 步正常重启 `serve`，启动恢复会证明停止后转 `cancelled`，证明不了则转 `stop_unknown(cancel_requested_stop_unproven_after_restart)`，再按 §5.3 中最近打开的是执行器（A）还是验证（B）处理 |
 | `delivering` 长期不变 | 每次 tick 幂等重试发布；看 `events` 里的 `delivery_uncertain` | 3 次后会自动停到 `publication_failed:attempts_exhausted` |
 

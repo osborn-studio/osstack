@@ -255,8 +255,12 @@ export async function createContainedMissionService(deps: {
   // A bridge config error must stop the service (fail closed), never fall back to host credentials.
   const { loadBridgeConfig } = await import('./contained-mission-github-app.js');
   const bridge = await loadBridgeConfig(deps.home);
+  // OSSTACK_BRIDGE=0 (explicit) is a kill switch: with a bridge config present, Mission publication for that repository is refused
+  // (BRIDGE_DISABLED) instead of falling back to host credentials. Read once, here; changing it needs a service restart.
+  const bridgeKilled = env['OSSTACK_BRIDGE'] === '0';
+  if (bridge && bridgeKilled) log('osstack: bridge: disabled by OSSTACK_BRIDGE=0 (Mission publication for the configured repository is refused)');
   const ports = createContainedMissionPorts({
-    store, ...(bridge ? { bridge: { config: bridge } } : {}),
+    store, ...(bridge ? { bridge: { config: bridge, ...(bridgeKilled ? { disabled: true } : {}) } } : {}),
     // Hold markers live in the daemon home, not the scratch root: `scratch:clean` must not turn a provable stop into an unknown one (W13 design 4.1).
     hostProcess: { markerDir: join(deps.home, 'contained', 'host-processes') },
     codex: { bin: need('OSSTACK_CONTAINED_CODEX_BIN'), sourceCodexHome: need('OSSTACK_CONTAINED_CODEX_HOME'),
