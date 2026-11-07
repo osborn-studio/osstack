@@ -260,6 +260,8 @@ CREATE UNIQUE INDEX engineering_merger_outcomes_obs ON engineering_merger_shadow
 - **写入者**：`MergerShadowWriter { beginObservation(repository, pr) → n, recordDecision(n, row), recordOutcome(n, row), recordCycle(row) }`，只有这四个方法；不暴露 Mission store、链 store。
 - **周期表的体积**：每 5 分钟一行，`prs_json` 每轮最多 10 个 PR，一年约 10 万行、几十 MB 以内；超过保留期的清理不在本附录范围（只追加表的清理需要单独的迁移与决定）。
 
+**迁移 55（Codex 第 2 轮两条 P2 的收口，只增不改）**：① 每次扫描在第一次观察前向数据库取一个 `scan_id`（`engineering_merger_shadow_scans`，AUTOINCREMENT，提交后才返回）；该扫描写的周期行和它记录的每个结果片段（`outcomes.scan_id`）都带这个号，触发器要求新行指向已有扫描，且一次扫描至多一行周期。对照（§4.3）用 `scan_id` 找“发现合并的那次扫描”，不再用“扫描开始时最新的周期号”（`cycle_after`）或时间；两个进程的扫描重叠时，结果只会归到自己的扫描。迁移 55 之前写入的结果没有 `scan_id`，仍走 `cycle_after`，再退回时间。② `watermarks.last_poll_at` 与观察号在同一条语句里写入（只增不减，`merger_poll_regressed`），已关闭 PR 的每小时轮询从它算起，重启不再把间隔重置为整整一小时；没有标记的旧行以关闭片段自己的观察开始时间为基线（持久证据，不是“现在”），重启多少次都不会把第一次轮询一再推后。“之前的扫描”按扫描号取前三次；另有扫描号更高但以更小观察号列出该 PR 的扫描（慢扫描与快扫描重叠）同样算作合并前已观察。栅栏与取号语义不变。
+
 ### 4.2 记录内容（`gates_json`）
 
 每条门槛一个键，值只含 id、oid、状态、布尔、计数，例如：

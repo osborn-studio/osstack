@@ -91,12 +91,12 @@ export interface MergerLatestOutcome { readonly outcome: MergerOutcomeKind; read
 /** What the merger may read of its own outcome ledger: the latest segment of one PR. No decision, no cycle, no write. */
 export interface MergerLedgerView {
   latestOutcome(repository: string, prNumber: number): MergerLatestOutcome | null;
-  /** Newest cycle row number (0 when none): stamped on outcomes so the report finds the scan that saw them by number, not by clock. */
-  lastCycleSeq(): number;
+  /** Local wall time the PR's latest observation started (persisted with the fence, so it survives a restart); null when unknown. */
+  lastPollAt(repository: string, prNumber: number): number | null;
 }
-export function createMergerLedgerView(store: Pick<MergerShadowStore, 'outcomes' | 'db'>): MergerLedgerView {
+export function createMergerLedgerView(store: Pick<MergerShadowStore, 'outcomes' | 'lastPollAt'>): MergerLedgerView {
   return {
-    lastCycleSeq: () => (store.db.prepare('SELECT COALESCE(MAX(seq),0) AS n FROM engineering_merger_shadow_cycles').get() as { n: number }).n,
+    lastPollAt: (repository, prNumber) => store.lastPollAt(repository, prNumber),
     latestOutcome: (repository, prNumber) => {
       const last = store.outcomes(repository, prNumber).at(-1);
       return last ? { outcome: last.outcome, observed_at: last.observed_at } : null;
@@ -210,7 +210,6 @@ export class MergerShadowReconciler implements MergerShadowHandle {
   private readonly graphql: GraphqlTransport;
   private readonly rest: RestGet;
   private used = 0;
-  private cycleAfter = 0;
 
   constructor(private readonly options: MergerShadowOptions) {
     this.intervalMs = options.intervalMs ?? FIVE_MINUTES;
@@ -272,7 +271,10 @@ export class MergerShadowReconciler implements MergerShadowHandle {
     const entries: MergerCycleEntry[] = [];
     const seenPrs = new Set<string>();
     this.used = 0;
-    try { this.cycleAfter = this.options.ledger.lastCycleSeq(); } catch { this.cycleAfter = 0; }
+    // The scan id is database-issued, taken just before the scan's first observation and shared by its cycle row and its outcomes, so the report
+    // resolves "the detecting scan" by id even when another process scans at the same time.
+    let scanId: number | undefined;
+    const ensureScan = (): number => { scanId ??= this.options.writer.beginScan(startedAt, this.options.now()); return scanId; };
     let examined = 0;
     let touched = 0;
     scan: for (let page = 0; page < MISSION_PAGES_PER_SCAN; page += 1) {
@@ -285,13 +287,13 @@ export class MergerShadowReconciler implements MergerShadowHandle {
         if (examined >= this.prsPerScan || this.used >= this.requestsPerScan) break scan;
         this.cursor = row;
         examined += 1;
-        if (await this.cycleOne(row.mission_id, candidate.pub, candidate.last, entries)) touched += 1;
+        if (await this.cycleOne(row.mission_id, candidate.pub, candidate.last, entries, ensureScan)) touched += 1;
       }
       if (rows.length < MISSION_PAGE) { this.cursor = undefined; break; }
     }
-    if (this.stopped || touched === 0) return;
+    if (this.stopped || touched === 0 || scanId === undefined) return;
     try {
-      this.options.writer.recordCycle(startedAt, this.options.now(), entries, this.options.now());
+      this.options.writer.recordCycle(scanId, startedAt, this.options.now(), entries, this.options.now());
     } catch (error) {
       this.log(`cycle_unrecorded code=${errorCode(error)}`);
     }
@@ -312,8 +314,19 @@ export class MergerShadowReconciler implements MergerShadowHandle {
     if (last?.outcome === 'merged' || last?.outcome === 'observation_expired') return this.skip(missionId, 'terminal');
     seenPrs.add(key);
     let at = this.lastEval.get(key);
-    // The hourly poll of a closed PR must survive restarts: a process that has not polled it yet waits a full poll gap before the first one.
-    if (at === undefined && last?.outcome === 'closed_unmerged') { at = this.options.now(); this.lastEval.set(key, at); }
+    if (last?.outcome === 'closed_unmerged') {
+      // The hourly poll of a closed PR must survive restarts and other processes: the next poll is due one poll gap after the latest persisted
+      // observation start. A row from before migration 55 has no marker; its durable baseline is the observation start of the closing segment
+      // itself, never "now", so repeated restarts cannot keep pushing the first poll out.
+      let persisted: number | null = null;
+      try { persisted = this.options.ledger.lastPollAt(pub.repository, pub.pr_number); } catch { this.log(`skip mission=${missionId} reason=ledger_unreadable`); return null; }
+      const baseline = persisted ?? last.observed_at;
+      // A baseline in the future (a clock that was ahead when it was written and has been corrected since) must not silence the poll: it is
+      // ignored, and this process anchors on its own first look instead, which it then keeps (the interval is not reset on every scan).
+      const usable = baseline <= this.options.now() ? baseline : undefined;
+      at = at === undefined ? (usable ?? this.options.now()) : usable === undefined ? at : Math.max(at, usable);
+      this.lastEval.set(key, at);
+    }
     const gap = last?.outcome === 'closed_unmerged' ? this.closedPollMs : this.gapMs;
     if (at !== undefined && this.options.now() - at < gap) return null;
     return { pub, last };
@@ -329,7 +342,7 @@ export class MergerShadowReconciler implements MergerShadowHandle {
 
   /** True when the PR was observed (a decision, an outcome, or a recorded failure), so the cycle row lists it. */
   private async cycleOne(
-    missionId: string, pub: ShadowMissionPublication, last: ReturnType<MergerLedgerView['latestOutcome']>, entries: MergerCycleEntry[],
+    missionId: string, pub: ShadowMissionPublication, last: ReturnType<MergerLedgerView['latestOutcome']>, entries: MergerCycleEntry[], ensureScan: () => number,
   ): Promise<boolean> {
     const { writer, missions } = this.options;
     const key = `${lower(pub.repository)}#${pub.pr_number}`;
@@ -344,8 +357,9 @@ export class MergerShadowReconciler implements MergerShadowHandle {
     const startedAt = this.options.now();
     // The observation number is taken, and committed, before the first GitHub read of the cycle (the fence of design §4.1).
     let seq: number;
-    try { seq = writer.beginObservation(pub.repository, pub.pr_number, startedAt); } catch (error) { this.log(`observation_failed mission=${missionId} code=${errorCode(error)}`); return false; }
-    const ctx: Ctx = { missionId, pub, ref, evidence, seq, startedAt, entries, cycleAfter: this.cycleAfter };
+    let scanId: number;
+    try { scanId = ensureScan(); seq = writer.beginObservation(pub.repository, pub.pr_number, startedAt); } catch (error) { this.log(`observation_failed mission=${missionId} code=${errorCode(error)}`); return false; }
+    const ctx: Ctx = { missionId, pub, ref, evidence, seq, startedAt, entries, scanId };
     if (last?.outcome === 'closed_unmerged') await this.pollClosed(ctx, last);
     else await this.evaluate(ctx);
     return true;
@@ -436,11 +450,10 @@ export class MergerShadowReconciler implements MergerShadowHandle {
     });
   }
 
-  private outcome(ctx: Ctx, o: Omit<MergerOutcomeInput, 'repository' | 'pr_number' | 'mission_id' | 'observed_at'>): void {
+  private outcome(ctx: Ctx, o: Omit<MergerOutcomeInput, 'repository' | 'pr_number' | 'mission_id' | 'observed_at' | 'scan_id'>): void {
     if (this.stopped) return;
     try {
-      const facts = { ...o.facts, cycle_after: ctx.cycleAfter };
-      this.options.writer.recordOutcome({ ...o, facts, repository: ctx.pub.repository, pr_number: ctx.pub.pr_number, mission_id: ctx.missionId, observed_at: ctx.startedAt }, ctx.seq, this.options.now());
+      this.options.writer.recordOutcome({ ...o, scan_id: ctx.scanId, repository: ctx.pub.repository, pr_number: ctx.pub.pr_number, mission_id: ctx.missionId, observed_at: ctx.startedAt }, ctx.seq, this.options.now());
       this.log(`outcome mission=${ctx.missionId} outcome=${o.outcome}`);
     } catch (error) {
       this.log(`outcome_rejected mission=${ctx.missionId} code=${errorCode(error)}`);
@@ -508,7 +521,7 @@ export class MergerShadowReconciler implements MergerShadowHandle {
 const HEX64 = /^[0-9a-f]{64}$/u;
 interface Ctx {
   readonly missionId: string; readonly pub: ShadowMissionPublication; readonly ref: PrRef; readonly evidence: MissionMergeEvidence;
-  readonly seq: number; readonly startedAt: number; readonly entries: MergerCycleEntry[]; readonly cycleAfter: number;
+  readonly seq: number; readonly startedAt: number; readonly entries: MergerCycleEntry[]; readonly scanId: number;
 }
 interface DecisionDraft {
   readonly verdict: 'would_merge' | 'refused' | 'unevaluated'; readonly head: string; readonly base: string | null; readonly codes: readonly string[];

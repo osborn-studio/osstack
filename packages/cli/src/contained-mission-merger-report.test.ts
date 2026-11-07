@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { MergerShadowStore } from '@osstack/core';
+import { MergerShadowStore } from '@osstack/core';
 import { REPORT_CATEGORIES, buildMergerReport, type ReportDb } from './contained-mission-merger-report.js';
 import { BASE, HEAD, MIN, REPO, T0, createRigged, ledgerDump, seedMergerMission, type Rigged } from './contained-mission-merger-shadow.testkit.js';
 
@@ -19,6 +19,7 @@ class Script {
   }
   /** One scan at the current time: a decision (or none) and a cycle row listing it. */
   scan(verdict: 'would_merge' | 'refused' | 'unevaluated' | null, head = HEAD, listed = true): this {
+    const scanId = this.store.beginScan(this.t, this.t);
     const seq = this.store.beginObservation(REPO, this.pr, this.t);
     const entries: Array<[string, number, number, string, 'would_merge' | 'refused' | 'unevaluated']> = [];
     if (verdict) {
@@ -29,21 +30,21 @@ class Script {
       }, seq, this.t);
       if (listed) entries.push([REPO, this.pr, seq, head, verdict]);
     }
-    this.store.recordCycle(this.t, this.t + 1000, entries, this.t + 1000);
+    this.store.recordCycle(scanId, this.t, this.t + 1000, entries, this.t + 1000);
     this.t += 5 * MIN;
     return this;
   }
   /** An outcome observed in its own scan (the cycle row is written after it, as the reconciler does). */
   outcome(outcome: 'merged' | 'closed_unmerged' | 'observation_expired' | 'reopened', over: { head?: string; published?: string; reopenUnobserved?: boolean; by?: [number, 'User' | 'Bot'] } = {}): this {
+    const scanId = this.store.beginScan(this.t, this.t);
     const seq = this.store.beginObservation(REPO, this.pr, this.t);
-    const cycleAfter = (this.rigged.rig.db.prepare('SELECT COALESCE(MAX(seq),0) AS n FROM engineering_merger_shadow_cycles').get() as { n: number }).n;
     const m = outcome === 'merged';
     this.store.recordOutcome({
-      repository: REPO, pr_number: this.pr, mission_id: this.mission, outcome, head_at_close: over.head ?? HEAD, observed_at: this.t,
+      repository: REPO, pr_number: this.pr, mission_id: this.mission, scan_id: scanId, outcome, head_at_close: over.head ?? HEAD, observed_at: this.t,
       ...(m ? { merged_at: new Date(this.t + 1000).toISOString(), merge_commit: 'f'.repeat(40), merged_by_actor_id: over.by?.[0] ?? 269, merged_by_type: over.by?.[1] ?? 'User', owner_approved_head: null } : {}),
-      facts: { published_head: over.published ?? HEAD, cycle_after: cycleAfter, ...(m ? { merged_by_class: 'owner' } : {}), ...(over.reopenUnobserved ? { reopen_unobserved: true } : {}) },
+      facts: { published_head: over.published ?? HEAD, ...(m ? { merged_by_class: 'owner' } : {}), ...(over.reopenUnobserved ? { reopen_unobserved: true } : {}) },
     }, seq, this.t + 500);
-    this.store.recordCycle(this.t, this.t + 1000, [], this.t + 1000);
+    this.store.recordCycle(scanId, this.t, this.t + 1000, [], this.t + 1000);
     this.t += 5 * MIN;
     return this;
   }
@@ -115,6 +116,70 @@ describe('comparison report categories (design §4.3)', () => {
     expect(category(rep, 1)).toBe('agree_merge');
     expect(category(rep, 2)).toBe('merged_unobserved'); // decided in a scan but not listed in any cycle row
     expect(category(rep, 3)).toBe('merged_unobserved');
+  });
+
+  it('finds the detecting scan by its database-issued id, even when another process scans at the same time and finishes first', () => {
+    const { at, r, run } = report();
+    const t0 = T0 + DAY;
+    at(1, 1).scan('would_merge').scan('would_merge').scan('would_merge'); // scans 1-3, the last ends at t0 + 10 min + 1 s and lists the PR
+    const other = new MergerShadowStore(r.rig.attention, r.rig.owner); // a second process over the same database
+    const tX = t0 + 15 * MIN + 1000; // the detecting scan starts five minutes after the last listed scan ...
+    const tW = t0 + 35 * MIN + 1000; // ... while the other process's scan has the lower id but a later start time (ids are issued lazily)
+    const w = other.beginScan(tW, tW);
+    const x = r.store.beginScan(tX, tX);
+    expect(x).toBeGreaterThan(w);
+    other.recordCycle(w, tW, tW + 1000, [], tW + 1000); // the other scan's cycle row is written first, so it follows the PR's last listed cycle directly
+    const missionId = r.store.decisions(REPO, 1)[0]!.mission_id;
+    const seq = r.store.beginObservation(REPO, 1, tX);
+    r.store.recordOutcome({
+      repository: REPO, pr_number: 1, mission_id: missionId, scan_id: x, outcome: 'merged', head_at_close: HEAD, observed_at: tX,
+      merged_at: new Date(tX + 1000).toISOString(), merge_commit: 'f'.repeat(40), merged_by_actor_id: 269, merged_by_type: 'User', owner_approved_head: null,
+      facts: { published_head: HEAD, merged_by_class: 'owner' },
+    }, seq, tX + 500);
+    r.store.recordCycle(x, tX, tW + 2000, [], tW + 2000);
+    // By id: detecting scan = x (started 5 min after the last listed scan, service up) -> watched -> agree_merge. Following "the next cycle row"
+    // would have picked the other process's scan (35 min after the last listed scan) and called the merge unobserved.
+    expect(category(run(), 1)).toBe('agree_merge');
+    expect(r.store.outcomes(REPO, 1)[0]?.scan_id).toBe(x);
+  });
+
+  it.each([['recent', 0, 'agree_merge'], ['a day old (both processes stalled)', DAY, 'merged_unobserved']] as const)('a scan with a higher id that listed the PR under a lower observation number counts as watching it before the merge only when it is %s', (_label, resume, expected) => {
+    const { r, run } = report();
+    const missionId = seedMergerMission(r.rig, 5, 'osstack/mission/p5').missionId;
+    const other = new MergerShadowStore(r.rig.attention, r.rig.owner);
+    const t = T0 + 3 * DAY;
+    // Scan 1 takes its id on another PR and is slow; scan 2 (higher id) evaluates PR 5 and finishes; scan 1 then sees PR 5 merged.
+    const slow = r.store.beginScan(t, t);
+    const fast = other.beginScan(t + MIN, t + MIN);
+    const n1 = other.beginObservation(REPO, 5, t + MIN);
+    other.recordDecision({ repository: REPO, pr_number: 5, mission_id: missionId, head_sha: HEAD, base_sha: BASE, verdict: 'would_merge', codes: [], gates: { second_read: false, start_is_base: false },
+      merge_request: { sha: HEAD, merge_method: 'squash' }, evidence_digest: 'e'.repeat(64), observed_at: t + MIN }, n1, t + MIN);
+    other.recordCycle(fast, t + MIN, t + MIN + 1000, [[REPO, 5, n1, HEAD, 'would_merge']], t + MIN + 1000);
+    const n2 = r.store.beginObservation(REPO, 5, t + 2 * MIN + resume);
+    r.store.recordOutcome({ repository: REPO, pr_number: 5, mission_id: missionId, scan_id: slow, outcome: 'merged', head_at_close: HEAD, observed_at: t + 2 * MIN + resume,
+      merged_at: new Date(t + 2 * MIN + resume + 1000).toISOString(), merge_commit: 'f'.repeat(40), merged_by_actor_id: 269, merged_by_type: 'User', owner_approved_head: null,
+      facts: { published_head: HEAD, merged_by_class: 'owner' } }, n2, t + 2 * MIN + resume);
+    r.store.recordCycle(slow, t, t + 3 * MIN + resume, [], t + 3 * MIN + resume);
+    expect(n2).toBeGreaterThan(n1);
+    expect(category(run(), 5)).toBe(expected);
+  });
+
+  it('classifies outcomes written before migration 55 (no scan id) by their cycle_after stamp', () => {
+    const { at, r, run } = report();
+    at(2, 2).scan('would_merge').scan('would_merge').scan('would_merge');
+    const db = r.rig.db;
+    // Old rows cannot be written through the current store; recreate them the way a schema-54 database holds them.
+    db.exec('DROP TRIGGER engineering_merger_outcome_scan_required; DROP TRIGGER engineering_merger_cycle_scan_required');
+    const t = T0 + 2 * DAY + 20 * MIN;
+    const missionId = r.store.decisions(REPO, 2)[0]!.mission_id;
+    const seq = r.store.beginObservation(REPO, 2, t);
+    const after = (db.prepare('SELECT MAX(seq) AS n FROM engineering_merger_shadow_cycles').get() as { n: number }).n;
+    db.prepare("UPDATE engineering_merger_shadow_watermarks SET accepted_seq=? WHERE pr_number=2").run(seq);
+    db.prepare(`INSERT INTO engineering_merger_shadow_outcomes(repository,pr_number,mission_id,observation_seq,outcome,head_at_close,merged_at,merge_commit,merged_by_actor_id,merged_by_type,facts_json,observed_at,created_at)
+      VALUES(?,?,?,?,'merged',?,?,?,269,'User',?,?,?)`).run(REPO, 2, missionId, seq, HEAD, new Date(t + 1000).toISOString(), 'f'.repeat(40), JSON.stringify({ published_head: HEAD, cycle_after: after }), t, t);
+    db.prepare("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(?,?,'[]')").run(t, t + 1000);
+    expect(r.store.outcomes(REPO, 2)[0]?.scan_id).toBeNull();
+    expect(category(run(), 2)).toBe('agree_merge');
   });
 
   it('classifies the merger by numeric id and reports the time from would_merge to merge for reference only', () => {

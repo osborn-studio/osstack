@@ -78,7 +78,7 @@ it("adds migration 53 as triggers only and reopens cleanly from schema 52", () =
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(53);
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   const after = (db.prepare("SELECT type,name FROM sqlite_master ORDER BY type,name").all() as Array<{ type: string; name: string }>).map(o => `${o.type}:${o.name}`);
-  const added = after.filter(o => !before.includes(o) && !o.includes("sqlite_autoindex") && !o.includes("host_process"));
+  const added = after.filter(o => !before.includes(o) && !o.includes("sqlite_autoindex") && !o.includes("host_process") && !/merger_.*(scan|poll)/.test(o));
   expect(added.filter(o => o.startsWith("table:"))).toEqual([]);
   expect(added.filter(o => o.startsWith("index:"))).toEqual(["index:engineering_intent_one_pending_push"]);
   expect(added.filter(o => o.startsWith("trigger:") && /grant/.test(o))).toEqual(["trigger:engineering_chain_grant_monotonic", "trigger:engineering_chain_grant_shadow_fixed"]);

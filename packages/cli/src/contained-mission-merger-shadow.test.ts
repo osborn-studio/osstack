@@ -174,7 +174,10 @@ describe('outcomes', () => {
     await next(r, rec);
     const [o] = r.store.outcomes(REPO, 7);
     expect(o).toMatchObject({ outcome: 'merged', head_at_close: HEAD, merged_by_actor_id: OWNER, merged_by_type: 'User', owner_approved_head: null });
-    expect(JSON.parse(o!.facts_json)).toEqual({ published_head: HEAD, merged_by_class: 'owner', cycle_after: 3 });
+    expect(JSON.parse(o!.facts_json)).toEqual({ published_head: HEAD, merged_by_class: 'owner' });
+    // The scan that saw the merge is recorded by its database-issued id, and the cycle row of that scan carries the same id.
+    expect(o!.scan_id).toBe(4);
+    expect(r.rig.db.prepare('SELECT scan_id FROM engineering_merger_shadow_cycles ORDER BY seq DESC LIMIT 1').get()).toEqual({ scan_id: 4 });
     expect(r.outcomeQueries).toEqual([MERGER_PR_OUTCOME_QUERY]);
     const reads = r.calls.gql.length;
     await next(r, rec);
@@ -275,6 +278,94 @@ describe('outcomes', () => {
     await next(r, rec, 120);
     expect(r.calls.gql.length + r.outcomeQueries.length).toBe(reads);
     expect(buildMergerReport(r.rig.db, T0).prs[0]!.category).toBe('closed_expired');
+  });
+
+  it('a restart within the hour does not postpone the closed-PR poll: the next poll is computed from the persisted marker', async () => {
+    const r = rigged();
+    const rec = r.reconciler({ closedPollMs: 60 * MIN });
+    await rec.scan();
+    r.setState('CLOSED');
+    await next(r, rec); // records closed_unmerged; the poll marker is this observation's start
+    const marker = r.store.lastPollAt(REPO, 7)!;
+    expect(marker).toBe(r.clock.now);
+    r.setState('OPEN'); // reopened on GitHub; only a poll will notice
+    r.clock.now += 50 * MIN;
+    const restarted = r.reconciler({ closedPollMs: 60 * MIN }); // a new process: no in-memory poll time
+    await restarted.scan();
+    expect(r.outcomeQueries).toEqual([]); // 50 minutes after the close: not yet due
+    r.clock.now += 11 * MIN; // 61 minutes after the marker, though only 11 after the restart
+    await restarted.scan();
+    expect(r.outcomeQueries).toEqual([MERGER_PR_STATE_QUERY]);
+    expect(r.store.outcomes(REPO, 7).map((o) => o.outcome)).toEqual(['closed_unmerged', 'reopened']);
+    // A restart before the marker plus the gap still waits for it.
+    expect(r.store.lastPollAt(REPO, 7)).toBeGreaterThan(marker);
+  });
+
+  it('a closed PR without a marker (a row from before migration 55) is polled one gap after its closing observation, however often the process restarts', async () => {
+    const r = rigged();
+    const rec = r.reconciler({ closedPollMs: 60 * MIN });
+    await rec.scan();
+    r.setState('CLOSED');
+    await next(r, rec);
+    const closedAt = r.clock.now;
+    r.rig.db.exec('DROP TRIGGER engineering_merger_watermark_poll_monotonic');
+    r.rig.db.exec('UPDATE engineering_merger_shadow_watermarks SET last_poll_at=NULL');
+    r.setState('OPEN');
+    for (const minutes of [50, 55]) { // restarts 50 and 55 minutes in must not keep postponing the first poll
+      r.clock.now = closedAt + minutes * MIN;
+      await r.reconciler({ closedPollMs: 60 * MIN }).scan();
+    }
+    expect(r.outcomeQueries).toEqual([]);
+    r.clock.now = closedAt + 61 * MIN;
+    await r.reconciler({ closedPollMs: 60 * MIN }).scan();
+    expect(r.outcomeQueries).toEqual([MERGER_PR_STATE_QUERY]);
+  });
+
+  it('a poll marker from a clock that was ahead (in the future) does not silence the poll: the process anchors on its own first look', async () => {
+    const r = rigged();
+    const rec = r.reconciler({ closedPollMs: 60 * MIN });
+    await rec.scan();
+    r.setState('CLOSED');
+    await next(r, rec);
+    r.rig.db.exec('DROP TRIGGER engineering_merger_watermark_poll_monotonic');
+    r.rig.db.prepare('UPDATE engineering_merger_shadow_watermarks SET last_poll_at=?').run(r.clock.now + 24 * 60 * MIN);
+    r.setState('OPEN');
+    const restarted = r.reconciler({ closedPollMs: 60 * MIN });
+    await next(r, restarted, 10); // anchors here
+    expect(r.outcomeQueries).toEqual([]);
+    await next(r, restarted, 30); // not reset by every scan
+    expect(r.outcomeQueries).toEqual([]);
+    await next(r, restarted, 31);
+    expect(r.outcomeQueries).toEqual([MERGER_PR_STATE_QUERY]);
+  });
+
+  it('overlapping scans from two processes keep their own scan ids: the outcome is attributed to the scan that recorded it', async () => {
+    const r = rigged();
+    const rec = r.reconciler();
+    await rec.scan();
+    r.setState('MERGED');
+    r.outcome.mergedAt = new Date(T0 + 40 * MIN).toISOString();
+    r.outcome.mergeCommit = 'f'.repeat(40);
+    r.outcome.mergedBy = { __typename: 'User', databaseId: OWNER };
+    r.clock.now += 6 * MIN;
+    const peer = r.reconciler(); // a second process
+    let armed = true;
+    const slow = r.reconciler({
+      graphql: async (q, v) => {
+        // While the first process is still reading, the peer takes a later scan id and finishes its whole scan (cycle row included) first.
+        if (armed) { armed = false; await peer.scan(); }
+        return r.graphql(q, v);
+      },
+    });
+    await slow.scan();
+    const scans = r.rig.db.prepare('SELECT scan_id,started_at FROM engineering_merger_shadow_scans ORDER BY scan_id').all() as Array<{ scan_id: number }>;
+    expect(scans.map((s) => s.scan_id)).toEqual([1, 2, 3]);
+    // The slow process took scan 2 and its observation number first, the peer scan 3 afterwards; the peer's observation was accepted, so the slow one is abandoned.
+    const outcomes = r.store.outcomes(REPO, 7);
+    expect(outcomes.length).toBe(1);
+    const cycles = r.rig.db.prepare('SELECT scan_id,prs_json FROM engineering_merger_shadow_cycles ORDER BY seq').all() as Array<{ scan_id: number; prs_json: string }>;
+    expect(cycles.map((c) => c.scan_id)).toEqual([1, 3, 2]); // the peer's scan 3 wrote its cycle row before the slower scan 2
+    expect(outcomes[0]!.scan_id).toBe(3); // by id, the outcome belongs to scan 3 although scan 2's cycle row is the newer one
   });
 
   it('a restarted process does not poll a closed PR sooner than one poll gap after it starts', async () => {

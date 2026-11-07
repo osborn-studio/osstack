@@ -5,6 +5,7 @@ import { ATTENTION_RETURN_DDL } from "./attention-return-ddl.js";
 import { ENGINEERING_CONTAINED_DDL } from "./engineering-contained-ddl.js";
 import { ENGINEERING_HOST_PROCESS_DDL } from "./engineering-host-process-ddl.js";
 import { ENGINEERING_MERGER_DDL } from "./engineering-merger-ddl.js";
+import { ENGINEERING_MERGER_SCAN_DDL } from "./engineering-merger-scan-ddl.js";
 import { ENGINEERING_REVISION_CHAIN_DDL } from "./engineering-revision-chain-ddl.js";
 import { ENGINEERING_REVISION_GRANT_DDL } from "./engineering-revision-grant-ddl.js";
 import { FOLLOW_UP_DELIVERY_DDL } from "./follow-up-delivery-ddl.js";
@@ -1886,6 +1887,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 52, name: "engineering_merger_shadow", sql: ENGINEERING_MERGER_DDL },
   { id: 53, name: "engineering_revision_grant_monotonic", sql: ENGINEERING_REVISION_GRANT_DDL },
   { id: 54, name: "engineering_host_processes", sql: ENGINEERING_HOST_PROCESS_DDL },
+  { id: 55, name: "engineering_merger_scans", sql: ENGINEERING_MERGER_SCAN_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

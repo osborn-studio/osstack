@@ -8,7 +8,11 @@ export type MergerOutcomeKind = "merged" | "closed_unmerged" | "reopened" | "obs
 /** sha256 of `[]`: the `codes_digest` of every would_merge row. Mirrored in the migration's CHECKs. */
 export const EMPTY_CODES_DIGEST = createHash("sha256").update("[]").digest("hex");
 
-export interface MergerWatermark { repository: string; pr_number: number; issued_seq: number; accepted_seq: number; updated_at: number }
+export interface MergerWatermark {
+  repository: string; pr_number: number; issued_seq: number; accepted_seq: number; updated_at: number;
+  /** Local wall time of the PR's latest observation start; null on rows written before migration 55. Cadence only. */
+  last_poll_at: number | null;
+}
 export interface MergerDecisionRow {
   seq: number; repository: string; pr_number: number; mission_id: string; observation_seq: number; head_sha: string; base_sha: string | null;
   verdict: MergerVerdictKind; codes_json: string; codes_digest: string; gates_json: string; merge_request_json: string | null;
@@ -18,6 +22,8 @@ export interface MergerOutcomeRow {
   seq: number; repository: string; pr_number: number; mission_id: string; observation_seq: number; outcome: MergerOutcomeKind; head_at_close: string;
   merged_at: string | null; merge_commit: string | null; merged_by_actor_id: number | null; merged_by_type: "User" | "Bot" | null;
   owner_approved_head: 0 | 1 | null; facts_json: string; observed_at: number; created_at: number;
+  /** The scan that recorded this segment (migration 55); null on rows written before it. */
+  scan_id: number | null;
 }
 
 export interface MergerPrRef { repository: string; pr_number: number }
@@ -42,6 +48,8 @@ export interface MergerDecisionResult {
 }
 export interface MergerOutcomeInput extends MergerPrRef {
   mission_id: string;
+  /** The database-issued id of the scan that observed this outcome (`beginScan`). */
+  scan_id: number;
   outcome: MergerOutcomeKind;
   head_at_close: string;
   merged_at?: string | null; merge_commit?: string | null;
@@ -62,14 +70,17 @@ export type MergerCycleEntry = readonly [repository: string, prNumber: number, o
 
 /** The only surface the shadow merger service receives: four methods, no Mission or chain store. */
 export interface MergerShadowWriter {
-  recordCycle(startedAt: number, finishedAt: number, prs: readonly MergerCycleEntry[], now: number): number;
+  /** Issues the scan id (database-assigned, committed before it is returned) that the scan's cycle row and outcomes will carry. */
+  beginScan(startedAt: number, now: number): number;
+  recordCycle(scanId: number, startedAt: number, finishedAt: number, prs: readonly MergerCycleEntry[], now: number): number;
   beginObservation(repository: string, prNumber: number, now: number): number;
   recordDecision(input: MergerDecisionInput, observationSeq: number, now: number): MergerDecisionResult;
   recordOutcome(input: MergerOutcomeInput, observationSeq: number, now: number): MergerOutcomeRow;
 }
 export function mergerShadowWriter(store: MergerShadowStore): MergerShadowWriter {
   return {
-    recordCycle: (startedAt, finishedAt, prs, now) => store.recordCycle(startedAt, finishedAt, prs, now),
+    beginScan: (startedAt, now) => store.beginScan(startedAt, now),
+    recordCycle: (scanId, startedAt, finishedAt, prs, now) => store.recordCycle(scanId, startedAt, finishedAt, prs, now),
     beginObservation: (repository, prNumber, now) => store.beginObservation(repository, prNumber, now),
     recordDecision: (input, n, now) => store.recordDecision(input, n, now),
     recordOutcome: (input, n, now) => store.recordOutcome(input, n, now),
@@ -100,15 +111,17 @@ const gatesOk = (v: unknown): v is Record<string, unknown> => GATES_SCHEMA(v);
 const HEX = /^[0-9a-f]{40}$|^[0-9a-f]{64}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 
-// The four statements the writer ever runs against the fence and the evidence tables. Fixed text, bound parameters only.
-const SQL_TAKE = "INSERT INTO engineering_merger_shadow_watermarks(repository,pr_number,issued_seq,accepted_seq,updated_at) VALUES(?,?,1,0,?) "
-  + "ON CONFLICT(repository,pr_number) DO UPDATE SET issued_seq=issued_seq+1,updated_at=excluded.updated_at RETURNING issued_seq";
+// The statements the writer ever runs against the fence, the scan ids and the evidence tables. Fixed text, bound parameters only.
+const SQL_TAKE = "INSERT INTO engineering_merger_shadow_watermarks(repository,pr_number,issued_seq,accepted_seq,updated_at,last_poll_at) VALUES(?,?,1,0,?,?) "
+  + "ON CONFLICT(repository,pr_number) DO UPDATE SET issued_seq=issued_seq+1,updated_at=excluded.updated_at,"
+  + "last_poll_at=MAX(COALESCE(last_poll_at,0),excluded.last_poll_at) RETURNING issued_seq";
 const SQL_ADVANCE = "UPDATE engineering_merger_shadow_watermarks SET accepted_seq=?,updated_at=? WHERE repository=? AND pr_number=?";
 const SQL_DECISION = `INSERT INTO engineering_merger_shadow_decisions(repository,pr_number,mission_id,observation_seq,head_sha,base_sha,verdict,codes_json,
   codes_digest,gates_json,merge_request_json,evidence_digest,observed_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-const SQL_CYCLE = "INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(?,?,?)";
+const SQL_SCAN = "INSERT INTO engineering_merger_shadow_scans(started_at) VALUES(?)";
+const SQL_CYCLE = "INSERT INTO engineering_merger_shadow_cycles(scan_id,started_at,finished_at,prs_json) VALUES(?,?,?,?)";
 const SQL_OUTCOME = `INSERT INTO engineering_merger_shadow_outcomes(repository,pr_number,mission_id,observation_seq,outcome,head_at_close,merged_at,
-  merge_commit,merged_by_actor_id,merged_by_type,owner_approved_head,facts_json,observed_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+  merge_commit,merged_by_actor_id,merged_by_type,owner_approved_head,facts_json,observed_at,created_at,scan_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 
 /** Append-only shadow-merger ledger. Synchronous; every write is one `BEGIN IMMEDIATE` transaction under the daemon owner
  * fence and makes no network, git or process call. It never touches the Mission or revision-chain tables. */
@@ -121,6 +134,11 @@ export class MergerShadowStore {
   }
   decisions(repository: string, prNumber: number): MergerDecisionRow[] {
     return this.db.prepare("SELECT * FROM engineering_merger_shadow_decisions WHERE repository=? AND pr_number=? ORDER BY seq").all(this.repo(repository), prNumber) as MergerDecisionRow[];
+  }
+  /** The PR's latest observation start (local wall time), or null before its first one or on a row written before migration 55. */
+  lastPollAt(repository: string, prNumber: number): number | null {
+    const row = this.db.prepare("SELECT last_poll_at FROM engineering_merger_shadow_watermarks WHERE repository=? AND pr_number=?").get(this.repo(repository), prNumber) as { last_poll_at: number | null } | undefined;
+    return row?.last_poll_at ?? null;
   }
   outcomes(repository: string, prNumber: number): MergerOutcomeRow[] {
     return this.db.prepare("SELECT * FROM engineering_merger_shadow_outcomes WHERE repository=? AND pr_number=? ORDER BY seq").all(this.repo(repository), prNumber) as MergerOutcomeRow[];
@@ -135,7 +153,7 @@ export class MergerShadowStore {
   /** Take the next observation number for a PR. The number is returned only after its transaction commits; call it before the first GitHub read. */
   beginObservation(repository: string, prNumber: number, now: number): number {
     this.ref({ repository, pr_number: prNumber }); this.clock(now);
-    return this.write(() => (this.db.prepare(SQL_TAKE).get(this.repo(repository), prNumber, now) as { issued_seq: number }).issued_seq);
+    return this.write(() => (this.db.prepare(SQL_TAKE).get(this.repo(repository), prNumber, now, now) as { issued_seq: number }).issued_seq);
   }
 
   /** One transaction: advance the fence to `observationSeq` (a number at or below the accepted one is `merger_stale_observation`), then the
@@ -168,9 +186,16 @@ export class MergerShadowStore {
     });
   }
 
-  /** One row per scan cycle: the PRs it looked at (at most 10), so a report can tell "not seen" from "seen, unchanged". */
-  recordCycle(startedAt: number, finishedAt: number, prs: readonly MergerCycleEntry[], now: number): number {
-    this.clock(startedAt); this.clock(finishedAt); this.clock(now);
+  /** Take a scan id. The database issues it (never a clock, never "newest cycle + 1"), and it is returned only after its transaction commits;
+   * call it before the scan's first observation so overlapping scans, in this or another process, can never share or swap ids. */
+  beginScan(startedAt: number, now: number): number {
+    this.clock(startedAt); this.clock(now);
+    return this.write(() => Number(this.db.prepare(SQL_SCAN).run(startedAt).lastInsertRowid));
+  }
+
+  /** One row per scan cycle: the PRs it looked at (at most 10), so a report can tell "not seen" from "seen, unchanged". At most one per scan. */
+  recordCycle(scanId: number, startedAt: number, finishedAt: number, prs: readonly MergerCycleEntry[], now: number): number {
+    this.seq(scanId); this.clock(startedAt); this.clock(finishedAt); this.clock(now);
     if (finishedAt < startedAt || prs.length > 10) fail("merger_invalid_input");
     for (const [repository, prNumber, seq, head, verdict] of prs) {
       this.ref({ repository, pr_number: prNumber }); this.seq(seq);
@@ -178,12 +203,12 @@ export class MergerShadowStore {
     }
     const json = JSON.stringify(prs.map(([repository, ...rest]) => [this.repo(repository), ...rest]));
     if (json.length > 4096) fail("merger_invalid_input");
-    return this.write(() => Number(this.db.prepare(SQL_CYCLE).run(startedAt, finishedAt, json).lastInsertRowid));
+    return this.write(() => Number(this.db.prepare(SQL_CYCLE).run(scanId, startedAt, finishedAt, json).lastInsertRowid));
   }
 
   /** Same fence as decisions: the segment carries the observation number that was just accepted. */
   recordOutcome(input: MergerOutcomeInput, observationSeq: number, now: number): MergerOutcomeRow {
-    this.ref(input); this.clock(now); this.clock(input.observed_at); this.seq(observationSeq);
+    this.ref(input); this.clock(now); this.clock(input.observed_at); this.seq(observationSeq); this.seq(input.scan_id);
     if (typeof input.mission_id !== "string" || input.mission_id.length === 0 || !HEX.test(input.head_at_close)) fail("merger_invalid_input");
     if (input.merge_commit != null && !HEX.test(input.merge_commit)) fail("merger_invalid_input");
     const factsJson = JSON.stringify(input.facts ?? {});
@@ -194,7 +219,7 @@ export class MergerShadowStore {
       this.db.prepare(SQL_ADVANCE).run(observationSeq, now, repository, input.pr_number);
       const r = this.db.prepare(SQL_OUTCOME).run(repository, input.pr_number, input.mission_id, observationSeq, input.outcome, input.head_at_close, input.merged_at ?? null,
         input.merge_commit ?? null, input.merged_by_actor_id ?? null, input.merged_by_type ?? null,
-        input.owner_approved_head === undefined || input.owner_approved_head === null ? null : input.owner_approved_head ? 1 : 0, factsJson, input.observed_at, now);
+        input.owner_approved_head === undefined || input.owner_approved_head === null ? null : input.owner_approved_head ? 1 : 0, factsJson, input.observed_at, now, input.scan_id);
       return this.db.prepare("SELECT * FROM engineering_merger_shadow_outcomes WHERE seq=?").get(Number(r.lastInsertRowid)) as MergerOutcomeRow;
     });
   }

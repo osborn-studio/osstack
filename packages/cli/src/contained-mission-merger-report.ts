@@ -18,8 +18,10 @@ interface Decision { seq: number; mission_id: string; observation_seq: number; h
 interface Outcome {
   seq: number; mission_id: string; observation_seq: number; outcome: 'merged' | 'closed_unmerged' | 'reopened' | 'observation_expired'; head_at_close: string;
   merged_at: string | null; merged_by_actor_id: number | null; merged_by_type: string | null; owner_approved_head: number | null; facts_json: string; observed_at: number; created_at: number;
+  /** The scan that recorded the segment (migration 55); null on rows from before it. */
+  scan_id: number | null;
 }
-interface Cycle { seq: number; started_at: number; finished_at: number }
+interface Cycle { seq: number; scan_id: number | null; started_at: number; finished_at: number }
 
 export interface ReportPr {
   repository: string; pr_number: number; mission_id: string; category: ReportCategory; ever_would_merge: boolean; head_at_close: string;
@@ -87,16 +89,32 @@ export function buildMergerReport(rawDb: ReportDb, now: number, readScopes?: rea
     if (last?.outcome === 'merged') {
       facts = factsOf(last.facts_json);
       lastDecision = before(last);
-      // The scan that detected the merge, then the scans before it. The reconciler stamps `cycle_after` (the newest cycle number when the scan began),
-      // so the choice follows cycle numbers and not the local clock; outcomes without the stamp fall back to time. The PR is "watched" when it is listed
-      // in any of the three scans before, and the service was not down in between (the last of them ends within two scan intervals of this one).
+      // The scan that detected the merge, then the scans before it. The reconciler records a database-issued scan id on the outcome and on the cycle row
+      // its scan writes, so the detecting cycle is the one with that id: not the next row after some number, not the next row by clock, and not
+      // confused by a second process whose scan overlaps this one. "The scans before" are those with a lower scan id (scans start in id order).
+      // Outcomes written before migration 55 carry no scan id: they keep the older `cycle_after` stamp, and without it fall back to time.
+      // The PR is "watched" when it is listed in any of the three scans before, and the service was not down in between (the last of them ends
+      // within two scan intervals of the start of this one).
       const after = typeof facts['cycle_after'] === 'number' ? facts['cycle_after'] : null;
-      const detect = after !== null
-        ? one<Cycle>('SELECT seq,started_at,finished_at FROM engineering_merger_shadow_cycles WHERE seq>? ORDER BY seq LIMIT 1', after)
-        : one<Cycle>('SELECT seq,started_at,finished_at FROM engineering_merger_shadow_cycles WHERE finished_at>=? ORDER BY seq LIMIT 1', last.created_at);
-      const prior = detect ? all<Cycle>('SELECT seq,started_at,finished_at FROM engineering_merger_shadow_cycles WHERE seq<? ORDER BY seq DESC LIMIT 3', detect.seq) : [];
-      const watched = detect !== undefined && prior.length > 0 && detect.started_at - (prior[0] as Cycle).finished_at <= 2 * SCAN_INTERVAL_MS
-        && prior.some((c) => cycleHas(key.repository, key.pr_number, c.started_at, c.finished_at, c.seq));
+      const columns = 'seq,scan_id,started_at,finished_at';
+      const detect = typeof last.scan_id === 'number'
+        ? one<Cycle>(`SELECT ${columns} FROM engineering_merger_shadow_cycles WHERE scan_id=?`, last.scan_id)
+        : after !== null
+          ? one<Cycle>(`SELECT ${columns} FROM engineering_merger_shadow_cycles WHERE seq>? ORDER BY seq LIMIT 1`, after)
+          : one<Cycle>(`SELECT ${columns} FROM engineering_merger_shadow_cycles WHERE finished_at>=? ORDER BY seq LIMIT 1`, last.created_at);
+      const prior = !detect ? []
+        : typeof detect.scan_id === 'number'
+          ? all<Cycle>(`SELECT ${columns} FROM engineering_merger_shadow_cycles WHERE (scan_id IS NOT NULL AND scan_id<?) OR (scan_id IS NULL) ORDER BY scan_id IS NULL, scan_id DESC, seq DESC LIMIT 3`, detect.scan_id)
+          : all<Cycle>(`SELECT ${columns} FROM engineering_merger_shadow_cycles WHERE seq<? ORDER BY seq DESC LIMIT 3`, detect.seq);
+      // A scan that was taken after the detecting one (higher id) but listed this PR with a lower observation number observed it before the merge
+      // too: scan ids are issued in the order scans take their first observation, which says nothing about the order of one PR's observations.
+      // The per-PR observation number (the fence) is the order the rest of this report already uses, so it decides here as well. The listing must also
+      // be recent against the merge observation (within two scan intervals of its start): a straggler from a day earlier proves no continuity.
+      const straggler = detect !== undefined && typeof detect.scan_id === 'number' && one(
+        `SELECT 1 AS x FROM engineering_merger_shadow_cycles c WHERE c.scan_id>? AND EXISTS (SELECT 1 FROM json_each(c.prs_json) j WHERE json_extract(j.value,'$[0]')=? AND json_extract(j.value,'$[1]')=? AND json_extract(j.value,'$[2]')<?) AND ?-c.finished_at<=? LIMIT 1`,
+        detect.scan_id, key.repository, key.pr_number, last.observation_seq, last.observed_at, 2 * SCAN_INTERVAL_MS) !== undefined;
+      const watched = detect !== undefined && (straggler || (prior.length > 0 && detect.started_at - (prior[0] as Cycle).finished_at <= 2 * SCAN_INTERVAL_MS
+        && prior.some((c) => cycleHas(key.repository, key.pr_number, c.started_at, c.finished_at, c.seq))));
       if (typeof facts['published_head'] === 'string' && facts['published_head'] !== last.head_at_close) category = 'merged_other_head';
       else if (facts['reopen_unobserved'] === true || !watched) category = 'merged_unobserved';
       else if (lastDecision?.head_sha === last.head_at_close && lastDecision.verdict === 'would_merge') category = 'agree_merge';

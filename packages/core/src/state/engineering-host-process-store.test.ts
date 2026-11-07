@@ -682,7 +682,7 @@ describe("migration 54 and upgrade holds", () => {
     expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(54);
     const db = openDb({ path }); cleanup.push(() => { db.close(); });
     expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
-    const added = names(db).filter(o => !before.includes(o) && !o.includes("sqlite_autoindex"));
+    const added = names(db).filter(o => !before.includes(o) && !o.includes("sqlite_autoindex") && !/merger_.*(scan|poll)/.test(o));
     expect(added.filter(o => o.startsWith("table:"))).toEqual(["table:engineering_host_processes"]);
     expect(added.filter(o => o.startsWith("index:")).length).toBe(4);
     expect(added.filter(o => o.startsWith("trigger:")).length).toBe(14);
