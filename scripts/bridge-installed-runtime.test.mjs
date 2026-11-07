@@ -6,7 +6,7 @@ import test from 'node:test';
 import { createScratchDir } from './lib/scratch.mjs';
 import { loadBridgeRuntime } from './lib/bridge-installed-runtime.mjs';
 
-const scratchEnv = { OSSTACK_SCRATCH_ROOT: '/Volumes/AIMATE_WORK/tmp/osstack' };
+const scratchEnv = process.env;
 const commit = 'a'.repeat(40);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const installedPaths = {

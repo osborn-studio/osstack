@@ -551,8 +551,8 @@ export async function execute(opts, prepared) {
   return { qualified: report.qualified, report: output, scratch };
 }
 
-export async function runSmoke(argv, effects = { preflight, execute }) {
-  const opts = parseOptions(argv), prepared = await effects.preflight(opts);
+export async function runSmoke(argv, effects = { preflight, execute }, env = process.env) {
+  const opts = parseOptions(argv, env), prepared = await effects.preflight(opts);
   if (!opts.execute) return { preflight: true, qualified: false, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run, runtime_provenance: prepared.provenance };
   return effects.execute(opts, prepared);
 }

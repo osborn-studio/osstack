@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SANDBOX, assertRequest, assertTimeline, parseOptions, runSmoke } from './smoke-bridge-revision-sandbox.mjs';
+import { SANDBOX, assertRequest, assertTimeline, parseOptions, runSmoke as runDriver } from './smoke-bridge-revision-sandbox.mjs';
+
+const runSmoke = (argv, effects) => runDriver(argv, effects, {});
 
 // Only pure guards and injected orchestration effects run here. Never call real preflight/execute.
 test('preflight is the default; only explicit execute can enter injected effects', async () => {
