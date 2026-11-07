@@ -30,6 +30,15 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const assertThat = (condition, code) => { if (!condition) throw Error(code); };
 const privateJson = (path, body) => writeFile(path, JSON.stringify(body, null, 2) + '\n', { mode: 0o600 });
 
+/** Pure harness predicate; a stopped scenario cannot become successful without human action. */
+export function sandboxRevisionRoundComplete(chain, prior, round, child) {
+  const stoppedChain = ['awaiting_decision', 'closed', 'ready_for_human'].includes(chain.state);
+  const stoppedChild = ['awaiting_decision', 'needs_reconciliation', 'stop_unknown', 'cancel_requested', 'cancelled', 'abandoned', 'failed'].includes(child?.state);
+  assertThat(!stoppedChain && !stoppedChild,
+    `revision_round_halted:round_${round}:chain=${chain.state}:reason=${chain.stop_reason ?? 'none'}:child=${chain.current_mission_id ?? 'none'}:state=${child?.state ?? 'none'}`);
+  return chain.rounds_used === round && chain.published_head !== prior.published_head && chain.state === 'awaiting_review';
+}
+
 export function parseOptions(argv, env = process.env) {
   assertThat(!env.OSSTACK_SCRATCH_ROOT || resolve(env.OSSTACK_SCRATCH_ROOT) === SMOKE_ROOT, 'isolated_ssd_scratch_root_required');
   const opts = { execute: false, run: `revision-${Date.now()}`, appsDir: env.OSSTACK_BRIDGE_APPS_DIR ?? join(homedir(), '.config/osstack-bridge/apps'),
@@ -455,7 +464,11 @@ export async function execute(opts, prepared) {
     for (let round = 1; round <= 2; round++) {
       const prior = chains.get(item.chain.chain_id);
       await review(prior, `Update only ${item.file}: replace the entire content with exactly stage ${round} followed by a newline. Keep all other files unchanged.`);
-      await until(() => { const c = chains.get(prior.chain_id); return c.rounds_used === round && c.published_head !== prior.published_head && c.state === 'awaiting_review'; }, `round_${round}`);
+      await until(() => {
+        const c = chains.get(prior.chain_id);
+        const child = c.current_mission_id ? missions.get(c.current_mission_id) : null;
+        return sandboxRevisionRoundComplete(c, prior, round, child);
+      }, `round_${round}`);
       const c = chains.get(prior.chain_id);
       assertThat(missions.get(c.current_mission_id).state === 'pr_opened', 'revision_child_not_opened');
       assertThat(chains.intents(c.chain_id).filter(i => i.kind === 'push' && i.state === 'confirmed').length === round, 'confirmed_round_count');
