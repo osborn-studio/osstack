@@ -20,3 +20,11 @@ Scope: GLM-5.3's review of `production-review.diff` at `85f85119`: the new produ
 - CLI typecheck passed. Runtime remains inactive: the daemon still rejects live startup until phase 5-F and 5-G acceptance evidence is reviewed and the code gate changes.
 
 The corrections are in the commit containing this report. They do not approve deployment or replace the independent acceptance review.
+
+## Delta review: recovery cancellation scope
+
+The later GLM delta review raised a conditional P2 about forwarding an invocation abort to the shared production read controller. The normal service calls recovery once: `ContainedMissionService.start()` stores `starting ??= ...`, and its recovery controller is aborted by `close()`. That call site cannot cancel one attempt and then start another service recovery on the same instance.
+
+The exported factory has a broader callable surface: its returned `revisionRecovery(signal)` did not declare a one-shot contract. A direct caller could cancel an invocation and then recover again or start the live scanner. A regression reproduced the second recovery rejecting because the first call had aborted the shared controller. This is accepted for that public factory surface.
+
+The correction builds receipt read effects for each recovery invocation with a composite of its signal and the service lifetime signal. Cancelling one invocation leaves the service lifetime intact. Stopping either scanner still aborts the shared read lifetime. The regression now cancels an active recovery call, successfully recovers again, starts/scans live and stopped services, and confirms that recovery is refused after service stop. No GitHub write or deployment is part of this check.

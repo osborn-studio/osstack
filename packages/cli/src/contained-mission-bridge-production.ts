@@ -52,6 +52,7 @@ export async function createProductionLiveBridge(deps: ProductionLiveBridgeDeps)
   const { compareBridgeLedgerRange } = await import('./contained-mission-bridge-ledger.js');
   const write = await deps.ports.revisionPublicationAdapters();
   const assembled = await assembleLiveBridge({ ...deps, protectedSetDigest: missionProtectedSetDigest,
+    receiptReadAdapters: signal => createReceiptReadAdapters({ signal: AbortSignal.any([signal, readAbort.signal]), exec }),
     ledgerCompare: (repository, start, head, signal) => compareBridgeLedgerRange(repository, start, head, exec, signal),
     readPr: ref => reader.readPullRequest(transport, ref),
     headIsDescendant: (chain, head, signal) => readBridgeAncestry(chain, head, signal, exec),
@@ -62,13 +63,5 @@ export async function createProductionLiveBridge(deps: ProductionLiveBridgeDeps)
     const stop = service.stop.bind(service);
     service.stop = async () => { readAbort.abort(); await stop(); };
   }
-  const recover = assembled.revisionRecovery;
-  assembled.revisionRecovery = async signal => {
-    const abort = () => { readAbort.abort(); };
-    if (signal.aborted) abort();
-    readAbort.signal.throwIfAborted();
-    signal.addEventListener('abort', abort, { once: true });
-    try { await recover(signal); } finally { signal.removeEventListener('abort', abort); }
-  };
   return assembled;
 }

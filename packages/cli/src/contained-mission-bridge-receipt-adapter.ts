@@ -12,6 +12,7 @@ export async function createReceiptReadAdapters(options: {
   exec?: GhExec;
   transport?: GraphqlTransport;
 }): Promise<Pick<RevisionPublicationDeps, 'remoteHead' | 'localGit' | 'compare' | 'readPr' | 'remoteIsDescendant'>> {
+  if (options.signal.aborted) throw Error('receipt_recovery_aborted');
   const [{ runHardenedGit, inspectRepoConfig }, publication, ledger, reader] = await Promise.all([
     import('@osstack/agents'), import('./contained-mission-revision-publication.js'), import('./contained-mission-bridge-ledger.js'), import('./contained-mission-bridge-reader.js'),
   ]);

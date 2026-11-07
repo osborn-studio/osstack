@@ -223,10 +223,18 @@ describe("live assembly configuration validation", () => {
     const host = (service as unknown as { options: { host: import('./contained-mission-host.js').ContainedMissionHost } }).options.host;
     const assembly = await createProductionLiveBridge({ home: f.home,
       chains: new RevisionChainStore(f.deps.attention, f.deps.owner), missions: new ContainedMissionStore(f.deps.attention, f.deps.owner),
-      ports, host, access: f.deps.access, enabled: () => false, now: Date.now, log: () => {},
+      ports, host, access: f.deps.access, enabled: () => true, now: Date.now, log: () => {},
       launchCaps: { executor_seconds: 600, verify_seconds: 120 } });
     expect(ports.revisionPublication).toBe(assembly.publication);
     expect(assembly.grants).toBeDefined();
+    const cancelled = new AbortController();
+    const recovering = assembly.revisionRecovery(cancelled.signal);
+    const rejected = expect(recovering).rejects.toThrow();
+    cancelled.abort(); await rejected;
+    await expect(assembly.revisionRecovery(new AbortController().signal)).resolves.toBeUndefined();
+    assembly.live.start();
+    await expect(assembly.live.scan()).resolves.toBeUndefined();
+    await expect(assembly.stoppedScan.scan()).resolves.toBeUndefined();
     await assembly.live.stop();
     await expect(assembly.revisionRecovery(new AbortController().signal)).rejects.toThrow();
     await assembly.stoppedScan.stop(); await service.close();

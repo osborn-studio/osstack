@@ -37,6 +37,8 @@ export async function assembleLiveBridge(deps: {
   publication: Omit<RevisionPublicationDeps, 'chains' | 'missions' | 'host' | 'now' | 'fenceAuthority' | 'cancelChild'>;
   stoppedRead: import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanOptions['readPr'];
   ledgerCompare?: import('./contained-mission-bridge-ledger.js').LedgerCompare;
+  /** Startup/manual recovery cancellation belongs to that invocation, not the live scanner lifetime. */
+  receiptReadAdapters?: (signal: AbortSignal) => Promise<Pick<RevisionPublicationDeps, 'remoteHead' | 'localGit' | 'compare' | 'readPr' | 'remoteIsDescendant'>>;
 }) {
   const config = await loadLiveBridgeConfiguration(deps.home);
   if (!/^[0-9a-f]{64}$/.test(deps.protectedSetDigest())) throw Error('BRIDGE_CONFIG_INVALID:live:protected_set_digest');
@@ -80,14 +82,18 @@ export async function assembleLiveBridge(deps: {
     await cancel(chain.current_mission_id, signed.principal_id, signed.client_session_id);
   };
   const revisionRecovery = async (signal: AbortSignal) => {
+    signal.throwIfAborted();
+    const invocationReads = await deps.receiptReadAdapters?.(signal);
+    const invocationReceipts = invocationReads ? publication.createRevisionReceiptRecovery({ ...deps.publication, ...invocationReads,
+      chains: deps.chains, missions: deps.missions, host: deps.ports.hostProcesses, now: deps.now }) : receipts;
     let afterIntentId: string | undefined;
     while (!signal.aborted) {
-      const page = await receipts.recoverPendingReceipts({ limit: 10, signal, ...(afterIntentId ? { afterIntentId } : {}) });
+      const page = await invocationReceipts.recoverPendingReceipts({ limit: 10, signal, ...(afterIntentId ? { afterIntentId } : {}) });
       if (page.complete) break;
       if (!page.afterIntentId || page.afterIntentId === afterIntentId) throw Error('receipt_recovery_cursor_stalled');
       afterIntentId = page.afterIntentId;
     }
-    await ledger.recoverBridgeLedgers({ ...ledgerDeps, now: deps.now, cancelChild: cancelChain }, signal);
+    await ledger.recoverBridgeLedgers({ ...ledgerDeps, ...(invocationReads ? { remoteHead: invocationReads.remoteHead } : {}), now: deps.now, cancelChild: cancelChain }, signal);
   };
   const readLimiter = new BridgeReadLimiter();
   const live = new LiveReconciler({ dispatch: { ...common, registry: config.registry, readPr: deps.readPr, protectedSetDigest: deps.protectedSetDigest },
