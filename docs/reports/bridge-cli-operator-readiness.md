@@ -107,3 +107,45 @@ Proven P2 findings fixed in this delta:
 - **Main/check configuration:** omit main, return develop for the main endpoint, use default-branch rules when the default is develop, or add both correct and incorrect producers for the Grok check name. The first version did not verify main and used an any-match producer test. The collector now verifies main, resolves only supported ref conditions, and marks duplicate entries conflicting.
 
 No unresolved P1/P2 was identified in the final owned-code review. This is a focused local audit, not a claim that all defects are excluded. The transport's process boundary was faked; no live response, credential access, external write, deployment, or service change occurred. No full-monorepo checks ran. Glob/ref semantics beyond the small supported subset, enterprise or unrelated-organization inheritance, effective GitHub merge eligibility, App installation/permission state, and all Grok platform capabilities remain unverified. A public identity or correctly named check never proves operator readiness.
+
+## N13a main-base integration (2026-11-07)
+
+`codex/bridge-operator-evidence` starts at main `9e2eaf9c` and contains only the
+collector, its Node test and this report. Original commits `8477b9fb` and
+`82e2f7d6` were selected as `8844d4c4` and `8c59d677`; no N9 runtime dependency,
+new package, root script or duplicate collector was added. Source is bound to
+`8c59d677`; later documentation does not change it.
+
+The parent independently sampled real read-only GETs into an external evidence
+artifact, SHA256 `46f096bd39b29aa9c0cea65f76949840ce629d4ed82cd9f0928d9ce348c288e4`.
+The expected CLI exit was 1: main classic protection requires one approval and
+has no required checks; main-quality ruleset is missing. Sandbox has all four
+matching rulesets, while classic protection HTTP404 remains unknown. All six
+registered public Bot identities were observed. These are metadata observations,
+not installation, credential, event delivery or U-1 through U-11 runtime proof.
+Readiness remains `not_assessed`, scope `github_metadata_only`, gate closed.
+This integration did not repeat that network probe.
+
+GLM reviewed the collector/test diff and existing sample/test artifacts, without
+executing anything: no introduced P1/P2. Reviewed diff SHA256 is
+`a60262173cdeb2e6d31f49d71a259c652fb4744bf49600e5109e9d9737ebc4ed`;
+response UTF-8 SHA256 is
+`8bad42c5381af34be6fbda8956451aab71fa4d1e1ea66062cf887502e2f86434`.
+No raw model session metadata is committed. This is a scoped static review,
+separate from the following actual local checks.
+
+Local integration validation: Node tests25/25, no skip; both `node --check`
+commands pass; Biome2files pass using byte-identical scratch copies and the repo
+rules with only file inclusion expanded to mjs. The default repo inclusion
+excludes scripts, so the initial direct invocation processed zero files and is
+not counted as success. Inventory fresh, changeset coverage0 release-sensitive
+packages, diff check pass. Documentation audit resolves both report links and
+checks the metadata-only/gate statements against the saved sample; it does not
+certify the external platform. No build, typecheck or full-repo suite was needed
+or run. No settings, service, Bot or remote mutation was performed.
+
+Suggested main-base PR: `feat(bridge): collect read-only operator readiness metadata`.
+Describe bounded allowlisted GETs, independent classic/ruleset evidence, public
+identity conflicts and unknown handling. State the expected incomplete live
+result and25 local unit checks; do not claim stage6 acceptance. CI test-step
+integration is a separate dependent node. Parent owns push and PR creation.
