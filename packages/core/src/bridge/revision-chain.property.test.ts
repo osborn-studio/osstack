@@ -126,7 +126,8 @@ function viewOf(store: RevisionChainStore, c: RevisionChain): ChainView {
 function decideFor(r: Run, store: RevisionChainStore, c: RevisionChain, incomplete: boolean, moved: boolean) {
   const intents = r.mode === "live" ? store.intents(c.chain_id).filter(i => i.kind === "push") : [];
   const pending = intents.find(i => i.state === "pending" || i.state === "uncertain")?.new_head ?? undefined;
-  const confirmed = intents.some(i => i.state === "confirmed" && i.new_head === r.w.head) ? r.w.head : undefined;
+  // D3: only the confirmed intent extending the published head counts, not any earlier confirmed head.
+  const confirmed = r.mode === "live" && store.nextConfirmedPushHead(c.chain_id) === r.w.head ? r.w.head : undefined;
   return decideChainStep(viewOf(store, c), snapshotOf(r.w, incomplete, moved), REGISTRY, r.now, {
     ...(confirmed !== undefined ? { confirmed_push_head: confirmed } : {}),
     ...(pending !== undefined ? { pending_push_head: pending } : {}),

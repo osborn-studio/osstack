@@ -80,7 +80,8 @@ export function shadowChainWriter(store: RevisionChainStore): ShadowChainWriter 
 /** Ledger for revision chains. Synchronous; every write is one `BEGIN IMMEDIATE` transaction under the
  * daemon owner fence, and starts no process and makes no git or network call. */
 export class RevisionChainStore {
-  constructor(readonly attention: AttentionStore, readonly owner: AttentionOwner) {}
+  /** `clockMs` is the store's own notion of "now" for grant-expiry checks (design 8.7.1); the `now` arguments stay the ledger timestamps. */
+  constructor(readonly attention: AttentionStore, readonly owner: AttentionOwner, private readonly clockMs: () => number = Date.now) {}
   get db(): Database.Database { return this.attention.db; }
 
   get(chainId: string): RevisionChain {
@@ -102,6 +103,14 @@ export class RevisionChainStore {
   }
   confirmedPushHeads(chainId: string): string[] {
     return (this.db.prepare("SELECT new_head FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state='confirmed' ORDER BY created_at,intent_id").all(chainId) as Array<{ new_head: string }>).map(r => r.new_head);
+  }
+  /** Live: `new_head` of the confirmed push intent that extends exactly what the chain has published, if the chain has not reflected it yet.
+   * This is the only value a caller may hand `decideChainStep` as `confirmed_push_head` (TLA+ D3). */
+  nextConfirmedPushHead(chainId: string): string | undefined {
+    const chain = this.get(chainId);
+    const row = this.db.prepare(`SELECT new_head FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state='confirmed'
+      AND expected_old_head=? AND expected_base_sha=? ORDER BY created_at,intent_id LIMIT 1`).get(chainId, chain.published_head, chain.published_base) as { new_head: string } | undefined;
+    return row?.new_head;
   }
   chainForMission(rootMissionId: string, mode: ChainMode = "shadow"): RevisionChain | undefined {
     return this.db.prepare("SELECT * FROM engineering_revision_chains WHERE root_mission_id=? AND mode=?").get(rootMissionId, mode) as RevisionChain | undefined;
@@ -165,6 +174,7 @@ export class RevisionChainStore {
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
       if (chain.state !== "revision_reserved") fail("state_denied");
+      this.assertGrantLive(chain);
       const res = this.reservation(chain, head);
       if (res.state !== "reserved") fail("reservation_not_reserved");
       // Reservation first: the chain's current_mission_id trigger requires the dispatched row to exist.
@@ -207,6 +217,11 @@ export class RevisionChainStore {
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
       if (chain.state !== "revising" && chain.state !== "publishing") fail("state_denied");
       if (input.kind === "push") {
+        this.assertGrantLive(chain);
+        // D2: one push receipt at a time. A second pending intent could settle `uncertain` after the chain moved on, and an
+        // uncertain one may still land on the remote.
+        const open = this.db.prepare("SELECT state FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain') ORDER BY state LIMIT 1").get(chainId) as { state: string } | undefined;
+        if (open) fail(open.state === "pending" ? "push_intent_pending" : "push_intent_uncertain");
         // The intent must extend exactly what the chain published, on the chain's branch, for its dispatched child.
         const dispatched = chain.current_mission_id !== null && this.db.prepare(
           "SELECT 1 FROM engineering_revision_reservations WHERE chain_id=? AND child_mission_id=? AND state='dispatched'").get(chainId, chain.current_mission_id);
@@ -226,7 +241,15 @@ export class RevisionChainStore {
     });
   }
   /** Settle an intent. A confirmed push in `publishing` moves published_head/base and returns the chain to review in the same
-   * transaction; an uncertain push stops the chain for a human. */
+   * transaction. A push receipt that is not confirmed stops the chain for a human:
+   * - `uncertain` stops any chain that is not already stopped or closed, whether or not the intent is still the one in flight
+   *   (design 8.7 step 5; TLA+ D1), so a late uncertain verdict can never leave a running chain beside a possible remote write;
+   * - `failed` stops a chain whose round is in flight for this intent's child (design 8.7 step 2; appendix 5.3 steps 2-3 and 5, and
+   *   4.4 `child_failed`/`publish_refused`). "No release record, so git never ran" (appendix 2 item 2) makes the intent `failed` but is
+   *   no licence to retry in place: a retry is a new intent after a human decision, and D2 allows it only once this one is settled.
+   * A confirmed push also settles its dispatched reservation as `published` when the child is already terminal with the stop proven
+   * (appendix 4.1 item 1 and item 3 row `awaiting_decision`); while the child still runs the caller voids it in the same transaction as
+   * the child's terminal state (appendix 5.3 step 6 items 3 and 5). */
   settleIntent(intentId: string, to: "confirmed" | "failed" | "uncertain", now: number, detail?: string): { chain: RevisionChain; intent: PublicationIntent } {
     this.clock(now);
     if (detail !== undefined && detail.length > 1024) fail("invalid_detail");
@@ -236,12 +259,19 @@ export class RevisionChainStore {
       let chain = this.get(before.chain_id);
       const bound = before.kind === "push" && chain.state === "publishing" && chain.published_head === before.expected_old_head
         && chain.published_base === before.expected_base_sha && chain.branch === before.branch && chain.current_mission_id === before.child_mission_id;
-      if (bound) {
-        if (to === "confirmed") {
+      const at = { head: before.new_head ?? chain.published_head, base: chain.published_base };
+      if (to === "confirmed") {
+        if (bound) {
           chain = this.update(chain, { state: "awaiting_review", published_head: before.new_head!, published_base: before.expected_base_sha! }, "push_confirmed",
             { head: before.new_head!, base: before.expected_base_sha! }, now);
-        } else if (to === "uncertain") {
-          chain = this.update(chain, { state: "awaiting_decision", stop_reason: "intent_uncertain" }, "intent_uncertain", { head: before.new_head!, base: chain.published_base }, now);
+        }
+        // A closed chain leaves the reservation to the caller's explicit voidReservation (appendix 4.1 item 3, row `closed`).
+        if (before.kind === "push" && chain.state !== "closed") this.settlePublishedReservation(before, bound, now);
+      } else if (before.kind === "push" && chain.state !== "awaiting_decision" && chain.state !== "closed") {
+        if (to === "uncertain") {
+          chain = this.update(chain, { state: "awaiting_decision", stop_reason: "intent_uncertain" }, "intent_uncertain", at, now);
+        } else if (IN_FLIGHT.has(chain.state) && chain.current_mission_id === before.child_mission_id) {
+          chain = this.update(chain, { state: "awaiting_decision", stop_reason: "intent_failed" }, "intent_failed", at, now);
         }
       }
       return { chain, intent: this.intent(intentId) };
@@ -275,6 +305,7 @@ export class RevisionChainStore {
   private reserveInner(chain: RevisionChain, input: ReserveInput, now: number): { chain: RevisionChain; reservation: RevisionReservation } {
     if (chain.mode !== "live") fail("bridge_shadow_write_denied");
     if (chain.state !== "awaiting_review" && chain.state !== "ready_for_human") fail("state_denied");
+    this.assertGrantLive(chain);
     const rounds = (JSON.parse(chain.grant_json) as { rounds?: unknown }).rounds;
     if (typeof rounds !== "number" || chain.rounds_used >= rounds) fail("rounds_exhausted");
     if (!input.head || input.head.length > 128 || !input.feedback_digest || input.review_ids.length === 0) fail("invalid_reservation");
@@ -296,18 +327,30 @@ export class RevisionChainStore {
     const refSame = d.base_ref === undefined || d.base_ref === chain.base_ref;
     const onPublished = d.head === chain.published_head && d.base === chain.published_base && refSame;
     const stale = (): never => fail("stale_decision");
+    const denied = (): never => fail("transition_denied");
+    // D12: only the targets decideChainStep can produce, per source state. A stopped or closed chain is only ever closed here;
+    // leaving `awaiting_decision` for a live state is a human decision (and `update` refuses it while a push receipt is unsettled, D1).
+    // (A closed chain is refused by the database, `chain_terminal`.)
+    const stopped = chain.state === "awaiting_decision";
     switch (d.kind) {
       case "reserve": case "would_reserve": if (!onPublished) stale(); return;
       case "transition":
-        if (d.to === "closed") return;
+        if (d.to === "closed") { if (d.published_head !== undefined || d.published_base !== undefined) stale(); return; } // closing never carries a new head
+        if (stopped) denied();
         if (d.published_head !== undefined) {
-          // Accepting a new head: live only, and only for a head a confirmed push intent produced.
-          if (chain.mode !== "live" || d.base !== chain.published_base || !refSame || !this.confirmedPushHeads(chain.chain_id).includes(d.published_head)) stale();
+          // Accepting a new head: live only, and only the head of the confirmed push intent that extends exactly the published
+          // head and base (D3). An earlier confirmed head an outsider force-pushed back to is not a legitimate head.
+          if (chain.mode !== "live" || d.base !== chain.published_base || !refSame || d.published_head !== d.head || (d.published_base ?? d.base) !== d.base
+            || !this.db.prepare(`SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state='confirmed'
+              AND new_head=? AND expected_old_head=? AND expected_base_sha=?`).get(chain.chain_id, d.published_head, chain.published_head, d.base)) stale();
+          if (d.to !== "awaiting_review") denied();
           return;
         }
         if (!onPublished) stale();
+        if (!((d.to === "ready_for_human" && chain.state === "awaiting_review") || (d.to === "awaiting_review" && chain.state === "ready_for_human"))) denied();
         return;
       case "stop":
+        if (stopped) denied();
         if (d.reason === "attribution_unknown" || d.reason === "external_write" || d.reason === "head_regressed") { if (d.head === chain.published_head) stale(); }
         else if (d.reason === "base_changed") { if (d.base === chain.published_base && refSame && d.head === chain.published_head) stale(); }
         else if (!onPublished) stale();
@@ -315,8 +358,28 @@ export class RevisionChainStore {
     }
   }
 
+  /** A live grant is usable only before its `expires_at` (ms, per the injected clock). Grants without the field never expire here. */
+  private assertGrantLive(chain: RevisionChain): void {
+    if (chain.mode !== "live") return;
+    const expires = (JSON.parse(chain.grant_json) as { expires_at?: unknown }).expires_at;
+    if (typeof expires === "number" && this.clockMs() >= expires) fail("grant_expired");
+  }
+  /** `bound`: the confirmation also moved the chain. A cancelled child is then left to the caller's explicit
+   * `voidReservation(..., 'published_after_cancel')` (appendix 4.1 item 3, first row), which would otherwise find the row void. */
+  private settlePublishedReservation(intent: PublicationIntent, bound: boolean, now: number): void {
+    if (intent.child_mission_id === null) return;
+    const terminal = bound ? "'pr_opened','abandoned','failed'" : "'pr_opened','cancelled','abandoned','failed'";
+    const done = this.db.prepare(`SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state IN (${terminal}) AND stop_obligation=0`).get(intent.child_mission_id);
+    if (!done) return;
+    this.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason='published',updated_at=? WHERE chain_id=? AND child_mission_id=? AND state='dispatched'")
+      .run(now, intent.chain_id, intent.child_mission_id);
+  }
+
   private update(chain: RevisionChain, patch: Patch, reason: string, at: { head: string; base: string }, now: number): RevisionChain {
     const next = { ...chain, ...patch };
+    // D1: a stopped chain does not resume while a push receipt may still land (a pending push may be on the remote, an uncertain one is).
+    if (chain.state === "awaiting_decision" && next.state !== "awaiting_decision" && next.state !== "closed"
+      && this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain')").get(chain.chain_id)) fail("intent_unsettled");
     const stop = next.state === "awaiting_decision" ? (patch.stop_reason ?? chain.stop_reason) : null;
     this.db.prepare(`UPDATE engineering_revision_chains SET state=?,stop_reason=?,published_head=?,published_base=?,rounds_used=?,current_mission_id=?,
       revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?`)
