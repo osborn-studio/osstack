@@ -5,6 +5,7 @@ import { BridgeReadLimiter } from './contained-mission-bridge-read-limiter.js';
 import { StoppedChainScanService } from './contained-mission-bridge-stopped-scan.js';
 import { dispatched, setup } from './contained-mission-revision.testkit.js';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
+import { verifyBridgeLedger } from './contained-mission-bridge-ledger.js';
 
 function service(f = setup()) {
   const isBusy = vi.fn(() => false);
@@ -19,6 +20,32 @@ function service(f = setup()) {
 }
 
 describe('live reconciler', () => {
+  it.each(['base', 'ref', 'protected'] as const)('enforces %s safety while a released push defers commit coverage', async moved => {
+    const f = setup(); const child = await dispatched(f);
+    const chain = f.rig.chains.get(f.chain.chain_id);
+    const intent = f.rig.chains.recordIntent(chain.chain_id, chain.revision, { kind: 'push', branch: 'topic',
+      expected_old_head: oid('1'), new_head: oid('2'), expected_base_sha: oid('a'), child_mission_id: child.child_mission_id }, f.clock.now).intent;
+    const journal = new HostProcessStore(f.rig.attention, f.rig.owner, { clock: () => f.clock.now });
+    journal.launching({ op_id: 'hp_coveragesafety', mission_id: child.child_mission_id, kind: 'git_push', remote_target: 'o/r#refs/heads/topic', local_target: '/isolated/repo',
+      intent_id: intent.intent_id, argv_digest: 'a'.repeat(64), boot_id: 'test', marker: { path: '/isolated/marker', dev: '1', ino: '1' } });
+    journal.registered('hp_coveragesafety', { pid: 12345, pgid: 12345, leader_start: 'test' }); journal.release('hp_coveragesafety', () => {});
+    const noRead = async () => { throw Error('unexpected_coverage_read'); };
+    if (moved === 'base') f.pr.base_sha = oid('b');
+    if (moved === 'protected') f.flags.protectedDigest = 'e'.repeat(64);
+    const readPr = async (ref: Parameters<typeof f.deps.readPr>[0]) => {
+      const result = await f.deps.readPr(ref);
+      return moved === 'ref' && result.complete ? { ...result, pr: { ...result.pr, headRefName: 'changed' } } : result;
+    };
+    const cancel = vi.fn(async () => {});
+    const live = new LiveReconciler({ dispatch: { ...f.deps, readPr }, isBusy: () => true, cancelChild: cancel,
+      headIsDescendant: async () => true, verifyLedger: (current, signal) => verifyBridgeLedger({ chains: f.rig.chains, missions: f.rig.missions,
+        remoteHead: noRead, compare: noRead }, current, signal), log: () => {} });
+    await live.scan();
+    const reason = moved === 'base' ? 'base_changed' : moved === 'ref' ? 'publish_refused:pr_head_ref_changed' : 'protected_set_changed';
+    expect(f.rig.chains.get(chain.chain_id).stop_reason).toBe(reason);
+    expect(cancel).toHaveBeenCalledWith(expect.objectContaining({ current_mission_id: child.child_mission_id }), reason, expect.any(AbortSignal));
+    await live.stop();
+  });
   it.each(['reconciliation_incomplete', 'external_write', 'stale'] as const)('blocks dispatch when publication coverage is %s', async verdict => {
     const f = setup();
     const audit = vi.fn(async () => verdict);

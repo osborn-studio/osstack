@@ -152,6 +152,13 @@ describe('grant-revisions preview and grant', () => {
     expect(liveChainOf(f, id)).toBeUndefined();
     expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_publication_intents').get()).toEqual({ n: 0 });
   });
+  it('rolls back a root baseline that exceeds the durable event payload bound', async () => {
+    const f = await setup(); const id = f.mission(); const issue = await f.issue('a', id);
+    f.compare.mockResolvedValueOnce([...Array.from({ length: 800 }, (_, i) => (i + 100).toString(16).padStart(40, '0')), oid('1')]);
+    await expect(issue.grant()).rejects.toThrow('event_too_large');
+    expect(liveChainOf(f, id)).toBeUndefined();
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_publication_intents').get()).toEqual({ n: 0 });
+  });
   it('issues a signed grant bound to principal, session, scope, repository, base, head and root, and creates the live chain', async () => {
     const f = await setup();
     const missionId = f.mission();

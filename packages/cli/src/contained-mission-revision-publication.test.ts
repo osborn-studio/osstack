@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSync } from 'esbuild';
-import { HostProcessStore, SAME_CHILD_RESUMABLE, AttentionStore, ContainedMissionStore, RevisionChainStore, openDb } from '@osstack/core';
+import { HostProcessStore, SAME_CHILD_RESUMABLE, AttentionStore, ContainedMissionStore, RevisionChainStore, openDb, createScratchDirSync } from '@osstack/core';
+import { runHardenedGit } from '@osstack/agents';
 import { describe, expect, it, vi } from 'vitest';
 import { H, T0, changesRequested, dispatched, setup } from './contained-mission-revision.testkit.js';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
@@ -14,6 +15,7 @@ import { parseContainedMissionSpec } from './contained-mission-runner.js';
 import { ContainedMissionHost } from './contained-mission-host.js';
 import { HostProcessKit } from './contained-mission-host-process.js';
 import type { ContainedMissionHostPorts } from './contained-mission-ports.js';
+import { createReceiptReadAdapters } from './contained-mission-bridge-receipt-adapter.js';
 
 const old = '1'.repeat(40);
 const next = '2'.repeat(40);
@@ -82,6 +84,35 @@ async function fullFixture(options: { rounds?: 1 | 2; oldHead?: string; newHead?
   if (!result.deps || !result.input || !result.intent) throw Error('fixture_incomplete');
   return { ...result, deps: result.deps, input: result.input, intent: result.intent };
 }
+
+it('recovers a published range when a later remote descendant is absent from the local object database', async () => {
+  const root = createScratchDirSync('tests', 'receipt-missing-descendant');
+  const source = join(root, 'source'); const local = join(root, 'local');
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  try {
+    execFileSync('git', ['init', '-q', '-b', 'topic', source]);
+    git(source, 'config', 'user.name', 'Test'); git(source, 'config', 'user.email', 'test@example.invalid');
+    git(source, 'commit', '-q', '--allow-empty', '-m', 'base'); const base = git(source, 'rev-parse', 'HEAD');
+    git(source, 'commit', '-q', '--allow-empty', '-m', 'revision'); const head = git(source, 'rev-parse', 'HEAD');
+    execFileSync('git', ['clone', '-q', '--no-local', source, local]);
+    git(source, 'commit', '-q', '--allow-empty', '-m', 'external descendant'); const remote = git(source, 'rev-parse', 'HEAD');
+    expect(spawnSync('git', ['cat-file', '-e', remote], { cwd: local }).status).not.toBe(0);
+    const f = await fullFixture({ oldHead: base, newHead: head });
+    f.deps.remoteHead = async () => remote;
+    f.deps.localGit = async (_cwd, args) => {
+      const result = await runHardenedGit(args, { cwd: local, okExitCodes: [0, 1] });
+      return { stdout: result.stdout.toString('utf8'), exitCode: result.exitCode };
+    };
+    f.deps.compare = async (_repository, oldHead, newHead) => git(source, 'rev-list', '--reverse', `${oldHead}..${newHead}`).split('\n');
+    const read = await createReceiptReadAdapters({ signal: new AbortController().signal, exec: async args => {
+      expect(args).toEqual(['api', `repos/o/r/compare/${head}...${remote}?per_page=1`]);
+      return { exitCode: 0, stderr: '', stdout: JSON.stringify({ status: 'ahead', merge_base_commit: { sha: git(source, 'merge-base', head, remote) } }) };
+    } });
+    f.deps.remoteIsDescendant = read.remoteIsDescendant!;
+    await reconcileReceipt(f.deps, f.intent.intent_id, 'route_changed', { cwd: local, remote: 'origin' });
+    expect(f.deps.chains.getIntent(f.intent.intent_id).state).toBe('confirmed');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 it('startup receipt recovery is bounded and stops before writes on transient reads', async () => {
   const { deps, intent } = await fullFixture();

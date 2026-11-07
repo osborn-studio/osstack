@@ -10,6 +10,18 @@ async function fixture(url = 'https://github.com/a/b.git') {
   return { ports, git, abort, inspect };
 }
 describe('receipt production read adapters', () => {
+  it.each([['ahead', sha, true], ['ahead', 'b'.repeat(40), false], ['diverged', sha, false], ['behind', sha, false]] as const)(
+    'requires remote status and merge base for recovered ancestry: %s/%s', async (status, mergeBase, expected) => {
+      const ports = await createReceiptReadAdapters({ signal: new AbortController().signal, exec: async () => ({ exitCode: 0, stderr: '',
+        stdout: JSON.stringify({ status, merge_base_commit: { sha: mergeBase } }) }) });
+      expect(await ports.remoteIsDescendant!('a/b', sha, 'c'.repeat(40))).toBe(expected);
+    });
+  it('reads a recovered range plus remote descendants beyond the per-revision 64-commit cap', async () => {
+    const commits = Array.from({ length: 65 }, (_, i) => (i + 1).toString(16).padStart(40, '0'));
+    const exec = vi.fn(async () => ({ exitCode: 0, stderr: '', stdout: JSON.stringify({ total_commits: 65, commits: commits.map(sha => ({ sha })) }) }));
+    const ports = await createReceiptReadAdapters({ signal: new AbortController().signal, exec });
+    expect(await ports.compare('a/b', sha, commits.at(-1)!)).toEqual(commits);
+  });
   it('pins the granted HTTPS repository and reads only the branch ref', async () => {
     const f = await fixture();
     expect(await f.ports.remoteHead('/rig', 'origin', 'topic', 'a/b')).toBe(sha);

@@ -52,6 +52,15 @@ export async function compareRevisionRange(repository: string, oldHead: string, 
   if (parsed.total_commits > 64 || parsed.total_commits !== parsed.commits.length) throw Error('CONTAINED_REVISION_COMPARE_INCOMPLETE');
   return parsed.commits.map(c => c.sha);
 }
+/** Remote ancestry does not require newly observed objects to exist in the host's local object database. */
+export async function readRevisionAncestry(repository: string, ancestor: string, head: string, exec: GhExec = defaultGhExec): Promise<boolean> {
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !SHA.test(ancestor) || !SHA.test(head)) throw Error('CONTAINED_REVISION_COMPARE_TARGET_INVALID');
+  if (ancestor === head) return true;
+  const result = await exec(['api', `repos/${repository}/compare/${ancestor}...${head}?per_page=1`], { timeoutMs: 30_000 });
+  if (result.exitCode !== 0) throw Error('CONTAINED_REVISION_COMPARE_FAILED');
+  const facts = z.object({ status: z.enum(['ahead', 'behind', 'diverged', 'identical']), merge_base_commit: z.object({ sha: z.string().regex(SHA) }) }).parse(JSON.parse(result.stdout) as unknown);
+  return facts.status === 'ahead' && facts.merge_base_commit.sha === ancestor;
+}
 export interface RevisionPublicationDeps {
   chains: RevisionChainStore; missions: ContainedMissionStore; host: Pick<HostProcessKit, 'recordForIntent'>;
   runner: DeliveryCommandRunner; now: () => number;
@@ -61,6 +70,7 @@ export interface RevisionPublicationDeps {
   /** Remote read; the caller uses host credentials and the same remote as the push. */
   remoteHead: (cwd: string, remote: string, branch: string, repository?: string) => Promise<string | null>;
   compare: (repository: string, oldHead: string, newHead: string) => Promise<readonly string[]>;
+  remoteIsDescendant?: (repository: string, ancestor: string, head: string) => Promise<boolean>;
   preflight: (spec: ContainedMissionSpec, permit: ContainedPublicationPermit) => Promise<void>;
   checkEnabled: boolean;
   /** Required for a release. Read the current authority and live switch inside the W13 release transaction. */
@@ -69,7 +79,7 @@ export interface RevisionPublicationDeps {
   cancelChild: (missionId: string) => Promise<unknown>;
   sleep?: (ms: number) => Promise<void>;
 }
-export type RevisionReceiptDeps = Pick<RevisionPublicationDeps, 'chains' | 'missions' | 'host' | 'now' | 'remoteHead' | 'compare' | 'readPr' | 'localGit'> & { checkEnabled?: boolean };
+export type RevisionReceiptDeps = Pick<RevisionPublicationDeps, 'chains' | 'missions' | 'host' | 'now' | 'remoteHead' | 'compare' | 'readPr' | 'localGit' | 'remoteIsDescendant'> & { checkEnabled?: boolean };
 type ReceiptLedgerDeps = Pick<RevisionPublicationDeps, 'chains' | 'missions' | 'host' | 'now'> & { checkEnabled?: boolean };
 export interface RevisionReceiptRecoveryPage { visited: number; afterIntentId?: string; complete: boolean }
 /** Read-only remote recovery is available even when the live bridge switch is off. */
@@ -259,8 +269,9 @@ async function readReceipt(deps: RevisionReceiptDeps, intent: PublicationIntent,
   if (binding.commit_count !== undefined && binding.commit_count !== commits.length) return null;
   const remote = await deps.remoteHead(cwd, remoteName, intent.branch, intent.repository);
   if (!remote || !SHA.test(remote)) return null;
-  const reachable = await deps.localGit(cwd, ['merge-base', '--is-ancestor', intent.new_head, remote]);
-  if (reachable.exitCode !== 0) return null;
+  const reachable = deps.remoteIsDescendant ? await deps.remoteIsDescendant(intent.repository, intent.new_head, remote)
+    : (await deps.localGit(cwd, ['merge-base', '--is-ancestor', intent.new_head, remote])).exitCode === 0;
+  if (!reachable) return null;
   const [range, remoteRange] = await Promise.all([
     deps.compare(intent.repository, intent.expected_old_head, intent.new_head),
     deps.compare(intent.repository, intent.expected_old_head, remote),

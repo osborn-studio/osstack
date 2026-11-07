@@ -11,10 +11,13 @@ export async function createReceiptReadAdapters(options: {
   inspect?: typeof import('@osstack/agents').inspectRepoConfig;
   exec?: GhExec;
   transport?: GraphqlTransport;
-}): Promise<Pick<RevisionPublicationDeps, 'remoteHead' | 'localGit' | 'compare' | 'readPr'>> {
-  const [{ runHardenedGit, inspectRepoConfig }, publication] = await Promise.all([
-    import('@osstack/agents'), import('./contained-mission-revision-publication.js'),
+}): Promise<Pick<RevisionPublicationDeps, 'remoteHead' | 'localGit' | 'compare' | 'readPr' | 'remoteIsDescendant'>> {
+  const [{ runHardenedGit, inspectRepoConfig }, publication, ledger, reader] = await Promise.all([
+    import('@osstack/agents'), import('./contained-mission-revision-publication.js'), import('./contained-mission-bridge-ledger.js'), import('./contained-mission-bridge-reader.js'),
   ]);
+  const exec: GhExec = (args, call) => (options.exec ?? reader.defaultGhExec)(args, { ...call,
+    signal: call.signal ? AbortSignal.any([call.signal, options.signal]) : options.signal });
+  const transport = options.transport ?? reader.ghGraphqlTransport(exec);
   const git = options.git ?? runHardenedGit;
   const run = (cwd: string, args: readonly string[], okExitCodes = [0]) => {
     if (options.signal.aborted) throw Error('receipt_recovery_aborted');
@@ -46,7 +49,8 @@ export async function createReceiptReadAdapters(options: {
       if (rows.length !== 1 || !SHA.test(fields[0] ?? '') || fields[1] !== `refs/heads/${branch}`) throw Error('receipt_remote_read_invalid');
       return fields[0]!;
     },
-    compare: async (repository, oldHead, newHead) => { active(); const result = await publication.compareRevisionRange(repository, oldHead, newHead, options.exec); active(); return result; },
-    readPr: async (repository, number) => { active(); const result = await publication.readRevisionPr(repository, number, options.transport); active(); return result; },
+    compare: async (repository, oldHead, newHead) => { active(); const result = await ledger.compareBridgeLedgerRange(repository, oldHead, newHead, exec, options.signal); active(); return result; },
+    remoteIsDescendant: async (repository, ancestor, head) => { active(); const result = await publication.readRevisionAncestry(repository, ancestor, head, exec); active(); return result; },
+    readPr: async (repository, number) => { active(); const result = await publication.readRevisionPr(repository, number, transport); active(); return result; },
   };
 }

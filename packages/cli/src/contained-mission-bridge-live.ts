@@ -188,6 +188,18 @@ export class LiveReconciler {
     syncLiveChild(deps, listed.chain_id, this.options.isBusy);
     let chain = chains.get(listed.chain_id);
     const snapshot = normalizeSnapshot(read, registry, deps.now());
+    if (chain.state === 'closed' || (chain.state === 'awaiting_decision' && snapshot.pr_state === 'OPEN')) return;
+    if (snapshot.pr_state === 'OPEN') {
+      const reason = read.pr.headRefName !== chain.branch || read.pr.headRepository?.toLowerCase() !== chain.repository.toLowerCase()
+        ? 'publish_refused:pr_head_ref_changed'
+        : snapshot.base_ref !== chain.base_ref || snapshot.base_sha !== chain.published_base ? 'base_changed'
+          : parseStoredGrant(chain.grant_json).protected_set_digest !== deps.protectedSetDigest() ? 'protected_set_changed' : undefined;
+      if (reason) {
+        chain = chains.stopLive(chain.chain_id, chain.revision, reason, deps.now());
+        if (chain.current_mission_id) await this.cancel(chain, reason);
+        return;
+      }
+    }
     if (snapshot.pr_state === 'OPEN' && this.options.verifyLedger) {
       const ledger = await this.options.verifyLedger(chain, this.abort.signal);
       if (!this.active() || chains.get(chain.chain_id).revision !== chain.revision) return;
@@ -197,17 +209,6 @@ export class LiveReconciler {
         return;
       }
       if (ledger === 'stale' || ledger === 'reconciliation_incomplete') return;
-    }
-    if (chain.state === 'closed' || (chain.state === 'awaiting_decision' && snapshot.pr_state === 'OPEN')) return;
-    if (snapshot.pr_state === 'OPEN') {
-      const reason = read.pr.headRefName !== chain.branch || read.pr.headRepository?.toLowerCase() !== chain.repository.toLowerCase()
-        ? 'publish_refused:pr_head_ref_changed'
-        : parseStoredGrant(chain.grant_json).protected_set_digest !== deps.protectedSetDigest() ? 'protected_set_changed' : undefined;
-      if (reason) {
-        chain = chains.stopLive(chain.chain_id, chain.revision, reason, deps.now());
-        if (chain.current_mission_id) await this.cancel(chain, reason);
-        return;
-      }
     }
     const confirmed = chains.nextConfirmedPushHead(chain.chain_id);
     const pending = chains.intents(chain.chain_id).find(i => i.kind === 'push' && ['pending', 'uncertain'].includes(i.state)
