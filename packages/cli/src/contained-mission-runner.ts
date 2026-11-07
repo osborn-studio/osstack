@@ -641,7 +641,7 @@ export class ContainedMissionRunner {
     const events = this.allEvents(m.mission_id);
     const since = events.map(e => e.kind).lastIndexOf('delivery_intent');
     const attempts = events.slice(since + 1).filter(e => e.kind === 'delivery_attempt').length;
-    if (attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
+    if (!spec.publish_target && attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
     if (spec.publish_target && !this.ports.revisionPublication) {
       // Without a publication port there is no authority to release a push.
       return this.halt(m, 'awaiting_decision', 'publication_failed:revision_publisher_unavailable');
@@ -652,7 +652,7 @@ export class ContainedMissionRunner {
     const unprovenOp = this.ports.openHostProcessId?.(m.mission_id);
     if (unprovenOp !== undefined) return this.haltUnproven(m, unprovenOp);
     const permit: ContainedPublicationPermit = Object.freeze({ mission_id: m.mission_id, revision: m.revision, head: m.candidate_head!, tree: m.candidate_tree!, spec_digest: m.spec_digest });
-    this.ports.store.record(m.mission_id, 'delivery_attempt', { attempt: attempts + 1, head: permit.head }, this.ports.now());
+    if (!spec.publish_target) this.ports.store.record(m.mission_id, 'delivery_attempt', { attempt: attempts + 1, head: permit.head }, this.ports.now());
     const attemptAt = this.ports.now();
     let mutated = false;
     // Journals each remote mutation under the owner fence, and refuses it once anything about the permit changed.
@@ -668,13 +668,20 @@ export class ContainedMissionRunner {
     try {
       if (spec.publish_target) {
         const publication = this.ports.revisionPublication!;
-        const revisionResult = await publication.publishRevision({ mission: m, spec, permit, beforeRemoteMutation: kind => beforeRemoteMutation(kind), signal: controller.signal });
+        const revisionInput = { mission: m, spec, permit, beforeRemoteMutation: (kind: 'push') => beforeRemoteMutation(kind), signal: controller.signal };
+        const recovered = await publication.recoverRevision(revisionInput);
+        if (recovered === 'blocked') return this.ports.store.get(m.mission_id);
+        if (recovered === 'fresh') {
+          if (attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
+          this.ports.store.record(m.mission_id, 'delivery_attempt', { attempt: attempts + 1, head: permit.head }, this.ports.now());
+        }
+        const revisionResult = recovered === 'fresh' ? await publication.publishRevision(revisionInput) : recovered;
         if (revisionResult.pushed_commit !== permit.head) throw Error('CONTAINED_REVISION_PUSHED_HEAD_MISMATCH');
         const evidence = this.deliveryEvidence(m, spec, permit, revisionResult);
         const current = this.ports.store.get(m.mission_id);
         const opened = publication.confirm({ chain_id: spec.publish_target.chain_id, intent_id: revisionResult.intent_id, child_mission_id: m.mission_id,
           permit_revision: permit.revision, evidence, pr: { ...revisionResult.pr, reused: true }, range_sha256: revisionResult.range_sha256,
-          ...(current.state === 'cancel_requested' ? { variant: 'cancelled' as const } : {}) });
+          ...(revisionResult.landed ? { variant: 'landed' as const } : current.state === 'cancel_requested' ? { variant: 'cancelled' as const } : {}) });
         if (opened.state === 'pr_opened' && this.ports.publishVerifyCheck) {
           await this.attemptVerifyCheck(opened, () => publication.publishCheck(opened.mission_id, this.ports.publishVerifyCheck!));
         }
@@ -683,6 +690,7 @@ export class ContainedMissionRunner {
       result = await this.ports.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal });
     }
     catch (error) {
+      if (spec.publish_target && error instanceof Error && 'retryableReceiptRead' in error) throw error;
       const current = this.ports.store.get(m.mission_id);
       if (spec.publish_target && current.state !== 'delivering') return current;
       // A remote write whose process could not be proven stopped: stop_unknown on the delivering route, nothing retried.

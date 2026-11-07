@@ -16,6 +16,7 @@ export interface LiveReconcilerOptions {
   /** Optional transport cancellation; late results are discarded even if the underlying reader cannot abort. */
   readPr?: (ref: PullRequestRef, signal: AbortSignal) => Promise<PullRequestRead>;
   readLimiter?: BridgeReadLimiter;
+  verifyLedger?: (chain: RevisionChain, signal: AbortSignal) => Promise<import('./contained-mission-bridge-ledger.js').LedgerVerdict>;
   intervalMs?: number;
   chainsPerScan?: number;
 }
@@ -191,12 +192,23 @@ export class LiveReconciler {
     if (snapshot.pr_state === 'OPEN') {
       const reason = read.pr.headRefName !== chain.branch || read.pr.headRepository?.toLowerCase() !== chain.repository.toLowerCase()
         ? 'publish_refused:pr_head_ref_changed'
-        : parseStoredGrant(chain.grant_json).protected_set_digest !== deps.protectedSetDigest() ? 'protected_set_changed' : undefined;
+        : snapshot.base_ref !== chain.base_ref || snapshot.base_sha !== chain.published_base ? 'base_changed'
+          : parseStoredGrant(chain.grant_json).protected_set_digest !== deps.protectedSetDigest() ? 'protected_set_changed' : undefined;
       if (reason) {
         chain = chains.stopLive(chain.chain_id, chain.revision, reason, deps.now());
         if (chain.current_mission_id) await this.cancel(chain, reason);
         return;
       }
+    }
+    if (snapshot.pr_state === 'OPEN' && this.options.verifyLedger) {
+      const ledger = await this.options.verifyLedger(chain, this.abort.signal);
+      if (!this.active() || chains.get(chain.chain_id).revision !== chain.revision) return;
+      if (ledger === 'external_write') {
+        chain = chains.stopLive(chain.chain_id, chain.revision, 'external_write', deps.now());
+        if (chain.current_mission_id) await this.cancel(chain, 'external_write');
+        return;
+      }
+      if (ledger === 'stale' || ledger === 'reconciliation_incomplete') return;
     }
     const confirmed = chains.nextConfirmedPushHead(chain.chain_id);
     const pending = chains.intents(chain.chain_id).find(i => i.kind === 'push' && ['pending', 'uncertain'].includes(i.state)

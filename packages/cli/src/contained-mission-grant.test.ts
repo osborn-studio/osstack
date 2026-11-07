@@ -2,7 +2,7 @@ import { createHash, generateKeyPairSync } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { RevisionGrantError, signRevisionGrant, type EngineeringPrincipal, type RevisionGrant } from '@osstack/core';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readPullRequest } from './contained-mission-bridge-reader.js';
 import { createRig, oid, scriptedTransport, type ScriptedPr } from './contained-mission-bridge-shadow.testkit.js';
 import {
@@ -52,15 +52,17 @@ async function setup(opts: { issuer?: boolean; enabled?: boolean; maxValidity?: 
   const clock = { now: T0 };
   const cancelled: string[] = [];
   const flags = { enabled: opts.enabled !== false };
+  const compare = vi.fn(async (_repository: string, _start: string, head: string): Promise<readonly string[]> => [head]);
   const service = new RevisionGrantService({
     chains: rig.chains, missions: await createGrantMissionView(rig.missions), access,
     registry: { repository: 'o/r', publisher: [PUBLISHER] }, readPr: ref => readPullRequest(scripted.transport, ref),
     loadIssuer: () => loadRevisionIssuer(home), protectedSetDigest: () => 'd'.repeat(64), now: () => clock.now, enabled: () => flags.enabled,
+    compare,
     cancelChild: async (_actor, id) => { cancelled.push(id); },
   });
   const actor = (who: string): EngineeringPrincipal => access.authenticate(cred(who));
   let nextPr = 7;
-  const mission = (over: Record<string, unknown> = {}) => rig.seedMission({ pr_number: nextPr++, head: oid('1'), base_head: oid('a'), branch: 'topic', ...over } as never);
+  const mission = (over: Record<string, unknown> = {}) => rig.seedMission({ pr_number: nextPr++, head: oid('1'), base_head: oid('a'), branch: 'topic', spec: { start_commit: oid('0') }, ...over } as never);
   /** What `grant-revisions` does on the operator's side, minus the terminal. */
   const issue = async (who: string, missionId: string, terms: Record<string, unknown> = {}, signWith?: ReturnType<typeof generateKeyPairSync>['privateKey']) => {
     const issuer = (await loadRevisionIssuer(home))!;
@@ -76,7 +78,7 @@ async function setup(opts: { issuer?: boolean; enabled?: boolean; maxValidity?: 
     return { reply, signed, grant: () => service.grant(actor(who), { nonce: reply.nonce, preview_sha256: reply.preview_sha256, signature: signed.signature }) };
   };
   const ctx = async (): Promise<GrantLiveContext> => ({ access, keys: (await loadRevisionIssuer(home))!.keys, now: clock.now });
-  return { rig, scope, home, access, pr, clock, flags, service, cancelled, actor, mission, issue, renew, ctx, writeAuthority, principals, scripted };
+  return { rig, scope, home, access, pr, clock, flags, service, cancelled, actor, mission, issue, renew, ctx, writeAuthority, principals, scripted, compare };
 }
 type Fixture = Awaited<ReturnType<typeof setup>>;
 const liveChainOf = (f: Fixture, missionId: string) => f.rig.chains.chainForMission(missionId, 'live');
@@ -125,6 +127,38 @@ describe('issuer key handling', () => {
 });
 
 describe('grant-revisions preview and grant', () => {
+  it('refuses an incomplete baseline and rechecks authority after the baseline read', async () => {
+    const f = await setup(); const id = f.mission();
+    const first = await f.issue('a', id);
+    f.compare.mockResolvedValueOnce([oid('9')]);
+    await expect(first.grant()).rejects.toThrow('grant_refused');
+    expect(liveChainOf(f, id)).toBeUndefined();
+    const second = await f.issue('a', id);
+    f.compare.mockImplementationOnce(async (_repository, _start, head) => {
+      f.writeAuthority(f.principals.map(p => ({ ...p, write_scopes: [] })));
+      return [head];
+    });
+    await expect(second.grant()).rejects.toThrow('permission_denied');
+    expect(liveChainOf(f, id)).toBeUndefined();
+  });
+  it('rolls the chain and baseline receipt back together when the final event fails', async () => {
+    const f = await setup(); const id = f.mission(); const issue = await f.issue('a', id);
+    const append = f.rig.chains.appendEvent.bind(f.rig.chains);
+    vi.spyOn(f.rig.chains, 'appendEvent').mockImplementation((chainId, kind, payload, now) => {
+      if (kind === 'grant_issued') throw Error('injected_commit_fault');
+      return append(chainId, kind, payload, now);
+    });
+    await expect(issue.grant()).rejects.toThrow('injected_commit_fault');
+    expect(liveChainOf(f, id)).toBeUndefined();
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_publication_intents').get()).toEqual({ n: 0 });
+  });
+  it('rolls back a root baseline that exceeds the durable event payload bound', async () => {
+    const f = await setup(); const id = f.mission(); const issue = await f.issue('a', id);
+    f.compare.mockResolvedValueOnce([...Array.from({ length: 800 }, (_, i) => (i + 100).toString(16).padStart(40, '0')), oid('1')]);
+    await expect(issue.grant()).rejects.toThrow('event_too_large');
+    expect(liveChainOf(f, id)).toBeUndefined();
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_publication_intents').get()).toEqual({ n: 0 });
+  });
   it('issues a signed grant bound to principal, session, scope, repository, base, head and root, and creates the live chain', async () => {
     const f = await setup();
     const missionId = f.mission();
@@ -142,7 +176,10 @@ describe('grant-revisions preview and grant', () => {
       review_deadline: T0 + 24 * H, repository: 'o/r', pr_number: 7, branch: 'topic', base_ref: 'main' });
     expect(JSON.parse(chain.budget_json!)).toEqual({ origin: T0 + 5_000 - 5_000 });
     expect(JSON.parse(chain.grant_json)).toMatchObject({ kind: 'live', rounds: 1, signature: issued.signed.signature });
-    expect(f.rig.chains.events(chain.chain_id).map(e => e.kind)).toEqual(['chain_created', 'grant_issued']);
+    const baseline = f.rig.chains.intents(chain.chain_id).find(i => i.kind === 'open_pr');
+    expect(baseline).toMatchObject({ state: 'confirmed', expected_old_head: oid('0'), new_head: oid('1'), expected_base_sha: oid('a') });
+    expect(JSON.parse(f.rig.chains.pushRangeEvent(chain.chain_id, baseline!.intent_id)!.payload_json)).toMatchObject({ commits: [oid('1')] });
+    expect(f.rig.chains.events(chain.chain_id).map(e => e.kind)).toContain('grant_issued');
     expect(JSON.stringify(f.rig.chains.events(chain.chain_id))).not.toContain(issued.signed.signature);
     expect(assertGrantLive(chain, await f.ctx()).grant_id).toBe(issued.signed.grant_id);
   });
@@ -536,7 +573,7 @@ describe('chain-decide', () => {
     const intent = f.rig.chains.recordIntent(chain.chain_id, dispatched.revision, { kind: 'push', branch: 'topic', expected_old_head: oid('1'), new_head: oid('2'), expected_base_sha: oid('a'), child_mission_id: child }, T0);
     f.rig.chains.settleIntent(intent.intent.intent_id, 'uncertain', T0);
     expect(await code(f.service.chainDecide(f.actor('a'), { chain_id: chain.chain_id, decision: 'reconcile' }))).toBe('reconcile_unavailable');
-    expect(f.rig.chains.intents(chain.chain_id)[0]!.state).toBe('uncertain');
+    expect(f.rig.chains.getIntent(intent.intent.intent_id).state).toBe('uncertain');
   });
 });
 

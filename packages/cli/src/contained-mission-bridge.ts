@@ -32,6 +32,8 @@ export interface BridgeOptions {
   /** Runs the two credentialed commands (git push, gh pr create); injectable for tests. */
   exec?: BridgeExec;
   fetchImpl?: typeof fetch;
+  /** Re-read live switch and owner immediately before each App B POST/PATCH, after token refresh. */
+  beforeCheckMutation?: () => void;
   now?: () => number;
 }
 export interface DeliveryEvidenceFacts {
@@ -181,6 +183,7 @@ export function createBridgeKit(options: BridgeOptions): BridgeKit {
 
   async function api(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<unknown> {
     const token = await evidence.token();
+    if (method !== 'GET') options.beforeCheckMutation?.();
     let response: Response;
     try {
       response = await fetchImpl(`${API}${path}`, {

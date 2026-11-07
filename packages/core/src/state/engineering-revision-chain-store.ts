@@ -102,6 +102,10 @@ export class RevisionChainStore {
     if (!Number.isSafeInteger(afterSeq) || afterSeq < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 500) fail("invalid_limit");
     return this.db.prepare("SELECT * FROM engineering_revision_chain_events WHERE chain_id=? AND seq>? ORDER BY seq LIMIT ?").all(chainId, afterSeq, limit) as RevisionChainEvent[];
   }
+  /** The receipt range is bound to an intent, not to the age of its chain. */
+  pushRangeEvent(chainId: string, intentId: string): RevisionChainEvent | undefined {
+    return this.db.prepare("SELECT * FROM engineering_revision_chain_events WHERE chain_id=? AND kind='push_range' AND json_extract(payload_json, '$.intent_id')=? ORDER BY seq DESC LIMIT 1").get(chainId, intentId) as RevisionChainEvent | undefined;
+  }
   shadowDecisions(chainId: string): ShadowDecisionRow[] {
     return this.db.prepare("SELECT * FROM engineering_shadow_decisions WHERE chain_id=? ORDER BY created_at,head_sha,action").all(chainId) as ShadowDecisionRow[];
   }
@@ -110,6 +114,20 @@ export class RevisionChainStore {
   }
   intents(chainId: string): PublicationIntent[] {
     return this.db.prepare("SELECT * FROM engineering_publication_intents WHERE chain_id=? ORDER BY created_at,intent_id").all(chainId) as PublicationIntent[];
+  }
+  /** Keyset page across all chains, including stopped and closed chains. */
+  pendingPushIntents(afterIntentId = '', limit = 10): PublicationIntent[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
+    return this.db.prepare("SELECT * FROM engineering_publication_intents WHERE kind='push' AND state='pending' AND intent_id>? ORDER BY intent_id LIMIT ?")
+      .all(afterIntentId, limit) as PublicationIntent[];
+  }
+  /** Bounded restart scan for evidence delivery, including closed live chains. */
+  unsettledCheckIntents(afterIntentId = '', limit = 10): PublicationIntent[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
+    return this.db.prepare(`SELECT i.* FROM engineering_publication_intents i
+      JOIN engineering_revision_chains c ON c.chain_id=i.chain_id
+      WHERE i.kind='check' AND i.state IN ('pending','uncertain') AND c.mode='live' AND i.intent_id>?
+      ORDER BY i.intent_id LIMIT ?`).all(afterIntentId, limit) as PublicationIntent[];
   }
   getIntent(intentId: string): PublicationIntent { return this.intent(intentId); }
   confirmedPushHeads(chainId: string): string[] {
@@ -280,6 +298,12 @@ export class RevisionChainStore {
         if (bound) {
           chain = this.update(chain, { state: "awaiting_review", published_head: before.new_head!, published_base: before.expected_base_sha! }, "push_confirmed",
             { head: before.new_head!, base: before.expected_base_sha! }, now);
+        } else if (before.kind === "push" && chain.state === "awaiting_decision"
+          && chain.current_mission_id === before.child_mission_id && chain.published_head === before.expected_old_head
+          && chain.published_base === before.expected_base_sha && chain.branch === before.branch) {
+          // The caller proved the remote receipt before confirming. Keep the human stop while recording the landed head.
+          chain = this.update(chain, { published_head: before.new_head! }, "receipt_confirmed_while_stopped",
+            { head: before.new_head!, base: chain.published_base }, now);
         }
         // A closed chain's active reservations were already voided by the close itself (closeLive or a decided close).
         if (before.kind === "push" && chain.state !== "closed") this.settlePublishedReservation(before, bound, now);
@@ -319,10 +343,15 @@ export class RevisionChainStore {
     this.clock(now);
     return this.write(() => {
       const chain = this.get(chainId);
-      if (chain.mode !== "live" || chain.published_head !== newHead || chain.current_mission_id !== childMissionId) fail("check_binding_mismatch");
+      if (chain.mode !== "live") fail("check_binding_mismatch");
       if (!this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? AND new_head=? AND state='confirmed'")
         .get(chainId, childMissionId, newHead)) fail("check_push_unconfirmed");
       if (!this.db.prepare("SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state='pr_opened'").get(childMissionId)) fail("check_child_not_opened");
+      const pending = this.db.prepare(`SELECT * FROM engineering_publication_intents
+        WHERE chain_id=? AND kind='check' AND child_mission_id=? AND new_head=? AND state='pending'
+          AND json_extract(binding_json,'$.external_id')=? ORDER BY created_at,intent_id LIMIT 1`)
+        .get(chainId, childMissionId, newHead, childMissionId) as PublicationIntent | undefined;
+      if (pending) return pending;
       return this.recordIntent(chainId, chain.revision, { kind: "check", branch: chain.branch, new_head: newHead, child_mission_id: childMissionId,
         binding: { external_id: childMissionId } }, now).intent;
     });
@@ -474,7 +503,7 @@ export class RevisionChainStore {
     });
   }
 
-  /** Stop a live chain for a human (appendix §4.4): any non-terminal, non-stopped state -> `awaiting_decision(reason)`. */
+  /** Stop a live chain for a human. Proven external history also supersedes a prior human stop. */
   stopLive(chainId: string, ifRevision: number, reason: string, now: number): RevisionChain {
     this.clock(now);
     const base = reason.split(":")[0] ?? "";
@@ -483,7 +512,8 @@ export class RevisionChainStore {
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
-      if (chain.state === "closed" || chain.state === "awaiting_decision") fail("state_denied");
+      if (chain.state === "closed" || (chain.state === "awaiting_decision" && reason !== "external_write")) fail("state_denied");
+      if (chain.state === "awaiting_decision" && chain.stop_reason === reason) return chain;
       return this.update(chain, { state: "awaiting_decision", stop_reason: reason }, reason, { head: chain.published_head, base: chain.published_base }, now);
     });
   }

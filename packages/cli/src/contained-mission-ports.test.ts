@@ -16,7 +16,7 @@ const env = { ...hardenedGitEnvironment(process.env), GIT_AUTHOR_NAME: "t", GIT_
 const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env, encoding: "utf8" }).trim();
 const AUTHOR = { name: "Mission Host", email: "host@example.invalid", date: "1700000000 +0000" };
 
-function fixture() {
+function fixture(bridge?: import('./contained-mission-bridge.js').BridgeOptions) {
   const root = realpathSync(createScratchDirSync("tests", "contained-ports"));
   const repo = join(root, "repo"); mkdirSync(repo);
   const files: Record<string, string> = { "src/a.txt": "hi\n", "src/b.txt": "bye\n", "bin/run.sh": "#!/bin/sh\necho run\n", "README.md": "readme\n" };
@@ -32,19 +32,35 @@ function fixture() {
   const store = new ContainedMissionStore(attention, owner);
   const journalRoot = join(root, "journal"); mkdirSync(journalRoot);
   let clock = 1000;
-  const ports = createContainedMissionPorts({ store, hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
+  const ports = createContainedMissionPorts({ store, ...(bridge ? { bridge } : {}), hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
     verification: { socketPath: join(root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot }, author: AUTHOR });
   const spec: ContainedMissionSpec = { goal: "g", repo_path: repo, base_ref: "main", start_commit: start, branch: "osstack/mission/t1", worktree_path: join(root, "worktrees", "mission-t1"),
     allowed_paths: ["src/**"], verify: { argv: ["true"] } };
   const principal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [], operator_scopes: [] };
-  const authorizeOnce = () => store.authorize(principal, { scope_id: scope.scope_id, spec: spec as unknown as Record<string, unknown>, claim: { repo_identity: repo, branch: spec.branch, worktree_identity: spec.worktree_path } }, ++clock);
+  const authorizeOnce = (authorizationSpec = spec) => store.authorize(principal, { scope_id: scope.scope_id, spec: authorizationSpec as unknown as Record<string, unknown>, claim: { repo_identity: repo, branch: spec.branch, worktree_identity: spec.worktree_path } }, ++clock);
   let current: ReturnType<typeof authorizeOnce> | undefined;
-  const authorize = () => (current ??= authorizeOnce());
+  const authorize = (authorizationSpec = spec) => (current ??= authorizeOnce(authorizationSpec));
   /** The Mission the direct port calls belong to (authorized on first use); fences never trip here. */
   const write = () => ({ mission_id: authorize().mission_id, fence: () => {} });
   return { root, repo, start, store, ports, spec, authorize, write, journalRoot, now: () => ++clock };
 }
 const signal = () => new AbortController().signal;
+
+describe('revision production publication adapters', () => {
+  it('refuses adapter construction without App A and with the kill switch', async () => {
+    const f = fixture();
+    await expect(f.ports.revisionPublicationAdapters!()).rejects.toThrow('BRIDGE_DISABLED');
+  });
+  it('accepts only hardened ancestry and bounded commit-range reads', async () => {
+    const app = { app_id: 1, installation_id: 2, private_key_path: '/not-read-for-local-git' };
+    const f = fixture({ config: { repository: 'o/r', publisher: app, evidence: { ...app, app_id: 3 }, mission_ruleset_ids: [1] } });
+    const adapters = await f.ports.revisionPublicationAdapters!();
+    expect(await adapters.localGit(f.repo, ['merge-base', '--is-ancestor', f.start, f.start])).toMatchObject({ exitCode: 0 });
+    expect(await adapters.localGit(f.repo, ['rev-list', '--reverse', `${f.start}..${f.start}`])).toEqual({ exitCode: 0, stdout: '' });
+    await expect(adapters.localGit(f.repo, ['push', 'origin', 'HEAD'])).rejects.toThrow('revision_git_read_refused');
+    expect(sh(f.repo, 'rev-parse', 'HEAD')).toBe(f.start);
+  });
+});
 const indexDigest = (worktree: string) => createHash("sha256").update(readFileSync(join(sh(worktree, "rev-parse", "--absolute-git-dir"), "index"))).digest("hex");
 
 describe("contained Mission ports: workspace", () => {
@@ -335,7 +351,7 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
   const missionRules = [rule("deletion", 5), rule("non_fast_forward", 5), rule("creation", 6), rule("update", 6)];
   const stripC = (args: readonly string[]) => { let i = 0; while (args[i] === "-c") i += 2; return args.slice(i); };
 
-  async function bridged(opts: { remoteUrl?: string; repository?: string; rules?: unknown[]; disabled?: boolean; configRepository?: string } = {}) {
+  async function bridged(opts: { remoteUrl?: string; repository?: string; rules?: unknown[]; disabled?: boolean; configRepository?: string; onToken?: (repo: string) => void } = {}) {
     const f = fixture();
     const remoteUrl = opts.remoteUrl ?? `https://github.com/${REPO}.git`;
     sh(f.repo, "remote", "add", "origin", remoteUrl);
@@ -370,21 +386,55 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
       return { stdout: "pushed", stderr: "", exitCode: 0 };
     }, { gated: true as const });
     const fetchImpl = (async (url: string, init: RequestInit) => {
-      if (/access_tokens$/.test(url)) { tokenCalls++; const body = JSON.parse(String(init.body)); return new Response(JSON.stringify({ token: PUB, expires_at: new Date(1_800_003_600_000).toISOString(), permissions: { ...body.permissions, metadata: "read" }, repositories: [{ full_name: REPO }] }), { status: 201 }); }
+      if (/access_tokens$/.test(url)) { tokenCalls++; opts.onToken?.(f.repo); const body = JSON.parse(String(init.body)); return new Response(JSON.stringify({ token: PUB, expires_at: new Date(1_800_003_600_000).toISOString(), permissions: { ...body.permissions, metadata: "read" }, repositories: [{ full_name: REPO }] }), { status: 201 }); }
       return new Response("{}", { status: 404 });
     }) as unknown as typeof fetch;
     const config = { repository: opts.configRepository ?? REPO, publisher: { app_id: 11, installation_id: 21, private_key_path: key }, evidence: { app_id: 12, installation_id: 22, private_key_path: key }, mission_ruleset_ids: [5, 6] };
     const ports = createContainedMissionPorts({ store: f.store, hostProcess: hostProcessOptions(f.root), now: f.now, codex: { bin: join(f.root, "no-codex"), sourceCodexHome: f.root }, runtimeRoot: join(f.root, "runtime"),
       verification: { socketPath: join(f.root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot: f.journalRoot }, author: AUTHOR,
       delivery: { runner: innerRunner }, bridge: { config, exec, fetchImpl, now: () => 1_800_000_000_000, ...(opts.disabled ? { disabled: true } : {}) } });
-    let m = f.authorize();
+    let m = f.authorize(spec);
     const ws = await ports.createWorkspace(spec, signal(), { mission_id: m.mission_id, fence: () => {} });
     m = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest } } }, f.now());
     const permit = { mission_id: m.mission_id, revision: m.revision, head: f.start, tree: "t", spec_digest: m.spec_digest };
     const publish = () => ports.publish({ mission: m, spec, permit, body: "b", beforeRemoteMutation: kind => { order.push(`fence:${kind}`); }, signal: signal() });
     const labelled = () => [...executed.map(e => e.command + ":" + stripC(e.args).slice(0, 2).join(" "))];
-    return { f, publish, inner, executed, order, tokenCalls: () => tokenCalls, labelled, ports };
+    return { f, spec, permit, publish, inner, executed, order, tokenCalls: () => tokenCalls, labelled, ports };
   }
+
+  it('revision preflight binds the recorded workspace, candidate and exact HTTPS destination before minting a token', async () => {
+    const b = await bridged();
+    const adapters = await b.ports.revisionPublicationAdapters!();
+    await adapters.preflight(b.spec, b.permit);
+    expect(b.tokenCalls()).toBe(0);
+    await expect(adapters.preflight(b.spec, { ...b.permit, head: 'f'.repeat(40) })).rejects.toThrow('local_head_mismatch');
+    sh(b.f.repo, 'remote', 'set-url', '--push', 'origin', 'https://github.com/attacker/other.git');
+    await expect(adapters.preflight(b.spec, b.permit)).rejects.toThrow('repo_config_changed');
+    expect(b.tokenCalls()).toBe(0); expect(b.executed).toEqual([]);
+  });
+
+  it('revision publication injects App A only inside the destination fence', async () => {
+    const b = await bridged();
+    const adapters = await b.ports.revisionPublicationAdapters!();
+    const runner = fencedDeliveryRunner(adapters.runner, () => { b.order.push('revision-fence'); },
+      { remote: 'origin', repository: REPO, missionId: b.permit.mission_id, httpsOnly: true });
+    await runner.run('git', ['push', '--porcelain', `--force-with-lease=refs/heads/${b.spec.branch}:${b.f.start}`, 'origin', `${b.f.start}:refs/heads/${b.spec.branch}`],
+      { cwd: b.spec.worktree_path, timeoutMs: 10_000, intentId: 'ri_revision_test' });
+    expect(b.order).toEqual(['revision-fence']);
+    expect(b.executed).toHaveLength(1);
+    expect(b.executed[0]!.env['OSSTACK_BRIDGE_PUSH_TOKEN']).toBe(PUB);
+    expect(b.executed[0]!.args.join(' ')).not.toContain(PUB);
+  });
+  it('refuses a destination changed while the App A token was being minted, before W13 release', async () => {
+    const b = await bridged({ onToken: repo => { sh(repo, 'remote', 'set-url', '--push', 'origin', 'https://github.com/attacker/other.git'); } });
+    const adapters = await b.ports.revisionPublicationAdapters!();
+    await adapters.preflight(b.spec, b.permit);
+    const runner = fencedDeliveryRunner(adapters.runner, () => { b.order.push('released'); },
+      { remote: 'origin', repository: REPO, missionId: b.permit.mission_id, httpsOnly: true });
+    await expect(runner.run('git', ['push', '--porcelain', `--force-with-lease=refs/heads/${b.spec.branch}:${b.f.start}`, 'origin', `${b.f.start}:refs/heads/${b.spec.branch}`],
+      { cwd: b.spec.worktree_path, timeoutMs: 10_000 })).rejects.toThrow('repo_config_changed');
+    expect(b.executed).toEqual([]); expect(b.order).toEqual([]); expect(b.tokenCalls()).toBe(1);
+  });
 
   it("pushes and opens the PR with App A: token only in the child env, reads on host credentials, fence first", async () => {
     const b = await bridged();
