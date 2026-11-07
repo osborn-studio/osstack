@@ -1,9 +1,13 @@
 // W13-C2: remote writes (git push, gh pr create) through the gated launcher, App-mode transport isolation, and the static
 // guarantee that no other path can write to the remote. Real pushes go to a local bare repository (no network); real-process
 // cases run on macOS only (the CI machine is Linux).
-import { execFileSync, spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { execFile, execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
 import { createRequire } from "node:module";
+import { connect } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { HostProcessUnprovenError, hardenedGitEnvironment, type HostProcessProbe } from "@osstack/agents";
@@ -287,13 +291,144 @@ describe("App mode transport isolation (preflight)", () => {
   });
 });
 
+// T17 runs on macOS and Linux when Git's CGI backend, OpenSSL and the host-process proof's lsof are installed.
+// All sockets bind to 127.0.0.1. The token is a fixed test value, never an App credential.
+const gitHttpBackend = join(execFileSync("git", ["--exec-path"], { encoding: "utf8" }).trim(), "git-http-backend");
+const certificateArgs = (key: string, cert: string) => ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", cert,
+  "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"];
+const lsofAvailable = ["/usr/sbin/lsof", "/usr/bin/lsof"].some(candidate => {
+  try { lstatSync(candidate); return true; } catch { return false; }
+});
+function opensslReady(): boolean {
+  const dir = mkdtempSync(join(tmpdir(), "osstack-t17-openssl-"));
+  try { return spawnSync("openssl", certificateArgs(join(dir, "server.key"), join(dir, "server.crt")), { stdio: "ignore" }).status === 0; }
+  finally { rmSync(dir, { recursive: true, force: true }); }
+}
+const t17Ready = existsSync(gitHttpBackend) && lsofAvailable && opensslReady();
+it.skipIf(!t17Ready)("T17: authenticates a gated push through a localhost CONNECT proxy and a self-signed HTTPS origin (requires git-http-backend, openssl, lsof)", { timeout: 20_000 }, async (context) => {
+  const r = rig();
+  const token = "fake-t17-token-123456789";
+  const key = join(r.root, "server.key");
+  const cert = join(r.root, "server.crt");
+  execFileSync("openssl", certificateArgs(key, cert), { stdio: "ignore" });
+  const expectedAuth = `Basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`;
+  let authenticatedRequests = 0;
+  const backendChildren = new Set<ChildProcess>();
+  const backend = createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, (request, response) => {
+    const service = new URL(request.url ?? "/", "https://127.0.0.1").searchParams.get("service");
+    const receive = service === "git-receive-pack" || request.url?.includes("git-receive-pack") === true;
+    if (receive && request.headers.authorization !== expectedAuth) {
+      response.writeHead(401, { "WWW-Authenticate": 'Basic realm="t17"' }); response.end(); return;
+    }
+    if (receive) authenticatedRequests++;
+    const child = spawn(gitHttpBackend, [], { env: { PATH: process.env.PATH, GIT_PROJECT_ROOT: r.root, GIT_HTTP_EXPORT_ALL: "1",
+      REQUEST_METHOD: request.method, QUERY_STRING: request.url?.split("?")[1] ?? "", PATH_INFO: request.url?.split("?")[0],
+      CONTENT_TYPE: request.headers["content-type"] ?? "", REMOTE_USER: receive ? "x-access-token" : "",
+      CONTENT_LENGTH: request.headers["content-length"] ?? "0",
+      SERVER_PROTOCOL: "HTTP/1.1" }, stdio: ["pipe", "pipe", "pipe"] });
+    backendChildren.add(child);
+    const killChild = () => { if (child.exitCode === null && child.signalCode === null) child.kill(); };
+    request.on("close", () => { if (!request.complete) killChild(); });
+    request.socket.on("close", killChild);
+    response.on("close", killChild);
+    request.pipe(child.stdin);
+    const chunks: Buffer[] = [];
+    child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+    child.on("close", () => {
+      backendChildren.delete(child);
+      if (response.destroyed) return;
+      const output = Buffer.concat(chunks);
+      const separator = output.indexOf("\r\n\r\n") >= 0 ? "\r\n\r\n" : "\n\n";
+      const split = output.indexOf(separator);
+      if (split < 0) { response.writeHead(500); response.end(); return; }
+      const headers = output.subarray(0, split).toString("utf8").split(/\r?\n/);
+      const status = Number(/^Status: (\d+)/i.exec(headers[0] ?? "")?.[1] ?? 200);
+      const fields: Record<string, string> = {};
+      for (const line of headers) { const at = line.indexOf(":"); if (at > 0 && !line.startsWith("Status:")) fields[line.slice(0, at)] = line.slice(at + 1).trim(); }
+      response.writeHead(status, fields); response.end(output.subarray(split + separator.length));
+    });
+  });
+  const proxy = createHttpServer();
+  const tunnels: Array<import("node:stream").Duplex> = [];
+  let proxiedConnections = 0;
+  proxy.on("connect", (request, socket, head) => {
+    if (request.url !== `127.0.0.1:${(backend.address() as import("node:net").AddressInfo).port}`) { socket.end("HTTP/1.1 403 Forbidden\r\n\r\n"); return; }
+    const upstream = connect((backend.address() as import("node:net").AddressInfo).port, "127.0.0.1", () => {
+      proxiedConnections++;
+      socket.write("HTTP/1.1 200 Connection Established\r\n\r\n"); if (head.length) upstream.write(head); socket.pipe(upstream); upstream.pipe(socket);
+    });
+    tunnels.push(socket, upstream);
+    socket.on("error", () => upstream.destroy()); upstream.on("error", () => socket.destroy());
+  });
+  const listenLocal = (server: typeof backend | typeof proxy) => new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => { server.off("error", reject); resolve(); });
+  });
+  try { await listenLocal(backend); await listenLocal(proxy); }
+  catch (error) {
+    if (backend.listening) await new Promise<void>(resolve => backend.close(() => resolve()));
+    if ((error as NodeJS.ErrnoException).code === "EPERM" || (error as NodeJS.ErrnoException).code === "EACCES") context.skip("localhost TCP bind is denied by this test environment");
+    throw error;
+  }
+  try {
+    const url = `https://127.0.0.1:${(backend.address() as import("node:net").AddressInfo).port}/remote.git`;
+    sh(r.repo, "remote", "set-url", "origin", url);
+    const global = join(r.root, "host.gitconfig");
+    writeFileSync(global, `[http]\n\tproxy = http://127.0.0.1:${(proxy.address() as import("node:net").AddressInfo).port}\n\tsslCAInfo = ${cert}\n`);
+    const seen: string[][] = [];
+    const host: DeliveryCommandRunner = { run: (command, args, options) => new Promise(resolve => {
+      seen.push([...args]);
+      execFile(command, [...args], { cwd: options.cwd, encoding: "utf8", timeout: 5000,
+        env: { ...env, GIT_CONFIG_GLOBAL: global, GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0" } },
+      (error, stdout, stderr) => resolve({ stdout: String(stdout), stderr: String(stderr), exitCode: error ? 1 : 0 }));
+    }) };
+    const transport = await appTransportConfig(host, r.repo);
+    expect(transport).toEqual(["-c", `http.proxy=http://127.0.0.1:${(proxy.address() as import("node:net").AddressInfo).port}`, "-c", `http.sslcainfo=${cert}`]);
+    const m = r.mission("osstack/mission/t17");
+    const gated = gatedBridgeExec(r.kit);
+    const pushArgv: string[][] = [];
+    const recordingGate = Object.assign(async (command: string, args: readonly string[], options: Parameters<typeof gated>[2]) => {
+      pushArgv.push([...args]); return gated(command, args, options);
+    }, { gated: true as const });
+    const runner = appCredentialRunner(host, async () => token, recordingGate, transport);
+    const options = { cwd: r.repo, timeoutMs: 8000 };
+    expect((await runner.run("git", ["remote", "get-url", "--push", "origin"], options)).stdout.trim()).toBe(url);
+    expect((await runner.run("git", ["ls-remote", "origin"], options)).exitCode).toBe(0);
+    const connectionsBeforePush = proxiedConnections;
+    const pushed = await runner.run("git", ["push", "origin", `${r.head}:refs/heads/t17`], { ...options,
+      gate: { missionId: m.mission_id, kind: "git_push", remoteTarget: "o/r#refs/heads/t17", localTarget: `${r.repo}#refs/heads/t17`, fence: () => {} } });
+    expect(pushed.exitCode).toBe(0);
+    expect(r.refs()).toBe(`refs/heads/t17 ${r.head}`);
+    expect(r.rows()[0]).toMatchObject({ kind: "git_push", state: "stopped", op_id: pushed.opId });
+    expect(authenticatedRequests).toBeGreaterThan(0);
+    expect(proxiedConnections).toBeGreaterThan(connectionsBeforePush);
+    expect(seen.slice(1).every(args => args.join(" ").includes(transport[1]!) && args.join(" ").includes(transport[3]!))).toBe(true);
+    expect(pushArgv[0]!.join(" ")).toContain(transport[1]!);
+    expect(pushArgv[0]!.join(" ")).toContain(transport[3]!);
+    const pushConfigs = pushArgv[0]!.flatMap((arg, index, argv) => arg === "-c" ? [argv[index + 1] ?? ""] : []);
+    expect(pushConfigs.join(" ")).not.toMatch(/http\.sslverify=/i);
+    expect(pushConfigs.filter(config => /^https?\./i.test(config))).toEqual([transport[1], transport[3]]);
+    expect(pushConfigs.filter(config => !/^(?:credential\.helper|credential\.https:\/\/github\.com\.helper|http\.proxy|http\.sslcainfo)=/i.test(config))).toEqual([]);
+    expect(JSON.stringify([...seen, ...pushArgv]) + pushed.stdout + pushed.stderr + readFileSync(global, "utf8") + readFileSync(join(r.repo, ".git", "config"), "utf8")).not.toContain(token);
+    const safeConfig = readFileSync(global, "utf8");
+    writeFileSync(global, `${safeConfig}[url "https://invalid.example/"]\n\tinsteadOf = https://127.0.0.1/\n`);
+    await expect(appTransportConfig(host, r.repo)).rejects.toMatchObject({ reasons: ["url_rewrite"], message: expect.stringContaining("CONTAINED_BRIDGE_TRANSPORT_UNSUPPORTED") });
+    writeFileSync(global, `${safeConfig}[http]\n\tsslVerify = false\n`);
+    await expect(appTransportConfig(host, r.repo)).rejects.toMatchObject({ reasons: ["transport_setting"] });
+  } finally {
+    for (const child of backendChildren) child.kill();
+    for (const tunnel of tunnels) tunnel.destroy();
+    await Promise.all([new Promise<void>(resolve => proxy.close(() => resolve())), new Promise<void>(resolve => backend.close(() => resolve()))]);
+  }
+});
+
 describe("only the publication fence reaches a remote write (static scan, T13)", () => {
   const dir = new URL(".", import.meta.url).pathname;
   const sources = readdirSync(dir).filter(f => /^contained-mission-.*\.ts$/.test(f) && !/\.test\.ts$|testkit|fixture/.test(f));
   const text = (f: string) => readFileSync(join(dir, f), "utf8");
-  it("push and pr create are named, as commands, only in the fence, the bridge runner and the gated launcher", () => {
+  it("push and pr create are named only in the fenced publication paths", () => {
     const naming = sources.filter(f => /args\[[^\]]*\]\s*===\s*["']push["']|\[\s*["']push["']|args\[1\]\s*===\s*["']create["']|["']pr["']\s*,\s*["']create["']/.test(text(f)));
-    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-ports.ts"]);
+    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-ports.ts", "contained-mission-revision-publication.ts"]);
   });
   it("the only process spawns on the Mission path are the gated launcher, the bridge's ungated exec (refused for writes), a read-only ps and the read-only gh GraphQL reader", () => {
     const spawning = sources.filter(f => /\b(?:execFile|execFileSync|spawn|spawnSync)\(/.test(text(f)));

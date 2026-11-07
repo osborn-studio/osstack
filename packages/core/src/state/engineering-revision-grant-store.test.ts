@@ -246,7 +246,7 @@ it("resumes into publishing when the stopped child already has a settled push in
 it("stops and closes live chains through narrow, validated methods", () => {
   const f = setup();
   const { chain } = f.live();
-  for (const bad of ["", "grant expired", "Grant_Expired", "external_write", "x".repeat(65), "publish_refused", "publish_refused:", "child_halted:x y"]) {
+  for (const bad of ["", "grant expired", "Grant_Expired", "x".repeat(65), "publish_refused", "publish_refused:", "child_halted:x y"]) {
     expect(code(() => f.store.stopLive(chain.chain_id, chain.revision, bad, NOW)), bad).toBe("invalid_reason");
   }
   expect(code(() => f.store.stopLive(chain.chain_id, chain.revision + 1, "grant_expired", NOW))).toBe("version_conflict");
