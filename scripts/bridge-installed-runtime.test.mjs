@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { createScratchDir } from './lib/scratch.mjs';
@@ -21,7 +21,7 @@ const checkoutPaths = {
 };
 
 async function fixture(t, mode = 'installed') {
-  const root = await createScratchDir('tests', 'bridge-installed-runtime', scratchEnv);
+  const root = await realpath(await createScratchDir('tests', 'bridge-installed-runtime', scratchEnv));
   t.after(() => rm(root, { recursive: true, force: true }));
   const prefix = join(root, 'prefix');
   const counter = `bridge-imports:${root}`;
