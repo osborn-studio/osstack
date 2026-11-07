@@ -1,0 +1,9 @@
+# Sandbox round polling fail-fast
+
+Attempt2 observed the second B child halted with `patch_apply_failed:CONTAINED_PATCH_MISMATCH`, while its chain was `awaiting_decision` / `child_halted`. The two-round predicate checked only exact round, changed head and `awaiting_review`, so this definitive scenario failure waited for the20-minute timeout. This is an observability defect; the patch mismatch itself remains a separate runtime investigation.
+
+The driver now calls pure `sandboxRevisionRoundComplete` on every poll. Stopped chain states (`awaiting_decision`, `closed`, `ready_for_human`) or blocked/terminal child states reject immediately with round, chain state, stop reason, child ID and child state. This harness never resumes, retries or accepts a failed child. Normal execution, verification (including repairable `verify_failed`) and delivery keep polling. The original exact round/head/state success expression and subsequent `pr_opened`/confirmed-push-count assertions remain unchanged.
+
+Only driver, neighboring pure Node tests and this report changed from `3b201c62`. The observed halted child, each blocked child state, stopped chain ahead of child observation, ordinary active flow, wrong round (both low/high), unchanged head and wrong chain state are covered. `node --test scripts/smoke-bridge-revision-sandbox.test.mjs`:85 passed,0 failed/skipped (55ms). `git diff --check`:pass. Logs: `/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-sandbox-failfast-{red,green}.log`. The initial red attempt demonstrates the absent helper export; the green suite exercises its real implementation and driver call site.
+
+No real sandbox run, runtime/package change, gate relaxation, broad suite, business remote operation or mutation of the existing attempt2 tree occurred. Actual5-G remains unqualified; this change only shortens reporting of a proven failure.

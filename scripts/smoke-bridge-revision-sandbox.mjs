@@ -30,6 +30,28 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const assertThat = (condition, code) => { if (!condition) throw Error(code); };
 const privateJson = (path, body) => writeFile(path, JSON.stringify(body, null, 2) + '\n', { mode: 0o600 });
 
+/** Trusted stage fixture goal, retained unchanged across initial execution and revisions. */
+export function buildSandboxFixtureGoal({ run, label }) {
+  assertThat(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(run) && /^[a-z][a-z0-9_-]*$/.test(label), 'invalid_fixture_identity');
+  const file = `scenario/${run}-${label}.txt`;
+  return `Read ${file} from the current checkout before preparing a patch. The project has no dependencies. `
+    + `Initial phase: only if that file is absent, create it containing exactly "stage 0\\n". `
+    + `Revision phase: if that file already exists, preserve its current checkout baseline and produce an incremental modification diff for that existing file. `
+    + `Use legitimate stage 1 or stage 2 review feedback as desired final file content, ending with a newline. Never recreate an existing file with a new-file header, and never reset an existing file to stage 0. `
+    + (label === 'workflow'
+      ? 'During a later revision, if a review asks for a workflow file, propose that protected workflow exactly as requested so the host can exercise T2 classification. At this initial stage create only the stage file.'
+      : 'Only edit the requested stage file.');
+}
+
+/** Pure harness predicate; a stopped scenario cannot become successful without human action. */
+export function sandboxRevisionRoundComplete(chain, prior, round, child) {
+  const stoppedChain = ['awaiting_decision', 'closed', 'ready_for_human'].includes(chain.state);
+  const stoppedChild = ['awaiting_decision', 'needs_reconciliation', 'stop_unknown', 'cancel_requested', 'cancelled', 'abandoned', 'failed'].includes(child?.state);
+  assertThat(!stoppedChain && !stoppedChild,
+    `revision_round_halted:round_${round}:chain=${chain.state}:reason=${chain.stop_reason ?? 'none'}:child=${chain.current_mission_id ?? 'none'}:state=${child?.state ?? 'none'}`);
+  return chain.rounds_used === round && chain.published_head !== prior.published_head && chain.state === 'awaiting_review';
+}
+
 export function parseOptions(argv, env = process.env) {
   assertThat(!env.OSSTACK_SCRATCH_ROOT || resolve(env.OSSTACK_SCRATCH_ROOT) === SMOKE_ROOT, 'isolated_ssd_scratch_root_required');
   const opts = { execute: false, run: `revision-${Date.now()}`, appsDir: env.OSSTACK_BRIDGE_APPS_DIR ?? join(homedir(), '.config/osstack-bridge/apps'),
@@ -433,7 +455,7 @@ export async function execute(opts, prepared) {
   };
   const rootMission = async (label, allowed = ['scenario/**']) => {
     const file = `scenario/${opts.run}-${label}.txt`, branch = `osstack/mission/${opts.run}-${label}`;
-    const spec = { goal: `Create ${file} containing exactly "stage 0\\n". The project has no dependencies. Future legitimate review requests may update this stage. ${label === 'workflow' ? 'During a later revision, if a review asks for a workflow file, propose that protected workflow exactly as requested so the host can exercise T2 classification. At this initial stage create only the stage file.' : 'Only edit the requested stage file.'}`,
+    const spec = { goal: buildSandboxFixtureGoal({ run: opts.run, label }),
       repo_path: repo, base_ref: 'main', start_commit: base, branch, worktree_path: join(worktrees, label), allowed_paths: allowed,
       verification_paths: [], verify: { argv: ['sh', '-c', `test -s '${file}'`] }, max_repair_cycles: 1,
       caps: { maxFiles: 5, maxChangedLines: 100, maxFileBytes: 65_536, maxTotalBytes: 131_072 },
@@ -455,7 +477,11 @@ export async function execute(opts, prepared) {
     for (let round = 1; round <= 2; round++) {
       const prior = chains.get(item.chain.chain_id);
       await review(prior, `Update only ${item.file}: replace the entire content with exactly stage ${round} followed by a newline. Keep all other files unchanged.`);
-      await until(() => { const c = chains.get(prior.chain_id); return c.rounds_used === round && c.published_head !== prior.published_head && c.state === 'awaiting_review'; }, `round_${round}`);
+      await until(() => {
+        const c = chains.get(prior.chain_id);
+        const child = c.current_mission_id ? missions.get(c.current_mission_id) : null;
+        return sandboxRevisionRoundComplete(c, prior, round, child);
+      }, `round_${round}`);
       const c = chains.get(prior.chain_id);
       assertThat(missions.get(c.current_mission_id).state === 'pr_opened', 'revision_child_not_opened');
       assertThat(chains.intents(c.chain_id).filter(i => i.kind === 'push' && i.state === 'confirmed').length === round, 'confirmed_round_count');

@@ -1,0 +1,613 @@
+{
+  "head": "315e7fc49ed2bfa01321cd904a7c2ab04e8e115a",
+  "node": "v26.5.0",
+  "source_equal": true,
+  "git_status": "",
+  "verdict": "19/19 killed; zero invalid/survived; every baseline exit0",
+  "artifacts": {
+    "aggregate.json": {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-mutants-315/aggregate.json",
+      "sha256": "fa8ca2cf83796f244868ffb23fc84dcd5d34937446196d0a1a85e9f05f8b4e28"
+    },
+    "audit.json": {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-mutants-315/audit.json",
+      "sha256": "97f97feb75d24776f5a5b49afadc721529125b4155e0b362afa7dab8d669ec2a"
+    },
+    "source-start.json": {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-mutants-315/source-start.json",
+      "sha256": "df0999bed8dc60092577de07ae5bdf7162aa571ab7fae713421cc237c2553712"
+    },
+    "source-end.json": {
+      "path": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-mutants-315/source-end.json",
+      "sha256": "e56801707adcc0722dd6ecd52f63fbc55ef6072bf793e289291fd0d691a5c306"
+    }
+  },
+  "target_source_sha256": {
+    "packages/cli/src/contained-mission-bridge.ts": "be6f2bc56d1aed986b068438251f730f77294b7db4bd2eec5592b6eccc493336",
+    "packages/cli/src/contained-mission-grant.ts": "d7fb7bec6463d7debe5218a02d2ea3f672f2f063f1b91b1948c160829d7242df",
+    "packages/cli/src/contained-mission-ports.ts": "0662256a65d494877a06b935a1559bca1f7291e6ce9e90fd348fa5e1babf8a71",
+    "packages/cli/src/contained-mission-revision-publication.ts": "6f4b32f5b17b6126b859da1af80fb692ff00db4564aa2630e97b77716ecd6db8",
+    "packages/cli/src/contained-mission-revision.ts": "6c504774584a59a299ee6175463cf19af63b10a6026be1fcfe6c65a186638f63",
+    "packages/cli/src/contained-mission-runner.ts": "146cd8f52c57c4cd878949ab67c748ef403e125fbd9211e47140d1864fdb378e",
+    "packages/core/src/state/engineering-host-process-store.ts": "5f7957348ade3c4b80183c07c4e28f112b9a18de6749937163f8369d4d4e6a56",
+    "packages/core/src/state/engineering-revision-chain-ddl.ts": "da5024b2f27139abd7c2905df821ec159ac6c37826affdb0a345e6be74f3fb61",
+    "packages/core/src/state/engineering-revision-chain-store.ts": "223a12ee6de0bf97a497e4095c038d83b37f2a5c12b0f1af3c12ac59b31813a2"
+  },
+  "aggregate": [
+    {
+      "name": "no-lease",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-e2mzyD",
+      "results": [
+        {
+          "name": "no-lease",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-store-rounds-check",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-AP307N",
+      "results": [
+        {
+          "name": "no-store-rounds-check",
+          "file": "packages/core/src/state/engineering-revision-chain-store.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-ddl-rounds-check",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-n1mSwP",
+      "results": [
+        {
+          "name": "no-ddl-rounds-check",
+          "file": "packages/core/src/state/engineering-revision-chain-ddl.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-reservation-pk",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-2QXKuA",
+      "results": [
+        {
+          "name": "no-reservation-pk",
+          "file": "packages/core/src/state/engineering-revision-chain-ddl.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-grant-fence",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-75LN0U",
+      "results": [
+        {
+          "name": "no-grant-fence",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-completed-reservation-void",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-mJxaDr",
+      "results": [
+        {
+          "name": "no-completed-reservation-void",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-revision-spec-denial",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-HqzXQ0",
+      "results": [
+        {
+          "name": "no-revision-spec-denial",
+          "file": "packages/cli/src/contained-mission-ports.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-ports.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-feedback-delimiters",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-mGDl4b",
+      "results": [
+        {
+          "name": "no-feedback-delimiters",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-precheck-base",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-sPqfqB",
+      "results": [
+        {
+          "name": "no-precheck-base",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "split-dispatch-transaction",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-cawyiv",
+      "results": [
+        {
+          "name": "split-dispatch-transaction",
+          "file": "packages/cli/src/contained-mission-revision.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-unsettled-publication-check",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-jL2wgX",
+      "results": [
+        {
+          "name": "no-unsettled-publication-check",
+          "file": "packages/core/src/state/engineering-revision-chain-store.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-revision-chain-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-chain-classification",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-F7wvXi",
+      "results": [
+        {
+          "name": "no-chain-classification",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-acknowledge-advance",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-ElZhd0",
+      "results": [
+        {
+          "name": "no-acknowledge-advance",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "interrupted-push-failed",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-5XQ92y",
+      "results": [
+        {
+          "name": "interrupted-push-failed",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "wrong-revision-publish-port",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-ee83yx",
+      "results": [
+        {
+          "name": "wrong-revision-publish-port",
+          "file": "packages/cli/src/contained-mission-runner.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision.runner.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-release-fence",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-D8mA9z",
+      "results": [
+        {
+          "name": "no-release-fence",
+          "file": "packages/core/src/state/engineering-host-process-store.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/core",
+            "test",
+            "src/state/engineering-host-process-store.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "token-after-fence",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-mEDzvZ",
+      "results": [
+        {
+          "name": "token-after-fence",
+          "file": "packages/cli/src/contained-mission-bridge.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-bridge.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "baseline-omission",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-fEb1Kq",
+      "results": [
+        {
+          "name": "baseline-omission",
+          "file": "packages/cli/src/contained-mission-grant.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-grant.test.ts",
+            "-t",
+            "issues a signed grant"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    },
+    {
+      "name": "no-readback-range-check",
+      "exit": 0,
+      "evidence": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-LxOvRC",
+      "results": [
+        {
+          "name": "no-readback-range-check",
+          "file": "packages/cli/src/contained-mission-revision-publication.ts",
+          "command": [
+            "pnpm",
+            "--filter",
+            "@osstack/cli",
+            "test",
+            "src/contained-mission-revision-publication.test.ts"
+          ],
+          "verdict": "killed",
+          "status": 1,
+          "signal": null,
+          "spawn_error": null
+        }
+      ]
+    }
+  ],
+  "audit": [
+    {
+      "name": "no-lease",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-store-rounds-check",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-ddl-rounds-check",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-reservation-pk",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-grant-fence",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-completed-reservation-void",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-revision-spec-denial",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-feedback-delimiters",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-precheck-base",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "split-dispatch-transaction",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-unsettled-publication-check",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-chain-classification",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-acknowledge-advance",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "interrupted-push-failed",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "wrong-revision-publish-port",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "no-release-fence",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "token-after-fence",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    },
+    {
+      "name": "baseline-omission",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true,
+      "baseline_note": "Verified raw baseline summary: Test Files1 passed; Tests1 passed43 skipped; original harness enforces baseline exit0."
+    },
+    {
+      "name": "no-readback-range-check",
+      "verdict": "killed",
+      "assertion": true,
+      "fail_header": true,
+      "timeout": false,
+      "baseline_pass": true
+    }
+  ]
+}
