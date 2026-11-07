@@ -21,7 +21,7 @@ export interface LiveReconcilerOptions {
 const IN_FLIGHT = new Set(['revision_reserved', 'revising', 'publishing']);
 const HALTED = new Set(['awaiting_decision', 'needs_reconciliation', 'stop_unknown']);
 const TERMINAL = new Set(['pr_opened', 'cancelled', 'abandoned', 'failed']);
-const CANCEL = new Set(['external_write', 'head_regressed', 'base_changed', 'protected_set_changed', 'pr_closed', 'pr_merged', 'publish_refused:pr_head_ref_changed']);
+const CANCEL = new Set(['external_write', 'head_regressed', 'base_changed', 'protected_set_changed', 'pr_closed', 'pr_merged', 'publish_refused:pr_head_ref_changed', 'abandon', 'takeover']);
 type Cursor = { created_at: number; chain_id: string };
 
 /** Reconcile a child's local outcome without running work or settling publication intents. */
@@ -157,7 +157,8 @@ export class LiveReconciler {
         // A close can race a crash before cancellation. The transition is the durable cancellation obligation.
         const close = fresh.state === 'closed' ? chains.db.prepare(`SELECT payload_json FROM engineering_revision_chain_events
           WHERE chain_id=? AND kind='transition' ORDER BY seq DESC LIMIT 1`).get(fresh.chain_id) as { payload_json: string } | undefined : undefined;
-        const reason = fresh.stop_reason ?? (close ? (JSON.parse(close.payload_json) as { reason?: string }).reason : undefined);
+        // Older close transactions retained the previous stop reason. The final transition owns the close reason.
+        const reason = (close ? (JSON.parse(close.payload_json) as { reason?: string }).reason : undefined) ?? fresh.stop_reason;
         const child = this.options.dispatch.missions.get(fresh.current_mission_id!);
         if (reason && CANCEL.has(reason) && !TERMINAL.has(child.state) && child.state !== 'cancel_requested') await this.cancel(fresh, reason);
       } catch { this.backoff(row.chain_id); this.log('settled_cycle_failed'); }
