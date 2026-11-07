@@ -16,7 +16,7 @@ const env = { ...hardenedGitEnvironment(process.env), GIT_AUTHOR_NAME: "t", GIT_
 const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env, encoding: "utf8" }).trim();
 const AUTHOR = { name: "Mission Host", email: "host@example.invalid", date: "1700000000 +0000" };
 
-function fixture() {
+function fixture(bridge?: import('./contained-mission-bridge.js').BridgeOptions) {
   const root = realpathSync(createScratchDirSync("tests", "contained-ports"));
   const repo = join(root, "repo"); mkdirSync(repo);
   const files: Record<string, string> = { "src/a.txt": "hi\n", "src/b.txt": "bye\n", "bin/run.sh": "#!/bin/sh\necho run\n", "README.md": "readme\n" };
@@ -32,7 +32,7 @@ function fixture() {
   const store = new ContainedMissionStore(attention, owner);
   const journalRoot = join(root, "journal"); mkdirSync(journalRoot);
   let clock = 1000;
-  const ports = createContainedMissionPorts({ store, hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
+  const ports = createContainedMissionPorts({ store, ...(bridge ? { bridge } : {}), hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
     verification: { socketPath: join(root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot }, author: AUTHOR });
   const spec: ContainedMissionSpec = { goal: "g", repo_path: repo, base_ref: "main", start_commit: start, branch: "osstack/mission/t1", worktree_path: join(root, "worktrees", "mission-t1"),
     allowed_paths: ["src/**"], verify: { argv: ["true"] } };
@@ -45,6 +45,22 @@ function fixture() {
   return { root, repo, start, store, ports, spec, authorize, write, journalRoot, now: () => ++clock };
 }
 const signal = () => new AbortController().signal;
+
+describe('revision production publication adapters', () => {
+  it('refuses adapter construction without App A and with the kill switch', async () => {
+    const f = fixture();
+    await expect(f.ports.revisionPublicationAdapters!()).rejects.toThrow('BRIDGE_DISABLED');
+  });
+  it('accepts only hardened ancestry and bounded commit-range reads', async () => {
+    const app = { app_id: 1, installation_id: 2, private_key_path: '/not-read-for-local-git' };
+    const f = fixture({ config: { repository: 'o/r', publisher: app, evidence: { ...app, app_id: 3 }, mission_ruleset_ids: [1] } });
+    const adapters = await f.ports.revisionPublicationAdapters!();
+    expect(await adapters.localGit(f.repo, ['merge-base', '--is-ancestor', f.start, f.start])).toMatchObject({ exitCode: 0 });
+    expect(await adapters.localGit(f.repo, ['rev-list', '--reverse', `${f.start}..${f.start}`])).toEqual({ exitCode: 0, stdout: '' });
+    await expect(adapters.localGit(f.repo, ['push', 'origin', 'HEAD'])).rejects.toThrow('revision_git_read_refused');
+    expect(sh(f.repo, 'rev-parse', 'HEAD')).toBe(f.start);
+  });
+});
 const indexDigest = (worktree: string) => createHash("sha256").update(readFileSync(join(sh(worktree, "rev-parse", "--absolute-git-dir"), "index"))).digest("hex");
 
 describe("contained Mission ports: workspace", () => {
@@ -383,8 +399,32 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
     const permit = { mission_id: m.mission_id, revision: m.revision, head: f.start, tree: "t", spec_digest: m.spec_digest };
     const publish = () => ports.publish({ mission: m, spec, permit, body: "b", beforeRemoteMutation: kind => { order.push(`fence:${kind}`); }, signal: signal() });
     const labelled = () => [...executed.map(e => e.command + ":" + stripC(e.args).slice(0, 2).join(" "))];
-    return { f, publish, inner, executed, order, tokenCalls: () => tokenCalls, labelled, ports };
+    return { f, spec, permit, publish, inner, executed, order, tokenCalls: () => tokenCalls, labelled, ports };
   }
+
+  it('revision preflight binds the recorded workspace, candidate and exact HTTPS destination before minting a token', async () => {
+    const b = await bridged();
+    const adapters = await b.ports.revisionPublicationAdapters!();
+    await adapters.preflight(b.spec, b.permit);
+    expect(b.tokenCalls()).toBe(0);
+    await expect(adapters.preflight(b.spec, { ...b.permit, head: 'f'.repeat(40) })).rejects.toThrow('local_head_mismatch');
+    sh(b.f.repo, 'remote', 'set-url', '--push', 'origin', 'https://github.com/attacker/other.git');
+    await expect(adapters.preflight(b.spec, b.permit)).rejects.toThrow('repo_config_changed');
+    expect(b.tokenCalls()).toBe(0); expect(b.executed).toEqual([]);
+  });
+
+  it('revision publication injects App A only inside the destination fence', async () => {
+    const b = await bridged();
+    const adapters = await b.ports.revisionPublicationAdapters!();
+    const runner = fencedDeliveryRunner(adapters.runner, () => { b.order.push('revision-fence'); },
+      { remote: 'origin', repository: REPO, missionId: b.permit.mission_id, httpsOnly: true });
+    await runner.run('git', ['push', '--porcelain', `--force-with-lease=refs/heads/${b.spec.branch}:${b.f.start}`, 'origin', `${b.f.start}:refs/heads/${b.spec.branch}`],
+      { cwd: b.spec.worktree_path, timeoutMs: 10_000, intentId: 'ri_revision_test' });
+    expect(b.order).toEqual(['revision-fence']);
+    expect(b.executed).toHaveLength(1);
+    expect(b.executed[0]!.env['OSSTACK_BRIDGE_PUSH_TOKEN']).toBe(PUB);
+    expect(b.executed[0]!.args.join(' ')).not.toContain(PUB);
+  });
 
   it("pushes and opens the PR with App A: token only in the child env, reads on host credentials, fence first", async () => {
     const b = await bridged();

@@ -66,6 +66,7 @@ export interface ContainedMissionServiceOptions {
   live?: Pick<import('./contained-mission-bridge-live.js').LiveReconciler, 'start' | 'stop'>;
   /** D7 stopped live-chain scan; starts after recovery and stops before the host closes. */
   stoppedScan?: Pick<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService, 'start' | 'stop'>;
+  checkRetry?: { start(): void; stop(): Promise<void> };
   /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
   merger?: import('./contained-mission-merger-shadow.js').MergerShadowHandle;
   /** Comparison report over the shadow merger tables (SELECT only). */
@@ -89,13 +90,21 @@ export interface ChainStatus {
 }
 const STATUS_DECISIONS = 10;
 
-export type BridgeMode = 'off' | 'shadow';
+export type BridgeMode = 'off' | 'shadow' | 'live';
 /** `OSSTACK_BRIDGE`: unset or `0` -> off; `shadow` -> read-only shadow; `1` (live) is not implemented in phase 4; anything else is invalid. */
 export function parseBridgeMode(value: string | undefined): BridgeMode {
   if (value === undefined || value === '0') return 'off';
   if (value === 'shadow') return 'shadow';
-  if (value === '1') throw new Error('BRIDGE_LIVE_NOT_IMPLEMENTED');
+  if (value === '1') {
+    assertLiveBridgeAcceptance();
+    return 'live';
+  }
   throw new Error('BRIDGE_MODE_INVALID');
+}
+
+/** This release has no 5-F/5-G acceptance record. Only a reviewed code change with that evidence can open the gate. */
+function assertLiveBridgeAcceptance(): void {
+  throw new Error('BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G');
 }
 
 export type MergerMode = 'off' | 'shadow';
@@ -131,6 +140,7 @@ export class ContainedMissionService {
       this.options.shadow?.start();
       this.options.live?.start();
       this.options.stoppedScan?.start();
+      this.options.checkRetry?.start();
       this.options.merger?.start();
       this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
       this.timer.unref();
@@ -150,7 +160,7 @@ export class ContainedMissionService {
       if (this.timer) clearInterval(this.timer);
       await this.starting?.catch(() => undefined);
       // Stop all readers before closing the host ledger, even when one stop rejects.
-      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.merger]
+      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.checkRetry, this.options.merger]
         .map(service => Promise.resolve().then(() => service?.stop())));
       await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
       const failure = stopped.find(result => result.status === 'rejected');
@@ -320,11 +330,11 @@ export async function createContainedMissionService(deps: {
       registry, now: deps.shadow?.now ?? Date.now, log,
     });
   }
-  let stoppedScan: import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService | undefined;
-  if (env['OSSTACK_BRIDGE'] === '1') {
-    stoppedScan = await createStoppedChainScan({ chains: chainStore, missions: store, access: deps.access, host,
-      enabled: () => env['OSSTACK_BRIDGE'] === '1', log, ...(deps.stoppedScan ?? {}) });
-  }
+  const live = bridgeMode === 'live' ? await (await import('./contained-mission-bridge-production.js')).createProductionLiveBridge({
+    home: deps.home, chains: chainStore, missions: store, ports, host, access: deps.access,
+    enabled: () => env['OSSTACK_BRIDGE'] === '1' && !deps.draining(), now: Date.now, log,
+    launchCaps: ports.revisionLaunchCaps!,
+  }) : undefined;
   // Shadow merger (design §5.3): its own factory, nothing shared with loadBridgeConfig above or with the bridge reconciler.
   const { MergerShadowStore } = await import('@osstack/core');
   const mergerStore = new MergerShadowStore(deps.attention, deps.owner);
@@ -363,8 +373,10 @@ export async function createContainedMissionService(deps: {
       afterIntentId = page.afterIntentId;
     }
   };
-  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, revisionRecovery, ...(shadow ? { shadow } : {}),
-    ...(stoppedScan ? { stoppedScan } : {}), ...(merger ? { merger } : {}), mergerReport });
+  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,
+    revisionRecovery: live?.revisionRecovery ?? revisionRecovery, ...(shadow ? { shadow } : {}),
+    ...(live ? { live: live.live, stoppedScan: live.stoppedScan, grants: live.grants,
+      ...(live.checkRetry ? { checkRetry: live.checkRetry } : {}) } : {}), ...(merger ? { merger } : {}), mergerReport });
 }
 
 /** Production stopped-chain wiring, callable by tests while the live-mode gate remains closed. */
