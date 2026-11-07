@@ -13,6 +13,7 @@ import { promisify } from 'node:util';
 import { assertSandbox, parseRegistry } from './lib/bridge-probe.mjs';
 import { createScratchDir } from './lib/scratch.mjs';
 import { loadBridgeRuntime } from './lib/bridge-installed-runtime.mjs';
+import { installRevisionPublicationHook } from './lib/bridge-sandbox-publication-hook.mjs';
 import { runSandboxColdRestart } from './lib/bridge-sandbox-cold-restart.mjs';
 import { readSandboxBranchActivities, assertSandboxPublicationActivities } from './lib/bridge-sandbox-activity.mjs';
 
@@ -231,6 +232,16 @@ export async function withSandboxCleanup(work) {
   return result;
 }
 
+/** A pending intent and a stopped unreleased W13 launch are both required; absence is not proof. */
+export function assertRevokedPublicationFence({ missionId, intentId, intent, journals, expectedHead, actualHead }) {
+  assertThat(intent?.intent_id === intentId && intent.child_mission_id === missionId && intent.kind === 'push'
+    && intent.state === 'failed', 'revoked_push_not_failed');
+  assertThat(Array.isArray(journals) && journals.length === 1 && journals.every(row => row.mission_id === missionId
+    && row.intent_id === intentId && row.kind === 'git_push' && row.released_at === null
+    && row.state === 'stopped' && row.stop_proof === 'group_empty+marker_unheld'), 'revoked_push_release_not_proven');
+  assertThat(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expectedHead) && actualHead === expectedHead, 'revoked_push_remote_changed');
+}
+
 /** Close all old resources before a worker; reclaim fresh resources after worker exit, including failure. */
 export async function handoffSandboxColdRestart({ close, restart, reopen }) {
   await close();
@@ -331,7 +342,20 @@ export async function execute(opts, prepared) {
     codex: codexOptions, hostProcess: { markerDir: join(home, 'contained/host-processes') },
     verification: { ...verificationOptions, journalRoot: join(home, 'verification') },
     author: { name: 'OSStack Sandbox', email: 'sandbox@osstack.invalid' }, bridge: { config } });
-  let ports = createPorts();
+  let revokedChild, revokedChainId, revokedIntent, restorePublicationHook;
+  const hookPorts = currentPorts => {
+    restorePublicationHook?.();
+    restorePublicationHook = installRevisionPublicationHook(currentPorts, { onBeforePush: async metadata => {
+      if (metadata.missionId !== revokedChild) return;
+      assertThat(!revokedIntent && missions.get(revokedChild).state === 'delivering', 'revocation_hook_state');
+      const intent = chains.intents(revokedChainId).find(i => i.intent_id === metadata.intentId);
+      assertThat(intent?.kind === 'push' && intent.state === 'pending' && intent.child_mission_id === revokedChild, 'revocation_hook_intent');
+      revokedIntent = metadata.intentId; principal.write_scopes = []; await authority();
+    } });
+    return currentPorts;
+  };
+  defer(() => { enabled = false; restorePublicationHook?.(); });
+  let ports = hookPorts(createPorts());
   host = new prepared.runtime.ContainedMissionHost({ ports, worktreesRoot: worktrees, hostProcessRecheckMs: 60_000 });
   const buildBridge = currentHost => prepared.runtime.createProductionLiveBridge({ home, chains, missions, ports, host: currentHost, access, enabled: () => enabled,
     now: Date.now, log: () => { logs.push({ code: 'bridge_diagnostic', at: Date.now() }); }, launchCaps: ports.revisionLaunchCaps });
@@ -429,7 +453,7 @@ export async function execute(opts, prepared) {
       db = core.openDb({ path: dbPath }); attention = new core.AttentionStore(db, dbPath);
       owner = attention.claimOwner(`sandbox-parent-resumed-${opts.run}`);
       missions = new core.ContainedMissionStore(attention, owner); chains = new core.RevisionChainStore(attention, owner);
-      access = new prepared.runtime.EngineeringAccess(authorityPath); ports = createPorts();
+      access = new prepared.runtime.EngineeringAccess(authorityPath); ports = hookPorts(createPorts());
       host = new prepared.runtime.ContainedMissionHost({ ports, worktreesRoot: worktrees, hostProcessRecheckMs: 60_000 });
       bridge = await buildBridge(host);
       },
@@ -478,12 +502,21 @@ export async function execute(opts, prepared) {
     assert.equal(chains.intents(injected.chain.chain_id).filter(i => i.kind === 'push').length, 0);
     report.scenarios.push({ name: 'workflow_injection_T2', passed: true }); await save();
     const revoked = await rootMission('revoke'); await review(revoked.chain, `Update ${revoked.file} to stage 1.`);
-    const revokedChild = await dispatchChild(revoked.chain.chain_id);
-    principal.write_scopes = []; await authority(); await host.tick();
+    revokedChainId = revoked.chain.chain_id; revokedChild = await dispatchChild(revokedChainId);
+    await host.tick();
     await until(() => chains.get(revoked.chain.chain_id).stop_reason === 'grant_invalid' || missions.get(revokedChild).state === 'awaiting_decision', 'revoked_write_scope');
     assert.equal(chains.intents(revoked.chain.chain_id).filter(i => i.kind === 'push' && i.state === 'confirmed').length, 0);
+    assertThat(revokedIntent, 'revocation_hook_not_reached');
+    const deniedIntent = chains.intents(revoked.chain.chain_id).find(i => i.intent_id === revokedIntent);
+    const journals = db.prepare('SELECT mission_id,intent_id,kind,state,released_at,stop_proof FROM engineering_host_processes WHERE intent_id=?').all(revokedIntent);
+    const actualRef = await ghRead(`repos/${SANDBOX}/git/ref/heads/${revoked.chain.branch}`);
+    assertRevokedPublicationFence({ missionId: revokedChild, intentId: revokedIntent, intent: deniedIntent,
+      journals, expectedHead: revoked.chain.published_head, actualHead: actualRef.object?.sha });
+    report.revocation_fence = { mission_id: revokedChild, intent_id: revokedIntent, intent_state: deniedIntent.state,
+      journals, expected_head: revoked.chain.published_head, remote_head: actualRef.object.sha };
     principal.write_scopes = [scope.scope_id]; await authority();
-    report.scenarios.push({ name: 'write_scope_revoked_before_execution_no_push', passed: true }); await save();
+    report.required_acceptance_gaps = report.required_acceptance_gaps.filter(gap => gap !== 'write_scope_revoked_at_publication_release');
+    report.scenarios.push({ name: 'write_scope_revoked_at_publication_runner_W13_unreleased_no_push', passed: true }); await save();
     // Compare every introduced commit, never just the current branch tip. App B attribution includes its numeric App id.
     for (const chainId of report.chains) {
       const c = chains.get(chainId), intents = chains.intents(chainId), rangeMap = new Map();

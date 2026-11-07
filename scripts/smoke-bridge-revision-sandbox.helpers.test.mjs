@@ -211,3 +211,18 @@ test('cold handoff reopens after failed exited worker but never launches after f
   await assert.rejects(driver.handoffSandboxColdRestart({ close: async () => { throw Error('shutdown'); },
     restart: async () => { assert.fail('must not launch'); }, reopen: async () => { assert.fail('must not reclaim active owner'); } }), /shutdown/);
 });
+
+test('revocation evidence requires failed exact intent, actual stopped W13 journal and unchanged remote', () => {
+  const proof = { missionId: 'cm_revoke', intentId: 'pi_revoke',
+    intent: { intent_id: 'pi_revoke', child_mission_id: 'cm_revoke', kind: 'push', state: 'failed' },
+    journals: [{ mission_id: 'cm_revoke', intent_id: 'pi_revoke', kind: 'git_push', state: 'stopped',
+      released_at: null, stop_proof: 'group_empty+marker_unheld' }], expectedHead: sha, actualHead: sha };
+  driver.assertRevokedPublicationFence(proof);
+  for (const change of [{ journals: [] }, { actualHead: '2'.repeat(40) },
+    { intent: { ...proof.intent, state: 'uncertain' } },
+    { journals: [{ ...proof.journals[0], released_at: 1 }] },
+    { journals: [{ ...proof.journals[0], state: 'registered' }] },
+    { journals: [{ ...proof.journals[0], intent_id: 'pi_other' }] }]) {
+    assert.throws(() => driver.assertRevokedPublicationFence({ ...proof, ...change }));
+  }
+});
