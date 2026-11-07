@@ -37,6 +37,8 @@ export interface ContainedRevisionPort {
   /** Throws `RevisionLaunchRefused` unless this child is still its chain's current child, the chain is in flight and the grant is live. For work that is not a charged launch (adopting a worktree). */
   assertActive: (mission: ContainedMission, spec: ContainedMissionSpec) => void;
   assertResumable: (mission: ContainedMission, spec: ContainedMissionSpec, kind: 'budget' | 'grant', blocked: ContainedLaunchKind) => void;
+  /** A human decision acknowledges a stopped revision round before the child advances. */
+  acknowledgeAdvance: (mission: ContainedMission, spec: ContainedMissionSpec, decision: ContainedDecision['kind']) => 'in_flight' | 'resumed' | 'landed';
 }
 export interface ContainedPublicationSpec { remote: string; repository: string; base: string; draft: boolean; title?: string; preauthorized?: boolean }
 /** Process-local, single-delivery-attempt binding; never serialized as authority (§8.1). */
@@ -171,6 +173,17 @@ export class ContainedMissionRunner {
 
   async decide(missionId: string, decision: ContainedDecision): Promise<ContainedMission> {
     const m = this.ports.store.get(missionId); const reason = this.haltReason(m);
+    if (decision.kind !== 'abandon' && m.state !== 'stop_unknown') {
+      const raw = JSON.parse(m.spec_json) as { publish_target?: unknown };
+      if (raw.publish_target) {
+        const spec = parseContainedMissionSpec(m.spec_json);
+        try {
+          if (!this.ports.revision) throw new RevisionLaunchRefused('revision_not_configured');
+          this.ports.revision.acknowledgeAdvance(m, spec, decision.kind);
+        }
+        catch (error) { throw Error(error instanceof RevisionLaunchRefused ? `resume_refused:${error.code}`.slice(0, 64) : 'resume_refused'); }
+      }
+    }
     const go = (to: ContainedMission['state'], kind: string) => this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind, payload: { reason } } }, this.ports.now());
     if (decision.kind === 'abandon' && (m.state === 'awaiting_decision' || m.state === 'needs_reconciliation' || m.state === 'stop_unknown')) return go('abandoned', 'decision_abandon');
     if (decision.kind === 'extra_repair' && m.state === 'awaiting_decision' && reason === 'repair_cycles_exhausted') return this.extraRepair(m, reason);
@@ -262,7 +275,11 @@ export class ContainedMissionRunner {
     // Restoring and probing awaited since the charge: the chain is asked again just before the executor can start.
     if (spec.publish_target) {
       try { this.ports.revision!.assertActive(this.ports.store.get(m.mission_id), spec); }
-      catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `chain_stopped:${error instanceof RevisionLaunchRefused ? error.code : 'unknown'}`.slice(0, 64), { blocked: 'executor:discard_changes' }); }
+      catch (error) {
+        const code = error instanceof RevisionLaunchRefused ? error.code : 'unknown';
+        if (code === 'chain_closed') return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', 'chain_stopped:chain_closed', { blocked: 'executor:discard_changes' });
+        throw Error(`resume_refused:${code}`.slice(0, 64));
+      }
     }
     let next: ContainedMission;
     try { next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: head, event: { kind: 'decision_discard_changes', payload: { reason, head, version: q.version, identity_sha256: q.identity_sha256 } } }, this.ports.now()); }
@@ -310,7 +327,11 @@ export class ContainedMissionRunner {
       // The diff reads above awaited: the chain gets one more say, synchronously, right before the write.
       if (spec.publish_target) {
         try { this.ports.revision!.assertActive(this.ports.store.get(m.mission_id), spec); }
-        catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `chain_stopped:${error instanceof RevisionLaunchRefused ? error.code : 'unknown'}`.slice(0, 64), { blocked: 'adopt_worktree' }); }
+        catch (error) {
+          const code = error instanceof RevisionLaunchRefused ? error.code : 'unknown';
+          if (code === 'chain_closed') return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', 'chain_stopped:chain_closed', { blocked: 'adopt_worktree' });
+          throw Error(`resume_refused:${code}`.slice(0, 64));
+        }
       }
       let commit: { head: string; tree: string };
       try { commit = await this.ports.commitWorktree({ mission_id: m.mission_id, signal: controller.signal, fence: () => this.assertWriter(m, controller.signal), worktree: spec.worktree_path, branch: spec.branch,

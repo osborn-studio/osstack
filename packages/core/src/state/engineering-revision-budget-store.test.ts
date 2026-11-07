@@ -109,7 +109,7 @@ it("tops up the same child's slice on a budget re-grant by exactly the raise, ke
   const stopped = f.store.stopLive(chain.chain_id, f.store.get(chain.chain_id).revision, "budget_exhausted", NOW);
   const renewed = f.renew(stopped, grant, { budget: { max_executor_seconds: 3000, max_container_seconds: 360, max_wall_clock_hours: 48 } });
   const result = f.store.replaceGrant(stopped.chain_id, stopped.revision, renewed, NOW);
-  expect(result.chain.state).toBe("revising");
+  expect(result.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "child_halted" });
   expect(f.store.allocations(chain.chain_id)[id]).toEqual({ executor_seconds: 3000, container_seconds: 360, executor_used: 1800, container_used: 0 });
   expect(JSON.parse(f.store.events(chain.chain_id, 0, 500).filter(e => e.kind === "grant_replaced").at(-1)!.payload_json).top_up).toEqual({ executor_seconds: 1200, container_seconds: 0 });
   expect(f.store.chargeLaunch(chain.chain_id, id, "executor", 1200, NOW).executor_used).toBe(3000);
@@ -124,7 +124,8 @@ it("does not top up for a stop that is not about budget, and refuses a budget re
   const stopped = f.store.stopLive(chain.chain_id, f.store.get(chain.chain_id).revision, "grant_expired", NOW);
   f.store.replaceGrant(stopped.chain_id, stopped.revision, f.renew(stopped, grant), NOW);
   expect(f.store.allocations(chain.chain_id)[id]).toMatchObject({ executor_seconds: 1800, container_seconds: 360 });
-  const again = f.store.stopLive(chain.chain_id, f.store.get(chain.chain_id).revision, "budget_exhausted", NOW);
+  f.db.prepare("UPDATE engineering_revision_chains SET stop_reason='budget_exhausted',revision=revision+1 WHERE chain_id=?").run(chain.chain_id);
+  const again = f.store.get(chain.chain_id);
   expect(code(() => f.store.replaceGrant(again.chain_id, again.revision, f.renew(again, grant), NOW))).toBe("budget_not_raised");
 });
 

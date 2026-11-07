@@ -56,7 +56,7 @@ function setup() {
     const child = mission();
     return { child, chain: store.dispatch(chain.chain_id, reserved.chain.revision, chain.published_head, child, NOW).chain };
   };
-  return { db, path, root, attention, owner, scope, principal, store, mission, live, renew, finish, reserveAndDispatch };
+  return { db, path, root, attention, owner, scope, principal, store, missions, mission, live, renew, finish, reserveAndDispatch };
 }
 const code = (fn: () => unknown): string => { try { fn(); } catch (e) { return e instanceof Error ? e.message : String(e); } return "no_error"; };
 const rawUpdate = (f: ReturnType<typeof setup>, chainId: string, grantJson: string) =>
@@ -217,10 +217,10 @@ it("resumes the same child after a grant or budget stop, and waits for a termina
   expect(code(() => f.store.replaceGrant(stopped.chain_id, stopped.revision, f.renew(stopped, grant), NOW))).toBe("budget_not_raised");
   const more = f.renew(stopped, grant, { budget: { ...grant.budget, max_executor_seconds: grant.budget.max_executor_seconds + 600 } });
   const resumed = f.store.replaceGrant(stopped.chain_id, stopped.revision, more, NOW).chain;
-  expect(resumed).toMatchObject({ state: "revising", stop_reason: null, current_mission_id: child });
+  expect(resumed).toMatchObject({ state: "awaiting_decision", stop_reason: "child_halted", current_mission_id: child });
   // A failed child with the stop proven but the claim still active is not a clean slate.
   f.finish(child);
-  const again = f.store.stopLive(resumed.chain_id, resumed.revision, "child_failed", NOW);
+  const again = f.store.restopLive(resumed.chain_id, resumed.revision, "child_failed", NOW);
   expect(code(() => f.store.replaceGrant(again.chain_id, again.revision, f.renew(again, grant), NOW))).toBe("state_denied");
   f.db.prepare("UPDATE engineering_revision_chains SET stop_reason='grant_expired',revision=revision+1 WHERE chain_id=?").run(again.chain_id);
   const expired = f.store.get(again.chain_id); const current = JSON.parse(expired.grant_json) as RevisionGrant;
@@ -229,7 +229,7 @@ it("resumes the same child after a grant or budget stop, and waits for a termina
   expect(f.store.replaceGrant(expired.chain_id, expired.revision, f.renew(expired, current), NOW).chain.state).toBe("awaiting_review");
 });
 
-it("resumes into publishing when the stopped child already has a settled push intent", () => {
+it("keeps a stopped child parked when its push intent has failed", () => {
   const f = setup();
   const { chain, grant } = f.live({ rounds: 2 });
   const { chain: revising, child } = f.reserveAndDispatch(chain);
@@ -240,7 +240,256 @@ it("resumes into publishing when the stopped child already has a settled push in
   f.store.settleIntent(withIntent.intent.intent_id, "failed", NOW, "refused");
   const stopped = f.store.get(chain.chain_id);
   expect(stopped).toMatchObject({ state: "awaiting_decision", stop_reason: "grant_expired" });
-  expect(f.store.replaceGrant(stopped.chain_id, stopped.revision, f.renew(stopped, grant), NOW).chain.state).toBe("publishing");
+  expect(f.store.replaceGrant(stopped.chain_id, stopped.revision, f.renew(stopped, grant), NOW).chain).toMatchObject({ state: "awaiting_decision", stop_reason: "child_halted" });
+});
+
+it("resumes only a stopped, claimed child with a dispatched reservation and an allowed decision", () => {
+  const f = setup();
+  const { chain } = f.live();
+  const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+  const mission = f.missions.get(child);
+  f.missions.transition(child, { if_revision: mission.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "repair_cycles_exhausted" } } }, NOW);
+  const stopped = f.store.stopLive(dispatched.chain_id, dispatched.revision, "child_halted", NOW);
+  const input = { child_mission_id: child, expected_stop_reason: "child_halted", decision: "extra_repair" };
+  const attempt = () => f.store.resumeChild(stopped.chain_id, f.store.get(stopped.chain_id).revision, input, NOW);
+  expect(code(() => f.store.resumeChild(stopped.chain_id, stopped.revision - 1, input, NOW))).toBe("version_conflict");
+  expect(code(() => f.store.resumeChild(stopped.chain_id, stopped.revision, { ...input, expected_stop_reason: "base_changed" }, NOW))).toBe("chain_not_resumable:child_halted");
+  expect(code(() => f.store.resumeChild(stopped.chain_id, stopped.revision, { ...input, child_mission_id: chain.root_mission_id }, NOW))).toBe("not_current_child");
+  expect(code(() => f.store.resumeChild(stopped.chain_id, stopped.revision, { ...input, decision: "approve_publication" }, NOW))).toBe("decision_not_allowed");
+  const before = { rounds: stopped.rounds_used, spent: stopped.spent_json, deadline: stopped.review_deadline, reservation: f.store.reservations(chain.chain_id) };
+  const resumed = attempt();
+  expect(resumed).toMatchObject({ state: "revising", stop_reason: null, current_mission_id: child, rounds_used: before.rounds, spent_json: before.spent, review_deadline: before.deadline });
+  expect(f.store.reservations(chain.chain_id)).toEqual(before.reservation);
+  expect(f.store.events(chain.chain_id).slice(-2).map(e => e.kind)).toEqual(["child_resumed", "round_resumed"]);
+  expect(code(attempt)).toBe("chain_not_resumable:revising");
+  const first = f.store.recordIntent(chain.chain_id, resumed.revision, { kind: "push", branch: chain.branch,
+    expected_old_head: H1, new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+  expect(code(() => f.store.recordIntent(chain.chain_id, first.chain.revision, { kind: "push", branch: chain.branch,
+    expected_old_head: H1, new_head: "3".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW))).toBe("push_intent_pending");
+  expect(f.store.intents(chain.chain_id).filter(i => i.state === "pending")).toHaveLength(1);
+});
+
+it("refuses same-child resume without stop proof, an active claim, or a dispatched reservation", () => {
+  for (const change of ["obligation", "process", "reservation", "claim", "unknown"] as const) {
+    const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const mission = f.missions.get(child);
+    f.missions.transition(child, { if_revision: mission.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "repair_cycles_exhausted" } } }, NOW);
+    const stopped = f.store.stopLive(dispatched.chain_id, dispatched.revision, "child_halted", NOW);
+    if (change === "obligation") f.db.prepare("UPDATE engineering_contained_missions SET stop_obligation=1,revision=revision+1 WHERE mission_id=?").run(child);
+    if (change === "process") f.db.prepare(`INSERT INTO engineering_host_processes(op_id,mission_id,kind,local_target,argv_digest,owner_home,owner_instance,owner_generation,boot_id,marker_path,marker_dev,marker_ino,state,created_at,updated_at)
+      VALUES(?,?,'git_index_write','/tmp/index',?,'/tmp','owner',1,'boot','/tmp/marker','1','1','launching',1,1)`).run(`hp_${child}`, child, "a".repeat(64));
+    if (change === "reservation") f.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason='test' WHERE chain_id=?").run(chain.chain_id);
+    if (change === "claim") {
+      // Manufacture a state that the claim trigger normally prevents, to exercise resumeChild's own backstop.
+      f.db.exec("DROP TRIGGER engineering_claim_release");
+      f.db.prepare("UPDATE engineering_workspace_claims SET state='released',released_at=1,release_reason='test' WHERE mission_id=?").run(child);
+    }
+    if (change === "unknown") f.db.prepare("UPDATE engineering_contained_missions SET state='stop_unknown',stop_obligation=1,revision=revision+1 WHERE mission_id=?").run(child);
+    expect(code(() => f.store.resumeChild(stopped.chain_id, stopped.revision, { child_mission_id: child, expected_stop_reason: "child_halted", decision: "extra_repair" }, NOW)))
+      .toBe(change === "reservation" ? "reservation_not_dispatched" : change === "claim" ? "child_claim_released" : "child_stop_unproven");
+    expect(f.store.get(chain.chain_id)).toEqual(stopped);
+  }
+});
+
+it("refuses same-child resume on a shadow chain", () => {
+  const f = setup();
+  const created = f.store.createShadowChain({ root_mission_id: f.mission(), repository: "o/r", pr_number: 802, branch: "b", base_ref: "main",
+    published_head: H1, published_base: B1, trace_id: "t" }, NOW);
+  f.db.prepare("UPDATE engineering_revision_chains SET state='awaiting_decision',stop_reason='child_halted',revision=revision+1 WHERE chain_id=?").run(created.chain_id);
+  const shadow = f.store.get(created.chain_id);
+  expect(code(() => f.store.resumeChild(shadow.chain_id, shadow.revision, {
+    child_mission_id: f.mission(), expected_stop_reason: "child_halted", decision: "extra_repair",
+  }, NOW))).toBe("chain_not_resumable:child_halted");
+  expect(f.store.get(shadow.chain_id)).toEqual(shadow);
+});
+
+it("rejects pending and uncertain push receipts even when the stop reason looks resumable", () => {
+  for (const state of ["pending", "uncertain"] as const) {
+    const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const intent = f.store.recordIntent(chain.chain_id, dispatched.revision, { kind: "push", branch: chain.branch, expected_old_head: H1,
+      new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+    const stopped = f.store.stopLive(chain.chain_id, intent.chain.revision, "child_halted", NOW);
+    if (state === "uncertain") f.store.settleIntent(intent.intent.intent_id, "uncertain", NOW);
+    const current = f.store.get(chain.chain_id);
+    const m = f.missions.get(child);
+    f.missions.transition(child, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "publication_failed:push_uncertain" } } }, NOW);
+    expect(code(() => f.store.resumeChild(chain.chain_id, current.revision, { child_mission_id: child, expected_stop_reason: "child_halted", decision: "approve_publication" }, NOW))).toBe("intent_unsettled");
+    expect(f.store.get(chain.chain_id).state).toBe("awaiting_decision");
+    expect(stopped.rounds_used).toBe(1);
+  }
+});
+
+it("keeps D1's update backstop when the resumeChild receipt check is bypassed", () => {
+  for (const state of ["pending", "uncertain"] as const) {
+    const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const push = f.store.recordIntent(chain.chain_id, dispatched.revision, { kind: "push", branch: chain.branch, expected_old_head: H1,
+      new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+    const stopped = f.store.stopLive(chain.chain_id, push.chain.revision, "child_halted", NOW);
+    if (state === "uncertain") f.store.settleIntent(push.intent.intent_id, "uncertain", NOW);
+    const current = f.store.get(chain.chain_id);
+    const directUpdate = f.store as unknown as { update: (chain: RevisionChain, patch: object, reason: string, at: { head: string; base: string }, now: number) => RevisionChain };
+    expect(code(() => directUpdate.update(current, { state: "revising", stop_reason: null }, "child_resumed",
+      { head: H1, base: B1 }, NOW)), state).toBe("intent_unsettled");
+    expect(f.store.get(chain.chain_id)).toEqual(current);
+    expect(stopped.state).toBe("awaiting_decision");
+  }
+});
+
+it("maps a non-string halted reason to decision_not_allowed", () => {
+  const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+  const m = f.missions.get(child);
+  f.missions.transition(child, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: 42 } } }, NOW);
+  const stopped = f.store.stopLive(chain.chain_id, dispatched.revision, "child_halted", NOW);
+  expect(code(() => f.store.resumeChild(chain.chain_id, stopped.revision, {
+    child_mission_id: child, expected_stop_reason: "child_halted", decision: "approve_publication",
+  }, NOW))).toBe("decision_not_allowed");
+  expect(f.store.get(chain.chain_id)).toEqual(stopped);
+});
+
+it("confirms a recovered landed round once, without reopening push permission", () => {
+  const f = setup(); const { chain, grant } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+  const push = f.store.recordIntent(chain.chain_id, dispatched.revision, { kind: "push", branch: chain.branch, expected_old_head: H1,
+    new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+  f.store.stopLive(chain.chain_id, push.chain.revision, "intent_uncertain", NOW);
+  f.store.settleIntent(push.intent.intent_id, "confirmed", NOW);
+  f.db.prepare("UPDATE engineering_revision_chains SET published_head=?,revision=revision+1 WHERE chain_id=?").run("2".repeat(40), chain.chain_id);
+  const landed = f.store.get(chain.chain_id);
+  expect(code(() => f.store.replaceGrant(landed.chain_id, landed.revision, f.renew(landed, grant), NOW))).toBe("state_denied");
+  f.db.prepare("UPDATE engineering_revision_chains SET stop_reason='child_halted',revision=revision+1 WHERE chain_id=?").run(chain.chain_id);
+  const parked = f.store.get(chain.chain_id);
+  expect(code(() => f.store.replaceGrant(parked.chain_id, parked.revision, f.renew(parked, grant), NOW))).toBe("round_landed");
+  const m = f.missions.get(child);
+  f.missions.transition(child, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "publication_failed:host_process_recovered" } } }, NOW);
+  expect(code(() => f.store.resumeChild(parked.chain_id, parked.revision, { child_mission_id: child, expected_stop_reason: "child_halted", decision: "approve_publication" }, NOW))).toBe("round_landed");
+  f.db.prepare("UPDATE engineering_contained_missions SET state='revalidating',candidate_head=?,candidate_verified=1,revision=revision+1 WHERE mission_id=?")
+    .run("2".repeat(40), child);
+  f.db.prepare("UPDATE engineering_contained_missions SET state='delivering',revision=revision+1 WHERE mission_id=?").run(child);
+  const result = f.store.resumeLanded(parked.chain_id, parked.revision, push.intent.intent_id, NOW);
+  expect(result).toMatchObject({ state: "awaiting_review", stop_reason: null, published_head: "2".repeat(40), rounds_used: 1 });
+  expect(f.store.reservations(chain.chain_id)[0]).toMatchObject({ head_sha: H1, state: "dispatched" });
+  expect(f.store.events(chain.chain_id).at(-1)).toMatchObject({ kind: "round_confirmed_after_recovery" });
+  expect(code(() => f.store.resumeLanded(chain.chain_id, parked.revision, push.intent.intent_id, NOW))).toBe("version_conflict");
+});
+
+it("confirms a recovered landed round from intent_uncertain", () => {
+  const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+  const push = f.store.recordIntent(chain.chain_id, dispatched.revision, { kind: "push", branch: chain.branch, expected_old_head: H1,
+    new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+  f.store.stopLive(chain.chain_id, push.chain.revision, "intent_uncertain", NOW);
+  f.store.settleIntent(push.intent.intent_id, "confirmed", NOW);
+  f.db.prepare("UPDATE engineering_revision_chains SET published_head=?,revision=revision+1 WHERE chain_id=?").run("2".repeat(40), chain.chain_id);
+  const m = f.missions.get(child);
+  f.missions.transition(child, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "publication_failed:host_process_recovered" } } }, NOW);
+  f.db.prepare("UPDATE engineering_contained_missions SET state='revalidating',candidate_head=?,candidate_verified=1,revision=revision+1 WHERE mission_id=?")
+    .run("2".repeat(40), child);
+  f.db.prepare("UPDATE engineering_contained_missions SET state='delivering',revision=revision+1 WHERE mission_id=?").run(child);
+  const stopped = f.store.get(chain.chain_id);
+  expect(stopped.stop_reason).toBe("intent_uncertain");
+  expect(f.store.resumeLanded(chain.chain_id, stopped.revision, push.intent.intent_id, NOW))
+    .toMatchObject({ state: "awaiting_review", stop_reason: null });
+});
+
+it("refuses recovered landing with a foreign or non-latest intent, unsettled receipt, void reservation, or non-delivering child", () => {
+  for (const change of ["foreign", "non_latest", "unsettled", "void_reservation", "non_delivering"] as const) {
+    const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const push = f.store.recordIntent(chain.chain_id, dispatched.revision, { kind: "push", branch: chain.branch, expected_old_head: H1,
+      new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+    f.store.stopLive(chain.chain_id, push.chain.revision, "intent_uncertain", NOW);
+    f.store.settleIntent(push.intent.intent_id, "confirmed", NOW);
+    f.db.prepare("UPDATE engineering_revision_chains SET published_head=?,revision=revision+1 WHERE chain_id=?").run("2".repeat(40), chain.chain_id);
+    f.db.prepare("UPDATE engineering_contained_missions SET state='revalidating',candidate_head=?,candidate_verified=1,revision=revision+1 WHERE mission_id=?")
+      .run("2".repeat(40), child);
+    f.db.prepare("UPDATE engineering_contained_missions SET state='delivering',revision=revision+1 WHERE mission_id=?").run(child);
+    let intentId = push.intent.intent_id;
+    const row = f.db.prepare("SELECT * FROM engineering_publication_intents WHERE intent_id=?").get(intentId) as Record<string, unknown>;
+    const clone = (id: string, createdAt = NOW + 1) => f.db.prepare(`INSERT INTO engineering_publication_intents
+      (intent_id,chain_id,kind,repository,pr_number,branch,expected_old_head,new_head,expected_base_sha,child_mission_id,binding_json,state,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, chain.chain_id, "push", row["repository"], row["pr_number"], row["branch"], "2".repeat(40),
+        "3".repeat(40), B1, child, "{}", "pending", createdAt, createdAt);
+    if (change === "foreign") {
+      const other = f.live().chain;
+      const { chain: otherDispatched, child: otherChild } = f.reserveAndDispatch(other);
+      intentId = f.store.recordIntent(other.chain_id, otherDispatched.revision, { kind: "push", branch: other.branch,
+        expected_old_head: H1, new_head: "3".repeat(40), expected_base_sha: B1, child_mission_id: otherChild }, NOW).intent.intent_id;
+    }
+    if (change === "non_latest") {
+      clone("pi_newer");
+      f.db.prepare("UPDATE engineering_publication_intents SET state='failed' WHERE intent_id='pi_newer'").run();
+    }
+    if (change === "unsettled") clone("pi_unsettled", NOW - 1);
+    if (change === "void_reservation") f.db.prepare("UPDATE engineering_revision_reservations SET state='void',settled_reason='test' WHERE chain_id=?").run(chain.chain_id);
+    if (change === "non_delivering") f.db.prepare("UPDATE engineering_contained_missions SET state='awaiting_decision',revision=revision+1 WHERE mission_id=?").run(child);
+    const stopped = f.store.get(chain.chain_id);
+    expect(code(() => f.store.resumeLanded(chain.chain_id, stopped.revision, intentId, NOW)), change)
+      .toBe(change === "unsettled" ? "intent_unsettled" : "confirm_route_changed");
+    expect(f.store.get(chain.chain_id)).toEqual(stopped);
+  }
+});
+
+it("refuses same-child resume after push rejection or a changed chain fact", () => {
+  for (const stopReason of ["publish_refused:push_rejected", "base_changed", "intent_uncertain", "child_failed"]) {
+    const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const m = f.missions.get(child);
+    f.missions.transition(child, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "publication_failed:push_rejected" } } }, NOW);
+    const stopped = f.store.stopLive(chain.chain_id, dispatched.revision, stopReason, NOW);
+    expect(code(() => f.store.resumeChild(chain.chain_id, stopped.revision, { child_mission_id: child, expected_stop_reason: stopReason, decision: "approve_publication" }, NOW)))
+      .toBe(`chain_not_resumable:${stopReason}`);
+    expect(f.store.get(chain.chain_id)).toEqual(stopped);
+  }
+});
+
+it("rejects an expired grant at the store clock without changing the stopped chain", () => {
+  const f = setup(); const { chain, grant } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+  const m = f.missions.get(child);
+  f.missions.transition(child, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "repair_cycles_exhausted" } } }, NOW);
+  const stopped = f.store.stopLive(chain.chain_id, dispatched.revision, "child_halted", NOW);
+  const expiredStore = new RevisionChainStore(f.attention, f.owner, () => grant.expires_at);
+  expect(code(() => expiredStore.resumeChild(chain.chain_id, stopped.revision, { child_mission_id: child, expected_stop_reason: "child_halted", decision: "extra_repair" }, NOW)))
+    .toBe("grant_expired");
+  expect(f.store.get(chain.chain_id)).toEqual(stopped);
+});
+
+it("re-grants a halted or recoverably refused child while keeping the chain stopped", () => {
+  for (const reason of ["child_halted", "publish_refused:token_unavailable"]) {
+    const f = setup(); const { chain, grant } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const stopped = f.store.stopLive(chain.chain_id, dispatched.revision, reason, NOW);
+    const renewed = f.store.replaceGrant(chain.chain_id, stopped.revision, f.renew(stopped, grant), NOW);
+    expect(renewed.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "child_halted", current_mission_id: child });
+    expect(JSON.parse(f.store.events(chain.chain_id).at(-1)!.payload_json)).toMatchObject({ restored_state: "awaiting_decision" });
+  }
+});
+
+it("restops a resumable chain only after its child reaches a proven terminal state", () => {
+  const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+  const stopped = f.store.stopLive(chain.chain_id, dispatched.revision, "child_halted", NOW);
+  expect(code(() => f.store.restopLive(chain.chain_id, stopped.revision, "child_failed", NOW))).toBe("child_stop_unproven");
+  f.finish(child, "failed", false);
+  expect(code(() => f.store.restopLive(chain.chain_id, stopped.revision, "child_failed", NOW))).toBe("child_stop_unproven");
+  f.db.prepare("UPDATE engineering_contained_missions SET stop_obligation=0,revision=revision+1 WHERE mission_id=?").run(child);
+  const restopped = f.store.restopLive(chain.chain_id, stopped.revision, "child_failed", NOW);
+  expect(restopped).toMatchObject({ state: "awaiting_decision", stop_reason: "child_failed", current_mission_id: child });
+  expect(code(() => f.store.restopLive(chain.chain_id, restopped.revision, "child_cancelled", NOW))).toBe("state_denied");
+});
+
+it("accepts each documented stopped-child decision at the store boundary", () => {
+  const cases = [
+    ["needs_reconciliation", "orphaned_executing", "discard_changes"],
+    ["needs_reconciliation", "stop_evidence_recovered", "adopt_worktree"],
+    ["awaiting_decision", "repair_cycles_exhausted", "extra_repair"],
+    ["awaiting_decision", "publication_failed:token_unavailable", "approve_publication"],
+    ["awaiting_decision", "revalidation_failed:verify", "approve_publication"],
+    ["awaiting_decision", "workspace_recovered", "resume_workspace"],
+    ["awaiting_decision", "budget_exhausted", "resume_budget"],
+    ["awaiting_decision", "grant_stopped:grant_expired", "resume_grant"],
+  ] as const;
+  for (const [state, reason, decision] of cases) {
+    const f = setup(); const { chain } = f.live(); const { chain: dispatched, child } = f.reserveAndDispatch(chain);
+    const m = f.missions.get(child);
+    f.missions.transition(child, { if_revision: m.revision, to: state, event: { kind: "halted", payload: { reason } } }, NOW);
+    const stopped = f.store.stopLive(chain.chain_id, dispatched.revision, "child_halted", NOW);
+    expect(f.store.resumeChild(chain.chain_id, stopped.revision, { child_mission_id: child, expected_stop_reason: "child_halted", decision }, NOW).state, reason)
+      .toBe("revising");
+  }
 });
 
 it("stops and closes live chains through narrow, validated methods", () => {
