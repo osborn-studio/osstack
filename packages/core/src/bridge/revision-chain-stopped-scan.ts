@@ -58,16 +58,20 @@ export async function scanStoppedChains(input: {
   now: number;
   limit: number;
   after?: { updated_at: number; chain_id: string };
+  signal?: AbortSignal;
+  onClosed?: (entry: StoppedScanEntry) => Promise<void>;
 }): Promise<StoppedScanReport> {
   const chains: StoppedScanEntry[] = [];
   const batch = input.store.listStoppedLive(input.limit, input.after);
   for (const chain of batch) {
+    if (input.signal?.aborted) break;
     const entry = (facts: StoppedPrFacts | null, reason: StoppedScanEntry["reason"], action: StoppedScanEntry["action"] = "none"): StoppedScanEntry =>
       ({ chain_id: chain.chain_id, repository: chain.repository, pr_number: chain.pr_number, facts, action, reason });
     let facts: StoppedPrFacts | null = null;
     try {
       try { facts = await input.readPr(chain); }
       catch { chains.push(entry(null, "read_failed")); continue; }
+      if (input.signal?.aborted) break;
       if (!complete(facts)) { chains.push(entry(facts, "snapshot_incomplete")); continue; }
       const decision = decideChainStep({
         mode: chain.mode, state: chain.state, published_head: chain.published_head, published_base: chain.published_base,
@@ -79,8 +83,10 @@ export async function scanStoppedChains(input: {
         try {
           const heads = input.store.reservations(chain.chain_id).filter(r => r.state === "reserved" || r.state === "dispatched").map(r => r.head_sha);
           input.store.applyDecision(chain.chain_id, chain.revision, decision, input.now);
-          chains.push({ ...entry(facts, decision.reason === "pr_merged" ? "pr_merged" : "pr_closed", "closed"),
-            current_mission_id: chain.current_mission_id, voided_reservation_heads: heads });
+          const closed = { ...entry(facts, decision.reason === "pr_merged" ? "pr_merged" : "pr_closed", "closed"),
+            current_mission_id: chain.current_mission_id, voided_reservation_heads: heads };
+          chains.push(closed);
+          await input.onClosed?.(closed);
         } catch (error) {
           if (!(error instanceof RevisionChainError && error.code === "version_conflict")) throw error;
           chains.push(entry(facts, "version_conflict"));

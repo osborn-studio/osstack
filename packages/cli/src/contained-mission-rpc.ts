@@ -1,7 +1,7 @@
 // Daemon surface for contained Missions (W11 M6c): `mission.*` RPC over the M6b host,
 // authenticated by the engineering authority file, with recovery at start and a tick timer.
 import { z } from 'zod';
-import type { ContainedMissionStore } from '@osstack/core';
+import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
@@ -60,6 +60,8 @@ export interface ContainedMissionServiceOptions {
   resolveStart?: typeof resolveContainedMissionStart;
   /** Bridge shadow reconciler (OSSTACK_BRIDGE=shadow): started after recovery, stopped on close. Never on the tick path. */
   shadow?: import('./contained-mission-bridge-shadow.js').ShadowHandle;
+  /** D7 stopped live-chain scan; starts after recovery and stops before the host closes. */
+  stoppedScan?: Pick<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService, 'start' | 'stop'>;
   /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
   merger?: import('./contained-mission-merger-shadow.js').MergerShadowHandle;
   /** Comparison report over the shadow merger tables (SELECT only). */
@@ -114,6 +116,7 @@ export class ContainedMissionService {
   async start(): Promise<void> {
     await this.options.host.recover();
     this.options.shadow?.start();
+    this.options.stoppedScan?.start();
     this.options.merger?.start();
     this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
     this.timer.unref();
@@ -127,6 +130,7 @@ export class ContainedMissionService {
   async close(): Promise<void> {
     this.closed = true; if (this.timer) clearInterval(this.timer);
     await this.options.shadow?.stop();
+    await this.options.stoppedScan?.stop();
     await this.options.merger?.stop();
     await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
   }
@@ -223,6 +227,8 @@ export async function createContainedMissionService(deps: {
   hostProcessRecheckMs?: number;
   /** Test seams for the shadow reconciler; production callers pass nothing. */
   shadow?: { transport?: import('./contained-mission-bridge-reader.js').GraphqlTransport; now?: () => number };
+  /** Test seam for D7's minimal PR query. */
+  stoppedScan?: { transport?: import('./contained-mission-bridge-reader.js').GraphqlTransport; now?: () => number };
   /** Test seams for the shadow merger; production callers pass nothing. */
   merger?: { graphql?: import('./contained-mission-bridge-reader.js').GraphqlTransport; rest?: import('./contained-mission-merger-reader.js').RestGet; now?: () => number };
 }): Promise<ContainedMissionService> {
@@ -290,6 +296,11 @@ export async function createContainedMissionService(deps: {
       registry, now: deps.shadow?.now ?? Date.now, log,
     });
   }
+  let stoppedScan: import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService | undefined;
+  if (env['OSSTACK_BRIDGE'] === '1') {
+    stoppedScan = await createStoppedChainScan({ chains: chainStore, missions: store, access: deps.access, host,
+      enabled: () => env['OSSTACK_BRIDGE'] === '1', log, ...(deps.stoppedScan ?? {}) });
+  }
   // Shadow merger (design §5.3): its own factory, nothing shared with loadBridgeConfig above or with the bridge reconciler.
   const { MergerShadowStore } = await import('@osstack/core');
   const mergerStore = new MergerShadowStore(deps.attention, deps.owner);
@@ -312,7 +323,30 @@ export async function createContainedMissionService(deps: {
       events: events.latest, events_total: events.total, events_total_capped: events.total_capped,
     };
   };
-  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}), ...(merger ? { merger } : {}), mergerReport });
+  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}),
+    ...(stoppedScan ? { stoppedScan } : {}), ...(merger ? { merger } : {}), mergerReport });
+}
+
+/** Production stopped-chain wiring, callable by tests while the live-mode gate remains closed. */
+export async function createStoppedChainScan(deps: {
+  chains: RevisionChainStore;
+  missions: Pick<ContainedMissionStore, 'get'>;
+  access: Pick<EngineeringAccess, 'refresh'>;
+  host: Pick<ContainedMissionHost, 'cancel' | 'cancelFromBridge'>;
+  enabled: () => boolean;
+  log: (line: string) => void;
+  transport?: import('./contained-mission-bridge-reader.js').GraphqlTransport;
+  now?: () => number;
+}): Promise<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService> {
+  const [{ StoppedChainScanService, stoppedChainPrReader }, { ghGraphqlTransport }] = await Promise.all([
+    import('./contained-mission-bridge-stopped-scan.js'), import('./contained-mission-bridge-reader.js'),
+  ]);
+  return new StoppedChainScanService({
+    chains: deps.chains, enabled: deps.enabled, now: deps.now ?? Date.now,
+    missionState: id => deps.missions.get(id).state, refreshPrincipal: (id, session) => deps.access.refresh(id, session),
+    readPr: stoppedChainPrReader(deps.transport ?? ghGraphqlTransport()),
+    cancelChild: (principal, id) => principal ? deps.host.cancel(principal, id) : deps.host.cancelFromBridge(id), log: deps.log,
+  });
 }
 
 /** The shadow merger's own factory: a read-only Mission view, the shadow writer, read-only transports, config and clock, and nothing else.
