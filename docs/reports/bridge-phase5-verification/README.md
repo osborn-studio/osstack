@@ -2,6 +2,14 @@
 
 Baseline `5602b901`. This branch adds tests, model transitions and reproducible verification scripts. It does not publish or enable live production.
 
+## Current acceptance snapshot
+
+Final source-bound mutation rerun at `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`: all 19 mutants killed by actual assertion failures, all baselines pass, zero invalid/timeout/signal/spawn-error results. The unmodified strict harness ran each mutant separately and stopped on any non-kill; it exited zero. Node was v26.5.0. All tracked package/script SHA256 values match before/after and final source diff/status are clean. `final-source-mutants.json` binds the aggregate, raw evidence paths and manifest hashes; this supersedes historical mutation snapshots below for final-source coverage.
+
+Parent final `812` full acceptance: all 22 workspaces, 8,901 passed / 6 skipped; CLI 3,985 passed / 5 skipped. After journal fixes `cf6` + `dab`, only root verification JavaScript changed; Linux Node24 journal validation passed 220/220. Parent reports main `d89cd4a5` with #421 and #422 user-merged; their exact-head CI was green.
+
+Real 5-G second attempt is running: cancellation and App A stages passed, but it remains **unqualified** pending the remaining actual sandbox gates. Next step is to collect that run's final result; no sandbox permission or full-test run is pending. Parent owns final sandbox results.
+
 ## Completed local checks
 
 - Reproduced the two loop process-fixture cleanup failures (114/116). Short unique process titles plus platform-appropriate `ps` identity checks produce 116/116 passing tests. Only recorded PIDs whose exact marker was verified were cleaned.
@@ -24,7 +32,7 @@ All fourteen guard configs produce invariant counterexamples on final model comm
 
 Model limits remain: one commit per modeled push, assumed root baseline, exact closed-state reservation cleanup and some R2 reason rewrites. These are explicit abstractions, not implementation proof. The TypeScript property covers real ordered multi-commit ranges and the baseline separately.
 
-5-G real sandbox acceptance is not run. Local Docker/fake GitHub can rehearse process and ledger behavior but cannot establish real GitHub App attribution, installation permissions or ruleset enforcement. See `gaps.md` for the exact required-versus-existing matrix. Phase 5 remains incomplete until the real sandbox gates pass.
+The earlier 5-G sandbox non-execution statement below is historical: the current second attempt is running and remains unqualified. Local Docker/fake GitHub can rehearse process and ledger behavior but cannot establish real GitHub App attribution, installation permissions or ruleset enforcement. See `gaps.md` for the exact required-versus-existing matrix. Phase 5 remains incomplete until the real sandbox gates pass.
 
 ## Reproduction
 
@@ -35,7 +43,7 @@ TLA2TOOLS_JAR=/path/to/tla2tools.jar JAVA=/path/to/java \
 # --mutants runs model mutants; --main runs main, shadow and rounds exhaustively.
 ```
 
-The full nineteen-entry source manifest requires the production baseline node `bcd20732`; on this standalone verification branch, select the eighteen other mutant names. The mutation runner restores each source file in `finally` and on handled SIGINT/SIGTERM/exit. It requires a passing baseline, distinguishes assertion failures from invalid imports, and writes command results and full logs under the canonical scratch root. Raw logs stay in scratch; `evidence.json` records hashes and concise results.
+The full nineteen-entry source manifest requires the production baseline node `bcd20732`; final integrated source `315e7fc4` includes it and all nineteen passed the strict rerun. The mutation runner restores each source file in `finally` and on handled SIGINT/SIGTERM/exit. It requires a passing baseline, distinguishes assertion failures from invalid imports, and writes command results and full logs under the canonical scratch root. Raw logs stay in scratch; `evidence.json` records hashes and concise results.
 
 `model-checks.json` records all four completed normal configurations and fourteen model-mutant counterexamples, including verbatim broad-run fingerprint estimates. `pending-tlc.json` is empty: both broad searches finished, and no owned TLC process remains running.
 

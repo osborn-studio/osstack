@@ -1,5 +1,14 @@
 # 执行进度
 
+## Current closeout snapshot (supersedes historical status below)
+
+- Main `d89cd4a5`: #421 and #422 user-merged after exact-head CI passed (five jobs each; paid semantic smoke skipped).
+- Final `812` full acceptance completed: 22 workspaces, 8,901 passed / 6 skipped; CLI 3,985 passed / 5 skipped. After journal `cf6` + `dab`, only root verification JavaScript changed; Linux Node24 journal checks passed 220/220.
+- Final strict mutation gate at `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`: all19 killed by real AssertionError failures, every baseline exit0, zero invalid/survivor/timeout/signal/spawn errors; source SHA256 before/after equal and clean final diff. See `docs/reports/bridge-phase5-verification/final-source-mutants.json` for exact aggregate and manifest binding. No TLC/property rerun was needed.
+- Actual 5-G second attempt is running; cancellation and App A passed, but the run remains unqualified. Next action: parent collects remaining real sandbox results and records final qualification. Neither sandbox permission nor full-suite completion is pending.
+
+### Historical record
+
 续做时先读 [graph.md](graph.md) 与本文件，从“下一步”继续。
 
 ## 本轮最新验收（2026-11-07）
@@ -63,7 +72,7 @@
 | 9 | `78abb868` | 属性通过 intent binding 找范围，修复过时的 seq/head 假设 |
 | 10 | `87375400` | mutation classifier 排除基础设施失败、15 个 mock units、精确 target property 与 provenance |
 
-**当前 Merge-after：** #421（N13a）、#422（N9）；若已合并则删除对应边。N10 的源码变异目标、基线属性与真实 driver 均依赖 N9，不能只提前导入 tests 然后跳过失败。graph deadline fix 只有一个测试文件、无 N9 API 依赖；如需先稳定 N9 的全仓门，可把该提交另开独立小 PR 提前合并，再从 N10 清单去掉，避免重复提交。该选择不是放宽生产超时。
+**已关闭的 Merge-after：** #421（N13a）、#422（N9）均已由用户合并 main `d89cd4a5`。N10 的源码变异目标、基线属性与真实 driver 均依赖 N9，不能只提前导入 tests 然后跳过失败。graph deadline fix 只有一个测试文件、无 N9 API 依赖；如需先稳定 N9 的全仓门，可把该提交另开独立小 PR 提前合并，再从 N10 清单去掉，避免重复提交。该选择不是放宽生产超时。
 
 **N10 导出清单：** 不新增生产 public export；新增 `scripts/lib/bridge-mutation-result.mjs` 与 `scripts/verify-bridge-phase5-mutations.test.mjs`，phase5 evidence/report 归档位于 `docs/reports/bridge-phase5-verification/`；graph 三文档、N9/N10 preparation 报告是明确的元数据范围。CLI package 与 `pnpm-lock.yaml` 必须成对纳入 fast-check。脚本为 `verify-bridge-phase5-{mutations,tlc}.mjs`、`smoke-bridge-revision-sandbox{,.test}.mjs`；模型为 `bridge.tla`、`bridge-bounded.cfg` 和 README。必须带最终属性修正，不能停在历史绿色快照。
 
