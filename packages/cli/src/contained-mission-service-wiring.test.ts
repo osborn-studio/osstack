@@ -22,10 +22,11 @@ function setup() {
   const home = join(root, "home"); mkdirSync(join(home, "bridge"), { recursive: true });
   const env = { OSSTACK_CONTAINED_CODEX_BIN: "/bin/true", OSSTACK_CONTAINED_CODEX_HOME: root, OSSTACK_CONTAINED_DOCKER_SOCKET: join(root, "d.sock"),
     OSSTACK_CONTAINED_DOCKER_DAEMON_ID: "d", OSSTACK_CONTAINED_BASE_IMAGE_ID: "sha256:" + "0".repeat(64) };
-  const deps = { attention, owner, access: new EngineeringAccess(authFile), home, draining: () => false, env };
-  const create = () => createContainedMissionService(deps);
+  const logs: string[] = [];
+  const deps = { attention, owner, access: new EngineeringAccess(authFile), home, draining: () => false, env, log: (line: string) => { logs.push(line); } };
+  const create = (extra: Record<string, string> = {}) => createContainedMissionService({ ...deps, env: { ...env, ...extra } });
   const portsOf = (service: unknown) => (service as { options: { host: { options: { ports: Record<string, unknown> } } } }).options.host.options.ports;
-  return { root, home, create, portsOf, deps };
+  return { root, home, create, portsOf, deps, logs };
 }
 
 describe("createContainedMissionService host process re-check", () => {
@@ -71,5 +72,52 @@ describe("createContainedMissionService bridge wiring", () => {
     const service = await f.create();
     expect(typeof f.portsOf(service)["publishVerifyCheck"]).toBe("function");
     await service.close();
+  });
+
+  describe("OSSTACK_BRIDGE publication switch matrix", () => {
+    function configure(f: ReturnType<typeof setup>, repository: string | null) {
+      if (repository === null) return;
+      const key = join(f.root, "key.pem"); writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
+      const app = { app_id: 1, installation_id: 2, private_key_path: key };
+      writeFileSync(join(f.home, "bridge", "apps.json"), JSON.stringify({ version: 1, repository, publisher: app, evidence: { ...app, app_id: 3, installation_id: 4 } }));
+      writeFileSync(join(f.home, "bridge", "rulesets.json"), JSON.stringify({ version: 1, repository, mission_ruleset_ids: [1] }));
+    }
+    type Publish = (input: unknown) => Promise<unknown>;
+    const attempt = async (f: ReturnType<typeof setup>, service: unknown, repository: string): Promise<string> => {
+      const publish = f.portsOf(service)["publish"] as Publish;
+      // W13-C2: publish runs inside the host-process guard, which is keyed by the Mission id.
+      try { await publish({ mission: { mission_id: "cm_00000000-0000-4000-8000-000000000001" }, spec: { repository, publication: { remote: "origin", repository, base: "main", draft: false } } }); return "ok"; }
+      catch (error) { return (error as Error).message; }
+    };
+    const modes: Array<[string, Record<string, string>]> = [["unset", {}], ["0", { OSSTACK_BRIDGE: "0" }], ["shadow", { OSSTACK_BRIDGE: "shadow" }]];
+    for (const [label, extra] of modes) {
+      for (const scope of ["configured", "other", "none"] as const) {
+        it(`OSSTACK_BRIDGE=${label}, bridge ${scope}`, async () => {
+          const f = setup(); configure(f, scope === "none" ? null : "a/b");
+          const service = await f.create(extra);
+          const ports = f.portsOf(service);
+          const outcome = await attempt(f, service, scope === "other" ? "x/y" : "a/b");
+          expect(f.logs.some(l => l.includes("disabled by OSSTACK_BRIDGE=0"))).toBe(label === "0" && scope !== "none");
+          if (scope === "none") {
+            expect(ports["publishVerifyCheck"]).toBeUndefined();
+            expect(outcome).not.toMatch(/BRIDGE_DISABLED|CONTAINED_BRIDGE_REPOSITORY/);
+          } else if (scope === "other") {
+            expect(outcome).toBe("CONTAINED_BRIDGE_REPOSITORY");
+          } else if (label === "0") {
+            expect(outcome).toBe("BRIDGE_DISABLED");
+            expect(ports["publishVerifyCheck"]).toBeUndefined();
+          } else {
+            expect(outcome).not.toMatch(/BRIDGE_DISABLED|CONTAINED_BRIDGE_REPOSITORY/);
+            expect(typeof ports["publishVerifyCheck"]).toBe("function");
+          }
+          await service.close();
+        });
+      }
+    }
+    it("OSSTACK_BRIDGE=1 and an invalid value still fail the start", async () => {
+      const f = setup(); configure(f, "a/b");
+      await expect(f.create({ OSSTACK_BRIDGE: "1" })).rejects.toThrow("BRIDGE_LIVE_NOT_IMPLEMENTED");
+      await expect(f.create({ OSSTACK_BRIDGE: "off" })).rejects.toThrow("BRIDGE_MODE_INVALID");
+    });
   });
 });

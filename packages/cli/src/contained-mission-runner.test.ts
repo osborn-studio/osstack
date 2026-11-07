@@ -362,6 +362,15 @@ describe("ContainedMissionRunner publication (M7)", () => {
     m = await f.runner.step(m.mission_id);
     expect(m.state).toBe("awaiting_decision"); expect(f.allPayloads()).toContain("publication_failed:CONTAINED_REPO_CONFIG_CHANGED");
   });
+
+  it("halts for a decision with publication_failed:BRIDGE_DISABLED when the bridge kill switch refuses publication", async () => {
+    let calls = 0;
+    const f = setup({ publish: async () => { calls++; throw new Error("BRIDGE_DISABLED"); } }, { publication: { ...publication, preauthorized: true } });
+    let m = await drive(f, 4);
+    m = await f.runner.step(m.mission_id);
+    expect(m.state).toBe("awaiting_decision"); expect(f.allPayloads()).toContain("publication_failed:BRIDGE_DISABLED");
+    expect(calls).toBe(1);
+  });
 });
 
 describe("ContainedMissionRunner long histories", () => {
