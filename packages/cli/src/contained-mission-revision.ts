@@ -30,7 +30,7 @@ const MAX_SPEC_JSON = 30_000;
 const UNSAFE = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\p{Cf}]/gu;
 const escapedLength = (text: string): number => JSON.stringify(text).length - 2;
 
-export interface ReviewFeedbackPiece { review_id: number; top_level: string; comments: ReadonlyArray<{ threadId: string; databaseId: number; body: string }> }
+export interface ReviewFeedbackPiece { review_id: number; top_level: string; comments: ReadonlyArray<{ threadId: string; databaseId: number; body: string; path?: string; line?: number | null }> }
 
 /** Reviewer text -> one bounded, redacted string. The delimiter word is neutralised everywhere, so no reviewer text can close the prompt block, whatever its nonce. */
 export function renderFeedbackText(pieces: readonly ReviewFeedbackPiece[], limit: number = MAX_TEXT): string {
@@ -42,7 +42,11 @@ export function renderFeedbackText(pieces: readonly ReviewFeedbackPiece[], limit
   for (const piece of pieces) {
     lines.push(`Review ${piece.review_id}:`);
     if (piece.top_level) lines.push(clean(piece.top_level, MAX_TEXT));
-    for (const c of piece.comments) lines.push(`- thread ${clean(c.threadId, 80)} comment ${c.databaseId}: ${clean(c.body, MAX_COMMENT)}`);
+    for (const c of piece.comments) {
+      // Quote paths as data: a filename may contain newlines, quotes or prompt delimiters.
+      const location = c.path ? ` at ${JSON.stringify(clean(c.path, 500))}${typeof c.line === 'number' && Number.isSafeInteger(c.line) && c.line > 0 ? `:${c.line}` : ''}` : '';
+      lines.push(`- thread ${clean(c.threadId, 80)} comment ${c.databaseId}${location}: ${clean(c.body, MAX_COMMENT)}`);
+    }
   }
   let text = lines.join('\n');
   const room = Math.max(0, Math.min(MAX_TEXT, limit));
