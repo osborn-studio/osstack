@@ -21,7 +21,7 @@
 | N2 | 迁移 54 连续注册，升级门含表与 14 个触发器 | pass | #395；Codex 无 P1/P2 |
 | N2 | CI 通过 | unresolved | #395 已合入含修复的 `main`（e2a17e38），CI 重跑中 |
 | N3 | 影子合并不铸令牌、不写、只 GET | pass | #396 负向集成测试 |
-| N3 | Codex 第 2 轮两条 P2（`cycle_after`、重启重置轮询） | unresolved | #396 描述；需 schema 改动，已声明 |
+| N3 | Codex 第 2 轮两条 P2（`cycle_after`、重启重置轮询） | pass | `fix/merger-durable-scan`：迁移 55（scan_id、last_poll_at），测试见 changeset |
 | N3 | CI 通过 | unresolved | #396 |
 | N4 | 子 Mission 不能发布；派发一事务 | pass | #397；`ports.publish` 拒绝 `publish_target` 的测试 |
 | N4 | 验证容器启动前的链复查有直接测试 | unresolved | 需要 Docker 路径（#397 描述） |

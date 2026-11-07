@@ -9,6 +9,7 @@ import { ContainedMissionStore } from "./engineering-contained-store.js";
 import type { EngineeringPrincipal } from "./engineering-store.js";
 import { openDb } from "./db.js";
 import { ENGINEERING_MERGER_DDL } from "./engineering-merger-ddl.js";
+import { ENGINEERING_MERGER_SCAN_DDL } from "./engineering-merger-scan-ddl.js";
 import {
   EMPTY_CODES_DIGEST, MergerShadowError, MergerShadowStore, mergerShadowWriter, type MergerDecisionInput, type MergerOutcomeInput,
 } from "./engineering-merger-store.js";
@@ -30,6 +31,7 @@ function setup() {
   const principal: EngineeringPrincipal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [scope.scope_id], operator_scopes: [] };
   const missions = new ContainedMissionStore(attention, owner);
   const store = new MergerShadowStore(attention, owner);
+  store.beginScan(1, 1); // scan 1: the default scan id of `out()`
   let n = 0; let pr = 0;
   const mission = () => { n += 1; return missions.authorize(principal, { scope_id: scope.scope_id, spec: { goal: `g${n}` }, claim: { repo_identity: "repo", branch: `b${n}`, worktree_identity: `w${n}` } }, 1000).mission_id; };
   const pr_ = () => { pr += 1; return { repository: REPO, pr_number: pr, mission_id: mission() }; };
@@ -47,7 +49,7 @@ const wm = (k: K, over: Partial<MergerDecisionInput> = {}): MergerDecisionInput 
   dec(k, { verdict: "would_merge", codes: [], merge_request: { sha: A, merge_method: "squash" }, ...over });
 const unev = (k: K, over: Partial<MergerDecisionInput> = {}): MergerDecisionInput => dec(k, { verdict: "unevaluated", codes: ["U.read_failed:x"], ...over });
 const out = (k: K, kind: MergerOutcomeInput["outcome"], over: Partial<MergerOutcomeInput> = {}): MergerOutcomeInput => ({
-  repository: k.repository, pr_number: k.pr_number, mission_id: k.mission_id, outcome: kind, head_at_close: A, observed_at: 50,
+  repository: k.repository, pr_number: k.pr_number, mission_id: k.mission_id, scan_id: 1, outcome: kind, head_at_close: A, observed_at: 50,
   ...(kind === "merged" ? { merged_at: "2026-11-06T10:00:00Z", merge_commit: B, merged_by_actor_id: 269190136, merged_by_type: "User" as const, owner_approved_head: true } : {}), ...over,
 });
 
@@ -77,7 +79,7 @@ it("adds the four tables in migration 52 additively and reopens cleanly from sch
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(52);
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   const after = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as Array<{ name: string }>).map(t => t.name);
-  expect(after.filter(t => !before.includes(t) && t.startsWith("engineering_merger_shadow_"))).toEqual([
+  expect(after.filter(t => !before.includes(t) && t.startsWith("engineering_merger_shadow_") && t !== "engineering_merger_shadow_scans")).toEqual([
     "engineering_merger_shadow_cycles", "engineering_merger_shadow_decisions", "engineering_merger_shadow_outcomes", "engineering_merger_shadow_watermarks",
   ]);
   expect(db.pragma("foreign_key_check")).toEqual([]);
@@ -179,7 +181,7 @@ it("validates rows in code before insert, so an invalid duplicate is rejected ra
 
 it("exposes only four write methods through the shadow writer", () => {
   const f = setup();
-  expect(Object.keys(mergerShadowWriter(f.store)).sort()).toEqual(["beginObservation", "recordCycle", "recordDecision", "recordOutcome"]);
+  expect(Object.keys(mergerShadowWriter(f.store)).sort()).toEqual(["beginObservation", "beginScan", "recordCycle", "recordDecision", "recordOutcome"]);
 });
 
 it("never hands out a ticket inside a caller's transaction, where an outer rollback would issue it twice", () => {
@@ -207,14 +209,14 @@ it("rejects malformed or forbidden gate payloads before they can be deduplicated
 
 it("records scan cycles through a validated, fenced writer", () => {
   const f = setup(); const k = f.pr();
-  const id = f.store.recordCycle(10, 20, [[k.repository, k.pr_number, 1, A, "refused"]], 21);
+  const id = f.store.recordCycle(1, 10, 20, [[k.repository, k.pr_number, 1, A, "refused"]], 21);
   expect(id).toBeGreaterThan(0);
   expect(JSON.parse((f.db.prepare("SELECT prs_json FROM engineering_merger_shadow_cycles WHERE seq=?").get(id) as { prs_json: string }).prs_json)).toEqual([[k.repository, k.pr_number, 1, A, "refused"]]);
-  expect(code(() => f.store.recordCycle(20, 10, [], 21))).toBe("merger_invalid_input");
-  expect(code(() => f.store.recordCycle(10, 20, Array.from({ length: 11 }, () => [k.repository, k.pr_number, 1, A, "refused"] as const), 21))).toBe("merger_invalid_input");
-  expect(code(() => f.store.recordCycle(10, 20, [[k.repository, k.pr_number, 1, "nothex", "refused"]], 21))).toBe("merger_invalid_input");
+  expect(code(() => f.store.recordCycle(1, 20, 10, [], 21))).toBe("merger_invalid_input");
+  expect(code(() => f.store.recordCycle(1, 10, 20, Array.from({ length: 11 }, () => [k.repository, k.pr_number, 1, A, "refused"] as const), 21))).toBe("merger_invalid_input");
+  expect(code(() => f.store.recordCycle(1, 10, 20, [[k.repository, k.pr_number, 1, "nothex", "refused"]], 21))).toBe("merger_invalid_input");
   f.attention.claimOwner("newer");
-  expect(code(() => f.store.recordCycle(10, 20, [], 21))).toBe("stale_owner");
+  expect(code(() => f.store.recordCycle(2, 10, 20, [], 21))).toBe("stale_owner");
 });
 
 it("requires durable writes and a current owner fence", () => {
@@ -268,13 +270,13 @@ it("keeps decisions, outcomes and cycles append-only", () => {
   const f = setup(); const k = f.pr();
   f.store.recordDecision(dec(k), take(f, k), 1);
   f.store.recordOutcome(out(k, "closed_unmerged"), take(f, k), 1);
-  f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'[]')").run();
+  f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(scan_id,started_at,finished_at,prs_json) VALUES(1,1,2,'[]')").run();
   for (const table of ["decisions", "outcomes", "cycles"]) {
     expect(code(() => f.db.prepare(`UPDATE engineering_merger_shadow_${table} SET seq=seq`).run())).toBe("merger_shadow_immutable");
     expect(code(() => f.db.prepare(`DELETE FROM engineering_merger_shadow_${table}`).run())).toBe("merger_shadow_immutable");
   }
-  expect(code(() => f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'{}')").run())).toMatch(/CHECK/);
-  expect(code(() => f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(NULL,2,'[]')").run())).toMatch(/NOT NULL/);
+  expect(code(() => f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(scan_id,started_at,finished_at,prs_json) VALUES(1,1,2,'{}')").run())).toMatch(/CHECK/);
+  expect(code(() => f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(scan_id,started_at,finished_at,prs_json) VALUES(1,NULL,2,'[]')").run())).toMatch(/NOT NULL/);
 });
 
 it("refuses an unfenced decision or outcome, even a duplicate of the last one", () => {
@@ -284,8 +286,8 @@ it("refuses an unfenced decision or outcome, even a duplicate of the last one", 
     evidence_digest,observed_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,'{}',?,1,1)`).run(k.repository, k.pr_number, k.mission_id, n, A, BASE, "refused", '["G5.base_moved"]', sha('["G5.base_moved"]'), EV));
   expect(rawDup(99)).toBe("merger_unfenced_decision"); // would be swallowed by dedupe if it did not repeat the fence
   expect(rawDup(t - 1 || 99)).toBe("merger_unfenced_decision");
-  const rawOut = (n: number) => code(() => f.db.prepare(`INSERT INTO engineering_merger_shadow_outcomes(repository,pr_number,mission_id,observation_seq,outcome,head_at_close,facts_json,observed_at,created_at)
-    VALUES(?,?,?,?,'closed_unmerged',?,'{}',1,1)`).run(k.repository, k.pr_number, k.mission_id, n, A));
+  const rawOut = (n: number) => code(() => f.db.prepare(`INSERT INTO engineering_merger_shadow_outcomes(repository,pr_number,mission_id,observation_seq,outcome,head_at_close,facts_json,observed_at,created_at,scan_id)
+    VALUES(?,?,?,?,'closed_unmerged',?,'{}',1,1,1)`).run(k.repository, k.pr_number, k.mission_id, n, A));
   expect(rawOut(t + 3)).toBe("merger_unfenced_outcome");
   expect(code(() => f.db.prepare("INSERT INTO engineering_merger_shadow_decisions(repository,pr_number,mission_id,observation_seq,head_sha,base_sha,verdict,codes_json,codes_digest,gates_json,evidence_digest,observed_at,created_at) VALUES('o/r',424242,?,1,?,?,'refused','[\"x\"]',?,'{}',?,1,1)")
     .run(k.mission_id, A, BASE, sha('["x"]'), EV))).toBe("merger_unfenced_decision"); // no watermark row at all
@@ -406,7 +408,7 @@ it("closes the NULL holes in the outcome shape", () => {
     const k = f.pr(); const t = take(f, k);
     f.db.prepare("UPDATE engineering_merger_shadow_watermarks SET accepted_seq=? WHERE repository=? AND pr_number=?").run(t, k.repository, k.pr_number);
     const base = out(k, kind);
-    const row = { repository: k.repository, pr_number: k.pr_number, mission_id: k.mission_id, observation_seq: t, outcome: kind, head_at_close: A,
+    const row = { repository: k.repository, pr_number: k.pr_number, mission_id: k.mission_id, observation_seq: t, outcome: kind, head_at_close: A, scan_id: 1,
       merged_at: base.merged_at ?? null, merge_commit: base.merge_commit ?? null, merged_by_actor_id: base.merged_by_actor_id ?? null, merged_by_type: base.merged_by_type ?? null,
       owner_approved_head: kind === "merged" ? 1 : null, facts_json: "{}", observed_at: 1, created_at: 1, ...over };
     const cols = Object.keys(row);
@@ -518,4 +520,86 @@ it("refuses an unknown Mission before the fence moves, even for a repeat that de
   expect(code(() => f.store.recordOutcome(out(k, "closed_unmerged", { mission_id: "missing" }), n, 2))).toBe("merger_unknown_mission");
   expect(f.store.watermark(k.repository, k.pr_number)).toMatchObject({ accepted_seq: 1, issued_seq: 2 });
   expect(f.store.recordDecision(dec(k), n, 3).decision).toBe("deduped");
+});
+
+// ---------------------------------------------------------------------------- migration 55: durable scan ids and the poll marker
+
+it("issues scan ids from the database: two store instances never share or swap one, and a cycle/outcome must name an existing scan", () => {
+  const f = setup(); const k = f.pr();
+  const other = new MergerShadowStore(f.attention, f.owner); // a second process's store over the same database
+  const a = f.store.beginScan(100, 100); const b = other.beginScan(101, 101);
+  expect([a, b]).toEqual([2, 3]); // scan 1 was taken by setup()
+  // Overlap: the later scan finishes first.
+  const wm1 = take(f, k, 100); const wm2 = other.beginObservation(k.repository, k.pr_number, 101);
+  expect(wm2).toBeGreaterThan(wm1);
+  const cycleB = other.recordCycle(b, 101, 110, [], 110);
+  other.recordOutcome(out(k, "closed_unmerged", { scan_id: b, observed_at: 101 }), wm2, 111);
+  const cycleA = f.store.recordCycle(a, 100, 120, [], 120);
+  expect(cycleA).toBeGreaterThan(cycleB); // recorded later, yet owns the lower scan id
+  const row = (id: number) => f.db.prepare("SELECT scan_id FROM engineering_merger_shadow_cycles WHERE seq=?").get(id) as { scan_id: number };
+  expect([row(cycleA).scan_id, row(cycleB).scan_id]).toEqual([a, b]);
+  expect(f.store.outcomes(k.repository, k.pr_number)[0]?.scan_id).toBe(b);
+  // One cycle per scan; unknown scans are refused by the database even for a writer that skips the store.
+  expect(code(() => f.store.recordCycle(a, 1, 2, [], 3))).toMatch(/UNIQUE/);
+  expect(code(() => f.store.recordCycle(99, 1, 2, [], 3))).toBe("merger_unknown_scan");
+  expect(code(() => f.store.recordOutcome(out(k, "reopened", { scan_id: 99 }), take(f, k, 5), 5))).toBe("merger_unknown_scan");
+  expect(code(() => f.db.prepare("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'[]')").run())).toBe("merger_unknown_scan");
+  expect(code(() => f.store.beginScan(-1, 1))).toBe("merger_invalid_clock");
+  // Scans are append-only.
+  expect(code(() => f.db.prepare("UPDATE engineering_merger_shadow_scans SET started_at=9 WHERE scan_id=?").run(a))).toBe("merger_shadow_immutable");
+  expect(code(() => f.db.prepare("DELETE FROM engineering_merger_shadow_scans WHERE scan_id=?").run(a))).toBe("merger_shadow_immutable");
+});
+
+it("records the PR's latest observation start as a forward-only poll marker", () => {
+  const f = setup(); const k = f.pr(); const k2 = f.pr();
+  expect(f.store.lastPollAt(k.repository, k.pr_number)).toBeNull();
+  take(f, k, 500);
+  expect(f.store.lastPollAt(k.repository, k.pr_number)).toBe(500);
+  expect(f.store.lastPollAt(k2.repository, k2.pr_number)).toBeNull();
+  take(f, k, 300); // a process with a slow clock cannot move it back
+  expect(f.store.lastPollAt(k.repository, k.pr_number)).toBe(500);
+  take(f, k, 900);
+  expect(f.store.lastPollAt(k.repository, k.pr_number)).toBe(900);
+  const set = (v: number | null) => () => f.db.prepare("UPDATE engineering_merger_shadow_watermarks SET last_poll_at=? WHERE repository=? AND pr_number=?").run(v, k.repository, k.pr_number);
+  expect(code(set(100))).toBe("merger_poll_regressed");
+  expect(code(set(null))).toBe("merger_poll_regressed");
+  expect(f.store.lastPollAt(k.repository, k.pr_number)).toBe(900);
+  // Moving the marker never touches the fence.
+  expect(f.store.watermark(k.repository, k.pr_number)).toMatchObject({ issued_seq: 3, accepted_seq: 0 });
+});
+
+it("adds migration 55 additively on a schema-54 database that already holds merger rows, keeping them readable with NULL scan ids", () => {
+  const root = realpathSync(createScratchDirSync("tests", "merger-upgrade-55"));
+  const path = join(root, "state.db");
+  cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
+  const old = new Database(path); old.pragma("foreign_keys = ON");
+  for (const m of MIGRATIONS.filter(x => x.id <= 54)) { old.exec("BEGIN"); old.exec(m.sql); old.pragma(`user_version = ${m.id}`); old.exec("COMMIT"); }
+  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55]);
+  old.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
+  old.exec("INSERT INTO engineering_merger_shadow_watermarks(repository,pr_number,issued_seq,accepted_seq,updated_at) VALUES('o/r',1,1,0,5)");
+  old.exec("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'[]')");
+  const objects = (d: Database.Database) => (d.prepare("SELECT type,name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").all() as Array<{ type: string; name: string }>).map(o => `${o.type}:${o.name}`);
+  const before = objects(old);
+  old.close();
+  const db = openDb({ path });
+  expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+  expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(55);
+  const added = objects(db).filter(o => !before.includes(o));
+  expect(added.filter(o => o.startsWith("table:"))).toEqual(["table:engineering_merger_shadow_scans"]);
+  expect(added.filter(o => o.startsWith("index:"))).toEqual(["index:engineering_merger_cycle_scan"]);
+  expect(added.filter(o => o.startsWith("trigger:"))).toEqual([
+    "trigger:engineering_merger_cycle_scan_required", "trigger:engineering_merger_outcome_scan_required", "trigger:engineering_merger_scan_append_only",
+    "trigger:engineering_merger_scan_no_delete", "trigger:engineering_merger_watermark_poll_monotonic",
+  ]);
+  expect(objects(db).filter(o => before.includes(o)).length).toBe(before.length); // nothing of 52's objects was dropped or rebuilt
+  expect(db.prepare("SELECT scan_id FROM engineering_merger_shadow_cycles").all()).toEqual([{ scan_id: null }]);
+  expect(db.prepare("SELECT last_poll_at,issued_seq FROM engineering_merger_shadow_watermarks").all()).toEqual([{ last_poll_at: null, issued_seq: 1 }]);
+  expect(db.pragma("foreign_key_check")).toEqual([]);
+  // The old row keeps working with the new writer: the marker fills in on the next observation.
+  const attention = new AttentionStore(db, path); const store = new MergerShadowStore(attention, attention.claimOwner("owner"));
+  db.pragma("synchronous=FULL");
+  expect(store.beginObservation("o/r", 1, 777)).toBe(2);
+  expect(store.lastPollAt("o/r", 1)).toBe(777);
+  expect(MIGRATIONS.find(m => m.id === 55)).toMatchObject({ name: "engineering_merger_scans", sql: ENGINEERING_MERGER_SCAN_DDL });
+  db.close();
 });

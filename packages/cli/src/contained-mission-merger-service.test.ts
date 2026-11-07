@@ -157,7 +157,7 @@ const STORE_WRITES = ['authorize', 'transition', 'record', 'recordStopEvidence',
 const CHAIN_WRITES = ['createShadowChain', 'createLiveChain', 'applyDecision', 'reserve', 'dispatch', 'voidReservation', 'clearCurrentMission', 'recordIntent', 'settleIntent', 'replaceGrant', 'stopLive', 'closeLive', 'appendEvent'] as const;
 const RUNNER_CALLS = ['step', 'decide', 'cancel', 'retryVerifyCheck'] as const;
 const HOST_CALLS = ['start', 'tick', 'decide', 'cancel', 'publishCheck', 'recover'] as const;
-const SHADOW_WRITES = ['beginObservation', 'recordDecision', 'recordOutcome', 'recordCycle'] as const;
+const SHADOW_WRITES = ['beginObservation', 'recordDecision', 'recordOutcome', 'recordCycle', 'beginScan'] as const;
 
 describe('merger run at the real service wiring', () => {
   it('reads and records only: no token source, no Mission or chain write, no runner, no mutation, only GET paths, no App key path opened', async () => {
@@ -180,9 +180,9 @@ describe('merger run at the real service wiring', () => {
     // The merger holds exactly the documented dependencies, and the Mission view has no write method.
     const options = (merger as unknown as { options: Record<string, unknown> }).options;
     expect(Object.keys(options).sort()).toEqual(['config', 'graphql', 'ledger', 'log', 'missions', 'now', 'rest', 'writer']);
-    expect(Object.keys(options['writer'] as object).sort()).toEqual(['beginObservation', 'recordCycle', 'recordDecision', 'recordOutcome']);
+    expect(Object.keys(options['writer'] as object).sort()).toEqual(['beginObservation', 'beginScan', 'recordCycle', 'recordDecision', 'recordOutcome']);
     expect(Object.keys(options['missions'] as object).sort()).toEqual(['deliveryEvidence', 'listPrOpened', 'publication']);
-    expect(Object.keys(options['ledger'] as object).sort()).toEqual(['lastCycleSeq', 'latestOutcome']);
+    expect(Object.keys(options['ledger'] as object).sort()).toEqual(['lastPollAt', 'latestOutcome']);
 
     await merger.scan();
     f.g.clock.now += 6 * MIN;
