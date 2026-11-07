@@ -16,6 +16,7 @@ let file, data;
 const save=()=>writeFileSync(file,JSON.stringify(data));
 const trace=(x)=>appendFileSync(file+'.trace',JSON.stringify({event:x,pid:process.pid})+'\\n');
 export function openDb({path}) {file=path;data=JSON.parse(readFileSync(path));trace('open');return {
+ pragma(sql){if(sql==='synchronous=FULL'){trace('durability.full');return [];}if(sql==='synchronous')return 2;throw Error('unknown pragma');},
  prepare(sql){return {all(){
  if(sql.includes('engineering_contained_missions'))return data.missions;
  if(sql.includes('engineering_revision_chains'))return data.chains;
@@ -105,7 +106,7 @@ test('fresh worker claims a new owner, recovers then ticks once, closes and exit
   t.diagnostic(JSON.stringify({ parentPid: process.pid, childPid: result.childPid, exitCode: result.exitCode, signal: result.signal,
     ownerGeneration: result.readback.owner.generation, missionState: result.readback.mission.state }));
   const trace = await f.trace(); assert.ok(trace.every(x => x.pid === result.childPid));
-  assert.deepEqual(trace.map(x => x.event), ['open', 'claim', 'guards', 'host.new', 'bridge.new', 'host.recover', 'revision.recover', 'host.tick', 'checks.stop', 'live.stop', 'scan.stop', 'host.close', 'db.close']);
+  assert.deepEqual(trace.map(x => x.event), ['open', 'durability.full', 'claim', 'guards', 'host.new', 'bridge.new', 'host.recover', 'revision.recover', 'host.tick', 'host.recover', 'checks.stop', 'live.stop', 'scan.stop', 'host.close', 'db.close']);
   assert.throws(() => process.kill(result.childPid, 0), { code: 'ESRCH' });
 });
 
@@ -236,7 +237,7 @@ test('unrelated outstanding work and stale owner bindings fail before taking own
     if (mode === 'state') data.missions[1].state = 'authorized';
     await writeFile(f.descriptor.dbPath, JSON.stringify(data));
     await assert.rejects(runSandboxColdRestart(f.descriptor), /COLD_WORKER_FAILED/);
-    assert.deepEqual((await f.trace()).map(x => x.event), ['open', 'db.close']);
+    assert.deepEqual((await f.trace()).map(x => x.event), ['open', 'durability.full', 'db.close']);
   }
 });
 

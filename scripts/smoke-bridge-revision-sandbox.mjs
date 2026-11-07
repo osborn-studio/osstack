@@ -13,6 +13,7 @@ import { promisify } from 'node:util';
 import { assertSandbox, parseRegistry } from './lib/bridge-probe.mjs';
 import { createScratchDir } from './lib/scratch.mjs';
 import { loadBridgeRuntime } from './lib/bridge-installed-runtime.mjs';
+import { openDurableSandboxDb } from './lib/bridge-sandbox-database.mjs';
 import { installRevisionPublicationHook } from './lib/bridge-sandbox-publication-hook.mjs';
 import { runSandboxColdRestart } from './lib/bridge-sandbox-cold-restart.mjs';
 import { readSandboxBranchActivities, assertSandboxPublicationActivities } from './lib/bridge-sandbox-activity.mjs';
@@ -232,6 +233,24 @@ export async function withSandboxCleanup(work) {
   return result;
 }
 
+/** Candidate identity is available before any setup writes or runtime constructors. */
+export function sandboxRuntimeReportFields(prepared) {
+  return { source_commit: prepared.provenance.sourceCommit, runtime_provenance: prepared.provenance,
+    factory_sha256: prepared.provenance.entries.runtime.sha256, core_sha256: prepared.provenance.entries.core.sha256,
+    app_module_sha256: prepared.provenance.entries.appModule.sha256 };
+}
+
+/** Only process lifecycle facts may enter a failure artifact, never raw worker output. */
+export function sandboxColdFailureEvidence(value) {
+  if (!value || typeof value !== 'object') return undefined;
+  const out = {};
+  for (const key of ['parentPid', 'childPid']) if (Number.isSafeInteger(value[key]) && value[key] > 1) out[key] = value[key];
+  if (value.exitCode === null || Number.isSafeInteger(value.exitCode)) out.exitCode = value.exitCode;
+  if (value.signal === null || /^SIG[A-Z0-9]{1,12}$/.test(value.signal ?? '')) out.signal = value.signal;
+  if (value.parentShutdownProven === false) out.parentShutdownProven = false;
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** A pending intent and a stopped unreleased W13 launch are both required; absence is not proof. */
 export function assertRevokedPublicationFence({ missionId, intentId, intent, journals, expectedHead, actualHead }) {
   assertThat(intent?.intent_id === intentId && intent.child_mission_id === missionId && intent.kind === 'push'
@@ -245,7 +264,7 @@ export function assertRevokedPublicationFence({ missionId, intentId, intent, jou
 /** Close all old resources before a worker; reclaim fresh resources after worker exit, including failure. */
 export async function handoffSandboxColdRestart({ close, restart, reopen }) {
   await close();
-  try { return await restart(); } finally { await reopen(); }
+  return withSandboxCleanup(async defer => { defer(reopen); return restart(); });
 }
 
 export async function execute(opts, prepared) {
@@ -256,7 +275,7 @@ export async function execute(opts, prepared) {
   const home = join(scratch, 'home'), runtimeRoot = join(scratch, 'scratch'), worktrees = join(runtimeRoot, 'worktrees'), repo = join(scratch, 'repository');
   for (const dir of [home, join(home, 'bridge'), runtimeRoot, worktrees]) await mkdir(dir, { mode: 0o700, recursive: true });
   const output = join(scratch, 'report.json'), owned = { execute: true, pullNumbers: [], branches: [] };
-  const report = { schema_version: 1, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run, scratch, home,
+  const report = { ...sandboxRuntimeReportFields(prepared), schema_version: 1, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run, scratch, home,
     model: 'gpt-6.1-sol', real_executor: true, real_docker: true, real_apps: true, qualified: false, scenarios: [], chains: [],
     required_acceptance_gaps: ['normal_push_actor_attribution', 'cancel_real_process_owner_restart', 'write_scope_revoked_at_publication_release'],
     started_at: new Date().toISOString() };
@@ -324,7 +343,7 @@ export async function execute(opts, prepared) {
   await command('git', [...gitArgs, 'clone', '--quiet', '--no-tags', '--template=', REMOTE, repo], { env: gitEnv() });
   const git = args => command('git', [...gitArgs, ...args], { cwd: repo, env: gitEnv() });
   const base = await git(['rev-parse', 'refs/heads/main']);
-  const dbPath = join(home, 'control.db'); db = core.openDb({ path: dbPath });
+  const dbPath = join(home, 'control.db'); db = openDurableSandboxDb(core, dbPath);
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('smoke','bridge revision sandbox','running',1,1)");
   let attention = new core.AttentionStore(db, dbPath), owner = attention.claimOwner(`sandbox-${opts.run}`);
   const scope = attention.registerScope(owner, 'smoke', repo);
@@ -362,11 +381,6 @@ export async function execute(opts, prepared) {
   bridge = await buildBridge(host);
   Object.assign(report, {
     driver_source_commit: await command('git', ['rev-parse', 'HEAD'], { cwd: repository, env: gitEnv() }),
-    source_commit: prepared.provenance.sourceCommit,
-    runtime_provenance: prepared.provenance,
-    factory_sha256: prepared.provenance.entries.runtime.sha256,
-    core_sha256: prepared.provenance.entries.core.sha256,
-    app_module_sha256: prepared.provenance.entries.appModule.sha256,
     codex_version: prepared.codexVersion, docker_daemon_id: prepared.daemonId, base_image_id: prepared.imageId,
   });
   const observeCurrentHead = async chain => {
@@ -450,7 +464,7 @@ export async function execute(opts, prepared) {
         launchCaps: ports.revisionLaunchCaps }),
       reopen: async () => {
       // Reclaim even after a failed worker; never reuse a stale owner's resources.
-      db = core.openDb({ path: dbPath }); attention = new core.AttentionStore(db, dbPath);
+      db = openDurableSandboxDb(core, dbPath); attention = new core.AttentionStore(db, dbPath);
       owner = attention.claimOwner(`sandbox-parent-resumed-${opts.run}`);
       missions = new core.ContainedMissionStore(attention, owner); chains = new core.RevisionChainStore(attention, owner);
       access = new prepared.runtime.EngineeringAccess(authorityPath); ports = hookPorts(createPorts());
@@ -542,6 +556,8 @@ export async function execute(opts, prepared) {
     report.required_acceptance_gaps = report.required_acceptance_gaps.filter(gap => gap !== 'normal_push_actor_attribution');
     report.scenarios.push({ name: 'timeline_matches_confirmed_intents_and_AppB_checks', passed: true }); report.qualified = report.required_acceptance_gaps.length === 0;
     } catch (error) {
+      const coldFailure = sandboxColdFailureEvidence(error?.evidence);
+      if (coldFailure) report.cold_restart_failure = coldFailure;
       report.failure_code = /^[A-Za-z0-9_:-]{1,160}$/.test(error?.message ?? '') ? error.message : 'sandbox_acceptance_failed';
       throw Object.assign(Error(report.failure_code, { cause: error }), { report: output });
     }

@@ -6,6 +6,7 @@ import { lstat, mkdtemp, open, readFile, realpath, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { openDurableSandboxDb } from './bridge-sandbox-database.mjs';
 import { parseRegistry } from './bridge-probe.mjs';
 
 const entry = fileURLToPath(import.meta.url);
@@ -153,7 +154,7 @@ export async function recoverCancelledSandboxMission(descriptor, { importModule 
     await lock.writeFile(JSON.stringify({ pid: process.pid, descriptorSha256: sha(JSON.stringify(d)) }));
     process.env.OSSTACK_HOME = d.home; process.env.OSSTACK_SCRATCH_ROOT = d.runRoot;
     const core = await importModule(d.modules.core.path), runtime = await importModule(d.modules.runtime.path);
-    db = core.openDb({ path: d.dbPath });
+    db = openDurableSandboxDb(core, d.dbPath);
     const before = snapshot(db), beforePublication = publicationFacts(before);
     const oldOwner = db.prepare('SELECT home_id,instance_id,generation FROM daemon_owner WHERE singleton=1').get();
     check(['home_id', 'instance_id', 'generation'].every(key => oldOwner?.[key] === d.handoff.previousOwner[key]), 'OWNER_CHANGED');
@@ -208,6 +209,10 @@ export async function recoverCancelledSandboxMission(descriptor, { importModule 
     check(missions.listOutstanding(100).every(m => m.mission_id === d.childMissionId), 'OTHER_OUTSTANDING_MISSION');
     check(['cancelled', 'cancel_requested'].includes(missions.get(d.childMissionId).state), 'RECOVERY_STATE');
     await host.tick();
+    check(missions.get(d.childMissionId).state === 'cancelled'
+      && beforePublication === publicationFacts(snapshot(db)), 'RECOVERY_STATE');
+    // Recovery first settles cancel_requested; the terminal pass releases its workspace claim.
+    await host.recover();
     const after = snapshot(db), mission = missions.get(d.childMissionId), finalChain = chains.get(d.chainId);
     check(!forbidden && mission.state === 'cancelled' && mission.stop_obligation === 0
       && missions.claim(d.childMissionId).state === 'released', 'CANCEL_NOT_SETTLED');

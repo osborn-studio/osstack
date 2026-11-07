@@ -152,31 +152,19 @@ test('installed product host releases a cancelled claim in a fresh PID; parent r
     sourceCommit: JSON.parse(f.manifestBytes).source_commit, runtimeSha256: f.descriptor.modules.runtime.sha256, coreSha256: f.descriptor.modules.core.sha256 }));
 });
 
-test('real NORMAL connection refuses recovery writes; durable cancel_requested recovery needs a terminal-claim pass', { skip: !selectedPrefix }, async t => {
+test('installed product settles cancel_requested and releases its claim before worker success', { skip: !selectedPrefix }, async t => {
   const f = await fixture(t, 'cancel_requested');
-  let failure;
-  await assert.rejects(runSandboxColdRestart(f.descriptor), error => { failure = error; return error.message === 'COLD_WORKER_FAILED'; });
+  const result = await runSandboxColdRestart(f.descriptor);
+  assert.equal(result.exitCode, 0); assert.notEqual(result.childPid, process.pid);
+  assert.equal(result.readback.owner.generation, f.owner.generation + 1);
+  const parent = await f.rebuildParent();
+  assert.equal(parent.store.get(f.descriptor.childMissionId).state, 'cancelled');
+  assert.equal(parent.store.claim(f.descriptor.childMissionId).state, 'released');
   const db = await f.reopen();
-  const mission = db.prepare('SELECT state,stop_obligation FROM engineering_contained_missions WHERE mission_id=?').get(f.descriptor.childMissionId);
-  const claim = db.prepare('SELECT state FROM engineering_workspace_claims WHERE mission_id=?').get(f.descriptor.childMissionId);
-  assert.deepEqual(mission, { state: 'cancel_requested', stop_obligation: 0 }); assert.equal(claim.state, 'active');
-  const attention = new f.core.AttentionStore(db, f.descriptor.dbPath);
-  const owner = db.prepare('SELECT home_id,instance_id,generation FROM daemon_owner WHERE singleton=1').get();
-  assert.equal(owner.home_id, f.owner.home_id); assert.equal(owner.generation, f.owner.generation + 1);
-  assert.match(owner.instance_id, new RegExp(`^sandbox-cold-${failure.evidence.childPid}-`));
-  const store = new f.core.ContainedMissionStore(attention, owner);
   db.pragma('synchronous=NORMAL');
+  const attention = new f.core.AttentionStore(db, f.descriptor.dbPath);
+  const store = new f.core.ContainedMissionStore(attention, parent.owner);
   assert.throws(() => store.record(f.descriptor.childMissionId, 'must_not_write', {}, Date.now()), /durability_required/);
   db.pragma('synchronous=FULL');
-  const parent = await f.rebuildParent();
-  assert.equal(parent.owner.generation, f.owner.generation + 2);
-  assert.equal(parent.access.refresh('product', 'local').principal_id, 'product');
-  await parent.host.recover();
-  assert.equal(parent.store.get(f.descriptor.childMissionId).state, 'cancelled');
-  assert.equal(parent.store.claim(f.descriptor.childMissionId).state, 'active');
-  await parent.host.tick();
-  assert.equal(parent.store.claim(f.descriptor.childMissionId).state, 'active');
-  await parent.host.recover();
-  assert.equal(parent.store.claim(f.descriptor.childMissionId).state, 'released');
   await f.assertFrozen();
 });

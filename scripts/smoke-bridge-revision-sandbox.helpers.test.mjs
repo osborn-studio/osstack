@@ -228,3 +228,20 @@ test('revocation evidence requires failed exact intent, actual stopped W13 journ
     assert.throws(() => driver.assertRevokedPublicationFence({ ...proof, ...change }));
   }
 });
+
+test('failed worker lifecycle evidence survives a second failure while reopening', async () => {
+  const failure = Object.assign(Error('worker-failed'), { evidence: { childPid: 321, exitCode: 1, signal: null,
+    parentShutdownProven: false, stdout: 'SECRET', token: 'SECRET' } });
+  await assert.rejects(driver.handoffSandboxColdRestart({ close: async () => {}, restart: async () => { throw failure; },
+    reopen: async () => { throw Error('reopen-failed'); } }), error => error === failure && error.evidence.childPid === 321);
+  assert.deepEqual(driver.sandboxColdFailureEvidence(failure.evidence), { childPid: 321, exitCode: 1,
+    signal: null, parentShutdownProven: false });
+});
+
+test('candidate identity exists in the initial report before any runtime constructor succeeds', () => {
+  const provenance = { sourceCommit: sha, root: '/inactive', mode: 'installed', entries: {
+    runtime: { sha256: 'r' }, core: { sha256: 'c' }, appModule: { sha256: 'a' } } };
+  const initial = { ...driver.sandboxRuntimeReportFields({ provenance }), qualified: false };
+  assert.deepEqual(initial, { source_commit: sha, runtime_provenance: provenance, factory_sha256: 'r', core_sha256: 'c',
+    app_module_sha256: 'a', qualified: false });
+});

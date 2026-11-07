@@ -90,3 +90,13 @@ Installed provenance observed:
 No full build/suite or real sandbox execution was run. Production gate is CLOSED. The review does not establish remote-head stability, App identity capability, parent physical shutdown, or full 5-G acceptance.
 
 Git staging was attempted after the focused checks. It failed with `Operation not permitted` while creating the shared worktree `index.lock` outside the writable checkout. These two new files remain unstaged. No permission bypass or alternate git index was attempted.
+
+## Driver integration correction (2026-11-07)
+
+The real installed fixture initially failed against driver/helper `96120239`: the worker opened SQLite in NORMAL mode and its owner write was rejected. `openDurableSandboxDb` now sets `synchronous=FULL` and asserts readback `2` before returning every initial, reopened-parent and worker connection. A failed configuration closes the connection without replacing the primary error.
+
+Recovery now runs the second terminal pass after `cancel_requested` has become `cancelled`; the intermediate state and publication facts must remain valid before that pass. Removing only the second pass made the installed `cancel_requested` case fail (`cold-two-stage-control.log`, exit 1); restoring it passes. Replacing only the handoff's primary-preserving cleanup with the previous `finally` made the permanent failed-worker/reopen-failure test fail (`cold-primary-control.log`, exit 1). Final focused result: 44/44 passed, including both actual product states, with the explicit inactive prefix `/Volumes/AIMATE_WORK/osstackgrokbot/releases/candidate-78abb868c644`. Candidate core/runtime/manifest bytes remain unchanged, parent/child owner generations are checked, and all external command tripwires remain untouched.
+
+The driver preserves the worker's primary error even if rebuilding the parent fails. Its failure artifact receives only whitelisted child PID/exit/signal facts, never output/body/token fields. Candidate provenance, source marker and all selected entry hashes are now part of the initial report before runtime setup constructors. The accepted cancellation window remains before-first-tick plus real new PID/new owner/same DB recovery; no after-release cancellation requirement is added to §5.7.
+
+Canonical scratch evidence: `/Volumes/AIMATE_WORK/tmp/osstack/cold-product-before.log`, `cold-product-after.log`, `cold-two-stage-control.log`, `cold-primary-control.log`.
