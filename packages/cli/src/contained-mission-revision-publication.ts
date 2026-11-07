@@ -136,7 +136,7 @@ export async function publishRevisionCheck(deps: Pick<RevisionPublicationDeps, '
   if (chain.mode !== 'live' || !push) throw Error('CONTAINED_REVISION_CHAIN_MISSING');
   const existing = deps.chains.intents(chain.chain_id).filter(i => i.kind === 'check' && i.child_mission_id === childId && i.new_head === mission.candidate_head).at(-1);
   if (chain.state === 'closed') {
-    if (existing?.state === 'pending') deps.chains.settleIntent(existing.intent_id, 'failed', deps.now(), 'chain_closed');
+    if (existing?.state === 'pending' || existing?.state === 'uncertain') deps.chains.settleIntent(existing.intent_id, 'failed', deps.now(), 'chain_closed');
     deps.chains.appendEvent(chain.chain_id, 'check_skipped', { child: childId, reason: 'chain_closed', push_intent_id: push.intent_id }, deps.now());
     return { check_run_id: 0, created: false, skipped: true };
   }
