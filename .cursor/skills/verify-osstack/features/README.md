@@ -2,6 +2,8 @@
 
 This directory is the maintained source for verifying user-facing osstack behavior. Read this index before driving the app, then use the matching feature file as the recipe. Harness: `verify-osstack.sh` (see `../SKILL.md`).
 
+The four existing feature files and their 31 UI/CLI recipes remain the default. The optional bridge recipe below has separate preconditions; do not launch the default helper daemon for its offline checks.
+
 ## Baseline preconditions
 
 - Node >= 22 on `PATH`; `$V build` has run on the current checkout.
@@ -36,5 +38,11 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Kanban board](./kanban.md) — create, move, comment, subscribe, and drain events on the daemon's board.
 - [Cockpit dashboard](./cockpit.md) — the daemon-served HTML cockpit, its JSON API, and the `cockpit`/`dashboard` CLI views.
 - [Project init and doctor](./init-doctor.md) — scaffold a project with `osstack init` and check readiness with `osstack doctor`.
+
+Optional, outside the default UI/CLI run:
+
+- [Contained Mission bridge](./contained-mission-bridge.md) — deterministic offline evidence and an operator-gated real 5-G handoff. Never run real 5-G by default.
+
+The optional recipe maps bridge verification gates; it does not claim all bridge entry points are covered. The following live paths remain unverified until their named evidence exists.
 
 Not yet mapped (candidates for `/maintain-verification-skill`): `mission` / contained Missions (`packages/cli/src/contained-mission-command.ts` and friends; needs `OSSTACK_CONTAINED_MISSIONS=1` plus engineering/attention/Codex/Docker host setup and a live executor — do not invent a live drive on this box), W13 gated host-process launcher (`packages/agents/src/contained-workspace/host-process.ts`; Mission remote/ref write survival — needs a live Mission host), Mission PR machine marker (`packages/cli/src/contained-mission-marker.ts`), bridge GitHub-App publisher + `osstack/verify` check (`packages/cli/src/contained-mission-bridge.ts`, `packages/cli/src/contained-mission-github-app.ts`, `packages/github/src/delivery.ts`; needs installed App keys under `$OSSTACK_HOME` and a sandbox repo), bridge App E shadow merger / merge-gates (`packages/core/src/bridge/merge-gates.ts`, `packages/core/src/state/engineering-merger-store.ts`; needs shadow observations + App keys), bridge shadow reconciler (`packages/cli/src/contained-mission-bridge-shadow.ts`; needs `OSSTACK_BRIDGE=shadow` + App keys), sandbox-only bridge probes (`scripts/bridge-probe-github.mjs`, `scripts/lib/bridge-probe.mjs`; destructive against the ADR-006 sandbox only), bridge rulesets check (`scripts/rulesets-check.mjs`, `scripts/lib/rulesets.mjs`, `.github/rulesets/*`; needs `gh` admin read on a registered repo), `start`/`control` contract-gated delivery (needs `.osstack/repos.json` + `.osstack/repo.yaml` fixtures), `task submit` (needs a live agent), `graph`, `probe`, `neat check`, `attention`, `config`, `daily`, `release doctor` (needs GitHub/npm auth).
