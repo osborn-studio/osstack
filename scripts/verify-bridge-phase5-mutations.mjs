@@ -55,6 +55,10 @@ for (const [name, file, from, to, pkg, tests] of mutants) {
   }
   const path = resolve(root, file); const original = readFileSync(path, 'utf8');
   if (original.split(from).length !== 2) throw Error(`mutation target not unique: ${name}`);
+  const restore = () => writeFileSync(path, original);
+  const interrupted = () => { restore(); process.exit(130); };
+  process.once('SIGINT', interrupted); process.once('SIGTERM', interrupted);
+  process.once('exit', restore);
   try {
     writeFileSync(path, original.replace(from, to));
     const result = run(pkg, tests, name);
@@ -64,7 +68,10 @@ for (const [name, file, from, to, pkg, tests] of mutants) {
     results.push({ name, file, command: ['pnpm', '--filter', pkg, 'test', ...tests], verdict, status: result.status });
     writeFileSync(resolve(out, 'results.json'), `${JSON.stringify(results, null, 2)}\n`);
     console.log(`${name}: ${verdict}`);
-  } finally { writeFileSync(path, original); }
+  } finally {
+    restore(); process.removeListener('SIGINT', interrupted); process.removeListener('SIGTERM', interrupted);
+    process.removeListener('exit', restore);
+  }
 }
 console.log(`Evidence: ${out}`);
 if (results.some(r => r.verdict !== 'killed')) process.exitCode = 1;
