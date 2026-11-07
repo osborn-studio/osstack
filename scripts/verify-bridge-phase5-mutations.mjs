@@ -30,6 +30,8 @@ const mutants = [
   ['wrong-revision-publish-port', runner, 'await publication.publishRevision(revisionInput)', "await this.ports.publish({ ...revisionInput, body: 'mutant' })", '@osstack/cli', ['src/contained-mission-revision.runner.test.ts']],
   ['no-release-fence', 'packages/core/src/state/engineering-host-process-store.ts', 'const result: unknown = fence();', 'const result: unknown = undefined;', '@osstack/core', ['src/state/engineering-host-process-store.test.ts']],
   ['token-after-fence', 'packages/cli/src/contained-mission-bridge.ts', "if (args[at] === 'push') {\n          const token = await publisherToken();", "if (args[at] === 'push') {\n          options.gate?.fence();\n          const token = await publisherToken();\n          if (options.gate) options = { ...options, gate: { ...options.gate, fence: () => {} } };", '@osstack/cli', ['src/contained-mission-bridge.test.ts']],
+  // This mutant requires the production invariant-6 baseline node (bcd20732).
+  ['baseline-omission', 'packages/cli/src/contained-mission-grant.ts', "chains.settleIntent(initial.intent.intent_id, 'confirmed', at);", "chains.settleIntent(initial.intent.intent_id, 'failed', at);", '@osstack/cli', ['src/contained-mission-grant.test.ts', '-t', 'issues a signed grant']],
   ['no-readback-range-check', publication, "if (digest(compared) !== digest(commits) || (readback.state === 'OPEN' && readback.headRefOid !== permit.head)) {", 'if (false) {', '@osstack/cli', pubTests],
 ];
 const root = resolve(import.meta.dirname, '..');
