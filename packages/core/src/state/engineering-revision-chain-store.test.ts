@@ -782,12 +782,13 @@ it("D3: a new head is accepted only from the confirmed push intent that extends 
   m.db.prepare("UPDATE engineering_publication_intents SET state='confirmed' WHERE intent_id=?").run(mm.intent.intent_id);
   expect(code(() => m.store.applyDecision(mm.l.chain_id, m.store.get(mm.l.chain_id).revision, transitionTo("awaiting_review", { from_head: H1, head: H2, base: B1, published_head: H2, published_base: B2 }), 33))).toBe("stale_decision");
   expect(code(() => m.store.applyDecision(mm.l.chain_id, m.store.get(mm.l.chain_id).revision, transitionTo("awaiting_review", { from_head: H1, head: H3, base: B1, published_head: H2, published_base: B1 }), 33))).toBe("stale_decision");
-  // Closing carries no head; and a closed chain's reservation is voided explicitly by the caller.
+  // Closing carries no head and voids the reservation in the same transaction.
   const z = setup(); const zz = publishing(z);
   expect(code(() => z.store.applyDecision(zz.l.chain_id, z.store.get(zz.l.chain_id).revision, transitionTo("closed", { reason: "pr_closed", published_head: "UNCONFIRMED", published_base: "X" }), 34))).toBe("stale_decision");
   z.store.applyDecision(zz.l.chain_id, z.store.get(zz.l.chain_id).revision, transitionTo("closed", { reason: "pr_closed" }), 35);
+  expect(z.store.reservations(zz.l.chain_id)[0]).toMatchObject({ state: "void", settled_reason: "chain_closed:pr_closed" });
   z.finish(zz.c); z.store.settleIntent(zz.intent.intent_id, "confirmed", 36);
-  expect(z.store.voidReservation(zz.l.chain_id, z.store.get(zz.l.chain_id).revision, H1, "published", 37).reservation.state).toBe("void");
+  expect(z.store.reservations(zz.l.chain_id)[0]!.state).toBe("void");
   // The intent's base must be the decision's base.
   const h = setup(); const q = publishing(h);
   h.db.prepare("UPDATE engineering_publication_intents SET state='confirmed' WHERE intent_id=?").run(q.intent.intent_id);
