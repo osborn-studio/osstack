@@ -37,6 +37,8 @@ function host(f, mode, id) {
 }
 const message = async child => (await once(child, 'message', { signal: AbortSignal.timeout(20000) }))[0];
 async function kill(child) { if (child.exitCode === null && child.signalCode === null) { const exited = once(child, 'exit'); child.kill('SIGKILL'); await exited; } }
+// Resolves once boundary.json is present AND parses to the expected shape (a partial file is retried).
+const boundaryOf = f => until(() => { try { const b = JSON.parse(readFileSync(join(f.journalRoot, 'boundary.json'), 'utf8')); if (b && typeof b.path === 'string') return b; } catch {} });
 async function until(fn) { for (let n = 0; n < 200; n++) { const value = await fn(); if (value) return value; await delay(50); } throw Error('REAL_TEST_TIMEOUT'); }
 const launch = (f, id) => JSON.parse(readFileSync(join(f.journalRoot, hash(id), 'launch.json')));
 async function inspect(id) { const r = await api.call('GET', `/containers/${id}/json`); return r.status === 200 ? JSON.parse(r.bytes) : null; }
@@ -67,7 +69,7 @@ try {
   });
   await check('paused original supervisor cannot start after fresh host removes recorded container', async () => {
     const f = setup('late', 'echo SHOULD_NOT_EXECUTE'); const child = host(f, 'pre-start', 'late');
-    await until(() => existsSync(join(f.journalRoot, 'boundary.json'))); const record = launch(f, 'late'); containers.add(record.containerId);
+    await boundaryOf(f); const record = launch(f, 'late'); containers.add(record.containerId);
     assert.equal((await inspect(record.containerId)).State.Status, 'created');
     assert.equal((await message(host(f, 'stop', 'late'))).ok, true);
     const done = message(child); child.kill('SIGCONT'); const result = await done;
@@ -75,7 +77,7 @@ try {
   });
   for (const mode of ['post-create', 'post-delete']) await check(`${mode} crash stays unknown without durable completion`, async () => {
     const f = setup(mode, 'true'); const child = host(f, mode, mode);
-    await until(() => existsSync(join(f.journalRoot, 'boundary.json'))); const boundary = JSON.parse(readFileSync(join(f.journalRoot, 'boundary.json')));
+    const boundary = await boundaryOf(f);
     const containerId = mode === 'post-create' ? JSON.parse(boundary.body).Id : launch(f, mode).containerId; containers.add(containerId); await kill(child);
     const executor = await createContainedCommandExecutor(f.options); assert.equal((await executor.confirmStopped(mode)).stopped, false);
     await assert.rejects(executor.stop(mode));
