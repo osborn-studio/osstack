@@ -7,15 +7,17 @@ import { createHash, generateKeyPairSync, randomBytes } from 'node:crypto';
 import { chmod, lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { assertSandbox, parseRegistry } from './lib/bridge-probe.mjs';
 import { createScratchDir } from './lib/scratch.mjs';
+import { loadBridgeRuntime } from './lib/bridge-installed-runtime.mjs';
 
 export const SANDBOX = 'osborn-studio/osstack-bridge-sandbox';
 export const SANDBOX_ID = 1446327922;
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+export const CHECKOUT_ROOT = repository;
 const execFileAsync = promisify(execFile);
 const RULESETS = [26577637, 26577639];
 const SMOKE_ROOT = '/Volumes/AIMATE_WORK/tmp/osstack';
@@ -30,7 +32,8 @@ export function parseOptions(argv, env = process.env) {
     codexBin: env.OSSTACK_CONTAINED_CODEX_BIN ?? '/opt/homebrew/bin/codex', codexHome: env.OSSTACK_CONTAINED_CODEX_HOME ?? join(homedir(), '.codex'),
     dockerSocket: env.OSSTACK_CONTAINED_DOCKER_SOCKET ?? join(homedir(), '.docker/run/docker.sock'),
     image: env.OSSTACK_CONTAINED_BASE_IMAGE_ID ?? 'node:24-bookworm-slim' };
-  const flags = { '--run': 'run', '--apps-dir': 'appsDir', '--codex-bin': 'codexBin', '--codex-home': 'codexHome', '--docker-socket': 'dockerSocket', '--image': 'image' };
+  const flags = { '--run': 'run', '--apps-dir': 'appsDir', '--codex-bin': 'codexBin', '--codex-home': 'codexHome', '--docker-socket': 'dockerSocket', '--image': 'image',
+    '--runtime-prefix': 'runtimePrefix', '--expected-source-commit': 'expectedSourceCommit' };
   const seen = new Set();
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -46,6 +49,11 @@ export function parseOptions(argv, env = process.env) {
   assertThat(!(seen.has('--execute') && seen.has('--preflight')), 'conflicting_modes');
   assertThat(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}$/.test(opts.run), 'invalid_run');
   for (const key of ['appsDir', 'codexBin', 'codexHome', 'dockerSocket']) { assertThat(isAbsolute(opts[key]), 'absolute_path_required'); opts[key] = resolve(opts[key]); }
+  if (opts.runtimePrefix !== undefined) { assertThat(isAbsolute(opts.runtimePrefix), 'absolute_path_required'); opts.runtimePrefix = resolve(opts.runtimePrefix); }
+  if (opts.expectedSourceCommit !== undefined) {
+    assertThat(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(opts.expectedSourceCommit), 'bridge_runtime_expected_source_invalid');
+    assertThat(opts.runtimePrefix !== undefined, 'bridge_runtime_expected_source_requires_installed');
+  }
   assertThat(/^(?:sha256:[a-f0-9]{64}|[a-zA-Z0-9][a-zA-Z0-9._/:@-]{0,255})$/.test(opts.image), 'invalid_image');
   return opts;
 }
@@ -79,7 +87,18 @@ async function keySafe(path) {
   assertThat(info.isFile() && !info.isSymbolicLink() && (info.mode & 0o077) === 0 && info.uid === process.getuid(), 'private_app_key_required');
 }
 
+/** Import the single selected tree. A failed installed selection never falls back to checkout. */
+export async function selectSandboxRuntime(opts, loader = loadBridgeRuntime) {
+  const selected = await loader({ checkoutRoot: repository, runtimePrefix: opts.runtimePrefix, expectedSourceCommit: opts.expectedSourceCommit });
+  assertThat(typeof selected.runtime?.createProductionLiveBridge === 'function', 'production_factory_required');
+  assertThat(typeof selected.core?.openDb === 'function' && typeof selected.appModule?.createInstallationTokenSource === 'function', 'runtime_preflight_required');
+  assertThat(selected.provenance?.mode === (opts.runtimePrefix === undefined ? 'checkout' : 'installed'), 'bridge_runtime_selection_mismatch');
+  if (opts.expectedSourceCommit !== undefined) assertThat(selected.provenance.sourceCommit === opts.expectedSourceCommit, 'bridge_runtime_source_mismatch');
+  return selected;
+}
+
 export async function preflight(opts) {
+  const { runtime, core, appModule, provenance } = await selectSandboxRuntime(opts);
   const registry = parseRegistry(await readFile(join(repository, 'docs/decisions/ADR-006-bridge-s0-decisions.md'), 'utf8'));
   assertThat(registry.sandbox.repo === SANDBOX && registry.sandbox.id === SANDBOX_ID, 'adr_sandbox_mismatch');
   const live = await ghRead(`repos/${SANDBOX}`); assertSandbox(SANDBOX, registry, live);
@@ -95,9 +114,6 @@ export async function preflight(opts) {
   assertThat(info.ID && info.OSType === 'linux', 'linux_docker_required');
   const imageId = await command('docker', ['--host', `unix://${opts.dockerSocket}`, 'image', 'inspect', opts.image, '--format', '{{.Id}}']);
   assertThat(/^sha256:[a-f0-9]{64}$/.test(imageId), 'local_immutable_image_required');
-  const runtime = await import(pathToFileURL(join(repository, 'packages/cli/dist/bridge-production.js')).href);
-  assertThat(typeof runtime.createProductionLiveBridge === 'function', 'production_factory_required');
-  const appModule = await import(pathToFileURL(join(repository, 'packages/cli/dist/bridge-github-app.js')).href);
   const tokens = {};
   for (const [name, a] of Object.entries(apps)) {
     const permissions = name === 'publisher' ? appModule.PUBLISHER_PERMISSIONS : name === 'evidence' ? appModule.EVIDENCE_PERMISSIONS : { pull_requests: 'write' };
@@ -112,7 +128,7 @@ export async function preflight(opts) {
   const producers = { version: 1, repository: SANDBOX, publisher: [await identity('osstack-publisher')], reviewers: [await identity('osstack-sandbox-test-reviewer')] };
   // Check both rulesets still exist and are active; actual refusal probes run only in --execute.
   for (const id of RULESETS) assertThat((await ghRead(`repos/${SANDBOX}/rulesets/${id}`)).enforcement === 'active', 'sandbox_ruleset_inactive');
-  return { runtime, apps, tokens, producers, daemonId: info.ID, imageId, codexVersion };
+  return { runtime, core, appModule, provenance, apps, tokens, producers, daemonId: info.ID, imageId, codexVersion };
 }
 
 /** Exact ledger-to-remote comparison, shared by the real run and unit tests. */
@@ -131,12 +147,55 @@ export function assertTimeline({ baseline, remoteCommits, intents, ranges, check
   }
 }
 
+/** Only canonical GitHub policy errors count; generic validation, auth and transport failures do not. */
+export function isRulesetRefusal(status, details, expectedRef) {
+  if (![403, 422].includes(status) || typeof details?.message !== 'string') return false;
+  const message = details.message.trim();
+  const rule = /^(?:GH013: )?Repository rule violations found for (?:ref )?(refs\/heads\/[A-Za-z0-9/._-]+?)(?:\.(?:\s[\s\S]*)?)?$/.exec(message);
+  return Boolean(rule && (expectedRef === undefined || rule[1] === expectedRef))
+    || /^Cannot force push to this (?:protected )?branch\.$/.test(message);
+}
+
+/** Every App request passes the owned-target guard and disables fetch redirect following. */
+export function createSandboxRequest({ tokens, owned, fetchImpl = fetch }) {
+  return async (source, method, path, body, refusal = false) => {
+    assertRequest(method, path, owned);
+    if (refusal) assertThat(method === 'PATCH' && owned.branches.some(branch => path === `repos/${SANDBOX}/git/refs/heads/${branch}`)
+      && body?.force === true && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(body?.sha ?? ''), 'ruleset_probe_not_rejected');
+    const token = await tokens[source].token();
+    const response = await fetchImpl(`https://api.github.com/${path}`, { method, redirect: 'error',
+      headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
+        'content-type': 'application/json', 'x-github-api-version': '2022-11-28', 'user-agent': 'osstack-bridge-revision-smoke' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30_000) });
+    if (refusal) {
+      const details = await response.json().catch(() => ({}));
+      assertThat(isRulesetRefusal(response.status, details, path.replace(`repos/${SANDBOX}/git/refs/`, 'refs/')), 'ruleset_probe_not_rejected'); return;
+    }
+    assertThat(response.ok, `sandbox_request_failed:${response.status}`);
+    return response.status === 204 ? null : response.json();
+  };
+}
+
+/** A target ref rejection plus GH013 for that exact ref proves the writer ruleset rejected this push. */
+export function assertHostWriterRulesetRefusal(result, branch) {
+  const ref = `refs/heads/${branch}`;
+  const rejected = String(result.stdout ?? '').split(/\r?\n/).some(line => {
+    const [flag, target, summary] = line.split('\t');
+    return flag === '!' && target?.split(':').at(-1) === ref && /^\[remote rejected\](?: |$)/.test(summary ?? '');
+  });
+  const policy = String(result.stderr ?? '').split(/\r?\n/).some(line =>
+    line.trimEnd() === `remote: error: GH013: Repository rule violations found for ${ref}.`);
+  assertThat(result.error?.code === 1 && !result.error?.signal && !result.error?.killed && rejected && policy, 'host_writer_not_ruleset_rejected');
+}
+
 /** Bind final timeline evidence to the PR and actual branch ref observed now, not only a historical ledger tip. */
 export function assertCurrentPublicationHead(chain, pr, ref) {
-  assertThat(chain.repository.toLowerCase() === SANDBOX && pr.number === chain.pr_number && pr.state === 'open'
+  assertThat(typeof chain?.repository === 'string' && chain.repository.toLowerCase() === SANDBOX
+    && Number.isSafeInteger(chain.pr_number) && chain.pr_number > 0 && /^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(chain.branch ?? '')
+    && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(chain.published_head ?? '') && pr?.number === chain.pr_number && pr?.state === 'open'
     && pr.head?.repo?.id === SANDBOX_ID && pr.head?.repo?.full_name?.toLowerCase() === SANDBOX
     && pr.head?.ref === chain.branch && pr.head?.sha === chain.published_head
-    && ref.ref === `refs/heads/${chain.branch}` && ref.object?.type === 'commit' && ref.object?.sha === chain.published_head,
+    && ref?.ref === `refs/heads/${chain.branch}` && ref.object?.type === 'commit' && ref.object?.sha === chain.published_head,
   'timeline_current_head_mismatch');
 }
 
@@ -170,19 +229,7 @@ export async function execute(opts, prepared) {
   const previousEnv = { OSSTACK_HOME: process.env.OSSTACK_HOME, OSSTACK_SCRATCH_ROOT: process.env.OSSTACK_SCRATCH_ROOT };
   const logs = [];
   let db, chains, missions, host, bridge, enabled = true;
-  const request = async (source, method, path, body, refusal = false) => {
-    assertRequest(method, path, owned);
-    const token = await prepared.tokens[source].token();
-    const response = await fetch(`https://api.github.com/${path}`, { method, headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}`,
-      'content-type': 'application/json', 'x-github-api-version': '2022-11-28', 'user-agent': 'osstack-bridge-revision-smoke' },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30_000) });
-    if (refusal) {
-      const details = await response.json().catch(() => ({}));
-      assertThat([403, 422].includes(response.status) && /repository rule|protected branch|force push|GH013/i.test(details.message ?? ''), 'ruleset_probe_not_rejected'); return;
-    }
-    assertThat(response.ok, `sandbox_request_failed:${response.status}`);
-    return response.status === 204 ? null : response.json();
-  };
+  const request = createSandboxRequest({ tokens: prepared.tokens, owned });
   await withSandboxCleanup(async defer => {
     const cleanup = work => async () => {
       try { await work(); } catch (error) {
@@ -231,7 +278,8 @@ export async function execute(opts, prepared) {
     }));
     try {
       process.env.OSSTACK_HOME = home; process.env.OSSTACK_SCRATCH_ROOT = runtimeRoot;
-  const core = await import(pathToFileURL(join(repository, 'packages/core/dist/index.js')).href);
+  const core = prepared.core;
+  assertThat(typeof core?.openDb === 'function', 'runtime_preflight_required');
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   await privateJson(join(home, 'bridge/apps.json'), { version: 1, repository: SANDBOX, publisher: prepared.apps.publisher, evidence: prepared.apps.evidence });
   await privateJson(join(home, 'bridge/rulesets.json'), { version: 1, repository: SANDBOX, mission_ruleset_ids: RULESETS });
@@ -262,9 +310,12 @@ export async function execute(opts, prepared) {
     now: Date.now, log: () => { logs.push({ code: 'bridge_diagnostic', at: Date.now() }); }, launchCaps: ports.revisionLaunchCaps });
   bridge = await buildBridge(host);
   Object.assign(report, {
-    source_commit: await command('git', ['rev-parse', 'HEAD'], { cwd: repository, env: gitEnv() }),
-    factory_sha256: hash(await readFile(join(repository, 'packages/cli/dist/bridge-production.js'))),
-    core_sha256: hash(await readFile(join(repository, 'packages/core/dist/index.js'))),
+    driver_source_commit: await command('git', ['rev-parse', 'HEAD'], { cwd: repository, env: gitEnv() }),
+    source_commit: prepared.provenance.sourceCommit,
+    runtime_provenance: prepared.provenance,
+    factory_sha256: prepared.provenance.entries.runtime.sha256,
+    core_sha256: prepared.provenance.entries.core.sha256,
+    app_module_sha256: prepared.provenance.entries.appModule.sha256,
     codex_version: prepared.codexVersion, docker_daemon_id: prepared.daemonId, base_image_id: prepared.imageId,
   });
   const observeCurrentHead = async chain => {
@@ -343,8 +394,8 @@ export async function execute(opts, prepared) {
     const probeCommit = await command('git', [...gitArgs, '-c', 'user.name=Sandbox Probe', '-c', 'user.email=sandbox@osstack.invalid',
       'commit-tree', tree, '-p', target.published_head, '-m', 'sandbox unauthorized writer probe'], { cwd: repo, env: gitEnv() });
     const refusedPush = await new Promise(resolveResult => execFile('git', [...gitArgs, '-c', 'credential.helper=!gh auth git-credential', 'push', '--porcelain', 'origin', `${probeCommit}:refs/heads/${target.branch}`],
-      { cwd: repo, env: gitEnv(), timeout: 60_000 }, (error, stdout) => resolveResult({ error, stdout })));
-    assertThat(refusedPush.error && refusedPush.stdout.split('\n').some(line => line.startsWith('!\t') && line.includes('[remote rejected]')), 'host_writer_not_ruleset_rejected');
+      { cwd: repo, env: gitEnv(), timeout: 60_000 }, (error, stdout, stderr) => resolveResult({ error, stdout, stderr })));
+    assertHostWriterRulesetRefusal(refusedPush, target.branch);
     await request('publisher', 'PATCH', `repos/${SANDBOX}/git/refs/heads/${target.branch}`, { sha: base, force: true }, true);
     report.scenarios.push({ name: 'host_writer_and_AppA_force_push_refused', passed: true }); await save();
     // A host account is intentionally absent from the numeric producer registry.
@@ -410,11 +461,11 @@ export async function execute(opts, prepared) {
 
 export async function runSmoke(argv, effects = { preflight, execute }) {
   const opts = parseOptions(argv), prepared = await effects.preflight(opts);
-  if (!opts.execute) return { preflight: true, qualified: false, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run };
+  if (!opts.execute) return { preflight: true, qualified: false, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run, runtime_provenance: prepared.provenance };
   return effects.execute(opts, prepared);
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   runSmoke(process.argv.slice(2)).then(result => console.log(JSON.stringify(result, null, 2))).catch(error => {
-    console.error(JSON.stringify({ qualified: false, code: /^[a-zA-Z0-9_:-]{1,160}$/.test(error.message) ? error.message : 'sandbox_smoke_failed', ...(error.report ? { report: error.report } : {}) })); process.exitCode = 1;
+    console.error(JSON.stringify({ qualified: false, code: /^[a-zA-Z0-9_:-]{1,160}$/.test(error?.message ?? '') ? error.message : 'sandbox_smoke_failed', ...(error?.report ? { report: error.report } : {}) })); process.exitCode = 1;
   });
 }
