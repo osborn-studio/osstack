@@ -383,6 +383,33 @@ it('leaves a pending intent for recovery when W13 loses the owner before release
   vi.restoreAllMocks();
 });
 
+it('a second daemon owner claim fences an in-flight publisher before remote release', async () => {
+  let f!: Awaited<ReturnType<typeof publishFixture>>;
+  let second: ReturnType<typeof openDb> | undefined;
+  let gitRan = false;
+  f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = 'hp_twoowners';
+    journal.launching({ op_id: opId, mission_id: f.id, kind: 'git_push', remote_target: 'o/r#refs/heads/topic', local_target: '/tmp/repo#refs/heads/topic',
+      intent_id: intentId, argv_digest: '8'.repeat(64), boot_id: 'test', marker: { path: '/tmp/marker', dev: '1', ino: '1' } });
+    journal.registered(opId, { pid: 12345, pgid: 12345, leader_start: 'test' });
+    // Separate SQLite connection and real epoch replacement, rather than a mocked fence failure.
+    second = openDb({ path: f.f.rig.path });
+    const attention = new AttentionStore(second, f.f.rig.path);
+    attention.claimOwner('second-daemon');
+    journal.release(opId, fence);
+    gitRan = true;
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  });
+  try {
+    await expect(f.call()).rejects.toThrow(/owner/i);
+    expect(gitRan).toBe(false);
+    expect(f.deps.chains.intents(f.chain.chain_id).filter(i => i.kind === 'push')).toMatchObject([{ state: 'pending' }]);
+    expect(f.deps.chains.get(f.chain.chain_id).state).toBe('publishing');
+    expect(second!.prepare("SELECT state,released_at FROM engineering_host_processes WHERE op_id='hp_twoowners'").get())
+      .toMatchObject({ state: 'registered', released_at: null });
+  } finally { second?.close(); }
+});
+
 it.each(['pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'external_write', 'head_regressed'] as const)(
   'requests host cancellation for %s', async expected => {
     const f = await publishFixture();
