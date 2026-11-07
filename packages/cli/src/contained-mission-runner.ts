@@ -621,8 +621,10 @@ export class ContainedMissionRunner {
     const since = events.map(e => e.kind).lastIndexOf('delivery_intent');
     const attempts = events.slice(since + 1).filter(e => e.kind === 'delivery_attempt').length;
     if (attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
-    // A revision child must update its PR's branch, never open a PR of its own; that publisher does not exist yet, so it stops here before any port runs.
-    if (spec.publish_target) return this.halt(m, 'awaiting_decision', 'publication_failed:revision_publisher_unavailable');
+    if (spec.publish_target && !this.ports.revisionPublication) {
+      // Without a publication port there is no authority to release a push.
+      return this.halt(m, 'awaiting_decision', 'publication_failed:revision_publisher_unavailable');
+    }
     const blocker = this.publicationBlocker(m, spec);
     if (blocker) return this.halt(m, 'awaiting_decision', `publication_failed:${blocker}`);
     // A record of this Mission that is not proven stopped (an orphaned push, say) must be settled first: never push again over it.
@@ -635,15 +637,33 @@ export class ContainedMissionRunner {
     // Journals each remote mutation under the owner fence, and refuses it once anything about the permit changed.
     const beforeRemoteMutation = (kind: 'push' | 'pr_create') => {
       const now = this.ports.store.get(m.mission_id);
+      if (spec.publish_target && now.state === 'cancel_requested') throw Error('CONTAINED_REVISION_FENCE:child_cancelled');
       if (now.state !== 'delivering' || now.revision !== permit.revision || now.candidate_head !== permit.head || now.stop_obligation === 1 || now.candidate_verified !== 1) throw Error('CONTAINED_PUBLICATION_FENCE');
       this.ports.store.record(m.mission_id, 'remote_mutation', { kind, head: permit.head }, this.ports.now());
       mutated = true;
     };
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
     let result: ContainedPublicationResult;
-    try { result = await this.ports.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal }); }
+    try {
+      if (spec.publish_target) {
+        const publication = this.ports.revisionPublication!;
+        const revisionResult = await publication.publishRevision({ mission: m, spec, permit, beforeRemoteMutation: kind => beforeRemoteMutation(kind), signal: controller.signal });
+        if (revisionResult.pushed_commit !== permit.head) throw Error('CONTAINED_REVISION_PUSHED_HEAD_MISMATCH');
+        const evidence = this.deliveryEvidence(m, spec, permit, revisionResult);
+        const current = this.ports.store.get(m.mission_id);
+        const opened = publication.confirm({ chain_id: spec.publish_target.chain_id, intent_id: revisionResult.intent_id, child_mission_id: m.mission_id,
+          permit_revision: permit.revision, evidence, pr: { ...revisionResult.pr, reused: true }, range_sha256: revisionResult.range_sha256,
+          ...(current.state === 'cancel_requested' ? { variant: 'cancelled' as const } : {}) });
+        if (opened.state === 'pr_opened' && this.ports.publishVerifyCheck) {
+          await this.attemptVerifyCheck(opened, () => publication.publishCheck(opened.mission_id, this.ports.publishVerifyCheck!));
+        }
+        return opened;
+      }
+      result = await this.ports.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal });
+    }
     catch (error) {
       const current = this.ports.store.get(m.mission_id);
+      if (spec.publish_target && current.state !== 'delivering') return current;
       // A remote write whose process could not be proven stopped: stop_unknown on the delivering route, nothing retried.
       const unproven = unprovenOpId(error);
       if (unproven !== undefined) return this.haltUnproven(current, unproven);
@@ -670,12 +690,14 @@ export class ContainedMissionRunner {
   }
 
   /** Publish the check and record the outcome; recording problems never escape. */
-  private async attemptVerifyCheck(m: ContainedMission): Promise<{ ok: true; result: { check_run_id: number; created: boolean } } | { ok: false; error: unknown }> {
-    let outcome: { ok: true; result: { check_run_id: number; created: boolean } } | { ok: false; error: unknown };
-    try { outcome = { ok: true, result: await this.ports.publishVerifyCheck!(m) }; }
+  private async attemptVerifyCheck(m: ContainedMission, publish: () => Promise<{ check_run_id: number; created: boolean; skipped?: true }> = () => this.ports.publishVerifyCheck!(m)):
+    Promise<{ ok: true; result: { check_run_id: number; created: boolean; skipped?: true } } | { ok: false; error: unknown }> {
+    let outcome: { ok: true; result: { check_run_id: number; created: boolean; skipped?: true } } | { ok: false; error: unknown };
+    try { outcome = { ok: true, result: await publish() }; }
     catch (error) { outcome = { ok: false, error }; }
     try {
-      if (outcome.ok) this.ports.store.record(m.mission_id, 'verify_check_published', { check_run_id: outcome.result.check_run_id, created: outcome.result.created, head: m.candidate_head }, this.ports.now());
+      if (outcome.ok && outcome.result.skipped) this.ports.store.record(m.mission_id, 'verify_check_skipped', { reason: 'chain_closed', head: m.candidate_head }, this.ports.now());
+      else if (outcome.ok) this.ports.store.record(m.mission_id, 'verify_check_published', { check_run_id: outcome.result.check_run_id, created: outcome.result.created, head: m.candidate_head }, this.ports.now());
       else this.ports.store.record(m.mission_id, 'verify_check_failed', { code: code(outcome.error) }, this.ports.now());
     } catch { /* the ledger row for pr_opened is the authority; a lost note never fails delivery */ }
     return outcome;
