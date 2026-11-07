@@ -422,6 +422,22 @@ describe('revision confirmation D10', () => {
     expect(deps.chains.get(input.chain_id)).toMatchObject({ state: 'awaiting_review', published_head: next, current_mission_id: id });
   });
 
+  it('registers check delivery before a sender can synchronously reenter the port', async () => {
+    const { deps, input, id } = await fullFixture();
+    confirmRevisionPublication(deps, input);
+    const port = createRevisionPublicationPort(deps);
+    const secondSend = vi.fn(async () => ({ check_run_id: 56, created: true }));
+    let reentered: ReturnType<typeof port.publishCheck> | undefined;
+    const first = port.publishCheck(id, async () => {
+      reentered = port.publishCheck(id, secondSend);
+      return { check_run_id: 55, created: true };
+    });
+    await Promise.allSettled([first]);
+    expect(reentered).toBe(first);
+    expect(await first).toEqual({ check_run_id: 55, created: true });
+    expect(secondSend).not.toHaveBeenCalled();
+  });
+
   it('does not start another check when the chain closes during an in-flight delivery', async () => {
     const { deps, input, id } = await fullFixture();
     confirmRevisionPublication(deps, input);
@@ -429,6 +445,7 @@ describe('revision confirmation D10', () => {
     let release!: () => void;
     const barrier = new Promise<void>(resolve => { release = resolve; });
     const first = port.publishCheck(id, async () => { await barrier; return { check_run_id: 53, created: true }; });
+    await Promise.resolve(); // The first sender has started and is waiting on its remote receipt.
     const chain = deps.chains.get(input.chain_id);
     deps.chains.closeLive(chain.chain_id, chain.revision, 'pr_closed', deps.now());
     const send = vi.fn(async () => ({ check_run_id: 54, created: true }));

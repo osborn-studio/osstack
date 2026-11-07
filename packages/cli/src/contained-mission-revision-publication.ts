@@ -124,7 +124,8 @@ export function createRevisionPublicationPort(deps: RevisionPublicationDeps): Re
       const pending = checkDeliveries.get(childId);
       if (pending) return pending;
       // One sender owns the pending intent until its terminal settlement finishes.
-      const delivery = publishRevisionCheck(deps, childId, send).finally(() => { checkDeliveries.delete(childId); });
+      const delivery = Promise.resolve().then(() => publishRevisionCheck(deps, childId, send))
+        .finally(() => { checkDeliveries.delete(childId); });
       checkDeliveries.set(childId, delivery);
       return delivery;
     },
