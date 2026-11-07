@@ -93,6 +93,38 @@ describe("base changes (selection rule 2)", () => {
   });
 });
 
+describe("D8 in-flight ordering", () => {
+  const conflict = () => [review("APPROVED", A), review("CHANGES_REQUESTED", B)];
+
+  it.each(["revising", "publishing"] as const)("ignores review conflict while %s", state => {
+    expectNone(decide(chain({ state }), snap(conflict())), "in_flight");
+  });
+  it("ignores an expired review deadline while revising", () => {
+    expectNone(decide(chain({ state: "revising", review_deadline: NOW - 1 }), snap()), "in_flight");
+  });
+  it("waits for a pending push despite review conflict when the base is unchanged", () => {
+    expectNone(decide(chain({ state: "publishing" }), snap(conflict(), { head: HEAD2 }), NOW, { pending_push_head: HEAD2 }), "publish_in_progress");
+  });
+  it.each([["sha", { base_sha: BASE2 }], ["ref", { base_ref: "develop" }]] as const)("stops a pending push when the base %s changes", (_name, over) => {
+    expect(decide(chain({ state: "publishing" }), snap([], { head: HEAD2, ...over }), NOW, { pending_push_head: HEAD2 }))
+      .toMatchObject({ kind: "stop", reason: "base_changed" });
+  });
+  it.each([[false, "head_regressed"], [true, "external_write"], [undefined, "external_write"]] as const)("keeps the revising head attribution for descendant=%s", (head_is_descendant, reason) => {
+    expect(decide(chain({ state: "revising" }), snap([], { head: HEAD2 }), NOW, head_is_descendant === undefined ? {} : { head_is_descendant }))
+      .toMatchObject({ kind: "stop", reason });
+  });
+  it.each(["CLOSED", "MERGED"] as const)("closes a revising chain when the PR is %s", pr_state => {
+    expect(decide(chain({ state: "revising" }), snap([], { pr_state }))).toMatchObject({ kind: "transition", to: "closed" });
+  });
+  it("stops on a changed base beside a confirmed push head", () => {
+    expect(decide(chain({ state: "publishing" }), snap([], { head: HEAD2, base_sha: BASE2 }), NOW, { confirmed_push_head: HEAD2 }))
+      .toMatchObject({ kind: "stop", reason: "base_changed" });
+  });
+  it("discards conflict reviews from the old head after publication", () => {
+    expectNone(decide(chain({ published_head: HEAD2 }), snap(conflict(), { head: HEAD2 })), "head_mismatch");
+  });
+});
+
 describe("reviewer reduction (selection rules 3 and 4)", () => {
   it("matches reviewers on the (actor, app) pair only", () => {
     expect(sameProducer({ actor_id: 1, app_id: 11 }, A)).toBe(true);

@@ -2,7 +2,7 @@ import { realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, expect, it } from "vitest";
-import type { ChainDecision, ChainState } from "../bridge/revision-chain.js";
+import { decideChainStep, type ChainDecision, type ChainState, type ChainView, type PrSnapshot } from "../bridge/revision-chain.js";
 import { createScratchDirSync } from "../scratch.js";
 import { AttentionStore } from "./attention-store.js";
 import { ContainedMissionStore } from "./engineering-contained-store.js";
@@ -593,6 +593,26 @@ it("advances published_head on settle only while the intent's bindings still mat
   const out = f.store.settleIntent(pi.intent.intent_id, "confirmed", 5);
   expect(out.intent.state).toBe("confirmed");
   expect(out.chain).toMatchObject({ state: "publishing", published_head: H1, published_base: B2 });
+});
+
+it("accepts a pending-push base-change stop and keeps it stopped after confirmation", () => {
+  const f = setup(); const l = f.live(2); const child = f.child("executing");
+  const reserved = f.store.reserve(l.chain_id, l.revision, reserveInput(H1), 2);
+  const dispatched = f.store.dispatch(l.chain_id, reserved.chain.revision, H1, child, 3);
+  const { chain: publishing, intent } = f.store.recordIntent(l.chain_id, dispatched.chain.revision,
+    { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: child }, 4);
+  const view: ChainView = {
+    mode: "live", state: publishing.state, published_head: publishing.published_head, published_base: publishing.published_base,
+    base_ref: publishing.base_ref, rounds_used: publishing.rounds_used, grant_rounds: 2, review_deadline: null, reserved_heads: [H1],
+  };
+  const snapshot: PrSnapshot = { pr_state: "OPEN", head: H2, base_sha: B2, base_ref: "main", reviews: [], complete: true, moved: false };
+  const decision = decideChainStep(view, snapshot, { publisher: [], reviewers: [] }, 5, { pending_push_head: H2 });
+  expect(decision).toMatchObject({ kind: "stop", reason: "base_changed" });
+  const stopped = f.store.applyDecision(l.chain_id, publishing.revision, decision, 5);
+  expect(stopped).toMatchObject({ state: "awaiting_decision", stop_reason: "base_changed", published_head: H1 });
+  const settled = f.store.settleIntent(intent.intent_id, "confirmed", 6);
+  expect(settled.intent.state).toBe("confirmed");
+  expect(settled.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "base_changed", published_head: H1 });
 });
 
 it("rejects decisions that no longer describe the chain row, and reservations on another head", () => {
