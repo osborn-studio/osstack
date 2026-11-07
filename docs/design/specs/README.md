@@ -24,8 +24,8 @@ TLA2TOOLS_JAR=/path/to/tla2tools.jar JAVA=/path/to/java \
 # --main checks main, shadow and rounds; --mutants checks every guard config.
 ```
 
-All fourteen existing guard mutants produced exhaustive invariant counterexamples before the
-final detection-ghost correction. Outcome-only probes (removing `ResumeSafety`) found a
+All fourteen existing guard mutants produced exhaustive invariant counterexamples on the
+final model revision (portable runner output saved under the scratch evidence root). Outcome-only probes (removing `ResumeSafety`) found a
 `ResumeOutcomeSafety` counterexample only for `resume-uncertain-intent`. The other three
 resume probes completed without one: their forbidden historical transition is established by
 `ResumeSafety`, whose ghost records the pre-resume facts, rather than by the state-only
@@ -188,7 +188,7 @@ a liveness property.
 | `VoidReservation` | `voidReservation` (stops the chain only when in flight); normal D10 confirmation now voids it in the same transaction |
 | `ClearCurrent` | `clearCurrentMission` + `engineering_chain_current_child_release` |
 | `RecordIntent` | `recordIntent` + `engineering_intent_push_binding` |
-| `PreCheck`, `Release`, `RemoteApply`, `PushRejected`, `ReadBack`, `DropStaleIntent` | `publishRevision` and W13 `beforeRemoteMutation`/host process release; `RemoteApply` is the server update |
+| `PreCheck`, `Release`, `RemoteApply`, `PushRejected`, `ReleasedProcessLost`, `ReadBack`, `DropStaleIntent` | `publishRevision` and W13 `beforeRemoteMutation`/host process release; `RemoteApply` is the server update |
 | `ConfirmPublication`, `LandedReceipt`, `ApproveLanded`, `UncertainIntent`, `FailIntent` | D10 `confirmRevisionPublication` transaction; recovery receipt reconciliation; R3 human `approve_publication` → `resumeLanded` |
 | `Crash`, `RecoverIntent`, `RecoverDone` | start-up receipt reconciliation, design §8.7 step 5 (phase 5) |
 | `ChildDeliver`, `ChildFail`, `HaltChild`, `CancelRequest`, `CancelDone`, `ProveStop` | contained-Mission runner states, `stop_obligation`, D9 stopped child |
@@ -222,11 +222,12 @@ a liveness property.
   the child is unreleased and blocks every dispatch until a human ends it and the stop is proven.
 - Crashes are explored only while a push intent is pending or the publisher is mid-step. Any
   other crash loses nothing.
-- Open gap (5-F, finding 4): after a crash, a durable release marker can only take
-  `RemoteApply`; the never-written, pre-release death and `uncertain` receipt path is absent.
+- Resolved in this revision (5-F, finding 4): durable releases can reject after a crash or
+  take `ReleasedProcessLost` when the stopped process did not establish an outcome. Pre-release
+  death is handled by `RecoverIntent`; an uncertain receipt remains for human reconciliation.
 - A closed chain is expanded only while a publication is still in flight.
-- Open gap (5-F, finding 11): `Explore` prunes a closed chain with only an `uncertain` intent,
-  before `HumanResolveIntent` can settle its late receipt. Closed chains with `pending` remain.
+- Resolved in this revision (5-F, finding 11): `Explore` retains closed chains with pending
+  or uncertain intents, so late human receipt settlement remains reachable.
 - The review deadline and grant expiry are single booleans. Budgets (§8.6), scope permission,
   signed grant validation, the workspace claim and scanned-fact freshness are not modelled.
 - `stopObl` combines stop proof and absence of an open host process. `released` is durable
@@ -236,14 +237,12 @@ a liveness property.
   requires the separate human `ApproveLanded` action. Normal D10 confirmation changes the
   intent, chain, reservation and child together. A receipt after PR closure or base change
   confirms the remote fact while keeping the chain closed or stopped.
-- Open gap (5-F, finding 5): `HaltChild` labels any unsettled intent `intent_uncertain`.
-  The design uses `child_halted` for pending intents that were never released, so their
-  same-child resume after settlement is missing.
-- Open gap (5-F, finding 6): a halted child with an open PR has no terminal abandon or cancel
-  transition. This omits human takeover and later rounds after a halt.
-- Open gap (5-F, finding 7): `HumanResume` still models the old unconditional `replaceGrant`
-  transition to `awaiting_review`. The designed kept-stopped grant replacement followed by
-  `resumeChild` is absent.
+- Resolved in this revision (5-F, finding 5): `HaltChild` uses `child_halted` for a pending
+  intent that was never released; only uncertain receipts or released work use `intent_uncertain`.
+- Resolved in this revision (5-F, finding 6): a halted child can enter cancel or abandon;
+  `ProveStop` and reservation release still gate subsequent dispatch.
+- Partly resolved in this revision (5-F, finding 7): `HumanResume` keeps a halted child
+  stopped until `ResumeChild`; exact R2 stop-reason rewrites remain abstracted.
 - Open gap (5-F, finding 10): close paths retain `stopReason` and may leave active reservations.
   The store clears the reason and voids all active reservations on close.
 - Mutant precision (finding 12): `resume-uncertain-intent` also widens the resumable-reason
