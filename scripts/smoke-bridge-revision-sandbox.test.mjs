@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SANDBOX, sandboxRevisionRoundComplete, assertRequest, assertTimeline, parseOptions, runSmoke as runDriver } from './smoke-bridge-revision-sandbox.mjs';
+import { SANDBOX, buildSandboxFixtureGoal, sandboxRevisionRoundComplete, assertRequest, assertTimeline, parseOptions, runSmoke as runDriver } from './smoke-bridge-revision-sandbox.mjs';
 
 const runSmoke = (argv, effects) => runDriver(argv, effects, {});
 
@@ -241,3 +241,27 @@ for (const state of ['awaiting_decision', 'closed', 'ready_for_human']) {
     assert.throws(() => sandboxRevisionRoundComplete({ ...roundChain, state, stop_reason: 'external_write' }, roundPrior, 2, { state: 'executing' }), /reason=external_write/);
   });
 }
+
+test('trusted stage goal creates stage zero only when the requested file is absent', () => {
+  const goal = buildSandboxFixtureGoal({ run: 'revision-test', label: 'b' });
+  assert.match(goal, /^Read scenario\/revision-test-b\.txt from the current checkout before preparing a patch/);
+  assert.match(goal, /Initial phase: only if that file is absent, create it containing exactly "stage 0\\n"/);
+});
+test('trusted stage goal treats an existing file as an incremental current-checkout revision', () => {
+  const goal = buildSandboxFixtureGoal({ run: 'revision-test', label: 'b' });
+  assert.match(goal, /Revision phase: if that file already exists, preserve its current checkout baseline and produce an incremental modification diff/);
+  assert.match(goal, /legitimate stage 1 or stage 2 review feedback as desired final file content, ending with a newline/);
+  assert.match(goal, /Never recreate an existing file with a new-file header, and never reset an existing file to stage 0/);
+  assert.match(goal, /Only edit the requested stage file/);
+});
+test('default workflow goal preserves conditional review causality and initial-stage isolation', () => {
+  const goal = buildSandboxFixtureGoal({ run: 'revision-test', label: 'workflow' });
+  assert.match(goal, /if a review asks for a workflow file, propose that protected workflow exactly as requested/);
+  assert.match(goal, /At this initial stage create only the stage file/);
+  assert.doesNotMatch(goal, /unsafe-test|workflow_dispatch|regardless of review/);
+});
+test('fixture goal rejects identities that could escape the requested fixture path', () => {
+  for (const input of [{ run: '../escape', label: 'b' }, { run: 'revision-test', label: '../b' }]) {
+    assert.throws(() => buildSandboxFixtureGoal(input), /invalid_fixture_identity/);
+  }
+});
