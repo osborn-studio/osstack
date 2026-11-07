@@ -8,7 +8,7 @@ describe('production remote ancestry', () => {
     it(`checks status and merge base: ${status}/${mergeBase[0]}`, async () => {
       const exec = vi.fn(async () => ({ exitCode: 0, stdout: JSON.stringify({ status, merge_base_commit: { sha: mergeBase } }), stderr: '' }));
       expect(await readBridgeAncestry(chain, head, new AbortController().signal, exec)).toBe(expected);
-      expect(exec).toHaveBeenCalledWith(['api', `repos/o/r/compare/${base}...${head}?per_page=1`], { timeoutMs: 30_000 });
+      expect(exec).toHaveBeenCalledWith(['api', `repos/o/r/compare/${base}...${head}?per_page=1`], { timeoutMs: 30_000, signal: expect.any(AbortSignal) });
     });
   }
   it('discards late read results after cancellation', async () => {

@@ -87,11 +87,11 @@ export function assertQueryOnly(document: string): void {
   if (/mutation|subscription/iu.test(document)) throw new ReadMutationDenied();
 }
 
-export type GhExec = (args: readonly string[], options: { timeoutMs: number }) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
+export type GhExec = (args: readonly string[], options: { timeoutMs: number; signal?: AbortSignal }) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
 
 export const defaultGhExec: GhExec = (args, options) =>
   new Promise((resolve) => {
-    execFile('gh', [...args], { timeout: options.timeoutMs, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => {
+    execFile('gh', [...args], { timeout: options.timeoutMs, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, ...(options.signal ? { signal: options.signal } : {}) }, (error, stdout, stderr) => {
       if (!error) return resolve({ stdout, stderr, exitCode: 0 });
       const failure = error as NodeJS.ErrnoException;
       resolve({ stdout: String(stdout ?? ''), stderr: String(stderr ?? ''), exitCode: typeof failure.code === 'number' ? failure.code : 1 });

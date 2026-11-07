@@ -20,7 +20,7 @@ export async function readBridgeAncestry(chain: Pick<RevisionChain, 'repository'
   signal.throwIfAborted();
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(chain.repository) || !SHA.test(chain.published_head) || !SHA.test(observed)) throw Error('bridge_ancestry_target_invalid');
   if (observed === chain.published_head) return true;
-  const result = await exec(['api', `repos/${chain.repository}/compare/${chain.published_head}...${observed}?per_page=1`], { timeoutMs: 30_000 });
+  const result = await exec(['api', `repos/${chain.repository}/compare/${chain.published_head}...${observed}?per_page=1`], { timeoutMs: 30_000, signal });
   signal.throwIfAborted();
   if (result.exitCode !== 0) throw Error('bridge_ancestry_read_failed');
   const facts = compared.parse(JSON.parse(result.stdout) as unknown);
@@ -44,14 +44,31 @@ export async function createProductionLiveBridge(deps: ProductionLiveBridgeDeps)
     import('@osstack/governance'), import('./contained-mission-bridge-reader.js'),
     import('./contained-mission-bridge-receipt-adapter.js'), import('./contained-mission-bridge-stopped-scan.js'),
   ]);
-  const read = await createReceiptReadAdapters({ signal: new AbortController().signal });
+  const readAbort = new AbortController();
+  const exec: GhExec = (args, options) => reader.defaultGhExec(args, { ...options,
+    signal: options.signal ? AbortSignal.any([options.signal, readAbort.signal]) : readAbort.signal });
+  const transport = reader.ghGraphqlTransport(exec);
+  const read = await createReceiptReadAdapters({ signal: readAbort.signal, exec, transport });
   const { compareBridgeLedgerRange } = await import('./contained-mission-bridge-ledger.js');
   const write = await deps.ports.revisionPublicationAdapters();
-  return assembleLiveBridge({ ...deps, protectedSetDigest: missionProtectedSetDigest,
-    ledgerCompare: (repository, start, head, signal) => compareBridgeLedgerRange(repository, start, head, undefined, signal),
-    readPr: ref => reader.readPullRequest(reader.ghGraphqlTransport(), ref),
-    headIsDescendant: (chain, head, signal) => readBridgeAncestry(chain, head, signal, reader.defaultGhExec),
-    stoppedRead: stoppedChainPrReader(),
+  const assembled = await assembleLiveBridge({ ...deps, protectedSetDigest: missionProtectedSetDigest,
+    ledgerCompare: (repository, start, head, signal) => compareBridgeLedgerRange(repository, start, head, exec, signal),
+    readPr: ref => reader.readPullRequest(transport, ref),
+    headIsDescendant: (chain, head, signal) => readBridgeAncestry(chain, head, signal, exec),
+    stoppedRead: stoppedChainPrReader(transport),
     publication: { ...read, ...write, checkEnabled: typeof deps.ports.publishVerifyCheck === 'function' },
   });
+  for (const service of [assembled.live, assembled.stoppedScan]) {
+    const stop = service.stop.bind(service);
+    service.stop = async () => { readAbort.abort(); await stop(); };
+  }
+  const recover = assembled.revisionRecovery;
+  assembled.revisionRecovery = async signal => {
+    const abort = () => { readAbort.abort(); };
+    if (signal.aborted) abort();
+    readAbort.signal.throwIfAborted();
+    signal.addEventListener('abort', abort, { once: true });
+    try { await recover(signal); } finally { signal.removeEventListener('abort', abort); }
+  };
+  return assembled;
 }

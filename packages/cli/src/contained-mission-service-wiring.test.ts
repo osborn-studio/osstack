@@ -227,7 +227,9 @@ describe("live assembly configuration validation", () => {
       launchCaps: { executor_seconds: 600, verify_seconds: 120 } });
     expect(ports.revisionPublication).toBe(assembly.publication);
     expect(assembly.grants).toBeDefined();
-    await assembly.live.stop(); await assembly.stoppedScan.stop(); await service.close();
+    await assembly.live.stop();
+    await expect(assembly.revisionRecovery(new AbortController().signal)).rejects.toThrow();
+    await assembly.stoppedScan.stop(); await service.close();
   });
   it("installs launch, publication, grant and scan services without starting work", async () => {
     const f = setup(); liveConfiguration(f);

@@ -15,7 +15,7 @@ export async function compareBridgeLedgerRange(repository: string, start: string
   const commits: string[] = []; let total: number | undefined;
   for (let page = 1; page <= 100; page++) {
     signal?.throwIfAborted();
-    const response = await exec(['api', `repos/${repository}/compare/${start}...${head}?per_page=100&page=${page}`], { timeoutMs: 30_000 });
+    const response = await exec(['api', `repos/${repository}/compare/${start}...${head}?per_page=100&page=${page}`], { timeoutMs: 30_000, ...(signal ? { signal } : {}) });
     signal?.throwIfAborted();
     if (response.exitCode !== 0) throw Error('bridge_ledger_read_failed');
     const facts = pageSchema.parse(JSON.parse(response.stdout) as unknown);
