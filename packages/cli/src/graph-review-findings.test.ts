@@ -73,8 +73,11 @@ it.each(['review', 'tests', 'tests-slow-stop', 'unknown'] as const)('settles sto
       const deadline = Date.now() + 15000;
       for (;;) { try { await readFile(join(f.root, 'command-started')); break; } catch { if (Date.now() > deadline) throw Error('command did not start'); await new Promise(resolve => setTimeout(resolve, 15)); } }
     } else await f.until(run.graphRunId, () => f.reviewStarted());
-    f.grant(false);
     const before = await f.status(run.graphRunId);
+    // Revoke and persist cancellation without yielding. Otherwise a sibling can
+    // observe revoked execution permission before the cancel intent is persisted and
+    // correctly retain an unknown outcome instead of settling a cancelled run.
+    f.grant(false);
     await f.service.handle(f.connection, 'graph.cancel', { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, idempotencyKey: 'cancel', graphRunId: run.graphRunId, expectedRevision: before.revision });
     await f.service.close();
     const branch = mode.startsWith('tests') ? 'tests' : 'review';
