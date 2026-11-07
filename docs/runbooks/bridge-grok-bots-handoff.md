@@ -15,6 +15,7 @@
 | PR Merger | 按现有合并流程和仓库规则执行合并 | 合并前重读 head、检查、批准和线程状态。验证完成不能代替合并门槛 |
 | Merger Order Bot | 用 labels 表达合并顺序 | 沿用现有标签名和排序约定；标签表示调度意图，不授予权限，也不代替检查 |
 | Chief of Staff | 协调上述工作、追踪阻塞与证据 | 协调验证工程师、Watcher、Merger 和 Order；从现有平台读取配置与运行记录，汇总交接表 |
+| Reviewer（当前暂停） | 用户确认不在 Watcher/Merger 主循环内；hourly 例程暂停，最近记录 `10/10`，未见正式修改请求证据 | [可粘贴的沙箱 Reviewer 草案](bridge-reviewer-routine-draft.md) 保持 disabled/COMMENT-only，独立 App D 与状态型 review 验收仍待证据 |
 
 同一台机器、同一个 `gh` 登录下的多个角色，不自动构成多个独立 GitHub 主体或多个有效批准。`Rubebun-Jadeem` 是现有 User 账号；角色名称也不证明实际写入凭证。每个角色是否使用独立环境或覆盖令牌，要由运行配置读回确认。
 
@@ -115,3 +116,5 @@ Mac mini 负责 osstack 守护进程、签名授权校验、本地账本与回�
 App review 是否计入批准、由谁给出计入的批准，以及规则与身份迁移顺序，继续按阶段 6 规格与 ADR 处理；不得从“Watcher 目前负责 approve”推导为“App D 的 approve 已满足保护规则”。当前个人流程与未来 App 合同并列记录，迁移完成后再按证据更新登记。
 
 CoS 汇总 §5 表格，验证工程师提交原技能的增量 PR，Watcher 提供目标 head 的运行证据，运营者与仓库管理员补 App/规则的实际读回。只有相应验收门通过后才更新“已迁移/已上线”状态；本文本身没有完成阶段 5-G、阶段 6 或生产启动。
+
+最新补充：Reviewer 暂停且没有正式 `CHANGES_REQUESTED` 证据，意味着当前主循环未提供已证明的同 PR 修订触发来源。已准备[独立 App D Reviewer 例程草案](bridge-reviewer-routine-draft.md)，初始只登记沙箱、暂停且为 COMMENT-only；它没有被发送或启用，不能用共享 `Rubebun-Jadeem` 的另一个例程替代独立 App D。
