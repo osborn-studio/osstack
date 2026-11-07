@@ -78,7 +78,7 @@ it("adds the five tables in migration 51 additively and reopens cleanly from sch
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(51);
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   const after = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as Array<{ name: string }>).map(t => t.name);
-  expect(after.filter(t => !before.includes(t) && !t.startsWith("engineering_merger_shadow_"))).toEqual([
+  expect(after.filter(t => !before.includes(t) && !t.startsWith("engineering_merger_shadow_") && t !== "engineering_host_processes")).toEqual([
     "engineering_publication_intents", "engineering_revision_chain_events", "engineering_revision_chains", "engineering_revision_reservations", "engineering_shadow_decisions",
   ]);
   expect(db.pragma("foreign_key_check")).toEqual([]);

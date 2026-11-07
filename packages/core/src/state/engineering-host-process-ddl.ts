@@ -1,11 +1,7 @@
 /**
  * W13-A: host child-process ledger (design docs/design/2026-11-06-w13-host-git-survival.md section 3.3).
  *
- * NOT REGISTERED YET. Migration ids must be contiguous, and 52 (App E shadow merger) and 53 (phase 5
- * revision chain) are not on main yet. When they land, append
- *   { id: 54, name: "engineering_host_processes", sql: ENGINEERING_HOST_PROCESS_DDL }
- * to MIGRATIONS (or the next free id at that time) and bump the schema-version gates / upgrade tests.
- * Until then this DDL is applied only by the tests (on top of main's current schema).
+ * Registered as migration 54 ("engineering_host_processes") in migrations.ts.
  *
  * Additive only: new table, indexes and triggers. Nothing in the migration-50 tables is rebuilt.
  *
