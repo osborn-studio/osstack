@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { HostProcessStore } from '@osstack/core';
 import { LiveReconciler, syncLiveChild } from './contained-mission-bridge-live.js';
 import { dispatched, setup } from './contained-mission-revision.testkit.js';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
@@ -159,6 +160,59 @@ describe('live reconciler', () => {
     const second = service(f);
     await second.live.scan();
     expect(second.cancelChild).toHaveBeenCalledWith(expect.objectContaining({ chain_id: f.chain.chain_id }), 'base_changed', expect.any(AbortSignal));
+  });
+
+  it('retries cancellation for a legacy closed row whose stop reason still says child_halted', async () => {
+    const f = setup();
+    const child = await dispatched(f);
+    f.rig.chains.stopLive(f.chain.chain_id, child.chain.revision, 'child_halted', f.clock.now);
+    // Seed the legacy close transaction directly; newer stores must not rewrite immutable closed rows.
+    f.rig.db.prepare("UPDATE engineering_revision_chains SET state='closed',revision=revision+1 WHERE chain_id=?")
+      .run(f.chain.chain_id);
+    f.rig.chains.appendEvent(f.chain.chain_id, 'transition', { from: 'awaiting_decision', to: 'closed', reason: 'pr_closed' }, f.clock.now);
+    const first = service(f);
+    first.cancelChild.mockRejectedValueOnce(Error('temporary_stop_failure'));
+    await first.live.scan();
+    expect(first.cancelChild).toHaveBeenCalledWith(expect.objectContaining({ chain_id: f.chain.chain_id }), 'pr_closed', expect.any(AbortSignal));
+    const restarted = service(f);
+    await restarted.live.scan();
+    expect(restarted.cancelChild).toHaveBeenCalledWith(expect.objectContaining({ chain_id: f.chain.chain_id }), 'pr_closed', expect.any(AbortSignal));
+  });
+
+  it.each(['abandon', 'takeover'])('retries a human %s cancellation after restart', async reason => {
+    const f = setup();
+    const child = await dispatched(f);
+    f.rig.chains.closeLive(f.chain.chain_id, child.chain.revision, reason, f.clock.now);
+    const first = service(f);
+    first.cancelChild.mockRejectedValueOnce(Error('temporary_stop_failure'));
+    await first.live.scan();
+    expect(first.cancelChild).toHaveBeenCalledWith(expect.objectContaining({ chain_id: f.chain.chain_id }), reason, expect.any(AbortSignal));
+    const restarted = service(f);
+    await restarted.live.scan();
+    expect(restarted.cancelChild).toHaveBeenCalledWith(expect.objectContaining({ chain_id: f.chain.chain_id }), reason, expect.any(AbortSignal));
+  });
+
+  it.each(['no_record', 'registered', 'released', 'uncertain'] as const)('preserves push receipts and chooses the stop reason from %s evidence', async evidence => {
+    const f = setup();
+    const child = await dispatched(f);
+    const recorded = f.rig.chains.recordIntent(f.chain.chain_id, child.chain.revision, { kind: 'push', branch: f.chain.branch,
+      expected_old_head: f.chain.published_head, expected_base_sha: f.chain.published_base, new_head: oid('2'), child_mission_id: child.child_mission_id }, f.clock.now);
+    if (evidence === 'registered' || evidence === 'released') {
+      const journal = new HostProcessStore(f.rig.attention, f.rig.owner, { clock: () => ++f.clock.now });
+      journal.launching({ op_id: 'hp_livecycle', mission_id: child.child_mission_id, kind: 'git_push',
+        remote_target: 'o/r#refs/heads/topic', local_target: `${f.rig.root}/repo#refs/heads/topic`, intent_id: recorded.intent.intent_id,
+        argv_digest: '5'.repeat(64), boot_id: 'test', marker: { path: `${f.rig.root}/marker`, dev: '1', ino: '1' } });
+      journal.registered('hp_livecycle', { pid: 12345, pgid: 12345, leader_start: 'test' });
+      if (evidence === 'released') journal.release('hp_livecycle', () => {});
+    }
+    if (evidence === 'uncertain') f.rig.chains.settleIntent(recorded.intent.intent_id, 'uncertain', f.clock.now);
+    f.rig.db.prepare("UPDATE engineering_contained_missions SET state='awaiting_decision',revision=revision+1 WHERE mission_id=?").run(child.child_mission_id);
+    const before = f.rig.chains.getIntent(recorded.intent.intent_id);
+    syncLiveChild(f.deps, f.chain.chain_id, () => false);
+    expect(f.rig.chains.get(f.chain.chain_id).stop_reason).toBe(evidence === 'released' || evidence === 'uncertain' ? 'intent_uncertain' : 'child_halted');
+    expect(f.rig.chains.getIntent(recorded.intent.intent_id)).toEqual(before);
+    expect(f.reservations()[0]!.state).toBe('dispatched');
+    expect(f.rig.missions.claim(child.child_mission_id).state).toBe('active');
   });
 
   it('shutdown returns even when a legacy read cannot be aborted', async () => {
