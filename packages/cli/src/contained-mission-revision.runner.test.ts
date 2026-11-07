@@ -338,6 +338,7 @@ describe('a revision child under the runner', () => {
     const h = await harness();
     let revisions = 0;
     h.ports.revisionPublication = {
+      recoverRevision: async () => 'fresh',
       publishRevision: async input => {
         revisions++;
         input.beforeRemoteMutation('push');
@@ -355,6 +356,38 @@ describe('a revision child under the runner', () => {
     expect((await h.step(5)).state).toBe('pr_opened');
     expect(revisions).toBe(1);
     expect(h.calls.publish).toBe(0);
+  });
+
+  it('does not consume a delivery attempt when step 0 has a retryable read failure', async () => {
+    const h = await harness();
+    const read = vi.fn(async () => { throw Object.assign(Error('CONTAINED_REVISION_RECEIPT_READ_RETRYABLE'), { retryableReceiptRead: true }); });
+    h.ports.revisionPublication = { recoverRevision: read, publishRevision: async () => { throw Error('unexpected_push'); },
+      confirm: () => { throw Error('unexpected_confirm'); }, reconcileReceipt: async () => {},
+      publishCheck: async () => { throw Error('unexpected_check'); } };
+    await expect(h.step(5)).rejects.toThrow('RECEIPT_READ_RETRYABLE');
+    expect(h.get().state).toBe('delivering');
+    expect(h.events().filter(e => e.kind === 'delivery_attempt')).toHaveLength(0);
+    await expect(h.step()).rejects.toThrow('RECEIPT_READ_RETRYABLE');
+    expect(h.events().filter(e => e.kind === 'delivery_attempt')).toHaveLength(0);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it('delivers a landed revision through confirmation without another push', async () => {
+    const h = await harness();
+    const publishRevision = vi.fn(async () => { throw Error('duplicate_push'); });
+    const confirm = vi.fn(input => {
+      expect(input.variant).toBe('landed');
+      const current = h.get();
+      return h.ports.store.transition(h.childId, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: {} } }, 20_000);
+    });
+    h.ports.revisionPublication = {
+      recoverRevision: async input => ({ pushed_commit: input.permit.head, pr: { number: 7, url: 'https://example.invalid/pull/7', reused: true },
+        base_head: oid('a'), intent_id: 'pi_landed', op_id: 'hp_landed', push_range: [input.permit.head], range_sha256: 'a'.repeat(64), landed: true }),
+      publishRevision, confirm, reconcileReceipt: async () => {}, publishCheck: async () => ({ check_run_id: 0, created: false }),
+    };
+    expect((await h.step(5)).state).toBe('pr_opened');
+    expect(publishRevision).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledOnce();
   });
 
   describe('budget and grant stops', () => {

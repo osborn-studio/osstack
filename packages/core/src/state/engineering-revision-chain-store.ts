@@ -102,6 +102,10 @@ export class RevisionChainStore {
     if (!Number.isSafeInteger(afterSeq) || afterSeq < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 500) fail("invalid_limit");
     return this.db.prepare("SELECT * FROM engineering_revision_chain_events WHERE chain_id=? AND seq>? ORDER BY seq LIMIT ?").all(chainId, afterSeq, limit) as RevisionChainEvent[];
   }
+  /** The receipt range is bound to an intent, not to the age of its chain. */
+  pushRangeEvent(chainId: string, intentId: string): RevisionChainEvent | undefined {
+    return this.db.prepare("SELECT * FROM engineering_revision_chain_events WHERE chain_id=? AND kind='push_range' AND json_extract(payload_json, '$.intent_id')=? ORDER BY seq DESC LIMIT 1").get(chainId, intentId) as RevisionChainEvent | undefined;
+  }
   shadowDecisions(chainId: string): ShadowDecisionRow[] {
     return this.db.prepare("SELECT * FROM engineering_shadow_decisions WHERE chain_id=? ORDER BY created_at,head_sha,action").all(chainId) as ShadowDecisionRow[];
   }
@@ -110,6 +114,12 @@ export class RevisionChainStore {
   }
   intents(chainId: string): PublicationIntent[] {
     return this.db.prepare("SELECT * FROM engineering_publication_intents WHERE chain_id=? ORDER BY created_at,intent_id").all(chainId) as PublicationIntent[];
+  }
+  /** Keyset page across all chains, including stopped and closed chains. */
+  pendingPushIntents(afterIntentId = '', limit = 10): PublicationIntent[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
+    return this.db.prepare("SELECT * FROM engineering_publication_intents WHERE kind='push' AND state='pending' AND intent_id>? ORDER BY intent_id LIMIT ?")
+      .all(afterIntentId, limit) as PublicationIntent[];
   }
   getIntent(intentId: string): PublicationIntent { return this.intent(intentId); }
   confirmedPushHeads(chainId: string): string[] {
@@ -280,6 +290,12 @@ export class RevisionChainStore {
         if (bound) {
           chain = this.update(chain, { state: "awaiting_review", published_head: before.new_head!, published_base: before.expected_base_sha! }, "push_confirmed",
             { head: before.new_head!, base: before.expected_base_sha! }, now);
+        } else if (before.kind === "push" && chain.state === "awaiting_decision"
+          && chain.current_mission_id === before.child_mission_id && chain.published_head === before.expected_old_head
+          && chain.published_base === before.expected_base_sha && chain.branch === before.branch) {
+          // The caller proved the remote receipt before confirming. Keep the human stop while recording the landed head.
+          chain = this.update(chain, { published_head: before.new_head! }, "receipt_confirmed_while_stopped",
+            { head: before.new_head!, base: chain.published_base }, now);
         }
         // A closed chain's active reservations were already voided by the close itself (closeLive or a decided close).
         if (before.kind === "push" && chain.state !== "closed") this.settlePublishedReservation(before, bound, now);
