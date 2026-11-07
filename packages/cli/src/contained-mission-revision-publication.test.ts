@@ -780,13 +780,14 @@ describe('revision refusal D4', () => {
   });
 });
 
-it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readback_mismatch', 'base_changed', 'pr_closed', 'base_changed_before_release'] as const)('%s: local lease push with W13 binding', async scenario => {
+it.each(['success', 'success_three_commits', 'lease_ancestor', 'stale', 'lease_rejected', 'readback_mismatch', 'base_changed', 'pr_closed', 'base_changed_before_release'] as const)('%s: local lease push with W13 binding', async scenario => {
   const root = mkdtempSync(join(tmpdir(), 'revision-push-'));
   const repo = join(root, 'repo'); const bare = join(root, 'bare.git');
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   try {
     execFileSync('git', ['init', '-q', '-b', 'topic', repo]);
     git(repo, 'config', 'user.name', 'Test'); git(repo, 'config', 'user.email', 'test@example.invalid');
+    git(repo, 'commit', '-q', '--allow-empty', '-m', 'ancestor'); const ancestor = git(repo, 'rev-parse', 'HEAD');
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'base'); const first = git(repo, 'rev-parse', 'HEAD');
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'revision'); const second = git(repo, 'rev-parse', 'HEAD');
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'outsider'); const third = git(repo, 'rev-parse', 'HEAD');
@@ -819,6 +820,9 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
         catch (error) { journal.stopped(opId, { proof: 'never_released', detail: {} }); throw error; }
         pushes++;
         if (scenario === 'stale' || scenario === 'lease_rejected') git(repo, 'push', '-q', 'origin', `${third}:refs/heads/topic`);
+        // An ordinary push accepts this ancestor reset. Only the exact old-head
+        // lease detects the intervening write and leaves the branch untouched.
+        if (scenario === 'lease_ancestor') git(repo, 'push', '-q', '--force', 'origin', `${ancestor}:refs/heads/topic`);
         let stdout = ''; let stderr = ''; let exitCode = 0;
         try { stdout = git(repo, ...args.slice(args.indexOf('push'))); } catch (error) {
           const failure = error as { status: number; stdout: Buffer; stderr: Buffer };
@@ -863,15 +867,15 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
         expect(deps.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_review', published_head: candidate });
       }
     } else {
-      await expect(call()).rejects.toThrow(scenario === 'stale' || scenario === 'readback_mismatch' ? 'READBACK_MISMATCH' : scenario === 'lease_rejected' ? 'push_rejected'
+      await expect(call()).rejects.toThrow(scenario === 'stale' || scenario === 'lease_ancestor' || scenario === 'readback_mismatch' ? 'READBACK_MISMATCH' : scenario === 'lease_rejected' ? 'push_rejected'
         : scenario === 'base_changed_before_release' ? 'base_changed' : 'PR_CHANGED_AFTER_PUSH');
       const intent = deps.chains.intents(chain.chain_id).filter(i => i.kind === 'push').at(-1)!;
-      expect(intent.state).toBe(scenario === 'readback_mismatch' || scenario === 'stale' ? 'uncertain' : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? 'failed' : 'confirmed');
+      expect(intent.state).toBe(scenario === 'readback_mismatch' || scenario === 'stale' || scenario === 'lease_ancestor' ? 'uncertain' : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? 'failed' : 'confirmed');
       if (scenario === 'lease_rejected') expect(intent.detail).toBe('push_rejected');
       expect(deps.missions.get(id).state).toBe('awaiting_decision');
       if (scenario === 'base_changed' || scenario === 'pr_closed') expect(cancel).toHaveBeenCalledWith(id);
     }
-    expect(remoteHead()).toBe(scenario === 'stale' || scenario === 'success' ? third : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? first : candidate);
+    expect(remoteHead()).toBe(scenario === 'lease_ancestor' ? ancestor : scenario === 'stale' || scenario === 'success' ? third : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? first : candidate);
     expect(pushes).toBe(scenario === 'base_changed_before_release' ? 0 : 1);
     expect(attempts).toBe(1);
   } finally { rmSync(root, { recursive: true, force: true }); }

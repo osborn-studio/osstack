@@ -34,6 +34,8 @@ type Op =
   | { t: "progress"; mode: "normal" | "nosettle" | "nointent" | "uncertain" }
   | { t: "forcePush" }
   | { t: "recover" }
+  | { t: "cancel" }
+  | { t: "expireGrant" }
   | { t: "goodRound"; who: number; approve: boolean; last: "normal" | "nosettle" | "nointent" | "uncertain" };
 
 // Biased towards the productive path (registered reviewer, current head, real feedback) so that reservations, dispatch, publish and
@@ -51,6 +53,8 @@ const opArb: fc.Arbitrary<Op> = fc.oneof(
   { weight: 9, arbitrary: fc.record({ t: fc.constant("progress" as const), mode: fc.constantFrom("normal" as const, "normal" as const, "normal" as const, "normal" as const, "nosettle" as const, "nointent" as const, "uncertain" as const) }) },
   { weight: 1, arbitrary: fc.constant({ t: "forcePush" as const }) },
   { weight: 2, arbitrary: fc.constant({ t: "recover" as const }) },
+  { weight: 1, arbitrary: fc.constant({ t: "cancel" as const }) },
+  { weight: 1, arbitrary: fc.constant({ t: "expireGrant" as const }) },
   { weight: 5, arbitrary: fc.record({ t: fc.constant("goodRound" as const), who: fc.nat(1), approve: fc.nat(4).map(n => n === 0), last: fc.constantFrom("normal" as const, "normal" as const, "normal" as const, "nosettle" as const, "nointent" as const, "uncertain" as const) }) },
 );
 const configArb = fc.record({
@@ -82,7 +86,7 @@ let db: ReturnType<typeof openDb>;
 let storeA: RevisionChainStore; let storeB: RevisionChainStore;
 let scopeId: string;
 let counter = 0; let reviewCounter = 1;
-const coverage = { runs: 0, reserved: 0, dispatched: 0, confirmed: 0, uncertain: 0, ready: 0, shadowReserve: 0, stops: new Map<string, number>(), closed: 0 };
+const coverage = { runs: 0, multiCommit: 0, reserved: 0, dispatched: 0, confirmed: 0, uncertain: 0, ready: 0, shadowReserve: 0, stops: new Map<string, number>(), closed: 0 };
 
 beforeAll(() => {
   db = openDb({ path: ":memory:" });
@@ -109,7 +113,7 @@ function finishChild(id: string): void {
 }
 
 interface Run {
-  mode: "shadow" | "live"; chainId: string; w: World; now: number; initialHead: string; ourHeads: string[];
+  mode: "shadow" | "live"; chainId: string; w: World; now: number; initialHead: string; ourHeads: string[]; ranges: Map<string, string[]>;
   stopAt: { rounds: number; reservations: number; intents: number } | null; lastRevision: number;
 }
 
@@ -157,8 +161,10 @@ function completePublish(r: Run, intent: PublicationIntent): void {
 function pendingPush(r: Run): PublicationIntent | undefined {
   return storeA.intents(r.chainId).find(i => i.kind === "push" && i.state === "pending");
 }
-function recordPush(r: Run, c: RevisionChain, newHead: string): PublicationIntent {
-  return storeA.recordIntent(c.chain_id, c.revision, { kind: "push", branch: c.branch, expected_old_head: c.published_head, new_head: newHead, expected_base_sha: c.published_base, child_mission_id: c.current_mission_id! }, r.now).intent;
+function recordPush(r: Run, c: RevisionChain, newHead: string, commits: string[] = [newHead]): PublicationIntent {
+  const intent = storeA.recordIntent(c.chain_id, c.revision, { kind: "push", branch: c.branch, expected_old_head: c.published_head, new_head: newHead, expected_base_sha: c.published_base, child_mission_id: c.current_mission_id! }, r.now).intent;
+  r.ranges.set(intent.intent_id, commits);
+  return intent;
 }
 
 function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"): void {
@@ -170,7 +176,9 @@ function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"
   } else if (c.state === "revising") {
     const next = r.w.fresh();
     if (mode === "nointent") { if (r.w.state === "OPEN") { r.w.push(next); } return; } // pushed without an intent: indistinguishable from an outsider
-    recordPush(r, c, next);
+    // Multi-commit revisions make the range assertion stronger than head membership.
+    const commits = counter % 2 === 0 ? [next, r.w.fresh(), r.w.fresh()] : [next];
+    recordPush(r, c, commits.at(-1)!, commits);
   } else if (c.state === "publishing") {
     const intent = pendingPush(r);
     if (!intent) { recordPush(r, c, r.w.fresh()); return; } // an earlier attempt failed: retry as a fresh intent
@@ -180,7 +188,7 @@ function progress(r: Run, mode: "normal" | "nosettle" | "nointent" | "uncertain"
     }
     // Nothing the publisher pushes may land on a branch that already carries a commit it did not push.
     for (const commit of r.w.branchCommits()) expect(r.ourHeads, `foreign commit ${commit} under a publisher push`).toContain(commit);
-    r.w.push(intent.new_head!); r.ourHeads.push(intent.new_head!);
+    for (const commit of r.ranges.get(intent.intent_id)!) { r.w.push(commit); r.ourHeads.push(commit); }
     if (mode === "nosettle") return; // crash after the push, before the receipt
     if (mode === "uncertain") { storeA.settleIntent(intent.intent_id, "uncertain", r.now); return; }
     completePublish(r, intent);
@@ -237,6 +245,14 @@ function apply(r: Run, op: Op): void {
       return;
     }
     case "recover": recover(r); return;
+    case "cancel": case "expireGrant": {
+      if (r.mode !== "live") return;
+      const chain = storeA.get(r.chainId);
+      if (chain.state === "closed" || chain.state === "awaiting_decision") return;
+      if (op.t === "cancel" && chain.current_mission_id) finishChild(chain.current_mission_id);
+      storeA.stopLive(chain.chain_id, chain.revision, op.t === "cancel" ? "child_cancelled" : "grant_expired", r.now);
+      return;
+    }
     case "goodRound": {
       // The whole productive path in one step: a qualifying review, a cycle, then the publisher drives the child to a confirmed push.
       apply(r, { t: "review", who: op.who, st: op.approve ? 0 : 1, stale: null, fb: true });
@@ -315,12 +331,43 @@ function checkStopOnUnexplainedHead(r: Run): void {
  * at push time in `progress`: never onto a branch holding a foreign commit.) */
 function checkBranch(r: Run): void {
   const c = storeA.get(r.chainId);
-  const confirmed = storeA.intents(r.chainId).filter(i => i.kind === "push" && i.state === "confirmed").map(i => i.new_head!);
+  const confirmed = storeA.intents(r.chainId).filter(i => i.kind === "push" && i.state === "confirmed").flatMap(i => r.ranges.get(i.intent_id)!);
   if (r.w.state === "OPEN" && c.state !== "awaiting_decision" && c.state !== "closed") {
     expect(r.w.head).toBe(c.published_head);
     for (const commit of r.w.branchCommits()) expect(confirmed, `commit ${commit} on the branch`).toContain(commit);
+    if (r.mode === "live") {
+      const intents = storeA.intents(r.chainId).filter(i => i.state === "confirmed" && (i.kind === "open_pr" || i.kind === "push"));
+      assertExactPublicationRanges(["h0", ...r.w.branchCommits().reverse()], intents, r.ranges);
+    }
   }
 }
+
+function assertExactPublicationRanges(commits: string[], intents: PublicationIntent[], ranges: Map<string, string[]>): void {
+  const baseline = intents.filter(i => i.kind === "open_pr");
+  expect(baseline, "one confirmed baseline intent").toHaveLength(1);
+  const ordered = [...intents].sort((a, b) => {
+    if (a.kind === "open_pr") return -1;
+    if (b.kind === "open_pr") return 1;
+    return commits.indexOf(a.new_head!) - commits.indexOf(b.new_head!);
+  });
+  const journaled = ordered.flatMap(i => {
+    const range = ranges.get(i.intent_id);
+    expect(range, `range for ${i.intent_id}`).toBeDefined();
+    expect(range!.at(-1)).toBe(i.new_head);
+    return range!;
+  });
+  expect(journaled, "confirmed ranges exactly reproduce root-start..published-head").toEqual(commits);
+}
+
+it("rejects a missing baseline, missing intermediate commit and reordered range", () => {
+  const baseline = { intent_id: "baseline", kind: "open_pr", state: "confirmed", new_head: "root" } as PublicationIntent;
+  const push = { intent_id: "push", kind: "push", state: "confirmed", new_head: "last" } as PublicationIntent;
+  const ranges = new Map([["baseline", ["root"]], ["push", ["middle", "last"]]]);
+  expect(() => assertExactPublicationRanges(["root", "middle", "last"], [push], ranges)).toThrow();
+  expect(() => assertExactPublicationRanges(["root", "middle", "last"], [baseline, push], new Map([["baseline", ["root"]], ["push", ["last"]]]))).toThrow();
+  expect(() => assertExactPublicationRanges(["root", "middle", "last"], [baseline, push], new Map([["baseline", ["root"]], ["push", ["last", "middle"]]]))).toThrow();
+  assertExactPublicationRanges(["root", "middle", "last"], [baseline, push], ranges);
+});
 
 function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "none" | "past" | "future" }, ops: Op[]): void {
   const w = new World(); const now = 5 * HOUR;
@@ -329,7 +376,13 @@ function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "non
   const deadline = config.deadline === "none" ? null : config.deadline === "past" ? now - 1 : now + 6 * HOUR;
   const base = { root_mission_id: root, repository: "o/r", pr_number: counter, branch: "osstack/mission/x", base_ref: "main", published_head: "h0", published_base: "b0", trace_id: "t", review_deadline: deadline };
   const chain = config.mode === "live" ? storeA.createLiveChain({ ...base, grant: { rounds: config.rounds } }, now) : storeA.createShadowChain(base, now);
-  const r: Run = { mode: config.mode, chainId: chain.chain_id, w, now, initialHead: "h0", ourHeads: [], stopAt: null, lastRevision: 1 };
+  const r: Run = { mode: config.mode, chainId: chain.chain_id, w, now, initialHead: "h0", ourHeads: [], ranges: new Map(), stopAt: null, lastRevision: 1 };
+  if (config.mode === "live") {
+    const baseline = storeA.recordIntent(chain.chain_id, chain.revision, { kind: "open_pr", branch: chain.branch,
+      expected_old_head: "root-start", new_head: "h0", expected_base_sha: "b0" }, now).intent;
+    r.ranges.set(baseline.intent_id, ["h0"]);
+    storeA.settleIntent(baseline.intent_id, "confirmed", now);
+  }
   for (const op of ops) {
     apply(r, op);
     checkInvariants(r);
@@ -338,9 +391,10 @@ function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "non
   const end = storeA.get(r.chainId);
   coverage.runs += 1; if (end.state === "ready_for_human") coverage.ready += 1; if (end.state === "closed") coverage.closed += 1;
   if (end.stop_reason) coverage.stops.set(end.stop_reason, (coverage.stops.get(end.stop_reason) ?? 0) + 1);
+  coverage.multiCommit += [...r.ranges.values()].filter(range => range.length > 1).length;
   coverage.reserved += storeA.reservations(r.chainId).length;
   coverage.dispatched += storeA.reservations(r.chainId).filter(x => x.child_mission_id).length;
-  coverage.confirmed += storeA.intents(r.chainId).filter(i => i.state === "confirmed").length;
+  coverage.confirmed += storeA.intents(r.chainId).filter(i => i.kind === "push" && i.state === "confirmed").length;
   coverage.uncertain += storeA.intents(r.chainId).filter(i => i.state === "uncertain").length;
   coverage.shadowReserve += storeA.shadowDecisions(r.chainId).filter(d => d.action === "would_reserve").length;
   // Reconcile, then one last complete cycle, then judge the branch as a whole (invariants 4 and 6).
@@ -352,10 +406,10 @@ function runOne(config: { mode: "shadow" | "live"; rounds: 1 | 2; deadline: "non
   if (r.mode === "live") {
     const intents = storeA.intents(r.chainId).filter(i => i.kind === "push");
     for (const head of r.ourHeads) {
-      const intent = intents.find(i => i.new_head === head)!;
+      const intent = intents.find(i => r.ranges.get(i.intent_id)?.includes(head))!;
       expect(intent, `intent for ${head}`).toBeDefined();
-      if (intent.state === "uncertain") expect(r.w.head).not.toBe(head); // a human reconciles it; the branch moved on
-      else if (intent.state === "failed") expect(r.w.descends(r.w.head, head)).toBe(false); // the commit left the branch (an outsider reverted it)
+      if (intent.state === "uncertain") expect(r.w.head).not.toBe(intent.new_head); // a human reconciles it; the branch moved on
+      else if (intent.state === "failed") expect(r.w.descends(r.w.head, intent.new_head!)).toBe(false); // the commit left the branch (an outsider reverted it)
       else expect(intent.state).toBe("confirmed");
     }
     for (const i of intents.filter(x => x.state === "confirmed")) expect(r.ourHeads).toContain(i.new_head);
@@ -370,7 +424,7 @@ it(`keeps the chain invariants over ${RUNS} random interleavings`, () => {
   // The generator must actually reach the interesting states, or the invariants above prove nothing.
   if (RUNS >= 500) {
     expect(coverage.reserved).toBeGreaterThan(0); expect(coverage.dispatched).toBeGreaterThan(0); expect(coverage.confirmed).toBeGreaterThan(0);
-    expect(coverage.uncertain).toBeGreaterThan(0); expect(coverage.ready).toBeGreaterThan(0); expect(coverage.shadowReserve).toBeGreaterThan(0);
+    expect(coverage.multiCommit).toBeGreaterThan(0); expect(coverage.uncertain).toBeGreaterThan(0); expect(coverage.ready).toBeGreaterThan(0); expect(coverage.shadowReserve).toBeGreaterThan(0);
     for (const reason of ["external_write", "attribution_unknown", "base_changed", "reviewer_conflict", "rounds_exhausted"]) expect(coverage.stops.get(reason) ?? 0, reason).toBeGreaterThan(0);
   }
 }, 3_600_000);
