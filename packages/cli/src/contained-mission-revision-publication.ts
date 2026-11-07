@@ -130,10 +130,15 @@ export function createRevisionReceiptRecovery(deps: RevisionReceiptDeps) {
           base_head: intent.expected_base_sha, start_commit: spec.start_commit, head: intent.new_head, tree: child.candidate_tree,
           draft: publication.draft, pr: result.pr, verify: { argv: spec.verify.argv, exit_code: verified.exit_code, evidence: verified.evidence },
           tier: candidate.tier, migrations_changed: false, protected_paths_changed: false };
-        confirmRevisionPublication(deps, { chain_id: intent.chain_id, intent_id: intent.intent_id, child_mission_id: child.mission_id,
-          permit_revision: child.revision, evidence: { ...evidenceBody, evidence_digest: createHash('sha256').update(canonical(evidenceBody)).digest('hex') },
-          pr: { ...result.pr, reused: true }, range_sha256: result.range_sha256,
-          ...(child.state === 'cancel_requested' ? { variant: 'cancelled' as const } : {}) });
+        deps.chains.transaction(() => {
+          // Acquiring the writer lock can wait behind another recovery process.
+          // Preserve its committed receipt; pre-lock pending reads are not authority.
+          if (deps.chains.getIntent(intent.intent_id).state === 'confirmed') return;
+          confirmRevisionPublication(deps, { chain_id: intent.chain_id, intent_id: intent.intent_id, child_mission_id: child.mission_id,
+            permit_revision: child.revision, evidence: { ...evidenceBody, evidence_digest: createHash('sha256').update(canonical(evidenceBody)).digest('hex') },
+            pr: { ...result.pr, reused: true }, range_sha256: result.range_sha256,
+            ...(child.state === 'cancel_requested' ? { variant: 'cancelled' as const } : {}) });
+        });
       } else refuseRevisionPublicationAfterPush(deps, intent, 'route_changed');
     }
     return { visited: intents.length, complete: intents.length < limit,
