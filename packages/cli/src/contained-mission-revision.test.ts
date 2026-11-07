@@ -326,7 +326,7 @@ describe('dispatchRevision', () => {
 });
 
 describe('the launch port', () => {
-  const portFor = (f: Fixture) => createRevisionLaunchPort({ chains: f.rig.chains, access: f.deps.access, keys: f.deps.keys, now: f.deps.now, launchCaps: f.deps.launchCaps });
+  const portFor = (f: Fixture) => createRevisionLaunchPort({ chains: f.rig.chains, missions: f.rig.missions, access: f.deps.access, keys: f.deps.keys, now: f.deps.now, launchCaps: f.deps.launchCaps, enabled: () => f.flags.enabled });
   it('charges each launch against the child\'s slice, refunds the unused part, and halts the child when the slice is spent', async () => {
     const f = setup();
     const out = await dispatched(f);

@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { recordChildCancelFailure } from './contained-mission-bridge-cancel-failure.js';
 import {
   GRANT_LIMITS,
-  RENEWABLE_STOP_REASONS,
+  REFRESHABLE_STOP_REASONS,
   RevisionGrantError,
   assembleGrant,
   canonicalJson,
@@ -353,7 +353,7 @@ export class RevisionGrantService {
     if (chain.mode !== 'live') return err('chain_not_live');
     if (chain.repository !== this.options.registry.repository) return err('grant_repository_not_registered');
     const renewable = chain.state === 'awaiting_review' || chain.state === 'ready_for_human'
-      || (chain.state === 'awaiting_decision' && RENEWABLE_STOP_REASONS.has(chain.stop_reason ?? ''));
+      || (chain.state === 'awaiting_decision' && REFRESHABLE_STOP_REASONS.has(chain.stop_reason ?? ''));
     if (!renewable) return err('chain_not_renewable');
     let old: RevisionGrant;
     try { old = parseStoredGrant(chain.grant_json); } catch { return err('chain_grant_unreadable'); }

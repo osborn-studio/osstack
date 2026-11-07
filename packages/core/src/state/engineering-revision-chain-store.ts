@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AttentionOwner, AttentionStore } from "./attention-store.js";
 import type { ChainDecision, ChainMode, ChainState, ShadowAction } from "../bridge/revision-chain.js";
-import { LIVE_STOP_REASONS, RENEWABLE_STOP_REASONS, grantBindsChain, parseStoredGrant, type RevisionGrant } from "../bridge/revision-grant.js";
+import { LIVE_STOP_REASONS, REFRESHABLE_STOP_REASONS, SAME_CHILD_RESUMABLE, grantBindsChain, parseStoredGrant, type RevisionGrant } from "../bridge/revision-grant.js";
 
 export type ReservationState = "reserved" | "dispatched" | "void";
 export type IntentKind = "push" | "open_pr" | "check";
@@ -329,7 +329,7 @@ export class RevisionChainStore {
   }
 
   /** Replace a live chain's grant (appendix §5.1 "再授"). Only for `awaiting_review`/`ready_for_human`, or `awaiting_decision`
-   * stopped by `rounds_exhausted`/`grant_expired`/`grant_invalid`/`budget_exhausted`, with no unsettled push intent. The new grant
+   * stopped by a reason in `REFRESHABLE_STOP_REASONS`, with no unsettled push intent. The new grant
    * keeps the binding and scope, never lowers the allowance or a budget limit, and must carry `renews = {chain, ifRevision}`.
    * Authenticity (signature, live PR facts, principal) is the caller's; the store enforces monotonicity and the state contract. */
   replaceGrant(chainId: string, ifRevision: number, grant: RevisionGrant, now: number): ReplaceGrantResult {
@@ -341,7 +341,7 @@ export class RevisionChainStore {
       const next = (() => { try { return parseStoredGrant(JSON.stringify(grant)); } catch { return fail("grant_invalid"); } })();
       const old = (() => { try { return parseStoredGrant(chain.grant_json); } catch { return fail("chain_grant_unreadable"); } })();
       const reason = chain.stop_reason ?? "";
-      const stopped = chain.state === "awaiting_decision" && RENEWABLE_STOP_REASONS.has(reason);
+      const stopped = chain.state === "awaiting_decision" && REFRESHABLE_STOP_REASONS.has(reason);
       if (!stopped && chain.state !== "awaiting_review" && chain.state !== "ready_for_human") fail("state_denied");
       if (this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain') LIMIT 1").get(chainId)) fail("intent_unsettled");
       if (!grantBindsChain(next, chain) || next.scope_id !== old.scope_id || next.protected_set_digest !== old.protected_set_digest
@@ -365,9 +365,9 @@ export class RevisionChainStore {
             if (child.claim === "active") fail("child_claim_unreleased");
             to = "awaiting_review";
           } else {
-            // The child was parked by the grant or budget stop, not cancelled: resume the state it was stopped from.
-            const pushed = this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? LIMIT 1").get(chainId, chain.current_mission_id);
-            to = pushed ? "publishing" : "revising";
+            if (this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? AND state='confirmed' LIMIT 1").get(chainId, chain.current_mission_id)) fail("round_landed");
+            // The child remains stopped until its human decision passes the resume guard.
+            to = "awaiting_decision";
             // A budget stop parked this child with its slice used up: the raise the human just signed becomes more slice for the same child (used is kept).
             if (reason === "budget_exhausted") {
               const allocations = this.allocationsOf(chain);
@@ -382,13 +382,95 @@ export class RevisionChainStore {
         }
       }
       const headConsumed = Boolean(this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, chain.published_head));
-      const updated = this.update(chain, { state: to, grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms, ...(spentJson !== undefined ? { spent_json: spentJson } : {}) }, "grant_replaced",
+      const updated = this.update(chain, { state: to, ...(to === "awaiting_decision" && stopped ? { stop_reason: "child_halted" } : {}), grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms, ...(spentJson !== undefined ? { spent_json: spentJson } : {}) }, "grant_replaced",
         { head: chain.published_head, base: chain.published_base }, now);
       this.event(chainId, "grant_replaced", {
         grant_id: next.grant_id, from_grant_id: old.grant_id, rounds: { from: old.rounds, to: next.rounds }, expires_at: next.expires_at, budget: next.budget,
         restored_state: to, head_consumed: headConsumed, ...(topUp ? { top_up: topUp } : {}),
       }, now);
       return { chain: updated, head_consumed: headConsumed };
+    });
+  }
+
+  /** Resume a stopped round only after its child and push receipts are known to be safe. */
+  resumeChild(chainId: string, ifRevision: number, input: {
+    child_mission_id: string; expected_stop_reason: string; decision: string;
+  }, now: number): RevisionChain {
+    this.clock(now);
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live" || chain.state !== "awaiting_decision" || chain.stop_reason !== input.expected_stop_reason
+        || !SAME_CHILD_RESUMABLE.has(chain.stop_reason ?? "")) fail(`chain_not_resumable:${chain.stop_reason ?? chain.state}`);
+      if (chain.current_mission_id !== input.child_mission_id) fail("not_current_child");
+      if (!this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE chain_id=? AND child_mission_id=? AND state='dispatched'")
+        .get(chainId, input.child_mission_id)) fail("reservation_not_dispatched");
+      const child = (this.db.prepare("SELECT state,revision,stop_obligation FROM engineering_contained_missions WHERE mission_id=?")
+        .get(input.child_mission_id) as { state: string; revision: number; stop_obligation: number } | undefined) ?? fail("child_stop_unproven");
+      if (child.stop_obligation !== 0 || ["stop_unknown", "cancel_requested", "cancelled", "abandoned", "failed", "pr_opened"].includes(child.state)
+        || this.db.prepare("SELECT 1 FROM engineering_host_processes WHERE mission_id=? AND state<>'stopped' LIMIT 1").get(input.child_mission_id)) fail("child_stop_unproven");
+      if (!this.db.prepare("SELECT 1 FROM engineering_workspace_claims WHERE mission_id=? AND state='active'").get(input.child_mission_id)) fail("child_claim_released");
+      const halt = this.db.prepare("SELECT json_extract(payload_json,'$.reason') reason FROM engineering_contained_events WHERE mission_id=? AND kind='halted' ORDER BY seq DESC LIMIT 1")
+        .get(input.child_mission_id) as { reason: unknown } | undefined;
+      const reason = typeof halt?.reason === "string" ? halt.reason : "";
+      const allowed = child.state === "needs_reconciliation" && (reason.startsWith("orphaned_") || reason === "stop_evidence_recovered")
+        ? ["discard_changes", "adopt_worktree"].includes(input.decision)
+        : child.state === "awaiting_decision" && (
+          (reason === "repair_cycles_exhausted" && input.decision === "extra_repair")
+          || ((reason.startsWith("publication_failed:") || reason.startsWith("revalidation_failed:")) && input.decision === "approve_publication")
+          || (reason === "workspace_recovered" && input.decision === "resume_workspace")
+          || ((reason === "budget_exhausted" || reason.startsWith("grant_stopped:")) && ["resume_budget", "resume_grant"].includes(input.decision)));
+      if (!allowed) fail("decision_not_allowed");
+      if (this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain') LIMIT 1").get(chainId)) fail("intent_unsettled");
+      if (this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? AND state='confirmed' LIMIT 1")
+        .get(chainId, input.child_mission_id)) fail("round_landed");
+      this.assertGrantLive(chain);
+      const resumed = this.update(chain, { state: "revising", stop_reason: null }, "child_resumed", { head: chain.published_head, base: chain.published_base }, now);
+      this.event(chainId, "child_resumed", { child: input.child_mission_id, decision: input.decision, from_reason: chain.stop_reason,
+        child_state: child.state, child_revision: child.revision }, now);
+      this.event(chainId, "round_resumed", { child: input.child_mission_id, from_reason: chain.stop_reason }, now);
+      return resumed;
+    });
+  }
+
+  /** A recovered push has already landed; confirmation reopens review without another push. */
+  resumeLanded(chainId: string, ifRevision: number, intentId: string, now: number): RevisionChain {
+    this.clock(now);
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live" || !["awaiting_decision", "revising", "publishing"].includes(chain.state)
+        || (chain.state === "awaiting_decision" && chain.stop_reason !== "intent_uncertain" && !SAME_CHILD_RESUMABLE.has(chain.stop_reason ?? ""))) fail("confirm_route_changed");
+      const intent = this.intent(intentId);
+      if (intent.chain_id !== chainId || intent.kind !== "push" || intent.state !== "confirmed"
+        || intent.child_mission_id !== chain.current_mission_id || intent.new_head !== chain.published_head
+        || intent.expected_base_sha !== chain.published_base) fail("confirm_route_changed");
+      const latest = this.db.prepare("SELECT intent_id FROM engineering_publication_intents WHERE chain_id=? AND child_mission_id=? AND kind='push' ORDER BY created_at DESC,intent_id DESC LIMIT 1")
+        .get(chainId, intent.child_mission_id) as { intent_id: string } | undefined;
+      if (latest?.intent_id !== intentId) fail("confirm_route_changed");
+      if (this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state IN ('pending','uncertain') LIMIT 1").get(chainId)) fail("intent_unsettled");
+      if (!this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE chain_id=? AND child_mission_id=? AND head_sha=? AND state='dispatched'")
+        .get(chainId, intent.child_mission_id, intent.expected_old_head)) fail("confirm_route_changed");
+      const child = this.db.prepare("SELECT state,candidate_head,stop_obligation FROM engineering_contained_missions WHERE mission_id=?")
+        .get(intent.child_mission_id) as { state: string; candidate_head: string | null; stop_obligation: number } | undefined;
+      if (child?.state !== "delivering" || child.candidate_head !== intent.new_head || child.stop_obligation !== 0
+        || this.db.prepare("SELECT 1 FROM engineering_host_processes WHERE mission_id=? AND state<>'stopped' LIMIT 1").get(intent.child_mission_id)) fail("confirm_route_changed");
+      const resumed = this.update(chain, { state: "awaiting_review", stop_reason: null }, "round_confirmed_after_recovery",
+        { head: chain.published_head, base: chain.published_base }, now);
+      this.event(chainId, "round_confirmed_after_recovery", { intent_id: intentId, child: intent.child_mission_id, head: intent.new_head }, now);
+      return resumed;
+    });
+  }
+
+  /** Replace a resumable stop with the proven terminal outcome of its child. */
+  restopLive(chainId: string, ifRevision: number, to: "child_cancelled" | "child_failed", now: number): RevisionChain {
+    this.clock(now);
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live" || chain.state !== "awaiting_decision" || !SAME_CHILD_RESUMABLE.has(chain.stop_reason ?? "")) fail("state_denied");
+      if (!chain.current_mission_id) fail("not_current_child");
+      const child = this.db.prepare("SELECT state,stop_obligation FROM engineering_contained_missions WHERE mission_id=?")
+        .get(chain.current_mission_id) as { state: string; stop_obligation: number } | undefined;
+      if (child?.stop_obligation !== 0 || (to === "child_cancelled" ? !["cancelled", "abandoned"].includes(child.state) : child.state !== "failed")) fail("child_stop_unproven");
+      return this.update(chain, { stop_reason: to }, to, { head: chain.published_head, base: chain.published_base }, now);
     });
   }
 
