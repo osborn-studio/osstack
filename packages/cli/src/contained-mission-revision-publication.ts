@@ -471,6 +471,18 @@ function refuseRevisionPublicationAfterPush(deps: RevisionReceiptDeps, intent: P
   });
 }
 
+/** A nonzero exit and an unchanged ref do not prove rejection: an accepted receive-pack may finish later. */
+function explicitlyRejectedPush(result: { stdout: string; stderr: string; exitCode: number }, ref: string): boolean {
+  const lines = result.stdout.split(/\r?\n/);
+  if (lines.some(line => {
+    const fields = line.split('\t');
+    return fields[0] === '!' && fields[1]?.split(':').at(-1) === ref
+      && /^\[(?:rejected|remote rejected)\](?: |$)/.test(fields[2] ?? '');
+  })) return true;
+  // stderr text alone carries no structured proof that a credential failure preceded receive-pack.
+  return false;
+}
+
 /** One lease push. Pending/uncertain receipts are routed to reconciliation; this function never retries them. */
 export async function publishRevision(deps: RevisionPublicationDeps, input: RevisionPublicationInput): Promise<RevisionPublicationResult> {
   const { mission, spec, permit, signal } = input;
@@ -572,7 +584,7 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
   // After intent creation, a read failure cannot prove whether the push landed. Keep the fail-safe uncertain receipt for recovery.
   try { remote = await deps.remoteHead(spec.worktree_path, publication.remote, chain.branch, chain.repository); }
   catch { uncertainPublication(deps, intentId, mission.mission_id, 'readback_mismatch'); throw Error('CONTAINED_REVISION_READBACK_MISMATCH'); }
-  if (push.exitCode !== 0 && remote === old) reject('push_rejected', intentId);
+  if (push.exitCode !== 0 && remote === old && explicitlyRejectedPush(push, ref)) reject('push_rejected', intentId);
   if (push.exitCode !== 0 && remote !== old && remote !== permit.head) {
     uncertainPublication(deps, intentId, mission.mission_id, 'readback_mismatch');
     throw Error('CONTAINED_REVISION_READBACK_MISMATCH');

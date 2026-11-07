@@ -525,15 +525,15 @@ it.each([
   expect(JSON.parse(halted!.payload_json).reason).toBe(`publication_failed:${expected}`);
 });
 
-it('classifies a stopped auth failure with unchanged remote as failed push_rejected', async () => {
+it('keeps a stopped auth failure uncertain without structured pre-update proof', async () => {
   let id = '';
   const f = await publishFixture(async (intentId, journal, fence) => {
     const opId = releasePush(journal, intentId, id, fence, true);
-    return { stdout: '', stderr: 'HTTP 403: token revoked', exitCode: 128, opId };
+    return { stdout: '', stderr: "fatal: Authentication failed for 'https://github.com/o/r.git/'", exitCode: 128, opId };
   });
   id = f.id;
-  await expect(f.call()).rejects.toThrow('CONTAINED_REVISION_REFUSED:push_rejected');
-  expect(f.deps.chains.intents(f.chain.chain_id).at(-1)).toMatchObject({ state: 'failed', detail: 'push_rejected' });
+  await expect(f.call()).rejects.toThrow('CONTAINED_REVISION_READBACK_MISMATCH');
+  expect(f.deps.chains.intents(f.chain.chain_id).at(-1)).toMatchObject({ state: 'uncertain', detail: 'readback_mismatch' });
 });
 
 describe('revision confirmation D10', () => {
@@ -1093,4 +1093,32 @@ it('bounded check retry advances past backoff work and settles closed uncertain 
   expect(deps.chains.getIntent(first.intent_id).state).toBe('failed');
   expect(deps.chains.getIntent(second.intent_id).state).toBe('failed');
   expect(visits).toHaveLength(2);
+});
+
+
+it.each([
+  ['timeout without ref status', '', 'fatal: the remote end hung up unexpectedly', 'uncertain'],
+  ['HTTP response lost', '', 'error: RPC failed; HTTP 502', 'uncertain'],
+  ['HTTP authorization status without phase proof', '', 'HTTP 403: token revoked', 'uncertain'],
+  ['incomplete rejection output', '!', 'error: failed to push some refs', 'uncertain'],
+  ['another ref rejected', '!\tother:refs/heads/other\t[remote rejected] (hook declined)', '', 'uncertain'],
+  ['explicit target rejected', `!\t${next}:refs/heads/topic\t[rejected] (stale info)`, '', 'failed'],
+] as const)('keeps stopped push %s conservative with an unchanged remote', async (_label, stdout, stderr, state) => {
+  let id = '';
+  const f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = releasePush(journal, intentId, id, fence, true);
+    return { stdout, stderr, exitCode: 128, opId };
+  });
+  id = f.id;
+  await expect(f.call()).rejects.toThrow(state === 'failed' ? 'CONTAINED_REVISION_REFUSED:push_rejected' : 'CONTAINED_REVISION_READBACK_MISMATCH');
+  const intent = f.deps.chains.intents(f.chain.chain_id).find(i => i.kind === 'push')!;
+  expect(f.deps.host.recordForIntent(intent.intent_id)).toMatchObject({ state: 'stopped' });
+  expect(intent.state).toBe(state);
+  expect(f.deps.chains.get(f.chain.chain_id).state).toBe('awaiting_decision');
+  if (_label === 'timeout without ref status') {
+    f.deps.remoteHead = async () => next;
+    expect(await createRevisionReceiptRecovery(f.deps).reconcileUncertain(f.chain)).toEqual({ settled: true });
+    expect(f.deps.chains.getIntent(intent.intent_id).state).toBe('confirmed');
+    expect(f.deps.chains.get(f.chain.chain_id).state).toBe('awaiting_decision');
+  }
 });
