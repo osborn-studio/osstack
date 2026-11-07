@@ -477,6 +477,8 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 运行手册 `docs/runbooks/bridge.md` 先合并（关闭开关、吊销 App A、`awaiting_decision` 每种原因的处理），再对单个 scope 开 `OSSTACK_BRIDGE=1`。验收：连续 5 条链无异常，设计 §6 的指标能用 `osstack stats` 读出。
 
+运行手册：[Bridge 运行手册](../runbooks/bridge.md)（2026-11-06 草稿，含上线前检查清单 §7；`osstack stats` 的链指标尚未实现，是本阶段的阻塞项）。
+
 ---
 
 ## 第三部分　验证、风险与决定
