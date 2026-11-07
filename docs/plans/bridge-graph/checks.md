@@ -37,9 +37,9 @@
 | N9 | 评审反馈定位已合入 main | pass | #417，合并 `a9b1a605` |
 | N9 | 手动 check 与 live 观测的当前 head CI/合并 | unresolved | #418 head `2da03590` 新 CI 待定；#419 head `5b5b70c4` 检查全绿但未合并 |
 | N9 | 回执恢复、production factory、pending scheduler、exact ledger 独立 PR 门 | unresolved | 本地实现完成，提交与导出清单见 progress.md；正常生产 acceptance lock 仍关闭 |
-| N9 | token 后复查与 deferred receipt 审阅修复 | unresolved | GLM-5.3 最终 delta 四项认可；shared-read 取消是否污染后续服务的条件 P2 待 production 核实，不能用其他项认可替代 |
+| N9 | token 后复查与 deferred receipt 审阅修复 | unresolved | GLM-5.3 最终 delta 四项认可；条件 P2 的 `d8964643`（N9 `c486bd69`）invocation-scope 修复已获 GLM 复审通过；用户 Reviewer 暂停且尚无正式 CR，独立 head CI/验收仍待完成 |
 | N10 | 历史 #413：三个主配置无错、14 个模型变异被捉到 | pass | #413 README；仅证明该历史快照，不是本轮 Phase 5 模型验收 |
-| N10 | Phase 5 故障、源变异、properties 的最终快照归档 | unresolved | 已有 19 个源变异与两组 10k properties 的记录；phase5 报告需绑定 source/final delta，不能把早于 `78abb868` 的 property 日志写成最终快照通过 |
+| N10 | Phase 5 故障、源变异、properties 的最终快照归档 | unresolved | phase5 报告已归档 19 个严格断言 kill、两组 10k 历史记录和 reconstructed source provenance；`87375400` classifier/F5 加强后 final-head/source-hash 绑定的追加门仍待运行 |
 | N10 | Phase 5 broad TLC 完整穷举 | unresolved | 两个 broad 运行仍 pending，资源暂停、checkpoint 保留；未见 queue 清零和最终无错证明 |
 | N9/N10 | 最终 candidate 全仓门 | unresolved | 第三轮 workspace 串行仍运行；此前 graph deadline 和 candidate-policy 争用失败均保留，见 progress.md |
 | 辅助 | loop 进程夹具 CI | unresolved | #420 head `5cd15888` 矩阵绿，主 check 仍运行 |
@@ -78,7 +78,7 @@ OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack pnpm --filter @osstack/cor
 OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts src/contained-mission-revision.runner.test.ts src/contained-mission-bridge-ledger.test.ts src/contained-mission-bridge-production.test.ts src/contained-mission-bridge-process.test.ts src/contained-mission-bridge-receipt-adapter.test.ts src/contained-mission-service-wiring.test.ts src/contained-mission-ports.test.ts src/contained-mission-bridge.test.ts src/contained-mission-grant.test.ts src/contained-mission-bridge-live.test.ts src/contained-mission-bridge-read-limiter.test.ts src/contained-mission-bridge-stopped-scan.test.ts --maxWorkers=1
 ```
 
-检查生成的 public-export inventory：core 方法沿既有入口公开；CLI factory 保持独立 lazy 构建入口；off/shadow 无 App 写入，恢复先于 timers，生产 acceptance lock 未移除。条件 P2 若需补丁，先加对应定向回归，再重绑 N9 head 与相关 test-merge。
+检查生成的 public-export inventory：core 方法沿既有入口公开；CLI factory 保持独立 lazy 构建入口；off/shadow 无 App 写入，恢复先于 timers，生产 acceptance lock 未移除。条件 P2 已有 `d8964643` 与对应回归，须保留其 invocation 绑定并在最终 N9/N10 head 上追加相关门；GLM 复审已通过，但不宣称用户 Reviewer 已给正式 CR。
 
 ### N10 定向与验收门
 
@@ -86,6 +86,7 @@ OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack pnpm --filter @osstack/cli
 OSSTACK_PROPERTY_RUNS=10000 OSSTACK_PROPERTY_SEED=51007 OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack pnpm --filter @osstack/core exec vitest run src/bridge/revision-chain.property.test.ts --maxWorkers=1
 OSSTACK_PROPERTY_RUNS=10000 OSSTACK_PROPERTY_SEED=51007 OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision.spec-property.test.ts --maxWorkers=1
 OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts src/graph-delegation.integration.test.ts --maxWorkers=1
+node --test scripts/verify-bridge-phase5-mutations.test.mjs
 node --test scripts/smoke-bridge-revision-sandbox.test.mjs
 node --check scripts/smoke-bridge-revision-sandbox.mjs
 ```

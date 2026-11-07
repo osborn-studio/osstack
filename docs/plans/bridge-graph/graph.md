@@ -58,7 +58,7 @@ N3 ─▶ N12                                         ├▶ N15
 N13 ─▶ N14 ───────────────────────────────────────┘
 ```
 
-下一条关键路径：先完成 #418/#419/#420 的精确 head CI 与合并队列，再把已实现的 N9 runtime 和 N10 tests/models/harness 拆成两个以 main 为 base 的 PR；提交与门见 [progress.md](progress.md)。当前 candidate 为 `78abb868`，第三轮全仓按 workspace 串行验证正在运行，不能写成全绿。N9 的生产接受锁仍关闭；N10、N11 和 N13 的证据不能由本地实现替代。
+下一条关键路径：先完成 #418/#419/#420 的精确 head CI 与合并队列，再把已实现的 N9 runtime 和 N10 tests/models/harness 拆成两个以 main 为 base 的 PR；提交与门见 [progress.md](progress.md)。当前 candidate 为 `78abb868`，第三轮全仓按 workspace 串行验证正在运行，不能写成全绿。N9 的生产接受锁仍关闭；`d8964643` 的 invocation-scope 取消修复已获 GLM-5.3 复审通过，用户 Reviewer 暂停且尚无正式 CR。N10、N11 和 N13 的证据不能由本地实现替代。
 
 ## 4. 每个节点的门（按顺序，只凭证据打开）
 

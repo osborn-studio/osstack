@@ -7,8 +7,8 @@
 - **比较快照：** candidate `78abb868`，原始 main 基线 `b7815b6c`。只读远端复查显示 #417 已以 `a9b1a605` 合入 main；这不意味着 candidate 或其他 PR 已合并。
 - **已合并：** N1–N8、N12；D7 #412、D9 #414、停止扫描服务 #416、历史 TLA #413、反馈定位 #417。
 - **开放 PR：** #418 head `2da03590` 修复了取消夹具的权限撤销顺序，新 CI 待定；#419 head `5b5b70c4` 的普通检查与矩阵全绿（付费 smoke 按配置跳过）；#420 head `5cd15888` 矩阵全绿，主 `check` 仍运行。开放与 CI 通过均不等于已合入 main。
-- **N9 已本地实现：** bounded 回执恢复、启动恢复屏障、生产 App A/W13 装配、pending check scheduler、App B token 后栅栏、签名 grant 的基线意图与 exact commit-range ledger。`assertLiveBridgeAcceptance` 仍拒绝正常 live 启动，不能写成已生产启用。GLM-5.3 最终 delta 的四项修复已获认可；共享读取取消是否污染后续服务这一条件 P2 仍由 production 核实。
-- **N10：** 已有定向故障/真实 owner 接管、19 个源变异和两组 10k properties 的通过记录；旧失败与后续覆盖必须在 phase5 报告中按提交绑定。两个 broad TLC 仍 pending，因资源争用暂停并保留 checkpoint。历史 #413 不证明本轮 Phase 5 模型已穷举完成。
+- **N9 已本地实现：** bounded 回执恢复、启动恢复屏障、生产 App A/W13 装配、pending check scheduler、App B token 后栅栏、签名 grant 的基线意图与 exact commit-range ledger。`assertLiveBridgeAcceptance` 仍拒绝正常 live 启动，不能写成已生产启用。GLM-5.3 最终 delta 的四项修复已获认可；条件 P2 由 `d8964643`（N9 分支对应 `c486bd69`）改为 invocation-scoped recovery cancellation，并已通过 GLM-5.3 复审。用户指定 Reviewer 已暂停，尚无其正式 CR；GLM 复审不替代正式 CR 或批准。
+- **N10：** 已有定向故障/真实 owner 接管、19 个源变异和两组 10k properties 的通过记录；phase5 报告现已归档历史失败、严格 mutation 日志复核与 property provenance；新增 `87375400` classifier/F5 加强改变最终测试源，最终 head/source-hash 绑定的 10k 仍待主会话追加。两个 broad TLC 仍 pending，因资源争用暂停并保留 checkpoint。历史 #413 不证明本轮 Phase 5 模型已穷举完成。
 - **当前全仓验证：** 第三轮按 workspace 串行，仍在运行；没有最终 pass。TLC 暂停以减少争用。
 - **N11：** `scripts/smoke-bridge-revision-sandbox.mjs` 已提交。真实 Docker 已运行，App/Codex/Docker/规则集 preflight 通过；实际 `--execute` 等用户批准，未声称 5-G 通过。
 - **N13：** 用户提供共享云电脑与 gh 工作流是一条操作路径，不能替代 App C/D 迁移、身份读回和 U-1…U-11 能力证据。
@@ -16,7 +16,7 @@
 
 ## 产物与剩余 PR 拆分
 
-两个新 PR 都以 main 为 base，不把 #418/#419 的历史提交或整个集成分支合并进新分支。先等依赖合入，再从新的 main 建分支最稳妥；提前准备时，缺依赖的分支只能标 blocked，并在独立 test-merge 结果上验证，不能冒充 main-base 已独立构建通过。
+两个新 PR 都以 main 为 base。原规划先等依赖合入；本轮用户明确允许 N10 合入 N9 branch 作为 review 依赖：`codex/bridge-phase5-acceptance` 从 main `a9b1a605` 建立，已合入冻结的 `codex/bridge-production-runtime` head `287864a5`，PR body 必须写 merge-after N9（未来 PR 号待主会话补齐）。不合入整个 final candidate，也不重复导入其已撤销 skill 提交。缺正式依赖合并/CI 时仍是待审候选，不冒充 main 已验收。
 
 ### N9 runtime：按以下顺序保留原子提交
 
@@ -31,6 +31,7 @@
 | 7 | `bcd20732` | `1c6e5091` | 签名基线意图与 exact publication ledger |
 | 8 | `8bcba635` | `5af50ed2` | token 后复查、读取取消与生产审阅修复 |
 | 9 | `cbb6b7e5` | `7a12db28` | deferred receipt 审计、启动/观测保护与独立审阅修复 |
+| 10 | `d8964643` | N9 `c486bd69` | recovery 取消仅属于当前 invocation，不毒化后续读取；GLM-5.3 复审通过 |
 
 **Merge-after：** #418、#419；#417 已满足。#420 不提供 runtime API，属于全仓门的夹具前置修复，应先完成以减少无关 CI 噪声。`4da09d92`、`ba3cc487` 不是单独可从旧 main 编译的“无依赖”提交：它们使用 #418 的 publication port 与 #419 的 live/read-limiter 服务。
 
@@ -49,10 +50,11 @@
 | 7 | `b8c3d453` | readback/rejection 回归与范围属性修正 |
 | 8 | `15bf8d9b`（原 `b9baca64`） | graph 轮询绑定真实 60s 请求期限；只改测试 |
 | 9 | `78abb868` | 属性通过 intent binding 找范围，修复过时的 seq/head 假设 |
+| 10 | `87375400` | mutation classifier 排除基础设施失败、15 个 mock units、精确 target property 与 provenance |
 
 **Merge-after：** N9。N10 的源码变异目标、基线属性与真实 driver 均依赖 N9，不能只提前导入 tests 然后跳过失败。graph deadline fix 只有一个测试文件、无 N9 API 依赖；如需先稳定 N9 的全仓门，可把该提交另开独立小 PR 提前合并，再从 N10 清单去掉，避免重复提交。该选择不是放宽生产超时。
 
-**N10 导出清单：** 不新增生产 public export；CLI package 与 `pnpm-lock.yaml` 必须成对纳入 fast-check。脚本为 `verify-bridge-phase5-{mutations,tlc}.mjs`、`smoke-bridge-revision-sandbox{,.test}.mjs`；模型为 `bridge.tla`、`bridge-bounded.cfg` 和 README。必须带最终属性修正，不能停在历史绿色快照。
+**N10 导出清单：** 不新增生产 public export；新增 `scripts/lib/bridge-mutation-result.mjs` 与 `scripts/verify-bridge-phase5-mutations.test.mjs`，phase5 evidence/report 归档位于 `docs/reports/bridge-phase5-verification/`；graph 三文档、N9/N10 preparation 报告是明确的元数据范围。CLI package 与 `pnpm-lock.yaml` 必须成对纳入 fast-check。脚本为 `verify-bridge-phase5-{mutations,tlc}.mjs`、`smoke-bridge-revision-sandbox{,.test}.mjs`；模型为 `bridge.tla`、`bridge-bounded.cfg` 和 README。必须带最终属性修正，不能停在历史绿色快照。
 
 **明确排除：** #417 的反馈定位、#418 手动 check、#419 观测、#420 loop 夹具分别由其原 PR 落地，不重复 cherry-pick。`be180ae6`、`a57f04e7`、`76ba33fd` 是新增/修改/撤销 `.agents/skills/verify-osstack/SKILL.md` 的净零序列，三者均不进入 N9/N10；保留既有 Cursor verification skill，不复制为 `.agents`。本轮只提交文档，未创建远端 PR 或 push，也未修改 final candidate。
 
@@ -70,6 +72,7 @@ N9：
 .changeset/bridge-production-review-fixes.md
 .changeset/bridge-push-rejection-proof.md
 .changeset/bridge-receipt-recovery-complete.md
+.changeset/bridge-recovery-cancellation-scope.md
 .changeset/bridge-recovery-independent-review-fixes.md
 docs/reports/bridge-production-review.md
 docs/reports/bridge-receipt-independent-review.md
@@ -119,9 +122,11 @@ packages/cli/src/contained-mission-revision.spec-property.test.ts
 packages/cli/src/graph-delegation.integration.test.ts
 packages/core/src/bridge/revision-chain.property.test.ts
 pnpm-lock.yaml
+scripts/lib/bridge-mutation-result.mjs
 scripts/smoke-bridge-revision-sandbox.mjs
 scripts/smoke-bridge-revision-sandbox.test.mjs
 scripts/verify-bridge-phase5-mutations.mjs
+scripts/verify-bridge-phase5-mutations.test.mjs
 scripts/verify-bridge-phase5-tlc.mjs
 ```
 
@@ -178,7 +183,7 @@ scripts/verify-bridge-phase5-tlc.mjs
 ## 下一步
 
 1. 保存第三轮 workspace 串行全仓结果；完成前保持 pending。跟踪 #418 head `2da03590`、#419、#420 的当前 CI 与最终 main SHA。
-2. 按上述 N9 清单建独立 main-base PR，依赖 #418/#419；保持生产 acceptance lock。完成 shared-read 取消条件 P2 的核实。
+2. 按上述 N9 清单建独立 main-base PR，依赖 #418/#419；保持生产 acceptance lock。保留已通过 GLM-5.3 复审的 `d8964643` invocation-scope 修复；用户 Reviewer 暂停且尚无正式 CR。
 3. 按 N10 清单建独立 main-base PR；归档最终源码绑定的 properties/mutants 记录。资源允许且串行门完成后，再恢复两个 broad TLC 的 checkpoint，不能以仍有 queue 的运行声称穷举通过。
 4. N10 门满足且用户批准后，才执行 5-G driver 的 `--execute`。Docker 已不是缺失条件；真实运行未发生。
 5. App C/D 身份迁移、主仓库规则读回和连续五条链验收仍分别属于 N13/N14/N15，不由共享云电脑 gh 流程或本地 preflight 代替。
