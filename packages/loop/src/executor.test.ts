@@ -806,7 +806,7 @@ async function withProcessFixture(source: string, test: (fixture: {
   const preload = join(workspace, "fixture-identity.cjs");
   writeFileSync(preload, `process.title = ${JSON.stringify(identity)};`);
   const ownsPid = (pid: number) => {
-    try { return execFileSync("ps", ["-p", String(pid), "-o", "comm="], {encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim() === identity; }
+    try { return execFileSync("ps", ["-p", String(pid), "-o", process.platform === "darwin" ? "comm=" : "args="], {encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim() === identity; }
     catch { return false; }
   };
   const cleanup = () => {
