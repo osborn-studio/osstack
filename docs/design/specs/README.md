@@ -1,4 +1,4 @@
-# Bridge revision-chain TLA+ model (phase 4-B)
+# Bridge revision-chain TLA+ model (phase 5 ordering)
 
 `bridge.tla` models one revision chain on one PR: the chain ledger (chains, reservations, push
 intents, shadow decisions), the child Missions, GitHub (branch history, base, open/closed,
@@ -7,14 +7,15 @@ reviews) and the daemon's in-memory state that a crash loses. It covers the row 
 
 Sources: [design](../2026-11-01-osstack-grok-bridge.md) §8.3–§8.5, §8.7, §10.2–§10.3;
 [phase 4 appendix](../2026-11-05-bridge-shadow-reconciler.md) §3–§4;
+[phase 5 resume and ordering](../2026-11-07-bridge-phase5-resume-and-ordering.md) §§3–7;
 `packages/core/src/bridge/revision-chain.ts`,
 `packages/core/src/state/engineering-revision-chain-ddl.ts` and `-store.ts`.
 
-Modelling rule. The pure decision function, the store and the DDL are modelled as written. The
-phase-5 callers that do not exist yet (`publishRevision`, start-up recovery, the dispatch driver,
-human decisions) are modelled as the design describes them. Where the model needs a caller
-assumption that the store does not enforce, a boolean constant names it (`StrictConfirmedHead`,
-`OnePendingIntent`, `ResumeAfterReceipts`). Each one has a mutant showing what breaks without it.
+Modelling rule. The current decision function, store and DDL are the baseline. D8 and the
+Phase 5 transaction and caller changes follow the approved design; several are still not
+implemented. Where the model needs a caller assumption that the store does not enforce, a
+boolean constant names it (`StrictConfirmedHead`, `OnePendingIntent`, `ResumeAfterReceipts`).
+Each has a mutant showing what breaks without it.
 
 ## Files
 
@@ -24,88 +25,81 @@ assumption that the store does not enforce, a boolean constant names it (`Strict
 | `bridge.cfg` | main run: live chain, every guard on |
 | `bridge-shadow.cfg` | shadow chain (`OSSTACK_BRIDGE=shadow`) |
 | `bridge-rounds.cfg` | two full rounds: 3 review submissions, no outsider |
-| `mutants/*.cfg` | one seeded bug each; every one must produce a counterexample (`store-many-pending-intents` uses the bounded `FocusPublish` constraint) |
+| `mutants/*.cfg` | one seeded bug each; every config has an exhaustive counterexample |
 
-## Running
+## Running and current results
 
-TLC is `tla2tools.jar` v1.7.4 from the official `tlaplus/tlaplus` release
-(sha256 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`), on Java 11+.
-Keep TLC's working files out of the repository. Copy the specs to a scratch directory under
-`$OSSTACK_SCRATCH_ROOT` and run there:
-
-```sh
-W="$OSSTACK_SCRATCH_ROOT/smoke/bridge-tla"; mkdir -p "$W"
-cp -R docs/design/specs/bridge.tla docs/design/specs/*.cfg docs/design/specs/mutants "$W/"
-cd "$W"
-java -cp tla2tools.jar tla2sany.SANY bridge.tla                       # parse + level check
-java -XX:+UseParallelGC -Xmx10g -cp tla2tools.jar tlc2.TLC -workers auto \
-     -metadir "$W/meta" -config bridge.cfg bridge.tla
-```
-
-Mutants: `-config mutants/<name>.cfg`. Each mutant's first line names the property it must break.
-
-Witnesses: each `W_*` definition is expected to be violated. Check one at a time:
+SANY passes with official `tla2tools.jar` v1.7.4 (sha256
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`) and
+`/opt/homebrew/opt/openjdk/bin/java`. The requested breadth-first TLC command is:
 
 ```sh
-for w in W_Reserved W_OneRoundExhausted W_LeaseFailed W_ExternalWrite W_HeadRegressed \
-         W_ReviewerConflict W_IntentUncertain W_CrashAfterPush W_RecoveredPush W_SecondRoundPublished; do
-  sed -e '/^INVARIANTS/,$d' bridge.cfg > w.cfg; printf 'INVARIANTS %s\n' "$w" >> w.cfg
-  java -cp tla2tools.jar tlc2.TLC -workers auto -metadir "$W/meta-w" -config w.cfg bridge.tla | grep -E 'is violated|No error'
-done
-# W_TwoRoundsReady W_ThirdRequestStops: same loop with bridge-rounds.cfg
-# W_ShadowWouldReserve W_ShadowStopped: same loop with bridge-shadow.cfg
+/opt/homebrew/opt/openjdk/bin/java -XX:+UseParallelGC \
+  -cp /Volumes/AIMATE_WORK/Developer/tools/tla/v1.7.4/tla2tools.jar tlc2.TLC \
+  -workers 4 -metadir /Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-tla-v2/meta \
+  -config bridge.cfg bridge.tla
 ```
 
-## Results
+Run from this directory, outside any sandbox (breadth-first TLC opens a loopback socket), with a
+distinct metadir for each config. Run each config from a bash script or array: zsh does not split
+an unquoted command variable.
 
-Checked 2026-11-06 with TLC v1.7.4 (the jar above), OpenJDK 26, `-workers auto` on a 10-core,
-16 GB Mac mini, `-XX:+UseParallelGC -Xmx10g`. SANY parses the module with no errors.
-
-Full runs (exhaustive within the bounds; "distinct" counts states modulo reviewer symmetry):
+**Exhaustive breadth-first TLC (2026-11-07):**
 
 | Config | Result | Generated | Distinct | Depth | Time |
-|---|---|---|---|---|---|
-| `bridge.cfg` (live) | no error | 212,416,199 | 28,702,050 | 45 | 9m00s |
-| `bridge-shadow.cfg` | no error | 67,673 | 11,897 | 13 | 1s |
-| `bridge-rounds.cfg` (3 reviews, no outsider) | no error | 273,209,571 | 40,562,634 | 43 | 13m57s |
+|---|---|---:|---:|---:|---:|
+| `bridge.cfg` | no error | 278,795,174 | 34,915,194 | 47 | 21m03s |
+| `bridge-rounds.cfg` | no error | 312,871,419 | 42,603,642 | 45 | 13m34s |
+| `bridge-shadow.cfg` | no error | 67,673 | 11,897 | 12 | <1s |
 
-Seeded bugs. Every mutant yields a counterexample (TLC stops at the first; "trace" is its length
-in states):
+The first exhaustive runs found two counterexamples that random simulation had missed. Both were
+modelling errors and are fixed in this revision:
 
-| Mutant (`mutants/`) | Guard removed | Property broken | Trace |
-|---|---|---|---|
-| `no-lease` | `--force-with-lease` | `LeaseSafety` | 9 |
-| `shadow-reserve` | every shadow layer (store mode check, DB triggers, grant shape, CHECK) | `ShadowNeverWrites` | 4 |
-| `fence-no-chain` | chain check in the push fence | `NoPushAfterClose` (10); with `Inv4` alone: `Inv4` (11) | 10 |
-| `no-rounds` | rounds check in decision, store and CHECK | `Inv1` | 13 |
-| `no-reservation-pk` | reservation PK + `reserved_heads` | `Inv2` | 6 |
-| `timeline-attribution` | head accepted only via a confirmed intent | `Inv6` | 4 |
-| `no-grant-check` | grant re-validation (dispatch, fence) | `GrantSafety` | 6 |
-| `store-any-confirmed-head` | caller passes only the intent extending `published_head` (D3) | `PublishedMonotone` | 22 |
-| `resume-before-receipts` | human resume waits for receipts (D1) | `Inv4` | 23 |
-| `store-many-pending-intents` | at most one pending push intent per child (D2) | `Inv4`: two pending intents, one confirmed, the stale one settles `uncertain` unbound, a later round pushes. Bounded search (one reviewer, `CONSTRAINT FocusPublish`); unbounded runs were stopped at 21M (2 reviewers) and 15M (1 reviewer) distinct states, before depth 24 | 24 |
+1. `PendingBaseSafety` required a stop after the PR closed. `Decide`, like `decideChainStep`,
+   returns a transition to `closed` before any head or base check, so the invariant now covers
+   open PRs only.
+2. `WriteAheadIntent`: a revision landed, an outsider pushed on top of it, and read-back settled
+   the intent `uncertain` (correct). `HumanResolveIntent` then settled it `failed` because the
+   remote head was not `new_head`. A truthful resolution asks whether `new_head` is *reachable*
+   from the remote head, not whether it equals it. **Implementation rule for 5-E:**
+   `chain-decide reconcile` decides "landed" by ancestry plus the range check, never by equality.
 
-Coverage witnesses (each expected violation was found, so the path is reachable):
-`W_Reserved` (3), `W_ExternalWrite` (4), `W_ReviewerConflict` (4), `W_CrashAfterPush` (9),
-`W_LeaseFailed` (9), `W_IntentUncertain` (10), `W_HeadRegressed` (11), `W_OneRoundExhausted` (11),
-`W_RecoveredPush` (14), `W_SecondRoundPublished` (19); with `bridge-rounds.cfg`:
-`W_TwoRoundsReady` (17), `W_ThirdRequestStops` (21); with `bridge-shadow.cfg`:
-`W_ShadowWouldReserve` (4), `W_ShadowStopped` (3).
+Every mutant config breaks its target property under exhaustive breadth-first TLC (shortest
+counterexample, in states):
 
-Mutant runs take 0–6 minutes each (the deep ones: `store-any-confirmed-head` 4m52s,
-`resume-before-receipts` 5m26s, `store-many-pending-intents` 13s bounded).
+| Mutant | Broken property | Trace length |
+|---|---|---:|
+| `fence-no-chain` | `NoPushAfterClose` | 10 |
+| `no-grant-check` | `GrantSafety` | 5 |
+| `no-lease` | `LeaseSafety` | 11 |
+| `no-reservation-pk` | `Inv2` | 7 |
+| `no-rounds` | `Inv1` | 12 |
+| `pending-push-skips-base` | `PendingBaseSafety` | 11 |
+| `resume-after-push-rejected` | `ResumeSafety` | 11 |
+| `resume-before-receipts` | `ResumeSafety` | 8 |
+| `resume-uncertain-intent` | `ResumeSafety` | 10 |
+| `resume-without-stop-proof` | `ResumeSafety` | 7 |
+| `shadow-reserve` | `ShadowNeverWrites` | 3 |
+| `store-any-confirmed-head` | `ConfirmedExtensionGuard` | 21 |
+| `store-many-pending-intents` | `PendingIntentUniqueness` | 7 |
+| `timeline-attribution` | `Inv6` | 3 |
 
-What was bounded to keep runs to minutes (all recorded in "Abstractions"): 2 review submissions
-in the main run (3 in the rounds run, without an outsider), 2 outsider writes, 2 push attempts
-per child, crashes only while a publication is in flight, `GrantExpire` only while the chain is in
-flight, `ReopenPR` only for closed chains, closed chains expanded only while a publication is in
-flight, the reconciler as one atomic step. Live and shadow chains run as separate configs. One
-earlier attempt with a separate observe step and 4 reviews reached more than 10M distinct states
-with the queue still growing, which is why these bounds were chosen.
+Focused mutant configs keep the same transition actions and limit unrelated choices.
+Their bounds are one or two reviewers, one or two reviews, zero to two outsider writes,
+`MaxRounds = 2`, and `MaxAttempts = 2`; each `.cfg` records its exact constants and
+state constraint. The main configs use two reviewers, two or three reviews, and zero or
+two outsider writes. A counterexample is a real violating trace within these bounds;
+the main-config results above are exhaustive within these bounds.
 
-Model bugs TLC found while the spec was being written, fixed before the runs above: a
-`Released(None)` evaluation (TLC splits `\/` inside actions), and a first `Reconciled` definition
-that still counted a decision taken while a receipt was pending.
+Reachability probes used one reviewer, one review, zero outsider writes and depth 60.
+Expected violations were found for `W_ResumeEnabled` (358 checked), `W_ResumeRefused` (111),
+`W_LateApplyEnabled` (1,736), `W_ApproveLandedEnabled` (1,529),
+`W_NormalConfirmEnabled` (772), `W_PendingNoDec` (1,533), `W_PendingBaseStopped`
+(591), `W_ReleasedBeforeStop` (620), `W_LateRemoteApply` (2,605), and
+`W_ScanClosed` (475). The late-apply trace shows `Release`, then `HaltChild`, then
+`RemoteApply`, with the chain still stopped.
+The `ENABLED` probes establish that those actions can be taken from reachable states; they do
+not prove that all continuations satisfy the invariants. Scratch logs are under the path above.
 
 ## Invariants
 
@@ -114,21 +108,32 @@ that still counted a decision taken while a receipt was pending.
 | `Inv1` | §10.2 item 1 | live: `rounds_used ≤ grant.rounds ≤ 2` |
 | `Inv2` | item 2 | at most one reservation row per (PR, head); rows are a set of records, so a void row and a new row on the same head are two rows |
 | `Inv3`, `Inv3Active` | item 3 | at most one child that is dispatched and not (terminal with the stop proven); at most one `reserved`/`dispatched` row |
-| `Inv4` | item 4 | ghost: no push while an external write or read-back mismatch is detected and no human chain decision has been taken since |
+| `Inv4` | item 4 | ghost: no new release while an external write or read-back mismatch is detected and no human chain decision has been taken since |
 | — | item 5 | spec inheritance: phase 5, out of scope |
 | `Inv6` | item 6 | when a reconciler cycle has just run, after recovery and with no pending push intent, a chain it left active has every branch commit beyond the root backed by a `confirmed` push intent |
 | `Inv6Published` | item 6 | `published_head` is the root or a confirmed intent's `new_head` |
 | `WriteAheadIntent` | §8.7 step 1 | no chain commit is on the branch without a pending, confirmed or uncertain intent |
+| `ResumeSafety`, `ResumeOutcomeSafety` | D1, D9 | guard-compliance flag for resume; a resumed running round has no unsettled intent or outstanding release marker, and has a fresh running stop obligation |
+| `PendingIntentUniqueness`, `ConfirmedExtensionGuard` | D2–D3 | one pending intent per child; only a confirmed extension may be accepted |
 | `PublishedMonotone` | §8.5 | action property: `published_head` only advances, one confirmed revision at a time |
-| `LeaseSafety` | §8.7 step 5 | a chain push never discards a commit already on the branch |
-| `ShadowNeverWrites` | appendix §1, §3.2 | a shadow chain has no reservation, no intent, no child, no in-flight state, 0 rounds, and never pushes |
-| `NoPushAfterClose`, `GrantSafety` | §8.7.1, §8.7 step 4 | no push for a closed chain; no dispatch or push on an expired or revoked grant |
+| `LeaseSafety` | §8.7 step 5 | a remote apply never discards a commit already on the branch |
+| `ShadowNeverWrites` | appendix §1, §3.2 | a shadow chain has no reservation, no intent, no child, no in-flight state, 0 rounds, and never releases |
+| `NoPushAfterClose`, `NoReleaseAfterStop`, `GrantSafety` | §8.7.1, §8.7 step 4 | no new release after a local close or stop; no dispatch or release on an expired or revoked grant |
 
 `Inv6` checks attribution against the PR state the reconciler acted on. A write that lands after
 the read is the next cycle's business, and the lease and fence cover it in the meantime. A chain
 the reconciler stopped is excluded on purpose, because a stop is how unexplained history is
 handled. The two halves of design item 6 are therefore "accepted history has confirmed provenance"
 (`Inv6Published`) and "unexplained history stops the chain" (`Inv6`).
+
+`ResumeSafety` records whether a resume consulted its guards; it does not check the effects of a
+successful resume. `ResumeOutcomeSafety` checks the resulting running round. The old stop
+obligation must be clear before resume; starting execution creates a new obligation. With
+`StrictConfirmedHead = TRUE`, `ConfirmedExtensionGuard` follows directly from `Acceptable` and
+is trivially true. It has content in `store-any-confirmed-head`, where that flag is FALSE.
+Under exhaustive TLC all four `resume-*` mutants stop at `ResumeSafety`, the first invariant
+they break, so these runs do not show whether each also breaks `ResumeOutcomeSafety`; a
+`-continue` run per mutant would (open for 5-F). `ResumeOutcomeSafety` holds in every main config.
 
 Liveness is not checked. Most legitimate runs end waiting on a human (`awaiting_decision`, a child
 whose stop is not proven, an `uncertain` receipt). Any useful progress property would need
@@ -142,16 +147,17 @@ a liveness property.
 |---|---|
 | `Reconcile` (`Decide`, `StoreReserveOK`) | `decideChainStep` + `reduceReviewers`; `RevisionChainStore.applyDecision` (`validateDecision`, `reserveInner`, `shadowDecision`); `listOpen` filter; DDL PK, `engineering_reservation_active`, `engineering_reservation_child_exclusive_insert`, `engineering_reservation_live_only`, grant CHECK |
 | `Dispatch` | `RevisionChainStore.dispatch`; triggers `engineering_chain_current_child_set`, `engineering_chain_current_child_release`, `engineering_reservation_child_exclusive_dispatch`; design §8.7.1 grant check |
-| `VoidReservation` | `voidReservation` (stops the chain only when in flight) |
+| `VoidReservation` | `voidReservation` (stops the chain only when in flight); normal D10 confirmation now voids it in the same transaction |
 | `ClearCurrent` | `clearCurrentMission` + `engineering_chain_current_child_release` |
 | `RecordIntent` | `recordIntent` + `engineering_intent_push_binding` |
-| `PreCheck`, `Push`, `ReadBack`, `DropStaleIntent` | `publishRevision`, design §8.7 step 4 (phase 5); settles through `settleIntent` |
-| `ConfirmIntent`, `UncertainIntent`, `FailIntent` | `settleIntent` (moves the chain only when the intent is bound) |
+| `PreCheck`, `Release`, `RemoteApply`, `PushRejected`, `ReadBack`, `DropStaleIntent` | `publishRevision` and W13 `beforeRemoteMutation`/host process release; `RemoteApply` is the server update |
+| `ConfirmPublication`, `LandedReceipt`, `ApproveLanded`, `UncertainIntent`, `FailIntent` | D10 `confirmRevisionPublication` transaction; recovery receipt reconciliation; R3 human `approve_publication` → `resumeLanded` |
 | `Crash`, `RecoverIntent`, `RecoverDone` | start-up receipt reconciliation, design §8.7 step 5 (phase 5) |
-| `ChildDeliver`, `ChildFail`, `CancelRequest`, `CancelDone`, `ChildPublished`, `ProveStop` | contained-Mission runner states, `stop_obligation` |
+| `ChildDeliver`, `ChildFail`, `HaltChild`, `CancelRequest`, `CancelDone`, `ProveStop` | contained-Mission runner states, `stop_obligation`, D9 stopped child |
 | `Review`, `ExpireReview` | GitHub reviews, 24 h TTL (`REVIEW_TTL_MS`) |
 | `OutsiderPush`, `OutsiderForcePush`, `BaseAdvance`, `ClosePR`, `ReopenPR`, `DeadlinePass`, `GrantExpire` | environment |
-| `GrantStop`, `HumanResume`, `HumanClose`, `HumanResolveIntent` | phase-5 driver and human decisions (no code yet) |
+| `GrantStop`, `HumanResume`, `ResumeChild`, `ResumeRefused`, `HumanClose`, `HumanResolveIntent` | `stopLive` reasons, grant renewal, `resumeChild` through `acknowledgeAdvance`, `resume_refused` with no ledger change, human decisions |
+| `ScanStopped` | D7 `listStoppedLive` / stopped-chain scan, `closeLive` and reservation void on closed or merged PR |
 
 ## Abstractions
 
@@ -178,8 +184,33 @@ a liveness property.
   the child is unreleased and blocks every dispatch until a human ends it and the stop is proven.
 - Crashes are explored only while a push intent is pending or the publisher is mid-step. Any
   other crash loses nothing.
+- Open gap (5-F, finding 4): after a crash, a durable release marker can only take
+  `RemoteApply`; the never-written, pre-release death and `uncertain` receipt path is absent.
 - A closed chain is expanded only while a publication is still in flight.
-- The review deadline and grant expiry are single booleans. Budgets (§8.6) are not modelled.
+- Open gap (5-F, finding 11): `Explore` prunes a closed chain with only an `uncertain` intent,
+  before `HumanResolveIntent` can settle its late receipt. Closed chains with `pending` remain.
+- The review deadline and grant expiry are single booleans. Budgets (§8.6), scope permission,
+  signed grant validation, the workspace claim and scanned-fact freshness are not modelled.
+- `stopObl` combines stop proof and absence of an open host process. `released` is durable
+  W13 release state; `RemoteApply` may run after a local stop. PR `CLOSED` and `MERGED` are
+  represented by the same `prOpen = FALSE`. The scan rate limit and observation event are omitted.
+- R2 grant replacement while a child is halted is not modelled. R3 landed-round recovery
+  requires the separate human `ApproveLanded` action. Normal D10 confirmation changes the
+  intent, chain, reservation and child together. A receipt after PR closure or base change
+  confirms the remote fact while keeping the chain closed or stopped.
+- Open gap (5-F, finding 5): `HaltChild` labels any unsettled intent `intent_uncertain`.
+  The design uses `child_halted` for pending intents that were never released, so their
+  same-child resume after settlement is missing.
+- Open gap (5-F, finding 6): a halted child with an open PR has no terminal abandon or cancel
+  transition. This omits human takeover and later rounds after a halt.
+- Open gap (5-F, finding 7): `HumanResume` still models the old unconditional `replaceGrant`
+  transition to `awaiting_review`. The designed kept-stopped grant replacement followed by
+  `resumeChild` is absent.
+- Open gap (5-F, finding 10): close paths retain `stopReason` and may leave active reservations.
+  The store clears the reason and voids all active reservations on close.
+- Mutant precision (finding 12): `resume-uncertain-intent` also widens the resumable-reason
+  list; `resume-without-stop-proof` uses `Spec` while the other resume mutants use focused
+  targets; and `resume-after-push-rejected` cannot explore a post-crash rejection.
 - Bounds: 2 reviewers, `MaxRounds = 2`, 2 push attempts per child, 2 review submissions
   (3 in `bridge-rounds.cfg`), 2 outsider writes.
 
@@ -187,20 +218,23 @@ a liveness property.
 
 | # | Where | Finding | Model |
 |---|---|---|---|
-| D1 | `settleIntent('uncertain')` vs design §8.7 step 5 ("其他 → uncertain，转人") | The store stops the chain only when the intent is bound (chain `publishing`, same head and child). An uncertain verdict on an unbound intent leaves the chain running. TLC found a 23-step trace: push lands → reservation voided → outsider pushes → human resumes while the intent is still pending → read-back `uncertain` (chain untouched) → human resolves it → outsider force-pushes back → the chain accepts the head and pushes round 2 with the external write never acted on. | `ResumeAfterReceipts`: human resume waits until no intent is pending or uncertain. Alternative fix: `settleIntent('uncertain')` stops any non-terminal chain. Mutant `resume-before-receipts`. |
-| D2 | `recordIntent` | Nothing refuses a second `pending` push intent for the same child. With two, a stale one can settle `uncertain` while unbound (D1). | `OnePendingIntent`; suggested fix: partial unique index on push intents `(chain_id) WHERE state='pending'`. Mutant `store-many-pending-intents`. |
-| D3 | `validateDecision` | Accepts a new head when *any* confirmed push intent has that `new_head`, not only the one extending `published_head`. After two rounds, an outsider force-push back to round 1's head is accepted as a legitimate head (a regression). The docstring of `confirmed_push_head` ("not yet reflected") expects the stricter rule. | `StrictConfirmedHead`; suggested fix: require `expected_old_head = published_head` in `validateDecision`. Mutant `store-any-confirmed-head` (`PublishedMonotone`). |
-| D4 | `settleIntent('failed')` vs §8.7 step 2 ("意图 failed，转人") | `failed` never stops the chain; the caller must also call `voidReservation`. | `PreCheck` / lease failure void the reservation and stop the chain. |
-| D5 | reservation lifecycle | A successful round leaves its reservation `dispatched`. `reserveInner` refuses the next round (`chain_busy`) until someone calls `voidReservation`. There is no `completed` state, and no code does this yet. | `VoidReservation` is a free driver action. |
+| D1 | `settleIntent('uncertain')` vs design §8.7 step 5 ("其他 → uncertain，转人") | The store stops the chain only when the intent is bound (chain `publishing`, same head and child). An uncertain verdict on an unbound intent leaves the chain running. TLC found a 23-step trace: push lands → reservation voided → outsider pushes → human resumes while the intent is still pending → read-back `uncertain` (chain untouched) → human resolves it → outsider force-pushes back → the chain accepts the head and pushes round 2 with the external write never acted on. | `ResumeAfterReceipts`: human resume waits until no intent is pending or uncertain. Alternative fix: `settleIntent('uncertain')` stops any non-terminal chain. Mutant `resume-before-receipts` (`ResumeSafety`). |
+| D2 | `recordIntent` | Nothing refuses a second `pending` push intent for the same child. With two, a stale one can settle `uncertain` while unbound (D1). | `OnePendingIntent`; suggested fix: partial unique index on push intents `(chain_id) WHERE state='pending'`. Mutant `store-many-pending-intents` (`PendingIntentUniqueness`). |
+| D3 | `validateDecision` | Accepts a new head when *any* confirmed push intent has that `new_head`, not only the one extending `published_head`. After two rounds, an outsider force-push back to round 1's head is accepted as a legitimate head (a regression). The docstring of `confirmed_push_head` ("not yet reflected") expects the stricter rule. | `StrictConfirmedHead`; suggested fix: require `expected_old_head = published_head` in `validateDecision`. Mutant `store-any-confirmed-head` (`ConfirmedExtensionGuard`; the original `PublishedMonotone` remains checked). |
+| D4 | `settleIntent('failed'/'uncertain')` vs §8.7 step 2 ("意图 failed，转人") | The store stops a bound in-flight chain on `failed`; `uncertain` stops any chain not already stopped or closed. | `PreCheck` / lease failure stop and void; `Release` fence refusal stops the chain, fails the intent and halts the child in one step. The model's standalone settlement actions remain an abstraction. |
+| D5 | reservation lifecycle | The current store leaves a successful round `dispatched`, blocking the next. The Phase 5 D10 transaction must void it when confirming publication. | `ConfirmPublication` voids atomically; `VoidReservation` remains for other exits. |
 | D6 | §8.5 "同事务：预留 + rounds_used+1 + 意图" | Reserve writes no intent. Intents are written at `recordIntent`. | code. |
-| D7 | `listOpen` vs appendix §4.2 table ("任意非终态 → closed") | `awaiting_decision` chains are not scanned, so a stopped chain whose PR closes stays `awaiting_decision`. | code. |
-| D8 | `decideChainStep` vs appendix §4.2 table | `in_flight` returns before reviewer conflict and deadline checks, so a conflict or deadline during a revision does not stop the chain (head and base changes still do). | code. |
-| D9 | §8.5 child table ("恢复…同一个子 Mission") | No driver or protocol says how a chain returns to `revising`/`publishing` after the same child is resumed from `needs_reconciliation`. The design state machine has no such edge. | not modelled; the safety results do not cover same-child resume. |
-| D10 | §8.7.4.6 "一个事务…子 Mission 转为终态" | `settleIntent` does not touch the Mission ledger. | separate `ChildPublished` step. |
+| D7 | `listOpen` vs appendix §4.2 table | `listOpen` still skips stopped chains; the separate live scan closes them when PR closes or merges and never resumes them. | `ScanStopped`; R4(a). |
+| D8 | `decideChainStep` ordering | `in_flight` still returns before reviewer conflict and deadline. A base change inside the pending-push branch now stops with `base_changed`. | `Decide`, `PendingBaseSafety`, D8 mutant. |
+| D9 | §8.5 child table | R1 resumes the same halted child in `revising` with its dispatched reservation and unchanged round count. It requires stop proof, no unsettled or confirmed push, live grant and unchanged PR facts; R5 rejects `push_rejected`. | `HaltChild`, `ResumeChild`, `ResumeSafety`, three mutants. |
+| D10 | §8.7.4.6 | Phase 5 confirmation must update chain, reservation and child in one transaction. | `ConfirmPublication`; R3 recovery uses `LandedReceipt` then human `ApproveLanded`. |
 | D11 | store vs §8.7.1 | No store method checks the grant's expiry or the principal's scope; only the (phase-5) caller can. | `ChecksGrant` on dispatch and push fence. Mutant `no-grant-check`. |
 | D12 | `validateDecision` | No whitelist of transition targets: a hand-built `transition` decision whose head and base match is accepted for any `to` (for example `awaiting_decision` → `publishing` with the old child and reservation kept). Only `decideChainStep` output is modelled. | suggested fix: allow only the targets `decideChainStep` can produce (`closed`, `ready_for_human`, `awaiting_review`). |
 
 ## Review
+
+The following is the historical Phase 4 review record; it does not establish a verdict for
+this Phase 5 revision.
 
 Two read-only adversarial review rounds by Codex (`gpt-6-astra`, reasoning effort medium) against
 the design docs and the TS code.
@@ -226,7 +260,7 @@ Round 2 (2 findings):
 
 | Finding | Disposition |
 |---|---|
-| Push fence omits the runner's `stop_obligation = 0` check, and the model kept it set through `delivering` | Fixed: delivery clears `stopObl` (the store proves the stop before `verified`), and the fence requires it clear. All runs above are after this fix. |
+| Push fence omits the runner's `stop_obligation = 0` check, and the model kept it set through `delivering` | Fixed: delivery clears `stopObl` (the store proves the stop before `verified`), and the fence requires it clear. The Phase 4 runs were after this fix. |
 | D9 claimed the store forbids resuming; `validateDecision` has no transition whitelist | Fixed: D9 reworded; the missing whitelist added as D12. |
 
 Round 2 reported only these two findings (it was asked to check the round-1 fixes, the
