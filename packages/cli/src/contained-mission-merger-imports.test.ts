@@ -25,7 +25,7 @@ export function importClosure(entry: string): { files: string[]; externals: stri
 }
 
 describe('merger isolation: import graph', () => {
-  for (const entry of ['contained-mission-merger-reader.ts', 'contained-mission-merger-config.ts', 'contained-mission-redact.ts']) {
+  for (const entry of ['contained-mission-merger-reader.ts', 'contained-mission-merger-config.ts', 'contained-mission-redact.ts', 'contained-mission-merger-shadow.ts', 'contained-mission-merger-report.ts']) {
     it(`${entry} never reaches the App-credential modules`, () => {
       const { files, externals } = importClosure(entry);
       for (const f of FORBIDDEN) expect(files, `${entry} -> ${f}`).not.toContain(f);
@@ -36,6 +36,14 @@ describe('merger isolation: import graph', () => {
 
   it('the closure of the reader is exactly the expected small set', () => {
     expect(importClosure('contained-mission-merger-reader.ts').files).toEqual(['contained-mission-bridge-reader.ts', 'contained-mission-marker.ts', 'contained-mission-merger-reader.ts']);
+  });
+
+  it('the service-side modules stay inside a known set: the shadow merger never reaches the bridge kit or the App token code', () => {
+    expect(importClosure('contained-mission-merger-shadow.ts').files).toEqual([
+      'contained-mission-bridge-reader.ts', 'contained-mission-bridge-registry.ts', 'contained-mission-bridge-shadow.ts', 'contained-mission-marker.ts',
+      'contained-mission-merger-config.ts', 'contained-mission-merger-reader.ts', 'contained-mission-merger-shadow.ts', 'contained-mission-publication.ts',
+    ]);
+    expect(importClosure('contained-mission-merger-report.ts').files).toEqual(['contained-mission-merger-report.ts']);
   });
 
   it('the checker itself detects a forbidden edge (bridge.ts reaches the credential module)', () => {
