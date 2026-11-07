@@ -1122,3 +1122,44 @@ it.each([
     expect(f.deps.chains.get(f.chain.chain_id).state).toBe('awaiting_decision');
   }
 });
+
+it('check retry contains throwing diagnostics and never logs sender error text', async () => {
+  const { deps, input } = await fullFixture();
+  confirmRevisionPublication(deps, input);
+  const logged: string[] = [];
+  const scheduler = createRevisionCheckRetryScheduler({ ...deps, enabled: () => true,
+    publishCheck: async () => { throw Error('sensitive remote response and token'); },
+    log: message => { logged.push(message); throw Error('diagnostic_sink_failed'); } });
+  await expect(scheduler.tick()).resolves.toBeUndefined();
+  expect(logged).toEqual(['revision_check_retry_failed']);
+});
+
+it('registers a retry scan before a check publisher can synchronously reenter it', async () => {
+  const { deps, input } = await fullFixture();
+  confirmRevisionPublication(deps, input);
+  let calls = 0;
+  let nested: Promise<void> | undefined;
+  const scheduler = createRevisionCheckRetryScheduler({ ...deps, enabled: () => true, publishCheck: async () => {
+    calls++;
+    if (calls === 1) nested = scheduler.tick();
+  } });
+  await scheduler.tick(); await nested;
+  expect(calls).toBe(1);
+});
+
+it('scheduled check retry survives a throwing scan diagnostic during owner loss', async () => {
+  const { deps, input, f } = await fullFixture();
+  confirmRevisionPublication(deps, input);
+  const logged: string[] = [];
+  const scheduler = createRevisionCheckRetryScheduler({ ...deps, intervalMs: 1, enabled: () => true,
+    publishCheck: async () => { throw Error('must_not_send'); },
+    log: message => { logged.push(message); throw Error('sink_failed'); } });
+  f.rig.attention.claimOwner('replacement');
+  vi.useFakeTimers();
+  try {
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(1);
+    await scheduler.stop();
+    expect(logged).toEqual(['revision_check_retry_scan_failed']);
+  } finally { vi.useRealTimers(); }
+});

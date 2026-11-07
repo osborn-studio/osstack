@@ -52,7 +52,7 @@ export class RevisionCheckRetryScheduler {
     if (this.stopped || !this.options.enabled()) return Promise.resolve();
     const limit = input.limit ?? 10;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) return Promise.reject(Error('invalid_limit'));
-    if (!this.running) this.running = this.scanOnce(limit, input.signal).finally(() => { this.running = undefined; });
+    if (!this.running) this.running = Promise.resolve().then(() => this.scanOnce(limit, input.signal)).finally(() => { this.running = undefined; });
     return this.running;
   }
 
@@ -99,23 +99,27 @@ export class RevisionCheckRetryScheduler {
         if (!this.active(signal)) return;
         await this.options.publishCheck(child.mission_id);
         this.backoff.delete(intent.intent_id);
-      } catch (error) {
+      } catch {
         // Owner loss and cancellation abort the scan; neither may append diagnostics.
         if (!this.active(signal)) return;
         if (chains.getIntent(intent.intent_id).state === 'pending') {
           const attempts = (retry?.attempts ?? 0) + 1;
           this.backoff.set(intent.intent_id, { attempts, due: this.options.now() + Math.min(3_600_000, this.retryBase * 2 ** Math.min(attempts - 1, 10)) });
         } else this.backoff.delete(intent.intent_id);
-        this.options.log?.(`revision_check_retry_failed:${error instanceof Error ? error.message : 'unknown'}`);
+        this.log('revision_check_retry_failed');
       }
     }
     if (page.length < limit) this.cursor = '';
   }
 
+  private log(code: string): void {
+    try { this.options.log?.(code); } catch { /* Diagnostics cannot interrupt delivery or timer cleanup. */ }
+  }
+
   private schedule(): void {
     this.timer = setTimeout(() => {
       this.timer = undefined;
-      void this.tick().catch(() => this.options.log?.('revision_check_retry_scan_failed')).finally(() => { if (!this.stopped) this.schedule(); });
+      void this.tick().catch(() => this.log('revision_check_retry_scan_failed')).finally(() => { if (!this.stopped) this.schedule(); });
     }, this.interval);
     this.timer.unref();
   }
