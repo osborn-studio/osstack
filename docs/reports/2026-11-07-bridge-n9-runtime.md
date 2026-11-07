@@ -114,3 +114,18 @@ fresh 均通过。没有重跑全仓。首次使用 package test 转发参数时
 跨进程锁等待回归），CLI typecheck/build、Biome、inventory、changeset/diff pass；
 历史 Core/import/startup 证据按上述 source 绑定单列。#418/#419/#420 已合并，
 仍不需要 `merge after` 阻塞边。
+
+### 1503 独立静态复审
+
+GLM 对 `1503f6ac` 单文件单 hunk 及对应 publication source 的复审结论为
+**no introduced P1/P2**。这是静态审阅，没有执行测试；上节425项是实际本地
+执行结果，不能归为模型执行。审阅确认事务内 confirmed/no-op 不写 ledger，
+其余状态继续原确认检查，无新增 catch、异步持锁或 fence 放宽。
+模型指出 transaction owner/reentrancy 属于其输入外的假设；本地已核实
+core write 使用 owner assertion + SQLite immediate transaction，真实子进程
+锁等待测试与全量 publication 套件提供了实际嵌套事务运行证据。
+
+绑定：实际读入 diff SHA256 为 `590528d2582a0c6fa57bee44e3fb69e782cb42e656f3a530df1f826e65df5509`；JSON 的 response
+字符串 UTF-8 SHA256 为
+`6d5aff31615e8abc53d7a2346808abe128353911c545a452030c80b7b4cb6823`。
+只记录范围与内容哈希，不提交原始会话 metadata。运行源码仍绑定 `1503f6ac`。
