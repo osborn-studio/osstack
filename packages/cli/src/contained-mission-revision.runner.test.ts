@@ -159,6 +159,28 @@ describe('a revision child under the runner', () => {
       .toEqual([{ reason: 'chain_closed', head: h.get().candidate_head }]);
   });
 
+  it.each(['open', 'closed'] as const)('preserves the check retry boundary for an uncertain intent on a %s chain', async state => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    const chains = h.f.rig.chains;
+    const intent = chains.intents(h.chain().chain_id).find(i => i.kind === 'check')!;
+    chains.settleIntent(intent.intent_id, 'uncertain', ++h.f.clock.now);
+    if (state === 'closed') chains.closeLive(h.chain().chain_id, h.chain().revision, 'pr_closed', ++h.f.clock.now);
+    const before = h.chain();
+    const send = vi.fn(async () => ({ check_run_id: 44, created: true }));
+    h.ports.publishVerifyCheck = send;
+    if (state === 'closed') {
+      expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 0, created: false, skipped: true });
+      expect(chains.getIntent(intent.intent_id)).toMatchObject({ state: 'failed', detail: 'chain_closed' });
+    } else {
+      await expect(h.runner.retryVerifyCheck(h.childId)).rejects.toThrow('CONTAINED_REVISION_CHECK_UNCERTAIN');
+      expect(chains.getIntent(intent.intent_id).state).toBe('uncertain');
+    }
+    expect(send).not.toHaveBeenCalled();
+    expect(h.chain()).toEqual(before);
+  });
+
   it('refuses manual revision check retry if its publication port is unavailable', async () => {
     const h = await harness();
     wireRevisionPublisher(h).deps.checkEnabled = true;
