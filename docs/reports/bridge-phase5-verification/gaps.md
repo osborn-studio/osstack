@@ -41,6 +41,7 @@ Local Docker with a fake GitHub server can validate execution, denial injection,
 | Invariants 1–4 and exact range invariant 6, 10,000 generated live interleavings | pass | linked-range property log, seed 51007; includes explicit rejected push, cancel, expiry and 930 multi-commit revisions |
 | Invariant 5 constructor, 10,000 generated root specs/reviews | pass | spec-property log, seed 51007 |
 | All 19 required implementation mutants | pass across integration graph | 18 local kills plus parent production-baseline omission kill; source-mutants.json |
+| Positive extra_repair on a stopped same-child round | pass | isolated real-ledger runner case passes; removing acknowledgeAdvance kills that same assertion; extra-repair-evidence.json |
 | Real second owner takeover during publication | pass | independent SQLite connection calls claimOwner before W13 release; registered row stays unreleased |
 | Readback retry exhaustion, HTTP 503 and HTTP 429 after push | pass | 3 cases; one push, uncertain receipt; bounded retry count |
 | Loop process fixture failures | pass | reproduced 2 failures; 116/116 final suite; actual Docker Linux marker-capacity probe |

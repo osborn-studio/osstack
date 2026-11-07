@@ -390,6 +390,27 @@ describe('a revision child under the runner', () => {
     expect(confirm).toHaveBeenCalledOnce();
   });
 
+  it('extra_repair resumes the stopped chain before advancing the same child and round', async () => {
+    const h = await harness();
+    h.setVerifyExit(1);
+    await h.step(6); // initial candidate, failed verify, one repair, failed verify, exhausted repair budget
+    expect(h.get()).toMatchObject({ state: 'awaiting_decision', stop_obligation: 0 });
+    expect(h.lastHalt().reason).toBe('repair_cycles_exhausted');
+    const before = h.chain();
+    h.f.rig.chains.stopLive(before.chain_id, before.revision, 'child_halted', T0);
+    const execute = h.ports.execute;
+    const launches = h.calls.execute.length;
+    h.ports.execute = async input => {
+      expect(h.chain()).toMatchObject({ state: 'revising', current_mission_id: h.childId, rounds_used: before.rounds_used });
+      return execute(input);
+    };
+    await expect(h.runner.decide(h.childId, { kind: 'extra_repair' })).resolves.toMatchObject({ mission_id: h.childId, state: 'candidate_ready' });
+    expect(h.chain()).toMatchObject({ state: 'revising', current_mission_id: h.childId, rounds_used: before.rounds_used });
+    expect(h.calls.execute).toHaveLength(launches + 1);
+    expect(h.f.rig.chains.reservations(before.chain_id)).toHaveLength(1);
+    expect(h.calls.publish).toBe(0);
+  });
+
   describe('budget and grant stops', () => {
     const exhaustExecutor = (h: Harness) => h.use('executor', 1200);
     const regrantStoppedChild = async () => {
