@@ -202,7 +202,7 @@ export class LiveReconciler {
     const pending = chains.intents(chain.chain_id).find(i => i.kind === 'push' && ['pending', 'uncertain'].includes(i.state)
       && i.expected_old_head === chain.published_head && i.expected_base_sha === chain.published_base && i.new_head === snapshot.head)?.new_head;
     const descendant = snapshot.pr_state !== 'OPEN' || snapshot.head === chain.published_head || snapshot.head === confirmed || snapshot.head === pending
-      ? undefined : await this.interruptible(() => this.options.headIsDescendant(chain, snapshot.head, this.abort.signal));
+      ? undefined : await this.options.headIsDescendant(chain, snapshot.head, this.abort.signal);
     if (!this.active() || chains.get(chain.chain_id).revision !== chain.revision) return;
     const view = {
       mode: chain.mode, state: chain.state, published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref,

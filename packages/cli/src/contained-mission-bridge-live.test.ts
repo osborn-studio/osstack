@@ -276,25 +276,30 @@ describe('live reconciler', () => {
 });
 
 describe('shared live and stopped read scheduling', () => {
-  it('keeps a cancelled live transport exclusive when its chain becomes stopped', async () => {
+  it.each(['pr', 'ancestry'] as const)('keeps a cancelled %s transport exclusive when its chain becomes stopped', async transport => {
     const f = setup();
     const readLimiter = new BridgeReadLimiter();
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
-    const liveRead = vi.fn(async () => { await gate; return f.deps.readPr({ owner: 'o', name: 'r', number: 7 }); });
+    if (transport === 'ancestry') f.pr.head = oid('f');
+    const liveRead = vi.fn(async () => { if (transport === 'pr') await gate; return f.deps.readPr({ owner: 'o', name: 'r', number: 7 }); });
+    const ancestryRead = vi.fn(async () => { if (transport === 'ancestry') await gate; return true; });
     const live = new LiveReconciler({ dispatch: f.deps, readLimiter, readPr: liveRead,
-      isBusy: () => false, cancelChild: async () => {}, headIsDescendant: async () => true, log: () => {} });
+      isBusy: () => false, cancelChild: async () => {}, headIsDescendant: ancestryRead, log: () => {} });
     const stoppedRead = vi.fn(async () => ({ complete: false, pr_state: 'OPEN' as const,
       head: f.chain.published_head, head_repository: 'o/r', head_ref: 'topic', base_sha: f.chain.published_base, base_ref: 'main' }));
     const stopped = new StoppedChainScanService({ chains: f.rig.chains, readLimiter, now: () => f.clock.now,
       enabled: () => true, missionState: () => 'failed', refreshPrincipal: () => f.principal,
       cancelChild: async () => {}, readPr: stoppedRead, log: () => {} });
     const scan = live.scan();
+    await new Promise(resolve => setImmediate(resolve));
     expect(liveRead).toHaveBeenCalledTimes(1);
+    if (transport === 'ancestry') expect(ancestryRead).toHaveBeenCalledTimes(1);
     f.rig.chains.stopLive(f.chain.chain_id, f.chain.revision, 'child_halted', f.clock.now);
     f.clock.now += 600_000;
     await live.stop();
     await scan;
+    f.clock.now += 600_000; // Pass every cadence deadline while the underlying operation remains blocked.
     const before = f.rig.db.serialize();
     await stopped.scan();
     expect(stoppedRead).not.toHaveBeenCalled();
