@@ -11,6 +11,7 @@ import {
   type RawReview,
   type RawThread,
   feedbackDigest,
+  reviewFeedbackOf,
   ghGraphqlTransport,
   normalizeBody,
   normalizeSnapshot,
@@ -468,5 +469,32 @@ describe('secondRead', () => {
     await secondRead(async (q) => { query = q; return answer()(); }, REF, expected);
     expect(query).toContain('headRefOid baseRefOid baseRefName');
     expect(query).not.toMatch(/mutation|subscription|body|reviewThreads/iu);
+  });
+});
+
+
+describe('review thread locations', () => {
+  it.each([0, -1, 1.5])('refuses malformed thread line %s', async (line) => {
+    const { result } = await read({ reviews: [review(7)], threads: [{ id: 'invalid', isResolved: false,
+      path: 'src/file.ts', line, comments: [comment(1, 7, 'fix file')] }] });
+    expect(result.complete).toBe(false);
+  });
+  it('keeps locations across comment pages for feedback but drops them from normalized facts', async () => {
+    const threads = [{ id: 'located', isResolved: false, path: 'src/example.ts', line: 42,
+      comments: Array.from({ length: 101 }, (_, i) => comment(i + 1, 7, 'fix this')) }];
+    const { result } = await read({ reviews: [review(7)], threads });
+    expect(result.complete).toBe(true);
+    if (!result.complete) throw Error('incomplete');
+    const pieces = reviewFeedbackOf(result.pr, [7])!;
+    expect(pieces[0]!.comments).toHaveLength(101);
+    expect(pieces[0]!.comments[100]).toMatchObject({ path: 'src/example.ts', line: 42 });
+    expect(JSON.stringify(normalizeSnapshot(result, registry, T0))).not.toContain('src/example.ts');
+    expect(PULL_REQUEST_QUERY).toMatch(/id isResolved path line/);
+  });
+  it('preserves file-level locations without inventing a line', async () => {
+    const { result } = await read({ reviews: [review(7)], threads: [{ id: 'file', isResolved: false,
+      path: 'src/file.ts', line: null, comments: [comment(1, 7, 'fix file')] }] });
+    if (!result.complete) throw Error('incomplete');
+    expect(reviewFeedbackOf(result.pr, [7])![0]!.comments[0]).toMatchObject({ path: 'src/file.ts', line: null });
   });
 });

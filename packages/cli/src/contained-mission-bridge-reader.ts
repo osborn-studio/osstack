@@ -35,7 +35,7 @@ export const PULL_REQUEST_QUERY = `query BridgePullRequest($owner: String!, $nam
       reviewThreads(first: ${PAGE}, after: $threadsAfter) @include(if: $threads) {
         pageInfo { hasNextPage endCursor }
         nodes {
-          id isResolved
+          id isResolved path line
           comments(first: ${PAGE}) {
             pageInfo { hasNextPage endCursor }
             nodes { databaseId createdAt pullRequestReview { databaseId } body author { __typename ... on User { databaseId } ... on Bot { databaseId } } }
@@ -140,7 +140,7 @@ const rawCommentSchema = z.object({
   body: z.string(),
   author: authorSchema,
 });
-const rawThreadSchema = z.object({ id: z.string(), isResolved: z.boolean(), comments: connection(rawCommentSchema) });
+const rawThreadSchema = z.object({ id: z.string(), isResolved: z.boolean(), path: z.string().optional(), line: z.number().int().positive().nullable().optional(), comments: connection(rawCommentSchema) });
 const prSchema = z.object({
   state: z.enum(['OPEN', 'MERGED', 'CLOSED']),
   merged: z.boolean(),
@@ -172,6 +172,9 @@ export type RawComment = z.infer<typeof rawCommentSchema>;
 export interface RawThread {
   readonly id: string;
   readonly isResolved: boolean;
+  /** Absent in older recordings; null line denotes a file-level or outdated thread. */
+  readonly path?: string;
+  readonly line?: number | null;
   readonly comments: readonly RawComment[];
 }
 /** Everything the query returns, bodies included. In memory only: normalizeSnapshot() is the last consumer. */
@@ -279,7 +282,8 @@ export async function readPullRequest(transport: GraphqlTransport, ref: PullRequ
         comments.push(...conn.nodes);
         ({ hasNextPage, endCursor } = conn.pageInfo);
       }
-      threads.push({ id: thread.id, isResolved: thread.isResolved, comments });
+      threads.push({ id: thread.id, isResolved: thread.isResolved, comments,
+        ...(thread.path !== undefined ? { path: thread.path } : {}), ...(thread.line !== undefined ? { line: thread.line } : {}) });
     }
     return {
       complete: true,
@@ -348,10 +352,12 @@ export function reviewerOf(author: RawAuthor | undefined, registry: ProducerRegi
   return { app_id: null, actor_id: author.databaseId };
 }
 
+export interface ReviewFeedbackComment { threadId: string; databaseId: number; body: string; path?: string; line?: number | null }
+
 /** A thread belongs to the review of its FIRST comment (earliest createdAt, then lowest databaseId). A thread whose first comment has no review
  * belongs to no review. All of the thread's non-empty comments are that review's feedback, whoever replied. */
-export function unresolvedFeedbackByReview(pr: RawPullRequest): Map<number, { threadId: string; databaseId: number; body: string }[]> {
-  const unresolved = new Map<number, { threadId: string; databaseId: number; body: string }[]>();
+export function unresolvedFeedbackByReview(pr: RawPullRequest): Map<number, ReviewFeedbackComment[]> {
+  const unresolved = new Map<number, ReviewFeedbackComment[]>();
   for (const thread of pr.threads) {
     if (thread.isResolved || thread.comments.length === 0) continue;
     const earlier = (a: RawComment, b: RawComment): RawComment => {
@@ -364,7 +370,8 @@ export function unresolvedFeedbackByReview(pr: RawPullRequest): Map<number, { th
     const list = unresolved.get(owner) ?? [];
     for (const comment of thread.comments) {
       const body = normalizeBody(comment.body);
-      if (body !== '') list.push({ threadId: thread.id, databaseId: comment.databaseId, body });
+      if (body !== '') list.push({ threadId: thread.id, databaseId: comment.databaseId, body,
+        ...(thread.path !== undefined ? { path: thread.path } : {}), ...(thread.line !== undefined ? { line: thread.line } : {}) });
     }
     unresolved.set(owner, list);
   }
@@ -373,7 +380,7 @@ export function unresolvedFeedbackByReview(pr: RawPullRequest): Map<number, { th
 
 /** The feedback of the selected reviews, straight from the raw read, with each review's digest recomputed by `feedbackDigest`. */
 export function reviewFeedbackOf(pr: RawPullRequest, reviewIds: readonly number[]):
-  Array<{ review_id: number; top_level: string; comments: Array<{ threadId: string; databaseId: number; body: string }>; digest: string }> | undefined {
+  Array<{ review_id: number; top_level: string; comments: ReviewFeedbackComment[]; digest: string }> | undefined {
   const unresolved = unresolvedFeedbackByReview(pr);
   const out = [];
   for (const id of [...reviewIds].sort((a, b) => a - b)) {
