@@ -368,10 +368,14 @@ export async function createContainedMissionService(deps: {
     let afterIntentId: string | undefined;
     while (!signal.aborted) {
       const page = await recovery.recoverPendingReceipts({ limit: 10, signal, ...(afterIntentId ? { afterIntentId } : {}) });
-      if (page.complete) return;
+      if (page.complete) break;
       if (!page.afterIntentId || page.afterIntentId === afterIntentId) throw Error('receipt_recovery_cursor_stalled');
       afterIntentId = page.afterIntentId;
     }
+    const { recoverBridgeLedgers, compareBridgeLedgerRange } = await import('./contained-mission-bridge-ledger.js');
+    await recoverBridgeLedgers({ chains: chainStore, missions: store, remoteHead: read.remoteHead,
+      compare: (repository, start, head, abort) => compareBridgeLedgerRange(repository, start, head, undefined, abort),
+      now: Date.now, cancelChild: async chain => { if (chain.current_mission_id) await host.cancelFromBridge(chain.current_mission_id); } }, signal);
   };
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,
     revisionRecovery: live?.revisionRecovery ?? revisionRecovery, ...(shadow ? { shadow } : {}),

@@ -16,6 +16,7 @@ export interface LiveReconcilerOptions {
   /** Optional transport cancellation; late results are discarded even if the underlying reader cannot abort. */
   readPr?: (ref: PullRequestRef, signal: AbortSignal) => Promise<PullRequestRead>;
   readLimiter?: BridgeReadLimiter;
+  verifyLedger?: (chain: RevisionChain, signal: AbortSignal) => Promise<import('./contained-mission-bridge-ledger.js').LedgerVerdict>;
   intervalMs?: number;
   chainsPerScan?: number;
 }
@@ -187,6 +188,16 @@ export class LiveReconciler {
     syncLiveChild(deps, listed.chain_id, this.options.isBusy);
     let chain = chains.get(listed.chain_id);
     const snapshot = normalizeSnapshot(read, registry, deps.now());
+    if (snapshot.pr_state === 'OPEN' && this.options.verifyLedger) {
+      const ledger = await this.options.verifyLedger(chain, this.abort.signal);
+      if (!this.active() || chains.get(chain.chain_id).revision !== chain.revision) return;
+      if (ledger === 'external_write') {
+        chain = chains.stopLive(chain.chain_id, chain.revision, 'external_write', deps.now());
+        if (chain.current_mission_id) await this.cancel(chain, 'external_write');
+        return;
+      }
+      if (ledger === 'stale' || ledger === 'reconciliation_incomplete') return;
+    }
     if (chain.state === 'closed' || (chain.state === 'awaiting_decision' && snapshot.pr_state === 'OPEN')) return;
     if (snapshot.pr_state === 'OPEN') {
       const reason = read.pr.headRefName !== chain.branch || read.pr.headRepository?.toLowerCase() !== chain.repository.toLowerCase()

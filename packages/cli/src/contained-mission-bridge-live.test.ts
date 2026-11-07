@@ -19,6 +19,16 @@ function service(f = setup()) {
 }
 
 describe('live reconciler', () => {
+  it.each(['reconciliation_incomplete', 'external_write', 'stale'] as const)('blocks dispatch when publication coverage is %s', async verdict => {
+    const f = setup();
+    const audit = vi.fn(async () => verdict);
+    const live = new LiveReconciler({ dispatch: f.deps, isBusy: () => false, cancelChild: async () => {},
+      headIsDescendant: async () => true, verifyLedger: audit, log: () => {} });
+    await live.scan();
+    expect(audit).toHaveBeenCalledOnce(); expect(f.children()).toHaveLength(0);
+    expect(f.rig.chains.get(f.chain.chain_id).stop_reason).toBe(verdict === 'external_write' ? 'external_write' : null);
+    await live.stop();
+  });
   it('dispatches one child for a qualified review and never dispatches the same head twice', async () => {
     const { f, live } = service();
     await live.scan();

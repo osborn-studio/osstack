@@ -36,6 +36,7 @@ export async function assembleLiveBridge(deps: {
   headIsDescendant: LiveReconcilerOptions['headIsDescendant'];
   publication: Omit<RevisionPublicationDeps, 'chains' | 'missions' | 'host' | 'now' | 'fenceAuthority' | 'cancelChild'>;
   stoppedRead: import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanOptions['readPr'];
+  ledgerCompare?: import('./contained-mission-bridge-ledger.js').LedgerCompare;
 }) {
   const config = await loadLiveBridgeConfiguration(deps.home);
   if (!/^[0-9a-f]{64}$/.test(deps.protectedSetDigest())) throw Error('BRIDGE_CONFIG_INVALID:live:protected_set_digest');
@@ -70,18 +71,28 @@ export async function assembleLiveBridge(deps: {
   });
   const receipts = publication.createRevisionReceiptRecovery({ ...deps.publication, chains: deps.chains, missions: deps.missions,
     host: deps.ports.hostProcesses, now: deps.now });
+  const ledger = await import('./contained-mission-bridge-ledger.js');
+  const ledgerDeps = { chains: deps.chains, missions: deps.missions, remoteHead: deps.publication.remoteHead,
+    compare: deps.ledgerCompare ?? deps.publication.compare };
+  const cancelChain = async (chain: import('@osstack/core').RevisionChain) => {
+    if (!chain.current_mission_id) return;
+    const signed = parseStoredGrant(chain.grant_json);
+    await cancel(chain.current_mission_id, signed.principal_id, signed.client_session_id);
+  };
   const revisionRecovery = async (signal: AbortSignal) => {
     let afterIntentId: string | undefined;
     while (!signal.aborted) {
       const page = await receipts.recoverPendingReceipts({ limit: 10, signal, ...(afterIntentId ? { afterIntentId } : {}) });
-      if (page.complete) return;
+      if (page.complete) break;
       if (!page.afterIntentId || page.afterIntentId === afterIntentId) throw Error('receipt_recovery_cursor_stalled');
       afterIntentId = page.afterIntentId;
     }
+    await ledger.recoverBridgeLedgers({ ...ledgerDeps, now: deps.now, cancelChild: cancelChain }, signal);
   };
   const readLimiter = new BridgeReadLimiter();
   const live = new LiveReconciler({ dispatch: { ...common, registry: config.registry, readPr: deps.readPr, protectedSetDigest: deps.protectedSetDigest },
     readLimiter, isBusy: id => deps.host.isBusy(id), headIsDescendant: deps.headIsDescendant, log: deps.log,
+    verifyLedger: (chain, signal) => ledger.verifyBridgeLedger(ledgerDeps, chain, signal),
     cancelChild: async chain => {
       if (!chain.current_mission_id) return;
       const signed = parseStoredGrant(chain.grant_json);
@@ -90,8 +101,14 @@ export async function assembleLiveBridge(deps: {
   });
   const stoppedScan = new StoppedChainScanService({ chains: deps.chains, enabled: deps.enabled, now: deps.now, readLimiter,
     missionState: id => deps.missions.get(id).state, refreshPrincipal: (id, session) => deps.access.refresh(id, session),
-    cancelChild: (actor, id) => actor ? deps.host.cancel(actor, id) : deps.host.cancelFromBridge(id), readPr: deps.stoppedRead, log: deps.log });
+    cancelChild: (actor, id) => actor ? deps.host.cancel(actor, id) : deps.host.cancelFromBridge(id), readPr: deps.stoppedRead, log: deps.log,
+    auditLedger: async (chain, signal) => {
+      if (await ledger.verifyBridgeLedger(ledgerDeps, chain, signal) !== 'external_write') return;
+      const stopped = deps.chains.stopLive(chain.chain_id, chain.revision, 'external_write', deps.now());
+      await cancelChain(stopped);
+    } });
   const grants = new grant.RevisionGrantService({ chains: deps.chains, missions: await grant.createGrantMissionView(deps.missions),
+    compare: deps.ledgerCompare ?? deps.publication.compare,
     access: deps.access, registry: config.registry, readPr: deps.readPr, loadIssuer: () => grant.loadRevisionIssuer(deps.home),
     enabled: deps.enabled, now: deps.now, protectedSetDigest: deps.protectedSetDigest,
     reconcileReceipt: chain => receipts.reconcileUncertain(chain),

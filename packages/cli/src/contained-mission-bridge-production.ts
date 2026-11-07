@@ -45,8 +45,10 @@ export async function createProductionLiveBridge(deps: ProductionLiveBridgeDeps)
     import('./contained-mission-bridge-receipt-adapter.js'), import('./contained-mission-bridge-stopped-scan.js'),
   ]);
   const read = await createReceiptReadAdapters({ signal: new AbortController().signal });
+  const { compareBridgeLedgerRange } = await import('./contained-mission-bridge-ledger.js');
   const write = await deps.ports.revisionPublicationAdapters();
   return assembleLiveBridge({ ...deps, protectedSetDigest: missionProtectedSetDigest,
+    ledgerCompare: (repository, start, head, signal) => compareBridgeLedgerRange(repository, start, head, undefined, signal),
     readPr: ref => reader.readPullRequest(reader.ghGraphqlTransport(), ref),
     headIsDescendant: (chain, head, signal) => readBridgeAncestry(chain, head, signal, reader.defaultGhExec),
     stoppedRead: stoppedChainPrReader(),

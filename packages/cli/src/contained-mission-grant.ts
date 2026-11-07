@@ -7,7 +7,7 @@
 // cannot stop another process that holds it. The grant is therefore signed with a host-private Ed25519 issuer key that the
 // daemon never holds; the daemon only verifies. A same-UID process that can read the key file is outside this boundary, exactly
 // as for `follow-up-delivery issue-grant`.
-import { createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, randomUUID, type KeyObject } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, randomUUID, type KeyObject } from 'node:crypto';
 import { constants } from 'node:fs';
 import { mkdir, open, rename, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -199,6 +199,7 @@ export interface GrantMissionView {
   /** Null unless the Mission is `pr_opened` with an opened publication. */
   publication(missionId: string): ShadowMissionPublication | null;
   state(missionId: string): string;
+  startCommit(missionId: string): string;
 }
 export interface RevisionGrantServiceOptions {
   readonly chains: RevisionChainStore;
@@ -208,6 +209,7 @@ export interface RevisionGrantServiceOptions {
   readonly registry: { readonly repository: string; readonly publisher: readonly ProducerIdentity[] };
   /** Read-only PR read with the host's own credentials. */
   readonly readPr: (ref: PullRequestRef) => Promise<PullRequestRead>;
+  readonly compare: (repository: string, oldHead: string, newHead: string) => Promise<readonly string[]>;
   readonly loadIssuer: () => Promise<IssuerConfig | undefined>;
   readonly protectedSetDigest: () => string;
   readonly now: () => number;
@@ -270,11 +272,20 @@ export class RevisionGrantService {
       fresh = 'mission_id' in record.request ? await this.buildFirst(actor, record.request.mission_id, record.terms, fixed) : await this.buildRenew(actor, record.request.chain_id, record.terms, fixed);
     } catch { return refused(); }
     if (canonicalJson(fresh) !== canonicalJson(preview)) return refused();
+    // Import the root's already-published range as a receipt, never as a new remote write.
+    let baseline: { start: string; commits: readonly string[] } | undefined;
+    if (!preview.renews) {
+      const start = this.options.missions.startCommit(preview.root_mission_id);
+      const commits = await this.options.compare(preview.repository, start, preview.head_sha);
+      if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(start) || commits.length === 0 || commits.at(-1) !== preview.head_sha
+        || commits.some(c => !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(c)) || new Set(commits).size !== commits.length) return refused();
+      baseline = { start, commits };
+    }
     // Everything above awaited; authority and time are judged again here, right before the write, and the write uses this clock.
-    const at = this.options.now();
     // The issuer file is read again by the rebuild above; the signature must hold under what is trusted now, not at the first read.
     const finalKey = (await this.options.loadIssuer())?.keys.get(preview.key_id);
     if (!finalKey || !verifyRevisionGrantSignature(grant, finalKey.public_key)) return refused();
+    const at = this.options.now();
     if (at > record.created_at + GRANT_LIMITS.nonce_ttl_ms || at < preview.issued_at || at >= preview.expires_at) return refused();
     let current: EngineeringPrincipal;
     try { current = this.options.access.refresh(actor.principal_id, actor.client_session_id); } catch { return err('permission_denied'); }
@@ -287,11 +298,19 @@ export class RevisionGrantService {
     }
     try {
       const chain = chains.transaction(() => {
+        this.live();
         const created = chains.createLiveChain({
           root_mission_id: grant.root_mission_id, repository: grant.repository, pr_number: grant.pr_number, branch: grant.branch, base_ref: grant.base_ref,
           published_head: grant.head_sha, published_base: grant.base_sha, trace_id: `bridge-live:${grant.root_mission_id}`,
           review_deadline: grant.issued_at + grant.review_deadline_ms, budget_origin: grant.issued_at, grant,
         }, at);
+        if (!baseline || this.options.missions.startCommit(grant.root_mission_id) !== baseline.start) return refused();
+        const initial = chains.recordIntent(created.chain_id, created.revision, { kind: 'open_pr', branch: grant.branch,
+          expected_old_head: baseline.start, new_head: grant.head_sha, expected_base_sha: grant.base_sha,
+          child_mission_id: grant.root_mission_id,
+          binding: { commit_count: baseline.commits.length, range_sha256: createHash('sha256').update(JSON.stringify(baseline.commits)).digest('hex') } }, at);
+        chains.appendEvent(created.chain_id, 'push_range', { intent_id: initial.intent.intent_id, commits: baseline.commits }, at);
+        chains.settleIntent(initial.intent.intent_id, 'confirmed', at);
         chains.appendEvent(created.chain_id, 'grant_issued', { grant_id: grant.grant_id, rounds: grant.rounds, expires_at: grant.expires_at, key_id: grant.key_id }, at);
         return created;
       });
@@ -441,5 +460,10 @@ type Fixed = { grant_id: string; issued_at: number; nonce: string };
 export async function createGrantMissionView(store: ContainedMissionStore): Promise<GrantMissionView> {
   const { createShadowMissionView } = await import('./contained-mission-bridge-shadow.js');
   const view = createShadowMissionView(store);
-  return { readable: (actor, id) => store.readable(actor, id), publication: id => view.publication(id), state: id => store.get(id).state };
+  return { readable: (actor, id) => store.readable(actor, id), publication: id => view.publication(id), state: id => store.get(id).state,
+    startCommit: id => {
+      const spec = JSON.parse(store.get(id).spec_json) as { start_commit?: unknown };
+      if (typeof spec.start_commit !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(spec.start_commit)) return err('grant_root_start_missing');
+      return spec.start_commit;
+    } };
 }

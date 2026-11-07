@@ -503,7 +503,7 @@ export class RevisionChainStore {
     });
   }
 
-  /** Stop a live chain for a human (appendix §4.4): any non-terminal, non-stopped state -> `awaiting_decision(reason)`. */
+  /** Stop a live chain for a human. Proven external history also supersedes a prior human stop. */
   stopLive(chainId: string, ifRevision: number, reason: string, now: number): RevisionChain {
     this.clock(now);
     const base = reason.split(":")[0] ?? "";
@@ -512,7 +512,8 @@ export class RevisionChainStore {
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
-      if (chain.state === "closed" || chain.state === "awaiting_decision") fail("state_denied");
+      if (chain.state === "closed" || (chain.state === "awaiting_decision" && reason !== "external_write")) fail("state_denied");
+      if (chain.state === "awaiting_decision" && chain.stop_reason === reason) return chain;
       return this.update(chain, { state: "awaiting_decision", stop_reason: reason }, reason, { head: chain.published_head, base: chain.published_base }, now);
     });
   }

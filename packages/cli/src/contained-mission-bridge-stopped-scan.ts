@@ -18,6 +18,7 @@ export interface StoppedChainScanOptions {
   readPr: (chain: RevisionChain, signal: AbortSignal) => Promise<StoppedPrFacts>;
   log: (line: string) => void;
   readLimiter?: BridgeReadLimiter;
+  auditLedger?: (chain: RevisionChain, signal: AbortSignal) => Promise<void>;
   intervalMs?: number;
   initialDelayMs?: number;
   batchLimit?: number;
@@ -131,6 +132,7 @@ export class StoppedChainScanService {
             now: this.options.now, gapMs: this.gapMs, signal: this.abort.signal,
           }, async () => {
             const result = await this.options.readPr(chain, this.abort.signal);
+            if (result.complete && result.pr_state === 'OPEN') await this.options.auditLedger?.(chain, this.abort.signal);
             if (!result.complete) this.readLimiter.fail(chain.chain_id, this.options.now(), this.gapMs);
             return result;
           });
