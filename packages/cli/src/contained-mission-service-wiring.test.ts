@@ -1,10 +1,10 @@
 import { createHash, generateKeyPairSync } from "node:crypto";
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AttentionStore, createScratchDirSync, openDb } from "@osstack/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EngineeringAccess } from "./engineering-access.js";
-import { HOST_PROCESS_RECHECK_MS, createContainedMissionService } from "./contained-mission-rpc.js";
+import { ContainedMissionService, HOST_PROCESS_RECHECK_MS, createContainedMissionService } from "./contained-mission-rpc.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -120,4 +120,137 @@ describe("createContainedMissionService bridge wiring", () => {
       await expect(f.create({ OSSTACK_BRIDGE: "off" })).rejects.toThrow("BRIDGE_MODE_INVALID");
     });
   });
+});
+
+
+describe("bridge startup recovery ordering", () => {
+  function fixture(revisionRecovery: (signal: AbortSignal) => Promise<void>) {
+    const calls: string[] = [];
+    const host = { recover: vi.fn(async () => { calls.push("host"); }), tick: vi.fn(async () => {}), close: vi.fn(async () => { calls.push("close"); }) };
+    const timer = (name: string) => ({ start: vi.fn(() => { calls.push(name); }), stop: vi.fn(async () => {}) });
+    const live = timer("live"); const stoppedScan = timer("stopped");
+    const service = new ContainedMissionService({ host: host as never, access: {} as never, draining: () => false,
+      revisionRecovery, live, stoppedScan });
+    return { service, calls, host, live, stoppedScan };
+  }
+  it("runs host recovery, then read-only receipt recovery, then timers, once", async () => {
+    const f = fixture(async () => { f.calls.push("receipts"); });
+    await Promise.all([f.service.start(), f.service.start()]);
+    expect(f.calls).toEqual(["host", "receipts", "live", "stopped"]);
+    await f.service.close();
+  });
+  it("starts no timers after receipt recovery fails", async () => {
+    const f = fixture(async () => { throw Error("receipt_read_failed"); });
+    await expect(f.service.start()).rejects.toThrow("receipt_read_failed");
+    expect(f.live.start).not.toHaveBeenCalled();
+    expect(f.stoppedScan.start).not.toHaveBeenCalled();
+    await f.service.close();
+  });
+  it("signals shutdown to cooperative receipt readers and still closes the host", async () => {
+    let observed: AbortSignal | undefined;
+    const f = fixture(signal => new Promise<void>((_resolve, reject) => {
+      observed = signal;
+      signal.addEventListener("abort", () => reject(Error("aborted")), { once: true });
+    }));
+    const starting = f.service.start();
+    const rejection = expect(starting).rejects.toThrow("aborted");
+    await vi.waitFor(() => expect(observed).toBeDefined());
+    await f.service.close(); await rejection;
+    expect(observed?.aborted).toBe(true);
+    expect(f.host.close).toHaveBeenCalledOnce();
+    expect(f.live.start).not.toHaveBeenCalled();
+  });
+  it("does not start timers if closed while receipt recovery is pending", async () => {
+    let release!: () => void;
+    const f = fixture(() => new Promise<void>(resolve => { release = resolve; }));
+    const start = f.service.start();
+    await vi.waitFor(() => expect(typeof release).toBe("function"));
+    const close = f.service.close(); release();
+    await Promise.all([start, close]);
+    expect(f.live.start).not.toHaveBeenCalled();
+    expect(f.host.close).toHaveBeenCalledOnce();
+  });
+});
+
+
+describe("live bridge configuration boundary", () => {
+  it("rejects absent configuration instead of assembling host-credential fallback ports", async () => {
+    const f = setup();
+    const { loadLiveBridgeConfiguration } = await import("./contained-mission-bridge-assembly.js");
+    await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow("BRIDGE_CONFIG_INVALID");
+  });
+});
+
+
+function liveConfiguration(f: ReturnType<typeof setup>) {
+  chmodSync(f.home, 0o700); chmodSync(join(f.home, "bridge"), 0o700);
+  const key = join(f.root, "publisher.pem");
+  writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
+  const app = { app_id: 1, installation_id: 2, private_key_path: key };
+  const { publicKey } = generateKeyPairSync("ed25519");
+  const values: Record<string, unknown> = {
+    "apps.json": { version: 1, repository: "a/b", publisher: app, evidence: { ...app, app_id: 3, installation_id: 4 } },
+    "rulesets.json": { version: 1, repository: "a/b", mission_ruleset_ids: [1] },
+    "producers.json": { version: 1, repository: "a/b", publisher: [{ actor_id: 5, app_id: 1 }], reviewers: [{ actor_id: 6, app_id: 7 }] },
+    "revision-issuer.json": { version: 1, keys: [{ key_id: "k1", public_key_spki_b64: publicKey.export({ format: "der", type: "spki" }).toString("base64"), max_validity_ms: 86_400_000 }] },
+  };
+  for (const [name, value] of Object.entries(values)) writeFileSync(join(f.home, "bridge", name), JSON.stringify(value), { mode: 0o600 });
+}
+
+describe("live assembly configuration validation", () => {
+  for (const missing of ["apps.json", "rulesets.json", "producers.json", "revision-issuer.json"]) {
+    it(`fails closed when ${missing} is missing`, async () => {
+      const f = setup(); liveConfiguration(f); rmSync(join(f.home, "bridge", missing));
+      const { loadLiveBridgeConfiguration } = await import("./contained-mission-bridge-assembly.js");
+      await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow("BRIDGE_CONFIG_INVALID");
+    });
+  }
+  it("validates repository and publisher App bindings", async () => {
+    const f = setup(); liveConfiguration(f);
+    const { loadLiveBridgeConfiguration } = await import("./contained-mission-bridge-assembly.js");
+    expect((await loadLiveBridgeConfiguration(f.home)).registry.repository).toBe("a/b");
+    writeFileSync(join(f.home, "bridge", "producers.json"), JSON.stringify({ version: 1, repository: "a/b", publisher: [{ actor_id: 5, app_id: 8 }], reviewers: [{ actor_id: 6, app_id: 7 }] }));
+    await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow("publisher_mismatch");
+  });
+  it("installs launch, publication, grant and scan services without starting work", async () => {
+    const f = setup(); liveConfiguration(f);
+    const { ContainedMissionStore, RevisionChainStore } = await import("@osstack/core");
+    const { assembleLiveBridge } = await import("./contained-mission-bridge-assembly.js");
+    const missions = new ContainedMissionStore(f.deps.attention, f.deps.owner);
+    const chains = new RevisionChainStore(f.deps.attention, f.deps.owner);
+    const service = await f.create();
+    const ports = f.portsOf(service) as unknown as import("./contained-mission-ports.js").ContainedMissionHostPorts;
+    const read = vi.fn(async () => { throw Error("unexpected_read"); });
+    const write = vi.fn(async () => { throw Error("unexpected_write"); });
+    const host = { isBusy: () => false, cancel: write, cancelFromBridge: write };
+    const assemblyDeps = { home: f.home, chains, missions, ports, host, access: f.deps.access,
+      enabled: () => true, now: Date.now, log: () => {}, launchCaps: { executor_seconds: 60, verify_seconds: 60 },
+      protectedSetDigest: () => "a".repeat(64), readPr: read, headIsDescendant: read, stoppedRead: read,
+      publication: { runner: { run: write }, readPr: read, localGit: read, remoteHead: read, compare: read, preflight: write, checkEnabled: true } };
+    await expect(assembleLiveBridge({ ...assemblyDeps, protectedSetDigest: () => "invalid" })).rejects.toThrow("protected_set_digest");
+    expect(ports.revision).toBeUndefined(); expect(ports.revisionPublication).toBeUndefined();
+    const assembly = await assembleLiveBridge(assemblyDeps);
+    expect(typeof ports.revision?.assertActive).toBe("function");
+    expect(ports.revisionPublication).toBe(assembly.publication);
+    expect(typeof assembly.grants.preview).toBe("function");
+    expect(read).not.toHaveBeenCalled(); expect(write).not.toHaveBeenCalled();
+    const options = (value: unknown) => (value as { options: { readLimiter: unknown } }).options;
+    expect(options(assembly.live).readLimiter).toBe(assembly.readLimiter);
+    expect(options(assembly.stoppedScan).readLimiter).toBe(assembly.readLimiter);
+    await assembly.live.stop(); await assembly.stoppedScan.stop(); await service.close();
+  });
+});
+
+
+describe("production receipt recovery remains active with publication off", () => {
+  for (const mode of [undefined, "0", "shadow"]) {
+    it(`starts read-only accounting with bridge mode ${mode ?? "unset"}`, async () => {
+      const f = setup();
+      const service = await f.create(mode ? { OSSTACK_BRIDGE: mode } : {});
+      const options = (service as unknown as { options: { revisionRecovery: unknown; grants: unknown } }).options;
+      expect(typeof options.revisionRecovery).toBe("function");
+      expect(options.grants).toBeUndefined();
+      await service.start(); await service.close();
+    });
+  }
 });

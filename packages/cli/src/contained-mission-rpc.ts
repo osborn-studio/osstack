@@ -60,6 +60,10 @@ export interface ContainedMissionServiceOptions {
   resolveStart?: typeof resolveContainedMissionStart;
   /** Bridge shadow reconciler (OSSTACK_BRIDGE=shadow): started after recovery, stopped on close. Never on the tick path. */
   shadow?: import('./contained-mission-bridge-shadow.js').ShadowHandle;
+  /** Read-only receipt recovery. Runs in every mode, after host recovery and before any timer. */
+  revisionRecovery?: (signal: AbortSignal) => Promise<void>;
+  /** Independent live observation timer; no scan runs on the Mission tick path. */
+  live?: Pick<import('./contained-mission-bridge-live.js').LiveReconciler, 'start' | 'stop'>;
   /** D7 stopped live-chain scan; starts after recovery and stops before the host closes. */
   stoppedScan?: Pick<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService, 'start' | 'stop'>;
   /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
@@ -109,17 +113,29 @@ export class ContainedMissionService {
   private timer: ReturnType<typeof setInterval> | undefined;
   private ticking: Promise<void> | undefined;
   private closed = false;
+  private readonly recoveryAbort = new AbortController();
+  private starting: Promise<void> | undefined;
+  private closing: Promise<void> | undefined;
   private readonly background = new Set<Promise<void>>();
   constructor(private readonly options: ContainedMissionServiceOptions) {}
   get store(): ContainedMissionStore { return this.options.host.store; }
 
-  async start(): Promise<void> {
-    await this.options.host.recover();
-    this.options.shadow?.start();
-    this.options.stoppedScan?.start();
-    this.options.merger?.start();
-    this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
-    this.timer.unref();
+  start(): Promise<void> {
+    if (this.closed) return Promise.reject(Error('mission_unavailable'));
+    // Register before invoking ports, including synchronously reentrant test or host ports.
+    this.starting ??= Promise.resolve().then(async () => {
+      await this.options.host.recover();
+      if (this.closed) return;
+      await this.options.revisionRecovery?.(this.recoveryAbort.signal);
+      if (this.closed) return;
+      this.options.shadow?.start();
+      this.options.live?.start();
+      this.options.stoppedScan?.start();
+      this.options.merger?.start();
+      this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
+      this.timer.unref();
+    });
+    return this.starting;
   }
   /** One tick at a time; a slow step never overlaps the next scan. */
   tick(): Promise<void> {
@@ -127,12 +143,20 @@ export class ContainedMissionService {
     if (!this.ticking) this.ticking = this.options.host.tick().catch(() => undefined).finally(() => { this.ticking = undefined; });
     return this.ticking;
   }
-  async close(): Promise<void> {
-    this.closed = true; if (this.timer) clearInterval(this.timer);
-    await this.options.shadow?.stop();
-    await this.options.stoppedScan?.stop();
-    await this.options.merger?.stop();
-    await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
+  close(): Promise<void> {
+    this.closed = true;
+    this.recoveryAbort.abort();
+    this.closing ??= Promise.resolve().then(async () => {
+      if (this.timer) clearInterval(this.timer);
+      await this.starting?.catch(() => undefined);
+      // Stop all readers before closing the host ledger, even when one stop rejects.
+      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.merger]
+        .map(service => Promise.resolve().then(() => service?.stop())));
+      await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
+      const failure = stopped.find(result => result.status === 'rejected');
+      if (failure?.status === 'rejected') throw failure.reason;
+    });
+    return this.closing;
   }
 
   async handle(method: string, params: unknown): Promise<unknown> {
@@ -323,7 +347,23 @@ export async function createContainedMissionService(deps: {
       events: events.latest, events_total: events.total, events_total_capped: events.total_capped,
     };
   };
-  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}),
+  // Receipt recovery is accounting for a possible prior write, so it also runs with the bridge off.
+  // This adapter has only GET/GraphQL reads and constrained git reads. It cannot publish a check.
+  const revisionRecovery = async (signal: AbortSignal) => {
+    const [{ createReceiptReadAdapters }, { createRevisionReceiptRecovery }] = await Promise.all([
+      import('./contained-mission-bridge-receipt-adapter.js'), import('./contained-mission-revision-publication.js'),
+    ]);
+    const read = await createReceiptReadAdapters({ signal });
+    const recovery = createRevisionReceiptRecovery({ chains: chainStore, missions: store, host: ports.hostProcesses, now: Date.now, ...read, checkEnabled: false });
+    let afterIntentId: string | undefined;
+    while (!signal.aborted) {
+      const page = await recovery.recoverPendingReceipts({ limit: 10, signal, ...(afterIntentId ? { afterIntentId } : {}) });
+      if (page.complete) return;
+      if (!page.afterIntentId || page.afterIntentId === afterIntentId) throw Error('receipt_recovery_cursor_stalled');
+      afterIntentId = page.afterIntentId;
+    }
+  };
+  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, revisionRecovery, ...(shadow ? { shadow } : {}),
     ...(stoppedScan ? { stoppedScan } : {}), ...(merger ? { merger } : {}), mergerReport });
 }
 
