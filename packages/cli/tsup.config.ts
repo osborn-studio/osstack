@@ -18,6 +18,11 @@ export default defineConfig({
     "bridge-kit": "src/contained-mission-bridge.ts",
     "bridge-github-app": "src/contained-mission-github-app.ts",
     "bridge-ports": "src/contained-mission-ports.ts",
+    // Shadow merger (M-D) sandbox scenario: read-only snapshot reader, the PR-body marker and the fixture de-identifier, for
+    // scripts/sandbox-merger-scenario.mjs only. No App E code exists here and nothing in this list mints an App E token.
+    "merger-reader": "src/contained-mission-merger-reader.ts",
+    "bridge-marker": "src/contained-mission-marker.ts",
+    "merger-sandbox-fixture": "src/contained-mission-merger-sandbox-fixture.ts",
   },
   format: ["esm"],
   target: "node20",
