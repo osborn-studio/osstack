@@ -214,12 +214,14 @@ test('cold handoff reopens after failed exited worker but never launches after f
 
 test('revocation evidence requires failed exact intent, actual stopped W13 journal and unchanged remote', () => {
   const proof = { missionId: 'cm_revoke', intentId: 'pi_revoke',
-    intent: { intent_id: 'pi_revoke', child_mission_id: 'cm_revoke', kind: 'push', state: 'failed' },
+    intent: { intent_id: 'pi_revoke', child_mission_id: 'cm_revoke', kind: 'push', state: 'failed', detail: 'grant_invalid' },
     journals: [{ mission_id: 'cm_revoke', intent_id: 'pi_revoke', kind: 'git_push', state: 'stopped',
-      released_at: null, stop_proof: 'group_empty+marker_unheld' }], expectedHead: sha, actualHead: sha };
+      released_at: null, stop_proof: 'never_released' }], expectedHead: sha, actualHead: sha };
   driver.assertRevokedPublicationFence(proof);
   for (const change of [{ journals: [] }, { actualHead: '2'.repeat(40) },
     { intent: { ...proof.intent, state: 'uncertain' } },
+    { intent: { ...proof.intent, detail: 'transport_failed' } },
+    { journals: [{ ...proof.journals[0], stop_proof: 'group_empty+marker_unheld' }] },
     { journals: [{ ...proof.journals[0], released_at: 1 }] },
     { journals: [{ ...proof.journals[0], state: 'registered' }] },
     { journals: [{ ...proof.journals[0], intent_id: 'pi_other' }] }]) {

@@ -235,10 +235,10 @@ export async function withSandboxCleanup(work) {
 /** A pending intent and a stopped unreleased W13 launch are both required; absence is not proof. */
 export function assertRevokedPublicationFence({ missionId, intentId, intent, journals, expectedHead, actualHead }) {
   assertThat(intent?.intent_id === intentId && intent.child_mission_id === missionId && intent.kind === 'push'
-    && intent.state === 'failed', 'revoked_push_not_failed');
+    && intent.state === 'failed' && intent.detail === 'grant_invalid', 'revoked_push_not_failed');
   assertThat(Array.isArray(journals) && journals.length === 1 && journals.every(row => row.mission_id === missionId
     && row.intent_id === intentId && row.kind === 'git_push' && row.released_at === null
-    && row.state === 'stopped' && row.stop_proof === 'group_empty+marker_unheld'), 'revoked_push_release_not_proven');
+    && row.state === 'stopped' && row.stop_proof === 'never_released'), 'revoked_push_release_not_proven');
   assertThat(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(expectedHead) && actualHead === expectedHead, 'revoked_push_remote_changed');
 }
 
