@@ -99,6 +99,17 @@ describe('live reconciler', () => {
     expect(f.children()).toHaveLength(1);
   });
 
+  it('refuses readiness if the PR branch changes with the same head during the second read', async () => {
+    const { f, live, readPr } = service();
+    f.pr.reviews[0]!.state = 'APPROVED';
+    readPr.mockImplementationOnce(f.deps.readPr).mockImplementationOnce(async ref => {
+      const read = await f.deps.readPr(ref);
+      return read.complete ? { ...read, pr: { ...read.pr, headRefName: 'other-branch' } } : read;
+    });
+    await live.scan();
+    expect(f.rig.chains.get(f.chain.chain_id).state).toBe('awaiting_review');
+  });
+
   it('keeps a halted child resumable and never stops it during a human decision', async () => {
     const f = setup();
     const child = await dispatched(f);

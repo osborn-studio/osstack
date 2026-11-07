@@ -240,5 +240,6 @@ function sameRead(first: PullRequestRead, second: PullRequestRead, registry: Dis
   const a = normalizeSnapshot(first, registry, now);
   const b = normalizeSnapshot(second, registry, now);
   return a.pr_state === b.pr_state && a.head === b.head && a.base_sha === b.base_sha && a.base_ref === b.base_ref
+    && first.pr.headRefName === second.pr.headRefName && first.pr.headRepository?.toLowerCase() === second.pr.headRepository?.toLowerCase()
     && JSON.stringify(a.reviews) === JSON.stringify(b.reviews);
 }
