@@ -426,9 +426,9 @@ describe("only the publication fence reaches a remote write (static scan, T13)",
   const dir = new URL(".", import.meta.url).pathname;
   const sources = readdirSync(dir).filter(f => /^contained-mission-.*\.ts$/.test(f) && !/\.test\.ts$|testkit|fixture/.test(f));
   const text = (f: string) => readFileSync(join(dir, f), "utf8");
-  it("push and pr create are named, as commands, only in the fence, the bridge runner and the gated launcher", () => {
+  it("push and pr create are named only in the fenced publication paths", () => {
     const naming = sources.filter(f => /args\[[^\]]*\]\s*===\s*["']push["']|\[\s*["']push["']|args\[1\]\s*===\s*["']create["']|["']pr["']\s*,\s*["']create["']/.test(text(f)));
-    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-ports.ts"]);
+    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-ports.ts", "contained-mission-revision-publication.ts"]);
   });
   it("the only process spawns on the Mission path are the gated launcher, the bridge's ungated exec (refused for writes), a read-only ps and the read-only gh GraphQL reader", () => {
     const spawning = sources.filter(f => /\b(?:execFile|execFileSync|spawn|spawnSync)\(/.test(text(f)));

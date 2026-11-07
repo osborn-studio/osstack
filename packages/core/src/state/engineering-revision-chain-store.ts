@@ -111,6 +111,7 @@ export class RevisionChainStore {
   intents(chainId: string): PublicationIntent[] {
     return this.db.prepare("SELECT * FROM engineering_publication_intents WHERE chain_id=? ORDER BY created_at,intent_id").all(chainId) as PublicationIntent[];
   }
+  getIntent(intentId: string): PublicationIntent { return this.intent(intentId); }
   confirmedPushHeads(chainId: string): string[] {
     return (this.db.prepare("SELECT new_head FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state='confirmed' ORDER BY created_at,intent_id").all(chainId) as Array<{ new_head: string }>).map(r => r.new_head);
   }
@@ -225,7 +226,7 @@ export class RevisionChainStore {
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
-      if (chain.state !== "revising" && chain.state !== "publishing") fail("state_denied");
+      if (input.kind === "push" && chain.state !== "revising" && chain.state !== "publishing") fail("state_denied");
       if (input.kind === "push") {
         this.assertGrantLive(chain);
         // D2: one push receipt at a time. A second pending intent could settle `uncertain` after the chain moved on, and an
@@ -293,6 +294,34 @@ export class RevisionChainStore {
    * dispatch can span the chain store and the Mission store (both live on `attention.db`) and roll back together. `fn` must be
    * synchronous and make no I/O. */
   transaction<T>(fn: () => T): T { return this.write(fn); }
+
+  /** A confirmed revision starts a fresh review window. This write is part of the caller's confirmation transaction. */
+  resetReviewDeadline(chainId: string, ifRevision: number, deadline: number, now: number): RevisionChain {
+    this.clock(now);
+    if (!Number.isSafeInteger(deadline) || deadline <= now) fail("invalid_deadline");
+    return this.write(() => {
+      const chain = this.checked(chainId, ifRevision);
+      if (chain.mode !== "live" || chain.state !== "awaiting_review") fail("state_denied");
+      this.db.prepare("UPDATE engineering_revision_chains SET review_deadline=?,revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?")
+        .run(deadline, now, chainId, ifRevision);
+      this.event(chainId, "review_deadline_reset", { deadline }, now);
+      return this.get(chainId);
+    });
+  }
+
+  /** A check belongs to a child that is already opened on a confirmed push. */
+  recordCheckIntent(chainId: string, childMissionId: string, newHead: string, now: number): PublicationIntent {
+    this.clock(now);
+    return this.write(() => {
+      const chain = this.get(chainId);
+      if (chain.mode !== "live" || chain.published_head !== newHead || chain.current_mission_id !== childMissionId) fail("check_binding_mismatch");
+      if (!this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? AND new_head=? AND state='confirmed'")
+        .get(chainId, childMissionId, newHead)) fail("check_push_unconfirmed");
+      if (!this.db.prepare("SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state='pr_opened'").get(childMissionId)) fail("check_child_not_opened");
+      return this.recordIntent(chainId, chain.revision, { kind: "check", branch: chain.branch, new_head: newHead, child_mission_id: childMissionId,
+        binding: { external_id: childMissionId } }, now).intent;
+    });
+  }
 
   /** Replace a live chain's grant (appendix §5.1 "再授"). Only for `awaiting_review`/`ready_for_human`, or `awaiting_decision`
    * stopped by `rounds_exhausted`/`grant_expired`/`grant_invalid`/`budget_exhausted`, with no unsettled push intent. The new grant
