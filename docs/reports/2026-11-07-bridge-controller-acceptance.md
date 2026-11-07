@@ -53,3 +53,22 @@ The fixture-only stage-goal clarification and fail-fast detection of halted roun
 - Shared cloud readback items **U1/U9/U10 remain unknown**. A shared cloud computer's gh workflow is not proof of App C/D migration or enabled platform routines.
 - Main-repository settings/rules readback remains separate. **N15's five consecutive clean production chains remains unfulfilled**; neither local deterministic gates nor partial sandbox progress substitutes for it.
 - This report introduces no execution permission, no new live attempt, no remote publication, and no change to the user's original acceptance requirements.
+
+## CI cancellation scheduling follow-up
+
+The check job now uses `${{ !cancelled() }}` rather than job-level `always()`.
+[GitHub's expression reference](https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#always)
+recommends this alternative for work that should run after success or failure
+while remaining cancellable. The explicit status function overrides the implicit
+success condition, so failed dependencies still reach the existing first-step
+`Require macOS Graph fixture success` gate. That step continues to fail unless
+its dependency result is success. Step-level artifact `always()` conditions,
+timeouts, test selection and required gates are unchanged.
+
+Local validation: PyYAML parsed the workflow; structural comparison against
+c74197b7 found only the job condition changed. Running the actual first-step
+shell with dependency statuses success/failure/cancelled/skipped produced
+exit0/1/1/1. actionlint was not installed, so it was not run. Diff check passed;
+no full suite or new remote CI was run for this scheduling change. The parent
+reported old superseded runs still awaiting cancellation; this local change does
+not retroactively update them, cancel them or claim the pending new CI passed.

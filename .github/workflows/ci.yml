@@ -22,7 +22,9 @@ concurrency:
 jobs:
   check:
     needs: graph-macos-fixtures
-    if: ${{ always() }}
+    # Keep failed-needs reporting through the first-step macOS success gate.
+    # Let cancellation stop superseded runs instead of holding the CI queue.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     # The integrated full suite takes ~14 minutes before the existing package
     # install / release smokes. Keep their verification, and budget the whole
