@@ -5,6 +5,8 @@
 
 阶段 6 是平台侧工作，由 Grok Bots 运营者完成，osstack 不改代码。本文把方案阶段 6 那一段写成运营者可以照着实现、照着验收的规则：App C 与 App D 处理哪些事件、怎样在不读 osstack 账本的情况下认出 Mission PR、`grok/verify-osstack` 的 check run 合同、App D 的 review 规则、`main-quality` ruleset 的改动（只给出待审 diff，由人执行）、沙箱验收清单、回滚，以及 osstack 需要运营者提供什么。
 
+2026-11-07 运营交接补充：用户已说明既有 Grok Bots 共用云电脑及 `Rubebun-Jadeem` 登录，验证工程师维护原 `verify-osstack` 技能，Watcher 验证并 approve，Merger 合并，Order 管理顺序 labels，CoS 协调。具体增量交接见[既有平台接入交接](../runbooks/bridge-grok-bots-handoff.md)。这些角色事实不证明 App C/D 已迁移，也不替代下列平台能力和运行条件的验收。
+
 ---
 
 ## 0. 平台未确认项（先读）
