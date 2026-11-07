@@ -1,7 +1,0 @@
----
-"@osstack/cli": minor
-"@osstack/github": minor
-"@osstack/agents": patch
----
-
-Contained Mission remote writes (`git push`, `gh pr create`) now run through the gated host-process launcher and its ledger: registered before they can write, released only after the publication fence passes inside the release transaction, and proven stopped before the call returns. The fence no longer runs ahead of the command; `fencedDeliveryRunner` hands it down as the gate and refuses a runner that is not gated. Publication is an allowlist of reads plus the two gated writes. An `AbortSignal` now reaches the launcher through the publish path. A delivery never starts while one of the Mission's records is unproven (the Mission stops in `stop_unknown` and nothing is pushed again), and the release record, not the in-memory flag, decides whether the remote can have been written. One open record per remote branch holds across Missions. App mode runs its credentialed commands with the user's global and system git configuration disabled and a fixed, whitelisted proxy and CA transport; a configuration that would redirect or decorate github.com requests refuses publication (`CONTAINED_BRIDGE_TRANSPORT_UNSUPPORTED`). The service now re-checks unproven host-process records every 60 seconds. `@osstack/github` gains `DeliveryWriteGate`, `DeliveryRunOptions` and a `gated` runner declaration; `@osstack/agents` exports `runGatedProcess`.

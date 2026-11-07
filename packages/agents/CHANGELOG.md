@@ -1,5 +1,30 @@
 # @osstack/agents
 
+## 0.24.0
+
+### Minor Changes
+
+- 49d9a17: Contained Mission local git writes (`update-ref`, `worktree add`, real-index `read-tree` and `update-index --refresh`) now run through the gated host-process launcher and its ledger: registered before they can write, released only after the Mission fence passes, and proven stopped afterwards. Restart recovery proves each open record stopped by observation only (it never signals a process); a record it cannot prove puts the Mission in `stop_unknown` and keeps the workspace claim, cancel and obligation clear closed. An interrupted workspace creation ends in `awaiting_decision` (`workspace_recovered`), and the new `resume_workspace` decision verifies and re-materializes it. Stale `index.lock` files left by a killed writer are removed after the proof. The periodic re-check is available as an opt-in host option and is off by default.
+
+### Patch Changes
+
+- 32bd440: Add the W13-B gated host-process launcher (`/bin/sh` wrapper that blocks on a release line, hold-marker fd 3, ps/lsof/boot-session probes, stop classifier) and an optional `gate` for `runHardenedGit`. Nothing is wired into the Mission runner yet.
+- bf14202: Contained Mission remote writes (`git push`, `gh pr create`) now run through the gated host-process launcher and its ledger: registered before they can write, released only after the publication fence passes inside the release transaction, and proven stopped before the call returns. The fence no longer runs ahead of the command; `fencedDeliveryRunner` hands it down as the gate and refuses a runner that is not gated. Publication is an allowlist of reads plus the two gated writes. An `AbortSignal` now reaches the launcher through the publish path. A delivery never starts while one of the Mission's records is unproven (the Mission stops in `stop_unknown` and nothing is pushed again), and the release record, not the in-memory flag, decides whether the remote can have been written. One open record per remote branch holds across Missions. App mode runs its credentialed commands with the user's global and system git configuration disabled and a fixed, whitelisted proxy and CA transport; a configuration that would redirect or decorate github.com requests refuses publication (`CONTAINED_BRIDGE_TRANSPORT_UNSUPPORTED`). The service now re-checks unproven host-process records every 60 seconds. `@osstack/github` gains `DeliveryWriteGate`, `DeliveryRunOptions` and a `gated` runner declaration; `@osstack/agents` exports `runGatedProcess`.
+- Updated dependencies [4845be0]
+- Updated dependencies [0329eb8]
+- Updated dependencies [fb32543]
+- Updated dependencies [8f5d406]
+- Updated dependencies [cafadc1]
+- Updated dependencies [ccef9bb]
+- Updated dependencies [64013bc]
+- Updated dependencies [32726b6]
+- Updated dependencies [203df2d]
+- Updated dependencies [4827af6]
+- Updated dependencies [8dc4976]
+- Updated dependencies [49d9a17]
+  - @osstack/core@0.24.0
+  - @osstack/hermes-adapter@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes

@@ -1,5 +1,15 @@
 # @osstack/github
 
+## 0.24.0
+
+### Minor Changes
+
+- bf14202: Contained Mission remote writes (`git push`, `gh pr create`) now run through the gated host-process launcher and its ledger: registered before they can write, released only after the publication fence passes inside the release transaction, and proven stopped before the call returns. The fence no longer runs ahead of the command; `fencedDeliveryRunner` hands it down as the gate and refuses a runner that is not gated. Publication is an allowlist of reads plus the two gated writes. An `AbortSignal` now reaches the launcher through the publish path. A delivery never starts while one of the Mission's records is unproven (the Mission stops in `stop_unknown` and nothing is pushed again), and the release record, not the in-memory flag, decides whether the remote can have been written. One open record per remote branch holds across Missions. App mode runs its credentialed commands with the user's global and system git configuration disabled and a fixed, whitelisted proxy and CA transport; a configuration that would redirect or decorate github.com requests refuses publication (`CONTAINED_BRIDGE_TRANSPORT_UNSUPPORTED`). The service now re-checks unproven host-process records every 60 seconds. `@osstack/github` gains `DeliveryWriteGate`, `DeliveryRunOptions` and a `gated` runner declaration; `@osstack/agents` exports `runGatedProcess`.
+
+### Patch Changes
+
+- 0f006ea: Contained Missions can publish through GitHub Apps. When `$OSSTACK_HOME/bridge/apps.json` and `rulesets.json` are configured, App A pushes the Mission branch and opens the PR (only `git push` and `gh pr create` use its scoped installation token; reads keep host credentials), App B posts an idempotent `osstack/verify` check run on the published head, and `osstack mission publish-check --mission ID` retries a failed check. PR-only delivery no longer treats an `osstack/mission/…` candidate as protected when every applicable rule comes from a registered Mission ruleset.
+
 ## 0.23.0
 
 ### Minor Changes

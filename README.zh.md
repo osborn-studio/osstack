@@ -60,8 +60,8 @@ Firstmate 的 24 项能力映射已整合到 main，自 CLI 0.22.1 起随包发�
 
 | 领域 | 状态 |
 |---|---|
-| npm 包 | 已发布：[`@osstack/cli@0.23.0`](https://www.npmjs.com/package/@osstack/cli/v/0.23.0)。2026-11-01（北京时间）已核对 `latest`。请用 `npm view @osstack/cli version` 获取最新结果 |
-| 源码与二进制通道 | 源码标签：[`@osstack/cli@0.23.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.23.0)；独立的单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
+| npm 包 | 已发布：[`@osstack/cli@0.24.0`](https://www.npmjs.com/package/@osstack/cli/v/0.24.0)。2026-11-01（北京时间）已核对 `latest`。请用 `npm view @osstack/cli version` 获取最新结果 |
+| 源码与二进制通道 | 源码标签：[`@osstack/cli@0.24.0`](https://github.com/osborn-studio/osstack/tree/%40osstack%2Fcli%400.24.0)；独立的单文件二进制：[`v0.8.1`](https://github.com/osborn-studio/osstack/releases/tag/v0.8.1) |
 | macOS 单文件二进制 | 已发布 `darwin-arm64` 的显式 `public-ad-hoc` archive |
 | Knowledge Cloud | 已部署到 EdgeOne：`https://osstack-knowledge-cloud-1grycf4k.edgeone.cool` |
 | Probe | CLI 生命周期已随 CLI 0.19.0 发布；report-only 是 gate 行为，不是后台任务。两周真实使用 checkpoint 仍未完成。 |
@@ -146,7 +146,7 @@ osstack 把这些问题变成一套本地优先、可自动化验证的工程流
 ### 通过 npm 安装
 
 ```bash
-npm install -g @osstack/cli@0.23.0
+npm install -g @osstack/cli@0.24.0
 osstack --version
 osstack doctor --workspace .
 ```
@@ -154,10 +154,10 @@ osstack doctor --workspace .
 本次发行的期望版本：
 
 ```text
-osstack 0.23.0
+osstack 0.24.0
 ```
 
-如果 npm 提示 `allow-scripts`，随后 `osstack` 无法加载 `better-sqlite3`，说明 npm 跳过了原生模块编译。请用 `npm install -g @osstack/cli@0.23.0 --allow-scripts=better-sqlite3,protobufjs` 重新安装。
+如果 npm 提示 `allow-scripts`，随后 `osstack` 无法加载 `better-sqlite3`，说明 npm 跳过了原生模块编译。请用 `npm install -g @osstack/cli@0.24.0 --allow-scripts=better-sqlite3,protobufjs` 重新安装。
 
 ### 使用 macOS 单文件 archive
 
