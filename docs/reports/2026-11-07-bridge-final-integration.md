@@ -70,3 +70,25 @@ PR base must be main. While the independent nodes are open, the body must contai
 merged before publication. The parent owns final GLM review, the frozen full
 suite, push and PR creation. Prepared integration is not authorization to execute
 GitHub sandbox mutations or deploy.
+
+## Final documentation closure and freeze
+
+Phase owner's single final docs commit `2bc45ac3` was selected as `6182966d`.
+Only the progress page conflicted with newer integration history. The resolution
+keeps the newer runtime/PR state, adds completed TLC/property/mutation facts and
+updates next steps; it does not restore old missing report links or obsolete
+pending TLC instructions. No source, model or test changed after `63e6bc47`.
+The final audit resolves24 relative documentation links and reconfirms all607
+runtime SHA256 entries. `git diff --check origin/main...HEAD` passes.
+
+Recorded completed broad TLC runs are main69,290,566 distinct/depth48 and
+rounds95,121,536 distinct/depth46, queue0/exit0. They were not rerun here. The
+phase owner's source-bound two10k property campaigns,19 source mutants and14
+model mutants remain separate records. Completing those local gates does not
+complete Phase5: real5-G sandbox acceptance is still pending. The final driver's
+new GLM reviews and the frozen-tree full monorepo suite belong to the parent;
+this report does not predict their verdicts.
+
+Final PR remains main-base with merge after #421 and merge after #422 while
+those PRs are open. The runtime manifest binds N9 exactly; this document closure
+adds no production capability or approval.
