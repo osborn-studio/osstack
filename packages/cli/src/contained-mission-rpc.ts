@@ -210,6 +210,8 @@ function view(m: ReturnType<ContainedMissionHost['start']>) {
   const { spec_json: _spec, ...rest } = m; return rest;
 }
 
+export const HOST_PROCESS_RECHECK_MS = 60_000;
+
 /** Daemon wiring, kept here so daemon.ts only gates and routes. Configuration is environment-only. */
 export async function createContainedMissionService(deps: {
   attention: ConstructorParameters<typeof import('@osstack/core').ContainedMissionStore>[0];
@@ -217,6 +219,8 @@ export async function createContainedMissionService(deps: {
   access: EngineeringAccess; home: string; draining: () => boolean; env?: NodeJS.ProcessEnv;
   /** Service log lines (default: stderr). */
   log?: (line: string) => void;
+  /** Test seam: how often unproven host-process records are re-checked (default `HOST_PROCESS_RECHECK_MS`). */
+  hostProcessRecheckMs?: number;
   /** Test seams for the shadow reconciler; production callers pass nothing. */
   shadow?: { transport?: import('./contained-mission-bridge-reader.js').GraphqlTransport; now?: () => number };
   /** Test seams for the shadow merger; production callers pass nothing. */
@@ -266,7 +270,8 @@ export async function createContainedMissionService(deps: {
       baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: join(deps.home, 'contained-verification') },
     author: { name: env['OSSTACK_CONTAINED_AUTHOR_NAME'] ?? 'OSStack Mission', email: env['OSSTACK_CONTAINED_AUTHOR_EMAIL'] ?? 'mission@osstack.invalid' },
   });
-  const host = new ContainedMissionHost({ ports });
+  // Owner decision 2026-11-07 (W13 design section 10, decision 2): unproven host-process records are re-checked every 60 seconds.
+  const host = new ContainedMissionHost({ ports, hostProcessRecheckMs: deps.hostProcessRecheckMs ?? HOST_PROCESS_RECHECK_MS });
   // Shadow bridge (appendix §5.3): independent of loadBridgeConfig above, which belongs to Mission publication. The reconciler is
   // built from a read-only Mission view, the shadow chain writer, a query-only transport and the producer registry, and nothing else.
   const { RevisionChainStore, shadowChainWriter, grantSummary } = await import('@osstack/core');

@@ -168,21 +168,89 @@ describe("contained Mission ports: verification", () => {
   });
 });
 
+const SHA40 = "a".repeat(40);
+const prCreate = (head: string) => ["pr", "create", "--base", "main", "--head", head, "--title", "t", "--body-file", "/dev/null"];
+const DEST = { remote: "origin", repository: "O/R", missionId: "cm_x" };
+/** A runner double that honours the gate protocol: it runs the fence (as the release transaction would) before "executing" a write. */
+function gatedDouble(seen: Array<[string, readonly string[], unknown]>) {
+  return { gated: true as const, run: async (command: string, args: readonly string[], options: { gate?: { fence: () => void } }) => {
+    options.gate?.fence();
+    seen.push([command, args, (options as { gate?: unknown }).gate]);
+    return { exitCode: 0, stdout: "", stderr: "" };
+  } };
+}
 describe("fencedDeliveryRunner", () => {
-  it("fences every push and PR creation, hardens git and refuses PR-changing gh commands", async () => {
-    const seen: Array<[string, readonly string[]]> = []; const fences: string[] = [];
-    const inner = { run: async (command: string, args: readonly string[]) => { seen.push([command, args]); return { exitCode: 0, stdout: "", stderr: "" }; } };
-    const runner = fencedDeliveryRunner(inner, kind => { fences.push(kind); });
-    await runner.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
-    await runner.run("gh", ["pr", "create", "--base", "main"], { cwd: "/", timeoutMs: 1 });
-    await runner.run("gh", ["pr", "view", "1"], { cwd: "/", timeoutMs: 1 });
+  it("hands every push and PR creation to the inner runner as a gate whose fence is the publication fence, hardens git and allows only reads otherwise", async () => {
+    const seen: Array<[string, readonly string[], unknown]> = []; const fences: string[] = [];
+    const inner = gatedDouble(seen);
+    const runner = fencedDeliveryRunner({ ...inner, run: async (c, a, o) => c === "git" && a.includes("get-url") ? { exitCode: 0, stdout: "https://github.com/o/r.git\n", stderr: "" } : inner.run(c, a, o) }, kind => { fences.push(kind); }, DEST);
+    await runner.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/w", timeoutMs: 1 });
+    await runner.run("gh", prCreate("b"), { cwd: "/w", timeoutMs: 1, intentId: "ri_1" });
+    await runner.run("gh", ["pr", "view", "1"], { cwd: "/w", timeoutMs: 1 });
     expect(fences).toEqual(["push", "pr_create"]);
-    expect(seen[0]![1]).toEqual(["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "push", "origin", "x:refs/heads/b"]);
-    for (const sub of ["merge", "edit", "close", "ready", "review", "comment"]) await expect(runner.run("gh", ["pr", sub, "1"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FORBIDDEN");
-    const refusing = fencedDeliveryRunner(inner, () => { throw new Error("CONTAINED_PUBLICATION_FENCE"); });
-    const before = seen.length;
-    await expect(refusing.run("git", ["push", "origin", "b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FENCE");
-    expect(seen.length).toBe(before);
+    const push = seen.find(([c, a]) => c === "git" && a.includes("push"))!;
+    expect(push[1]).toEqual(["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "protocol.ssh.allow=always", "-c", "push.followTags=false", "-c", "push.recurseSubmodules=no", "push", "origin", `${SHA40}:refs/heads/b`]);
+    expect(push[2]).toMatchObject({ missionId: "cm_x", kind: "git_push", remoteTarget: "o/r#refs/heads/b", localTarget: "/w#refs/heads/b" });
+    expect(seen.find(([c, a]) => c === "gh" && a[1] === "create")![2]).toMatchObject({ kind: "gh_pr_create", remoteTarget: "o/r#refs/heads/b", intentId: "ri_1" });
+    for (const sub of ["merge", "edit", "close", "ready", "review", "comment", "reopen", "lock", "update-branch"]) await expect(runner.run("gh", ["pr", sub, "1"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FORBIDDEN");
+  });
+
+  it("a refusing fence stops the write before the command runs", async () => {
+    const seen: Array<[string, readonly string[], unknown]> = [];
+    const inner = gatedDouble(seen);
+    const refusing = fencedDeliveryRunner({ ...inner, run: async (c, a, o) => c === "git" && a.includes("get-url") ? { exitCode: 0, stdout: "https://github.com/o/r.git\n", stderr: "" } : inner.run(c, a, o) }, () => { throw new Error("CONTAINED_PUBLICATION_FENCE"); }, DEST);
+    await expect(refusing.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/w", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FENCE");
+    await expect(refusing.run("gh", prCreate("b"), { cwd: "/w", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_FENCE");
+    expect(seen).toEqual([]);
+  });
+
+  it("refuses a runner that is not gated for every write, before the fence or any command", async () => {
+    const seen: string[] = []; const fences: string[] = [];
+    const ungated = { run: async (c: string, a: readonly string[]) => { seen.push(`${c} ${a.join(" ")}`); return { exitCode: 0, stdout: "https://github.com/o/r.git\n", stderr: "" }; } };
+    const runner = fencedDeliveryRunner(ungated, kind => { fences.push(kind); }, DEST);
+    await expect(runner.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/w", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_UNGATED");
+    await expect(runner.run("gh", prCreate("b"), { cwd: "/w", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_UNGATED");
+    expect(seen).toEqual([]); expect(fences).toEqual([]);
+  });
+
+  it("allows reads only: no global options, no unlisted git or gh subcommand, no gh api write, nothing is a way around the gate", async () => {
+    const seen: string[] = [];
+    const runner = fencedDeliveryRunner({ gated: true, run: async (c, a) => { seen.push(`${c} ${a.join(" ")}`); return { exitCode: 0, stdout: a.includes("get-url") ? "https://github.com/o/r.git\n" : "", stderr: "" }; } }, () => {}, DEST);
+    const opts = { cwd: "/w", timeoutMs: 1 };
+    for (const [c, a] of [["git", ["-c", "core.hooksPath=/x", "status"]], ["git", ["-C", "/other", "push", "origin", `${SHA40}:refs/heads/b`]], ["git", ["send-pack", "origin"]], ["git", ["fetch"]], ["git", ["config", "--global", "x", "y"]],
+      ["gh", ["api", "-X", "POST", "repos/o/r/issues"]], ["gh", ["api", "repos/o/r/issues", "-f", "title=x"]], ["gh", ["api", "repos/o/r/issues", "--method=PATCH"]], ["gh", ["api", "x", "--input", "f"]], ["gh", ["api", "x", "-XDELETE"]],
+      ["gh", ["api", "x", "-iXDELETE"]], ["gh", ["api", "x", "-ifbody=v"]], ["gh", ["api", "x", "y"]], ["gh", ["api"]], ["gh", ["api", "x", "-X"]],
+      ["git", ["push", "https://github.com/other/repo.git", `${SHA40}:refs/heads/b`]], ["git", ["push", "origin", `${SHA40}:refs/heads/b`, `:refs/heads/victim`]], ["git", ["push", "--delete", "origin", "b"]], ["git", ["push", "--all", "origin"]],
+      ["git", ["push", "-o", "x", "origin", `${SHA40}:refs/heads/b`]], ["git", ["push", "--force-with-lease=refs/heads/other:" + SHA40, "origin", `${SHA40}:refs/heads/b`]],
+      ["git", ["branch", "-D", "victim"]], ["git", ["symbolic-ref", "HEAD", "refs/heads/other"]], ["git", ["remote", "set-url", "origin", "https://evil.example/x.git"]], ["git", ["remote", "add", "x", "y"]],
+      ["git", ["ls-remote", "--upload-pack=x", "origin"]], ["git", ["status", "--output=x"]], ["git", ["log"]], ["git", ["diff", "--output=x"]],
+      ["gh", ["pr", "create", "--repo", "other/repo", "--base", "main", "--head", "b", "--title", "t", "--body-file", "/dev/null"]], ["gh", ["pr", "create", "--base", "main", "--head", "b", "--title", "t", "--body-file", "/dev/null", "--web"]],
+      ["gh", ["release", "create", "v1"]], ["gh", ["issue", "create"]], ["gh", ["repo", "delete", "o/r"]], ["gh", ["workflow", "run", "x"]], ["curl", ["https://example.invalid"]]] as const) {
+      await expect(runner.run(c, a, opts), `${c} ${a.join(" ")}`).rejects.toThrow(/^CONTAINED_PUBLICATION_(?:FORBIDDEN|TARGET)$/);
+    }
+    await runner.run("gh", ["api", "repos/o/r/rules/branches/b", "-H", "Accept: application/vnd.github+json"], opts);
+    await runner.run("gh", ["api", "x", "-X", "GET"], opts);
+    // only the two reads ran; no push or write of any kind reached the inner runner
+    expect(seen.filter(x => !x.includes("get-url"))).toHaveLength(2);
+    expect(seen.some(x => / push /.test(x) || x.includes("symbolic-ref") || x.includes("branch -D"))).toBe(false);
+  });
+
+  it("a push without a single branch refspec has no target and is refused before the command", async () => {
+    const seen: Array<[string, readonly string[], unknown]> = [];
+    const inner = gatedDouble(seen);
+    const runner = fencedDeliveryRunner({ ...inner, run: async (c, a, o) => c === "git" && a.includes("get-url") ? { exitCode: 0, stdout: "https://github.com/o/r.git\n", stderr: "" } : inner.run(c, a, o) }, () => {}, DEST);
+    await expect(runner.run("git", ["push", "origin", "b"], { cwd: "/w", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_TARGET");
+    await expect(runner.run("git", ["push", "origin", `${SHA40}:refs/heads/a`, `${SHA40}:refs/heads/b`], { cwd: "/w", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_TARGET");
+    expect(seen).toEqual([]);
+  });
+
+  it("ignores a gate the caller supplies: only the publication fence's own gate reaches the launcher", async () => {
+    const seen: Array<[string, readonly string[], unknown]> = []; let planted = 0;
+    const inner = gatedDouble(seen);
+    const runner = fencedDeliveryRunner({ ...inner, run: async (c, a, o) => c === "git" && a.includes("get-url") ? { exitCode: 0, stdout: "https://github.com/o/r.git\n", stderr: "" } : inner.run(c, a, o) }, () => {}, DEST);
+    await runner.run("gh", prCreate("b"), { cwd: "/w", timeoutMs: 1, gate: { missionId: "evil", kind: "gh_pr_create", remoteTarget: "x#y", localTarget: "z", fence: () => { planted++; } } });
+    expect(seen[0]![2]).toMatchObject({ missionId: "cm_x", remoteTarget: "o/r#refs/heads/b" });
+    expect(planted).toBe(0);
   });
 });
 
@@ -229,33 +297,33 @@ describe("contained Mission ports: publication destination", () => {
 describe("fencedDeliveryRunner destination", () => {
   it("re-resolves every push URL with the push's own configuration and refuses a rewrite away from the grant", async () => {
     const pushes: string[][] = [];
-    const inner = (pushUrl: string) => ({ run: async (_c: string, args: readonly string[]) => {
-      const a = args.filter((_, i) => i >= 10);
+    const inner = (pushUrl: string) => ({ gated: true as const, run: async (_c: string, args: readonly string[]) => {
+      const a = args.filter((_, i) => i >= 14);
       if (a[0] === "remote" && a[1] === "get-url") return { exitCode: 0, stdout: `${pushUrl}\n`, stderr: "" };
       if (a[0] === "push") pushes.push([...a]);
       return { exitCode: 0, stdout: "", stderr: "" };
     } });
-    const evil = fencedDeliveryRunner(inner("https://evil.example/o/r.git"), () => {}, { remote: "origin", repository: "o/r" });
-    await expect(evil.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_DESTINATION");
+    const evil = fencedDeliveryRunner(inner("https://evil.example/o/r.git"), () => {}, { remote: "origin", repository: "o/r", missionId: "cm_x" });
+    await expect(evil.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_PUBLICATION_DESTINATION");
     expect(pushes).toEqual([]);
-    const good = fencedDeliveryRunner(inner("git@github.com:O/R.git"), () => {}, { remote: "origin", repository: "o/r" });
-    await good.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
-    expect(pushes).toEqual([["push", "origin", "x:refs/heads/b"]]);
+    const good = fencedDeliveryRunner(inner("git@github.com:O/R.git"), () => {}, { remote: "origin", repository: "o/r", missionId: "cm_x" });
+    await good.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/", timeoutMs: 1 });
+    expect(pushes).toEqual([["push", "origin", `${SHA40}:refs/heads/b`]]);
   });
   it("in bridge mode refuses, at push time, a push URL that is no longer https", async () => {
     const pushes: string[][] = [];
-    const inner = (pushUrl: string) => ({ run: async (_c: string, args: readonly string[]) => {
-      const a = args.filter((_, i) => i >= 10);
+    const inner = (pushUrl: string) => ({ gated: true as const, run: async (_c: string, args: readonly string[]) => {
+      const a = args.filter((_, i) => i >= 14);
       if (a[0] === "remote" && a[1] === "get-url") return { exitCode: 0, stdout: `${pushUrl}\n`, stderr: "" };
       if (a[0] === "push") pushes.push([...a]);
       return { exitCode: 0, stdout: "", stderr: "" };
     } });
-    const switched = fencedDeliveryRunner(inner("git@github.com:o/r.git"), () => {}, { remote: "origin", repository: "o/r", httpsOnly: true });
-    await expect(switched.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_BRIDGE_REQUIRES_HTTPS");
+    const switched = fencedDeliveryRunner(inner("git@github.com:o/r.git"), () => {}, { remote: "origin", repository: "o/r", missionId: "cm_x", httpsOnly: true });
+    await expect(switched.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/", timeoutMs: 1 })).rejects.toThrow("CONTAINED_BRIDGE_REQUIRES_HTTPS");
     expect(pushes).toEqual([]);
-    const https = fencedDeliveryRunner(inner("https://github.com/o/r.git"), () => {}, { remote: "origin", repository: "o/r", httpsOnly: true });
-    await https.run("git", ["push", "origin", "x:refs/heads/b"], { cwd: "/", timeoutMs: 1 });
-    expect(pushes).toEqual([["push", "origin", "x:refs/heads/b"]]);
+    const https = fencedDeliveryRunner(inner("https://github.com/o/r.git"), () => {}, { remote: "origin", repository: "o/r", missionId: "cm_x", httpsOnly: true });
+    await https.run("git", ["push", "origin", `${SHA40}:refs/heads/b`], { cwd: "/", timeoutMs: 1 });
+    expect(pushes).toEqual([["push", "origin", `${SHA40}:refs/heads/b`]]);
   });
 });
 
@@ -273,7 +341,7 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
     sh(f.repo, "remote", "add", "origin", remoteUrl);
     const key = join(f.root, "key.pem"); writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
     const repository = opts.repository ?? REPO;
-    const inner: Array<[string, readonly string[]]> = []; const executed: Array<{ command: string; args: readonly string[]; env: NodeJS.ProcessEnv }> = [];
+    const inner: Array<[string, readonly string[]]> = []; const executed: Array<{ command: string; args: readonly string[]; env: NodeJS.ProcessEnv; gate?: { kind: string; remoteTarget: string } }> = [];
     const order: string[] = []; let tokenCalls = 0; let prCreated = false;
     const spec = { ...f.spec, publication: { remote: "origin", repository, base: "main", draft: false } };
     const out = (stdout = "", exitCode = 0) => ({ stdout, stderr: "", exitCode });
@@ -294,11 +362,13 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
       if (command === "git" && a[0] === "ls-remote") return out(`${f.start}\trefs/heads/${a[3] ?? "main"}\n`);
       return out("");
     } };
-    const exec = async (command: string, args: readonly string[], options: { env: NodeJS.ProcessEnv }) => {
-      executed.push({ command, args, env: options.env });
+    // Honours the gate protocol: the fence runs (as in the release transaction) before the command "executes".
+    const exec = Object.assign(async (command: string, args: readonly string[], options: { env: NodeJS.ProcessEnv; gate?: { fence: () => void; kind: string; remoteTarget: string } }) => {
+      options.gate?.fence();
+      executed.push({ command, args, env: options.env, ...(options.gate ? { gate: { kind: options.gate.kind, remoteTarget: options.gate.remoteTarget } } : {}) });
       if (command === "gh") { prCreated = true; return { stdout: `https://github.com/${repository}/pull/9\n`, stderr: "", exitCode: 0 }; }
       return { stdout: "pushed", stderr: "", exitCode: 0 };
-    };
+    }, { gated: true as const });
     const fetchImpl = (async (url: string, init: RequestInit) => {
       if (/access_tokens$/.test(url)) { tokenCalls++; const body = JSON.parse(String(init.body)); return new Response(JSON.stringify({ token: PUB, expires_at: new Date(1_800_003_600_000).toISOString(), permissions: { ...body.permissions, metadata: "read" }, repositories: [{ full_name: REPO }] }), { status: 201 }); }
       return new Response("{}", { status: 404 });
@@ -326,6 +396,10 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
     expect(push.env["OSSTACK_BRIDGE_PUSH_TOKEN"]).toBe(PUB);
     expect(create.env["GH_TOKEN"]).toBe(PUB); expect(create.env["GITHUB_TOKEN"]).toBeUndefined();
     expect(b.order).toEqual(["fence:push", "fence:pr_create"]);
+    // W13-C2: both writes are gated on the same remote branch; the git configuration is isolated from the user's files.
+    expect(push.gate).toMatchObject({ kind: "git_push", remoteTarget: expect.stringMatching(/^acme\/widgets#refs\/heads\/osstack\/mission\//) });
+    expect(create.gate).toMatchObject({ kind: "gh_pr_create", remoteTarget: push.gate!.remoteTarget });
+    for (const e of [push, create]) { expect(e.env["GIT_CONFIG_GLOBAL"]).toBe("/dev/null"); expect(e.env["GIT_CONFIG_NOSYSTEM"]).toBe("1"); expect(e.env["SSH_AUTH_SOCK"]).toBeUndefined(); expect(e.env["XDG_CONFIG_HOME"]).toBeUndefined(); }
     // Reads never carry the token and none of them is a push or pr create.
     const innerText = JSON.stringify(b.inner);
     expect(innerText).not.toContain(PUB);

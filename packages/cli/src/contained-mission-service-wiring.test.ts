@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { AttentionStore, createScratchDirSync, openDb } from "@osstack/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { EngineeringAccess } from "./engineering-access.js";
-import { createContainedMissionService } from "./contained-mission-rpc.js";
+import { HOST_PROCESS_RECHECK_MS, createContainedMissionService } from "./contained-mission-rpc.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -22,10 +22,25 @@ function setup() {
   const home = join(root, "home"); mkdirSync(join(home, "bridge"), { recursive: true });
   const env = { OSSTACK_CONTAINED_CODEX_BIN: "/bin/true", OSSTACK_CONTAINED_CODEX_HOME: root, OSSTACK_CONTAINED_DOCKER_SOCKET: join(root, "d.sock"),
     OSSTACK_CONTAINED_DOCKER_DAEMON_ID: "d", OSSTACK_CONTAINED_BASE_IMAGE_ID: "sha256:" + "0".repeat(64) };
-  const create = () => createContainedMissionService({ attention, owner, access: new EngineeringAccess(authFile), home, draining: () => false, env });
+  const deps = { attention, owner, access: new EngineeringAccess(authFile), home, draining: () => false, env };
+  const create = () => createContainedMissionService(deps);
   const portsOf = (service: unknown) => (service as { options: { host: { options: { ports: Record<string, unknown> } } } }).options.host.options.ports;
-  return { root, home, create, portsOf };
+  return { root, home, create, portsOf, deps };
 }
+
+describe("createContainedMissionService host process re-check", () => {
+  const recheckOf = (service: unknown) => (service as { options: { host: { recheckMs: number | undefined } } }).options.host.recheckMs;
+  it("re-checks unproven host-process records every 60 seconds by default and accepts an injected interval", async () => {
+    const f = setup();
+    expect(HOST_PROCESS_RECHECK_MS).toBe(60_000);
+    const service = await f.create();
+    expect(recheckOf(service)).toBe(60_000);
+    await service.close();
+    const injected = await createContainedMissionService({ ...f.deps, hostProcessRecheckMs: 5 });
+    expect(recheckOf(injected)).toBe(5);
+    await injected.close();
+  });
+});
 
 describe("createContainedMissionService bridge wiring", () => {
   it("builds ports without the bridge when no config files exist", async () => {

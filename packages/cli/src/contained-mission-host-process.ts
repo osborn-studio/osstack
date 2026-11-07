@@ -2,7 +2,7 @@
 // through (docs/design/2026-11-06-w13-host-git-survival.md sections 4.3, 5.5, 6.1). No process or ledger logic lives here
 // beyond wiring: the launcher is `runGatedProcess` (agents), the rows are `HostProcessStore` (core).
 import { HostProcessUnprovenError, createHostProcessProbe, currentBootSession, gatedGit, type AgentHostProcessKind, type HardenedGitGate, type HostProcessProbe, type LocalWriteGate } from '@osstack/agents';
-import { HostProcessStore, type ContainedEvent, type ContainedMission, type ContainedMissionStore } from '@osstack/core';
+import { HostProcessStore, type HostProcessRecord, type ContainedEvent, type ContainedMission, type ContainedMissionStore } from '@osstack/core';
 
 export interface HostProcessKitOptions {
   /** `$OSSTACK_HOME/contained/host-processes`: hold markers live here, not under the scratch root (design section 4.1). */
@@ -58,7 +58,7 @@ export class HostProcessKit {
   readonly markerDir: string;
   readonly probe: HostProcessProbe;
   private boot: string | undefined;
-  constructor(store: ContainedMissionStore, private readonly options: HostProcessKitOptions, now: () => number) {
+  constructor(private readonly store: ContainedMissionStore, private readonly options: HostProcessKitOptions, now: () => number) {
     this.hp = new HostProcessStore(store.attention, store.owner, { clock: now });
     this.markerDir = options.markerDir;
     this.probe = options.probe ?? createHostProcessProbe();
@@ -81,6 +81,19 @@ export class HostProcessKit {
   }
 
   hasOpen(missionId: string): boolean { return this.hp.hasOpen(missionId); }
+  /** The op id of one record of the Mission that is not proven stopped, if any. */
+  openOpId(missionId: string): string | undefined { return this.hp.open(missionId)[0]?.op_id; }
+  /**
+   * True when a remote write (push or PR creation) of the Mission was released at or after `since`: the release record decides whether the
+   * remote can have been written. No release means git or gh never ran, whatever else failed.
+   */
+  remoteReleasedSince(missionId: string, since: number): boolean {
+    return this.store.db.prepare("SELECT 1 FROM engineering_host_processes WHERE mission_id=? AND kind IN ('git_push','gh_pr_create') AND released_at IS NOT NULL AND created_at>=? LIMIT 1").get(missionId, since) !== undefined;
+  }
+  /** The ledger row bound to a phase 5 push intent (the op id is the row's own, never the intent id). */
+  recordForIntent(intentId: string): HostProcessRecord | undefined {
+    return this.store.db.prepare('SELECT * FROM engineering_host_processes WHERE intent_id=?').get(intentId) as HostProcessRecord | undefined;
+  }
 
   /**
    * Runs one covered write sequence. Any failure that leaves a row open (a stop record that could not be written, a proof

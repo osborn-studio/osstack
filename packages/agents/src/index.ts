@@ -84,9 +84,13 @@ export {
 export {
   HostProcessError,
   HostProcessUnprovenError,
+  argvDigest,
   classifyHostProcess,
   createHostProcessProbe,
   currentBootSession,
+  runGatedProcess,
+  type GatedProcessOptions,
+  type GatedProcessResult,
   type HostProcessClassification,
   type HostProcessJournal,
   type HostProcessKind as AgentHostProcessKind,

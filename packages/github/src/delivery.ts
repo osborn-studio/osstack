@@ -57,14 +57,43 @@ export interface DeliveryCommandResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  /** W13: the host-process ledger row of a gated write (`git push`, `gh pr create`); absent for ungated commands. */
+  opId?: string;
+}
+
+/**
+ * W13-C2: what a remote write needs to be launched through the host-process gate. The runner that owns the journal (a
+ * `gated` runner) registers the process, runs `fence` synchronously in the release transaction and only then lets the
+ * command execute. The github package starts no gated process itself.
+ */
+export interface DeliveryWriteGate {
+  /** Ledger owner of the row (the contained Mission). */
+  missionId: string;
+  kind: "git_push" | "gh_pr_create";
+  /** `<owner>/<repo>#refs/heads/<branch>` (repository lower-cased): one open record per remote branch. */
+  remoteTarget: string;
+  localTarget: string;
+  /** Phase 5 push intent bound to the row; the row keeps its own op id. */
+  intentId?: string;
+  /** Synchronous; throwing refuses the write (nothing has run). */
+  fence: () => void;
+}
+
+export interface DeliveryRunOptions {
+  cwd: string;
+  timeoutMs: number;
+  /** Aborts the command (and, for a gated write, kills its process group and proves the stop). */
+  signal?: AbortSignal;
+  /** Set only by the publication fence on `git push` and `gh pr create`. */
+  gate?: DeliveryWriteGate;
+  /** Phase 5: forwarded into `gate.intentId` by the publication fence. */
+  intentId?: string;
 }
 
 export interface DeliveryCommandRunner {
-  run(
-    command: string,
-    args: readonly string[],
-    options: { cwd: string; timeoutMs: number },
-  ): Promise<DeliveryCommandResult>;
+  /** True only for a runner that launches gated writes through the host-process ledger (W13). */
+  readonly gated?: true;
+  run(command: string, args: readonly string[], options: DeliveryRunOptions): Promise<DeliveryCommandResult>;
 }
 
 export interface GitHubDeliveryInput {
@@ -132,8 +161,11 @@ export function githubDeliveryEnvironment(
   return environment;
 }
 
+/** Never gated: a write that needs the host-process ledger is refused by the contained publication fence. */
 export const defaultDeliveryCommandRunner: DeliveryCommandRunner = {
   async run(command, args, options) {
+    if (options.gate !== undefined) throw new Error("DELIVERY_RUNNER_UNGATED");
+    if (options.signal?.aborted) throw new Error("DELIVERY_ABORTED");
     try {
       const completed = await execFileAsync(command, [...args], {
         cwd: options.cwd,
@@ -141,6 +173,7 @@ export const defaultDeliveryCommandRunner: DeliveryCommandRunner = {
         encoding: "utf8",
         maxBuffer: 16 * 1024 * 1024,
         env: githubDeliveryEnvironment(),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
       });
       return {
         stdout: completed.stdout,
@@ -152,9 +185,11 @@ export const defaultDeliveryCommandRunner: DeliveryCommandRunner = {
         code?: number | string;
         killed?: boolean;
         signal?: string;
+        name?: string;
         stdout?: string | Buffer;
         stderr?: string | Buffer;
       };
+      if (options.signal?.aborted || failure.name === "AbortError" || failure.code === "ABORT_ERR") throw new Error("DELIVERY_ABORTED");
       const timedOut =
         failure.killed === true ||
         failure.signal === "SIGTERM" ||
@@ -781,13 +816,22 @@ export async function deliverToGitHub(value: GitHubDeliveryInput,
 }
 /** Existing push/PR implementation with a hard return before CI/merge/deploy.
  * The caller must already hold the existing publish authority and writer lease. */
+/** Runs every command of one delivery under `signal`; the wrapper keeps the runner's `gated` declaration. */
+function bindSignal(runner: DeliveryCommandRunner, signal: AbortSignal | undefined): DeliveryCommandRunner {
+  if (signal === undefined) return runner;
+  return {
+    ...(runner.gated === true ? { gated: true as const } : {}),
+    run: (command, args, options) => runner.run(command, args, { ...options, signal }),
+  };
+}
 export async function openPullRequestToGitHub(value: GitHubDeliveryInput,
-  scope: { repository: string; headCommit: string; draft: boolean; missionRulesetIds?: readonly number[] },
+  scope: { repository: string; headCommit: string; draft: boolean; missionRulesetIds?: readonly number[]; signal?: AbortSignal },
   runner: DeliveryCommandRunner = defaultDeliveryCommandRunner): Promise<GitHubPullRequestResult> {
+  const { signal, ...rest } = scope;
   const checked = z.object({ repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/),
     headCommit: GitCommitSha, draft: z.boolean(),
-    missionRulesetIds: MissionRulesetIds.optional() }).strict().parse(scope);
-  return await runGitHubDelivery(value, runner, checked);
+    missionRulesetIds: MissionRulesetIds.optional() }).strict().parse(rest);
+  return await runGitHubDelivery(value, bindSignal(runner, signal), checked);
 }
 async function runGitHubDelivery(
   value: GitHubDeliveryInput,

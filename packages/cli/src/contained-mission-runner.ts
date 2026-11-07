@@ -41,7 +41,9 @@ export interface ContainedRevisionPort {
 export interface ContainedPublicationSpec { remote: string; repository: string; base: string; draft: boolean; title?: string; preauthorized?: boolean }
 /** Process-local, single-delivery-attempt binding; never serialized as authority (§8.1). */
 export interface ContainedPublicationPermit { readonly mission_id: string; readonly revision: number; readonly head: string; readonly tree: string; readonly spec_digest: string }
-export interface ContainedPublicationResult { pushed_commit: string; pr: { number: number; url: string; reused: boolean }; base_head: string | null }
+export interface ContainedPublicationResult { pushed_commit: string; pr: { number: number; url: string; reused: boolean }; base_head: string | null;
+  /** Which commands the stop proof covers: App mode isolates git config; host credential mode keeps the user's helpers (W13 design 5.4). */
+  stop_proof_scope?: 'app_isolated' | 'host_credential_helpers_untrusted' }
 /** W13: identifies the Mission a covered host write belongs to and fences it (runs synchronously inside the release transaction). */
 export interface ContainedWriteContext { mission_id: string; fence: () => void; signal?: AbortSignal }
 export interface ContainedWorkspaceInfo { worktree: string; gitDir: string; head: string; configDigest: string }
@@ -52,6 +54,10 @@ export interface ContainedMissionPorts {
   resumeWorkspace: (spec: ContainedMissionSpec, write: ContainedWriteContext) => Promise<ContainedWorkspaceInfo>;
   /** True while a host child process of the Mission is not proven stopped. Absent in test doubles that start no processes. */
   hasOpenHostProcess?: (missionId: string) => boolean;
+  /** An op id of the Mission's records that are not proven stopped (a delivery never starts while one exists). */
+  openHostProcessId?: (missionId: string) => string | undefined;
+  /** True when a remote write of the Mission was released at or after `since`: the release record decides whether the remote can have been written. */
+  remoteWriteReleasedSince?: (missionId: string, since: number) => boolean;
   qualify: (worktree: string, gitDir: string) => Promise<CodexQualification>;
   execute: (input: { worktree: string; prompt: string; signal: AbortSignal; onLaunched: (launch: { pid: number; pgid: number; started_at: number }) => void }) => Promise<CodexProxyRun>;
   readFile: (worktree: string, path: string) => Promise<string | null>;
@@ -617,8 +623,12 @@ export class ContainedMissionRunner {
     if (spec.publish_target) return this.halt(m, 'awaiting_decision', 'publication_failed:revision_publisher_unavailable');
     const blocker = this.publicationBlocker(m, spec);
     if (blocker) return this.halt(m, 'awaiting_decision', `publication_failed:${blocker}`);
+    // A record of this Mission that is not proven stopped (an orphaned push, say) must be settled first: never push again over it.
+    const unprovenOp = this.ports.openHostProcessId?.(m.mission_id);
+    if (unprovenOp !== undefined) return this.haltUnproven(m, unprovenOp);
     const permit: ContainedPublicationPermit = Object.freeze({ mission_id: m.mission_id, revision: m.revision, head: m.candidate_head!, tree: m.candidate_tree!, spec_digest: m.spec_digest });
     this.ports.store.record(m.mission_id, 'delivery_attempt', { attempt: attempts + 1, head: permit.head }, this.ports.now());
+    const attemptAt = this.ports.now();
     let mutated = false;
     // Journals each remote mutation under the owner fence, and refuses it once anything about the permit changed.
     const beforeRemoteMutation = (kind: 'push' | 'pr_create') => {
@@ -632,15 +642,20 @@ export class ContainedMissionRunner {
     try { result = await this.ports.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal }); }
     catch (error) {
       const current = this.ports.store.get(m.mission_id);
+      // A remote write whose process could not be proven stopped: stop_unknown on the delivering route, nothing retried.
+      const unproven = unprovenOpId(error);
+      if (unproven !== undefined) return this.haltUnproven(current, unproven);
       const cancelled = this.settleCancel(current); if (cancelled) return cancelled;
       if (current.revision !== m.revision) return current;
-      if (!mutated) return this.halt(current, 'awaiting_decision', `publication_failed:${code(error)}`);
+      // The release record decides: the fence ran inside the release transaction, which may have rolled back; no release means git and gh never ran.
+      if (this.ports.remoteWriteReleasedSince ? !this.ports.remoteWriteReleasedSince(m.mission_id, attemptAt) : !mutated) return this.halt(current, 'awaiting_decision', `publication_failed:${code(error)}`);
       this.ports.store.record(m.mission_id, 'delivery_uncertain', { code: code(error) }, this.ports.now());
       return current;
     } finally { this.live.delete(m.mission_id); }
     if (result.pushed_commit !== permit.head) return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', 'publication_failed:pushed_head_mismatch');
     const evidence = this.deliveryEvidence(m, spec, permit, result);
     this.ports.store.record(m.mission_id, 'delivery_evidence', evidence, this.ports.now());
+    if (result.stop_proof_scope) this.ports.store.record(m.mission_id, 'delivery_stop_proof_scope', { scope: result.stop_proof_scope }, this.ports.now());
     const current = this.ports.store.get(m.mission_id);
     if (current.state === 'cancel_requested') {
       this.ports.store.record(m.mission_id, 'pr_opened_before_cancel', { pr: result.pr }, this.ports.now());

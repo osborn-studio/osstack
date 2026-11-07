@@ -351,10 +351,11 @@ M8 演练（`contained-mission-recovery.test.ts`）里，僵尸 owner 的每次�
 | 6 | 恢复从不发信号，只观察；在线路径才杀进程组 | macOS 启动时间只到秒、`lsof` 查到的 pid 有复用竞态，恢复时无法安全地确认信号对象；计划 W13 的验收也要求“进程退出后才可结算” |
 | 7 | App 模式的发布路径改用与本地写入相同的配置隔离（`GIT_CONFIG_GLOBAL=/dev/null`、`GIT_CONFIG_NOSYSTEM=1`） | 否则全局配置里的帮助程序不在证明范围内（§5.4） |
 | 8 | `authorized` 的孤儿恢复补写 `workspace_created` 并新增决定 `resume_workspace` | 否则只有主机登记的 `stop_unknown` 无法证明、也无法回到执行（§5.5） |
+| 9 | W13-C2 实现：门控启动器在 cli（`contained-mission-remote-writes.ts`）而不在 `@osstack/github`；github 只声明 `gated` 与 `DeliveryWriteGate`，默认 runner 永不门控并拒绝带 gate 的写入。发布路径改为只读白名单加两条门控写入（`git -c`、`gh api` 写方法、`gh release` 等一律拒绝）；发布时若有未结登记，不推送而是转 `stop_unknown`；远端是否可能被写由放行记录决定，不看内存标志；`delivery_stop_proof_scope` 事件记 `app_isolated`/`host_credential_helpers_untrusted`；App 代理地址带凭据时预检拒绝（凭据会进入 argv） | 见 §4.3、§5.4、§6.1 |
 
 ## 10. 需要用户做的决定
 
-**已决定（2026-11-06，用户本人）：** 决定 1 确认：恢复只观察、从不杀进程，无法证明已停止的孤儿推送让 Mission 停在 `stop_unknown`，由人手工结束进程；决定 3：迁移号 54，按合并顺序在 52（App E）、53（阶段 5）之后。其余决定仍待定。
+**已决定（2026-11-06，用户本人）：** 决定 1 确认：恢复只观察、从不杀进程，无法证明已停止的孤儿推送让 Mission 停在 `stop_unknown`，由人手工结束进程；决定 3：迁移号 54，按合并顺序在 52（App E）、53（阶段 5）之后。决定 2：服务每 60 秒复查未证明的登记（2026-11-07，用户本人）。其余决定仍待定。
 
 1. **恢复不发信号（已定为设计，不是选项）**：第 1 轮审计后去掉了“身份核对后由恢复杀进程”的方案（§5.2 末）。需要你确认的是后果：已放行的孤儿（例如卡住的 `git push`）没有上限地运行时，Mission 一直是 `stop_unknown`，只能由人在宿主机上自行结束该进程（`mission status` 显示 pgid 与命令种类）后 `retry_stop_check`。
 2. **低频复查。** (a) 推荐：服务 tick 每 60 秒对有未结登记的 Mission 跑一次 §5.2（先 `kill(-pgid,0)`，空了才跑 `lsof`），证明成立即结算；(b) 只在重启与 `retry_stop_check` 时结算（与执行器的现有做法一致）。

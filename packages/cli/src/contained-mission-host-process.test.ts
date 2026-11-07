@@ -6,7 +6,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, u
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { hardenedGitEnvironment, type CodexProxyRun, type CodexQualification, type HostProcessProbe } from "@osstack/agents";
+import { HostProcessUnprovenError, hardenedGitEnvironment, type CodexProxyRun, type CodexQualification, type HostProcessProbe } from "@osstack/agents";
 import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, type ContainedMission, type HostProcessRecord } from "@osstack/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContainedMissionHost, resolveContainedMissionStart } from "./contained-mission-host.js";
@@ -52,7 +52,7 @@ function world(options: { probe?: HostProcessProbe; gitBinary?: string; host?: {
   const attention = new AttentionStore(db, path);
   const worktreesRoot = join(root, "worktrees"); const journalRoot = join(root, "journal"); mkdirSync(journalRoot);
   let clock = 1000; let rowSeq = 0;
-  const gates: { publish?: { wait: () => Promise<void>; release: () => void; reached: Promise<void> } } = {};
+  const gates: { publish?: { wait: () => Promise<void>; release: () => void; reached: Promise<void> }; published: number; hook?: (id: string, d: Daemon) => void; after?: () => void } = { published: 0 };
   let scope: { scope_id: string } | undefined;
 
   function daemon(name: string, over: { probe?: HostProcessProbe } = {}) {
@@ -68,14 +68,18 @@ function world(options: { probe?: HostProcessProbe; gitBinary?: string; host?: {
       verify: async () => ({ exit_code: 0, output: "ok", cancelled: false, evidence: "docker-removed:x", stopped: true }),
       verificationStopped: async () => ({ stopped: true, proof: "container_removed", evidence: "docker-gone:x" }),
       publish: async input => {
+        gates.published++;
         await gates.publish?.wait();
+        gates.hook?.(input.mission.mission_id, self);
         input.beforeRemoteMutation("push"); input.beforeRemoteMutation("pr_create");
+        gates.after?.();
         return { pushed_commit: input.permit.head, pr: PR, base_head: "a".repeat(40) };
       } };
     const host = new ContainedMissionHost({ ports, worktreesRoot, processGroupEmpty: () => true, processesForWorktree: () => [], hostProcessWaitMs: 400,
       ...(options.host?.recheck !== undefined ? { hostProcessRecheckMs: options.host.recheck } : {}) });
     cleanup.push(() => { void host.close(); });
-    return { name, store, host, hp: real.hostProcesses.hp, ports };
+    const self = { name, store, host, hp: real.hostProcesses.hp, ports };
+    return self;
   }
   type Daemon = ReturnType<typeof daemon>;
   const principal = () => ({ principal_id: "human", client_session_id: "cli", read_scopes: [scope!.scope_id], write_scopes: [scope!.scope_id], stop_scopes: [], operator_scopes: [] });
@@ -139,6 +143,73 @@ describe("gated local writes in a Mission", () => {
     }
     const hardenedSource = readFileSync(new URL("../../agents/src/contained-workspace/hardened-git.ts", import.meta.url), "utf8");
     expect(hardenedSource).toContain("argvDigest(program, argv)");
+  });
+});
+
+describe("remote writes at the Mission level (W13-C2)", () => {
+  /** Drives a publishing Mission to `revalidating` with real gated local writes, then makes every later proof unknown. */
+  async function toRevalidating() {
+    const fp = fakeProbe(); fp.answers.group = false; fp.answers.leader = { pgid: 4242, start: "Fri Nov  6 10:00:00 2026" };
+    const w = world({ probe: fp.probe }); const a = w.daemon("a");
+    const m = await w.start(a, true);
+    await w.until(a, m.mission_id, "revalidating");
+    fp.answers.group = true;
+    return { fp, w, a, m };
+  }
+  const push = (w: ReturnType<typeof world>, a: { hp: unknown }, id: string) => w.orphan(a as never, id, "released", "git_push", { remote_target: "o/r#refs/heads/x" });
+
+  it("a delivery never starts over a record that is not proven stopped: the Mission stops in stop_unknown and nothing is pushed again", async () => {
+    const { fp, w, a, m } = await toRevalidating();
+    const op = push(w, a, m.mission_id);
+    const kill = vi.spyOn(process, "kill"); let signalled: unknown[] = [];
+    try {
+      await a.host.tick();
+      for (let i = 0; i < 3; i++) await a.host.tick();
+      signalled = kill.mock.calls.filter(([, signal]) => signal !== undefined && signal !== 0);
+    } finally { kill.mockRestore(); }
+    expect(signalled).toEqual([]);
+    expect(w.gates.published).toBe(0);
+    expect(a.store.get(m.mission_id).state).toBe("stop_unknown");
+    expect(w.halted(a, m.mission_id)).toMatchObject({ reason: `host_process_unproven:${op}`, route: "delivering" });
+    expect(a.hp.get(op).state).toBe("released");
+    // proven stopped: a person approves, and only then is the (idempotent) delivery attempted
+    fp.answers.group = false;
+    expect((await a.host.decide(w.principal(), m.mission_id, { kind: "retry_stop_check" })).state).toBe("awaiting_decision");
+    expect(w.gates.published).toBe(0);
+    expect((await a.host.decide(w.principal(), m.mission_id, { kind: "approve_publication" })).state).toBe("revalidating");
+    await a.host.tick();
+    expect(w.gates.published).toBe(1);
+    expect(a.store.get(m.mission_id).state).toBe("pr_opened");
+  });
+
+  it("a publish whose process could not be proven stopped puts the Mission in stop_unknown on the delivering route, with no retry", async () => {
+    const { w, a, m } = await toRevalidating();
+    w.gates.hook = () => { throw new HostProcessUnprovenError("hp_00000000000000000000000000000009", true); };
+    await a.host.tick();
+    expect(a.store.get(m.mission_id).state).toBe("stop_unknown");
+    expect(w.halted(a, m.mission_id)).toMatchObject({ reason: "host_process_unproven:hp_00000000000000000000000000000009", route: "delivering" });
+    expect(w.kinds(a, m.mission_id)).not.toContain("delivery_uncertain");
+    expect(w.gates.published).toBe(1);
+  });
+
+  it("the release record decides whether the remote can have been written: a rolled-back release is a plain failure, a released push is uncertain", async () => {
+    const { w, a, m } = await toRevalidating();
+    // The fence recorded remote_mutation but no release row exists (the release transaction rolled back): git never ran.
+    w.gates.after = () => { throw Error("boom"); };
+    await a.host.tick();
+    expect(a.store.get(m.mission_id).state).toBe("awaiting_decision");
+    expect(w.halted(a, m.mission_id)?.reason).toMatch(/^publication_failed:/);
+    expect(w.kinds(a, m.mission_id)).not.toContain("delivery_uncertain");
+
+    const second = await toRevalidating();
+    second.w.gates.hook = (id, d) => { push(second.w, d, id); throw Error("transport lost"); };
+    await second.a.host.tick();
+    expect(second.a.store.get(second.m.mission_id).state).toBe("delivering");
+    expect(second.w.kinds(second.a, second.m.mission_id)).toContain("delivery_uncertain");
+    // the next step does not push: the open released record is settled first
+    await second.a.host.tick();
+    expect(second.w.gates.published).toBe(1);
+    expect(second.a.store.get(second.m.mission_id).state).toBe("stop_unknown");
   });
 });
 
