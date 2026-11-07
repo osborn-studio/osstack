@@ -52,8 +52,13 @@ export function parseOptions(argv, env = process.env) {
 
 /** Egress whitelist: no arbitrary repository, PR, ref, merge or delete operation. */
 export function assertRequest(method, path, { execute, pullNumbers = [], branches = [] }) {
-  assertThat(!/[\\]|%2e|%2f/i.test(path) && !path.split('/').some(segment => segment === '.' || segment === '..'), 'unsafe_request_path');
-  if (method === 'GET' && (path === `repos/${SANDBOX}` || path.startsWith(`repos/${SANDBOX}/`) || /^users\/[a-zA-Z0-9_%.-]+$/u.test(path))) return;
+  assertThat(typeof path === 'string' && !/[\u0000-\u0020\u007f\\]|%2e|%2f/i.test(path)
+    && !path.split('/').some(segment => segment === '.' || segment === '..'), 'unsafe_request_path');
+  if (method === 'GET' && (path === `repos/${SANDBOX}` || path.startsWith(`repos/${SANDBOX}/`) || /^users\/[a-zA-Z0-9_%.-]+$/u.test(path))) {
+    const target = new URL(`https://api.github.com/${path}`);
+    assertThat(target.origin === 'https://api.github.com' && `${target.pathname}${target.search}` === `/${path}` && !target.hash, 'unsafe_request_path');
+    return;
+  }
   assertThat(execute, 'execute_required');
   const prefix = `repos/${SANDBOX}/`;
   const allowedReview = pullNumbers.some(n => path === `${prefix}pulls/${n}/reviews` && method === 'POST');
@@ -117,6 +122,9 @@ export function assertTimeline({ baseline, remoteCommits, intents, ranges, check
   assert.deepEqual(remoteCommits, expected, 'remote commit list differs from confirmed intent ranges');
   assertThat(confirmed.some(i => i.kind === 'open_pr' && ranges.get(i.intent_id)?.[0] === baseline), 'baseline_receipt_missing');
   for (const intent of confirmed) {
+    const commits = ranges.get(intent.intent_id);
+    assertThat(Array.isArray(commits) && commits.length > 0, 'confirmed_range_missing');
+    assertThat(commits.at(-1) === intent.new_head, 'confirmed_range_tip_mismatch');
     const matching = checks.filter(c => c.app?.id === evidenceAppId && c.head_sha === intent.new_head
       && c.external_id === `${intent.child_mission_id}:${intent.new_head}` && c.name === 'osstack/verify');
     assertThat(matching.length === 1 && matching[0].conclusion === 'success', 'one_success_check_per_confirmed_head_required');
