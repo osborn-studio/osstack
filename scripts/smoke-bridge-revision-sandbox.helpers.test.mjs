@@ -1,6 +1,47 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { realpathSync } from 'node:fs';
+import { chmod, lstat, mkdir, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createScratchDir } from './lib/scratch.mjs';
 import * as driver from './smoke-bridge-revision-sandbox.mjs';
+
+test('fresh sandbox setup initializes the verification journal before runtime ports receive it', async t => {
+  const scratch = await realpath(await createScratchDir('tests', 'bridge-journal-root', {
+    OSSTACK_SCRATCH_ROOT: '/Volumes/AIMATE_WORK/tmp/osstack',
+  }));
+  t.after(() => rm(scratch, { recursive: true, force: true }));
+  await assert.rejects(lstat(join(scratch, 'home')), { code: 'ENOENT' });
+  const { home, journalRoot } = await driver.initializeSandboxDirectories(scratch);
+  assert.equal(journalRoot, join(home, 'verification'));
+  // This is the executor's first filesystem prerequisite, before any Docker call.
+  assert.equal(realpathSync(journalRoot), journalRoot);
+  const info = await lstat(journalRoot);
+  assert.ok(info.isDirectory() && !info.isSymbolicLink());
+  assert.equal(info.uid, process.getuid());
+  assert.equal(info.mode & 0o077, 0);
+  assert.deepEqual(await readdir(journalRoot), []);
+  assert.deepEqual((await readdir(home)).sort(), ['bridge', 'verification']);
+});
+
+test('sandbox journal setup rejects existing entries and a non-private home', async t => {
+  for (const entry of ['directory', 'file', 'symlink', 'public-home']) {
+    const scratch = await realpath(await createScratchDir('tests', 'bridge-journal-rejection', {
+      OSSTACK_SCRATCH_ROOT: '/Volumes/AIMATE_WORK/tmp/osstack',
+    }));
+    t.after(() => rm(scratch, { recursive: true, force: true }));
+    const home = join(scratch, 'home'), journalRoot = join(home, 'verification');
+    await mkdir(home, { mode: 0o700 });
+    if (entry === 'public-home') await chmod(home, 0o755);
+    if (entry === 'directory') await mkdir(journalRoot, { mode: 0o700 });
+    if (entry === 'file') await writeFile(journalRoot, '', { mode: 0o600 });
+    if (entry === 'symlink') await symlink(scratch, journalRoot);
+    await assert.rejects(driver.initializeSandboxDirectories(scratch), entry === 'public-home'
+      ? /private_canonical_journal_directory_required/ : { code: 'EEXIST' });
+    if (entry === 'symlink') assert.ok((await lstat(journalRoot)).isSymbolicLink());
+    if (entry === 'public-home') await assert.rejects(lstat(journalRoot), { code: 'ENOENT' });
+  }
+});
 
 const prefix = `repos/${driver.SANDBOX}`;
 const branch = 'osstack/mission/helper-test';

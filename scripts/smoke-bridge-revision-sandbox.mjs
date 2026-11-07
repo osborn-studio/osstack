@@ -276,13 +276,28 @@ export async function handoffSandboxColdRestart({ close, restart, reopen }) {
   return withSandboxCleanup(async defer => { defer(reopen); return restart(); });
 }
 
+export async function initializeSandboxDirectories(scratch) {
+  const home = join(scratch, 'home'), runtimeRoot = join(scratch, 'scratch'), worktrees = join(runtimeRoot, 'worktrees'), repo = join(scratch, 'repository');
+  for (const dir of [home, join(home, 'bridge'), runtimeRoot, worktrees]) await mkdir(dir, { mode: 0o700, recursive: true });
+  const checkDirectory = async path => {
+    const info = await lstat(path);
+    assertThat(info.isDirectory() && !info.isSymbolicLink() && info.uid === process.getuid()
+      && (info.mode & 0o077) === 0 && await realpath(path) === path, 'private_canonical_journal_directory_required');
+  };
+  await checkDirectory(home);
+  const journalRoot = join(home, 'verification');
+  // Fresh setup only: reject an existing entry rather than follow or repair it.
+  await mkdir(journalRoot, { mode: 0o700 });
+  await checkDirectory(journalRoot);
+  return { home, runtimeRoot, worktrees, repo, journalRoot };
+}
+
 export async function execute(opts, prepared) {
   assertThat(opts.execute, 'execute_required');
   // Revalidate repository identity directly before allocating any local write authority.
   assertSandbox(SANDBOX, { sandbox: { repo: SANDBOX, id: SANDBOX_ID } }, await ghRead(`repos/${SANDBOX}`));
   const scratch = await realpath(await createScratchDir('smoke', `bridge-revision-${opts.run}`, { OSSTACK_SCRATCH_ROOT: SMOKE_ROOT })); await chmod(scratch, 0o700);
-  const home = join(scratch, 'home'), runtimeRoot = join(scratch, 'scratch'), worktrees = join(runtimeRoot, 'worktrees'), repo = join(scratch, 'repository');
-  for (const dir of [home, join(home, 'bridge'), runtimeRoot, worktrees]) await mkdir(dir, { mode: 0o700, recursive: true });
+  const { home, runtimeRoot, worktrees, repo, journalRoot } = await initializeSandboxDirectories(scratch);
   const output = join(scratch, 'report.json'), owned = { execute: true, pullNumbers: [], branches: [] };
   const report = { ...sandboxRuntimeReportFields(prepared), schema_version: 1, repository: SANDBOX, repository_id: SANDBOX_ID, run: opts.run, scratch, home,
     model: 'gpt-6.1-sol', real_executor: true, real_docker: true, real_apps: true, qualified: false, scenarios: [], chains: [],
@@ -364,7 +379,7 @@ export async function execute(opts, prepared) {
   const verificationOptions = { socketPath: await realpath(opts.dockerSocket), daemonId: prepared.daemonId, baseImageId: prepared.imageId };
   const createPorts = () => prepared.runtime.createContainedMissionPorts({ store: missions, now: Date.now, runtimeRoot: join(runtimeRoot, 'runtime'),
     codex: codexOptions, hostProcess: { markerDir: join(home, 'contained/host-processes') },
-    verification: { ...verificationOptions, journalRoot: join(home, 'verification') },
+    verification: { ...verificationOptions, journalRoot },
     author: { name: 'OSStack Sandbox', email: 'sandbox@osstack.invalid' }, bridge: { config } });
   let revokedChild, revokedChainId, revokedIntent, restorePublicationHook;
   const hookPorts = currentPorts => {
@@ -465,7 +480,7 @@ export async function execute(opts, prepared) {
         modules: { runtime: prepared.provenance.entries.runtime, core: prepared.provenance.entries.core },
         handoff: { parentPid: process.pid, servicesStopped: true, hostClosed: true, databaseClosed: true, previousOwner },
         ports: { runtimeRoot: join(runtimeRoot, 'runtime'), markerDir: join(home, 'contained/host-processes'),
-          journalRoot: join(home, 'verification'), codex: codexOptions, verification: verificationOptions, bridgeConfig: config },
+          journalRoot, codex: codexOptions, verification: verificationOptions, bridgeConfig: config },
         launchCaps: ports.revisionLaunchCaps }),
       reopen: async () => {
       // Reclaim even after a failed worker; never reuse a stale owner's resources.
