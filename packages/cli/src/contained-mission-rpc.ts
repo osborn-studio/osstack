@@ -36,7 +36,7 @@ export const ContainedMissionRpcRequests = {
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.decide': z.object({ credential: Credential, mission_id: MissionId,
-    decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'retry_stop_check']) }).strict(),
+    decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'retry_stop_check', 'resume_budget', 'resume_grant']) }).strict(),
   // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
   'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, ...GrantTerms }).strict(),
   'mission.revision_grant_renew_preview': z.object({ credential: Credential, chain_id: ChainId, ...GrantTerms }).strict(),
@@ -46,7 +46,7 @@ export const ContainedMissionRpcRequests = {
 } as const;
 export type ContainedMissionRpcMethod = keyof typeof ContainedMissionRpcRequests;
 /** Decisions that probe, launch an executor or write a commit: refused while draining, acknowledged without waiting. */
-const PRODUCES_WORK = new Set(['extra_repair', 'discard_changes', 'adopt_worktree']);
+const PRODUCES_WORK = new Set(['extra_repair', 'discard_changes', 'adopt_worktree', 'resume_budget', 'resume_grant']);
 
 export interface ContainedMissionServiceOptions {
   host: ContainedMissionHost; access: EngineeringAccess;

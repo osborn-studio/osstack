@@ -45,6 +45,15 @@ export async function resolveContainedMissionStart(request: ContainedStartReques
   return { ...request, start_commit: resolved.stdout.toString('utf8').trim(), branch: `osstack/mission/${id}`, worktree_path: join(resolve(options.worktreesRoot ?? scratchPath('worktrees')), `mission-${id}`) };
 }
 
+/** The path, branch and repository checks every new Mission passes, and the identity of the workspace it will claim. Pure of the ledger. */
+export function validateContainedStart(spec: ContainedMissionSpec, worktreesRoot?: string): { spec: ContainedMissionSpec; claim: { repo_identity: string; branch: string; worktree_identity: string } } {
+  const root = resolve(worktreesRoot ?? scratchPath('worktrees'));
+  if (!isAbsolute(spec.worktree_path) || resolve(spec.worktree_path) !== spec.worktree_path || existsSync(spec.worktree_path) || !BRANCH.test(spec.branch)
+    || !isAbsolute(spec.repo_path) || !within(canonical(spec.worktree_path), canonical(root))) throw Error('CONTAINED_SPEC_INVALID');
+  const repo = realpathSync(spec.repo_path); const stat = statSync(repo);
+  return { spec, claim: { repo_identity: `${repo}#${stat.dev}:${stat.ino}`, branch: spec.branch, worktree_identity: spec.worktree_path } };
+}
+
 export class ContainedMissionHost {
   readonly store: ContainedMissionStore;
   readonly runner: ContainedMissionRunner;
@@ -65,12 +74,10 @@ export class ContainedMissionHost {
 
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
-    const root = resolve(this.options.worktreesRoot ?? scratchPath('worktrees'));
-    if (!isAbsolute(spec.worktree_path) || resolve(spec.worktree_path) !== spec.worktree_path || existsSync(spec.worktree_path) || !BRANCH.test(spec.branch)
-      || !isAbsolute(spec.repo_path) || !within(canonical(spec.worktree_path), canonical(root))) throw Error('CONTAINED_SPEC_INVALID');
-    const repo = realpathSync(spec.repo_path); const stat = statSync(repo);
-    return this.store.authorize(principal, { scope_id: input.scope_id, spec: spec as unknown as Record<string, unknown>, ...(input.supersedes ? { supersedes: input.supersedes } : {}),
-      claim: { repo_identity: `${repo}#${stat.dev}:${stat.ino}`, branch: spec.branch, worktree_identity: spec.worktree_path } }, this.options.ports.now());
+    // Only the revision dispatcher builds these, and it does not come through here.
+    if (spec.publish_target !== undefined || spec.revision_feedback !== undefined) throw Error('CONTAINED_SPEC_INVALID');
+    const { claim } = validateContainedStart(spec, this.options.worktreesRoot);
+    return this.store.authorize(principal, { scope_id: input.scope_id, spec: spec as unknown as Record<string, unknown>, ...(input.supersedes ? { supersedes: input.supersedes } : {}), claim }, this.options.ports.now());
   }
 
   status(principal: EngineeringPrincipal, missionId: string) {

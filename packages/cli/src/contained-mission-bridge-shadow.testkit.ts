@@ -108,6 +108,8 @@ export interface RigMission {
   head: string;
   /** Null means the delivery evidence carries no base head. */
   base_head: string | null;
+  /** Extra spec fields (a full spec for revision tests). */
+  spec?: Record<string, unknown>;
 }
 
 /** A migrated ledger with a registered scope, plus helpers to seed `pr_opened` Missions the way the publish path leaves them. */
@@ -148,7 +150,7 @@ export function createRig(): Rig {
     const branch = m.branch ?? `osstack/mission/m${n}`;
     const mission = missions.authorize(principal, {
       scope_id: scope.scope_id,
-      spec: { goal: `g${n}`, branch, publication: { remote: 'origin', repository: m.repository ?? 'o/r', base: m.base_ref ?? 'main', draft: true } },
+      spec: { goal: `g${n}`, branch, publication: { remote: 'origin', repository: m.repository ?? 'o/r', base: m.base_ref ?? 'main', draft: true }, ...(m.spec ?? {}) },
       claim: { repo_identity: `repo${n}`, branch, worktree_identity: `wt${n}` },
     }, clock);
     const digest = String(n).padStart(64, 'e');

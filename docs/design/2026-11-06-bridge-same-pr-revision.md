@@ -434,6 +434,9 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 | 12 | 不变式 6 按提交范围检查，每次推送绑定引入的提交列表（上限 64） | 一轮可有多个修复提交，只看分支顶端不能说明“每个提交都有意图”（§5.3、§5.5） |
 | 13 | 停止后的推送回执走 `reconcileReceipt`，check 意图可在发布后单独写 | 4-A 的 `recordIntent`/`settleIntent` 只在 `revising`/`publishing` 生效（§4.1） |
 | 14 | 预算按每次启动扣款，不按修复额度推算 | 修复额度不限制 `discard_changes` 与 `extra_repair` 启动的回合（§5.2） |
+| 15 | 5-B：`revision_feedback.nonce` 与 `publish_target.root_tier` 两个规格字段；链累计 diff 为 T1（只超 caps）时仅当根以 T1 发布才放行 | 分类器把只超 caps 判为 T1 而不是 T2，按字面“T2/rejected 才拒”挡不住两轮把 caps 翻倍；提示定界符需要每个子 Mission 独立的随机数（§5.2） |
+| 16 | 5-B：`awaiting_decision → candidate_ready` 仅限同一候选；`resume_budget`/`resume_grant` 对验证路由用它重入；预算耗尽的再授按新旧预算差额给同一子 Mission 追加分配 | 存储层原本没有从 `awaiting_decision` 回到验证前的边（§5.2 末） |
+| 17 | 5-B 不做 `acknowledgeAdvance`/`child_halted` 自动恢复、审阅线程的 `path`/`line`、live 周期里的 `releaseClaim` 调用 | 归 5-E（D9 同子恢复、读取器查询变更）；5-B 的收费、采纳、丢弃与验证入口在链已停止或关闭时一律拒绝，即停在 `awaiting_decision(chain_stopped:*)` |
 
 ## 8. 需要用户做的决定
 

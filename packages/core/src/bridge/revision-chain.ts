@@ -111,7 +111,8 @@ export function reduceReviewers(head: string, reviews: readonly SnapshotReview[]
   return { participating, discards };
 }
 
-function combineDigests(digests: readonly string[]): string {
+/** One digest for a set of reviews' feedback: a single review keeps its own, several are hashed together in sorted order. */
+export function combineFeedbackDigests(digests: readonly string[]): string {
   const sorted = [...digests].sort();
   return sorted.length === 1 ? sorted[0]! : createHash("sha256").update(sorted.join("\n")).digest("hex");
 }
@@ -172,7 +173,7 @@ export function decideChainStep(chain: ChainView, snapshot: PrSnapshot, registry
     if (!shadow && chain.grant_rounds !== null && chain.rounds_used >= chain.grant_rounds) return stop("rounds_exhausted", discards, ids);
     if (snapshot.moved) return none("snapshot_moved", discards);
     const review_ids = withFeedback.map(s => s.review.review_id).sort((a, b) => a - b);
-    const feedback_digest = combineDigests(withFeedback.map(s => s.review.feedback_digest!));
+    const feedback_digest = combineFeedbackDigests(withFeedback.map(s => s.review.feedback_digest!));
     return shadow
       ? { kind: "would_reserve", ...base, discards, review_ids, feedback_digest, back_to_review: chain.state === "ready_for_human" }
       : { kind: "reserve", ...base, discards, review_ids, feedback_digest };
