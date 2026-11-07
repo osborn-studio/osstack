@@ -13,8 +13,10 @@ A same-child human resume clears the detection ghost, as a new human decision do
 one attempt per child, one outsider write and the two-round hard cap. It completed with
 2,068,903 generated / 303,148 distinct states, depth 23, and an empty queue. This is bounded
 exhaustive model checking, not simulation. `bridge-shadow.cfg` completed with 67,673 generated /
-11,897 distinct states, depth 13. The revised full main and rounds runs are recorded in the
-Phase 5 verification report when they finish.
+11,897 distinct states, depth 13. The revised full two-reviewer main run completed without error: 553,491,833 generated /
+69,290,566 distinct states, depth 48, empty queue, exit 0. Wall time was 1h01 including a
+SIGSTOP/SIGCONT scheduling suspension for parent serialized acceptance. The full three-review
+rounds run remains pending; no pass is inferred from its progress counts.
 
 Run the portable evidence runner from the repository root:
 

@@ -294,5 +294,25 @@
       0
     ],
     "depth": 13
+  },
+  {
+    "config": "bridge.cfg",
+    "model_commit": "036d2be2",
+    "status": 0,
+    "passed": true,
+    "kind": "exhaustive-breadth-first",
+    "log": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-tlc-main2.log",
+    "log_sha256": "286dc50798b35dc5fc41fd4c1e1a34d52cc53af778dad4d674061e00ded9e013",
+    "counts": [
+      553491833,
+      69290566,
+      0
+    ],
+    "depth": 48,
+    "wall_time": "01h 01min including a scheduling SIGSTOP/SIGCONT interval for parent serialized acceptance; no restart",
+    "fingerprint_collision_estimates": {
+      "optimistic": 0.0018,
+      "actual_fingerprints": 0.00026
+    }
   }
 ]
