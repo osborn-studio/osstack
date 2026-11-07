@@ -348,3 +348,17 @@ describe('appCredentialRunner', () => {
     expect(message).not.toContain(PUBLISHER_TOKEN);
   });
 });
+
+it('rechecks authority after App B token refresh and before every check mutation', async () => {
+  const gh = fakeGitHub();
+  let allow = true;
+  let fences = 0;
+  const k = createBridgeKit({ config, fetchImpl: gh.fetchImpl, now: () => NOW,
+    beforeCheckMutation: () => { fences++; if (!allow) throw Error('BRIDGE_DISABLED'); } });
+  await k.publishVerifyCheck(mission(), facts());
+  allow = false;
+  const before = gh.log.filter(row => row.method !== 'GET').length;
+  await expect(k.publishVerifyCheck(mission(), facts())).rejects.toThrow('BRIDGE_DISABLED');
+  expect(gh.log.filter(row => row.method !== 'GET')).toHaveLength(before);
+  expect(fences).toBe(2);
+});

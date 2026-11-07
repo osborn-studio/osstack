@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { H, T0, changesRequested, dispatched, setup } from './contained-mission-revision.testkit.js';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
 import { assertRevisionPublishable, createRevisionPublicationPort, compareRevisionRange, confirmRevisionPublication, publishRevision, publishRevisionCheck, readRevisionPr, reconcileReceipt, recoverRevision, createRevisionReceiptRecovery, refuseRevisionPublication, REVISION_SAME_CHILD_RESUMABLE, type RevisionPublicationDeps, type RevisionRefusalCode } from './contained-mission-revision-publication.js';
+import { createRevisionCheckRetryScheduler } from './contained-mission-revision-check-retry.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
 import { ContainedMissionHost } from './contained-mission-host.js';
 import { HostProcessKit } from './contained-mission-host-process.js';
@@ -992,4 +993,104 @@ describe('K1–K6 crash recovery against a bare remote', () => {
       expect(git(repo, 'rev-list', '--count', `${first}..refs/remotes/origin/topic`)).toBe('1');
     } finally { reopened?.close(); rmSync(root, { recursive: true, force: true }); }
   });
+});
+
+
+describe('automatic pending check retry', () => {
+  it('recovers a confirmed child pending check once across scheduler restarts', async () => {
+    const { deps, input, id } = await fullFixture();
+    confirmRevisionPublication(deps, input);
+    const send = vi.fn(async () => ({ check_run_id: 72, created: true }));
+    const port = createRevisionPublicationPort(deps);
+    const options = { ...deps, enabled: () => true, publishCheck: (child: string) => port.publishCheck(child, send) };
+    await createRevisionCheckRetryScheduler(options).tick({ limit: 1 });
+    await createRevisionCheckRetryScheduler(options).tick();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]).toEqual([deps.missions.get(id)]);
+    expect(deps.chains.intents(input.chain_id).filter(i => i.kind === 'check')).toMatchObject([{ state: 'confirmed' }]);
+  });
+  it('does no ledger or remote writes while disabled and settles a closed chain without POST', async () => {
+    const { deps, input } = await fullFixture();
+    confirmRevisionPublication(deps, input);
+    const chain = deps.chains.get(input.chain_id);
+    deps.chains.closeLive(chain.chain_id, chain.revision, 'abandon', deps.now());
+    const check = deps.chains.intents(chain.chain_id).find(i => i.kind === 'check')!;
+    const send = vi.fn(async () => ({ check_run_id: 73, created: true }));
+    let enabled = false;
+    const scheduler = createRevisionCheckRetryScheduler({ ...deps, enabled: () => enabled,
+      publishCheck: child => createRevisionPublicationPort(deps).publishCheck(child, send) });
+    await scheduler.tick();
+    expect(deps.chains.getIntent(check.intent_id).state).toBe('pending');
+    enabled = true; await scheduler.tick();
+    expect(deps.chains.getIntent(check.intent_id).state).toBe('failed');
+    expect(send).not.toHaveBeenCalled();
+  });
+  it('backs off retained pending work, honors cancellation, and deduplicates concurrent scans', async () => {
+    const { deps, input } = await fullFixture();
+    confirmRevisionPublication(deps, input);
+    const send = vi.fn(async () => { throw Error('transient_before_send'); });
+    const scheduler = createRevisionCheckRetryScheduler({ ...deps, enabled: () => true, publishCheck: send });
+    await Promise.all([scheduler.tick(), scheduler.tick()]);
+    expect(send).toHaveBeenCalledTimes(1);
+    await scheduler.tick(); expect(send).toHaveBeenCalledTimes(1);
+    deps.now = () => T0 + H;
+    const signal = AbortSignal.abort();
+    await expect(scheduler.tick({ signal })).rejects.toThrow();
+    await scheduler.stop(); await scheduler.tick(); expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+it('check registration deduplicates pending and permits evidence retry for an earlier confirmed head', async () => {
+  const { deps, input, id } = await fullFixture();
+  confirmRevisionPublication(deps, input);
+  const check = deps.chains.intents(input.chain_id).find(i => i.kind === 'check')!;
+  expect(deps.chains.recordCheckIntent(input.chain_id, id, next, deps.now()).intent_id).toBe(check.intent_id);
+  deps.chains.settleIntent(check.intent_id, 'failed', deps.now());
+  // A later round may become current before a user retries the earlier check.
+  deps.chains.clearCurrentMission(input.chain_id, deps.chains.get(input.chain_id).revision, deps.now());
+  const retry = deps.chains.recordCheckIntent(input.chain_id, id, next, deps.now());
+  expect(retry.intent_id).not.toBe(check.intent_id);
+  expect(retry.state).toBe('pending');
+});
+
+it('automatic check retry leaves uncertain evidence for manual action and refuses stale owners', async () => {
+  const { deps, input, f } = await fullFixture();
+  confirmRevisionPublication(deps, input);
+  const check = deps.chains.intents(input.chain_id).find(i => i.kind === 'check')!;
+  deps.chains.settleIntent(check.intent_id, 'uncertain', deps.now(), 'transport_unknown');
+  const send = vi.fn(async () => undefined);
+  const scheduler = createRevisionCheckRetryScheduler({ ...deps, enabled: () => true, publishCheck: send });
+  await scheduler.tick();
+  expect(send).not.toHaveBeenCalled();
+  expect(deps.chains.getIntent(check.intent_id).state).toBe('uncertain');
+  f.rig.attention.claimOwner('replacement');
+  await expect(scheduler.tick()).rejects.toThrow('stale_owner');
+  expect(send).not.toHaveBeenCalled();
+});
+
+it('bounded check retry advances past backoff work and settles closed uncertain evidence', async () => {
+  const { deps, input, id } = await fullFixture();
+  confirmRevisionPublication(deps, input);
+  const first = deps.chains.intents(input.chain_id).find(i => i.kind === 'check')!;
+  const second = deps.chains.recordIntent(input.chain_id, deps.chains.get(input.chain_id).revision,
+    { kind: 'check', branch: 'topic', child_mission_id: id, new_head: next, binding: { external_id: id } }, deps.now()).intent;
+  const ordered = [first, second].sort((a, b) => a.intent_id.localeCompare(b.intent_id));
+  const visits: string[] = [];
+  const scheduler = createRevisionCheckRetryScheduler({ ...deps, enabled: () => true, publishCheck: async () => {
+    visits.push('send'); throw Error('retryable_before_delivery');
+  } });
+  await scheduler.tick({ limit: 1 });
+  await scheduler.tick({ limit: 1 });
+  expect(visits).toHaveLength(2);
+  expect(deps.chains.unsettledCheckIntents('', 1).map(i => i.intent_id)).toEqual([ordered[0]!.intent_id]);
+  expect(deps.chains.unsettledCheckIntents(ordered[0]!.intent_id, 1).map(i => i.intent_id)).toEqual([ordered[1]!.intent_id]);
+  expect(() => deps.chains.unsettledCheckIntents('', 101)).toThrow('invalid_limit');
+  deps.chains.settleIntent(first.intent_id, 'uncertain', deps.now());
+  const chain = deps.chains.get(input.chain_id);
+  deps.chains.closeLive(chain.chain_id, chain.revision, 'abandon', deps.now());
+  await scheduler.tick(); // finish the keyset pass
+  await scheduler.tick();
+  expect(deps.chains.getIntent(first.intent_id).state).toBe('failed');
+  expect(deps.chains.getIntent(second.intent_id).state).toBe('failed');
+  expect(visits).toHaveLength(2);
 });

@@ -42,9 +42,10 @@ export async function assembleLiveBridge(deps: {
   for (const cap of [deps.launchCaps.executor_seconds, deps.launchCaps.verify_seconds]) {
     if (!Number.isSafeInteger(cap) || cap < 1) throw Error('BRIDGE_CONFIG_INVALID:live:launch_caps');
   }
-  const [revision, publication, grant, { LiveReconciler }, { StoppedChainScanService }, { BridgeReadLimiter }] = await Promise.all([
+  const [revision, publication, grant, { LiveReconciler }, { StoppedChainScanService }, { BridgeReadLimiter }, { createRevisionCheckRetryScheduler }] = await Promise.all([
     import('./contained-mission-revision.js'), import('./contained-mission-revision-publication.js'), import('./contained-mission-grant.js'),
     import('./contained-mission-bridge-live.js'), import('./contained-mission-bridge-stopped-scan.js'), import('./contained-mission-bridge-read-limiter.js'),
+    import('./contained-mission-revision-check-retry.js'),
   ]);
   const common = { chains: deps.chains, missions: deps.missions, access: deps.access, now: deps.now,
     enabled: deps.enabled, keys: () => config.issuer.keys, launchCaps: deps.launchCaps };
@@ -96,8 +97,13 @@ export async function assembleLiveBridge(deps: {
     reconcileReceipt: chain => receipts.reconcileUncertain(chain),
     cancelChild: async (actor, id) => { await cancel(id, actor.principal_id, actor.client_session_id); },
   });
+  const sendCheck = deps.ports.publishVerifyCheck;
+  const checkRetry = deps.publication.checkEnabled && sendCheck ? createRevisionCheckRetryScheduler({
+    chains: deps.chains, missions: deps.missions, now: deps.now, enabled: deps.enabled, log: deps.log,
+    publishCheck: childId => pub.publishCheck(childId, sendCheck),
+  }) : undefined;
   // Attach only after every constructor and configuration validation succeeded.
   deps.ports.revision = revision.createRevisionLaunchPort(common);
   deps.ports.revisionPublication = pub;
-  return { live, stoppedScan, grants, publication: pub, readLimiter, revisionRecovery };
+  return { live, stoppedScan, grants, publication: pub, readLimiter, revisionRecovery, checkRetry };
 }

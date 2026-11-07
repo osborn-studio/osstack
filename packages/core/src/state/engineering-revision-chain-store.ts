@@ -121,6 +121,14 @@ export class RevisionChainStore {
     return this.db.prepare("SELECT * FROM engineering_publication_intents WHERE kind='push' AND state='pending' AND intent_id>? ORDER BY intent_id LIMIT ?")
       .all(afterIntentId, limit) as PublicationIntent[];
   }
+  /** Bounded restart scan for evidence delivery, including closed live chains. */
+  unsettledCheckIntents(afterIntentId = '', limit = 10): PublicationIntent[] {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail("invalid_limit");
+    return this.db.prepare(`SELECT i.* FROM engineering_publication_intents i
+      JOIN engineering_revision_chains c ON c.chain_id=i.chain_id
+      WHERE i.kind='check' AND i.state IN ('pending','uncertain') AND c.mode='live' AND i.intent_id>?
+      ORDER BY i.intent_id LIMIT ?`).all(afterIntentId, limit) as PublicationIntent[];
+  }
   getIntent(intentId: string): PublicationIntent { return this.intent(intentId); }
   confirmedPushHeads(chainId: string): string[] {
     return (this.db.prepare("SELECT new_head FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND state='confirmed' ORDER BY created_at,intent_id").all(chainId) as Array<{ new_head: string }>).map(r => r.new_head);
@@ -335,10 +343,15 @@ export class RevisionChainStore {
     this.clock(now);
     return this.write(() => {
       const chain = this.get(chainId);
-      if (chain.mode !== "live" || chain.published_head !== newHead || chain.current_mission_id !== childMissionId) fail("check_binding_mismatch");
+      if (chain.mode !== "live") fail("check_binding_mismatch");
       if (!this.db.prepare("SELECT 1 FROM engineering_publication_intents WHERE chain_id=? AND kind='push' AND child_mission_id=? AND new_head=? AND state='confirmed'")
         .get(chainId, childMissionId, newHead)) fail("check_push_unconfirmed");
       if (!this.db.prepare("SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state='pr_opened'").get(childMissionId)) fail("check_child_not_opened");
+      const pending = this.db.prepare(`SELECT * FROM engineering_publication_intents
+        WHERE chain_id=? AND kind='check' AND child_mission_id=? AND new_head=? AND state='pending'
+          AND json_extract(binding_json,'$.external_id')=? ORDER BY created_at,intent_id LIMIT 1`)
+        .get(chainId, childMissionId, newHead, childMissionId) as PublicationIntent | undefined;
+      if (pending) return pending;
       return this.recordIntent(chainId, chain.revision, { kind: "check", branch: chain.branch, new_head: newHead, child_mission_id: childMissionId,
         binding: { external_id: childMissionId } }, now).intent;
     });
