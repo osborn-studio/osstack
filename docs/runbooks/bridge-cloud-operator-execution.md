@@ -2,7 +2,7 @@
 
 Date: 2026-11-07. Status: **prepared, not applied**. Execution location: the existing Grok Bots cloud computer. Scope: `osborn-studio/osstack` and `osborn-studio/osstack-bridge-sandbox` only. Parent and deployment owner control external actions. This document authorizes none of them.
 
-Sources: [phase 6 contract](../design/2026-11-06-bridge-phase6-operator.md), [ADR-006](../decisions/ADR-006-bridge-s0-decisions.md), [App E gates](../design/2026-11-06-bridge-shadow-merger.md), [bridge runbook](bridge.md), [metadata collector report](../reports/bridge-cli-operator-readiness.md). Existing handoff and Reviewer text are Git objects on `codex/bridge-bot-handoff` at `df70c700`; inspect without switching branches:
+Sources: [phase 6 contract](../design/2026-11-06-bridge-phase6-operator.md), [ADR-006](../decisions/ADR-006-bridge-s0-decisions.md), [App E gates](../design/2026-11-06-bridge-shadow-merger.md), [bridge runbook](bridge.md), [metadata collector report](../reports/bridge-cli-operator-readiness.md). The existing handoff and Reviewer drafts are included in this package. Their original immutable reference is `df70c700`; these local reads remain useful for historical comparison:
 
 ```sh
 git show df70c700:docs/runbooks/bridge-grok-bots-handoff.md
@@ -17,7 +17,7 @@ Watcher verifies, gives the personal-account approval, and maintains `verified`.
 
 Keep ordinary PR behavior and the current personal Watcher/Merger until the relevant sandbox evidence and owner decisions exist. Do not modify ERP, vox or alpha permissions, schedules or role instructions. New C/D configurations start disabled and sandbox-only. No repository settings, App installations, messaging Bot, secret transfer or production launch is part of this package.
 
-Reuse the parent's already collected `inspect-bridge-operator-readiness.mjs` artifact. Record its SHA256 `46f096bd39b29aa9c0cea65f76949840ce629d4ed82cd9f0928d9ce348c288e4` and acquisition time from the parent. Do not rerun or replace that collector here. Its result is `readiness=not_assessed`, `evidenceScope=github_metadata_only`, `productionGate=closed`; all U-1–U-11 remain unknown/not_verified. Public Bot lookups are observations, not App-to-user or installation proof. Copy their numeric user IDs from that artifact into the private operator record and obtain owner confirmation; do not substitute App IDs.
+Reuse the parent's already collected `inspect-bridge-operator-readiness.mjs` artifact. Record its SHA256 `46f096bd39b29aa9c0cea65f76949840ce629d4ed82cd9f0928d9ce348c288e4` and acquisition time from the parent. Do not rerun or replace that collector here. Its result is `readiness=not_assessed`, `evidenceScope=github_metadata_only`, `productionGate=closed`; that collector alone leaves all U-1–U-11 unknown/not_verified. The later [local App C/D sample](../reports/2026-11-07-bridge-local-app-cd-capability.md) adds sandbox API-read evidence, not cloud execution proof. Public Bot lookups are observations, not App-to-user or installation proof. Reuse the already provided registered numeric user IDs in the private operator record; confirm the actual Routine binding by configuration/readback, without asking the owner to repeat those IDs. Do not substitute App IDs.
 
 ## 2. Read each Routine configuration on cloud
 
@@ -56,7 +56,9 @@ set -euo pipefail
 : "${GH_TOKEN:?Platform must inject this Routine installation token}"
 export GH_HOST=github.com
 # Isolate gh config so an absent/failed token cannot select the desktop login.
-export GH_CONFIG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/bridge-gh-config.XXXXXX")"
+export OSSTACK_SCRATCH_ROOT="${OSSTACK_SCRATCH_ROOT:-${TMPDIR:-/tmp}/osstack}"
+mkdir -p "$OSSTACK_SCRATCH_ROOT/runtime"
+export GH_CONFIG_DIR="$(mktemp -d "$OSSTACK_SCRATCH_ROOT/runtime/bridge-gh-config.XXXXXX")"
 export GH_PROMPT_DISABLED=1
 # Output contains only fixed labels and booleans. gh stderr stays suppressed.
 node --input-type=module <<'JS'
@@ -67,8 +69,10 @@ try {
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 });
   const v = JSON.parse(raw);
   const names = v.repositories?.map(r => r.full_name);
+  const ids = v.repositories?.map(r => r.id);
   const sandboxOnly = v.total_count === 1 && names?.length === 1
-    && names[0] === 'osborn-studio/osstack-bridge-sandbox';
+    && names[0] === 'osborn-studio/osstack-bridge-sandbox'
+    && ids?.length === 1 && ids[0] === 1446327922;
   console.log(JSON.stringify({ installationEndpointRead: true, sandboxOnly }));
   if (!sandboxOnly) process.exitCode = 1;
 } catch {
@@ -190,7 +194,7 @@ Each case record contains: case ID; expected result; actual result; passed/faile
 | --- | --- |
 | U-1 | Per-Routine binding + actual C/D producer readback; V-1/V-20/V-23/V-24 |
 | U-2/U-4 | Event source, delivery/cursor evidence, polling fallback and measured delay; V-4/V-17/V-30 |
-| U-3 | C access reads and full pagination evidence; V-2 |
+| U-3 | Local C/D sandbox PR and App B checks GET200 observed; cloud context, commit→PR reads and full bounded pagination still need V-2 evidence |
 | U-5/U-6 | Completed→in_progress→failure→success readback; duplicate convergence and required-check behavior; V-13/V-27 |
 | U-7 | Controlled App D CR/APPROVE and non-counting evidence; V-21/V-22 |
 | U-8 | Redacted platform logs compared with GitHub timeline; missing access remains unverified |
@@ -239,3 +243,13 @@ Before adoption, owner records `choice`, exact role/config versions, scope, UTC 
 Held Mission PRs have an explicit owner handoff: `gilosbornhello` reads the PR and gives the counted current-head approval; the deployment owner reviews the fresh ledger-bound App E shadow report and all ADR-006 decision 2 / App E G0–G8 conditions. Report must identify repository, PR, head/base, publication and ledger binding, producer-bound checks, human approval, thread/CR state, rules and failure codes. Cloud bots do not receive host DB access. Missing/refused/unevaluated evidence leaves the PR held. App E remains shadow; an allowed shadow decision does not authorize a merge. Owner performs any separately authorized manual disposition after fresh checks; there is no legacy Merger exception release command here. Real App E automation needs the later design/ADR and enable decision. Re-read gates after changes; head preconditions do not close base/review races.
 
 Rollback of this proposed exclusion is also an explicit owner role-instruction decision. Do not restore legacy Mission auto-merge while Mission work is pending without resolving the same human/ledger conflict. For C/D errors, stop their routines and retain evidence; any dismissal, installation suspension or ruleset rollback belongs to the owner under phase 6 §10. Preserve the current personal ordinary flow. No migration or launch is complete from this handoff.
+
+## Local probe boundary update
+
+C uses checks write / contents read / metadata read. D uses pull_requests write /
+metadata read; do not require contents read for D. The local D request that added
+contents read returned422; the ADR minimum then succeeded. Both successful tokens
+were limited to exactly the sandbox. A separate main-only request returned422 for
+D and no captured HTTP response for C; main access is unverified in both cases.
+Do not infer an installation diagnosis from a response body that was not retained.
+This does not change platform configuration, prove U1/U9/U10 or enable any draft.

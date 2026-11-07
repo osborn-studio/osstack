@@ -29,6 +29,7 @@ main_repository_enabled = false
 repository_allowlist = [osborn-studio/osstack-bridge-sandbox]
 expected_app_id = 5620078
 app_d_identity_verified = false
+expected_public_bot_user_id = 352681749
 app_d_bot_user_id = UNVERIFIED
 v21_recorded_pass = false
 v22_recorded_pass = false
@@ -105,3 +106,8 @@ body 第二行 = head <实时 HEAD_SHA>  base <实时 BASE_SHA>
 3. V-21/V-22 的状态型 review 探针是单独的受控沙箱验收步骤；不能让仍为 COMMENT_ONLY 的常规例程自行发正式修改请求来“验证自己”。由对应验收执行者按阶段 6 §9 留记录后，才讨论后续 mode 变更。
 4. 需要把正式修改请求接入 osstack 时，按阶段 6 §11/§13 决定 App D 是否登记到 `producers.json.reviewers`。运行时还需当前 head、有效签名 grant、发布与回执门；reviewer 写出 COMMENT 或单纯恢复 hourly 调度不满足这些条件。
 5. 只有相关身份、沙箱证据和用户启用都完成后，再按阶段 6 顺序准备主仓库接入。Watcher/Merger 现有循环保留；本文不替它们改调度、批准条件或合并权限。
+
+本机后续读取已验证 D 的 sandbox installation token 可读取 PR 与 App B 检查，
+最小权限仅 pull_requests write、metadata read。上方 expected_public_bot_user_id
+是公开身份期望值；app_d_bot_user_id 的 UNVERIFIED 指云 Routine 实际主体尚未读回，
+不要求用户再次提供已给过的数字 ID。不把本地 probe 当作云身份注入或启用证据。

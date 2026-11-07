@@ -70,12 +70,12 @@ Webhook 仅是可选唤醒方式。可以继续用平台既有事件源或定时
 |---|---|---|
 | `SKILL.md` | 保留原有 UI/CLI recipes；把 bridge 的“未覆盖”改成分项状态。分开离线验证、沙箱外部写入和生产运行；列出 Codex、Docker、App、授权、隔离 home 与 sandbox allowlist 前置 | 每项标为 passed、failed、blocked 或 not-run；未运行不能计入通过数 |
 | `features/README.md` | 在原覆盖索引中增加 Mission/bridge 条目，链接新 recipes；保留原 31 项的适用范围 | 能从索引找到原覆盖与新增覆盖，并看到各自证据和限制 |
-| 建议 `features/contained-mission-bridge.md` | 按现有四节格式描述用户入口、前置、动作、结果。覆盖根 Mission 发布、签名修订授权、同 PR 两轮修订、轮数耗尽转人、取消/撤权与重启、逐 head App B 证据、提交范围与意图对账 | 沙箱 PR、完整 head、check run id、范围对账、退出码与脱敏日志；逐项对应阶段 5 §5.7 |
-| 建议 `features/bridge-operator.md` | 记录既有平台的 Watcher/Reviewer 身份与事件处理；覆盖 App C/D 接入后阶段 6 §9 的 V-1–V-28，包括旧 head、标记伪造、App B 缺失、同名错误生产者、漏事件与并发重启 | 每项保存实际主体、PR/head、预期、实际、平台运行记录；未迁移时明确 blocked，不能用个人 approve 顶替 |
-| `scripts/verify-osstack.sh` 及必要的原目录辅助脚本 | 扩展现有入口，调用经审阅的沙箱驱动；区分默认只读预检与明确的执行入口。保留失败证据与按本次 RUN_ID 清理能力 | 预检不产生 GitHub 写入；实际执行只针对登记沙箱。拒绝默认/生产 home、主仓库目标和前置缺失 |
+| 现有增量 `features/contained-mission-bridge.md` | 按现有四节格式描述用户入口、前置、动作、结果。覆盖根 Mission 发布、签名修订授权、同 PR 两轮修订、轮数耗尽转人、取消/撤权与重启、逐 head App B 证据、提交范围与意图对账 | 沙箱 PR、完整 head、check run id、范围对账、退出码与脱敏日志；逐项对应阶段 5 §5.7 |
+| 运营交接 `docs/runbooks/bridge-cloud-operator-execution.md` | 记录既有平台的 Watcher/Reviewer 身份与事件处理；覆盖 App C/D 接入后阶段 6 §9 的 V-1–V-31，包括旧 head、标记伪造、App B 缺失、同名错误生产者、漏事件与并发重启 | 每项保存实际主体、PR/head、预期、实际、平台运行记录；未迁移时明确 blocked，不能用个人 approve 顶替 |
+| `scripts/verify-osstack.sh` 及必要的原目录辅助脚本 | 保留现有默认31项和 helper 行为；可选 recipe 单独引用经审阅的沙箱驱动，不给 helper 新增自动执行模式。保留失败证据与按本次 RUN_ID 清理能力 | 预检可有授权 token POST、业务写入为零；实际执行只针对登记沙箱。拒绝默认/生产 home、主仓库目标和前置缺失 |
 | 原 evidence 输出约定 | 保留 command/stdout/stderr/exit、第二次只读状态和截图；新增仓库/PR/head、构建提交、用例清单、证据清单与脱敏后的引用 | 重启和清理后仍能审阅证据；不保存私钥、安装令牌、工程面凭证或完整敏感环境 |
 
-扩展时先修正旧 helper 与当前 scratch 规则的差异：临时 home、socket、workspace 和 Mission worktree 放在 `$OSSTACK_SCRATCH_ROOT` 下；保留证据放在清理范围外。使用独立 `OSSTACK_HOME`；开发 checkout 不打开默认或正式 serving DB。不要把原示例的历史临时路径直接作为新 bridge 默认值。
+本节点不修改旧 helper。未来若单独维护其 scratch 行为，应遵循：临时 home、socket、workspace 和 Mission worktree 放在 `$OSSTACK_SCRATCH_ROOT` 下；保留证据放在清理范围外。使用独立 `OSSTACK_HOME`；开发 checkout 不打开默认或正式 serving DB。不要把原示例的历史临时路径直接作为新 bridge 默认值。
 
 原技能要求通过真实用户路径证明行为，不把直接写 SQLite、Vitest helper 或内部函数调用当作用户验收。新增沙箱驱动若使用受限生产装配接口，必须明确记录该入口：它可以证明对应生产效果，但不能冒称已验证仍被验收门阻止的常规 `serve` live 启动路径。保留这一差异，不能为取得通过数而放开 live 门。
 
@@ -118,3 +118,13 @@ App review 是否计入批准、由谁给出计入的批准，以及规则与身
 CoS 汇总 §5 表格，验证工程师提交原技能的增量 PR，Watcher 提供目标 head 的运行证据，运营者与仓库管理员补 App/规则的实际读回。只有相应验收门通过后才更新“已迁移/已上线”状态；本文本身没有完成阶段 5-G、阶段 6 或生产启动。
 
 最新补充：Reviewer 暂停且没有正式 `CHANGES_REQUESTED` 证据，意味着当前主循环未提供已证明的同 PR 修订触发来源。已准备[独立 App D Reviewer 例程草案](bridge-reviewer-routine-draft.md)，初始只登记沙箱、暂停且为 COMMENT-only；它没有被发送或启用，不能用共享 `Rubebun-Jadeem` 的另一个例程替代独立 App D。
+
+## 本地身份读探针补充（与云能力分开）
+
+详见[本机 C/D 读取证据](../reports/2026-11-07-bridge-local-app-cd-capability.md)。
+C/D 既有 sandbox installation 最小权限均能读取 PR13 与同 head 的 App B 检查。
+D 最小权限为 pull_requests write、metadata read；多请求 contents read 曾返回422，
+删除额外权限后成功。主仓库限定 token 探针 D422、C未捕获HTTP状态，均未证实 main
+访问。以上不证明云 Routine 注入、U1/U9/U10 或实际 review/check 写入。
+普通 PR 循环保持；Mission 例外与 gilosbornhello 本人计入批准要求的并存方案，
+必须由 owner 本人确认并读回，不能把此文档当已应用。

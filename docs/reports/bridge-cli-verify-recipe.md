@@ -34,3 +34,7 @@ The production gate stays **CLOSED**. App C/D migration and production launch re
 Offline PR tests may run credential-free head code. Credentialed real 5-G must use a reviewed trusted harness and immutable pinned installed candidate outside PR-controlled code, with operator-controlled secrets. A modified PR skill cannot authorize itself. Each new external-write run needs explicit execute intention and complete preflight. Missing evidence, failed preflight, skipped scenarios, changed heads, absent attribution or remaining acceptance gaps cannot pass. Watcher does not automatically spend, write externally, approve, merge or replace Bot duties or the paused formal Reviewer.
 
 No credentials/key contents, live DB, daemon, installed prefix, other checkout, GitHub operation, message or real 5-G execution was used by this task. The only dependency action was pnpm's unexpected automatic install attempt, stopped as recorded above. The parent owns remaining integration checks, privileged actions and Git metadata if local staging is blocked.
+
+## Integration follow-up
+
+The later [operator/skill integration report](2026-11-07-bridge-operator-handoff-integration.md) records current narrow validation, local capability limits and the reviewed journal-root baseline. Earlier blocked checks and status snapshots above remain historical facts, not current acceptance claims.

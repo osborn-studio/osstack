@@ -27,7 +27,7 @@
 | U-10 | 平台能在一次评估里完成本文要求的读取并保证分页完整（读不完整时能识别出来） | 不能识别读取不完整时，App C 不能上线，因为它可能在不完整的数据上给出 `success` |
 | U-11 | 平台有**持久状态**并能**按（仓库，head）串行**执行评估：持久的锁、每个 head 的评估代次、已知 check run id 表、创建意图表（§6.4），平台重启后仍在 | App C **不能上线**。没有串行与代次，较早读到“成功”的评估可能晚写入、盖过较新的“失败”；没有已知 id 表，读取失败时撤不回已有的成功（§6.4 第 1、7 条）。还需要带租约的锁、PR→head 表、等待起点表与未决写表（§5.2、§6.3、§6.4 第 3 条）。这一项不能用“最终一致”代替 |
 
-本文的“已实测”只指 ADR-006 的探针 P-1–P-12（2026-11-05，沙箱）和 2026-11-06 本会话对主仓库做的只读查询（§2）。
+本文早期的“已实测”指 ADR-006 的探针 P-1–P-12（2026-11-05，沙箱）和 2026-11-06 对主仓库的只读查询（§2）。2026-11-07 新增[本机 C/D 最小权限读取样本](../reports/2026-11-07-bridge-local-app-cd-capability.md)：仅补充 sandbox PR/其他 App 检查的 API 读取证据；不证明云 Routine 身份注入、完整 U-3 或 U-1/U-9/U-10。
 
 ---
 
@@ -49,7 +49,7 @@
 | 项 | 现状 | 来源 |
 |---|---|---|
 | 方案阶段 6 前置：阶段 2 完成、阶段 3 沙箱验收 | 满足。沙箱 PR #13 作者是 `osstack-publisher[bot]`，App B 的 `osstack/verify` 为 success、`head_sha` 一致 | 方案阶段 3 验收记录 |
-| App C、App D | 已建，**只装在沙箱**（安装 id 178742326、178742542）；webhook 关闭；私钥在建 App 的会话所在主机上（ADR-006 决定 3），平台还没有 | ADR-006 登记表 |
+| App C、App D | ADR 登记已建并安装在沙箱（安装 id 178742326、178742542）；本地 sandbox 最小权限读取已实证，主仓库访问与平台注入仍未证实；webhook 与密钥历史状态见 ADR-006 决定 3 | ADR-006 登记表 |
 | 沙箱 ruleset | 四个都在：`main-quality` 26575831、`main-update` 26577634、`mission-writers` 26577637、`mission-history` 26577639 | 本会话 `gh api repos/osborn-studio/osstack-bridge-sandbox/rulesets`（只读） |
 | 主仓库 ruleset | **一个都没有**（`GET rulesets` 与 `GET rules/branches/main` 都返回空）。`main` 仍是旧式分支保护：1 个批准、`dismiss_stale_reviews`、`require_last_push_approval`、会话解决、`enforce_admins`，**没有任何必需状态检查** | 本会话 `gh api`（只读），2026-11-06 |
 | 主仓库可见性 | public | 同上 |

@@ -42,3 +42,13 @@
 5. **最终报告压缩了探针证据。** 场景多数只保存 `passed:true`；33x 行快照保留 chain/intent/head，却没有完整 PR/head/review/check run id、push 归因、规则拒绝返回的逐场景证据引用。应把可复核输入/结果和脱敏原始引用写入报告，而不是靠成功退出重建过程。
 
 代码中的 `report.qualified=true`（308）只代表这一版脚本现有断言全部返回，不能抵消上述缺口。修复代码、保存确定性验证证据并完成经授权的真实沙箱执行之前，本报告将 5-G 结果记为 **not-run / 尚不能判 pass**。它不是空驱动，但也不是阶段 6 平台已接通或生产 live 已启用的证明。
+
+## Historical-scope annotation
+
+This report audits only its recorded earlier driver source. Later integrated
+activity attribution, cold-process and publication-hook work, the failed real
+attempt1 and the reviewed journal-root fix are separate evidence; do not treat
+this historical gap list as a current source audit or silently mark its real
+acceptance gaps passed. The operator handoff base315e7fc4 includes the fix, while
+the parent reported a separate second real attempt whose result this docs node
+has not observed. [Current operator package](../runbooks/bridge-cloud-operator-execution.md).

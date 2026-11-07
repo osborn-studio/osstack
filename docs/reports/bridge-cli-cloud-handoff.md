@@ -34,3 +34,7 @@ Full test suites, builds, integration/test-merges, model review, CI, deployment 
 Commit only these two explicit paths. The commit containing this report is the source revision for the package; the final session response gives its exact SHA if commit succeeds. If the shared Git index denies staging, leave the files uncommitted and report the denial without bypass. Parent reviews the package and owns later publishing and deployment. Keep this worktree available for that review; its cleanup belongs to the parent once the branch is handed off or otherwise closed.
 
 Actual staging outcome: `git add -- docs/runbooks/bridge-cloud-operator-execution.md docs/reports/bridge-cli-cloud-handoff.md` failed with exit 128. Git could not create the shared worktree `index.lock` (Operation not permitted). Both owned paths remain untracked/uncommitted. No commit was attempted without staging. No alternate index, sandbox bypass or approval attempt was used. HEAD remains `8120569883fd23c30bd99858de8f3d0c6a34aa55`. Parent must stage these exact paths and commit from an authorized context.
+
+## Integration follow-up
+
+The later [operator/skill integration report](2026-11-07-bridge-operator-handoff-integration.md) records current narrow validation, local capability limits and the reviewed journal-root baseline. Earlier blocked checks and status snapshots above remain historical facts, not current acceptance claims.
