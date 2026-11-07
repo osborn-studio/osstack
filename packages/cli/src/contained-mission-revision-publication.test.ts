@@ -6,7 +6,7 @@ import { HostProcessStore } from '@osstack/core';
 import { describe, expect, it, vi } from 'vitest';
 import { H, T0, changesRequested, dispatched, setup } from './contained-mission-revision.testkit.js';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
-import { assertRevisionPublishable, compareRevisionRange, confirmRevisionPublication, publishRevision, publishRevisionCheck, readRevisionPr, reconcileReceipt, refuseRevisionPublication, type RevisionPublicationDeps, type RevisionRefusalCode } from './contained-mission-revision-publication.js';
+import { assertRevisionPublishable, createRevisionPublicationPort, compareRevisionRange, confirmRevisionPublication, publishRevision, publishRevisionCheck, readRevisionPr, reconcileReceipt, refuseRevisionPublication, type RevisionPublicationDeps, type RevisionRefusalCode } from './contained-mission-revision-publication.js';
 
 const old = '1'.repeat(40);
 const next = '2'.repeat(40);
@@ -387,6 +387,59 @@ describe('revision confirmation D10', () => {
     expect(deps.chains.get(input.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'child_cancelled', published_head: next });
     expect(deps.chains.intents(input.chain_id).filter(i => i.kind === 'check')).toHaveLength(0);
   });
+  it.each(['success', 'failure'] as const)('shares concurrent check delivery and preserves terminal intents after %s', async outcome => {
+    const { deps, input, id } = await fullFixture();
+    confirmRevisionPublication(deps, input);
+    const port = createRevisionPublicationPort(deps);
+    let release!: () => void;
+    const barrier = new Promise<void>(resolve => { release = resolve; });
+    const failure = Error('check_unavailable');
+    const send = vi.fn(async () => {
+      await barrier;
+      if (outcome === 'failure') throw failure;
+      return { check_run_id: 51, created: true };
+    });
+    const first = port.publishCheck(id, send);
+    // The second caller must join the first attempt, even with a different sender.
+    const secondSend = vi.fn(async () => ({ check_run_id: 52, created: true }));
+    const second = port.publishCheck(id, secondSend);
+    release();
+    const results = await Promise.allSettled([first, second]);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(secondSend).not.toHaveBeenCalled();
+    const checks = () => deps.chains.intents(input.chain_id).filter(i => i.kind === 'check');
+    if (outcome === 'success') {
+      expect(results).toEqual([{ status: 'fulfilled', value: { check_run_id: 51, created: true } }, { status: 'fulfilled', value: { check_run_id: 51, created: true } }]);
+      expect(await port.publishCheck(id, secondSend)).toEqual({ check_run_id: 51, created: false });
+      expect(secondSend).not.toHaveBeenCalled();
+      expect(checks().map(i => i.state)).toEqual(['confirmed']);
+    } else {
+      expect(results).toEqual([{ status: 'rejected', reason: failure }, { status: 'rejected', reason: failure }]);
+      expect(checks().map(i => i.state)).toEqual(['failed']);
+      expect(await port.publishCheck(id, secondSend)).toEqual({ check_run_id: 52, created: true });
+      expect(checks().map(i => i.state)).toEqual(['failed', 'confirmed']);
+    }
+    expect(deps.chains.get(input.chain_id)).toMatchObject({ state: 'awaiting_review', published_head: next, current_mission_id: id });
+  });
+
+  it('does not start another check when the chain closes during an in-flight delivery', async () => {
+    const { deps, input, id } = await fullFixture();
+    confirmRevisionPublication(deps, input);
+    const port = createRevisionPublicationPort(deps);
+    let release!: () => void;
+    const barrier = new Promise<void>(resolve => { release = resolve; });
+    const first = port.publishCheck(id, async () => { await barrier; return { check_run_id: 53, created: true }; });
+    const chain = deps.chains.get(input.chain_id);
+    deps.chains.closeLive(chain.chain_id, chain.revision, 'pr_closed', deps.now());
+    const send = vi.fn(async () => ({ check_run_id: 54, created: true }));
+    const second = port.publishCheck(id, send);
+    release();
+    expect(await Promise.all([first, second])).toEqual([{ check_run_id: 53, created: true }, { check_run_id: 53, created: true }]);
+    expect(send).not.toHaveBeenCalled();
+    expect(deps.chains.intents(input.chain_id).filter(i => i.kind === 'check')).toMatchObject([{ state: 'confirmed', detail: '53' }]);
+    expect(deps.chains.get(input.chain_id).state).toBe('closed');
+  });
+
   it('settles the App B check intent and permits a new intent after a failed check', async () => {
     const { deps, input, id } = await fullFixture();
     confirmRevisionPublication(deps, input);
