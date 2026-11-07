@@ -5,6 +5,7 @@ import type { ContainedMissionStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
+import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: request text must not carry control characters into the ledger.
@@ -71,6 +72,8 @@ export interface ChainStatus {
   rounds_used: number; current_mission_id: string | null; review_deadline: number | null;
   grant: import('@osstack/core').GrantSummary | null;
   shadow_decisions: Array<{ head_sha: string; base_sha: string; action: string; reason: string; review_ids: number[]; observed_at: number }>;
+  /** Latest chain events (allow-listed fields only, oldest first) and the chain's total event count. */
+  events: import('./bridge-chain-events.js').ChainEventView[]; events_total: number; events_total_capped: boolean;
 }
 const STATUS_DECISIONS = 10;
 
@@ -239,6 +242,7 @@ export async function createContainedMissionService(deps: {
   const chainOf = (missionId: string): ChainStatus | null => {
     const chain = chainStore.chainForMission(missionId, 'live') ?? chainStore.chainForMission(missionId, 'shadow');
     if (!chain) return null;
+    const events = chainEventsView(chainStore.db, chain.chain_id);
     return {
       rounds_used: chain.rounds_used, current_mission_id: chain.current_mission_id, review_deadline: chain.review_deadline,
       grant: chain.mode === 'live' ? grantSummary(chain.grant_json) : null,
@@ -246,6 +250,7 @@ export async function createContainedMissionService(deps: {
       published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref, updated_at: chain.updated_at,
       shadow_decisions: chain.mode === 'live' ? [] : chainStore.shadowDecisions(chain.chain_id).slice(-STATUS_DECISIONS).map(d => ({
         head_sha: d.head_sha, base_sha: d.base_sha, action: d.action, reason: d.reason, review_ids: JSON.parse(d.review_ids_json) as number[], observed_at: d.observed_at })),
+      events: events.latest, events_total: events.total, events_total_capped: events.total_capped,
     };
   };
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}) });
