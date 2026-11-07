@@ -669,6 +669,20 @@ function publishing(f: Fixture, rounds: 1 | 2 = 2) {
   const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c }, 4);
   return { l, c, intent: pi.intent, chain: pi.chain };
 }
+
+it("allows check intent writes on stopped and closed live chains but refuses shadow chains", () => {
+  for (const terminal of ["awaiting_decision", "closed"] as const) {
+    const f = setup(); const p = publishing(f);
+    const confirmed = f.store.settleIntent(p.intent.intent_id, "confirmed", 5).chain;
+    if (terminal === "closed") f.store.closeLive(p.l.chain_id, confirmed.revision, "pr_closed", 6);
+    else f.store.stopLive(p.l.chain_id, confirmed.revision, "base_changed", 6);
+    const intent = f.store.recordIntent(p.l.chain_id, f.store.get(p.l.chain_id).revision, { kind: "check", branch: BRANCH, new_head: H2, child_mission_id: p.c }, 7).intent;
+    expect(intent).toMatchObject({ kind: "check", state: "pending", child_mission_id: p.c });
+    expect(f.store.get(p.l.chain_id).state).toBe(terminal);
+  }
+  const f = setup(); const shadow = f.shadow();
+  expect(code(() => f.store.recordIntent(shadow.chain_id, shadow.revision, { kind: "check", branch: shadow.branch }, 7))).toBe("bridge_shadow_write_denied");
+});
 const transitionTo = (to: ChainState, over: Record<string, unknown> = {}): ChainDecision =>
   ({ kind: "transition", to, reason: "x", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [], ...over }) as ChainDecision;
 

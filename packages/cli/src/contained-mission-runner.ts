@@ -76,6 +76,8 @@ export interface ContainedMissionPorts {
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
   /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
   publish: (input: { mission: ContainedMission; spec: ContainedMissionSpec; permit: ContainedPublicationPermit; body: string; beforeRemoteMutation: (kind: 'push' | 'pr_create') => void; signal: AbortSignal }) => Promise<ContainedPublicationResult>;
+  /** Phase 5-C revision publisher. Phase 5-D selects this port for publish_target attempts. */
+  revisionPublication?: import('./contained-mission-revision-publication.js').RevisionPublicationPort;
   /** Present only when the GitHub Apps bridge is configured: publish (or refresh) the `osstack/verify` check on the opened PR's head. Idempotent; never touches the branch or PR. */
   publishVerifyCheck?: (mission: ContainedMission) => Promise<{ check_run_id: number; created: boolean }>;
   /** Present only where revision children may run (phase 5). Ports that start verification containers call `assertActive` in their start fence. */

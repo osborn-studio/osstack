@@ -28,7 +28,7 @@ export const SIGNING_DOMAIN = "osstack.revision-grant.v1";
 /** Live-side stop reasons (appendix §4.4). The daemon writes them through `RevisionChainStore.stopLive`, never on shadow chains. */
 export const LIVE_STOP_REASONS = [
   "grant_expired", "grant_invalid", "budget_exhausted", "protected_set_changed", "child_halted", "child_cancelled",
-  "child_failed", "intent_uncertain", "dispatch_failed",
+  "child_failed", "intent_uncertain", "dispatch_failed", "base_changed", "external_write", "head_regressed",
 ] as const;
 export type LiveStopReason = (typeof LIVE_STOP_REASONS)[number];
 /** Stop reasons from which `grant-revisions --chain` may resume the chain (appendix §5.1 "可再授的停止原因"). */

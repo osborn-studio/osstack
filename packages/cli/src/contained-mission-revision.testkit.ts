@@ -23,7 +23,7 @@ export const code = (fn: () => unknown): string => { try { fn(); } catch (e) { r
 
 export const changesRequested = (id: number, head: string): SnapshotReview => ({ review_id: id, state: 'CHANGES_REQUESTED', submitted_at: T0 - 1000, review_commit: head, reviewer: REVIEWER, has_feedback: true, feedback_digest: null });
 
-export function setup(opts: { rounds?: 1 | 2; budget?: { max_executor_seconds: number; max_container_seconds: number; max_wall_clock_hours: number }; expiresIn?: number } = {}) {
+export function setup(opts: { rounds?: 1 | 2; budget?: { max_executor_seconds: number; max_container_seconds: number; max_wall_clock_hours: number }; expiresIn?: number; head?: string } = {}) {
   const rig = createRig();
   cleanup.push(() => { rig.close(); });
   const repoDir = join(rig.root, 'repo'); mkdirSync(repoDir);
@@ -32,18 +32,19 @@ export function setup(opts: { rounds?: 1 | 2; budget?: { max_executor_seconds: n
     goal: 'make the parser faster', repo_path: realpathSync(repoDir), base_ref: 'main', start_commit: oid('9'), worktree_path: join(wtRoot, 'mission-root'),
     allowed_paths: ['src/**'], caps: { maxFiles: 5, maxChangedLines: 200 }, verify: { argv: ['pnpm', 'test'] }, verification_paths: ['test/**'], max_repair_cycles: 1,
   };
-  const rootId = rig.seedMission({ pr_number: 7, head: oid('1'), base_head: oid('a'), branch: 'topic', spec: rootSpec });
+  const head = opts.head ?? oid('1');
+  const rootId = rig.seedMission({ pr_number: 7, head, base_head: oid('a'), branch: 'topic', spec: rootSpec });
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   const keys = new Map([['k1', { key_id: 'k1', public_key: publicKey, max_validity_ms: 7 * 24 * H }]]);
   const grant = signRevisionGrant({
     kind: 'live', version: 1, grant_id: `rg_${randomUUID()}`, rounds: opts.rounds ?? 1, principal_id: 'human', client_session_id: 'cli', scope_id: rig.scope.scope_id,
-    root_mission_id: rootId, repository: 'o/r', pr_number: 7, branch: 'topic', base_ref: 'main', base_sha: oid('a'), head_sha: oid('1'), issued_at: T0, expires_at: T0 + (opts.expiresIn ?? 24 * H),
+    root_mission_id: rootId, repository: 'o/r', pr_number: 7, branch: 'topic', base_ref: 'main', base_sha: oid('a'), head_sha: head, issued_at: T0, expires_at: T0 + (opts.expiresIn ?? 24 * H),
     review_deadline_ms: 24 * H, budget: opts.budget ?? { max_executor_seconds: 3600, max_container_seconds: 3600, max_wall_clock_hours: 48 }, protected_set_digest: PD,
     nonce: 'e'.repeat(32), key_id: 'k1',
   }, privateKey);
-  const chain = rig.chains.createLiveChain({ root_mission_id: rootId, repository: 'o/r', pr_number: 7, branch: 'topic', base_ref: 'main', published_head: oid('1'), published_base: oid('a'),
+  const chain = rig.chains.createLiveChain({ root_mission_id: rootId, repository: 'o/r', pr_number: 7, branch: 'topic', base_ref: 'main', published_head: head, published_base: oid('a'),
     trace_id: 't', review_deadline: T0 + 24 * H, budget_origin: T0, grant }, T0);
-  const pr: ScriptedPr = { state: 'OPEN', head: oid('1'), base_sha: oid('a'), base_ref: 'main', author: PUBLISHER, reviews: [changesRequested(77, oid('1'))] };
+  const pr: ScriptedPr = { state: 'OPEN', head, base_sha: oid('a'), base_ref: 'main', author: PUBLISHER, reviews: [changesRequested(77, head)] };
   const body = { review: 'please rename the helper', comments: [] as string[] };
   const inner = scriptedTransport(() => pr);
   const transport = async (query: string, variables: Record<string, unknown>) => {
@@ -98,4 +99,3 @@ export const dispatched = async (f: Fixture) => {
   if (out.status !== 'dispatched') throw new Error(`not dispatched: ${JSON.stringify(out)}`);
   return out;
 };
-
