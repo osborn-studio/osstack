@@ -224,9 +224,13 @@ export class ContainedMissionStore {
 /** Upgrade holds for contained work: anything recovery would still visit (§4.1). */
 export function containedUpgradeHolds(db: Database.Database): number {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='engineering_contained_missions'").get()) return 0;
-  return (db.prepare(`SELECT COUNT(*) n FROM engineering_contained_missions m
+  const missions = (db.prepare(`SELECT COUNT(*) n FROM engineering_contained_missions m
     LEFT JOIN engineering_workspace_claims c ON c.mission_id=m.mission_id
     WHERE m.state NOT IN ('pr_opened','cancelled','abandoned','failed') OR m.stop_obligation=1 OR c.state='active'`).get() as { n: number }).n;
+  // W13-A: a host child process (git push, gh pr create, ...) not proven stopped is an unsettled side effect. The claim and
+  // Mission triggers already keep such a Mission counted above; this direct count is the explicit second guard.
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='engineering_host_processes'").get()) return missions;
+  return missions + (db.prepare("SELECT COUNT(*) n FROM engineering_host_processes WHERE state<>'stopped'").get() as { n: number }).n;
 }
 
 function specRepairLimit(specJson: string): number {
