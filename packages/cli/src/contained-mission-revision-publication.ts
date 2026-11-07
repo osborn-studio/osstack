@@ -104,6 +104,7 @@ export function createRevisionReceiptRecovery(deps: RevisionReceiptDeps) {
         beforeRemoteMutation: () => { throw Error('CONTAINED_REVISION_RECOVERY_READ_ONLY'); }, signal: input.signal ?? new AbortController().signal });
       input.signal?.throwIfAborted();
       if (typeof result === 'string') continue;
+      if (deps.chains.getIntent(intent.intent_id).state !== 'pending') continue;
       const child = deps.missions.get(mission.mission_id);
       const chain = deps.chains.get(intent.chain_id);
       if (chain.state === 'publishing' && (child.state === 'delivering' || child.state === 'cancel_requested')) {
@@ -146,14 +147,19 @@ export function createRevisionReceiptRecovery(deps: RevisionReceiptDeps) {
       const child = deps.missions.get(intent.child_mission_id!);
       const spec = JSON.parse(child.spec_json) as ContainedMissionSpec;
       if (!spec.publication) continue;
-      const receipt = await readReceipt(deps, intent, spec.worktree_path, spec.publication.remote);
-      if (!receipt) continue;
-      const pr = await deps.readPr(intent.repository, intent.pr_number);
+      const stale = () => deps.chains.getIntent(intent.intent_id).state !== intent.state;
+      let receipt: Awaited<ReturnType<typeof readReceipt>>;
+      try { receipt = await readReceipt(deps, intent, spec.worktree_path, spec.publication.remote); }
+      catch (error) { if (stale()) continue; throw error; }
+      if (!receipt || stale()) continue;
+      let pr: RevisionPrFacts;
+      try { pr = await deps.readPr(intent.repository, intent.pr_number); }
+      catch (error) { if (stale()) continue; throw error; }
+      if (stale()) continue;
       const chainNow = deps.chains.get(chain.chain_id);
       const reason = pr.state === 'MERGED' ? 'pr_merged' : pr.state === 'CLOSED' ? 'pr_closed'
         : pr.baseRefName !== chainNow.base_ref || pr.baseRefOid !== intent.expected_base_sha ? 'base_changed' : 'route_changed';
-      refuseRevisionPublicationAfterPush(deps, intent, reason);
-      settled = true;
+      settled = refuseRevisionPublicationAfterPush(deps, intent, reason) || settled;
     }
     return { settled };
   } };
@@ -290,6 +296,8 @@ export async function recoverRevision(deps: RevisionReceiptDeps, input: Revision
     .sort((a, b) => a.created_at - b.created_at || a.intent_id.localeCompare(b.intent_id)).at(-1);
   if (!intent || intent.state === 'failed') return 'fresh';
   const landed = intent.state === 'confirmed';
+  // Another recovery can settle this receipt while the remote read is pending.
+  const stale = () => deps.chains.getIntent(intent.intent_id).state !== intent.state;
   if (intent.state === 'uncertain') {
     deps.chains.transaction(() => {
       const child = deps.missions.get(input.mission.mission_id);
@@ -309,13 +317,15 @@ export async function recoverRevision(deps: RevisionReceiptDeps, input: Revision
   if (row.state !== 'stopped') { unprovenPublication(deps, target.chain_id, input.mission.mission_id, row.op_id); return 'blocked'; }
   let receipt: Awaited<ReturnType<typeof readReceipt>>;
   try { receipt = await readReceipt(deps, intent, input.spec.worktree_path, publication.remote); }
-  catch (error) { input.signal.throwIfAborted(); throw retryableReceiptRead(error); }
+  catch (error) { input.signal.throwIfAborted(); if (stale()) return 'blocked'; throw retryableReceiptRead(error); }
   input.signal.throwIfAborted();
+  if (stale()) return 'blocked';
   if (!receipt) { if (landed) refuseLandedReadback(deps, intent, 'readback_mismatch'); else uncertainPublication(deps, intent.intent_id, input.mission.mission_id, 'readback_mismatch'); return 'blocked'; }
   let pr: RevisionPrFacts;
   try { pr = await deps.readPr(intent.repository, intent.pr_number); }
-  catch (error) { input.signal.throwIfAborted(); throw retryableReceiptRead(error); }
+  catch (error) { input.signal.throwIfAborted(); if (stale()) return 'blocked'; throw retryableReceiptRead(error); }
   input.signal.throwIfAborted();
+  if (stale()) return 'blocked';
   if (pr.state !== 'OPEN' || pr.baseRefName !== deps.chains.get(target.chain_id).base_ref || pr.baseRefOid !== intent.expected_base_sha) {
     const reason = pr.state === 'MERGED' ? 'pr_merged' : pr.state === 'CLOSED' ? 'pr_closed' : 'base_changed';
     if (landed) refuseLandedReadback(deps, intent, reason);
@@ -348,6 +358,7 @@ function recordCancelFailure(deps: RevisionPublicationDeps, chainId: string, chi
 
 function uncertainPublication(deps: ReceiptLedgerDeps, intentId: string, childId: string, detail: string): void {
   deps.chains.transaction(() => {
+    if (deps.chains.getIntent(intentId).state !== 'pending') return;
     deps.chains.settleIntent(intentId, 'uncertain', deps.now(), detail);
     const child = deps.missions.get(childId);
     if (child.state === 'delivering') deps.missions.transition(childId, { if_revision: child.revision, to: 'awaiting_decision',
@@ -358,8 +369,9 @@ function uncertainPublication(deps: ReceiptLedgerDeps, intentId: string, childId
 function refuseLandedReadback(deps: RevisionReceiptDeps, intent: PublicationIntent, code: string): void {
   deps.chains.transaction(() => {
     const chain = deps.chains.get(intent.chain_id);
-    if (chain.state !== 'closed' && chain.state !== 'awaiting_decision') deps.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', deps.now());
     const child = deps.missions.get(intent.child_mission_id!);
+    if (child.state !== 'delivering' || child.candidate_head !== intent.new_head || chain.current_mission_id !== child.mission_id) return;
+    if (chain.state !== 'closed' && chain.state !== 'awaiting_decision') deps.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', deps.now());
     if (child.state === 'delivering') deps.missions.transition(child.mission_id, { if_revision: child.revision, to: 'awaiting_decision',
       event: { kind: 'halted', payload: { reason: `publication_failed:${code}` } } }, deps.now());
   });
@@ -380,6 +392,7 @@ function unprovenPublication(deps: RevisionReceiptDeps, chainId: string, childId
 export function refuseRevisionPublication(deps: Pick<RevisionPublicationDeps, 'chains' | 'missions' | 'now'>,
   chainId: string, childId: string, intentId: string | undefined, code: RevisionRefusalCode): void {
   deps.chains.transaction(() => {
+    if (intentId !== undefined && deps.chains.getIntent(intentId).state !== 'pending') return;
     let chain = deps.chains.get(chainId);
     if (chain.state !== 'closed' && chain.state !== 'awaiting_decision') {
       if (code === 'pr_closed' || code === 'pr_merged') chain = deps.chains.closeLive(chainId, chain.revision, code, deps.now());
@@ -446,8 +459,16 @@ export async function reconcileReceipt(deps: RevisionReceiptDeps, inputOrIntent:
   reasonOrLocation: 'pr_closed' | 'pr_merged' | 'base_changed' | 'route_changed' | { cwd: string; remote: string },
   extraLocation?: { cwd: string; remote: string }): Promise<ContainedMission | undefined> {
   const intentId = typeof inputOrIntent === 'string' ? inputOrIntent : inputOrIntent.intent_id;
+  const intent = deps.chains.getIntent(intentId);
+  const stale = () => deps.chains.getIntent(intentId).state !== intent.state;
+  if (typeof inputOrIntent === 'string' && intent.state !== 'pending' && intent.state !== 'uncertain') return undefined;
   const location = typeof reasonOrLocation === 'string' ? extraLocation : reasonOrLocation;
-  if (!location || !await readReceipt(deps, deps.chains.getIntent(intentId), location.cwd, location.remote)) throw Error('CONTAINED_REVISION_RECEIPT_PROOF_REQUIRED');
+  let receipt: Awaited<ReturnType<typeof readReceipt>>;
+  if (!location) throw Error('CONTAINED_REVISION_RECEIPT_PROOF_REQUIRED');
+  try { receipt = await readReceipt(deps, intent, location.cwd, location.remote); }
+  catch (error) { if (stale()) return undefined; throw error; }
+  if (stale()) return undefined;
+  if (!receipt) throw Error('CONTAINED_REVISION_RECEIPT_PROOF_REQUIRED');
   const row = deps.host.recordForIntent(intentId);
   if (row?.state !== 'stopped' || row.released_at === null) throw Error('CONTAINED_REVISION_STOP_UNPROVEN');
   if (typeof inputOrIntent !== 'string') {
@@ -465,8 +486,11 @@ export async function reconcileReceipt(deps: RevisionReceiptDeps, inputOrIntent:
   return undefined;
 }
 
-function refuseRevisionPublicationAfterPush(deps: RevisionReceiptDeps, intent: PublicationIntent, reason: 'pr_closed' | 'pr_merged' | 'base_changed' | 'route_changed'): void {
-  deps.chains.transaction(() => {
+function refuseRevisionPublicationAfterPush(deps: RevisionReceiptDeps, intent: PublicationIntent, reason: 'pr_closed' | 'pr_merged' | 'base_changed' | 'route_changed'): boolean {
+  return deps.chains.transaction(() => {
+    // Terminal receipts and their completed child/chain outcomes belong to the committed winner.
+    const current = deps.chains.getIntent(intent.intent_id);
+    if ((intent.state !== 'pending' && intent.state !== 'uncertain') || current.state !== intent.state) return false;
     const chain = deps.chains.get(intent.chain_id);
     if (reason !== 'route_changed' && chain.state !== 'closed' && chain.state !== 'awaiting_decision') {
       if (reason === 'base_changed') deps.chains.stopLive(chain.chain_id, chain.revision, reason, deps.now());
@@ -478,7 +502,8 @@ function refuseRevisionPublicationAfterPush(deps: RevisionReceiptDeps, intent: P
     const child = deps.missions.get(intent.child_mission_id!);
     if (child.state === 'delivering') deps.missions.transition(child.mission_id, { if_revision: child.revision, to: 'awaiting_decision',
       event: { kind: 'halted', payload: { reason: reason === 'route_changed' ? 'publication_failed:route_changed' : 'publication_failed:pr_changed_after_push' } } }, deps.now());
-    if (intent.state === 'pending' || intent.state === 'uncertain') deps.chains.settleIntent(intent.intent_id, 'confirmed', deps.now());
+    deps.chains.settleIntent(intent.intent_id, 'confirmed', deps.now());
+    return true;
   });
 }
 

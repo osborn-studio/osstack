@@ -85,6 +85,49 @@ async function fullFixture(options: { rounds?: 1 | 2; oldHead?: string; newHead?
   return { ...result, deps: result.deps, input: result.input, intent: result.intent };
 }
 
+it.each(['matching', 'missing', 'error'] as const)('ignores a stale explicit receipt reconciliation after concurrent confirmation: %s', async result => {
+  const f = await fullFixture();
+  let enter!: () => void; const entered = new Promise<void>(resolve => { enter = resolve; });
+  let release!: (head: string | null) => void; let fail!: (error: Error) => void;
+  const remote = new Promise<string | null>((resolve, reject) => { release = resolve; fail = reject; });
+  const slow = reconcileReceipt({ ...f.deps, remoteHead: async () => { enter(); return remote; } },
+    f.intent.intent_id, 'route_changed', { cwd: '/tmp/repo', remote: 'origin' });
+  const noFailure = expect(slow).resolves.toBeUndefined();
+  await entered;
+  await createRevisionReceiptRecovery(f.deps).recoverPendingReceipts();
+  const before = f.deps.chains.db.serialize();
+  if (result === 'error') fail(Error('late_network_error')); else release(result === 'matching' ? next : null);
+  await noFailure;
+  expect(f.deps.chains.db.serialize()).toEqual(before);
+  expect(f.deps.chains.getIntent(f.intent.intent_id).state).toBe('confirmed');
+  expect(f.deps.chains.get(f.intent.chain_id).state).toBe('awaiting_review');
+  expect(f.deps.missions.get(f.id).state).toBe('pr_opened');
+});
+
+it('ignores a stale publication refusal after the receipt and child are confirmed', async () => {
+  const f = await fullFixture();
+  confirmRevisionPublication(f.deps, f.input);
+  const before = f.deps.chains.db.serialize();
+  refuseRevisionPublication(f.deps, f.intent.chain_id, f.id, f.intent.intent_id, 'push_rejected');
+  expect(f.deps.chains.db.serialize()).toEqual(before);
+});
+
+it.each(['matching', 'missing', 'error'] as const)('ignores a stale manual uncertain receipt result after concurrent settlement: %s', async result => {
+  const f = await fullFixture();
+  f.deps.chains.settleIntent(f.intent.intent_id, 'uncertain', f.deps.now());
+  let enter!: () => void; const entered = new Promise<void>(resolve => { enter = resolve; });
+  let release!: (head: string | null) => void; let fail!: (error: Error) => void;
+  const remote = new Promise<string | null>((resolve, reject) => { release = resolve; fail = reject; });
+  const slow = createRevisionReceiptRecovery({ ...f.deps, remoteHead: async () => { enter(); return remote; } }).reconcileUncertain({ chain_id: f.intent.chain_id });
+  const noFailure = expect(slow).resolves.toEqual({ settled: false });
+  await entered;
+  expect(await createRevisionReceiptRecovery(f.deps).reconcileUncertain({ chain_id: f.intent.chain_id })).toEqual({ settled: true });
+  const before = f.deps.chains.db.serialize();
+  if (result === 'error') fail(Error('late_network_error')); else release(result === 'matching' ? next : null);
+  await noFailure;
+  expect(f.deps.chains.db.serialize()).toEqual(before);
+});
+
 it('recovers a published range when a later remote descendant is absent from the local object database', async () => {
   const root = createScratchDirSync('tests', 'receipt-missing-descendant');
   const source = join(root, 'source'); const local = join(root, 'local');
