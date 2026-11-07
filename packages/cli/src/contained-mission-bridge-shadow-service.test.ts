@@ -224,6 +224,20 @@ describe('mission status chain field', () => {
     expect(JSON.stringify(chain)).not.toMatch(/digest|feedback|body/u);
     expect((await status(without))['chain']).toBeNull();
 
+    // The chain's own events are visible: kind, time and allow-listed fields only, bounded to the latest ten.
+    const events = chain['events'] as Array<{ kind: string; created_at: number; payload: Record<string, unknown> }>;
+    expect(events.map((e) => e.kind)).toEqual(['chain_created', 'observation_cycle', 'observation_cycle']);
+    expect(events[1]!.payload).toMatchObject({ action: 'would_reserve', head: oid('1'), review_ids: [9001] });
+    expect(events[2]!.payload).toMatchObject({ head: oid('1'), base: oid('a'), decision: expect.any(String) });
+    expect(chain['events_total']).toBe(3);
+    expect(JSON.stringify(events)).not.toMatch(/feedback|body/u);
+    const chainId = chain['chain_id'] as string;
+    for (let i = 0; i < 40; i += 1) f.rig.chains.appendEvent(chainId, 'read_failed', { code: 'page_cap', body: 'LEAK' }, T0 + i);
+    const many = (await status(withChain))['chain'] as { events: unknown[]; events_total: number };
+    expect(many.events).toHaveLength(10);
+    expect(many.events_total).toBe(43);
+    expect(JSON.stringify(many)).not.toContain('LEAK');
+
     // A stopped chain reports why.
     pr.head = oid('2');
     clock.now = T0 + 10 * 60_000;
