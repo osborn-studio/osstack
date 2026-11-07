@@ -1,0 +1,324 @@
+[
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-loop-before.log",
+    "sha256": "6991f6396c739cc793641d2bb07ed08fa197b123dc9a3ee98d8a05a7df63d6c1",
+    "summary": [
+      "$ vitest run --passWithNoTests src/executor.test.ts",
+      "\u23af\u23af\u23af\u23af\u23af\u23af\u23af Failed Tests 2 \u23af\u23af\u23af\u23af\u23af\u23af\u23af",
+      "Error: Process fixture condition timed out",
+      " Test Files  1 failed (1)",
+      "      Tests  2 failed | 114 passed (116)",
+      "   Duration  11.86s (transform 169ms, setup 50ms, collect 149ms, tests 11.44s, environment 0ms, prepare 42ms)",
+      "[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @osstack/loop@0.23.0 test: `vitest run --passWithNoTests src/executor.test.ts`",
+      "Exit status 1"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-loop-short.log",
+    "sha256": "a7b2bb46a1b007c6714e64d59bf6f3fbf5900b760a89d4ce689bfa9a5e03c165",
+    "summary": [
+      "$ vitest run --passWithNoTests src/executor.test.ts",
+      " Test Files  1 passed (1)",
+      "      Tests  116 passed (116)",
+      "   Duration  3.18s (transform 74ms, setup 17ms, collect 71ms, tests 2.92s, environment 0ms, prepare 33ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-loop-portable.log",
+    "sha256": "9371edc5c54b2e57fd93c03e22fc5feec27e46b2fe771e2f22b18159745f75ac",
+    "summary": [
+      "$ vitest run --passWithNoTests src/executor.test.ts",
+      " Test Files  1 passed (1)",
+      "      Tests  116 passed (116)",
+      "   Duration  3.18s (transform 63ms, setup 13ms, collect 64ms, tests 2.96s, environment 0ms, prepare 27ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-property-before.log",
+    "sha256": "07c6d7bb0537314ddfd993f1abc7ca361c8f0d157f19f8bfca3301422351a5c3",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed (1)",
+      "   Duration  33.10s (transform 216ms, setup 39ms, collect 307ms, tests 32.44s, environment 0ms, prepare 64ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-property-final2.log",
+    "sha256": "f7790ba8817159dadad742d282825361443774569515c3eb36d400ca0ca17934",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  2 passed (2)",
+      "   Duration  24.28s (transform 174ms, setup 24ms, collect 249ms, tests 23.82s, environment 0ms, prepare 38ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-spec-property.log",
+    "sha256": "eb7d4bdd2c1d70634f902cf6fe731949690c18281cd19d698eecc0722b590008",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed (1)",
+      "   Duration  4.07s (transform 1.32s, setup 42ms, collect 2.31s, tests 1.51s, environment 0ms, prepare 55ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-lease-ancestor.log",
+    "sha256": "87dd666dfbc8dedb8104452cbe3e31fcf558c98983e423ef52ac0d84a515a41a",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed | 126 skipped (127)",
+      "   Duration  2.29s (transform 890ms, setup 37ms, collect 1.49s, tests 584ms, environment 0ms, prepare 41ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-cli-targeted.log",
+    "sha256": "1e1a8895e4a53eb23b4c4583495b069eabb539be4e0b51a5ae85ad8f2ae49028",
+    "summary": [
+      " Test Files  6 passed (6)",
+      "      Tests  272 passed (272)",
+      "   Duration  42.00s (transform 3.03s, setup 148ms, collect 10.32s, tests 63.19s, environment 1ms, prepare 313ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-core-typecheck.log",
+    "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "summary": []
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-cli-typecheck.log",
+    "sha256": "12b975e8f66d49914f8aec70cd4e62f019f68adb1d507e1d60156d05437b8b13",
+    "summary": [
+      "src/contained-mission-revision-publication.test.ts(898,75): error TS6133: 'ancestor' is declared but its value is never read.",
+      "src/contained-mission-revision-publication.test.ts(926,75): error TS6133: 'ancestor' is declared but its value is never read.",
+      "Exit status 2"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-biome-final.log",
+    "sha256": "28ce1b9ce2d39e1090809e245146fae10d13da3fe721d043ee70e1522de1dae6",
+    "summary": [
+      "Checked 3 files in 65ms. No fixes applied."
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-tlc-bounded.log",
+    "sha256": "d725e81dee11bbb0e06ce61fb265a46233a04c01bcf17c84a08014d2eeda2300",
+    "summary": [
+      "Finished computing initial states: 2 distinct states generated at 2026-11-07 06:02:09.",
+      "Error: Invariant WriteAheadIntent is violated.",
+      "Error: The behavior up to this point is:",
+      "57332 states generated, 13046 distinct states found, 5875 states left on queue.",
+      "The depth of the complete state graph search is 11."
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-tlc-main.log",
+    "sha256": "45e072fa4250e2a49bdf6bf7e2d7dcd945f74b7068536f6fe5316bbdffcb1365",
+    "summary": [
+      "Finished computing initial states: 2 distinct states generated at 2026-11-07 06:04:26.",
+      "Progress(12) at 2026-11-07 06:04:29: 1,381,283 states generated (1,381,283 s/min), 263,122 distinct states found (263,122 ds/min), 127,708 states left on queue.",
+      "Progress(17) at 2026-11-07 06:05:29: 31,295,826 states generated (29,914,543 s/min), 5,157,266 distinct states found (4,894,144 ds/min), 2,091,406 states left on queue.",
+      "Error: Invariant Inv4 is violated.",
+      "Error: The behavior up to this point is:",
+      "46479260 states generated, 7517274 distinct states found, 2851864 states left on queue.",
+      "The depth of the complete state graph search is 18."
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-3Jbmc9/bridge-bounded.log",
+    "sha256": "36c5085a22c6eb8f6a220446781d2c90b0a86fa435882fa1609d110d786d9630",
+    "summary": [
+      "Finished computing initial states: 2 distinct states generated at 2026-11-07 06:10:59.",
+      "Progress(16) at 2026-11-07 06:11:02: 927,031 states generated (927,031 s/min), 165,336 distinct states found (165,336 ds/min), 48,949 states left on queue.",
+      "Model checking completed. No error has been found.",
+      "2068903 states generated, 303148 distinct states found, 0 states left on queue.",
+      "The depth of the complete state graph search is 23."
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc/bridge-shadow-final.log",
+    "sha256": "fd606d5d0376c2176c6d805343b1a484218ce831c20c039415c99afef40801b3",
+    "summary": [
+      "Model checking completed. No error has been found.",
+      "67673 states generated, 11897 distinct states found, 0 states left on queue.",
+      "The depth of the complete state graph search is 13."
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-property-yield.log",
+    "sha256": "37e34782b16c6329e17f881836886eb5a590ceb09bb4bcb07febd1b55852b89d",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  2 passed (2)",
+      "   Duration  58.05s (transform 364ms, setup 40ms, collect 598ms, tests 57.12s, environment 0ms, prepare 57ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-spec-property.log",
+    "sha256": "eb7d4bdd2c1d70634f902cf6fe731949690c18281cd19d698eecc0722b590008",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed (1)",
+      "   Duration  4.07s (transform 1.32s, setup 42ms, collect 2.31s, tests 1.51s, environment 0ms, prepare 55ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-core-typecheck-final.log",
+    "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "summary": []
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-cli-typecheck-last.log",
+    "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "summary": []
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-two-owners.log",
+    "sha256": "ad5f8203cdd39fff11bee3e709bb90ab3e13b88a4f6c895f1db130895d78dfe2",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed | 127 skipped (128)",
+      "   Duration  6.09s (transform 3.37s, setup 76ms, collect 5.42s, tests 273ms, environment 0ms, prepare 97ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-readback-faults.log",
+    "sha256": "131db5d9971a6c05f5561827f4616e710fc56c00291ec696c1cf00970090e8f6",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  3 passed | 128 skipped (131)",
+      "   Duration  10.09s (transform 5.14s, setup 100ms, collect 8.26s, tests 692ms, environment 0ms, prepare 313ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-loop-portable-reserved.log",
+    "sha256": "6c2c9fe8bedea307187efd612155a3788890aa7e5841a2023fffe91e301f7cbf",
+    "summary": [
+      "$ vitest run --passWithNoTests src/executor.test.ts",
+      " Test Files  1 passed (1)",
+      "      Tests  116 passed (116)",
+      "   Duration  4.79s (transform 205ms, setup 51ms, collect 202ms, tests 4.27s, environment 0ms, prepare 80ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-token-order-final.log",
+    "sha256": "1a4116b2f6e428df069fc3926a0d32076ae375f28d2dfc026e602e98dd78b0fe",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  24 passed (24)",
+      "   Duration  3.32s (transform 907ms, setup 42ms, collect 1.49s, tests 1.62s, environment 0ms, prepare 47ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-docs.log",
+    "sha256": "3da6d8b972a5f66aba494388e7ee2b8355bc6323dc05c4121dfc99ef2c0b7037",
+    "summary": [
+      "$ vitest run --passWithNoTests src/knowledge-hygiene/osstack-config.test.ts",
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed (1)",
+      "   Duration  1.90s (transform 205ms, setup 36ms, collect 282ms, tests 1.23s, environment 0ms, prepare 49ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-changeset.log",
+    "sha256": "d238594fa53f31b57a35ab50169d910c2293646b55004d2c3d1c1a44ee7a83e0",
+    "summary": [
+      "changeset coverage: ok (2 release-sensitive packages)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-startup.log",
+    "sha256": "c44880bfa37c0569f33f291c2b2041ec68257330112de88fbcabfd35df155001",
+    "summary": [
+      "ok   osstack --version (fast path): median 58ms over 5 runs (budget 150ms; min 42, max 72)",
+      "ok   osstack --help (full command surface): median 178ms over 5 runs (budget 500ms; min 153, max 232)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-property-explicit-failure.log",
+    "sha256": "45b934b8a906fb08d1f80f3ae3bc467ee55d9cbdf1810e49ec3c7c14c003599b",
+    "summary": [
+      "Error: [vitest-worker]: Timeout calling \"onTaskUpdate\"",
+      " Test Files  1 passed (1)",
+      "      Tests  2 passed (2)",
+      "   Duration  100.01s (transform 553ms, setup 59ms, collect 822ms, tests 98.51s, environment 0ms, prepare 151ms)",
+      "Exit status 1"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-FC4odA/results.json",
+    "sha256": "b34f8718034c563c854c378d71934d52f326fd6f944286dbadd7b3cde010f941",
+    "summary": [
+      "      \"Error: Invariant NoPushAfterClose is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant GrantSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant LeaseSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant Inv2 is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant Inv1 is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant PendingBaseSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant ResumeSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant ResumeSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant ResumeSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant ResumeSafety is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant ShadowNeverWrites is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant ConfirmedExtensionGuard is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant PendingIntentUniqueness is violated.\",",
+      "      \"Error: The behavior up to this point is:\"",
+      "      \"Error: Invariant Inv6 is violated.\",",
+      "      \"Error: The behavior up to this point is:\""
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-property-linked-ranges.log",
+    "sha256": "5d348d5addaa4cb31d1505d83e1b962f3e203b82c107bee8b9589afd9b48df1d",
+    "summary": [
+      " Test Files  1 passed (1)",
+      "      Tests  2 passed (2)",
+      "   Duration  47.55s (transform 290ms, setup 39ms, collect 428ms, tests 46.86s, environment 0ms, prepare 49ms)"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-linked-range-typecheck.log",
+    "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "summary": []
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-linked-range-biome.log",
+    "sha256": "8263efc3c104f47ee74889f36492d98f70bc0e47547e2b6680d2546e3a8e0231",
+    "summary": [
+      "Checked 1 file in 35ms. No fixes applied."
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/runtime/bridge-final-validation/baseline-mutant.log",
+    "sha256": "cbf46fedededc560c08148ebd9a028fc3713f17f3274313f609b1af185e3f0c2",
+    "summary": [
+      "baseline-omission: killed"
+    ]
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-pYchuD/results.json",
+    "sha256": "047dd2cbeda83d7b076498ea5cfa62b0dfb10939d0a8512d3bd9bf8d7dc7e82f",
+    "summary": []
+  },
+  {
+    "path": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-docs-final.log",
+    "sha256": "edc67046ff1ce69963a42963a4a0a49471dac9947db4e87d3f6826ccc014e2cc",
+    "summary": [
+      "$ vitest run --passWithNoTests src/knowledge-hygiene/osstack-config.test.ts",
+      " Test Files  1 passed (1)",
+      "      Tests  1 passed (1)",
+      "   Duration  1.50s (transform 130ms, setup 22ms, collect 179ms, tests 1.10s, environment 0ms, prepare 46ms)"
+    ]
+  }
+]

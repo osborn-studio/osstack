@@ -167,6 +167,9 @@ importers:
       '@types/node':
         specifier: ^22.19.19
         version: 22.19.19
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
 
   packages/compliance:
     devDependencies:

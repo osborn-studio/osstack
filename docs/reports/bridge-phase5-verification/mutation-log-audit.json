@@ -1,0 +1,352 @@
+{
+  "classifier": "scripts/lib/bridge-mutation-result.mjs",
+  "audit_kind": "existing-log reclassification; no mutation suite rerun",
+  "historical_transport_limitation": "The old result manifests stored exit status but omitted spawn error and signal fields. All selected records have status 1 and complete genuine Vitest assertion failures with no timeout/signal diagnostics. New runner results persist both fields and reject them before counting a kill.",
+  "count": 19,
+  "strict_log_kills": 19,
+  "audits": [
+    {
+      "name": "no-lease",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-bnvigq/no-lease.log",
+      "log_sha256": "9e0d46e71b22991295ab37750eb99037349c9d378fdc33c93319a9251473ceba",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision-publication.test.ts > lease_ancestor: local lease push with W13 binding"
+      ],
+      "assertions": [
+        "AssertionError: promise resolved \"{ …(8) }\" instead of rejecting"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-store-rounds-check",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-store-rounds-check.log",
+      "log_sha256": "8dab0ea10d177eb7e5c4ff40353b580936bdcb8b48fd9cb91962facec5828920",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/state/engineering-revision-chain-store.test.ts > walks a live chain through reserve, dispatch, publish and settle and then refuses a third round",
+        " FAIL  src/state/engineering-revision-chain-store.test.ts > uses the rounds grant, the in-flight guard and the head guard in the store as well as in the database"
+      ],
+      "assertions": [
+        "AssertionError: expected 'CHECK constraint failed: rounds_used …' to be 'rounds_exhausted' // Object.is equality",
+        "AssertionError: expected 'head_mismatch' to be 'rounds_exhausted' // Object.is equality"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-ddl-rounds-check",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-ddl-rounds-check.log",
+      "log_sha256": "e2678db4ee06e48b75abc17feff2b7ef7623e581a12f396e47a712f0f6113a9d",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/state/engineering-revision-chain-store.test.ts > checks the per-mode grant shape and treats missing fields as false"
+      ],
+      "assertions": [
+        "AssertionError: expected 'no_error' to match /CHECK/"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-reservation-pk",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-reservation-pk.log",
+      "log_sha256": "893813d3b48df91db887bce9e493008dc0e02ecf6f1d07f776ced3b0991f4c68",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/state/engineering-revision-chain-store.test.ts > lets exactly one in-flight reservation exist per chain and one reservation per (repo, pr, head)"
+      ],
+      "assertions": [
+        "AssertionError: expected 'no_error' to match /UNIQUE|PRIMARY/"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-grant-fence",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-grant-fence.log",
+      "log_sha256": "9ecb431e8196fe400a5eb72c26e792e0c23218dd2138a8196c7f544a9f270144",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision-publication.test.ts > release fence refuses grant_expired after intent and before git",
+        " FAIL  src/contained-mission-revision-publication.test.ts > release fence refuses grant_invalid after intent and before git",
+        " FAIL  src/contained-mission-revision-publication.test.ts > release fence refuses budget_exhausted after intent and before git"
+      ],
+      "assertions": [
+        "AssertionError: expected [Function] to throw error including 'CONTAINED_REVISION_REFUSED:grant_expi…' but got 'CONTAINED_REVISION_STOP_UNPROVEN'",
+        "AssertionError: expected [Function] to throw error including 'CONTAINED_REVISION_REFUSED:grant_inva…' but got 'CONTAINED_REVISION_STOP_UNPROVEN'",
+        "AssertionError: expected [Function] to throw error including 'CONTAINED_REVISION_REFUSED:budget_exh…' but got 'CONTAINED_REVISION_STOP_UNPROVEN'"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-completed-reservation-void",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-completed-reservation-void.log",
+      "log_sha256": "a748af3585b6112b19fadb7dab4d1854b5a7a32eb9018373a5ad62b7c5c27cdd",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after settle",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after deadline",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after void",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after evidence",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after pr_opened",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after check_intent",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > rolls back every write after event",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision confirmation D10 > uses the confirmed push chain after current_mission_id moves to another child"
+      ],
+      "assertions": [
+        "AssertionError: expected { repository: 'o/r', …(10) } to match object { state: 'void', …(1) }"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-revision-spec-denial",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-bnvigq/no-revision-spec-denial.log",
+      "log_sha256": "e230c6b2734a019c52cc357b1957798e6a428cd8bfda72fe7302b99f701bf6ce",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-ports.test.ts > contained Mission ports: publication destination > refuses a revision spec outright: this path opens PRs and never serves a publish_target, before any command runs"
+      ],
+      "assertions": [
+        "AssertionError: expected [Function] to throw error including 'CONTAINED_PUBLISH_TARGET_REQUIRES_REV…' but got 'stop-here'"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-feedback-delimiters",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-feedback-delimiters.log",
+      "log_sha256": "eedad45869e67c29a1e666c04b398d1ab8237f0ecf91dcae08938da3ee2c3d23",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > carries the untrusted review block into the first turn and into the repair turn"
+      ],
+      "assertions": [
+        "AssertionError: expected 'You are working in a read-only checko…' to contain '<<<REVIEW-FEEDBACK-9129ad04256d2e308c…'"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-readback-range-check",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-yuY2ag/no-readback-range-check.log",
+      "log_sha256": "6ead47503cbef2591a62c2b5914305c6d0cff6a611da4a8b49c97d835e99e5c7",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision-publication.test.ts > readback_mismatch: local lease push with W13 binding"
+      ],
+      "assertions": [
+        "AssertionError: promise resolved \"{ …(8) }\" instead of rejecting"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-precheck-base",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/no-precheck-base.log",
+      "log_sha256": "c3f232de0d70a35b8829a03afb0634abd2a0ee05d50a1463b9134307708736fe",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision-publication.test.ts > requests host cancellation for base_changed"
+      ],
+      "assertions": [
+        "AssertionError: expected [Function] to throw error including 'CONTAINED_REVISION_REFUSED:base_chang…' but got 'CONTAINED_REVISION_REFUSED:push_url_i…'"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "split-dispatch-transaction",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/split-dispatch-transaction.log",
+      "log_sha256": "ba173ce817a71a43f8cc9bd0ff3f280a9829c3471ccb8287f97e7fbafcffe52e",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision.test.ts > dispatchRevision > a crash after reserve inside the transaction leaves no reservation and no child; the next cycle creates exactly one",
+        " FAIL  src/contained-mission-revision.test.ts > dispatchRevision > a crash after authorize inside the transaction leaves no reservation and no child; the next cycle creates exactly one",
+        " FAIL  src/contained-mission-revision.test.ts > dispatchRevision > a crash after dispatch inside the transaction leaves no reservation and no child; the next cycle creates exactly one",
+        " FAIL  src/contained-mission-revision.test.ts > dispatchRevision > a crash after allocate inside the transaction leaves no reservation and no child; the next cycle creates exactly one",
+        " FAIL  src/contained-mission-revision.test.ts > dispatchRevision > a crash after event inside the transaction leaves no reservation and no child; the next cycle creates exactly one",
+        " FAIL  src/contained-mission-revision.test.ts > dispatchRevision > stops the chain for a human after three failed cycles on the same head"
+      ],
+      "assertions": [
+        "AssertionError: expected [ { repository: 'o/r', …(10) } ] to deeply equal []",
+        "AssertionError: expected 2 to be 1 // Object.is equality",
+        "AssertionError: expected { status: 'no_reserve', …(1) } to match object { status: 'failed', stopped: false }"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-unsettled-publication-check",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/no-unsettled-publication-check.log",
+      "log_sha256": "d0f6995b13315a096ba49bdc86ed802037fff116b862556cf3c2e979b15ca24d",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/state/engineering-revision-chain-store.test.ts > D2: at most one pending push intent per chain, and none while another push receipt is uncertain"
+      ],
+      "assertions": [
+        "AssertionError: expected 'UNIQUE constraint failed: engineering…' to be 'push_intent_pending' // Object.is equality"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-chain-classification",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/no-chain-classification.log",
+      "log_sha256": "17a9ed34ca61b2c0e2660a06e5402aed77459e302bbc3f295680ce5ce61e7747",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > classifies the chain-wide diff too: a patch that is small for this child but over the caps since the root is refused"
+      ],
+      "assertions": [
+        "AssertionError: expected 'candidate_ready' to be 'awaiting_decision' // Object.is equality"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-acknowledge-advance",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/no-acknowledge-advance.log",
+      "log_sha256": "1fbd14c6f85e24723128b6652ab7c3a47f88a2c3e745ba93cea2e1f1d53ca97b",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > refuses bridge_live_disabled before a child resume and preserves both ledgers",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > refuses facts_changed before a child resume and preserves both ledgers",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > refuses decision_not_allowed before a child resume and preserves both ledgers",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > refuses grant_expired before a child resume and preserves both ledgers",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps the resumed chain in flight while the accepted decision advances its child",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps a live-cycle stop that races a resumed decision",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > re-stops a chain when a failed decision leaves the child halted",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > halts with the blocked route when the slice is spent, stops the chain, and refuses resume_budget until a re-grant",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > resumes an executor launch after a re-grant tops up the same child",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > resumes a verification launch: the halted candidate re-enters candidate_ready unchanged",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > stops on an expired grant before launching, and resume_grant works only after a fresh grant",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > refuses to adopt a worktree once the chain has closed without changing the child",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps restore reconciliation retryable when the grant expires during the await",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps probe reconciliation retryable when the grant expires during the await",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps diff reconciliation retryable when the grant expires during the await",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps restore reconciliation retryable when write scope is revoked during the await",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps probe reconciliation retryable when write scope is revoked during the await",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > budget and grant stops > keeps diff reconciliation retryable when write scope is revoked during the await"
+      ],
+      "assertions": [
+        "AssertionError: expected [Function] to throw error including 'resume_refused:bridge_live_disabled' but got 'resume_refused:child_halted'",
+        "AssertionError: expected [Function] to throw error including 'resume_refused:facts_changed' but got 'resume_refused:child_halted'",
+        "AssertionError: expected [Function] to throw error including 'resume_refused:decision_not_allowed' but got 'CONTAINED_DECISION_NOT_ALLOWED'",
+        "AssertionError: expected [Function] to throw error including 'resume_refused:grant_expired' but got 'resume_refused:child_halted'"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "interrupted-push-failed",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-tjJ23x/interrupted-push-failed.log",
+      "log_sha256": "8290b763335ab3457ac5e0ec6dcf788b659820bcd2bc1741fb4be5ba3fdcef89",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision receipt step 0 > keeps a stopped released push uncertain when the remote is still at the old head",
+        " FAIL  src/contained-mission-revision-publication.test.ts > revision receipt step 0 > requires ancestry even if compare reports the journaled prefix",
+        " FAIL  src/contained-mission-revision-publication.test.ts > lease_ancestor: local lease push with W13 binding",
+        " FAIL  src/contained-mission-revision-publication.test.ts > stale: local lease push with W13 binding",
+        " FAIL  src/contained-mission-revision-publication.test.ts > readback_mismatch: local lease push with W13 binding",
+        " FAIL  src/contained-mission-revision-publication.test.ts > K1–K6 crash recovery against a bare remote > keeps a released stopped push uncertain when the bare remote remains at the old head"
+      ],
+      "assertions": [
+        "AssertionError: expected 'failed' to be 'uncertain' // Object.is equality",
+        "AssertionError: expected 'failed' to be 'uncertain' // Object.is equality",
+        "AssertionError: expected 'failed' to be 'uncertain' // Object.is equality",
+        "AssertionError: expected 'failed' to be 'uncertain' // Object.is equality"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "wrong-revision-publish-port",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-Q2IINW/wrong-revision-publish-port.log",
+      "log_sha256": "937e6131c50577f2067c8129f5b4e28e436ad93342edb1c5bdccd3877d21f71a",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > publishes a same-PR revision through the real publication port and W13 release",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > records a failed revision check on the opened Mission",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > skips the revision check when the chain closes after confirmation",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > settles a manually retried revision check and reuses the confirmed result",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > skips manual revision check retry on a closed chain and settles its pending intent",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > preserves the check retry boundary for an uncertain intent on a open chain",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > preserves the check retry boundary for an uncertain intent on a closed chain",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses manual revision check retry if its publication port is unavailable",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > requests host cancellation when the PR closes before revision publication",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses bridge_live_disabled at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses grant_expired at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses grant_invalid at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses budget_exhausted at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses chain_state at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses intent_moved at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses not_current_child at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses child_cancelled at the real runner release fence before git runs",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses reservation_moved at W13 release",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > refuses claim_released at W13 release",
+        " FAIL  src/contained-mission-revision.runner.test.ts > a revision child under the runner > dispatches a wired revision target to publishRevision on the runner path"
+      ],
+      "assertions": [
+        "AssertionError: expected 'delivering' to be 'pr_opened' // Object.is equality",
+        "AssertionError: expected 'delivering' to be 'pr_opened' // Object.is equality",
+        "AssertionError: expected 'delivering' to be 'pr_opened' // Object.is equality",
+        "AssertionError: expected 'delivering' to be 'pr_opened' // Object.is equality"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "no-release-fence",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-Q2IINW/no-release-fence.log",
+      "log_sha256": "b34278e4dd8cd56b38f2bb923e892bed086d73edb332c5247ad6b839fc40bd82",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/state/engineering-host-process-store.test.ts > journal (W13-B interface) > release rolls back the fence's own writes when the fence throws",
+        " FAIL  src/state/engineering-host-process-store.test.ts > journal (W13-B interface) > rejects an asynchronous fence and rolls back"
+      ],
+      "assertions": [
+        "AssertionError: expected [Function] to throw an error",
+        "AssertionError: expected [Function] to throw an error"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "token-after-fence",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-Q2IINW/token-after-fence.log",
+      "log_sha256": "4cd2a21e6780105de434a4cb596c9d24aaf95e810484bd35157f1756b9e4cb37",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-bridge.test.ts > appCredentialRunner > resolves the token before the synchronous release fence and starts work in the same turn"
+      ],
+      "assertions": [
+        "AssertionError: expected [] to deeply equal [ 'token', 'launcher' ]"
+      ],
+      "timeout_or_signal_diagnostics": []
+    },
+    {
+      "name": "baseline-omission",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-mutants-pYchuD/baseline-omission.log",
+      "log_sha256": "260ff114593920fff2d88a5afb0a5d913408e457b5b19798b26c4e358071f12f",
+      "status": 1,
+      "strict_log_verdict": "killed",
+      "failed_test_headers": [
+        " FAIL  src/contained-mission-grant.test.ts > grant-revisions preview and grant > issues a signed grant bound to principal, session, scope, repository, base, head and root, and creates the live chain"
+      ],
+      "assertions": [
+        "AssertionError: expected { …(15) } to match object { state: 'confirmed', …(3) }"
+      ],
+      "timeout_or_signal_diagnostics": []
+    }
+  ],
+  "classifier_sha256": "c13a0c5f88d9b025efae2dde94af3a91dfb2046631c74133485919447ef55a52",
+  "unit_test_sha256": "283a93b92c95d14bc651d35696e0ab92683c56ea45e9d0ca404dcdf3849b484f",
+  "unit_test_log": "$OSSTACK_SCRATCH_ROOT/runtime/bridge-phase5-classifier-unit.log",
+  "unit_test_log_sha256": "8c9178273e063efa6eb5ff8e8215d703f431069bd7dd0022e11f973cb245b5e2",
+  "unit_tests_passed": 15
+}

@@ -16,6 +16,25 @@ import { handleGraphCommand } from './graph-command.js';
 import { healthyAutonomyHealth } from './test-healthy-autonomy.js';
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 type Reply = { ok: boolean; result?: unknown; error?: { code: string; message: string } };
+const GRAPH_DEADLINE_SECONDS = 60;
+// Each graph may use its admitted deadline; Vitest gets only a local setup/cleanup allowance.
+const GRAPH_TEST_TIMEOUT_MS = GRAPH_DEADLINE_SECONDS * 1000 + 10_000;
+type ReadyStatus = Pick<GraphDelegationStatus, 'status' | 'phase' | 'createdAt'>;
+// The former 20s polling cutoff rejected a still-running, valid 60s graph under subprocess contention.
+// Anchor the bound to admission so a late first status read cannot extend the graph's deadline.
+async function waitForGraphReady<T extends ReadyStatus>(initial: T, read: () => Promise<T>, deadlineSeconds: number,
+  clock = { now: Date.now, pause: (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms)) }): Promise<T> {
+  let value = initial;
+  const deadline = initial.createdAt + deadlineSeconds * 1000;
+  while (value.status !== 'ready') {
+    if (['failed', 'reconciliation_required'].includes(value.status)) throw Error(JSON.stringify(value));
+    const remaining = deadline - clock.now();
+    if (remaining <= 0) throw Error(`GRAPH_READY_DEADLINE:${JSON.stringify(value)}`);
+    await clock.pause(Math.min(25, remaining));
+    value = await read();
+  }
+  return value;
+}
 async function fixture(external = false, bounded = false, provider: 'anthropic' | 'deepseek' = 'anthropic') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'graph-delegation-'))); const repo = join(root, 'repo'); const home = join(root, 'home');
   await mkdir(repo); await mkdir(home); await mkdir(join(repo, '.osstack'));
@@ -58,12 +77,9 @@ async function fixture(external = false, bounded = false, provider: 'anthropic' 
   });
   const request: StartGraphRequest = { schemaVersion: 1, kind: 'start', scope, idempotencyKey: 'one', inputArtifactRef: 'input', source: { product: external ? 'osbot' : 'osstack', requestId: 'business', parentRunId: 'parent' },
     spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: git(repo, 'rev-parse', 'HEAD'), acceptanceRef: 'tests' },
-      limits: { maxEpochs: 1, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 7, deadlineSeconds: 60, tokenReservationLimit: 49152 } } };
+      limits: { maxEpochs: 1, maxBranchAttempts: 1, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 7, deadlineSeconds: GRAPH_DEADLINE_SECONDS, tokenReservationLimit: 49152 } } };
   const status = async (id: string) => { const response = await rpc('graph.status', { schemaVersion: 1, scope, graphRunId: id }); expect(response.ok, JSON.stringify(response)).toBe(true); return GraphDelegationStatus.parse(response.result); };
-  const ready = async (id: string) => { let value = await status(id); const until = Date.now() + 20000;
-    while (value.status !== 'ready' && Date.now() < until) { if (['failed', 'reconciliation_required'].includes(value.status)) throw Error(JSON.stringify(value)); await new Promise(resolve => setTimeout(resolve, 25)); value = await status(id); }
-    expect(value.status).toBe('ready'); return value;
-  };
+  const ready = async (id: string) => waitForGraphReady(await status(id), () => status(id), request.spec.limits.deadlineSeconds);
   return { root, home, repo, rpc, request, ready, setCaller: (id: string | null) => { caller = id; }, calls: () => calls,
     close: async () => { await daemon.close(); if (previousHome === undefined) delete process.env['OSSTACK_HOME']; else process.env['OSSTACK_HOME'] = previousHome; await rm(root, { recursive: true, force: true }); } };
 }
@@ -81,7 +97,7 @@ it('real daemon loads owner config and CLI run/status retain durable idempotency
     expect(await f.rpc('graph.start', changed)).toMatchObject({ ok: false, error: { code: 'IDEMPOTENCY_CONFLICT' } });
     expect(await readFile(join(f.repo, 'answer'), 'utf8')).toBe('0\n');
   } finally { await f.close(); }
-}, 30000);
+}, GRAPH_TEST_TIMEOUT_MS);
 it('simulated OSBot/OStag host bindings preserve parents, isolate source results and refuse unverified callers', async () => {
   const f = await fixture(true);
   try {
@@ -98,7 +114,7 @@ it('simulated OSBot/OStag host bindings preserve parents, isolate source results
     expect(await f.rpc('graph.result', { schemaVersion: 1, scope: f.request.scope, graphRunId: tag.graphRunId })).toMatchObject({ ok: false, error: { code: 'UNAUTHENTICATED' } });
     expect(await f.rpc('graph.reconcile', { schemaVersion: 1, kind: 'cancel', scope: f.request.scope, graphRunId: tag.graphRunId, expectedRevision: completed.revision, idempotencyKey: 'unauth' })).toMatchObject({ ok: false, error: { code: 'UNAUTHENTICATED' } });
   } finally { await f.close(); }
-}, 45000);
+}, GRAPH_DEADLINE_SECONDS * 2000 + 10_000);
 
 it('actual daemon and CLI reconcile a registered no-child failure while new admission is disabled', async () => {
   const f = await fixture();
@@ -145,4 +161,26 @@ it.each(['anthropic', 'deepseek'] as const)('actual daemon enrolls %s owner conf
     expect(snapshots).toEqual(['0\n', '1\n']); expect(f.calls()).toBe(0);
     expect(await readFile(join(f.repo, 'answer'), 'utf8')).toBe('0\n');
   } finally { await f?.close(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); }
-}, 30000);
+}, GRAPH_TEST_TIMEOUT_MS);
+
+
+it('readiness polling waits beyond the old 20-second budget within the admitted graph deadline', async () => {
+  let now = 0;
+  const initial: ReadyStatus = { status: 'running', phase: 'review', createdAt: 0 };
+  const result = await waitForGraphReady(initial, async () => ({ ...initial, status: now >= 21_000 ? 'ready' : 'running' }),
+    GRAPH_DEADLINE_SECONDS, { now: () => now, pause: async ms => { now += ms; } });
+  expect(result.status).toBe('ready'); expect(now).toBe(21_000);
+});
+it('readiness polling stops at the actual graph deadline and retains the last observed phase', async () => {
+  let now = 150_000;
+  const initial: ReadyStatus = { status: 'running', phase: 'review', createdAt: 100_000 };
+  await expect(waitForGraphReady(initial, async () => initial, GRAPH_DEADLINE_SECONDS,
+    { now: () => now, pause: async ms => { now += ms; } })).rejects.toThrow(`GRAPH_READY_DEADLINE:${JSON.stringify(initial)}`);
+  expect(now).toBe(160_000);
+});
+it('readiness polling fails immediately on a terminal failure rather than spending the remaining deadline', async () => {
+  const initial: ReadyStatus = { status: 'failed', phase: 'review', createdAt: 0 };
+  const read = vi.fn(), pause = vi.fn();
+  await expect(waitForGraphReady(initial, read, GRAPH_DEADLINE_SECONDS, { now: () => 0, pause })).rejects.toThrow('"status":"failed"');
+  expect(read).not.toHaveBeenCalled(); expect(pause).not.toHaveBeenCalled();
+});

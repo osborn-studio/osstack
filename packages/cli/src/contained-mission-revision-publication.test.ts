@@ -426,6 +426,59 @@ it('leaves a pending intent for recovery when W13 loses the owner before release
   vi.restoreAllMocks();
 });
 
+it.each(['exhausted', 'HTTP 503', 'HTTP 429'] as const)('keeps %s readback uncertain after one stopped push', async failure => {
+  let f!: Awaited<ReturnType<typeof publishFixture>>;
+  let pushes = 0;
+  f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = releasePush(journal, intentId, f.id, fence, true);
+    pushes++;
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  });
+  const initialRead = f.deps.readPr;
+  let reads = 0;
+  f.deps.readPr = async (...args) => {
+    reads++;
+    if (pushes && failure !== 'exhausted') throw Error(failure);
+    // A lagging read keeps returning the old head through every bounded retry.
+    return initialRead(...args);
+  };
+  f.deps.remoteHead = async () => pushes ? next : old;
+  const sleep = vi.fn(async () => {}); f.deps.sleep = sleep;
+  await expect(f.call()).rejects.toThrow('CONTAINED_REVISION_READBACK_MISMATCH');
+  expect(pushes).toBe(1);
+  expect(reads).toBe(failure === 'exhausted' ? 6 : 2);
+  expect(sleep).toHaveBeenCalledTimes(failure === 'exhausted' ? 4 : 0);
+  expect(f.deps.chains.intents(f.chain.chain_id).filter(i => i.kind === 'push')).toMatchObject([{ state: 'uncertain' }]);
+  expect(f.deps.chains.get(f.chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'intent_uncertain' });
+});
+
+it('a second daemon owner claim fences an in-flight publisher before remote release', async () => {
+  let f!: Awaited<ReturnType<typeof publishFixture>>;
+  let second: ReturnType<typeof openDb> | undefined;
+  let gitRan = false;
+  f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = 'hp_twoowners';
+    journal.launching({ op_id: opId, mission_id: f.id, kind: 'git_push', remote_target: 'o/r#refs/heads/topic', local_target: '/tmp/repo#refs/heads/topic',
+      intent_id: intentId, argv_digest: '8'.repeat(64), boot_id: 'test', marker: { path: '/tmp/marker', dev: '1', ino: '1' } });
+    journal.registered(opId, { pid: 12345, pgid: 12345, leader_start: 'test' });
+    // Separate SQLite connection and real epoch replacement, rather than a mocked fence failure.
+    second = openDb({ path: f.f.rig.path });
+    const attention = new AttentionStore(second, f.f.rig.path);
+    attention.claimOwner('second-daemon');
+    journal.release(opId, fence);
+    gitRan = true;
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  });
+  try {
+    await expect(f.call()).rejects.toThrow(/owner/i);
+    expect(gitRan).toBe(false);
+    expect(f.deps.chains.intents(f.chain.chain_id).filter(i => i.kind === 'push')).toMatchObject([{ state: 'pending' }]);
+    expect(f.deps.chains.get(f.chain.chain_id).state).toBe('publishing');
+    expect(second!.prepare("SELECT state,released_at FROM engineering_host_processes WHERE op_id='hp_twoowners'").get())
+      .toMatchObject({ state: 'registered', released_at: null });
+  } finally { second?.close(); }
+});
+
 it.each(['pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'external_write', 'head_regressed'] as const)(
   'requests host cancellation for %s', async expected => {
     const f = await publishFixture();
@@ -823,13 +876,14 @@ describe('revision refusal D4', () => {
   });
 });
 
-it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readback_mismatch', 'base_changed', 'pr_closed', 'base_changed_before_release'] as const)('%s: local lease push with W13 binding', async scenario => {
+it.each(['success', 'success_three_commits', 'lease_ancestor', 'stale', 'lease_rejected', 'readback_mismatch', 'base_changed', 'pr_closed', 'base_changed_before_release'] as const)('%s: local lease push with W13 binding', async scenario => {
   const root = mkdtempSync(join(tmpdir(), 'revision-push-'));
   const repo = join(root, 'repo'); const bare = join(root, 'bare.git');
   const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   try {
     execFileSync('git', ['init', '-q', '-b', 'topic', repo]);
     git(repo, 'config', 'user.name', 'Test'); git(repo, 'config', 'user.email', 'test@example.invalid');
+    git(repo, 'commit', '-q', '--allow-empty', '-m', 'ancestor'); const ancestor = git(repo, 'rev-parse', 'HEAD');
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'base'); const first = git(repo, 'rev-parse', 'HEAD');
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'revision'); const second = git(repo, 'rev-parse', 'HEAD');
     git(repo, 'commit', '-q', '--allow-empty', '-m', 'outsider'); const third = git(repo, 'rev-parse', 'HEAD');
@@ -862,6 +916,9 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
         catch (error) { journal.stopped(opId, { proof: 'never_released', detail: {} }); throw error; }
         pushes++;
         if (scenario === 'stale' || scenario === 'lease_rejected') git(repo, 'push', '-q', 'origin', `${third}:refs/heads/topic`);
+        // An ordinary push accepts this ancestor reset. Only the exact old-head
+        // lease detects the intervening write and leaves the branch untouched.
+        if (scenario === 'lease_ancestor') git(repo, 'push', '-q', '--force', 'origin', `${ancestor}:refs/heads/topic`);
         let stdout = ''; let stderr = ''; let exitCode = 0;
         try { stdout = git(repo, ...args.slice(args.indexOf('push'))); } catch (error) {
           const failure = error as { status: number; stdout: Buffer; stderr: Buffer };
@@ -906,15 +963,15 @@ it.each(['success', 'success_three_commits', 'stale', 'lease_rejected', 'readbac
         expect(deps.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_review', published_head: candidate });
       }
     } else {
-      await expect(call()).rejects.toThrow(scenario === 'stale' || scenario === 'readback_mismatch' ? 'READBACK_MISMATCH' : scenario === 'lease_rejected' ? 'push_rejected'
+      await expect(call()).rejects.toThrow(scenario === 'stale' || scenario === 'lease_ancestor' || scenario === 'readback_mismatch' ? 'READBACK_MISMATCH' : scenario === 'lease_rejected' ? 'push_rejected'
         : scenario === 'base_changed_before_release' ? 'base_changed' : 'PR_CHANGED_AFTER_PUSH');
       const intent = deps.chains.intents(chain.chain_id).filter(i => i.kind === 'push').at(-1)!;
-      expect(intent.state).toBe(scenario === 'readback_mismatch' || scenario === 'stale' ? 'uncertain' : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? 'failed' : 'confirmed');
+      expect(intent.state).toBe(scenario === 'readback_mismatch' || scenario === 'stale' || scenario === 'lease_ancestor' ? 'uncertain' : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? 'failed' : 'confirmed');
       if (scenario === 'lease_rejected') expect(intent.detail).toBe('push_rejected');
       expect(deps.missions.get(id).state).toBe('awaiting_decision');
       if (scenario === 'base_changed' || scenario === 'pr_closed') expect(cancel).toHaveBeenCalledWith(id);
     }
-    expect(remoteHead()).toBe(scenario === 'stale' || scenario === 'success' ? third : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? first : candidate);
+    expect(remoteHead()).toBe(scenario === 'lease_ancestor' ? ancestor : scenario === 'stale' || scenario === 'success' ? third : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? first : candidate);
     expect(pushes).toBe(scenario === 'base_changed_before_release' ? 0 : 1);
     expect(attempts).toBe(1);
   } finally { rmSync(root, { recursive: true, force: true }); }

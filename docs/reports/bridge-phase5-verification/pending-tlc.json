@@ -1,0 +1,28 @@
+[
+  {
+    "config": "bridge.cfg",
+    "model_commit": "036d2be2",
+    "model_sha256": "0ca6e423e7212a27c485c7e694de7a18baed7b70d34432596c113174af9607bf",
+    "config_sha256": "7d92be8705d7d82a95a767fed9d00e61ce52b25638bad61ea6feda183791a1aa",
+    "pid": 75494,
+    "kind": "exhaustive-breadth-first",
+    "status": "running",
+    "heap": "6g",
+    "workers": 4,
+    "log": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-tlc-main2.log",
+    "metadata": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc/main2"
+  },
+  {
+    "config": "bridge-rounds.cfg",
+    "model_commit": "036d2be2",
+    "model_sha256": "0ca6e423e7212a27c485c7e694de7a18baed7b70d34432596c113174af9607bf",
+    "config_sha256": "ceed8b1d3665c26b927fd8300be408a660a83cbe7eb6333ef852514881f06926",
+    "pid": 42382,
+    "kind": "exhaustive-breadth-first",
+    "status": "running",
+    "heap": "3g",
+    "workers": 2,
+    "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc/bridge-rounds-final.log",
+    "metadata": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc/bridge-rounds-final"
+  }
+]
