@@ -16,7 +16,9 @@ exhaustive model checking, not simulation. `bridge-shadow.cfg` completed with 67
 11,897 distinct states, depth 13. The revised full two-reviewer main run completed without error: 553,491,833 generated /
 69,290,566 distinct states, depth 48, empty queue, exit 0. Wall time was 1h01 including a
 SIGSTOP/SIGCONT scheduling suspension for parent serialized acceptance. The full three-review
-rounds run remains pending; no pass is inferred from its progress counts.
+rounds run also completed: 709,628,051 generated / 95,121,536 distinct states, depth 46,
+empty queue, exit 0 (1h32 including the same scheduling suspension). Exact log hashes and
+TLC fingerprint collision estimates are preserved in the verification report.
 
 Run the portable evidence runner from the repository root:
 
@@ -67,7 +69,7 @@ Each has a mutant showing what breaks without it.
 | `bridge-rounds.cfg` | two full rounds: 3 review submissions, no outsider |
 | `mutants/*.cfg` | one seeded bug each; every config has an exhaustive counterexample |
 
-## Running and current results
+## Running and historical phase 4 results
 
 SANY passes with official `tla2tools.jar` v1.7.4 (sha256
 `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`) and
@@ -84,7 +86,7 @@ Run from this directory, outside any sandbox (breadth-first TLC opens a loopback
 distinct metadir for each config. Run each config from a bash script or array: zsh does not split
 an unquoted command variable.
 
-**Exhaustive breadth-first TLC (2026-11-07):**
+**Historical exhaustive breadth-first TLC (before this verification revision):**
 
 | Config | Result | Generated | Distinct | Depth | Time |
 |---|---|---:|---:|---:|---:|

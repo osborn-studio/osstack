@@ -50,7 +50,7 @@ Local Docker with a fake GitHub server can validate execution, denial injection,
 | Shadow Spec | pass | exhaustive TLC 11,897 distinct, depth 13, queue empty |
 | Fourteen model guard mutants | pass | each yields its expected safety invariant counterexample with final model |
 | Broad two-reviewer main | pass | 69,290,566 distinct states, depth 48, queue empty, process exit 0; includes the documented scheduling suspension |
-| Three-review full rounds | pending | original exhaustive process continues after SIGCONT; no pass claimed from progress counts |
+| Three-review full rounds | pass | 95,121,536 distinct states, depth 46, empty queue, process exit 0; same preserved search after scheduling suspension |
 | Model fidelity limits | explicit residual assumptions | one modeled commit per push and assumed root baseline; exact close cleanup and R2 stop reasons abstracted; TS tests cover actual ranges and grant behavior |
 | Real 5-G sandbox A/B, permission and timeline checks | not run here | parent owns sandbox driver and any authorized external run; Docker/fake service cannot prove GitHub rulesets/App identity |
 

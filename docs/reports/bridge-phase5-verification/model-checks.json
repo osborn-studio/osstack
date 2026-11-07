@@ -313,6 +313,34 @@
     "fingerprint_collision_estimates": {
       "optimistic": 0.0018,
       "actual_fingerprints": 0.00026
-    }
+    },
+    "raw_fingerprint_estimates": [
+      "  calculated (optimistic):  val = .0018",
+      "  based on the actual fingerprints:  val = 2.6E-4"
+    ]
+  },
+  {
+    "config": "bridge-rounds.cfg",
+    "model_commit": "036d2be2",
+    "status": 0,
+    "passed": true,
+    "kind": "exhaustive-breadth-first",
+    "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc/bridge-rounds-final.log",
+    "log_sha256": "df07c4acf9a39edf153c351ed839d82444f2e5eba8669d4285652f851b355e90",
+    "counts": [
+      709628051,
+      95121536,
+      0
+    ],
+    "depth": 46,
+    "wall_time": "01h 32min including the scheduling SIGSTOP/SIGCONT interval for parent serialized acceptance; no restart",
+    "fingerprint_collision_estimates": {
+      "optimistic": 0.0032,
+      "actual_fingerprints": 0.043
+    },
+    "raw_fingerprint_estimates": [
+      "  calculated (optimistic):  val = .0032",
+      "  based on the actual fingerprints:  val = .043"
+    ]
   }
 ]
