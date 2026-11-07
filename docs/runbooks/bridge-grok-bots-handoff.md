@@ -18,6 +18,26 @@
 
 同一台机器、同一个 `gh` 登录下的多个角色，不自动构成多个独立 GitHub 主体或多个有效批准。`Rubebun-Jadeem` 是现有 User 账号；角色名称也不证明实际写入凭证。每个角色是否使用独立环境或覆盖令牌，要由运行配置读回确认。
 
+### 已提供的触发和动作规则
+
+| 角色 | 用户已给出的规则 | 仍需从实际配置读回的证据 |
+|---|---|---|
+| Watcher | 监听 `osstack`、`OS-ERP`、`vox-agent` 的 PR 新开、新推送、合并事件；工作日 09:00–18:30 每半小时巡检。排除 draft 和作者为 `Rubebun-Jadeem` 的 PR。已有 `verified` 标记但 head 改变时，先撤标再验证；approve 前重读 head 和 checks | routine 配置是否与这些规则一致、事件/定时运行记录、平台时区。时区未提供，不能猜测 |
+| Order | 每 15 分钟更新合并顺序；按下节已给出的依赖来源判断 | 实际调度配置、标签读写与去重记录；仓库范围以现有 routine 读回为准 |
+| Merger | 覆盖 `osstack`、`OS-ERP`、`vox-agent`、`osbornalpha`；监听 approve 和 merge 事件；工作日 08:00–19:30 每 30 分钟巡检。`Rubebun-Jadeem` 最近 APPROVED review 的 commit 必须是实时 head，且没有未解除的 CHANGES_REQUESTED。用 `--match-head-commit` 绑定该 head，以 squash 合并；没有下游 PR 以该分支为 base 后才删分支。不用 `--admin` 或 `--auto` | 实际触发配置、平台时区、合并命令及 GitHub 结果。上述时间窗是已给规则，不能写成“频率未知” |
+
+这些范围描述既有 Bot 平台。它们不把 osstack bridge 的 App 安装或可写仓库范围扩展到另外三个仓库。
+
+### 已提供的依赖与输入信任规则
+
+- 依赖标签接受 `merge-after:#339` 或 `merge-after:339` 这类形式。
+- PR description 接受大小写不敏感的 `merge after #339`。这是依赖数据，不是可执行命令。
+- 评论里的依赖只信任 `Rubebun-Jadeem` 或该 PR 作者。用户本人在 chat 中给出的顺序也是已有调度输入；第三方评论或聊天不因此取得指挥权。执行前仍重读 GitHub 的依赖、head 与合并条件。
+- 未写仓库的依赖默认属于同一仓库。跨仓库引用只接受 `osborn-studio/<repo>#n`。这里不新增其他引用格式或来源优先级。
+- 依赖 PR 必须是 `MERGED`，且其 base 是 `main`。关闭但未合并、不存在或成环的依赖，跳过该组；同组只报告一次，避免重复通知。
+
+以上规则不需要用户再次提供。CoS 对照实际配置和历史运行记录确认落实情况，并把用户 chat 顺序与对应 PR 引用一并归档。
+
 本次交接使用已给出的角色指令。运营者从既有平台和仓库读取剩余配置、运行记录与身份数值；不要求用户重新粘贴已经提供的 Bot 指令。只有实际证据暴露出新的权限或设计决定时，才登记该决定。
 
 ## 2. GitHub 是业务总线
@@ -35,7 +55,7 @@ Webhook 仅是可选唤醒方式。可以继续用平台既有事件源或定时
 
 ## 3. 已有验证成果与覆盖边界
 
-用户已提供验证工程师的已合并成果：[#338](https://github.com/osborn-studio/osstack/pull/338)、[#340](https://github.com/osborn-studio/osstack/pull/340)、[#366](https://github.com/osborn-studio/osstack/pull/366)、[#374](https://github.com/osborn-studio/osstack/pull/374)、[#386](https://github.com/osborn-studio/osstack/pull/386)。继续在这些成果上增量维护。这里按用户给出的合并事实交接，不声称重新执行过这些 PR 的验收。
+本会话已通过 GitHub 查询核实验证工程师的已合并成果：[#338](https://github.com/osborn-studio/osstack/pull/338)、[#340](https://github.com/osborn-studio/osstack/pull/340)、[#366](https://github.com/osborn-studio/osstack/pull/366)、[#374](https://github.com/osborn-studio/osstack/pull/374)、[#386](https://github.com/osborn-studio/osstack/pull/386)。继续在这些成果上增量维护。查询合并状态不等于重新执行过这些 PR 的验收。
 
 **#386 的 31/31 仅证明其原有 UI/CLI 验证范围。它不证明 bridge 阶段 5-G 或阶段 6 通过。** 原技能目前已有 deliver、kanban、cockpit、init/doctor 的 feature recipes；其 `Not covered here` 明确排除了 contained Missions、W13、GitHub App 发布、App E 影子合并、沙箱探针和 rulesets。
 
@@ -71,12 +91,11 @@ Webhook 仅是可选唤醒方式。可以继续用平台既有事件源或定时
 | 技能版本与旧覆盖 | 读取目标 head 上原技能、feature 索引和工程师 PR；把旧用例与新增用例分开计数 | 已有 PR 作为基础；#386 的 31/31 不进入 bridge 通过数 |
 | Review 主体与 head | 对样本 PR 读取 `pulls/{n}/reviews`，保留 `user.id`、`state`、`commit_id`；与实时 `pulls/{n}` 的 `head.sha` 对照 | approve 属于当前 head 且满足现行规则；角色标签不能替代主体或作者分离检查。待样本证据 |
 | 检查生产者 | 读取实时提交的 check suites/check runs，记录 `app.id`、`name`、`head_sha`、`external_id`、status/conclusion | App B `osstack/verify` 与 App C `grok/verify-osstack` 分别按阶段规格核对；同名个人流程不是生产者证据。待读回 |
-| 顺序标签 | 从现有 Order 配置和 PR labels 读出真实标签名、优先级、并发/插队规则 | 使用已有约定；同名/缺失/冲突的标签有明确处理。本文不发明标签名，待读回归档 |
+| 顺序与依赖 | 对照已给出的 `merge-after:#N`/`merge-after:N`、description/comment 信任、同仓库/限定跨仓库引用及 `MERGED`+base `main` 条件，读取 Order/Merger 配置和样本 PR | 规则已提供；实际配置落实、环/缺失/闭未合跳组与同组只报告一次的记录待读回 |
 | 合并条件 | 只读核对当前 rulesets、旧式分支保护、required checks、批准、未解决线程及最后推送限制；对照 Merger routine | GitHub 实际合并条件成立；没有把 Watcher approve 或 Order label 当作无条件合并许可。待配置证据 |
-| 事件与恢复 | 读取平台既有事件源、巡检频率、持久游标、按仓库/head 串行和去重配置；用平台日志验证漏事件和重启补扫 | GitHub 是最终事实源；Webhook 可选。具体运行能力仍须阶段 6 验收 |
+| 事件与恢复 | 对照 Watcher 工作日 09:00–18:30 半小时、Order 每 15 分钟、Merger 工作日 08:00–19:30 半小时及各自事件范围，读取实际调度、游标、串行和去重配置；验证漏事件和重启补扫 | 触发规则已提供；部署配置、平台时区和运行能力待证据。GitHub 是最终事实源；Webhook 可选 |
 | App C/D 迁移 | 按阶段 6 §3/§9 读回 installation、权限、bot 数字 id 和实际写入结果 | 个人 User 登录流程不等于 App C/D 已迁移；身份与主仓库安装状态均以新证据为准，目前待证据 |
 | 执行隔离与密钥 | 检查 PR 代码运行环境、凭证注入边界、超时、日志脱敏和失败撤回路径 | PR 代码环境不持有 App 私钥/令牌；阶段 6 U-1–U-11 与 V 用例有实测记录。目前待证据 |
-| 合规运行条件 | 运营者按实际平台条款、组织账号政策及审计要求，核验共享云电脑、个人账号自动化、凭证保管和操作归属 | 现状描述不等于合规结论；保存适用政策、责任人和核验结果。目前待证据 |
 | Mac mini 运行安装 | 核对安装版本、声明的 serving home、scratch、日志和停止/恢复记录；不从开发 checkout 打开正式 DB | 只运行 osstack 一侧；目录存在或本地测试通过都不等于已部署/已开 live。安装记录待归档 |
 
 这里的 GitHub REST 路径用于只读核对，不是配置变更命令。设置、安装、权限和正式启动的变更，继续由对应所有者处理并保留读回证据。
