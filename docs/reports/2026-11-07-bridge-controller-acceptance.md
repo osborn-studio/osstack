@@ -1,0 +1,52 @@
+# Bridge controller acceptance — 2026-11-07
+
+The deterministic gates below pass within their recorded source and environment scopes. **Live Phase 5G is not qualified.** Attempt 2 is still running at this report's observation: cold cancellation and A passed, but B round 2 is durably halted. Final cleanup, full timeline/actor attribution, workflow injection and release-time revocation are not claimed complete. The original specification, including §5.6, remains binding; this report does not authorize weakening or substituting any acceptance case.
+
+## Deterministic evidence
+
+| Gate | Source / result | Inspectable evidence |
+|---|---|---|
+| Full serial workspace tests | Frozen `8120569883fd23c30bd99858de8f3d0c6a34aa55`; 22 workspace summaries, **8,901 passed / 6 skipped**. CLI subset **3,985 passed / 5 skipped**. Counts are summed from the saved summaries, not a rerun on later driver changes. | [Full log](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/acceptance-final-81205698.log) |
+| Latest offline Node contracts | Driver fixture/fail-fast integration `54a6d0d8`; Linux Node 24, **236/236 passed**, 0 skipped, all nine exact CI files. Docker used `--network none`, read-only repository, no dependencies/credentials. This is offline coverage, not a live rerun. | [Latest Node 24 log](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/linux-node24-final-fixtures.log) |
+| Historical offline Node contracts after journal setup fix | Linux Node 24, **220/220 passed**, 0 skipped. This is offline injected/local-fixture coverage, not live sandbox acceptance. | [Node 24 log](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/linux-node24-journal-fix.log) |
+| Strict source mutations | `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`, Node **26.5.0**: **19/19 actual assertion kills**, all baselines pass, zero invalid/timeout/signal/spawn-error results; tracked package/script hashes equal before/after and source tree clean. This does not relabel the campaign as Node 24. | [Bound aggregate](bridge-phase5-verification/final-source-mutants.json), [raw audit](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-mutants-315/audit.json), [aggregate](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-mutants-315/aggregate.json) |
+| Production source preservation | Integrated verification manifest compares **607 non-test package TypeScript source files** against N9 `88fa686b`: zero byte differences. Subsequent journal/fixture/fail-fast work is in scripts/tests/docs; source equality is not a live acceptance verdict. | [Runtime manifest](bridge-phase5-verification/integrated-runtime-manifest.json) |
+
+The older failed parallel/full-test logs remain historical failures; the successful frozen serial log above is the controller's final full-suite evidence. No new full suite was run for this documentation update.
+
+## Scoped independent GLM reviews
+
+These four reviews found no introduced P1/P2 **in the supplied static review surface**. They did not execute tests, attest independently to commit identity, or prove a live scenario:
+
+| Review | Actual scope and limitation | Artifact |
+|---|---|---|
+| Driver | `b5133e53` supplied driver, activity/installed helpers and helper tests; static egress, evidence and qualification review. | [Driver review](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/sandbox-driver-final-review.json) |
+| Cold recovery / hook | Supplied cold helper, publication hook and tests; descriptor, recovery-only, owner and cleanup boundaries. Test-pass claims were not independently rerun by this reviewer. | [Cold review](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/sandbox-cold-final-review.json) |
+| Journal initialization | `journal-root-review.diff` only: private canonical journal directory setup and both consumers; no product/stop-proof changes. | [Journal review](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/journal-root-review.json) |
+| Documentation / operator handoff | `operator-handoff-review-input.diff` only; historical failures, draft/disabled cloud state and least-privilege claims. | [Docs review](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/operator-handoff-review.json) |
+
+## Installed candidate provenance
+
+The inactive installed prefix is `/Volumes/AIMATE_WORK/osstackgrokbot/releases/candidate-8120569883fd`, source `8120569883fd23c30bd99858de8f3d0c6a34aa55`. Its [candidate manifest](/Volumes/AIMATE_WORK/osstackgrokbot/releases/candidate-8120569883fd/candidate-manifest.json) SHA256 is `bc49f6dc5f27cce7afb80634177d727ae6aca9e279ce5789ea79646a24be0e6b`.
+
+The [release summary](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/release-812-summary.json) records 22 workspace builds/tarballs, 1,763 installed tar-file matches, 47 internal dependency edges bound to the prefix, loader source/wrong-source checks and two actual cold-product cases with command tripwires untouched. It records no `current` creation, service start or serving DB open. Installed dependencies used npm offline semver resolution, including native/JS better-sqlite3 12.11.1; they are not claimed identical to the pnpm source-lock 12.10 environment. Full [installed audit](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/release-812-audit.json) and [dependency inventory](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/release-812-dependencies.json) preserve this distinction. No credential contents are reproduced here.
+
+## Real 5G attempts and uncovered cases
+
+**Attempt 1:** runtime and driver `81205698`, [report](/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-revision-revision-5g-20261107a-Y3vnTs/report.json). Qualification and Codex 0.160.1 execution succeeded, with exit 0 and explicit executor stop proof, then candidate commit. Verification halted `stop_unknown` with `verify_failed_to_settle:ENOENT`: `home/verification` was missing before its canonical-path read. There were **0 PRs / 0 chains**, and this was not a pass. The journal-root fix was authored as `cf6efb31`, integrated as `9ec6e067` (portable fixture follow-up `315e7fc4`). A fix and its offline tests do not make the failed attempt successful. [Root investigation](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/real-5g-attempt1-root-investigation.md), [structural evidence](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/real-5g-attempt1-root-evidence.json).
+
+**Attempt 2:** installed runtime `81205698`, driver `dab0a5c1b477651f8dc2955e757c4f6d1fb7b186`, [live report](/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-revision-revision-5g-20261107b-yVdOiJ/report.json). At observation it has no `finished_at`, `qualified` is **false**, and final cleanup is unobserved. The before-first-tick cancelled child was recovered in a real new PID/new owner against the same persistent DB; A completed two rounds and approval. This cancellation window satisfies the stated cancellation/restart case; no additional after-release cancellation prerequisite is invented.
+
+B round 2, PR19, child `cm_f6ea4ee5-c54f-4747-853c-218b316b7b74`, halted `awaiting_decision` with `patch_apply_failed:CONTAINED_PATCH_MISMATCH`, stop obligation 0. Expected and actual worktree heads match. The fresh response proposes a new stage-0 file although the requested file already contains stage 1; it is not a stage-1→stage-2 modification. Exact apply correctly refuses the add-existing-file patch. The evidence does not establish stale output or missing feedback: separate turn directories and timestamps exist, and the desired stage-2 feedback was present. No silent retry or patch rewrite is credited. [Investigation](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/real-5g-attempt2-b-patch-investigation.md), [safe structural evidence](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/real-5g-attempt2-b-patch-evidence.json), [independent audit](/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-validation/real-5g-independent-audit.md).
+
+The fixture-only stage-goal clarification and fail-fast detection of halted round children are now integrated at driver head `54a6d0d8` (`9be3bb36` is the earlier fail-fast commit). Their latest offline Linux Node 24 gate passes 236/236. The final-fixture GLM review is still running; no pass is inferred. Neither fixture changes nor that offline gate is a successful rerun of attempt 2 or evidence for the last allowed live attempt. This report leaves attempt 2's final status/cleanup to the controller's later update.
+
+**Workflow review-ignore / T2 conflict remains not covered.** The product prompt instructs the executor to ignore review requests to modify CI/workflows, while the driver's later injection case expects such a proposal to reach the protected-path T2 classifier. A compliant ignored injection need not produce the expected T2 event. An independent trusted protected-file task would prove a different path and cannot silently substitute for the specified review-injection scenario. The proposed layered replacement is still unwired; the controller has asked the owner asynchronously, and no answer is treated as approval. Owner clarification must be explicit; product ignore rules, exact apply, tier classifier and authority fences must not be weakened to manufacture green evidence. Original §5.6 requirements remain unchanged, and the distinct §5.7 live scenario is not marked covered.
+
+## Controller handoff and remaining gates
+
+- PRs **#421 and #422 are merged**; the local integration includes main merge `d89cd4a5`. The earlier report's open-PR merge-after language is historical, not the current dependency state.
+- Production remains **CLOSED**. The inactive candidate has no active `current` link; no Bot configuration was edited and no production service was enabled by these checks.
+- Shared cloud readback items **U1/U9/U10 remain unknown**. A shared cloud computer's gh workflow is not proof of App C/D migration or enabled platform routines.
+- Main-repository settings/rules readback remains separate. **N15's five consecutive clean production chains remains unfulfilled**; neither local deterministic gates nor partial sandbox progress substitutes for it.
+- This report introduces no execution permission, no new live attempt, no remote publication, and no change to the user's original acceptance requirements.

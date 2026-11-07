@@ -1,5 +1,7 @@
 # Final bridge verification integration
 
+Latest controller evidence and remaining acceptance gates are recorded in [Bridge controller acceptance — 2026-11-07](2026-11-07-bridge-controller-acceptance.md). The historical integration facts below are preserved as recorded.
+
 This node assembles independently reviewed runtime and verification work on
 `codex/bridge-final-verification`, based on main `9e2eaf9c`. It does not deploy,
 execute the real sandbox, change Bot configuration, or open a serving database.
