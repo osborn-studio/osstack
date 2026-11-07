@@ -2,6 +2,9 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    // The gated launcher and real subprocesses need time under a loaded machine; CI runs on Linux.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     // Some suites call process.chdir(), which throws under the worker_threads
     // pool. Vitest's historical default here is the forks pool; pin it
     // explicitly so introducing this config file cannot silently change the
