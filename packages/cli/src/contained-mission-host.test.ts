@@ -66,6 +66,15 @@ async function orphanExecuting(f: Fixture, launched = true): Promise<ContainedMi
 }
 
 describe("ContainedMissionHost", () => {
+  it("marks a Mission busy before the synchronous part of its first port call", async () => {
+    let busy = false;
+    let id = "";
+    const f = fixture({ createWorkspace: async () => { busy = f.host.isBusy(id); throw Error("workspace_failed"); } });
+    id = (await f.start()).mission_id;
+    await f.host.tick();
+    expect(busy).toBe(true);
+    expect(f.host.isBusy(id)).toBe(false);
+  });
   it("runs start to a publication decision through tick, with the patch on the branch", async () => {
     const f = fixture();
     const m = await f.start();
