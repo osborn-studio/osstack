@@ -128,6 +128,71 @@ describe('a revision child under the runner', () => {
   });
 
 
+  it('settles a manually retried revision check and reuses the confirmed result', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    h.ports.publishVerifyCheck = async () => { throw Error('check_unavailable'); };
+    expect((await h.step(5)).state).toBe('pr_opened');
+    const checkStates = () => h.f.rig.chains.intents(h.chain().chain_id).filter(i => i.kind === 'check').map(i => i.state);
+    expect(checkStates()).toEqual(['failed']);
+    const send = vi.fn(async () => ({ check_run_id: 41, created: true }));
+    h.ports.publishVerifyCheck = send;
+    expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 41, created: true });
+    expect(checkStates()).toEqual(['failed', 'confirmed']);
+    expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 41, created: false });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(h.chain().state).toBe('awaiting_review');
+  });
+
+  it('skips manual revision check retry on a closed chain and settles its pending intent', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    const chain = h.chain();
+    h.f.rig.chains.closeLive(chain.chain_id, chain.revision, 'pr_closed', ++h.f.clock.now);
+    const send = vi.fn(async () => ({ check_run_id: 42, created: true }));
+    h.ports.publishVerifyCheck = send;
+    expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 0, created: false, skipped: true });
+    expect(send).not.toHaveBeenCalled();
+    expect(h.f.rig.chains.intents(chain.chain_id).filter(i => i.kind === 'check')).toMatchObject([{ state: 'failed', detail: 'chain_closed' }]);
+    expect(h.events().filter(e => e.kind === 'verify_check_skipped').map(e => JSON.parse(e.payload_json)))
+      .toEqual([{ reason: 'chain_closed', head: h.get().candidate_head }]);
+  });
+
+  it.each(['open', 'closed'] as const)('preserves the check retry boundary for an uncertain intent on a %s chain', async state => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    const chains = h.f.rig.chains;
+    const intent = chains.intents(h.chain().chain_id).find(i => i.kind === 'check')!;
+    chains.settleIntent(intent.intent_id, 'uncertain', ++h.f.clock.now);
+    if (state === 'closed') chains.closeLive(h.chain().chain_id, h.chain().revision, 'pr_closed', ++h.f.clock.now);
+    const before = h.chain();
+    const send = vi.fn(async () => ({ check_run_id: 44, created: true }));
+    h.ports.publishVerifyCheck = send;
+    if (state === 'closed') {
+      expect(await h.runner.retryVerifyCheck(h.childId)).toEqual({ check_run_id: 0, created: false, skipped: true });
+      expect(chains.getIntent(intent.intent_id)).toMatchObject({ state: 'failed', detail: 'chain_closed' });
+    } else {
+      await expect(h.runner.retryVerifyCheck(h.childId)).rejects.toThrow('CONTAINED_REVISION_CHECK_UNCERTAIN');
+      expect(chains.getIntent(intent.intent_id).state).toBe('uncertain');
+    }
+    expect(send).not.toHaveBeenCalled();
+    expect(h.chain()).toEqual(before);
+  });
+
+  it('refuses manual revision check retry if its publication port is unavailable', async () => {
+    const h = await harness();
+    wireRevisionPublisher(h).deps.checkEnabled = true;
+    expect((await h.step(5)).state).toBe('pr_opened');
+    delete h.ports.revisionPublication;
+    const send = vi.fn(async () => ({ check_run_id: 43, created: true }));
+    h.ports.publishVerifyCheck = send;
+    await expect(h.runner.retryVerifyCheck(h.childId)).rejects.toThrow('revision_publisher_unavailable');
+    expect(send).not.toHaveBeenCalled();
+    expect(h.f.rig.chains.intents(h.chain().chain_id).filter(i => i.kind === 'check')).toMatchObject([{ state: 'pending' }]);
+  });
+
   it('requests host cancellation when the PR closes before revision publication', async () => {
     const h = await harness();
     const wired = wireRevisionPublisher(h);
@@ -273,6 +338,7 @@ describe('a revision child under the runner', () => {
     const h = await harness();
     let revisions = 0;
     h.ports.revisionPublication = {
+      recoverRevision: async () => 'fresh',
       publishRevision: async input => {
         revisions++;
         input.beforeRemoteMutation('push');
@@ -290,6 +356,38 @@ describe('a revision child under the runner', () => {
     expect((await h.step(5)).state).toBe('pr_opened');
     expect(revisions).toBe(1);
     expect(h.calls.publish).toBe(0);
+  });
+
+  it('does not consume a delivery attempt when step 0 has a retryable read failure', async () => {
+    const h = await harness();
+    const read = vi.fn(async () => { throw Object.assign(Error('CONTAINED_REVISION_RECEIPT_READ_RETRYABLE'), { retryableReceiptRead: true }); });
+    h.ports.revisionPublication = { recoverRevision: read, publishRevision: async () => { throw Error('unexpected_push'); },
+      confirm: () => { throw Error('unexpected_confirm'); }, reconcileReceipt: async () => {},
+      publishCheck: async () => { throw Error('unexpected_check'); } };
+    await expect(h.step(5)).rejects.toThrow('RECEIPT_READ_RETRYABLE');
+    expect(h.get().state).toBe('delivering');
+    expect(h.events().filter(e => e.kind === 'delivery_attempt')).toHaveLength(0);
+    await expect(h.step()).rejects.toThrow('RECEIPT_READ_RETRYABLE');
+    expect(h.events().filter(e => e.kind === 'delivery_attempt')).toHaveLength(0);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it('delivers a landed revision through confirmation without another push', async () => {
+    const h = await harness();
+    const publishRevision = vi.fn(async () => { throw Error('duplicate_push'); });
+    const confirm = vi.fn(input => {
+      expect(input.variant).toBe('landed');
+      const current = h.get();
+      return h.ports.store.transition(h.childId, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: {} } }, 20_000);
+    });
+    h.ports.revisionPublication = {
+      recoverRevision: async input => ({ pushed_commit: input.permit.head, pr: { number: 7, url: 'https://example.invalid/pull/7', reused: true },
+        base_head: oid('a'), intent_id: 'pi_landed', op_id: 'hp_landed', push_range: [input.permit.head], range_sha256: 'a'.repeat(64), landed: true }),
+      publishRevision, confirm, reconcileReceipt: async () => {}, publishCheck: async () => ({ check_run_id: 0, created: false }),
+    };
+    expect((await h.step(5)).state).toBe('pr_opened');
+    expect(publishRevision).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledOnce();
   });
 
   describe('budget and grant stops', () => {

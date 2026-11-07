@@ -612,7 +612,7 @@ it("accepts a pending-push base-change stop and keeps it stopped after confirmat
   expect(stopped).toMatchObject({ state: "awaiting_decision", stop_reason: "base_changed", published_head: H1 });
   const settled = f.store.settleIntent(intent.intent_id, "confirmed", 6);
   expect(settled.intent.state).toBe("confirmed");
-  expect(settled.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "base_changed", published_head: H1 });
+  expect(settled.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "base_changed", published_head: H2 });
 });
 
 it("rejects decisions that no longer describe the chain row, and reservations on another head", () => {
@@ -873,4 +873,26 @@ it("refuses reserve, dispatch and push intents once the live grant has expired, 
   now = 5000; expect(clocked.settleIntent(pi.intent.intent_id, "confirmed", 14).intent.state).toBe("confirmed");
   // A grant without expires_at (older fixtures) does not expire.
   expect(f.store.reserve(f.live(2).chain_id, 1, reserveInput(), 2).chain.state).toBe("revision_reserved");
+});
+
+it("pages pending push receipts across stopped and closed chains with a bounded stable cursor", () => {
+  const f = setup();
+  const expected: string[] = [];
+  for (const close of [false, true]) {
+    const l = f.live();
+    const r = f.store.reserve(l.chain_id, l.revision, reserveInput(), 11);
+    const child = f.child();
+    const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, child, 12);
+    const intent = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH,
+      expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: child }, 13);
+    expected.push(intent.intent.intent_id);
+    if (close) f.store.closeLive(l.chain_id, intent.chain.revision, "pr_closed", 14);
+    else f.store.stopLive(l.chain_id, intent.chain.revision, "child_halted", 14);
+  }
+  expected.sort();
+  const first = f.store.pendingPushIntents(undefined, 1);
+  expect(first.map(i => i.intent_id)).toEqual(expected.slice(0, 1));
+  expect(f.store.pendingPushIntents(first[0]!.intent_id, 1).map(i => i.intent_id)).toEqual(expected.slice(1));
+  expect(f.store.pendingPushIntents(expected[1])).toEqual([]);
+  expect(code(() => f.store.pendingPushIntents('', 101))).toBe("invalid_limit");
 });

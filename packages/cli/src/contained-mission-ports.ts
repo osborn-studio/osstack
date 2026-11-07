@@ -34,6 +34,11 @@ export interface ContainedMissionPortsOptions {
 }
 export type ContainedVerificationStop = { stopped: true; proof: 'container_removed' | 'never_launched'; evidence: string } | { stopped: false };
 export interface ContainedMissionHostPorts extends ContainedMissionPorts {
+  /** Bind live authority before installing revision services. Checks re-read this at the network boundary. */
+  installRevisionCheckAuthority?: (enabled: () => boolean) => void;
+  revisionLaunchCaps?: { executor_seconds: number; verify_seconds: number };
+  /** Production revision publication effects. Available only with App A configured. */
+  revisionPublicationAdapters?: () => Promise<Pick<import('./contained-mission-revision-publication.js').RevisionPublicationDeps, 'runner' | 'preflight' | 'localGit'>>;
   /** Recovery-only check that the Mission's last verification left no container; it never starts one. */
   verificationStopped: (mission: ContainedMission) => Promise<ContainedVerificationStop>;
   /** Recovery-side access to the host child-process ledger and its probes (W13). */
@@ -241,9 +246,63 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
 
   // The bridge module and its token sources load once, on first use.
   let kitPromise: Promise<BridgeKit> | undefined;
+  let revisionCheckEnabled: (() => boolean) | undefined;
   const bridgeKit = (): Promise<BridgeKit> => {
-    kitPromise ??= import('./contained-mission-bridge.js').then(m => m.createBridgeKit({ ...options.bridge!, exec: options.bridge!.exec ?? gatedBridgeExec(kit, options.delivery?.binaries) }));
+    kitPromise ??= import('./contained-mission-bridge.js').then(m => m.createBridgeKit({ ...options.bridge!,
+      beforeCheckMutation: () => {
+        store.attention.assertOwner(store.owner);
+        if (revisionCheckEnabled && !revisionCheckEnabled()) throw Error('bridge_live_disabled');
+        options.bridge?.beforeCheckMutation?.();
+      }, exec: options.bridge!.exec ?? gatedBridgeExec(kit, options.delivery?.binaries) }));
     return kitPromise;
+  };
+  const revisionPublicationAdapters = async () => {
+    if (!options.bridge || options.bridge.disabled) throw Error('BRIDGE_DISABLED');
+    const app = await bridgeKit();
+    if (app.exec.gated !== true) throw Error('CONTAINED_PUBLICATION_UNGATED');
+    const hostRunner = options.delivery?.runner ?? gatedHostRunner(kit, options.delivery?.binaries);
+    const { appCredentialRunner } = await import('./contained-mission-bridge.js');
+    const preflight = async (spec: import('./contained-mission-runner.js').ContainedMissionSpec, permit: import('./contained-mission-runner.js').ContainedPublicationPermit, signal?: AbortSignal) => {
+      signal?.throwIfAborted();
+      if (options.bridge?.disabled) throw Error('BRIDGE_DISABLED');
+      if (!spec.publication || spec.publication.repository.toLowerCase() !== app.config.repository.toLowerCase()) throw Error('push_url_invalid');
+      try { await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), { ...ctx, ...(signal ? { signal } : {}) }); }
+      catch (error) { signal?.throwIfAborted(); throw Error('repo_config_changed', { cause: error }); }
+      if (await branchHead(spec.worktree_path, spec.branch) !== permit.head) throw Error('local_head_mismatch');
+      const urls = text(await git(spec.worktree_path)(['remote', 'get-url', '--push', '--all', '--', spec.publication.remote],
+        { timeoutMs: 30_000, maxOutputBytes: 1_048_576, ...(signal ? { signal } : {}) })).split('\n').filter(Boolean);
+      if (urls.length !== 1 || !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?$/i.test(urls[0]!)
+        || githubRepositoryOf(urls[0]!)?.toLowerCase() !== app.config.repository.toLowerCase()) throw Error('push_url_invalid');
+      await appTransportConfig(hostRunner, spec.worktree_path, signal);
+    };
+    // Token refresh may yield for seconds. Revalidate the stored Mission's workspace after that await,
+    // before the W13 launcher registers and synchronously releases the process.
+    const credentialedExec: import('./contained-mission-bridge.js').BridgeExec = Object.assign(async (command: string, args: readonly string[], opts: Parameters<import('./contained-mission-bridge.js').BridgeExec>[2]) => {
+      store.attention.assertOwner(store.owner);
+      if (!opts.gate || command !== 'git' || opts.gate.kind !== 'git_push') throw Error('CONTAINED_REVISION_PR_CREATE_DENIED');
+      const mission = store.get(opts.gate.missionId);
+      const spec = parseContainedMissionSpec(mission.spec_json);
+      if (resolve(opts.cwd) !== resolve(spec.worktree_path)) throw Error('repo_config_changed');
+      const head = args.map(arg => /^([0-9a-f]{40}(?:[0-9a-f]{24})?):refs\/heads\//.exec(arg)?.[1]).find(Boolean);
+      if (!head) throw Error('local_head_mismatch');
+      await preflight(spec, { mission_id: mission.mission_id, revision: mission.revision, head, tree: mission.candidate_tree ?? '', spec_digest: mission.spec_digest }, opts.signal);
+      return app.exec(command, args, opts);
+    }, { gated: true as const });
+    const runner: DeliveryCommandRunner = { gated: true, run: async (command, args, opts) => {
+      if (options.bridge?.disabled) throw Error('BRIDGE_DISABLED');
+      const transport = await appTransportConfig(hostRunner, opts.cwd, opts.signal);
+      return appCredentialRunner(hostRunner, () => app.publisherToken(), credentialedExec, transport).run(command, args, opts);
+    } };
+    return {
+      runner, preflight,
+      localGit: async (cwd: string, args: readonly string[]) => {
+        const allowed = (args.length === 3 && args[0] === 'rev-list' && args[1] === '--reverse' && /^(?:[0-9a-f]{40}|[0-9a-f]{64})\.\.(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(args[2]!))
+          || (args.length === 4 && args[0] === 'merge-base' && args[1] === '--is-ancestor' && FULL_SHA.test(args[2]!) && FULL_SHA.test(args[3]!));
+        if (!allowed) throw Error('revision_git_read_refused');
+        const result = await git(cwd)([...args], { timeoutMs: 30_000, maxOutputBytes: 1_048_576, okExitCodes: [0, 1] });
+        return { stdout: result.stdout.toString('utf8'), exitCode: result.exitCode };
+      },
+    };
   };
   const deliveryEvidenceFacts = (missionId: string): DeliveryEvidenceFacts | undefined => {
     const event = containedEvents(store, missionId).filter(e => e.kind === 'delivery_evidence').at(-1);
@@ -281,7 +340,9 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
   const gitDirOf = async (worktree: string) => text(await git(worktree)(['rev-parse', '--absolute-git-dir']));
 
   const ports: ContainedMissionHostPorts = {
-    store, now, hostProcesses: kit,
+    store, now, hostProcesses: kit, revisionPublicationAdapters,
+    installRevisionCheckAuthority: enabled => { revisionCheckEnabled = enabled; },
+    revisionLaunchCaps: { executor_seconds: Math.ceil((options.codex.timeoutMs ?? 600_000) / 1000), verify_seconds: 120 },
     hasOpenHostProcess: missionId => kit.hasOpen(missionId),
     openHostProcessId: missionId => kit.openOpId(missionId),
     remoteWriteReleasedSince: (missionId, since) => kit.remoteReleasedSince(missionId, since),

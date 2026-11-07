@@ -87,6 +87,9 @@ export class ContainedMissionHost {
   private get kit() { return this.options.ports.hostProcesses; }
   private get hp() { return this.kit.hp; }
 
+  /** Used by live chain synchronization; includes the synchronous entry of a human decision. */
+  isBusy(missionId: string): boolean { return this.inFlight.has(missionId); }
+
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
     // Only the revision dispatcher builds these, and it does not come through here.
@@ -379,11 +382,12 @@ export class ContainedMissionHost {
     return this.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: 'halted', payload: { reason } } }, this.options.ports.now());
   }
   private track(missionId: string, fn: () => Promise<void>, rethrow = false): Promise<void> {
-    const running = (async () => {
+    // Defer the entry by one microtask so the host registers ownership before fn can call a port.
+    const running = Promise.resolve().then(async () => {
       try { await fn(); }
       catch (error) { if (rethrow) throw error; this.recordError(missionId, 'step', error); }
       finally { this.inFlight.delete(missionId); }
-    })();
+    });
     this.inFlight.set(missionId, running.catch(() => {}));
     return running;
   }
