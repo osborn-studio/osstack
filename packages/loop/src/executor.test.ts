@@ -825,7 +825,7 @@ async function withProcessFixture(source: string, test: (fixture: {
     }
   };
   try {
-    await test({ command: `NODE_OPTIONS='--require ${preload.replaceAll("'", "'\\''")}' exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs`,
+    await test({ command: `NODE_OPTIONS='--require ${preload.replaceAll("'", "'\\''")}' exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs '${identity}'`,
       waitFor: (file) => waitUntil(() => existsSync(join(workspace, file))), cleanup, leaderPid,
       assertStopped: () => {
         expect(pids().length).toBeGreaterThan(0);
