@@ -115,11 +115,19 @@ export function assertRevisionPublishable(deps: RevisionPublicationDeps, input: 
   }
 }
 export function createRevisionPublicationPort(deps: RevisionPublicationDeps): RevisionPublicationPort {
+  const checkDeliveries = new Map<string, ReturnType<RevisionPublicationPort['publishCheck']>>();
   return {
     publishRevision: input => publishRevision(deps, input),
     confirm: input => confirmRevisionPublication(deps, input),
     reconcileReceipt: (intentId, reason) => reconcileReceipt(deps, intentId, reason),
-    publishCheck: (childId, send) => publishRevisionCheck(deps, childId, send),
+    publishCheck: (childId, send) => {
+      const pending = checkDeliveries.get(childId);
+      if (pending) return pending;
+      // One sender owns the pending intent until its terminal settlement finishes.
+      const delivery = publishRevisionCheck(deps, childId, send).finally(() => { checkDeliveries.delete(childId); });
+      checkDeliveries.set(childId, delivery);
+      return delivery;
+    },
   };
 }
 
