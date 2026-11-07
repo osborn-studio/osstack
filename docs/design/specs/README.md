@@ -1,5 +1,43 @@
 # Bridge revision-chain TLA+ model (phase 5 ordering)
 
+## Current verification revision (2026-11-07)
+
+The historical tables below describe the earlier model. This revision adds a released process
+that stops with an unknown result; rejection after a crash; pending versus released halt
+reasons; halted-child cancel and abandon; grant renewal that keeps a halted chain stopped;
+and expansion of closed chains with uncertain receipts. A human cannot settle an uncertain
+receipt while a released process can still act. `Reconciled` now excludes uncertain receipts.
+A same-child human resume clears the detection ghost, as a new human decision does.
+
+`bridge-bounded.cfg` checks the full `Spec` exhaustively with one reviewer, one review submission,
+one attempt per child, one outsider write and the two-round hard cap. It completed with
+2,068,903 generated / 303,148 distinct states, depth 23, and an empty queue. This is bounded
+exhaustive model checking, not simulation. `bridge-shadow.cfg` completed with 67,673 generated /
+11,897 distinct states, depth 13. The revised full main and rounds runs are recorded in the
+Phase 5 verification report when they finish.
+
+Run the portable evidence runner from the repository root:
+
+```sh
+TLA2TOOLS_JAR=/path/to/tla2tools.jar JAVA=/path/to/java \
+  node scripts/verify-bridge-phase5-tlc.mjs --bounded
+# --main checks main, shadow and rounds; --mutants checks every guard config.
+```
+
+All fourteen existing guard mutants produced exhaustive invariant counterexamples before the
+final detection-ghost correction. Outcome-only probes (removing `ResumeSafety`) found a
+`ResumeOutcomeSafety` counterexample only for `resume-uncertain-intent`. The other three
+resume probes completed without one: their forbidden historical transition is established by
+`ResumeSafety`, whose ghost records the pre-resume facts, rather than by the state-only
+`ResumeOutcomeSafety`. The latter must not be described as independently detecting all resume
+mutants.
+
+Remaining model limits: one commit per push and an assumed root baseline (the TypeScript
+property now checks actual baseline intent plus multi-commit ordered ranges); close paths still
+abstract the store's exact stop-reason and reservation cleanup; halted grant renewal preserves
+the prior reason rather than modelling every R2 reason rewrite. These limits mean the historical
+"all phase 5 gates complete" claim is not established by this model alone.
+
 `bridge.tla` models one revision chain on one PR: the chain ledger (chains, reservations, push
 intents, shadow decisions), the child Missions, GitHub (branch history, base, open/closed,
 reviews) and the daemon's in-memory state that a crash loses. It covers the row 模型检查 of design
