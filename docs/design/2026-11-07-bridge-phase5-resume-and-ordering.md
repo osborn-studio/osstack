@@ -393,6 +393,8 @@ L141 在 head 等于未结推送的 `new_head` 时返回 `publish_in_progress`�
 
 ## 8. 需要用户做的决定
 
+**已决定（2026-11-07，用户本人）：** R1–R5 全部采用推荐的 (a)：R1 在子 Mission 上执行 `mission decide` 时隐式恢复链；R2 允许在 `child_halted` 或可恢复的 `publish_refused` 链上续授权，链保持停止直到人做决定；R3 崩溃期间已落地的一轮只由 `approve_publication` 确认，恢复不自动确认；R4 停止链扫描在 PR 已合并或关闭时自行关闭链；R5 `publish_refused:push_rejected` 不能在同一个子 Mission 上恢复。
+
 | # | 决定 | 推荐 |
 |---|---|---|
 | R1 | 同子恢复由人对子 Mission 的 `mission decide` 隐式触发（§3.3） | (a) 隐式，一次决定 |
