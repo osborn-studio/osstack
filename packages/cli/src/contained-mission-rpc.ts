@@ -5,6 +5,7 @@ import type { ContainedMissionStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
+import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: request text must not carry control characters into the ledger.
@@ -43,6 +44,8 @@ export const ContainedMissionRpcRequests = {
   'mission.grant_revisions': z.object({ credential: Credential, nonce: z.string().regex(/^[0-9a-f]{32}$/), preview_sha256: z.string().regex(/^[0-9a-f]{64}$/),
     signature: z.string().regex(/^[A-Za-z0-9+/]{86}==$/) }).strict(),
   'mission.chain_decide': z.object({ credential: Credential, chain_id: ChainId, decision: z.enum(['abandon', 'takeover', 'reconcile']) }).strict(),
+  // Shadow merger comparison report (merger design §4.3): read-only over the shadow tables.
+  'mission.merger_report': z.object({ credential: Credential }).strict(),
 } as const;
 export type ContainedMissionRpcMethod = keyof typeof ContainedMissionRpcRequests;
 /** Decisions that probe, launch an executor or write a commit: refused while draining, acknowledged without waiting. */
@@ -57,6 +60,10 @@ export interface ContainedMissionServiceOptions {
   resolveStart?: typeof resolveContainedMissionStart;
   /** Bridge shadow reconciler (OSSTACK_BRIDGE=shadow): started after recovery, stopped on close. Never on the tick path. */
   shadow?: import('./contained-mission-bridge-shadow.js').ShadowHandle;
+  /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
+  merger?: import('./contained-mission-merger-shadow.js').MergerShadowHandle;
+  /** Comparison report over the shadow merger tables (SELECT only). */
+  mergerReport?: (readScopes: readonly string[]) => unknown;
   /** Revision-grant service (phase 5-A). Absent until live is wired (5-E): the grant methods then answer `bridge_live_disabled`. */
   grants?: Pick<RevisionGrantService, 'preview' | 'renewPreview' | 'grant' | 'chainDecide'>;
   /** Chain view for `mission.status` (live chain first, else shadow); null when the Mission has none. */
@@ -71,6 +78,8 @@ export interface ChainStatus {
   rounds_used: number; current_mission_id: string | null; review_deadline: number | null;
   grant: import('@osstack/core').GrantSummary | null;
   shadow_decisions: Array<{ head_sha: string; base_sha: string; action: string; reason: string; review_ids: number[]; observed_at: number }>;
+  /** Latest chain events (allow-listed fields only, oldest first) and the chain's total event count. */
+  events: import('./bridge-chain-events.js').ChainEventView[]; events_total: number; events_total_capped: boolean;
 }
 const STATUS_DECISIONS = 10;
 
@@ -81,6 +90,16 @@ export function parseBridgeMode(value: string | undefined): BridgeMode {
   if (value === 'shadow') return 'shadow';
   if (value === '1') throw new Error('BRIDGE_LIVE_NOT_IMPLEMENTED');
   throw new Error('BRIDGE_MODE_INVALID');
+}
+
+export type MergerMode = 'off' | 'shadow';
+/** `OSSTACK_MERGER`: unset or `0` -> off; `shadow` -> read-only shadow. `1` and `live` need a later ADR (merger design §1, §5.3) and fail the service
+ * start with MERGER_LIVE_NOT_IMPLEMENTED; any other value fails with MERGER_MODE_INVALID (it never degrades to off). Kept here so the module stays lazy. */
+export function parseMergerMode(value: string | undefined): MergerMode {
+  if (value === undefined || value === '0') return 'off';
+  if (value === 'shadow') return 'shadow';
+  if (value === '1' || value === 'live') throw new Error('MERGER_LIVE_NOT_IMPLEMENTED');
+  throw new Error('MERGER_MODE_INVALID');
 }
 
 /** Owns the timer. RPC handlers never run a step inline: they write the ledger, and the tick advances it. */
@@ -95,6 +114,7 @@ export class ContainedMissionService {
   async start(): Promise<void> {
     await this.options.host.recover();
     this.options.shadow?.start();
+    this.options.merger?.start();
     this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
     this.timer.unref();
   }
@@ -107,6 +127,7 @@ export class ContainedMissionService {
   async close(): Promise<void> {
     this.closed = true; if (this.timer) clearInterval(this.timer);
     await this.options.shadow?.stop();
+    await this.options.merger?.stop();
     await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
   }
 
@@ -159,6 +180,12 @@ export class ContainedMissionService {
         if (method === 'mission.grant_revisions') return grants.grant(actor, rest as never);
         return grants.chainDecide(actor, rest as never);
       }
+      case 'mission.merger_report': {
+        // Read scope: the report lists only PRs of Missions in the caller's read scopes. Ids, hashes and fixed codes only.
+        if (actor.read_scopes.length === 0) throw new Error('permission_denied');
+        if (!this.options.mergerReport) throw new Error('merger_report_unavailable');
+        return this.options.mergerReport(actor.read_scopes);
+      }
       case 'mission.decide': {
         const p = ContainedMissionRpcRequests['mission.decide'].parse(params);
         if (!PRODUCES_WORK.has(p.decision)) return view(await host.decide(actor, p.mission_id, { kind: p.decision }));
@@ -192,16 +219,32 @@ export async function createContainedMissionService(deps: {
   log?: (line: string) => void;
   /** Test seams for the shadow reconciler; production callers pass nothing. */
   shadow?: { transport?: import('./contained-mission-bridge-reader.js').GraphqlTransport; now?: () => number };
+  /** Test seams for the shadow merger; production callers pass nothing. */
+  merger?: { graphql?: import('./contained-mission-bridge-reader.js').GraphqlTransport; rest?: import('./contained-mission-merger-reader.js').RestGet; now?: () => number };
 }): Promise<ContainedMissionService> {
   const env = deps.env ?? process.env;
   const log = deps.log ?? ((line: string) => { process.stderr.write(`${line}\n`); });
   // Fail before anything is built: live is not implemented in phase 4, and an unknown value never degrades to off.
   const bridgeMode = parseBridgeMode(env['OSSTACK_BRIDGE']);
+  const mergerMode = parseMergerMode(env['OSSTACK_MERGER']);
   let registry: import('./contained-mission-bridge-registry.js').ProducerRegistryConfig | undefined;
   if (bridgeMode === 'shadow') {
     // Present but invalid -> BRIDGE_CONFIG_INVALID:producers.json:* stops the service; missing -> shadow stays off.
     registry = await (await import('./contained-mission-bridge-registry.js')).loadProducerRegistry(deps.home);
     if (!registry) log('osstack: bridge shadow: off (no bridge/producers.json)');
+  }
+  let mergerConfig: import('./contained-mission-merger-config.js').MergerConfig | undefined;
+  if (mergerMode === 'shadow') {
+    // Present but invalid -> MERGER_CONFIG_INVALID:merger.json:* stops the service; missing -> the merger stays off.
+    mergerConfig = await (await import('./contained-mission-merger-config.js')).loadMergerConfig(deps.home);
+    if (!mergerConfig) log('osstack: merger shadow: off (no bridge/merger.json)');
+    else {
+      // Both name lists must agree whenever both files exist (design §5.2), whether or not the bridge reconciler itself is on.
+      const producers = registry ?? await (await import('./contained-mission-bridge-registry.js')).loadProducerRegistry(deps.home);
+      if (producers && (producers.repository.toLowerCase() !== mergerConfig.repository.toLowerCase() || !producers.publisher.some((p) => p.actor_id === mergerConfig!.publisher.actor_id))) {
+        throw new Error('MERGER_CONFIG_INVALID:merger.json:producers_mismatch');
+      }
+    }
   }
   const need = (key: string) => { const v = env[key]; if (!v) throw new Error(`contained_config_required:${key}`); return v; };
   const [{ ContainedMissionStore }, { createContainedMissionPorts }, { ContainedMissionHost }] = await Promise.all([
@@ -238,9 +281,18 @@ export async function createContainedMissionService(deps: {
       registry, now: deps.shadow?.now ?? Date.now, log,
     });
   }
+  // Shadow merger (design §5.3): its own factory, nothing shared with loadBridgeConfig above or with the bridge reconciler.
+  const { MergerShadowStore } = await import('@osstack/core');
+  const mergerStore = new MergerShadowStore(deps.attention, deps.owner);
+  const merger = mergerConfig ? await createMergerShadow({ store, mergerStore, config: mergerConfig, log, ...(deps.merger ?? {}) }) : undefined;
+  const mergerReport = async (readScopes: readonly string[]) => {
+    const { buildMergerReport } = await import('./contained-mission-merger-report.js');
+    return buildMergerReport(mergerStore.db, (deps.merger?.now ?? Date.now)(), readScopes);
+  };
   const chainOf = (missionId: string): ChainStatus | null => {
     const chain = chainStore.chainForMission(missionId, 'live') ?? chainStore.chainForMission(missionId, 'shadow');
     if (!chain) return null;
+    const events = chainEventsView(chainStore.db, chain.chain_id);
     return {
       rounds_used: chain.rounds_used, current_mission_id: chain.current_mission_id, review_deadline: chain.review_deadline,
       grant: chain.mode === 'live' ? grantSummary(chain.grant_json) : null,
@@ -248,7 +300,31 @@ export async function createContainedMissionService(deps: {
       published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref, updated_at: chain.updated_at,
       shadow_decisions: chain.mode === 'live' ? [] : chainStore.shadowDecisions(chain.chain_id).slice(-STATUS_DECISIONS).map(d => ({
         head_sha: d.head_sha, base_sha: d.base_sha, action: d.action, reason: d.reason, review_ids: JSON.parse(d.review_ids_json) as number[], observed_at: d.observed_at })),
+      events: events.latest, events_total: events.total, events_total_capped: events.total_capped,
     };
   };
-  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}) });
+  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(shadow ? { shadow } : {}), ...(merger ? { merger } : {}), mergerReport });
+}
+
+/** The shadow merger's own factory: a read-only Mission view, the shadow writer, read-only transports, config and clock, and nothing else.
+ * It does not call loadBridgeConfig and imports neither contained-mission-bridge.ts nor contained-mission-github-app.ts. */
+export async function createMergerShadow(deps: {
+  store: Pick<ContainedMissionStore, 'db' | 'get' | 'listPrOpened'>;
+  mergerStore: import('@osstack/core').MergerShadowStore;
+  config: import('./contained-mission-merger-config.js').MergerConfig;
+  log: (line: string) => void;
+  graphql?: import('./contained-mission-bridge-reader.js').GraphqlTransport;
+  rest?: import('./contained-mission-merger-reader.js').RestGet;
+  now?: () => number;
+}): Promise<import('./contained-mission-merger-shadow.js').MergerShadowHandle> {
+  const [{ mergerShadowWriter }, shadow, reader] = await Promise.all([
+    import('@osstack/core'), import('./contained-mission-merger-shadow.js'), import('./contained-mission-merger-reader.js'),
+  ]);
+  const c = deps.config;
+  return new shadow.MergerShadowReconciler({
+    missions: shadow.createMergerMissionView(deps.store), ledger: shadow.createMergerLedgerView(deps.mergerStore), writer: mergerShadowWriter(deps.mergerStore),
+    graphql: deps.graphql ?? reader.ghGraphqlTransport(),
+    rest: deps.rest ?? reader.ghRestGetTransport({ repository: c.repository, rulesetIds: [c.main_quality_ruleset_id, c.main_update_ruleset_id, ...c.mission_ruleset_ids] }),
+    config: c, now: deps.now ?? Date.now, log: deps.log,
+  });
 }

@@ -7,11 +7,12 @@ import { createScratchDirSync } from "../scratch.js";
 import { AttentionStore } from "./attention-store.js";
 import { openDb } from "./db.js";
 import { ENGINEERING_HOST_PROCESS_DDL } from "./engineering-host-process-ddl.js";
-import { ContainedMissionStore, type ContainedMission, type ContainedMissionState } from "./engineering-contained-store.js";
+import { ContainedMissionStore, containedUpgradeHolds, type ContainedMission, type ContainedMissionState } from "./engineering-contained-store.js";
 import { HOST_PROCESS_STOP_PROOFS, HostProcessStore, type HostProcessLaunchInput } from "./engineering-host-process-store.js";
+import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 import type { EngineeringPrincipal } from "./engineering-store.js";
 
-// The DDL is not registered as a migration yet (see its header): apply it on top of main's current schema.
+// openDb runs the real migrations, so the schema under test is the one migration 54 produces.
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
 const HEAD = "a".repeat(40); const TREE = "b".repeat(40); const DIFF = "c".repeat(64);
@@ -21,7 +22,6 @@ const DIGEST = "d".repeat(64);
 function setup() {
   const root = realpathSync(createScratchDirSync("tests", "hostproc"));
   const path = join(root, "state.db"); const db = openDb({ path }); db.pragma("synchronous=FULL");
-  db.exec(ENGINEERING_HOST_PROCESS_DDL);
   cleanup.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   const attention = new AttentionStore(db, path); const owner = attention.claimOwner("owner");
@@ -666,4 +666,51 @@ describe("property: random journal sequences never let an unproven record coexis
       }
     }), { numRuns: 60 });
   }, 180_000);
+});
+
+describe("migration 54 and upgrade holds", () => {
+  it("registers the DDL as migration 54 and reopens cleanly from schema 53 with only additive objects", () => {
+    const root = realpathSync(createScratchDirSync("tests", "hostproc-upgrade"));
+    cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
+    const path = join(root, "state.db");
+    const old = new Database(path); old.pragma("foreign_keys = ON");
+    for (const m of MIGRATIONS.filter(x => x.id <= 53)) { old.exec("BEGIN"); old.exec(m.sql); old.pragma(`user_version = ${m.id}`); old.exec("COMMIT"); }
+    const names = (d: Database.Database) => (d.prepare("SELECT type,name FROM sqlite_master").all() as Array<{ type: string; name: string }>).map(o => `${o.type}:${o.name}`);
+    const before = names(old); old.close();
+    expect(MIGRATIONS.find(m => m.id === 54)).toMatchObject({ name: "engineering_host_processes", sql: ENGINEERING_HOST_PROCESS_DDL });
+    expect(MIGRATIONS.map(m => m.id).filter(id => id >= 50 && id <= 54)).toEqual([50, 51, 52, 53, 54]);
+    expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(54);
+    const db = openDb({ path }); cleanup.push(() => { db.close(); });
+    expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+    const added = names(db).filter(o => !before.includes(o) && !o.includes("sqlite_autoindex"));
+    expect(added.filter(o => o.startsWith("table:"))).toEqual(["table:engineering_host_processes"]);
+    expect(added.filter(o => o.startsWith("index:")).length).toBe(4);
+    expect(added.filter(o => o.startsWith("trigger:")).length).toBe(14);
+    expect(db.pragma("foreign_key_check")).toEqual([]);
+  });
+
+  it("T9: containedUpgradeHolds counts a Mission with an open record, including a terminal one, until the record is stopped", () => {
+    const f = setup();
+    expect(containedUpgradeHolds(f.db)).toBe(0);
+    const m = toDelivering(f);
+    const id = live(f, m);
+    const open = containedUpgradeHolds(f.db);
+    expect(open).toBeGreaterThanOrEqual(2); // the non-terminal Mission plus the open record
+    expect(f.hp.open().map(r => r.op_id)).toEqual([id]);
+    // The gates keep the claim active and the Mission out of cancelled/pr_opened while the record is open.
+    expect(() => step(f, m, "pr_opened")).toThrow();
+    f.hp.stopped(id, { ...proof("never_released") });
+    expect(containedUpgradeHolds(f.db)).toBeLessThan(open);
+  });
+
+  it("counts an open record directly even if its Mission looks settled (defence in depth)", () => {
+    const f = setup(); const m = ready(f);
+    const id = live(f, m);
+    f.db.exec("DROP TRIGGER engineering_contained_host_process_gate; DROP TRIGGER engineering_claim_release_host_processes");
+    f.db.prepare("UPDATE engineering_contained_missions SET state='cancelled',revision=revision+1 WHERE mission_id=?").run(m.mission_id);
+    f.db.prepare("UPDATE engineering_workspace_claims SET state='released',released_at=1,release_reason='t' WHERE mission_id=?").run(m.mission_id);
+    expect(containedUpgradeHolds(f.db)).toBe(1);
+    f.hp.stopped(id, { proof: "never_spawned", detail: {} });
+    expect(containedUpgradeHolds(f.db)).toBe(0);
+  });
 });

@@ -13,6 +13,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
+  merger report [--json]             (shadow merger: classify shadow decisions against real outcomes; read-only, no recommendation)
   chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain; never merges)
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
 OSSTACK_CONTAINED_CODEX_BIN, OSSTACK_CONTAINED_CODEX_HOME and the OSSTACK_CONTAINED_DOCKER_* settings.
@@ -20,7 +21,7 @@ The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No 
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "status" | "cancel" | "decide" | "publish-check" | "chain-decide";
+type Command = "start" | "status" | "cancel" | "decide" | "publish-check" | "chain-decide" | "merger-report";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   status: { single: ["mission"], repeated: [] },
@@ -28,6 +29,7 @@ const flagsByCommand: Record<Command, { single: readonly string[]; repeated: rea
   "publish-check": { single: ["mission"], repeated: [] },
   decide: { single: ["mission", "decision"], repeated: [] },
   "chain-decide": { single: ["chain", "decision"], repeated: [] },
+  "merger-report": { single: [], repeated: [] },
 };
 
 export interface ContainedMissionCommandDeps {
@@ -63,6 +65,8 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     return await mod.handleGrantRevisionsCommand(args.slice(1), { home, rpc: deps.rpc, readCredential: credentialReader, ...io, ...deps.grant });
   }
   try {
+    // `merger report` is the one two-word command; it maps onto the internal command `merger-report`.
+    if (args[0] === "merger") { if (args[1] !== "report") throw new Error("unknown_mission_command"); args = ["merger-report", ...args.slice(2)]; }
     const command = args[0]! as Command;
     if (!Object.hasOwn(flagsByCommand, command)) throw new Error("unknown_mission_command");
     const single = new Map<string, string>(); const repeated = new Map<string, string[]>();
@@ -100,10 +104,12 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       params = { mission_id: required("mission"), decision: required("decision") };
     } else if (command === "chain-decide") {
       params = { chain_id: required("chain"), decision: required("decision") };
+    } else if (command === "merger-report") {
+      params = {};
     } else {
       params = { mission_id: required("mission") };
     }
-    const method = (command === "publish-check" ? "mission.publish_check" : command === "chain-decide" ? "mission.chain_decide" : `mission.${command}`) as `mission.${Exclude<Command, "publish-check" | "chain-decide">}` | "mission.publish_check" | "mission.chain_decide";
+    const method = (command === "publish-check" ? "mission.publish_check" : command === "chain-decide" ? "mission.chain_decide" : command === "merger-report" ? "mission.merger_report" : `mission.${command}`) as `mission.${Exclude<Command, "publish-check" | "chain-decide" | "merger-report">}` | "mission.publish_check" | "mission.chain_decide" | "mission.merger_report";
     // Validate locally before reading the credential, so a typo never needs the secret.
     const probe = ContainedMissionRpcRequests[method].safeParse({ ...params, credential: "x".repeat(32) });
     if (!probe.success) throw new Error(`invalid_request:${probe.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).join(",")}`);
@@ -114,7 +120,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     const response = await deps.rpc(method, { ...params, credential }, 120000) as { ok?: boolean; result?: unknown; error?: { code?: unknown } };
     if (response?.ok !== true) throw new Error(typeof response?.error?.code === "string" ? response.error.code : "mission_request_failed");
     const text = safeJson(response.result ?? null).split(credential).join("[REDACTED]");
-    out(json ? text : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
+    out(json ? text : command === "merger-report" ? `Mission · merger report\n${text}\nShadow evidence only. Nothing is merged by OSStack.` : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

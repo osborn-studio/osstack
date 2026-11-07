@@ -74,11 +74,11 @@ it("adds migration 53 as triggers only and reopens cleanly from schema 52", () =
   old.close();
   const db = openDb({ path });
   expect(MIGRATIONS.find(m => m.id === 53)).toMatchObject({ name: "engineering_revision_grant_monotonic", sql: ENGINEERING_REVISION_GRANT_DDL });
-  expect(MIGRATIONS.map(m => m.id).slice(-3)).toEqual([51, 52, 53]);
+  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 51 && id <= 53)).toEqual([51, 52, 53]);
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(53);
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   const after = (db.prepare("SELECT type,name FROM sqlite_master ORDER BY type,name").all() as Array<{ type: string; name: string }>).map(o => `${o.type}:${o.name}`);
-  const added = after.filter(o => !before.includes(o) && !o.includes("sqlite_autoindex"));
+  const added = after.filter(o => !before.includes(o) && !o.includes("sqlite_autoindex") && !o.includes("host_process"));
   expect(added.filter(o => o.startsWith("table:"))).toEqual([]);
   expect(added.filter(o => o.startsWith("index:"))).toEqual(["index:engineering_intent_one_pending_push"]);
   expect(added.filter(o => o.startsWith("trigger:") && /grant/.test(o))).toEqual(["trigger:engineering_chain_grant_monotonic", "trigger:engineering_chain_grant_shadow_fixed"]);
@@ -234,8 +234,12 @@ it("resumes into publishing when the stopped child already has a settled push in
   const { chain, grant } = f.live({ rounds: 2 });
   const { chain: revising, child } = f.reserveAndDispatch(chain);
   const withIntent = f.store.recordIntent(revising.chain_id, revising.revision, { kind: "push", branch: revising.branch, expected_old_head: H1, new_head: "2".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW);
+  // Stop for the grant first, then settle the push: settling it `failed` while the round is still in flight would itself stop the
+  // chain as `intent_failed` (revision-chain live-gap fix, design §8.7 step 2), which a grant renewal does not resume.
+  f.store.stopLive(withIntent.chain.chain_id, withIntent.chain.revision, "grant_expired", NOW);
   f.store.settleIntent(withIntent.intent.intent_id, "failed", NOW, "refused");
-  const stopped = f.store.stopLive(withIntent.chain.chain_id, f.store.get(chain.chain_id).revision, "grant_expired", NOW);
+  const stopped = f.store.get(chain.chain_id);
+  expect(stopped).toMatchObject({ state: "awaiting_decision", stop_reason: "grant_expired" });
   expect(f.store.replaceGrant(stopped.chain_id, stopped.revision, f.renew(stopped, grant), NOW).chain.state).toBe("publishing");
 });
 
@@ -279,7 +283,7 @@ it("allows at most one pending push intent per chain, in the database itself", (
   const clone = () => f.db.prepare(`INSERT INTO engineering_publication_intents(intent_id,chain_id,kind,repository,pr_number,branch,expected_old_head,new_head,expected_base_sha,child_mission_id,binding_json,state,created_at,updated_at)
     VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending',?,?)`).run("pi_second", row["chain_id"], "push", row["repository"], row["pr_number"], row["branch"], row["expected_old_head"], "3".repeat(40), row["expected_base_sha"], row["child_mission_id"], "{}", NOW, NOW);
   expect(code(clone)).toMatch(/UNIQUE/);
-  expect(code(() => f.store.recordIntent(first.chain.chain_id, first.chain.revision, { kind: "push", branch: revising.branch, expected_old_head: H1, new_head: "3".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW))).toMatch(/UNIQUE/);
+  expect(code(() => f.store.recordIntent(first.chain.chain_id, first.chain.revision, { kind: "push", branch: revising.branch, expected_old_head: H1, new_head: "3".repeat(40), expected_base_sha: B1, child_mission_id: child }, NOW))).toBe("push_intent_pending"); // the store refuses first; the raw insert above proves the DB rule
   // Once settled, the next push may be recorded; a pending non-push intent never collides.
   f.store.settleIntent(first.intent.intent_id, "failed", NOW, "refused");
   expect(code(clone)).toBe("no_error");
