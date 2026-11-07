@@ -1,0 +1,1547 @@
+{
+  "version": 1,
+  "not_recorded": [
+    {
+      "label": "would_merge_control",
+      "reason": "Requires owner decision 5: the counted approval and thread resolution need the owner account; covered by synthetic mutation in the replay test"
+    },
+    {
+      "label": "base_moved",
+      "reason": "Moving the sandbox main needs rights the scenario Apps do not have (App E must not act); covered by synthetic mutation in the replay test"
+    },
+    {
+      "label": "workflow_touched",
+      "reason": "App A could not push a workflow file (refused with status 403); covered by synthetic mutation in the replay test"
+    }
+  ],
+  "registry": {
+    "repository": "o/r",
+    "base_ref": "main",
+    "publisher": {
+      "actor_id": 1,
+      "app_id": 101
+    },
+    "merger": {
+      "actor_id": 2,
+      "app_id": 102
+    },
+    "evidence_app_id": 103,
+    "counted_approvers": [
+      {
+        "actor_id": 3,
+        "app_id": null
+      }
+    ],
+    "required_checks": [
+      {
+        "context": "check",
+        "app_id": 104
+      },
+      {
+        "context": "graph-macos-fixtures (22)",
+        "app_id": 104
+      },
+      {
+        "context": "graph-macos-fixtures (24)",
+        "app_id": 104
+      },
+      {
+        "context": "graph-runtime-matrix (20.6.0)",
+        "app_id": 104
+      },
+      {
+        "context": "graph-runtime-matrix (22.23.1)",
+        "app_id": 104
+      }
+    ],
+    "main_quality_ruleset_id": 201,
+    "main_update_ruleset_id": 202,
+    "mission_ruleset_ids": [
+      203,
+      204
+    ]
+  },
+  "evidence": {
+    "mission_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+    "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+    "start_commit": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+    "candidate_head": "9efe7e716af526d2155a2a10131af2693f7216c1",
+    "repository": "o/r",
+    "branch": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+    "base": "main",
+    "base_head": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+    "head": "9efe7e716af526d2155a2a10131af2693f7216c1",
+    "pr_number": 16,
+    "publication_kind": "opened",
+    "pushed_commit": "9efe7e716af526d2155a2a10131af2693f7216c1",
+    "record_digest": "0848d774c35b7892ced02a9a19aa84b1f57d706954860cbdf0dd28007a2bfe7c",
+    "recomputed_digest": "0848d774c35b7892ced02a9a19aa84b1f57d706954860cbdf0dd28007a2bfe7c",
+    "event_digest": "0848d774c35b7892ced02a9a19aa84b1f57d706954860cbdf0dd28007a2bfe7c",
+    "join_count": 1
+  },
+  "steps": [
+    {
+      "label": "a_opened",
+      "observed_at": 1800000000000,
+      "snapshot": {
+        "pr": {
+          "number": 16,
+          "state": "OPEN",
+          "is_draft": true,
+          "mergeable": "MERGEABLE",
+          "merge_state_status": "BLOCKED",
+          "review_decision": "REVIEW_REQUIRED",
+          "base_repository": "o/r",
+          "head_repository": "o/r",
+          "is_cross_repository": false,
+          "head_ref_name": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+          "base_ref_name": "main",
+          "head_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+          "author": {
+            "type": "Bot",
+            "database_id": 1
+          },
+          "base_tip_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+          "base_tip_crosscheck_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee"
+        },
+        "marker": {
+          "marker": {
+            "id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+            "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+            "start": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+            "head": "9efe7e716af526d2155a2a10131af2693f7216c1"
+          },
+          "candidates": 1,
+          "malformed": 0,
+          "first_line_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84"
+        },
+        "files": {
+          "complete": true,
+          "workflow_paths_changed": false
+        },
+        "reviews": {
+          "complete": true,
+          "items": []
+        },
+        "threads": {
+          "complete": true,
+          "unresolved": 0
+        },
+        "timeline": {
+          "complete": true,
+          "force_push_events": 0
+        },
+        "verify": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 6,
+              "app_id": 103,
+              "name": "osstack/verify",
+              "external_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84:9efe7e716af526d2155a2a10131af2693f7216c1",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "required_runs": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 1,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (24)",
+              "external_id": "ext-f819826bb394",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 2,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (20.6.0)",
+              "external_id": "ext-f7d726b65003",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 3,
+              "app_id": 104,
+              "name": "check",
+              "external_id": "ext-d752a26c611d",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 4,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (22.23.1)",
+              "external_id": "ext-fc83d78c0ad0",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 5,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (22)",
+              "external_id": "ext-de44b27f85fa",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "base_rules": {
+          "complete": true,
+          "status_checks": [
+            {
+              "context": "check",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (22)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (24)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (20.6.0)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (22.23.1)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            }
+          ],
+          "pull_request": {
+            "ruleset_id": 201,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "dismiss_stale_reviews_on_push": true
+          },
+          "legacy": {
+            "read": "not_protected",
+            "checks": [],
+            "contexts": []
+          }
+        },
+        "mission_rules": {
+          "complete": true,
+          "ruleset_ids": [
+            203,
+            204
+          ],
+          "rule_types": [
+            "creation",
+            "deletion",
+            "non_fast_forward",
+            "update"
+          ]
+        },
+        "rulesets": {
+          "201": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward",
+              "pull_request",
+              "required_status_checks"
+            ],
+            "bypass_actors": []
+          },
+          "202": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 102,
+                "bypass_mode": "pull_request"
+              }
+            ]
+          },
+          "203": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "creation",
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 101,
+                "bypass_mode": "always"
+              }
+            ]
+          },
+          "204": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward"
+            ],
+            "bypass_actors": []
+          }
+        }
+      },
+      "timeline_events": []
+    },
+    {
+      "label": "b_app_approval",
+      "observed_at": 1800000014869,
+      "snapshot": {
+        "pr": {
+          "number": 16,
+          "state": "OPEN",
+          "is_draft": true,
+          "mergeable": "MERGEABLE",
+          "merge_state_status": "BLOCKED",
+          "review_decision": "REVIEW_REQUIRED",
+          "base_repository": "o/r",
+          "head_repository": "o/r",
+          "is_cross_repository": false,
+          "head_ref_name": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+          "base_ref_name": "main",
+          "head_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+          "author": {
+            "type": "Bot",
+            "database_id": 1
+          },
+          "base_tip_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+          "base_tip_crosscheck_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee"
+        },
+        "marker": {
+          "marker": {
+            "id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+            "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+            "start": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+            "head": "9efe7e716af526d2155a2a10131af2693f7216c1"
+          },
+          "candidates": 1,
+          "malformed": 0,
+          "first_line_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84"
+        },
+        "files": {
+          "complete": true,
+          "workflow_paths_changed": false
+        },
+        "reviews": {
+          "complete": true,
+          "items": [
+            {
+              "review_id": 1,
+              "state": "APPROVED",
+              "submitted_at_ms": 1800000014686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            }
+          ]
+        },
+        "threads": {
+          "complete": true,
+          "unresolved": 0
+        },
+        "timeline": {
+          "complete": true,
+          "force_push_events": 0
+        },
+        "verify": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 6,
+              "app_id": 103,
+              "name": "osstack/verify",
+              "external_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84:9efe7e716af526d2155a2a10131af2693f7216c1",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "required_runs": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 1,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (24)",
+              "external_id": "ext-f819826bb394",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 2,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (20.6.0)",
+              "external_id": "ext-f7d726b65003",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 3,
+              "app_id": 104,
+              "name": "check",
+              "external_id": "ext-d752a26c611d",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 4,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (22.23.1)",
+              "external_id": "ext-fc83d78c0ad0",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 5,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (22)",
+              "external_id": "ext-de44b27f85fa",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "base_rules": {
+          "complete": true,
+          "status_checks": [
+            {
+              "context": "check",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (22)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (24)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (20.6.0)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (22.23.1)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            }
+          ],
+          "pull_request": {
+            "ruleset_id": 201,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "dismiss_stale_reviews_on_push": true
+          },
+          "legacy": {
+            "read": "not_protected",
+            "checks": [],
+            "contexts": []
+          }
+        },
+        "mission_rules": {
+          "complete": true,
+          "ruleset_ids": [
+            203,
+            204
+          ],
+          "rule_types": [
+            "creation",
+            "deletion",
+            "non_fast_forward",
+            "update"
+          ]
+        },
+        "rulesets": {
+          "201": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward",
+              "pull_request",
+              "required_status_checks"
+            ],
+            "bypass_actors": []
+          },
+          "202": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 102,
+                "bypass_mode": "pull_request"
+              }
+            ]
+          },
+          "203": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "creation",
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 101,
+                "bypass_mode": "always"
+              }
+            ]
+          },
+          "204": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward"
+            ],
+            "bypass_actors": []
+          }
+        }
+      },
+      "timeline_events": []
+    },
+    {
+      "label": "c_thread_unresolved",
+      "observed_at": 1800000029553,
+      "snapshot": {
+        "pr": {
+          "number": 16,
+          "state": "OPEN",
+          "is_draft": true,
+          "mergeable": "MERGEABLE",
+          "merge_state_status": "BLOCKED",
+          "review_decision": null,
+          "base_repository": "o/r",
+          "head_repository": "o/r",
+          "is_cross_repository": false,
+          "head_ref_name": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+          "base_ref_name": "main",
+          "head_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+          "author": {
+            "type": "Bot",
+            "database_id": 1
+          },
+          "base_tip_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+          "base_tip_crosscheck_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee"
+        },
+        "marker": {
+          "marker": {
+            "id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+            "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+            "start": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+            "head": "9efe7e716af526d2155a2a10131af2693f7216c1"
+          },
+          "candidates": 1,
+          "malformed": 0,
+          "first_line_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84"
+        },
+        "files": {
+          "complete": true,
+          "workflow_paths_changed": false
+        },
+        "reviews": {
+          "complete": true,
+          "items": [
+            {
+              "review_id": 1,
+              "state": "APPROVED",
+              "submitted_at_ms": 1800000014686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 2,
+              "state": "COMMENTED",
+              "submitted_at_ms": 1800000028686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            }
+          ]
+        },
+        "threads": {
+          "complete": true,
+          "unresolved": 1
+        },
+        "timeline": {
+          "complete": true,
+          "force_push_events": 0
+        },
+        "verify": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 6,
+              "app_id": 103,
+              "name": "osstack/verify",
+              "external_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84:9efe7e716af526d2155a2a10131af2693f7216c1",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "required_runs": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 1,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (24)",
+              "external_id": "ext-f819826bb394",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 2,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (20.6.0)",
+              "external_id": "ext-f7d726b65003",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 3,
+              "app_id": 104,
+              "name": "check",
+              "external_id": "ext-d752a26c611d",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 4,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (22.23.1)",
+              "external_id": "ext-fc83d78c0ad0",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 5,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (22)",
+              "external_id": "ext-de44b27f85fa",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "base_rules": {
+          "complete": true,
+          "status_checks": [
+            {
+              "context": "check",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (22)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (24)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (20.6.0)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (22.23.1)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            }
+          ],
+          "pull_request": {
+            "ruleset_id": 201,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "dismiss_stale_reviews_on_push": true
+          },
+          "legacy": {
+            "read": "not_protected",
+            "checks": [],
+            "contexts": []
+          }
+        },
+        "mission_rules": {
+          "complete": true,
+          "ruleset_ids": [
+            203,
+            204
+          ],
+          "rule_types": [
+            "creation",
+            "deletion",
+            "non_fast_forward",
+            "update"
+          ]
+        },
+        "rulesets": {
+          "201": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward",
+              "pull_request",
+              "required_status_checks"
+            ],
+            "bypass_actors": []
+          },
+          "202": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 102,
+                "bypass_mode": "pull_request"
+              }
+            ]
+          },
+          "203": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "creation",
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 101,
+                "bypass_mode": "always"
+              }
+            ]
+          },
+          "204": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward"
+            ],
+            "bypass_actors": []
+          }
+        }
+      },
+      "timeline_events": []
+    },
+    {
+      "label": "d_changes_requested",
+      "observed_at": 1800000045269,
+      "snapshot": {
+        "pr": {
+          "number": 16,
+          "state": "OPEN",
+          "is_draft": true,
+          "mergeable": "MERGEABLE",
+          "merge_state_status": "BLOCKED",
+          "review_decision": null,
+          "base_repository": "o/r",
+          "head_repository": "o/r",
+          "is_cross_repository": false,
+          "head_ref_name": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+          "base_ref_name": "main",
+          "head_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+          "author": {
+            "type": "Bot",
+            "database_id": 1
+          },
+          "base_tip_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+          "base_tip_crosscheck_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee"
+        },
+        "marker": {
+          "marker": {
+            "id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+            "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+            "start": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+            "head": "9efe7e716af526d2155a2a10131af2693f7216c1"
+          },
+          "candidates": 1,
+          "malformed": 0,
+          "first_line_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84"
+        },
+        "files": {
+          "complete": true,
+          "workflow_paths_changed": false
+        },
+        "reviews": {
+          "complete": true,
+          "items": [
+            {
+              "review_id": 1,
+              "state": "APPROVED",
+              "submitted_at_ms": 1800000014686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 2,
+              "state": "COMMENTED",
+              "submitted_at_ms": 1800000028686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 3,
+              "state": "CHANGES_REQUESTED",
+              "submitted_at_ms": 1800000045686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            }
+          ]
+        },
+        "threads": {
+          "complete": true,
+          "unresolved": 1
+        },
+        "timeline": {
+          "complete": true,
+          "force_push_events": 0
+        },
+        "verify": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 6,
+              "app_id": 103,
+              "name": "osstack/verify",
+              "external_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84:9efe7e716af526d2155a2a10131af2693f7216c1",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "required_runs": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 1,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (24)",
+              "external_id": "ext-f819826bb394",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 2,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (20.6.0)",
+              "external_id": "ext-f7d726b65003",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 3,
+              "app_id": 104,
+              "name": "check",
+              "external_id": "ext-d752a26c611d",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 4,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (22.23.1)",
+              "external_id": "ext-fc83d78c0ad0",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 5,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (22)",
+              "external_id": "ext-de44b27f85fa",
+              "head_sha": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "base_rules": {
+          "complete": true,
+          "status_checks": [
+            {
+              "context": "check",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (22)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (24)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (20.6.0)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (22.23.1)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            }
+          ],
+          "pull_request": {
+            "ruleset_id": 201,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "dismiss_stale_reviews_on_push": true
+          },
+          "legacy": {
+            "read": "not_protected",
+            "checks": [],
+            "contexts": []
+          }
+        },
+        "mission_rules": {
+          "complete": true,
+          "ruleset_ids": [
+            203,
+            204
+          ],
+          "rule_types": [
+            "creation",
+            "deletion",
+            "non_fast_forward",
+            "update"
+          ]
+        },
+        "rulesets": {
+          "201": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward",
+              "pull_request",
+              "required_status_checks"
+            ],
+            "bypass_actors": []
+          },
+          "202": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 102,
+                "bypass_mode": "pull_request"
+              }
+            ]
+          },
+          "203": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "creation",
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 101,
+                "bypass_mode": "always"
+              }
+            ]
+          },
+          "204": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward"
+            ],
+            "bypass_actors": []
+          }
+        }
+      },
+      "timeline_events": []
+    },
+    {
+      "label": "e_head_moved",
+      "observed_at": 1800000077743,
+      "snapshot": {
+        "pr": {
+          "number": 16,
+          "state": "OPEN",
+          "is_draft": true,
+          "mergeable": "MERGEABLE",
+          "merge_state_status": "BLOCKED",
+          "review_decision": null,
+          "base_repository": "o/r",
+          "head_repository": "o/r",
+          "is_cross_repository": false,
+          "head_ref_name": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+          "base_ref_name": "main",
+          "head_oid": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+          "author": {
+            "type": "Bot",
+            "database_id": 1
+          },
+          "base_tip_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+          "base_tip_crosscheck_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee"
+        },
+        "marker": {
+          "marker": {
+            "id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+            "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+            "start": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+            "head": "9efe7e716af526d2155a2a10131af2693f7216c1"
+          },
+          "candidates": 1,
+          "malformed": 0,
+          "first_line_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84"
+        },
+        "files": {
+          "complete": true,
+          "workflow_paths_changed": false
+        },
+        "reviews": {
+          "complete": true,
+          "items": [
+            {
+              "review_id": 1,
+              "state": "APPROVED",
+              "submitted_at_ms": 1800000014686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 2,
+              "state": "COMMENTED",
+              "submitted_at_ms": 1800000028686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 3,
+              "state": "CHANGES_REQUESTED",
+              "submitted_at_ms": 1800000045686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            }
+          ]
+        },
+        "threads": {
+          "complete": true,
+          "unresolved": 1
+        },
+        "timeline": {
+          "complete": true,
+          "force_push_events": 0
+        },
+        "verify": {
+          "complete": true,
+          "runs": []
+        },
+        "required_runs": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 7,
+              "app_id": 104,
+              "name": "check",
+              "external_id": "ext-f71dac021f7e",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 8,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (22.23.1)",
+              "external_id": "ext-796ef4c800cf",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 9,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (22)",
+              "external_id": "ext-7b4ccf5185a5",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 10,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (24)",
+              "external_id": "ext-d50065b93704",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 11,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (20.6.0)",
+              "external_id": "ext-6b7a2995e81c",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "base_rules": {
+          "complete": true,
+          "status_checks": [
+            {
+              "context": "check",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (22)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (24)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (20.6.0)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (22.23.1)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            }
+          ],
+          "pull_request": {
+            "ruleset_id": 201,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "dismiss_stale_reviews_on_push": true
+          },
+          "legacy": {
+            "read": "not_protected",
+            "checks": [],
+            "contexts": []
+          }
+        },
+        "mission_rules": {
+          "complete": true,
+          "ruleset_ids": [
+            203,
+            204
+          ],
+          "rule_types": [
+            "creation",
+            "deletion",
+            "non_fast_forward",
+            "update"
+          ]
+        },
+        "rulesets": {
+          "201": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward",
+              "pull_request",
+              "required_status_checks"
+            ],
+            "bypass_actors": []
+          },
+          "202": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 102,
+                "bypass_mode": "pull_request"
+              }
+            ]
+          },
+          "203": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "creation",
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 101,
+                "bypass_mode": "always"
+              }
+            ]
+          },
+          "204": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward"
+            ],
+            "bypass_actors": []
+          }
+        }
+      },
+      "timeline_events": []
+    },
+    {
+      "label": "g_closed",
+      "observed_at": 1800000096379,
+      "snapshot": {
+        "pr": {
+          "number": 16,
+          "state": "CLOSED",
+          "is_draft": true,
+          "mergeable": "MERGEABLE",
+          "merge_state_status": "BLOCKED",
+          "review_decision": null,
+          "base_repository": "o/r",
+          "head_repository": "o/r",
+          "is_cross_repository": false,
+          "head_ref_name": "osstack/mission/cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+          "base_ref_name": "main",
+          "head_oid": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+          "author": {
+            "type": "Bot",
+            "database_id": 1
+          },
+          "base_tip_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+          "base_tip_crosscheck_oid": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee"
+        },
+        "marker": {
+          "marker": {
+            "id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84",
+            "spec_digest": "82fa1b208fac19b8ccb782db69d13ac4bee9abb9166290fa4227ff05c903ee5c",
+            "start": "ee77bb9337667d04170f3f78bd91ce6aa94f94ee",
+            "head": "9efe7e716af526d2155a2a10131af2693f7216c1"
+          },
+          "candidates": 1,
+          "malformed": 0,
+          "first_line_id": "cm_8e3e6d14-cc21-a8a3-606b-c235d34a0d84"
+        },
+        "files": {
+          "complete": true,
+          "workflow_paths_changed": false
+        },
+        "reviews": {
+          "complete": true,
+          "items": [
+            {
+              "review_id": 1,
+              "state": "APPROVED",
+              "submitted_at_ms": 1800000014686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 2,
+              "state": "COMMENTED",
+              "submitted_at_ms": 1800000028686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            },
+            {
+              "review_id": 3,
+              "state": "CHANGES_REQUESTED",
+              "submitted_at_ms": 1800000045686,
+              "commit_oid": "9efe7e716af526d2155a2a10131af2693f7216c1",
+              "author_type": "Bot",
+              "author_id": 4,
+              "author_can_push": false
+            }
+          ]
+        },
+        "threads": {
+          "complete": true,
+          "unresolved": 1
+        },
+        "timeline": {
+          "complete": true,
+          "force_push_events": 0
+        },
+        "verify": {
+          "complete": true,
+          "runs": []
+        },
+        "required_runs": {
+          "complete": true,
+          "runs": [
+            {
+              "id": 7,
+              "app_id": 104,
+              "name": "check",
+              "external_id": "ext-f71dac021f7e",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 8,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (22.23.1)",
+              "external_id": "ext-796ef4c800cf",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 9,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (22)",
+              "external_id": "ext-7b4ccf5185a5",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 10,
+              "app_id": 104,
+              "name": "graph-macos-fixtures (24)",
+              "external_id": "ext-d50065b93704",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "id": 11,
+              "app_id": 104,
+              "name": "graph-runtime-matrix (20.6.0)",
+              "external_id": "ext-6b7a2995e81c",
+              "head_sha": "4ecbb2f782d0986dbef5a20d85dcb17b69194277",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        "base_rules": {
+          "complete": true,
+          "status_checks": [
+            {
+              "context": "check",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (22)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-macos-fixtures (24)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (20.6.0)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            },
+            {
+              "context": "graph-runtime-matrix (22.23.1)",
+              "integration_id": 104,
+              "ruleset_id": 201
+            }
+          ],
+          "pull_request": {
+            "ruleset_id": 201,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": true,
+            "required_review_thread_resolution": true,
+            "dismiss_stale_reviews_on_push": true
+          },
+          "legacy": {
+            "read": "not_protected",
+            "checks": [],
+            "contexts": []
+          }
+        },
+        "mission_rules": {
+          "complete": true,
+          "ruleset_ids": [
+            203,
+            204
+          ],
+          "rule_types": [
+            "creation",
+            "deletion",
+            "non_fast_forward",
+            "update"
+          ]
+        },
+        "rulesets": {
+          "201": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward",
+              "pull_request",
+              "required_status_checks"
+            ],
+            "bypass_actors": []
+          },
+          "202": {
+            "enforcement": "active",
+            "covers_mission_refs": false,
+            "covers_base_ref": true,
+            "rule_types": [
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 102,
+                "bypass_mode": "pull_request"
+              }
+            ]
+          },
+          "203": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "creation",
+              "update"
+            ],
+            "bypass_actors": [
+              {
+                "actor_type": "Integration",
+                "actor_id": 101,
+                "bypass_mode": "always"
+              }
+            ]
+          },
+          "204": {
+            "enforcement": "active",
+            "covers_mission_refs": true,
+            "covers_base_ref": false,
+            "rule_types": [
+              "deletion",
+              "non_fast_forward"
+            ],
+            "bypass_actors": []
+          }
+        }
+      },
+      "timeline_events": [
+        "ClosedEvent"
+      ]
+    }
+  ]
+}
