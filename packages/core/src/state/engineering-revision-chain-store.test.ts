@@ -2,13 +2,14 @@ import { realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, expect, it } from "vitest";
-import type { ChainDecision } from "../bridge/revision-chain.js";
+import type { ChainDecision, ChainState } from "../bridge/revision-chain.js";
 import { createScratchDirSync } from "../scratch.js";
 import { AttentionStore } from "./attention-store.js";
 import { ContainedMissionStore } from "./engineering-contained-store.js";
 import type { EngineeringPrincipal } from "./engineering-store.js";
 import { openDb } from "./db.js";
 import { RevisionChainError, RevisionChainStore, revisionChainUpgradeHolds, shadowChainWriter, type NewChainInput } from "./engineering-revision-chain-store.js";
+import { ENGINEERING_REVISION_CHAIN_DDL } from "./engineering-revision-chain-ddl.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
 const BRANCH = "osstack/mission/x";
@@ -74,15 +75,15 @@ it("adds the five tables in migration 51 additively and reopens cleanly from sch
   const before = (old.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as Array<{ name: string }>).map(t => t.name);
   old.close();
   const db = openDb({ path });
-  expect(CURRENT_SCHEMA_VERSION).toBe(51);
-  expect(db.pragma("user_version", { simple: true })).toBe(51);
+  expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(51);
+  expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   const after = (db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as Array<{ name: string }>).map(t => t.name);
-  expect(after.filter(t => !before.includes(t))).toEqual([
+  expect(after.filter(t => !before.includes(t) && !t.startsWith("engineering_merger_shadow_"))).toEqual([
     "engineering_publication_intents", "engineering_revision_chain_events", "engineering_revision_chains", "engineering_revision_reservations", "engineering_shadow_decisions",
   ]);
   expect(db.pragma("foreign_key_check")).toEqual([]);
   db.close();
-  const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(51); reopened.close();
+  const reopened = openDb({ path }); expect(reopened.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION); reopened.close();
 });
 
 it("creates shadow and live chains with a created event and unique roots", () => {
@@ -524,7 +525,7 @@ it("serialises a second writer behind the first one's write lock instead of corr
 });
 
 it("treats migrations as the single source for the DDL export", () => {
-  expect(MIGRATIONS.at(-1)).toMatchObject({ id: 51, name: "engineering_revision_chains" });
+  expect(MIGRATIONS.find(m => m.id === 51)).toMatchObject({ id: 51, name: "engineering_revision_chains", sql: ENGINEERING_REVISION_CHAIN_DDL });
 });
 
 it("keeps one child at a time even after the dispatched reservation is voided while its child still runs (invariant 3)", () => {
@@ -656,4 +657,185 @@ it("looks up shadow chains by Mission and by PR in any state, (read-only, throug
   expect(w.listOpenShadowChains().map(c => c.chain_id)).not.toContain(s.chain_id);
   expect(w.shadowChainForPr("o/r", 77)?.state).toBe("closed");
   expect(f.store.chainForMission(s.root_mission_id, "live")).toBeUndefined();
+});
+
+// ---- Live-path gaps found by the TLA+ model (docs/design/specs/README.md D1-D12) ----
+
+/** A live chain whose round-1 child is dispatched and whose push intent is recorded (chain `publishing`). */
+function publishing(f: Fixture, rounds: 1 | 2 = 2) {
+  const l = f.live(rounds); const c = f.child("executing");
+  const r = f.store.reserve(l.chain_id, 1, reserveInput(H1), 2);
+  const d = f.store.dispatch(l.chain_id, r.chain.revision, H1, c, 3);
+  const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c }, 4);
+  return { l, c, intent: pi.intent, chain: pi.chain };
+}
+const transitionTo = (to: ChainState, over: Record<string, unknown> = {}): ChainDecision =>
+  ({ kind: "transition", to, reason: "x", from_head: H1, from_base: B1, head: H1, base: B1, discards: [], review_ids: [], ...over }) as ChainDecision;
+
+it("D1: an uncertain push receipt stops the chain even when the intent is no longer the one in flight", () => {
+  const f = setup(); const { l, intent } = publishing(f);
+  // The reservation is voided (chain stops), then a human re-opens the chain by SQL while the push intent is still pending.
+  f.store.voidReservation(l.chain_id, f.store.get(l.chain_id).revision, H1, "cancelled", 5);
+  f.db.prepare("UPDATE engineering_revision_chains SET state='awaiting_review',stop_reason=NULL,revision=revision+1 WHERE chain_id=?").run(l.chain_id);
+  const out = f.store.settleIntent(intent.intent_id, "uncertain", 6, "readback mismatch");
+  expect(out.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "intent_uncertain" });
+  // A chain that is already stopped or closed is left as it is.
+  const again = publishing(f);
+  f.store.applyDecision(again.l.chain_id, f.store.get(again.l.chain_id).revision, { kind: "stop", to: "awaiting_decision", reason: "external_write", from_head: H1, from_base: B1, head: H3, base: B1, discards: [], review_ids: [] }, 7);
+  expect(f.store.settleIntent(again.intent.intent_id, "uncertain", 8).chain).toMatchObject({ state: "awaiting_decision", stop_reason: "external_write" });
+});
+
+it("D1: nothing leaves awaiting_decision for a live state while a push intent is pending or uncertain", () => {
+  const f = setup(); const { l, intent } = publishing(f);
+  f.store.settleIntent(intent.intent_id, "uncertain", 5);
+  const stopped = f.store.get(l.chain_id);
+  expect(stopped.state).toBe("awaiting_decision");
+  const update = (next: Record<string, unknown>) => (f.store as unknown as { write: <T>(fn: () => T) => T; update: (...a: unknown[]) => unknown }).write(
+    () => (f.store as unknown as { update: (...a: unknown[]) => unknown }).update(f.store.get(l.chain_id), next, "resume", { head: H1, base: B1 }, 9));
+  expect(code(() => update({ state: "awaiting_review", stop_reason: null }))).toBe("intent_unsettled");
+  expect(f.store.get(l.chain_id).state).toBe("awaiting_decision");
+  // Closing is a stop, not a resume, and stays possible.
+  expect(() => update({ state: "closed" })).not.toThrow();
+  // Once the receipt is settled the guard lets the transition through.
+  const f2 = setup(); const p2 = publishing(f2);
+  f2.store.settleIntent(p2.intent.intent_id, "uncertain", 5); f2.store.settleIntent(p2.intent.intent_id, "confirmed", 6);
+  expect(() => (f2.store as unknown as { write: <T>(fn: () => T) => T }).write(
+    () => (f2.store as unknown as { update: (...a: unknown[]) => unknown }).update(f2.store.get(p2.l.chain_id), { state: "awaiting_review", stop_reason: null }, "resume", { head: H1, base: B1 }, 9))).not.toThrow();
+});
+
+it("D2: at most one pending push intent per chain, and none while another push receipt is uncertain", () => {
+  const f = setup(); const { l, c, intent, chain } = publishing(f);
+  const second = () => f.store.recordIntent(l.chain_id, f.store.get(l.chain_id).revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H3, expected_base_sha: B1, child_mission_id: c }, 6);
+  expect(chain.state).toBe("publishing");
+  expect(code(second)).toBe("push_intent_pending");
+  expect(f.store.intents(l.chain_id)).toHaveLength(1);
+  // Not a pending intent, but the remote may carry its write: still no second push.
+  f.store.settleIntent(intent.intent_id, "uncertain", 7);
+  f.db.prepare("UPDATE engineering_revision_chains SET state='publishing',stop_reason=NULL,revision=revision+1 WHERE chain_id=?").run(l.chain_id);
+  expect(code(second)).toBe("push_intent_uncertain");
+  // A failed (never ran) intent frees the slot.
+  const g = setup(); const p = publishing(g);
+  g.store.settleIntent(p.intent.intent_id, "failed", 6);
+  g.db.prepare("UPDATE engineering_revision_chains SET state='publishing',stop_reason=NULL,revision=revision+1 WHERE chain_id=?").run(p.l.chain_id);
+  expect(g.store.recordIntent(p.l.chain_id, g.store.get(p.l.chain_id).revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H3, expected_base_sha: B1, child_mission_id: p.c }, 8).intent.state).toBe("pending");
+  // Check intents are evidence only and are not limited by this rule.
+  expect(g.store.recordIntent(p.l.chain_id, g.store.get(p.l.chain_id).revision, { kind: "check", branch: BRANCH }, 9).intent.kind).toBe("check");
+});
+
+it("D3: a new head is accepted only from the confirmed push intent that extends the published head", () => {
+  const f = setup(); const l = f.live(2);
+  const round = (head: string, next: string) => {
+    const c = f.child("executing"); const r = f.store.reserve(l.chain_id, f.store.get(l.chain_id).revision, reserveInput(head), 20);
+    const d = f.store.dispatch(l.chain_id, r.chain.revision, head, c, 21);
+    const pi = f.store.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: head, new_head: next, expected_base_sha: B1, child_mission_id: c }, 22);
+    f.store.settleIntent(pi.intent.intent_id, "confirmed", 23); f.finish(c);
+    f.store.voidReservation(l.chain_id, f.store.get(l.chain_id).revision, head, "published", 24);
+  };
+  round(H1, H2); round(H2, H3);
+  const accept = (to: string, fromHead = H3): ChainDecision => transitionTo("awaiting_review", { reason: "push_confirmed", from_head: fromHead, head: to, published_head: to, published_base: B1 });
+  // An outsider force-pushed the branch back to round 1's head: confirmed once, but it does not extend H3.
+  expect(code(() => f.store.applyDecision(l.chain_id, f.store.get(l.chain_id).revision, accept(H2), 30))).toBe("stale_decision");
+  expect(f.store.get(l.chain_id).published_head).toBe(H3);
+  expect(f.store.nextConfirmedPushHead(l.chain_id)).toBeUndefined();
+  // The legitimate case: the confirmed intent extends the published head (chain missed the settle: emulate by rolling published_head back).
+  const g = setup(); const p = publishing(g);
+  g.db.prepare("UPDATE engineering_publication_intents SET state='confirmed' WHERE intent_id=?").run(p.intent.intent_id);
+  expect(g.store.nextConfirmedPushHead(p.l.chain_id)).toBe(H2);
+  const ok = g.store.applyDecision(p.l.chain_id, g.store.get(p.l.chain_id).revision, accept(H2, H1), 31);
+  expect(ok).toMatchObject({ state: "awaiting_review", published_head: H2 });
+  // What is persisted must be what was validated: the observed head and base, not different ones.
+  const m = setup(); const mm = publishing(m);
+  m.db.prepare("UPDATE engineering_publication_intents SET state='confirmed' WHERE intent_id=?").run(mm.intent.intent_id);
+  expect(code(() => m.store.applyDecision(mm.l.chain_id, m.store.get(mm.l.chain_id).revision, transitionTo("awaiting_review", { from_head: H1, head: H2, base: B1, published_head: H2, published_base: B2 }), 33))).toBe("stale_decision");
+  expect(code(() => m.store.applyDecision(mm.l.chain_id, m.store.get(mm.l.chain_id).revision, transitionTo("awaiting_review", { from_head: H1, head: H3, base: B1, published_head: H2, published_base: B1 }), 33))).toBe("stale_decision");
+  // Closing carries no head; and a closed chain's reservation is voided explicitly by the caller.
+  const z = setup(); const zz = publishing(z);
+  expect(code(() => z.store.applyDecision(zz.l.chain_id, z.store.get(zz.l.chain_id).revision, transitionTo("closed", { reason: "pr_closed", published_head: "UNCONFIRMED", published_base: "X" }), 34))).toBe("stale_decision");
+  z.store.applyDecision(zz.l.chain_id, z.store.get(zz.l.chain_id).revision, transitionTo("closed", { reason: "pr_closed" }), 35);
+  z.finish(zz.c); z.store.settleIntent(zz.intent.intent_id, "confirmed", 36);
+  expect(z.store.voidReservation(zz.l.chain_id, z.store.get(zz.l.chain_id).revision, H1, "published", 37).reservation.state).toBe("void");
+  // The intent's base must be the decision's base.
+  const h = setup(); const q = publishing(h);
+  h.db.prepare("UPDATE engineering_publication_intents SET state='confirmed' WHERE intent_id=?").run(q.intent.intent_id);
+  expect(code(() => h.store.applyDecision(q.l.chain_id, h.store.get(q.l.chain_id).revision, transitionTo("awaiting_review", { from_head: H1, head: H2, base: B2, published_head: H2, published_base: B2 }), 32))).toBe("stale_decision");
+});
+
+it("D12: a hand-built transition may only reach the targets decideChainStep can produce, per source state", () => {
+  const f = setup(); const { l } = publishing(f);
+  const apply = (id: string, d: ChainDecision) => code(() => f.store.applyDecision(id, f.store.get(id).revision, d, 9));
+  // publishing -> publishing/revising/awaiting_decision/revision_reserved via transition: never.
+  for (const to of ["publishing", "revising", "revision_reserved", "awaiting_decision"] as const) expect(apply(l.chain_id, transitionTo(to))).toBe("transition_denied");
+  expect(apply(l.chain_id, transitionTo("ready_for_human"))).toBe("transition_denied"); // only from awaiting_review
+  // A stopped chain: only closing is possible; no stop-over-stop, no resume to publishing with the old child.
+  f.store.voidReservation(l.chain_id, f.store.get(l.chain_id).revision, H1, "cancelled", 5);
+  expect(f.store.get(l.chain_id).state).toBe("awaiting_decision");
+  for (const to of ["publishing", "revising", "awaiting_review", "ready_for_human"] as const) expect(apply(l.chain_id, transitionTo(to))).toBe("transition_denied");
+  expect(apply(l.chain_id, { kind: "stop", to: "awaiting_decision", reason: "external_write", from_head: H1, from_base: B1, head: H3, base: B1, discards: [], review_ids: [] })).toBe("transition_denied");
+  expect(apply(l.chain_id, transitionTo("closed", { reason: "pr_closed" }))).toBe("no_error");
+  // awaiting_review -> ready_for_human and back are the only moves without a new head.
+  const g = setup(); const s = g.live(2);
+  expect(apply2(g, s.chain_id, transitionTo("awaiting_review"))).toBe("transition_denied");
+  expect(apply2(g, s.chain_id, transitionTo("ready_for_human"))).toBe("no_error");
+  expect(apply2(g, s.chain_id, transitionTo("awaiting_review", { reason: "approval_withdrawn" }))).toBe("no_error");
+});
+function apply2(f: Fixture, id: string, d: ChainDecision): string { return code(() => f.store.applyDecision(id, f.store.get(id).revision, d, 9)); }
+
+it("failed push receipts stop a chain whose round is in flight (design 8.7 step 2; appendix 5.3 steps 2-5)", () => {
+  const f = setup(); const { l, intent } = publishing(f);
+  const out = f.store.settleIntent(intent.intent_id, "failed", 5, "never_released");
+  expect(out.intent.state).toBe("failed");
+  expect(out.chain).toMatchObject({ state: "awaiting_decision", stop_reason: "intent_failed" });
+  expect(f.store.reservations(l.chain_id)[0]!.state).toBe("dispatched"); // the caller voids it once the child is terminal
+  // A failed receipt on a chain that already stopped, or that is not publishing this intent's child, changes nothing.
+  const g = setup(); const p = publishing(g);
+  g.store.voidReservation(p.l.chain_id, g.store.get(p.l.chain_id).revision, H1, "child_failed", 6);
+  expect(g.store.settleIntent(p.intent.intent_id, "failed", 7).chain).toMatchObject({ state: "awaiting_decision", stop_reason: "child_failed" });
+});
+
+it("settles the round's reservation as published when the push is confirmed and the child is already terminal", () => {
+  const f = setup(); const { l, c, intent } = publishing(f);
+  f.finish(c);
+  const out = f.store.settleIntent(intent.intent_id, "confirmed", 5);
+  expect(out.chain).toMatchObject({ state: "awaiting_review", published_head: H2 });
+  expect(f.store.reservations(l.chain_id)[0]).toMatchObject({ state: "void", settled_reason: "published" });
+  expect(f.store.reserve(l.chain_id, out.chain.revision, reserveInput(H2), 6).chain.state).toBe("revision_reserved"); // no chain_busy
+  // A child still running keeps its reservation: the caller voids it in the same transaction as the child's terminal state.
+  const g = setup(); const p = publishing(g);
+  g.store.settleIntent(p.intent.intent_id, "confirmed", 5);
+  expect(g.store.reservations(p.l.chain_id)[0]!.state).toBe("dispatched");
+  // A cancelled child keeps the explicit settlement of appendix 4.1 item 3 (`published_after_cancel`): no automatic void in front of it.
+  const k = setup(); const kk = publishing(k);
+  k.db.prepare("UPDATE engineering_contained_missions SET state='cancelled',stop_obligation=0,revision=revision+1 WHERE mission_id=?").run(kk.c);
+  const kout = k.store.settleIntent(kk.intent.intent_id, "confirmed", 5);
+  expect(k.store.reservations(kk.l.chain_id)[0]!.state).toBe("dispatched");
+  expect(k.store.voidReservation(kk.l.chain_id, kout.chain.revision, H1, "published_after_cancel", 6).reservation.settled_reason).toBe("published_after_cancel");
+  // A chain stopped meanwhile still gets its reservation settled once the push is confirmed (appendix 4.1 item 3).
+  const h = setup(); const q = publishing(h);
+  h.store.settleIntent(q.intent.intent_id, "uncertain", 5); h.finish(q.c);
+  h.store.settleIntent(q.intent.intent_id, "confirmed", 6);
+  expect(h.store.reservations(q.l.chain_id)[0]).toMatchObject({ state: "void", settled_reason: "published" });
+  expect(h.store.get(q.l.chain_id).state).toBe("awaiting_decision");
+});
+
+it("refuses reserve, dispatch and push intents once the live grant has expired, by the injected clock", () => {
+  const f = setup(); let now = 500;
+  const clocked = new RevisionChainStore(f.attention, f.owner, () => now);
+  const l = clocked.createLiveChain({ ...f.input(), grant: { rounds: 2, expires_at: 1000 } }, 10);
+  now = 1000; // expires_at is exclusive of the grant's life
+  expect(code(() => clocked.reserve(l.chain_id, 1, reserveInput(), 11))).toBe("grant_expired");
+  now = 999;
+  const r = clocked.reserve(l.chain_id, 1, reserveInput(), 11);
+  const c = f.child("executing");
+  now = 1500;
+  expect(code(() => clocked.dispatch(l.chain_id, r.chain.revision, H1, c, 12))).toBe("grant_expired");
+  now = 900;
+  const d = clocked.dispatch(l.chain_id, r.chain.revision, H1, c, 12);
+  now = 2000;
+  expect(code(() => clocked.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c }, 13))).toBe("grant_expired");
+  expect(clocked.intents(l.chain_id)).toHaveLength(0);
+  // Settling a receipt is bookkeeping about a write that may already have happened: never blocked by expiry.
+  now = 900; const pi = clocked.recordIntent(l.chain_id, d.chain.revision, { kind: "push", branch: BRANCH, expected_old_head: H1, new_head: H2, expected_base_sha: B1, child_mission_id: c }, 13);
+  now = 5000; expect(clocked.settleIntent(pi.intent.intent_id, "confirmed", 14).intent.state).toBe("confirmed");
+  // A grant without expires_at (older fixtures) does not expire.
+  expect(f.store.reserve(f.live(2).chain_id, 1, reserveInput(), 2).chain.state).toBe("revision_reserved");
 });

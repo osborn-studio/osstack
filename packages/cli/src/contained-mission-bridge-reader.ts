@@ -89,7 +89,7 @@ export function assertQueryOnly(document: string): void {
 
 export type GhExec = (args: readonly string[], options: { timeoutMs: number }) => Promise<{ stdout: string; stderr: string; exitCode: number }>;
 
-const defaultGhExec: GhExec = (args, options) =>
+export const defaultGhExec: GhExec = (args, options) =>
   new Promise((resolve) => {
     execFile('gh', [...args], { timeout: options.timeoutMs, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (!error) return resolve({ stdout, stderr, exitCode: 0 });

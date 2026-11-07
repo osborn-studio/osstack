@@ -3,7 +3,9 @@ import { ENGINEERING_DDL } from "./engineering-ddl.js";
 import { ATTENTION_REMINDERS_DDL } from "./attention-reminders-ddl.js";
 import { ATTENTION_RETURN_DDL } from "./attention-return-ddl.js";
 import { ENGINEERING_CONTAINED_DDL } from "./engineering-contained-ddl.js";
+import { ENGINEERING_MERGER_DDL } from "./engineering-merger-ddl.js";
 import { ENGINEERING_REVISION_CHAIN_DDL } from "./engineering-revision-chain-ddl.js";
+import { ENGINEERING_REVISION_GRANT_DDL } from "./engineering-revision-grant-ddl.js";
 import { FOLLOW_UP_DELIVERY_DDL } from "./follow-up-delivery-ddl.js";
 // SQLite migrations. Each migration is idempotent (CREATE ... IF NOT EXISTS)
 // or guarded by user_version pragma so it runs exactly once.
@@ -1880,6 +1882,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 49, name: "attention_return_brief", sql: ATTENTION_RETURN_DDL },
   { id: 50, name: "engineering_contained_missions", sql: ENGINEERING_CONTAINED_DDL },
   { id: 51, name: "engineering_revision_chains", sql: ENGINEERING_REVISION_CHAIN_DDL },
+  { id: 52, name: "engineering_merger_shadow", sql: ENGINEERING_MERGER_DDL },
+  { id: 53, name: "engineering_revision_grant_monotonic", sql: ENGINEERING_REVISION_GRANT_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

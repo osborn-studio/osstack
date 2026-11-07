@@ -2,8 +2,8 @@
 // publication and the App B `osstack/verify` check run. Loaded lazily, only when a bridge is configured.
 import { execFile } from 'node:child_process';
 import { githubDeliveryEnvironment, type DeliveryCommandResult, type DeliveryCommandRunner } from '@osstack/github';
-import { redactSecrets } from '@osstack/governance';
 import type { ContainedMission } from '@osstack/core';
+import { redactBridge } from './contained-mission-redact.js';
 import {
   EVIDENCE_PERMISSIONS,
   PUBLISHER_PERMISSIONS,
@@ -45,8 +45,7 @@ const API = 'https://api.github.com';
 const PUSH_TOKEN_ENV = 'OSSTACK_BRIDGE_PUSH_TOKEN';
 const PUSH_HELPER = `!f() { test "$1" = get || exit 0; echo username=x-access-token; echo "password=$${PUSH_TOKEN_ENV}"; }; f`;
 
-/** redactSecrets plus every GitHub token shape (ghp_, ghs_, ghu_, gho_, ghr_). */
-export const redactBridge = (text: string): string => redactSecrets(text).replace(/gh[pousr]_[A-Za-z0-9_]+/gu, '[REDACTED]');
+export { redactBridge };
 
 export const defaultBridgeExec: BridgeExec = (command, args, options) =>
   new Promise((resolve) => {
