@@ -802,16 +802,19 @@ async function withProcessFixture(source: string, test: (fixture: {
     .map((file) => Number(readFileSync(join(workspace, file), "utf8"))).filter((pid) => pid > 1);
   const leaderPid = () => Number(readFileSync(join(workspace, "leader.pid"), "utf8"));
   const realKill = process.kill.bind(process);
-  const identity = `osstack-fixture-${randomUUID()}`;
+  const identity = `osfx-${randomUUID().replaceAll("-", "")}`;
   const preload = join(workspace, "fixture-identity.cjs");
   writeFileSync(preload, `process.title = ${JSON.stringify(identity)};`);
   const ownsPid = (pid: number) => {
-    try { return execFileSync("ps", ["-p", String(pid), "-o", "args="], {encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim() === identity; }
+    try { return execFileSync("ps", ["-p", String(pid), "-o", process.platform === "darwin" ? "comm=" : "args="], {encoding:"utf8",stdio:["ignore","pipe","ignore"]}).trim() === identity; }
     catch { return false; }
   };
   const cleanup = () => {
     // Confirm the fixture marker before signalling; a recorded PID may have
-    // exited and been reused. The preload is inherited by fixture descendants.
+    // exited and been reused. Read comm: macOS args can append inherited
+    // environment entries to the title. Keep the marker short because Node
+    // truncates process.title to the original argv space on some platforms.
+    // The preload marks fixture descendants.
     for (const pid of pids()) {
       if (!ownsPid(pid)) continue;
       for (const target of [-pid, pid]) {
@@ -822,7 +825,7 @@ async function withProcessFixture(source: string, test: (fixture: {
     }
   };
   try {
-    await test({ command: `NODE_OPTIONS='--require ${preload.replaceAll("'", "'\\''")}' exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs`,
+    await test({ command: `NODE_OPTIONS='--require ${preload.replaceAll("'", "'\\''")}' exec '${process.execPath.replaceAll("'", "'\\''")}' main.cjs '${identity}'`,
       waitFor: (file) => waitUntil(() => existsSync(join(workspace, file))), cleanup, leaderPid,
       assertStopped: () => {
         expect(pids().length).toBeGreaterThan(0);
