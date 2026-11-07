@@ -1,6 +1,6 @@
 // Real process fault injection around production G25 host recovery; never a shipped entrypoint.
-import { writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { writeJsonAtomic } from './atomic-json.js';
 import { processFixture } from '../../packages/cli/src/graph-process-fixture.js';
 import { GraphProcessJournal } from '../../packages/cli/src/graph-process-journal.js';
 
@@ -19,13 +19,13 @@ if (mode === 'fail-registration') {
   if (mode === 'pre-spawn') {
     const register = f.broker.register.bind(f.broker);
     f.broker.register = (...args) => {
-      writeFileSync(join(root, 'boundary.json'), JSON.stringify({ kind: mode }));
+      writeJsonAtomic(join(root, 'boundary.json'), { kind: mode });
       process.kill(process.pid, 'SIGSTOP'); register(...args);
     };
   } else {
     const launched = GraphProcessJournal.prototype.launched;
     GraphProcessJournal.prototype.launched = function(binding, launch) {
-      writeFileSync(join(root, 'boundary.json'), JSON.stringify({ kind: mode, workerPid: launch.pid }));
+      writeJsonAtomic(join(root, 'boundary.json'), { kind: mode, workerPid: launch.pid });
       process.kill(process.pid, 'SIGSTOP'); launched.call(this, binding, launch);
     };
   }

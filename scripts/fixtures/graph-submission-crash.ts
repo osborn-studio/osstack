@@ -1,6 +1,7 @@
 // Real public submit reservation before its deferred driver construction.
-import { writeFileSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { writeJsonAtomic } from './atomic-json.js';
 import { openDb } from '@osstack/core';
 import type { AgentAdapter } from '@osstack/agents';
 import { GraphDelegationStatus } from '@osstack/protocol';
@@ -12,7 +13,7 @@ if (process.argv[3] === 'submit') {
   const f = await graphRpcFixture();
   const status = GraphDelegationStatus.parse(await f.service.handle(f.connection, 'graph.submit', f.request));
   const { writer: _writer, reviewer: _reviewer, verifyReviewer: _verify, ...delivery } = f.registration.delivery;
-  writeFileSync(file, JSON.stringify({ root: f.root, request: f.request, status, delivery }));
+  writeJsonAtomic(file, { root: f.root, request: f.request, status, delivery });
   process.kill(process.pid, 'SIGSTOP');
   // This executes before setImmediate constructs a driver. After cancellation,
   // the original deferred continuation must observe cancelled and return.

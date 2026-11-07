@@ -28,6 +28,16 @@ function host(root: string, mode: string, fixture = 'graph-recovery-host') {
   child.stdout!.resume(); child.stderr!.resume(); children.push(child); return child;
 }
 const message = async (child: ChildProcess) => (await once(child, 'message', { signal: AbortSignal.timeout(10000) }))[0] as Record<string, unknown>;
+// Polls until the marker exists AND parses to the expected shape; a partially written file is simply retried.
+async function markerJson<T>(file: string, valid: (value: unknown) => value is T): Promise<T> {
+  let found: T | undefined;
+  await expect.poll(() => {
+    try { const value: unknown = JSON.parse(readFileSync(file, 'utf8')); if (valid(value)) { found = value; return true; } } catch {}
+    return false;
+  }, { timeout: 5000 }).toBe(true);
+  return found!;
+}
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 async function kill(child: ChildProcess) { const exit = once(child, 'exit'); child.kill('SIGKILL'); await exit; }
 it.each(['killed', 'alive'])('a fresh host recovers an authenticated no-child failure with the original host %s', async original => {
   const root = fixtureRoot(); const first = host(root, 'fail-registration');
@@ -44,8 +54,8 @@ it.each(['killed', 'alive'])('a fresh host recovers an authenticated no-child fa
 }, 20000);
 it.each(['killed', 'alive'])('public submit survives committed reservation with its original host %s before construction', async original => {
   const root = fixtureRoot(); const fixture = 'graph-submission-crash'; const first = host(root, 'submit', fixture);
-  await expect.poll(() => existsSync(join(root, 'submission.json')), { timeout: 5000 }).toBe(true);
-  const data = JSON.parse(readFileSync(join(root, 'submission.json'), 'utf8')) as { root: string; status: { graphRunId: string } };
+  const data = await markerJson(join(root, 'submission.json'), (value): value is { root: string; status: { graphRunId: string } } =>
+    isObject(value) && typeof value.root === 'string' && isObject(value.status) && typeof value.status.graphRunId === 'string');
   roots.push(data.root);
   if (original === 'killed') await kill(first);
   const result = await message(host(root, 'cancel', fixture));
@@ -61,8 +71,8 @@ it.each(['killed', 'alive'])('public submit survives committed reservation with 
 }, 20000);
 it.each(['pre-spawn', 'pre-identity'])('refuses an unobserved %s crash window without starting replacement effects', async point => {
   const root = fixtureRoot(); const first = host(root, point);
-  await expect.poll(() => existsSync(join(root, 'boundary.json')), { timeout: 5000 }).toBe(true);
-  const boundary = JSON.parse(readFileSync(join(root, 'boundary.json'), 'utf8')) as { workerPid?: number };
+  const boundary = await markerJson(join(root, 'boundary.json'), (value): value is { kind: string; workerPid?: number } =>
+    isObject(value) && value.kind === point && (point === 'pre-spawn' || typeof value.workerPid === 'number'));
   if (boundary.workerPid) { workerPids.push(boundary.workerPid); expect(() => process.kill(boundary.workerPid!, 0)).not.toThrow(); }
   // A paused host is also unsafe: it can still resume between consumption and spawn.
   if (point === 'pre-spawn') expect(await message(host(root, 'recover'))).toMatchObject({ kind: 'refused', error: expect.stringContaining('GRAPH_NO_CHILD_PROOF_REQUIRED') });
