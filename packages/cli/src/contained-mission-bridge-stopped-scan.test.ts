@@ -26,6 +26,17 @@ function fixture(enabled = true) {
 }
 afterEach(() => { vi.useRealTimers(); });
 describe('StoppedChainScanService', () => {
+  it('stops promptly when a reader ignores cancellation and never settles', async () => {
+    const f = fixture();
+    f.setPending(new Promise(() => {}));
+    const scan = f.service.scan();
+    await new Promise(resolve => setImmediate(resolve));
+    expect(f.reads).toEqual(['one']);
+    await f.service.stop();
+    await scan;
+    expect(f.events).toEqual([]);
+    expect(f.cancelled).toEqual([]);
+  });
   it('wires the live scan to the chain store, mission state, refreshed access, and both host cancel paths', async () => {
     const f = setup(); await f.dispatch();
     const child = f.children()[0]!;
