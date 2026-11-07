@@ -233,6 +233,15 @@ export async function withSandboxCleanup(work) {
   return result;
 }
 
+/** Attempt every stop and preserve the first rejection even when its reason is falsy. */
+export async function stopSandboxServices(bridge, host) {
+  let hadFailure = false, failure;
+  for (const stop of [() => bridge?.checkRetry?.stop(), () => bridge?.live.stop(), () => bridge?.stoppedScan.stop(), () => host?.close()]) {
+    try { await stop(); } catch (error) { if (!hadFailure) failure = error; hadFailure = true; }
+  }
+  if (hadFailure) throw failure;
+}
+
 /** Candidate identity is available before any setup writes or runtime constructors. */
 export function sandboxRuntimeReportFields(prepared) {
   return { source_commit: prepared.provenance.sourceCommit, runtime_provenance: prepared.provenance,
@@ -324,11 +333,7 @@ export async function execute(opts, prepared) {
     }));
     defer(cleanup(async () => {
       enabled = false;
-      let failure;
-      for (const stop of [() => bridge?.checkRetry?.stop(), () => bridge?.live.stop(), () => bridge?.stoppedScan.stop(), () => host?.close()]) {
-        try { await stop(); } catch (error) { failure ??= error; }
-      }
-      if (failure) throw failure;
+      await stopSandboxServices(bridge, host);
     }));
     try {
       process.env.OSSTACK_HOME = home; process.env.OSSTACK_SCRATCH_ROOT = runtimeRoot;
@@ -449,7 +454,7 @@ export async function execute(opts, prepared) {
     const previousOwner = { home_id: owner.home_id, instance_id: owner.instance_id, generation: owner.generation };
     const coldEvidence = await handoffSandboxColdRestart({
       close: async () => {
-        await bridge.checkRetry?.stop(); await bridge.live.stop(); await bridge.stoppedScan.stop(); await host.close();
+        await stopSandboxServices(bridge, host);
         db.close(); db = undefined; host = undefined; bridge = undefined; await chmod(dbPath, 0o600);
       },
       restart: async () => runSandboxColdRestart({ version: 1, repository: SANDBOX, repositoryId: SANDBOX_ID,

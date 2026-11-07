@@ -146,7 +146,7 @@ function publicationFacts(s) {
 export async function recoverCancelledSandboxMission(descriptor, { importModule = path => import(pathToFileURL(path).href) } = {}) {
   const d = await validate(descriptor);
   let db, host, bridge, lock;
-  let cleanupFailed = false, forbidden = 0;
+  let cleanupFailed = false, primaryFailed = false, forbidden = 0;
   const lockPath = join(d.home, 'cold-restart.lock');
   const oldEnv = { OSSTACK_HOME: process.env.OSSTACK_HOME, OSSTACK_SCRATCH_ROOT: process.env.OSSTACK_SCRATCH_ROOT };
   try {
@@ -227,13 +227,17 @@ export async function recoverCancelledSandboxMission(descriptor, { importModule 
         mission: { mission_id: d.childMissionId, state: mission.state, stop_obligation: mission.stop_obligation },
         chain: { chain_id: d.chainId, published_head: finalChain.published_head },
         intents: intents.map(i => ({ intent_id: i.intent_id, kind: i.kind, state: i.state })) } };
-  } finally {
+  } catch (error) { primaryFailed = true; throw error; } finally {
     for (const close of [() => bridge?.checkRetry?.stop(), () => bridge?.live.stop(), () => bridge?.stoppedScan.stop(), () => host?.close(), () => db?.close()]) {
       try { await close(); } catch { cleanupFailed = true; }
     }
-    if (lock) { try { await lock.close(); await rm(lockPath); } catch { cleanupFailed = true; } }
+    if (lock) {
+      for (const close of [() => lock.close(), () => rm(lockPath)]) {
+        try { await close(); } catch { cleanupFailed = true; }
+      }
+    }
     for (const [key, value] of Object.entries(oldEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
-    if (cleanupFailed) throw Error('COLD_CLEANUP_FAILED');
+    if (cleanupFailed && !primaryFailed) throw Error('COLD_CLEANUP_FAILED');
   }
 }
 
@@ -243,7 +247,7 @@ export async function runSandboxColdRestart(descriptor, { spawn = nodeSpawn, tim
   const d = await validate(structuredClone(descriptor));
   check(d.handoff.parentPid === process.pid, 'PARENT_PID');
   const directory = await mkdtemp(join(d.runRoot, '.cold-restart-'));
-  const path = join(directory, 'descriptor.json'); let child, timer, killTimer;
+  const path = join(directory, 'descriptor.json'); let child, timer, killTimer, primaryFailed = false;
   try {
     const file = await open(path, 'wx', 0o600);
     try { const bytes = JSON.stringify(d); check(Buffer.byteLength(bytes) <= 65_536, 'DESCRIPTOR_BOUND'); await file.writeFile(bytes); } finally { await file.close(); }
@@ -287,9 +291,10 @@ export async function runSandboxColdRestart(descriptor, { spawn = nodeSpawn, tim
       });
     });
     return result;
-  } finally {
+  } catch (error) { primaryFailed = true; throw error; } finally {
     clearTimeout(timer); clearTimeout(killTimer);
     // SIGKILL cannot run JS finally. Only remove this exited worker's proven lock.
+    let cleanupFailed = false;
     try {
       if (child?.pid && (child.exitCode !== null || child.signalCode !== null)) {
         const lockPath = join(d.home, 'cold-restart.lock');
@@ -298,7 +303,9 @@ export async function runSandboxColdRestart(descriptor, { spawn = nodeSpawn, tim
           if (lock.pid === child.pid && lock.descriptorSha256 === sha(JSON.stringify(d))) await rm(lockPath);
         } catch (error) { if (error.code !== 'ENOENT') throw Error('COLD_CLEANUP_FAILED'); }
       }
-    } finally { await rm(directory, { recursive: true, force: true }); }
+    } catch { cleanupFailed = true; }
+    try { await rm(directory, { recursive: true, force: true }); } catch { cleanupFailed = true; }
+    if (cleanupFailed && !primaryFailed) throw Error('COLD_CLEANUP_FAILED');
   }
 }
 

@@ -245,3 +245,19 @@ test('candidate identity exists in the initial report before any runtime constru
   assert.deepEqual(initial, { source_commit: sha, runtime_provenance: provenance, factory_sha256: 'r', core_sha256: 'c',
     app_module_sha256: 'a', qualified: false });
 });
+
+test('service shutdown preserves every falsy rejection and attempts all remaining stops', async () => {
+  for (const reason of [undefined, false, 0, null, '']) {
+    const calls = [];
+    const bridge = { checkRetry: { stop: async () => { calls.push('check'); throw reason; } },
+      live: { stop: async () => { calls.push('live'); throw Error('later'); } },
+      stoppedScan: { stop: async () => { calls.push('scan'); } } };
+    let rejected = false;
+    try { await driver.stopSandboxServices(bridge, { close: async () => { calls.push('host'); } }); }
+    catch (error) { rejected = true; assert.equal(error, reason); }
+    assert.equal(rejected, true);
+    assert.deepEqual(calls, ['check', 'live', 'scan', 'host']);
+    await assert.rejects(driver.handoffSandboxColdRestart({ close: () => driver.stopSandboxServices(bridge),
+      restart: async () => { assert.fail('failed shutdown cannot hand off'); }, reopen: async () => {} }), error => error === reason);
+  }
+});

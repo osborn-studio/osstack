@@ -100,3 +100,11 @@ Recovery now runs the second terminal pass after `cancel_requested` has become `
 The driver preserves the worker's primary error even if rebuilding the parent fails. Its failure artifact receives only whitelisted child PID/exit/signal facts, never output/body/token fields. Candidate provenance, source marker and all selected entry hashes are now part of the initial report before runtime setup constructors. The accepted cancellation window remains before-first-tick plus real new PID/new owner/same DB recovery; no after-release cancellation requirement is added to §5.7.
 
 Canonical scratch evidence: `/Volumes/AIMATE_WORK/tmp/osstack/cold-product-before.log`, `cold-product-after.log`, `cold-two-stage-control.log`, `cold-primary-control.log`.
+
+## Final cleanup failure corrections
+
+The service stop aggregator now tracks `hadFailure` separately from its reason, attempts every stop, and rejects on `undefined`, `false`, `0`, `null` or an empty string. Both normal cleanup and cold handoff use this same tested function. A failed stop cannot enter a cold handoff.
+
+The cold worker and launcher retain the original primary failure across cleanup failures, including its child PID/exit evidence. Cleanup-only failures still reject. Worker shutdown attempts all service stops, host close, DB close, lock close and lock removal independently; launcher lock-read/removal failure does not prevent descriptor-directory cleanup. New permanent tests invoke the actual exported worker with injected local modules and the actual launcher with a fake child; no VM/source-extraction test is used.
+
+Narrow paired controls were both RED when just these fixes were removed (`bridge-stop-falsy-control.log`, `bridge-cold-primary-control.log`, exit 1). Restored final source: new targeted 3/3 pass (`bridge-final-cleanup-fix.log`); installed-product plus focused suite 47/47 pass (`cold-product-after-cleanup.log`); nine-file portable offline suite 218/218 pass (`bridge-offline-ci-after-cleanup.log`). All logs are under `/Volumes/AIMATE_WORK/tmp/osstack`. Actual installed prefix, bytes and external-command tripwires remain unchanged. Independent final review is still separate from these author-run gates.

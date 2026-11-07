@@ -250,3 +250,44 @@ test('time bounds and spawn failure do not leave a descriptor behind', async t =
   } }), /COLD_SPAWN_FAILED/);
   await assert.rejects(readFile(file), { code: 'ENOENT' });
 });
+
+test('worker keeps its primary error across all failing cleanups and restores lock and environment', async t => {
+  const f = await fixture(t);
+  const primary = Object.assign(Error('COLD_SCOPE_BINDING'), { evidence: { childPid: 432, exitCode: 1 } });
+  const calls = [];
+  const before = { OSSTACK_HOME: process.env.OSSTACK_HOME, OSSTACK_SCRATCH_ROOT: process.env.OSSTACK_SCRATCH_ROOT };
+  const { pathToFileURL } = await import('node:url');
+  await assert.rejects(recoverCancelledSandboxMission(f.descriptor, { importModule: async path => {
+    const module = await import(pathToFileURL(path).href);
+    if (path === f.descriptor.modules.core.path) return { ...module, openDb: input => {
+      const db = module.openDb(input);
+      return { ...db, close: () => { calls.push('db'); db.close(); throw Error('db-cleanup'); } };
+    } };
+    return { ...module, ContainedMissionHost: class extends module.ContainedMissionHost {
+      async recover() { throw primary; }
+      async close() { calls.push('host'); throw Error('host-cleanup'); }
+    }, createProductionLiveBridge: async () => ({
+      checkRetry: { stop: async () => { calls.push('check'); throw undefined; } },
+      live: { stop: async () => { calls.push('live'); throw false; } },
+      stoppedScan: { stop: async () => { calls.push('scan'); throw 0; } },
+    }) };
+  } }), error => error === primary && error.evidence.childPid === 432);
+  assert.deepEqual(calls, ['check', 'live', 'scan', 'host', 'db']);
+  assert.equal(process.env.OSSTACK_HOME, before.OSSTACK_HOME);
+  assert.equal(process.env.OSSTACK_SCRATCH_ROOT, before.OSSTACK_SCRATCH_ROOT);
+  await assert.rejects(readFile(join(f.descriptor.home, 'cold-restart.lock')), { code: 'ENOENT' });
+});
+
+test('launcher retains failed child PID and exit evidence when lock cleanup also fails', async t => {
+  const f = await fixture(t);
+  const { EventEmitter } = await import('node:events');
+  await assert.rejects(runSandboxColdRestart(f.descriptor, { spawn: () => {
+    const child = new EventEmitter(); child.pid = 54321; child.exitCode = 1; child.signalCode = null;
+    child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    queueMicrotask(async () => {
+      await writeFile(join(f.descriptor.home, 'cold-restart.lock'), 'malformed', { mode: 0o600 });
+      child.emit('close', 1, null);
+    });
+    return child;
+  } }), error => error.message === 'COLD_WORKER_FAILED' && error.evidence.childPid === 54321 && error.evidence.exitCode === 1);
+});
