@@ -62,6 +62,13 @@ export interface InstalledVerificationProfile extends VerificationProfileLaunch 
   /** Call inside the launch fence. Does not check grants, owner leases or cancellation. */
   readonly revalidateForLaunch: () => VerificationProfileLaunch;
 }
+const capabilities = new WeakMap<object, () => VerificationProfileLaunch>();
+/** Host preparation accepts only the original capability issued by this loader. */
+export function revalidateInstalledVerificationProfile(value: InstalledVerificationProfile): VerificationProfileLaunch {
+  const revalidate = capabilities.get(value);
+  if (!revalidate) throw Error('VERIFICATION_PROFILE_CAPABILITY_REQUIRED');
+  return revalidate();
+}
 function freeze<T>(value: T): Immutable<T> {
   if (value !== null && typeof value === 'object') {
     for (const child of Object.values(value)) freeze(child);
@@ -135,9 +142,11 @@ export function loadInstalledVerificationProfile(host: InstalledVerificationProf
   const fixedHost = structuredClone(host);
   const initial = readInstalled(fixedHost, fixedBinding);
   const launch: VerificationProfileLaunch = freeze({ binding: fixedBinding, profile: initial.profile });
-  return Object.freeze({ ...launch, revalidateForLaunch: () => {
+  const capability = Object.freeze({ ...launch, revalidateForLaunch: () => {
     const current = readInstalled(fixedHost, fixedBinding);
     if (!sameFile(initial.root, current.root) || !sameFile(initial.file, current.file)) throw Error('VERIFICATION_PROFILE_INSTALLATION_CHANGED');
     return launch;
   } });
+  capabilities.set(capability, capability.revalidateForLaunch);
+  return capability;
 }
