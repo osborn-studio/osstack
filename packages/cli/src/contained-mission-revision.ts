@@ -18,6 +18,7 @@ import {
   RevisionLaunchRefused, parseContainedMissionSpec, type ContainedLaunchKind, type ContainedMissionSpec, type ContainedRevisionPort,
 } from './contained-mission-runner.js';
 import type { EngineeringAccess } from './engineering-access.js';
+import { feedbackTextPrefix } from './contained-mission-feedback-text.js';
 
 // ------------------------------------------------------------------ feedback text
 
@@ -36,7 +37,7 @@ export interface ReviewFeedbackPiece { review_id: number; top_level: string; com
 export function renderFeedbackText(pieces: readonly ReviewFeedbackPiece[], limit: number = MAX_TEXT): string {
   const clean = (value: string, max: number): string => {
     const text = redactSecrets(value.replace(UNSAFE, '')).replace(/REVIEW-FEEDBACK/gi, 'REVIEW_FEEDBACK');
-    return text.length > max ? `${text.slice(0, max)} [truncated]` : text;
+    return text.length > max ? `${feedbackTextPrefix(text, max)} [truncated]` : text;
   };
   const lines: string[] = [];
   for (const piece of pieces) {
@@ -51,11 +52,11 @@ export function renderFeedbackText(pieces: readonly ReviewFeedbackPiece[], limit
   let text = lines.join('\n');
   const room = Math.max(0, Math.min(MAX_TEXT, limit));
   if (text.length <= room && escapedLength(text) <= room) return text;
-  const note = '\n[truncated]';
+  const note = room >= 13 ? '\n[truncated]' : '[truncated]'.slice(0, room);
   // Cut on the escaped length: quotes and backslashes double in the JSON the ledger stores.
-  let cut = Math.min(text.length, room);
-  while (cut > 0 && escapedLength(text.slice(0, cut)) + note.length > room) cut = Math.floor(cut * 0.9);
-  text = `${text.slice(0, cut)}${note}`;
+  let cut = Math.min(text.length, room - escapedLength(note));
+  while (cut > 0 && escapedLength(feedbackTextPrefix(text, cut)) + escapedLength(note) > room) cut = Math.floor(cut * 0.9);
+  text = `${feedbackTextPrefix(text, cut)}${note}`;
   return text;
 }
 

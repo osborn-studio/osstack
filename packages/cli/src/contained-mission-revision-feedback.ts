@@ -5,6 +5,7 @@
 import { LocalFailureIntakeIdSchema } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { z } from 'zod';
+import { feedbackTextPrefix } from './contained-mission-feedback-text.js';
 
 export type RevisionFeedbackSource =
   | { kind: 'github_review'; review_ids: number[]; feedback_digest: string }
@@ -64,8 +65,8 @@ export function renderContainedRevisionFeedbackText(text: string, limit: number 
   if (clean.length <= room && escapedLength(clean) <= room) return clean;
   const note = room >= 13 ? '\n[truncated]' : '[truncated]'.slice(0, room);
   let cut = Math.min(clean.length, room - escapedLength(note));
-  while (cut > 0 && escapedLength(clean.slice(0, cut)) + escapedLength(note) > room) cut = Math.floor(cut * 0.9);
-  return `${clean.slice(0, cut)}${note}`;
+  while (cut > 0 && escapedLength(feedbackTextPrefix(clean, cut)) + escapedLength(note) > room) cut = Math.floor(cut * 0.9);
+  return `${feedbackTextPrefix(clean, cut)}${note}`;
 }
 
 /** Every executor and repair turn must include this block. Text stays data even when it contains the exact nonce. */

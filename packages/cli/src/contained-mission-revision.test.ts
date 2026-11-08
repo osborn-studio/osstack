@@ -403,3 +403,19 @@ it('redacts reviewer credentials reconstructed by removing unsafe characters', (
   expect(text).not.toContain(FAKE_TOKEN);
   expect(text).not.toContain('\u200b');
 });
+
+it('keeps complete Unicode code points at every reviewer feedback cutoff', () => {
+  const text = renderFeedbackText([{ review_id: 77, top_level: '😀'.repeat(8190) + '"'.repeat(4),
+    comments: [{ threadId: 'thread-1', databaseId: 1001, body: '😀'.repeat(2000), path: '😀'.repeat(300) }] }]);
+  expect(Buffer.from(text).toString('utf8') === text).toBe(true);
+  expect(JSON.stringify(text).length - 2).toBeLessThanOrEqual(16_384);
+  expect(text).toContain('[truncated]');
+});
+
+it('keeps escaped reviewer feedback within small Unicode truncation budgets', () => {
+  for (let limit = 0; limit <= 80; limit++) {
+    const text = renderFeedbackText([{ review_id: 77, top_level: '😀"\\'.repeat(30), comments: [] }], limit);
+    expect(Buffer.from(text).toString('utf8') === text).toBe(true);
+    expect(JSON.stringify(text).length - 2).toBeLessThanOrEqual(limit);
+  }
+});

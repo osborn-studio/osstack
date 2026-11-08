@@ -148,3 +148,18 @@ it('redacts synthetic credentials reconstructed by removing unsafe characters', 
   expect(renderContainedRevisionFeedbackText(obfuscated)).not.toContain(synthetic);
   expect(renderContainedRevisionFeedbackBlock({ ...local, text: obfuscated }).join('\n')).not.toContain(synthetic);
 });
+
+it('truncates escaped feedback without splitting a supplementary Unicode code point', () => {
+  const rendered = renderContainedRevisionFeedbackText('😀'.repeat(8190) + '"'.repeat(4));
+  expect(Buffer.from(rendered).toString('utf8') === rendered).toBe(true);
+  expect(JSON.stringify(rendered).length - 2).toBeLessThanOrEqual(16_384);
+  expect(rendered).toContain('[truncated]');
+});
+
+it('preserves complete Unicode code points and escaped budgets at small cutoffs', () => {
+  for (let limit = 0; limit <= 80; limit++) {
+    const rendered = renderContainedRevisionFeedbackText('😀"\\'.repeat(30), limit);
+    expect(Buffer.from(rendered).toString('utf8') === rendered).toBe(true);
+    expect(JSON.stringify(rendered).length - 2).toBeLessThanOrEqual(limit);
+  }
+});
