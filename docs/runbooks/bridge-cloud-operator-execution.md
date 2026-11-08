@@ -11,6 +11,8 @@ git show df70c700:docs/runbooks/bridge-reviewer-routine-draft.md
 
 These commands only read local objects. Do not create a duplicate verification skill. Keep `.cursor/skills/verify-osstack` as the existing verification method. Its historical 31/31 result does not cover bridge acceptance.
 
+**2026-11-08 scope clarification:** local osstack owns coding, tests, review and repair as far as practical; Watcher retains verification/approve/`verified`, and Merger independently checks rules and squashes. Reviewer is excluded from the required main loop. Its D staging/probe material below is **PAUSED/legacy optional**, not an activation task or prerequisite. Under the user-provided current Watcher instructions, failures are reported in Grok chat without formal `CHANGES_REQUESTED`; [local failure intake remains separate open work](../reports/bridge-phase5-verification/acceptance-v2.md#product-closure-still-missing). Existing registered formal-review transport is preserved; chat/comments must not manufacture review IDs. No Bot was deleted, no cloud action is authorized here, and the Mission-main counted human approval gate is unchanged. Neither full automation nor a third 5-G pass is claimed.
+
 ## 1. Preserve the current flow and establish the boundary
 
 Watcher verifies, gives the personal-account approval, and maintains `verified`. Merger requires `Rubebun-Jadeem`'s latest APPROVED review on the current head, no outstanding changes requested, current checks and dependency gates. It squashes with `--match-head-commit`; it uses neither `--admin` nor `--auto`. Order maintains merge-after labels. CoS coordinates evidence. Reviewer is paused, last recorded `10/10`, with no proved formal CHANGES_REQUESTED capability. Shared login is `Rubebun-Jadeem` (User id 243772068); role names do not establish separate identities.
@@ -131,7 +133,7 @@ Implement C exactly from phase 6 §§3–6, including Mission claim classificati
 full reads, head-wide conclusions, lease/generation fencing, known IDs, creation
 intents, pending writes, persistent wait starts and PR-to-head mapping.
 C only writes grok/verify-osstack checks. Never approve, comment, push or merge.
-Implement D from phase 6 §7 and the df70c700 Reviewer draft.
+D is optional legacy staging only; if separately selected later, use phase 6 §7 and the df70c700 Reviewer draft. Keep it paused for the current main loop.
 Before V-21/V-22 and explicit stateful enable, D only submits COMMENT.
 Use commit_id=current head. Body line 1 is grok-review: pass|changes|none.
 Body line 2 is head <full lowercase SHA>  base <full lowercase SHA>.
@@ -143,7 +145,7 @@ Unknown identity, scope, read completeness or fencing: stop and record blocked.
 
 C's check fields are phase 6 §6.1: App ID 5620065, exact name `grok/verify-osstack`, live `head_sha`, `external_id=<owner>/<repo>#<PR>:<head>`, `in_progress` or `completed`, and only `success`/`failure` conclusions. Never neutral/skipped. This draft is an implementation assignment; pasting it does not prove the durable protocol exists.
 
-Actual Enable remains a later owner action in the platform UI. First read back the saved version, disabled switch, sandbox allowlist, identity binding and isolation evidence. Record owner's explicit scope and run authorization. Only then may the operator enable sandbox COMMENT-only runs. V-21/V-22 require a separately authorized, controlled sandbox probe; do not change the routine to stateful to test itself. After both are recorded, the owner separately decides stateful Enable. Main installation, observation period, new ADR, ruleset binding and producer/merger registry changes remain later steps under phase 6 §§8/11/13. Do not downgrade the personal account now.
+D activation is not required for the current local-code/Watcher/Merger loop. Any separately selected future Enable remains a later owner action in the platform UI. First read back the saved version, disabled switch, sandbox allowlist, identity binding and isolation evidence. Record owner's explicit scope and run authorization. Only then may the operator enable sandbox COMMENT-only runs. V-21/V-22 require a separately authorized, controlled sandbox probe; do not change the routine to stateful to test itself. After both are recorded, the owner separately decides stateful Enable. Main installation, observation period, new ADR, ruleset binding and producer/merger registry changes remain later steps under phase 6 §§8/11/13. Do not downgrade the personal account now.
 
 ## 6. Sandbox acceptance and exact readback
 

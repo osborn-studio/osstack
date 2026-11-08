@@ -1,11 +1,30 @@
 # 执行进度
 
-## Current closeout snapshot (supersedes historical status below)
+## Current closeout snapshot — 2026-11-08 (supersedes historical status below)
 
-- Main `d89cd4a5`: #421 and #422 user-merged after exact-head CI passed (five jobs each; paid semantic smoke skipped).
-- Final `812` full acceptance completed: 22 workspaces, 8,901 passed / 6 skipped; CLI 3,985 passed / 5 skipped. After journal `cf6` + `dab`, only root verification JavaScript changed; Linux Node24 journal checks passed 220/220.
-- Final strict mutation gate at `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`: all19 killed by real AssertionError failures, every baseline exit0, zero invalid/survivor/timeout/signal/spawn errors; source SHA256 before/after equal and clean final diff. See `docs/reports/bridge-phase5-verification/final-source-mutants.json` for exact aggregate and manifest binding. No TLC/property rerun was needed.
-- Actual 5-G second attempt is running; cancellation and App A passed, but the run remains unqualified. Next action: parent collects remaining real sandbox results and records final qualification. Neither sandbox permission nor full-suite completion is pending.
+- Latest reported delivery snapshot (2026-11-08): #425 is merged; main `f034a51eef26676506788be0dc66cd55a043efbf`. Earlier main `d89cd4a5` included user-merged #421/#422 after exact-head CI passed (five jobs each; paid semantic smoke skipped). #426 is now Ready with fresh CI running; #427–#429 remain draft/main-base.
+- **N11 fourth real v2 run PASSED**, `LIVE_5G_ONLY`, **13/13**, `qualified:true`, exit 0. Run `revision-5g-20261108d`, driver `c6c3dd93fc1b797e3bd17e171dc96c94d95a050c`, installed runtime `8120569883fd23c30bd99858de8f3d0c6a34aa55`, 2026-11-08 15:03:47–15:16:20 Asia/Shanghai. The owner authorized one additional sandbox-only attempt. No fifth run is authorized. **Production CLOSED.**
+- Attempts 1–3 remain failed/unqualified, with unchanged original reports. Attempt 3 passed 7/13 then stopped at `ruleset_probe_not_rejected`; later HTTP 422 denial/unchanged-head evidence does not retroactively qualify it.
+- Independent fourth-run readback used **68 successful GETs, zero failures**: six PRs (23–28) closed/unmerged after cleanup, eleven confirmed heads, six root publications/five pushes, eleven App B success checks and eleven App A activities. Driver final open-head assertion passed before cleanup; current open precondition false is expected. Real W13 failed intent `detail=grant_invalid` has one stopped/unreleased `git_push` journal, `stop_proof=never_released`, remote unchanged. Controlled hostile T2 is separate.
+- All 69 host journals are stopped; all 14 mission stop obligations are zero. Two dispatched reservations, two awaiting-decision missions and two active claims remain for T2/revocation. **`ledger_settled:false`**; no row was manipulated to claim full settlement. Twelve range events include the failed revoked push; eleven publications are confirmed. Cold recovery still cancels before the first executor tick and does not prove in-flight recovery or parent shutdown.
+- Historical full package gate at `7f657613`: 22 packages, 8,905 passed / 6 skipped (CLI 3,989 / 5). Final strict nineteen-mutant gate at `315e7fc4` and source-`7f657613` targeted protected-finding mutant remain separately scoped. Model/property/mutant limitations remain unchanged; no new heavy rerun was implied by the fourth sandbox execution.
+- Reporter fix `05eb6600` validates the distinct `driver_source_commit`; targeted reporter suite **12/12** after an initial RED 11/1. Parent fifteen-file Node run: **484 passed, zero failed/skipped**, exit 0, 5178.63 ms (`fourth-followup-node-15.log`). The older 483-test pass remains historical. `fourth-acceptance-status.json` reports live PASSED 13/13, source driver `c6c3dd93` / runtime `81205698`, `all_tasks_done:false`.
+- All five final Sol CLI scope reviews now PASS: rounds, containment and inventory plus resumed release/timeline deltas. The two initial retention gaps were resolved by frozen snapshot/raw complete GET artifacts, not original-report rewriting. GLM-5.3 post-run review is **SCOPED PASS**, no unresolved material findings; static strict-allowlist projection/artifact consistency only, no execution/authenticity/full-project claim. Input SHA256 `e8168ff7d72ac371ce0b232540eaad6a3a9147c38b0c059f5a01735c6c9279ea`, manifest/result `glm-fourth-postrun-manifest.json` / `glm-fourth-postrun.json`. Earlier static PASS results cover only their recorded source/scope.
+- Actual external Grok capability, Watcher chat-failure/local-repair intake, production admission and five production chains remain incomplete. Reviewer stays paused/excluded; the counted Mission-main human gate is unchanged. Resume from [current v2 status](../../reports/bridge-phase5-verification/current-v2-status.md) and [fourth-run evidence](../../reports/bridge-phase5-verification/fourth-run-v2.md).
+
+### Current five-slice delivery queue (all bases are main)
+
+| PR | Output | Merge dependency | Current reported state |
+|---|---|---|---|
+| #425 | Selected installed runtime provenance and bounded executor hook | — | Merged; main `f034a51eef26676506788be0dc66cd55a043efbf` |
+| #426 | CLI runner oracle and targeted protected-finding mutant | #425 (merged) | Ready, base `main`; head `2013392ac8d08cf8502335d2f14e75feff6e0b97`, fresh CI running |
+| #427 | Full v2 sandbox driver, security oracles and REST refusal repair | #426 | Draft, base `main` |
+| #428 | Read-only ledger audit | #427 | Draft, base `main` |
+| #429 | Bounded diagnostic, advisory reporter, all Markdown closeout and optional skill recipe | #428 | Draft, base `main` |
+
+#426 was synchronized with merged main; its tree is byte-identical to previous head `75c5222c` and its portable eleven-file Node suite passed 358/358. The earlier Linux Node jobs for #427–#429 failed one history fixture because a hardcoded `/Volumes` scratch override caused `EACCES`. The test-only TDD fix honors and asserts the configured root: #427 `c481d583`, #428 `e4053b1d`, #429 `1a621ba2`. Replacement Linux Node jobs `42459490007`, `42459490062`, `42459489845` all succeeded. Portable local suites passed 422 (12 files), 441 (13 files) and 484 (15 files; `ci-portable-pr429-node.log`). This is a snapshot of those jobs, not an all-checks-pass claim. The real driver and fourth-run `c6c3dd93` source evidence are unchanged; no new live execution occurred.
+
+The earlier feature-base settings for #426–#429 were corrected to `main`. Dependencies are merge-order gates, never feature-branch PR targets. After each prerequisite merges, reconcile the next branch with current main, verify its exact diff and new head, rerun affected deterministic/CI checks, then obtain review. Keep each dependent PR draft until its requirements pass. Humans merge main one PR at a time. The private `review-slices-manifest.json` and `pr-1-body.md` through `pr-5-main-base-body.md` preserve the original file groups; their older run/test/status prose is historical. Review progress, a sandbox PASS or a previous head's green CI does not replace current exact-head gates.
 
 ### Historical record
 
@@ -36,7 +55,7 @@
 
 ## 产物与剩余 PR 拆分
 
-两个新 PR 都以 main 为 base。原规划先等依赖合入；本轮用户明确允许 N10 合入 N9 branch 作为 review 依赖：`codex/bridge-phase5-acceptance` 从 main `a9b1a605` 建立，已合入冻结的 `codex/bridge-production-runtime` head `287864a5`，PR body 必须写 merge-after N9（未来 PR 号待主会话补齐）。不合入整个 final candidate，也不重复导入其已撤销 skill 提交。缺正式依赖合并/CI 时仍是待审候选，不冒充 main 已验收。
+本节保留 N9/N10 的历史提交拆分记录；当前交付采用上方五个 main-base PR。所有 PR 必须以 main 为 base，不以其他 feature branch 为目标。N9 依赖已由 #422 合入；历史 `codex/bridge-phase5-acceptance` 曾纳入 N9 作为本地 review 输入，这不是当前 PR base 指令。不得把整个 final candidate 或已撤销 skill 提交重新导入。
 
 ### N9 runtime：按以下顺序保留原子提交
 
@@ -202,8 +221,8 @@ scripts/verify-bridge-phase5-tlc.mjs
 
 ## 下一步
 
-1. 主会话冻结综合分支后执行最终全仓串行测试、独立静态复审；结果不得由历史测试代替。
-2. PR 以 main 为 base，保留 merge after #421/#422（已合并则移除）；生产 acceptance lock 保持关闭。用户 Reviewer 暂停且尚无正式 CR。
-3. 本地 TLC、两组 10k 属性、源码与模型变异门已完成并源绑定；不重复已通过的穷举，除非源变化或新失败需要。
-4. N10 门满足且用户批准后，才执行 5-G driver 的 --execute；真实沙箱运行尚未发生，Phase5 整体仍待5-G。
-5. App C/D 身份迁移、主仓库规则读回和连续五条链验收仍分别属于 N13/N14/N15，不由共享云电脑 gh 流程或本地 preflight 代替。
+1. 保留第四轮 GLM SCOPED PASS 的输入 hash、静态范围和限制；按当前报告核对交付 diff。不得把静态一致性评阅升级为真实性或完整项目验收。
+2. #425 已合并；等待 #426 新 head CI，并按 #426 → #427 → #428 → #429 的依赖顺序准备人审。所有 PR 的 base 都保持 main；每次 base/head 改变后重新核对 diff、受影响检查和 exact-head CI。不得把 draft、绿 CI 或沙箱 PASS 写成已合并。
+3. 保留已通过的 TLC、两组 10k 属性和 source/model mutant 来源绑定；源变化或新失败需要时才追加受影响门，不重跑刷绿。
+4. 保留第四轮原报告、不可变 snapshot、完整只读 timeline 与 T2/revocation 的两个待决状态；无第五轮授权，不再运行真实 driver 或 probe。
+5. App C/D 外部能力、Watcher 失败到本地修复接入、主仓库规则与连续五条生产链分别补证；Reviewer 保持暂停/排除，human main gate 不变，生产 CLOSED。
