@@ -18,14 +18,15 @@ async function selectedFile(root, path) {
 /**
  * Select an immutable checkout build or installed candidate. Imports execute only on call.
  * Installed prefixes must be absolute. A prefix alias is canonicalized; selected entry and
- * manifest symlinks must stay inside that canonical root. All validation precedes imports.
+ * manifest symlinks must stay inside that canonical root. All path and manifest validation precedes imports.
  * expectedSourceCommit is a full lowercase Git SHA and is supported only in installed mode.
  *
- * Returns { runtime, core, appModule, provenance }. provenance contains mode, canonical root,
+ * Returns { runtime, core, appModule, agents, governance, provenance }. provenance contains mode, canonical root,
  * sourceCommit (null in checkout mode), sourceMarker ({path, sha256} for the candidate manifest,
- * otherwise null), and entries keyed by runtime/core/appModule with {path, sha256}.
+ * otherwise null), and entries keyed by runtime/core/appModule/agents/governance with {path, sha256}.
  * Hashes cover these files only, not transitive imports or the installed supply chain.
  * Keep the selected tree immutable for the process lifetime: Node caches imported modules.
+ * Governance must export parseMissionPatch and classifyMissionPatch as functions.
  * This helper does not call exported functions, construct services, or read credentials.
  */
 export async function loadBridgeRuntime({ checkoutRoot = process.cwd(), runtimePrefix, expectedSourceCommit } = {}) {
@@ -52,13 +53,20 @@ export async function loadBridgeRuntime({ checkoutRoot = process.cwd(), runtimeP
     runtime: `${cli}/bridge-production.js`,
     core: installed ? 'lib/node_modules/@osstack/core/dist/index.js' : 'packages/core/dist/index.js',
     appModule: `${cli}/bridge-github-app.js`,
+    agents: installed ? 'lib/node_modules/@osstack/agents/dist/index.js' : 'packages/agents/dist/index.js',
+    governance: installed ? 'lib/node_modules/@osstack/governance/dist/index.js' : 'packages/governance/dist/index.js',
   };
   const entries = {};
   for (const [key, path] of Object.entries(paths)) entries[key] = (await selectedFile(root, path)).marker;
-  const [runtime, core, appModule] = await Promise.all([
+  const [runtime, core, appModule, agents, governance] = await Promise.all([
     import(pathToFileURL(entries.runtime.path).href),
     import(pathToFileURL(entries.core.path).href),
     import(pathToFileURL(entries.appModule.path).href),
+    import(pathToFileURL(entries.agents.path).href),
+    import(pathToFileURL(entries.governance.path).href),
   ]);
-  return { runtime, core, appModule, provenance: { mode: installed ? 'installed' : 'checkout', root, sourceCommit, sourceMarker, entries } };
+  if (typeof agents.readCodexProxyPatch !== 'function') throw Error('bridge_runtime_agents_reader_required');
+  if (typeof governance.parseMissionPatch !== 'function') throw Error('bridge_runtime_governance_parser_required');
+  if (typeof governance.classifyMissionPatch !== 'function') throw Error('bridge_runtime_governance_classifier_required');
+  return { runtime, core, appModule, agents, governance, provenance: { mode: installed ? 'installed' : 'checkout', root, sourceCommit, sourceMarker, entries } };
 }
