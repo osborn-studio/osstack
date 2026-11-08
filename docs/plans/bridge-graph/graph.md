@@ -28,7 +28,7 @@
 
 ## 3. 节点与边
 
-状态：✅ 已合并 · 🟡 PR 已开 · 🔵 已提交待开 PR · ⬜ 未开始 · ⛔ 被外部条件阻塞。
+状态：✅ 已合并 · 🟡 PR 已开 / 验收证据已完成但未合并 · 🔵 已提交待开 PR · ⬜ 未开始 · ⛔ 被外部条件阻塞。
 
 | 节点 | 产物 | 依赖（边） | 状态 |
 |---|---|---|---|
@@ -40,15 +40,15 @@
 | N6 W13-C2 远端写入（push、pr create）走门 | #406；T17 #409 | N5 | ✅ |
 | N7 阶段 5 5-C `publishRevision` | #410；D8 #408 | N4、N6 | ✅ |
 | N8 阶段 5 5-D 栅栏中的链检查、按 `publish_target` 分派 | #411 | N7 | ✅ |
-| N9 阶段 5 5-E 恢复、live 对账器、`OSSTACK_BRIDGE=1` | D7/D9/扫描服务 #412/#414/#416、反馈定位 #417 已合并；#418 新 head CI 待定，#419 CI 全绿未合并；回执、生产装配、pending scheduler、exact ledger 已本地实现，待独立 main-base PR | N8、N1、#418、#419 | 🔵 实现已完成，生产门仍锁闭 |
-| N10 阶段 5 5-F 故障注入、变异、TLA 对照 | #413 是历史模型证据；本地已有故障回归、19 个源变异及两组 10k properties 的记录；最终快照绑定由 phase5 报告归档；两个 broad TLC 仍 pending，资源暂停且保留 checkpoint | N9 | 🔵 验证与归档未完成 |
-| N11 阶段 5 5-G 沙箱端到端 | 真实 driver 已提交；Docker 已启动、真实 preflight 已通过；`--execute` 未运行 | N10、用户对沙箱写入的批准 | ⛔ 等实际执行批准与 N10 门 |
+| N9 阶段 5 5-E 恢复、live 对账器、`OSSTACK_BRIDGE=1` | #422 已由用户合并；正常生产 acceptance lock 仍关闭 | N8、N1 | ✅ runtime 合并，生产未开放 |
+| N10 阶段 5 5-F 故障注入、变异、TLA 对照 | 本地故障、19 源变异、两组 10k 属性及四组完整 TLC 已源绑定；来源与限制见 phase5 报告 | N9 | 🟡 本地证据完成；五片交付门见 progress |
+| N11 阶段 5 5-G 沙箱端到端 | 第四轮 v2 `LIVE_5G_ONLY` 13/13、qualified true；68 GET 独立对账；两待决状态保留，生产 CLOSED | N10、用户本次额外沙箱批准 | 🟡 沙箱 PASS；post-run GLM scoped PASS |
 | N12 App E M-D 沙箱场景录制 | #403；迁移 55 #404 | N3 | ✅ |
 | N13 阶段 6 Grok Bots 改用 App C/D | 平台侧；用户共享云电脑的 gh 流程不等于 App C/D 身份迁移或 U-1…U-11 验收 | — | ⛔ App C/D 与能力证据未齐 |
 | N14 `main-quality` ruleset 套到主仓库 | 人执行 | N13 | ⛔ 仓库管理员（改设置需用户） |
 | N15 阶段 7 主仓库上线 | 运行记录 | N9、N11、N13、N14 | ⬜ |
 
-边上的合并顺序（共享文件：`index.ts`、导出清单、runner/command/rpc）：N1 → N2 → N3 → N5 → N4。后合并者合入 `origin/main` 后解决冲突。
+边上的合并顺序（共享文件：`index.ts`、导出清单、runner/command/rpc）：N1 → N2 → N3 → N5 → N4。后合并者合入 `origin/main` 后解决冲突。每个 PR 的 base 始终是 main；依赖只决定合并先后，不建立 feature-target PR。
 
 ```
 N1 ─────────────────────────────┐
@@ -58,7 +58,7 @@ N3 ─▶ N12                                         ├▶ N15
 N13 ─▶ N14 ───────────────────────────────────────┘
 ```
 
-下一条关键路径：先完成 #418/#419/#420 的精确 head CI 与合并队列，再把已实现的 N9 runtime 和 N10 tests/models/harness 拆成两个以 main 为 base 的 PR；提交与门见 [progress.md](progress.md)。当前 candidate 为 `78abb868`，第三轮全仓按 workspace 串行验证正在运行，不能写成全绿。N9 的生产接受锁仍关闭；`d8964643` 的 invocation-scope 取消修复已获 GLM-5.3 复审通过，用户 Reviewer 暂停且尚无正式 CR。N10、N11 和 N13 的证据不能由本地实现替代。
+下一条关键路径：第四轮 post-run GLM 已得静态 SCOPED PASS；按 #425 → #426 → #427 → #428 → #429 依赖顺序准备人审。五个 PR 全部以 main 为 base；#425 已报告 CI 全通过，#426–#429 是 draft，不声称已合并。前一依赖合并后，把下一分支与 main 对齐，核对 diff 并重新取得 exact-head 门。见 [progress.md](progress.md) 与 [第四轮证据](../../reports/bridge-phase5-verification/fourth-run-v2.md)。前三轮失败原样保留；无第五次沙箱授权。N13 外部 Grok 能力、本地失败接入、N14 与 N15 仍未完成，生产 CLOSED；Reviewer 暂停/排除和 human main gate 不变。
 
 ## 4. 每个节点的门（按顺序，只凭证据打开）
 
@@ -84,7 +84,7 @@ N13 ─▶ N14 ─────────────────────�
 6. 生成的 `docs/inventory/PUBLIC_EXPORTS.md` 冲突时取一边后重新生成，不手工合并。
 7. 只暂存明确的路径，不用 `git add -A`（claude-mem 会改 AGENTS.md）；`git commit` 单独一次 Bash 调用（PreToolUse 钩子会误判组合命令）。
 8. 机器很忙时启动耗时不可信：比较启动静态依赖图（文件数与字节数），不比较毫秒。
-9. 沙箱写入每次都会留下删不掉的 Mission 分支：真实运行最多 3 次，先只做 preflight。
+9. 沙箱写入会留下 Mission 分支。原上限 3 次后，用户另授一次仅沙箱执行；第四轮已使用并通过，无第五次授权。历史失败不被后来的 PASS 改写。先验证固定源与 preflight；按本次授权范围执行。
 10. 夹具与报告只放白名单字段；正文只留盐化摘要；真实 id 只放在仓库外的私有映射。
 11. 穷举 TLC 能找出随机模拟找不到的反例：模型改动后跑穷举，不以模拟结果下结论（#413 找到两个模型错误）。
 12. 判断一次修订推送是否已落地，看 `new_head` 能否从远端 head 到达，并核对范围；不比较相等（#413 反例 2，5-E 的实现规则）。
@@ -107,3 +107,5 @@ N13 ─▶ N14 ─────────────────────�
 | 2026-11-07 | N4–N7、N12 已合并；N8、N10（TLA+ 部分）开 PR；N9 拆成 D7、D9、回执恢复、扫描服务、live 对账器与开关 | 进度更新 |
 | 2026-11-07 | 本地并行增量：live 周期、check 重试、评审定位；N8/D7/TLA 合并状态校正 | 区分本地实现、main 状态与未完成验收 |
 | 2026-11-07 | 当前实现模型更新为 `gpt-6.1-sol`，GLM-5.3 只读评阅；同步 #417–#420、N9/N10 已实现范围和剩余验收门 | 用户最新分工与已核实状态；没有开启生产门或运行沙箱 `--execute` |
+
+当前交付更新（2026-11-08）：第四轮 sandbox v2 PASS，完整来源与 ledger 未结算状态见当前报告。#425–#429 全为 main-base；阶段 7 完成定义保持不变。
