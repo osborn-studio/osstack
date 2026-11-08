@@ -2,6 +2,7 @@
 // paired publish_target/publication validation and all round/head/base/root gates.
 // The host must resolve local references in its ledger and verify the receipt,
 // grant, bindings and stop proof before dispatch. Parsing grants no authority.
+import { LocalFailureIntakeIdSchema } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { z } from 'zod';
 
@@ -23,8 +24,8 @@ const source = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('github_review'), ...reviewFields }).strict(),
   z.object({
     kind: z.literal('local_verification'),
-    // Opaque ledger key, never a path or a URL. The host/store defines its identity.
-    intake_id: z.string().min(1).max(128).refine(value => !/[^A-Za-z0-9_-]/.test(value)),
+    // Reference syntax only; the host must still resolve the immutable ledger receipt.
+    intake_id: LocalFailureIntakeIdSchema,
     receipt_digest: digest,
   }).strict(),
 ]);

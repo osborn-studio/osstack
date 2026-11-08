@@ -8,7 +8,7 @@ const digest = 'a'.repeat(64);
 const nonce = 'b'.repeat(32);
 const legacy = { review_ids: [77, 78], feedback_digest: digest, nonce, text: 'Fix the scoped failure.' };
 const review = { source: { kind: 'github_review', review_ids: [77, 78], feedback_digest: digest }, nonce, text: legacy.text };
-const local = { source: { kind: 'local_verification', intake_id: 'lfi_fixture-1', receipt_digest: digest }, nonce, text: legacy.text };
+const local = { source: { kind: 'local_verification', intake_id: 'lfi_00000000-0000-4000-8000-000000000001', receipt_digest: digest }, nonce, text: legacy.text };
 
 describe('contained revision feedback references', () => {
   it('reads legacy serialized feedback using the original names and normalizes to real review references', () => {
@@ -136,4 +136,8 @@ describe('bounded untrusted feedback rendering', () => {
   it('does not truncate or rewrite normal text', () => {
     expect(renderContainedRevisionFeedbackText('one failure\nfix src/a.ts')).toBe('one failure\nfix src/a.ts');
   });
+});
+
+it.each(['lf_fixture', 'lfi_fixture', 'lfi_' + 'a'.repeat(35)])('rejects noncanonical local intake key %s', intake_id => {
+  expect(() => normalizeContainedRevisionFeedback({ ...local, source: { ...local.source, intake_id } })).toThrow('CONTAINED_SPEC_INVALID');
 });

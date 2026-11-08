@@ -36,8 +36,11 @@ export const CiFailureHintSchema = z.object({
 }).strict();
 export type CiFailureHint = z.infer<typeof CiFailureHintSchema>;
 
+/** Host-generated UUID-style key shared by ledger and feedback references. */
+export const LocalFailureIntakeIdSchema = z.string().length(40).regex(/^lfi_[0-9a-f-]{36}$/);
+
 const bindingFields = {
-  intake_id: token(), chain_id: token(), root_mission_id: token(), grant_id: token(),
+  intake_id: LocalFailureIntakeIdSchema, chain_id: token(), root_mission_id: token(), grant_id: token(),
   repository, pr: positiveInteger, branch: text(255), head: fullSha, tree: fullSha,
   base_ref: text(255), base_sha: fullSha, profile_id: token(), profile_digest: digest,
   trusted_source_digest: digest, invocation_id: token(),
@@ -45,6 +48,19 @@ const bindingFields = {
 /** Expected identity supplied independently by the host ledger and pinned profile. Compare every field exactly. */
 export const LocalFailureBindingSchema = z.object(bindingFields).strict();
 export type LocalFailureBinding = z.infer<typeof LocalFailureBindingSchema>;
+/** Database column names are an internal representation, never receipt aliases. */
+export type LocalFailureLedgerBinding = Omit<LocalFailureBinding, "pr" | "head" | "tree"> & {
+  pr_number: number; head_sha: string; tree_sha: string;
+};
+/** Explicit data projection only. This does not authenticate a ledger row or grant authority. */
+export function localFailureBindingFromLedger(row: LocalFailureLedgerBinding): LocalFailureBinding {
+  return parseLocalFailureBinding({
+    intake_id: row.intake_id, chain_id: row.chain_id, root_mission_id: row.root_mission_id, grant_id: row.grant_id,
+    repository: row.repository, pr: row.pr_number, branch: row.branch, head: row.head_sha, tree: row.tree_sha,
+    base_ref: row.base_ref, base_sha: row.base_sha, profile_id: row.profile_id, profile_digest: row.profile_digest,
+    trusted_source_digest: row.trusted_source_digest, invocation_id: row.invocation_id,
+  });
+}
 const bindingKeys = Object.keys(bindingFields) as (keyof LocalFailureBinding)[];
 const checkSchema = z.object({
   check_id: token(), category: token(64), exit_code: z.number().int().min(0).max(255).nullable(), result_digest: digest,

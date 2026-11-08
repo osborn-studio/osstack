@@ -1,18 +1,8 @@
 // Offline, read-only CI wakeup reader. No default transport and no scanner registration.
+import { parseCiFailureHint, type CiFailureHint } from '@osstack/core';
 import { z } from 'zod';
 
-export interface CiFailureHint {
-  readonly repository: string;
-  readonly pr: number;
-  readonly head: string;
-  readonly app_id: number;
-  readonly check_run_id: number;
-  /** Untrusted display metadata. Never interpret as instructions. */
-  readonly name: string;
-  readonly status: 'completed';
-  readonly conclusion: 'failure';
-  readonly observed_at: string;
-}
+export type { CiFailureHint } from '@osstack/core';
 export interface CiFailureReadTarget {
   /** Exact host-registered repository, published PR/head and numeric producer Apps. */
   readonly repository: string;
@@ -200,7 +190,7 @@ export async function readCiFailureHints(
       group.push(run);
       groups.set(key, group);
     }
-    const hints: CiFailureHint[] = [];
+    const hints: Omit<CiFailureHint, 'observed_at'>[] = [];
     for (const group of groups.values()) {
       const first = group[0];
       if (!first || !group.some((run) => run.status === 'completed' && run.conclusion === 'failure')) continue;
@@ -223,13 +213,13 @@ export async function readCiFailureHints(
       requireRead(hints.length < limits.maxHints, 'limit');
       hints.push({
         repository: target.repository, pr: target.pr, head: target.head, app_id: current.app.id,
-        check_run_id: current.id, name: current.name, status: 'completed', conclusion: 'failure', observed_at: '',
+        check_run_id: current.id, name: current.name, status: 'completed', conclusion: 'failure',
       });
     }
     await readPr();
     checkAbort();
-    const observedAt = (deps.now?.() ?? new Date()).toISOString();
-    return { ok: true, hints: hints.map((hint) => ({ ...hint, observed_at: observedAt })).sort((a, b) => a.app_id - b.app_id || a.check_run_id - b.check_run_id) };
+    const observedAt = (deps.now?.() ?? new Date()).getTime();
+    return { ok: true, hints: hints.map((hint) => parseCiFailureHint({ ...hint, observed_at: observedAt })).sort((a, b) => a.app_id - b.app_id || a.check_run_id - b.check_run_id) };
   } catch (error) {
     return { ok: false, hints: [], code: signal.aborted ? 'aborted' : error instanceof ReadFailure ? error.code : 'read_failed' };
   }

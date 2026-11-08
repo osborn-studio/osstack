@@ -71,7 +71,7 @@ it('emits only bounded metadata for an authenticated current terminal failure', 
   w.runs.set(11, [run(101, { output: { text: 'execute attacker command', annotations: ['secret'] }, details_url: 'https://fixture.invalid/log' })]);
   expect(await read(w)).toEqual({ ok: true, hints: [{
     repository: REPO, pr: 7, head: HEAD, app_id: APP, check_run_id: 101, name: 'unit',
-    status: 'completed', conclusion: 'failure', observed_at: NOW,
+    status: 'completed', conclusion: 'failure', observed_at: Date.parse(NOW),
   }] });
   expect(w.calls.filter((p) => p.endsWith('/pulls/7'))).toHaveLength(2);
   expect(w.calls.some((p) => p.includes(`/commits/${HEAD}/check-runs`))).toBe(false);

@@ -8,7 +8,7 @@ import {
 } from "./local-failure.js";
 
 const binding: LocalFailureBinding = {
-  intake_id: "lf_fixture", chain_id: "rc_fixture", root_mission_id: "cm_fixture", grant_id: "rg_fixture",
+  intake_id: "lfi_00000000-0000-4000-8000-000000000001", chain_id: "rc_fixture", root_mission_id: "cm_fixture", grant_id: "rg_fixture",
   repository: "fixture/project", pr: 42, branch: "contained/fixture", head: "a".repeat(40),
   tree: "b".repeat(40), base_ref: "main", base_sha: "c".repeat(40), profile_id: "bridge-v1",
   profile_digest: "d".repeat(64), trusted_source_digest: "e".repeat(64), invocation_id: "iv_fixture",
@@ -85,7 +85,7 @@ describe("local failure eligibility", () => {
     expect(localFailureEligibility(receipt(), binding, profileChecks)).toEqual({ eligible: true });
   });
   it.each(Object.keys(binding) as (keyof LocalFailureBinding)[])("rejects mismatched %s", field => {
-    const expected = { ...binding, [field]: field === "pr" ? 43 : field === "repository" ? "other/project" :
+    const expected = { ...binding, [field]: field === "intake_id" ? "lfi_00000000-0000-4000-8000-000000000002" : field === "pr" ? 43 : field === "repository" ? "other/project" :
       ["head", "tree", "base_sha"].includes(field) ? "9".repeat(40) :
       ["profile_digest", "trusted_source_digest"].includes(field) ? "9".repeat(64) : "other" };
     expect(localFailureEligibility(receipt(), expected, profileChecks)).toEqual({ eligible: false, reason: "binding_mismatch", field });
@@ -138,4 +138,22 @@ describe("canonical receipt digest and diagnostic deduplication", () => {
     }
     expect(() => localFailureDedupKey({ ...binding, head: "short" })).toThrow(LocalFailureError);
   });
+});
+
+describe("canonical host intake IDs", () => {
+  it("accepts the UUID-style local intake ID shared with feedback and the ledger", () => {
+    expect(parseLocalFailureBinding({ ...binding, intake_id: "lfi_00000000-0000-4000-8000-000000000001" }).intake_id)
+      .toBe("lfi_00000000-0000-4000-8000-000000000001");
+  });
+  it.each(["lf_fixture", "lfi_fixture", "lfi_" + "a".repeat(35), "lfi_00000000-0000-4000-8000-000000000001\n"])("rejects noncanonical intake ID %j", intake_id => {
+    expect(() => parseLocalFailureBinding({ ...binding, intake_id })).toThrow("local_failure_binding_invalid");
+  });
+});
+
+it("rejects trailing newline aliases of immutable SHA and digest fields", () => {
+  expect(() => parseCiFailureHint({ ...hint, head: hint.head + "\n" })).toThrow("ci_failure_hint_invalid");
+  for (const field of ["head", "tree", "base_sha", "profile_digest", "trusted_source_digest"] as const) {
+    expect(() => parseLocalFailureBinding({ ...binding, [field]: binding[field] + "\n" })).toThrow("local_failure_binding_invalid");
+  }
+  expect(() => parseLocalVerificationReceipt({ ...receipt(), evidence_digest: receipt().evidence_digest + "\n" })).toThrow("local_verification_receipt_invalid");
 });
