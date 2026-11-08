@@ -1,0 +1,55 @@
+[
+  {
+    "name": "cli-typecheck",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "typecheck"
+    ],
+    "before": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "source": "packages/cli/src/contained-mission-revision.spec-property.test.ts",
+      "sha256": "10a75a3047c03685e2b94ab45a78bf5c4704d27e097f3724a264d3c17601ac4f"
+    },
+    "after": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "source": "packages/cli/src/contained-mission-revision.spec-property.test.ts",
+      "sha256": "10a75a3047c03685e2b94ab45a78bf5c4704d27e097f3724a264d3c17601ac4f"
+    },
+    "stable": true,
+    "status": 0,
+    "signal": null,
+    "spawn_error": null,
+    "log": "$OSSTACK_SCRATCH_ROOT/runtime/bridge-final-properties-7t0XVE/cli-typecheck.log",
+    "log_sha256": "20b490a8d3a6c056488477e4de1f88264007ba86949c67ac75d0947e9c8f1284"
+  },
+  {
+    "name": "classifier-unit",
+    "command": [
+      "node",
+      "--test",
+      "scripts/verify-bridge-phase5-mutations.test.mjs"
+    ],
+    "before": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "sha256": {
+        "scripts/lib/bridge-mutation-result.mjs": "c13a0c5f88d9b025efae2dde94af3a91dfb2046631c74133485919447ef55a52",
+        "scripts/verify-bridge-phase5-mutations.test.mjs": "283a93b92c95d14bc651d35696e0ab92683c56ea45e9d0ca404dcdf3849b484f"
+      }
+    },
+    "after": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "sha256": {
+        "scripts/lib/bridge-mutation-result.mjs": "c13a0c5f88d9b025efae2dde94af3a91dfb2046631c74133485919447ef55a52",
+        "scripts/verify-bridge-phase5-mutations.test.mjs": "283a93b92c95d14bc651d35696e0ab92683c56ea45e9d0ca404dcdf3849b484f"
+      }
+    },
+    "stable": true,
+    "status": 0,
+    "signal": null,
+    "spawn_error": null,
+    "log": "$OSSTACK_SCRATCH_ROOT/runtime/bridge-final-properties-7t0XVE/classifier-unit.log",
+    "log_sha256": "0eec58aeb991ea5c4ca81654a0ab0bf437c6bad89ad1b6d2e55c78a521dc81b8"
+  }
+]

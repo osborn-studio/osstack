@@ -1,0 +1,102 @@
+[
+  {
+    "name": "linked-range",
+    "started_at": "2026-11-07T15:09:58.578Z",
+    "before": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "sha256": {
+        "packages/core/src/bridge/revision-chain.property.test.ts": "add72f411d69aab16eba40258289a7e6635cb8b12b22f82b8a4d92ff918d7cf8",
+        "packages/cli/src/contained-mission-revision.spec-property.test.ts": "10a75a3047c03685e2b94ab45a78bf5c4704d27e097f3724a264d3c17601ac4f",
+        "packages/core/src/state/engineering-revision-chain-store.ts": "223a12ee6de0bf97a497e4095c038d83b37f2a5c12b0f1af3c12ac59b31813a2",
+        "packages/cli/src/contained-mission-revision.ts": "6c504774584a59a299ee6175463cf19af63b10a6026be1fcfe6c65a186638f63",
+        "pnpm-lock.yaml": "df6d00b7caf4d978d2398896ca7f6068bfa2fb7ee8a74635f0b773495f0996c4"
+      },
+      "tracked_status": ""
+    },
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test",
+      "src/bridge/revision-chain.property.test.ts",
+      "--maxWorkers=1",
+      "--minWorkers=1"
+    ],
+    "env": {
+      "OSSTACK_PROPERTY_RUNS": "10000",
+      "OSSTACK_PROPERTY_SEED": "51007",
+      "OSSTACK_PROPERTY_COVERAGE": "1",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-properties-7t0XVE/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack"
+    },
+    "finished_at": "2026-11-07T15:10:21.903Z",
+    "after": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "sha256": {
+        "packages/core/src/bridge/revision-chain.property.test.ts": "add72f411d69aab16eba40258289a7e6635cb8b12b22f82b8a4d92ff918d7cf8",
+        "packages/cli/src/contained-mission-revision.spec-property.test.ts": "10a75a3047c03685e2b94ab45a78bf5c4704d27e097f3724a264d3c17601ac4f",
+        "packages/core/src/state/engineering-revision-chain-store.ts": "223a12ee6de0bf97a497e4095c038d83b37f2a5c12b0f1af3c12ac59b31813a2",
+        "packages/cli/src/contained-mission-revision.ts": "6c504774584a59a299ee6175463cf19af63b10a6026be1fcfe6c65a186638f63",
+        "pnpm-lock.yaml": "df6d00b7caf4d978d2398896ca7f6068bfa2fb7ee8a74635f0b773495f0996c4"
+      },
+      "tracked_status": ""
+    },
+    "stable": true,
+    "status": 0,
+    "signal": null,
+    "spawn_error": null,
+    "verdict": "pass",
+    "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-properties-7t0XVE/linked-range.log",
+    "log_sha256": "5198bf1dc305dae540e343b576723b2cb3a5356accbf6d6ec91bf6ecbea0c612"
+  },
+  {
+    "name": "exact-spec",
+    "started_at": "2026-11-07T15:10:21.943Z",
+    "before": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "sha256": {
+        "packages/core/src/bridge/revision-chain.property.test.ts": "add72f411d69aab16eba40258289a7e6635cb8b12b22f82b8a4d92ff918d7cf8",
+        "packages/cli/src/contained-mission-revision.spec-property.test.ts": "10a75a3047c03685e2b94ab45a78bf5c4704d27e097f3724a264d3c17601ac4f",
+        "packages/core/src/state/engineering-revision-chain-store.ts": "223a12ee6de0bf97a497e4095c038d83b37f2a5c12b0f1af3c12ac59b31813a2",
+        "packages/cli/src/contained-mission-revision.ts": "6c504774584a59a299ee6175463cf19af63b10a6026be1fcfe6c65a186638f63",
+        "pnpm-lock.yaml": "df6d00b7caf4d978d2398896ca7f6068bfa2fb7ee8a74635f0b773495f0996c4"
+      },
+      "tracked_status": ""
+    },
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision.spec-property.test.ts",
+      "--maxWorkers=1",
+      "--minWorkers=1"
+    ],
+    "env": {
+      "OSSTACK_PROPERTY_RUNS": "10000",
+      "OSSTACK_PROPERTY_SEED": "51007",
+      "OSSTACK_PROPERTY_COVERAGE": "1",
+      "OSSTACK_HOME": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-properties-7t0XVE/home",
+      "OSSTACK_SCRATCH_ROOT": "/Volumes/AIMATE_WORK/tmp/osstack"
+    },
+    "finished_at": "2026-11-07T15:10:24.255Z",
+    "after": {
+      "head": "f7f0615a36686ccfde1716a68fee9fd97bb09e15",
+      "sha256": {
+        "packages/core/src/bridge/revision-chain.property.test.ts": "add72f411d69aab16eba40258289a7e6635cb8b12b22f82b8a4d92ff918d7cf8",
+        "packages/cli/src/contained-mission-revision.spec-property.test.ts": "10a75a3047c03685e2b94ab45a78bf5c4704d27e097f3724a264d3c17601ac4f",
+        "packages/core/src/state/engineering-revision-chain-store.ts": "223a12ee6de0bf97a497e4095c038d83b37f2a5c12b0f1af3c12ac59b31813a2",
+        "packages/cli/src/contained-mission-revision.ts": "6c504774584a59a299ee6175463cf19af63b10a6026be1fcfe6c65a186638f63",
+        "pnpm-lock.yaml": "df6d00b7caf4d978d2398896ca7f6068bfa2fb7ee8a74635f0b773495f0996c4"
+      },
+      "tracked_status": ""
+    },
+    "stable": true,
+    "status": 0,
+    "signal": null,
+    "spawn_error": null,
+    "verdict": "pass",
+    "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/bridge-final-properties-7t0XVE/exact-spec.log",
+    "log_sha256": "8f92935ad94abea0b8487984302923890a09016509adb328d8028a295e302307"
+  }
+]

@@ -1,0 +1,251 @@
+[
+  {
+    "name": "no-lease",
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision-publication.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-store-rounds-check",
+    "file": "packages/core/src/state/engineering-revision-chain-store.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test",
+      "src/state/engineering-revision-chain-store.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-ddl-rounds-check",
+    "file": "packages/core/src/state/engineering-revision-chain-ddl.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test",
+      "src/state/engineering-revision-chain-store.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-reservation-pk",
+    "file": "packages/core/src/state/engineering-revision-chain-ddl.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test",
+      "src/state/engineering-revision-chain-store.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-grant-fence",
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision-publication.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-completed-reservation-void",
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision-publication.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-revision-spec-denial",
+    "file": "packages/cli/src/contained-mission-ports.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-ports.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-feedback-delimiters",
+    "file": "packages/cli/src/contained-mission-runner.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision.runner.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-readback-range-check",
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision-publication.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-precheck-base",
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision-publication.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "split-dispatch-transaction",
+    "file": "packages/cli/src/contained-mission-revision.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-unsettled-publication-check",
+    "file": "packages/core/src/state/engineering-revision-chain-store.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test",
+      "src/state/engineering-revision-chain-store.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-chain-classification",
+    "file": "packages/cli/src/contained-mission-runner.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision.runner.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-acknowledge-advance",
+    "file": "packages/cli/src/contained-mission-runner.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision.runner.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "interrupted-push-failed",
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision-publication.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "wrong-revision-publish-port",
+    "file": "packages/cli/src/contained-mission-runner.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-revision.runner.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "no-release-fence",
+    "file": "packages/core/src/state/engineering-host-process-store.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/core",
+      "test",
+      "src/state/engineering-host-process-store.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "token-after-fence",
+    "file": "packages/cli/src/contained-mission-bridge.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-bridge.test.ts"
+    ],
+    "verdict": "killed",
+    "status": 1
+  },
+  {
+    "name": "baseline-omission",
+    "file": "packages/cli/src/contained-mission-grant.ts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@osstack/cli",
+      "test",
+      "src/contained-mission-grant.test.ts",
+      "-t",
+      "issues a signed grant"
+    ],
+    "verdict": "killed",
+    "status": 1
+  }
+]

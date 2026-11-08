@@ -1,0 +1,30 @@
+{
+  "name": "no-acknowledge-advance",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@osstack/cli",
+    "test",
+    "src/contained-mission-revision.runner.test.ts",
+    "--maxWorkers=1",
+    "--minWorkers=1",
+    "-t",
+    "extra_repair resumes"
+  ],
+  "test_source_sha256": "d4f557bc03cb0b1729bed369f3eaade369df7d0add109219bca779e895423b9a",
+  "runner_original_sha256": "146cd8f52c57c4cd878949ab67c748ef403e125fbd9211e47140d1864fdb378e",
+  "runner_mutant_sha256": "62b631bf75c8da3c5061cdb972debe2e3c5c0ff1958f5b5858bedc43288ef232",
+  "baseline": {
+    "status": 0,
+    "log": "$OSSTACK_SCRATCH_ROOT/runtime/bridge-extra-repair-mutant-nkSE0R/baseline.log",
+    "log_sha256": "7b8a0d4626220ab75d85d1de513271c55113e0e74fdc0b91828b22107cc4e6f5"
+  },
+  "mutant": {
+    "status": 1,
+    "signal": null,
+    "spawn_error": null,
+    "log": "$OSSTACK_SCRATCH_ROOT/runtime/bridge-extra-repair-mutant-nkSE0R/mutant.log",
+    "verdict": "killed",
+    "log_sha256": "c36b87922c0e8006e14c2a595b887f3962f41f676aed2e81deb74199315cefff"
+  }
+}

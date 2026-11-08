@@ -1,0 +1,30 @@
+{
+  "file": "packages/core/src/bridge/revision-chain.property.test.ts",
+  "original_commit": "d0668898",
+  "integration_cherry_pick": "78abb868",
+  "original_source_sha256": "868fe564650fbc797328a03696c709d4815f2c6ac79d673edd5ca1ea8ed3f571",
+  "integration_source_sha256": "868fe564650fbc797328a03696c709d4815f2c6ac79d673edd5ca1ea8ed3f571",
+  "reconstructed_launch_source_sha256": "6598f521f6779f1c9d2db51702001cd46be1216eec8c17172f393e4570703b80",
+  "reconstruction": "The recorded execution used the linked-range edit before the later introductory comment-only change from \"invariant 5 is phase 5\" to \"invariant 5 is the CLI spec-constructor property\".",
+  "remove_comments_transpiled_js_sha256": "a6f6043e9498f35e86b21151dfdc9cfdd72a3ded993a1fbc2d65f3030b584e45",
+  "reconstructed_launch_remove_comments_transpiled_js_sha256": "a6f6043e9498f35e86b21151dfdc9cfdd72a3ded993a1fbc2d65f3030b584e45",
+  "log": "$OSSTACK_SCRATCH_ROOT/bridge-phase5-property-linked-ranges.log",
+  "log_sha256": "5d348d5addaa4cb31d1505d83e1b962f3e203b82c107bee8b9589afd9b48df1d",
+  "command": "OSSTACK_PROPERTY_RUNS=10000 OSSTACK_PROPERTY_SEED=51007 OSSTACK_PROPERTY_COVERAGE=1 pnpm --filter @osstack/core test src/bridge/revision-chain.property.test.ts",
+  "observed": {
+    "runs": 10000,
+    "tests_passed": 2,
+    "failed": 0,
+    "duration_ms": 46857,
+    "starts_at_local": "2026-11-07 06:30:45"
+  },
+  "timing": "The original branch was tested before committing at 06:32:45. The parent cherry-pick kept the author time and was committed at 06:33:58. A later cherry-pick does not imply that the earlier working-tree execution omitted the edit.",
+  "limitation": "The log did not embed a source hash at launch. The launch hash is reconstructed from the recorded edit sequence; this manifest does not claim a retroactive cryptographic runtime attestation. Executable code is identical after removing comments.",
+  "compiler": {
+    "library": "typescript",
+    "version": "5.9.3",
+    "target": "ES2022",
+    "module": "ESNext",
+    "removeComments": true
+  }
+}

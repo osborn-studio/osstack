@@ -298,6 +298,26 @@ describe('appCredentialRunner', () => {
   }
   const opts = { cwd: '/', timeoutMs: 1 };
 
+  it('resolves the token before the synchronous release fence and starts work in the same turn', async () => {
+    const order: string[] = [];
+    const exec: BridgeExec = Object.assign(async (_command: string, _args: readonly string[], options: Parameters<BridgeExec>[2]) => {
+      order.push('launcher');
+      options.gate!.fence();
+      order.push('spawn');
+      expect(order).toEqual(['token', 'launcher', 'fence', 'spawn']);
+      return result();
+    }, { gated: true as const });
+    const runner = appCredentialRunner({ run: async () => { throw Error('unexpected_inner'); } }, async () => {
+      await Promise.resolve();
+      order.push('token');
+      return PUBLISHER_TOKEN;
+    }, exec);
+    await runner.run('git', ['push', 'origin', 'head:refs/heads/topic'], { ...opts, gate: {
+      missionId: MID, kind: 'git_push', remoteTarget: 'o/r#refs/heads/topic', localTarget: '/repo#refs/heads/topic',
+      fence: () => { expect(order).toEqual(['token', 'launcher']); order.push('fence'); },
+    } });
+  });
+
   it('pushes with a cleared credential helper and the token only in the child env', async () => {
     const f = setup();
     const prefix = ['-c', 'core.hooksPath=/dev/null', '-c', 'protocol.https.allow=always'];

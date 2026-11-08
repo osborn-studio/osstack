@@ -119,6 +119,7 @@ VoidRows(h) == {VoidIf(row, h) : row \in res}
 
 ConfirmedHeads == {c + 1 : c \in {d \in Children : \E a \in Attempts : intent[d][a] = "confirmed"}}
 NoPending == \A c \in Children, a \in Attempts : intent[c][a] # "pending"
+NoUnsettled == \A c \in Children, a \in Attempts : intent[c][a] \notin {"pending", "uncertain"}
 \* settleIntent's binding check: the intent extends what the chain published, for its current child.
 Bound(c) == cState = "publishing" /\ publishedHead = c /\ currentChild = c
 
@@ -340,7 +341,7 @@ UncertainIntent(c, a) ==
   \* or not it proves an outsider wrote the branch (PR closed or base moved also land here).
   /\ detected' = TRUE
   /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds, res, currentChild,
-                 shadowWould, childVars, envVars, released, pushWhileDetected, clobbered,
+                 shadowWould, childVars, envVars, pushWhileDetected, clobbered,
                  chainPushed, pushedWhileClosed, actedWithoutGrant, badResume>>
 
 FailIntent(c, a) ==
@@ -459,10 +460,8 @@ RemoteApply ==
 
 \* A server or authentication rejection leaves the same child stopped; R5 forbids resume.
 PushRejected ==
-  /\ pub.stage = "released"
-  /\ LET c == pub.c
-         a == pub.a
-     IN /\ <<c, a>> \in released
+  /\ \E c \in Children, a \in Attempts :
+        /\ <<c, a>> \in released
         /\ Last(branch) = c
         /\ released' = released \ {<<c, a>>}
         /\ intent' = [intent EXCEPT ![c][a] = "failed"]
@@ -474,6 +473,16 @@ PushRejected ==
   /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds, res,
                  currentChild, shadowWould, stopObl, envVars, recovering, ghostVars>>
 
+\* A released process can die without establishing whether the server accepted it.
+ReleasedProcessLost ==
+  /\ \E c \in Children, a \in Attempts :
+       /\ <<c, a>> \in released
+       /\ intent[c][a] = "pending"
+       /\ UncertainIntent(c, a)
+  /\ released' = {pair \in released : intent'[pair[1]][pair[2]] # "uncertain"}
+  /\ pub' = Idle
+  /\ UNCHANGED recovering
+
 \* Step 6: read back.
 ReadBack ==
   /\ ~recovering /\ pub.stage = "pushed"
@@ -484,7 +493,7 @@ ReadBack ==
                THEN ConfirmPublication(c, a) ELSE LandedReceipt(c, a)
           ELSE UncertainIntent(c, a)
   /\ pub' = Idle
-  /\ UNCHANGED recovering
+  /\ UNCHANGED <<released, recovering>>
 
 -----------------------------------------------------------------------------
 (* Crash and receipt reconciliation (S8.7 step 5; R3 landed round).        *)
@@ -538,11 +547,13 @@ HaltChild ==
   /\ childSt[currentChild] \in {"running", "delivering"}
   /\ childSt' = [childSt EXCEPT ![currentChild] = "halted"]
   /\ cState' = "awaiting_decision"
-  /\ stopReason' = IF \E a \in Attempts : intent[currentChild][a] \in {"pending", "uncertain"}
+  /\ stopReason' = IF \E a \in Attempts : intent[currentChild][a] = "uncertain"
+                          \/ <<currentChild, a>> \in released
                    THEN "intent_uncertain" ELSE "child_halted"
   /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds, res,
                  intent, currentChild, shadowWould, stopObl, envVars, procVars, ghostVars>>
-CancelRequest == ChildStep({"running", "delivering"}, "cancel_requested")
+CancelRequest == ChildStep({"running", "delivering", "halted"}, "cancel_requested")
+AbandonChild == ChildStep({"halted"}, "abandoned")
 CancelDone == ChildStep({"cancel_requested"}, "cancelled")
 
 ProveStop ==
@@ -632,7 +643,9 @@ HumanResume ==   \* grant another round / continue
   /\ ResumeAfterReceipts =>
        \A c \in Children, a \in Attempts : intent[c][a] \notin {"pending", "uncertain"}
   /\ \E g \in (IF mode = "live" THEN grantRounds..MaxRounds ELSE {0}) : grantRounds' = g
-  /\ cState' = "awaiting_review" /\ stopReason' = "none"
+  /\ IF currentChild # None /\ childSt[currentChild] = "halted"
+       THEN UNCHANGED <<cState, stopReason>>
+       ELSE cState' = "awaiting_review" /\ stopReason' = "none"
   /\ deadlinePassed' = FALSE /\ grantValid' = TRUE /\ detected' = FALSE
   /\ badResume' = (badResume \/ \E c \in Children, a \in Attempts :
                      intent[c][a] \in {"pending", "uncertain"})
@@ -658,11 +671,11 @@ ResumeChild ==
   /\ badResume' = (badResume \/ stopObl[currentChild]
        \/ (\E c \in Children, a \in Attempts : intent[c][a] \in {"pending", "uncertain"})
        \/ stopReason = "push_rejected")
-  /\ cState' = "revising" /\ stopReason' = "none"
+  /\ cState' = "revising" /\ stopReason' = "none" /\ detected' = FALSE
   /\ childSt' = [childSt EXCEPT ![currentChild] = "running"]
   /\ stopObl' = [stopObl EXCEPT ![currentChild] = TRUE]
   /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds, res,
-                 intent, currentChild, shadowWould, envVars, procVars, detected,
+                 intent, currentChild, shadowWould, envVars, procVars,
                  pushWhileDetected, clobbered, chainPushed, pushedWhileClosed, actedWithoutGrant>>
 
 \* The runner returns resume_refused without changing the child or chain.
@@ -696,7 +709,7 @@ HumanClose ==    \* abandon / take over manually
 
 HumanResolveIntent ==   \* uncertain -> confirmed | failed, truthfully
   /\ \E c \in Children, a \in Attempts :
-       /\ intent[c][a] = "uncertain"
+       /\ intent[c][a] = "uncertain" /\ <<c, a>> \notin released
        \* Truthful means reachability, not equality: an outsider may have pushed on top of
        \* a revision that did land (chain-decide reconcile must check ancestry).
        /\ IF (c + 1) \in Range(branch) THEN LandedReceipt(c, a) ELSE FailIntent(c, a)
@@ -707,8 +720,8 @@ HumanResolveIntent ==   \* uncertain -> confirmed | failed, truthfully
 Other ==
   \/ Dispatch \/ VoidReservation \/ ClearCurrent \/ ScanStopped
   \/ RecordIntent \/ PreCheck \/ DropStaleIntent \/ Release \/ RemoteApply \/ PushRejected \/ ReadBack
-  \/ Crash \/ RecoverIntent \/ RecoverDone
-  \/ ChildDeliver \/ ChildFail \/ HaltChild \/ CancelRequest \/ CancelDone \/ ProveStop
+  \/ Crash \/ RecoverIntent \/ RecoverDone \/ ReleasedProcessLost
+  \/ ChildDeliver \/ ChildFail \/ HaltChild \/ CancelRequest \/ CancelDone \/ AbandonChild \/ ProveStop
   \/ Review \/ ExpireReview \/ OutsiderPush \/ OutsiderForcePush
   \/ BaseAdvance \/ ClosePR \/ ReopenPR \/ DeadlinePass \/ GrantExpire \/ GrantStop
   \/ HumanResume \/ ResumeChild \/ ResumeRefused \/ ApproveLanded \/ HumanClose \/ HumanResolveIntent
@@ -764,7 +777,7 @@ Symm == Permutations(Reviewers)
 \* State constraint: a closed chain row is terminal (DDL trigger engineering_chain_terminal), but a
 \* publisher or receipt may still be in flight. Closed states are expanded only while a push
 \* intent is pending or the publisher is mid-step; afterwards nothing the chain owns can move.
-Explore == cState # "closed" \/ pub.stage # "idle" \/ ~NoPending \/ released # {}
+Explore == cState # "closed" \/ pub.stage # "idle" \/ ~NoUnsettled \/ released # {}
 
 \* Bounded search for focused mutant configurations:
 \* prunes branches that end in a stop the trace does not need.
@@ -823,7 +836,7 @@ Inv4 == ~pushWhileDetected
 \* "Reconciled": the step just taken was a reconciler cycle, run after recovery with every push
 \* receipt settled. A chain the reconciler stopped or closed is the human's (it may carry the
 \* foreign commit it stopped on).
-Reconciled == justReconciled /\ ~recovering /\ NoPending
+Reconciled == justReconciled /\ ~recovering /\ NoUnsettled
 Inv6 ==
   (Reconciled /\ cState \notin {"awaiting_decision", "closed"})
     => \A i \in 2..Len(branch) : branch[i] \in ConfirmedHeads
