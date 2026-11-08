@@ -12,11 +12,15 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const installedPaths = {
   runtime: 'lib/node_modules/@osstack/cli/dist/bridge-production.js',
   core: 'lib/node_modules/@osstack/core/dist/index.js',
+  agents: 'lib/node_modules/@osstack/agents/dist/index.js',
+  governance: 'lib/node_modules/@osstack/governance/dist/index.js',
   appModule: 'lib/node_modules/@osstack/cli/dist/bridge-github-app.js',
 };
 const checkoutPaths = {
   runtime: 'packages/cli/dist/bridge-production.js',
   core: 'packages/core/dist/index.js',
+  agents: 'packages/agents/dist/index.js',
+  governance: 'packages/governance/dist/index.js',
   appModule: 'packages/cli/dist/bridge-github-app.js',
 };
 
@@ -32,7 +36,9 @@ async function fixture(t, mode = 'installed') {
   for (const [key, path] of Object.entries(paths)) {
     const target = join(prefix, path);
     await mkdir(join(target, '..'), { recursive: true });
-    await writeFile(target, `globalThis[${JSON.stringify(counter)}] = (globalThis[${JSON.stringify(counter)}] ?? 0) + 1;\nexport const selected = ${JSON.stringify(`${mode}:${key}`)};\n`);
+    const reader = key === 'agents' ? 'export function readCodexProxyPatch() { throw Error("reader must not be called by loader"); }\n' : '';
+    const grammar = key === 'governance' ? 'export function parseMissionPatch() { throw Error("parser must not be called by loader"); }\nexport function classifyMissionPatch() { throw Error("classifier must not be called by loader"); }\n' : '';
+    await writeFile(target, `globalThis[${JSON.stringify(counter)}] = (globalThis[${JSON.stringify(counter)}] ?? 0) + 1;\nexport const selected = ${JSON.stringify(`${mode}:${key}`)};\n${reader}${grammar}`);
   }
   if (mode === 'installed') await writeFile(join(prefix, 'candidate-manifest.json'), JSON.stringify({ source_commit: commit, kind: 'unactivated-local-candidate' }) + '\n');
   return { root, prefix, counter, paths };
@@ -43,11 +49,11 @@ async function rejectsWithoutImport(f, options, pattern) {
   assert.equal(globalThis[f.counter], undefined, 'validation must complete before any entry executes');
 }
 
-test('installed selection imports exactly three entries and binds their bytes and marker', async t => {
+test('installed selection imports exactly five entries and binds their bytes and marker', async t => {
   const f = await fixture(t);
   assert.equal(globalThis[f.counter], undefined);
   const result = await loadBridgeRuntime({ runtimePrefix: f.prefix, expectedSourceCommit: commit });
-  assert.equal(globalThis[f.counter], 3);
+  assert.equal(globalThis[f.counter], 5);
   for (const key of Object.keys(installedPaths)) {
     assert.equal(result[key].selected, `installed:${key}`);
     assert.deepEqual(result.provenance.entries[key], { path: join(f.prefix, installedPaths[key]), sha256: hash(await readFile(join(f.prefix, installedPaths[key]))) });
@@ -61,13 +67,17 @@ test('installed selection imports exactly three entries and binds their bytes an
 test('checkout selection uses checkout entries without requiring a candidate manifest', async t => {
   const f = await fixture(t, 'checkout');
   const result = await loadBridgeRuntime({ checkoutRoot: f.prefix });
-  assert.equal(result.runtime.selected, 'checkout:runtime');
-  assert.equal(result.core.selected, 'checkout:core');
-  assert.equal(result.appModule.selected, 'checkout:appModule');
+  for (const key of Object.keys(checkoutPaths)) {
+    assert.equal(result[key].selected, `checkout:${key}`);
+    assert.deepEqual(result.provenance.entries[key], { path: join(f.prefix, checkoutPaths[key]), sha256: hash(await readFile(join(f.prefix, checkoutPaths[key]))) });
+  }
+  assert.equal(typeof result.agents.readCodexProxyPatch, 'function');
+  assert.equal(typeof result.governance.parseMissionPatch, 'function');
+  assert.equal(typeof result.governance.classifyMissionPatch, 'function');
   assert.equal(result.provenance.mode, 'checkout');
   assert.equal(result.provenance.sourceCommit, null);
   assert.equal(result.provenance.sourceMarker, null);
-  assert.equal(globalThis[f.counter], 3);
+  assert.equal(globalThis[f.counter], 5);
 });
 
 test('installed mode does not read or use checkoutRoot', async t => {
@@ -151,4 +161,79 @@ test('missing entries and directories reject before importing any valid entry', 
   await rejectsWithoutImport(f, { runtimePrefix: f.prefix }, /ENOENT/);
   await mkdir(target);
   await rejectsWithoutImport(f, { runtimePrefix: f.prefix }, /bridge_runtime_file_required/);
+});
+
+test('missing agents never falls back to a valid checkout and rejects before all imports', async t => {
+  const installed = await fixture(t);
+  const checkout = await fixture(t, 'checkout');
+  const target = join(installed.prefix, installedPaths.agents);
+  await rm(target);
+  const options = { runtimePrefix: installed.prefix, checkoutRoot: checkout.prefix };
+  await rejectsWithoutImport(installed, options, /ENOENT/);
+  await mkdir(target);
+  await rejectsWithoutImport(installed, options, /bridge_runtime_file_required/);
+  assert.equal(globalThis[checkout.counter], undefined);
+});
+
+test('agents reader must be an exported function in either selected mode', async t => {
+  for (const mode of ['installed', 'checkout']) {
+    for (const body of ['export const unrelated = true;', 'export const readCodexProxyPatch = "invalid";']) {
+      const f = await fixture(t, mode);
+      await writeFile(join(f.prefix, f.paths.agents), body);
+      const options = mode === 'installed' ? { runtimePrefix: f.prefix } : { checkoutRoot: f.prefix };
+      await assert.rejects(loadBridgeRuntime(options), /bridge_runtime_agents_reader_required/);
+    }
+  }
+});
+
+test('agents import failure propagates without using a valid checkout reader', async t => {
+  const installed = await fixture(t);
+  const checkout = await fixture(t, 'checkout');
+  await writeFile(join(installed.prefix, installedPaths.agents), 'throw Error("selected_agents_import_failed");');
+  await assert.rejects(loadBridgeRuntime({ runtimePrefix: installed.prefix, checkoutRoot: checkout.prefix }), /selected_agents_import_failed/);
+  assert.equal(globalThis[checkout.counter], undefined);
+});
+
+test('missing governance never falls back to a valid checkout and rejects before all imports', async t => {
+  const installed = await fixture(t);
+  const checkout = await fixture(t, 'checkout');
+  const target = join(installed.prefix, installedPaths.governance);
+  await rm(target);
+  const options = { runtimePrefix: installed.prefix, checkoutRoot: checkout.prefix };
+  await rejectsWithoutImport(installed, options, /ENOENT/);
+  await mkdir(target);
+  await rejectsWithoutImport(installed, options, /bridge_runtime_file_required/);
+  assert.equal(globalThis[checkout.counter], undefined);
+});
+
+test('governance grammar parser must be an exported function in either selected mode', async t => {
+  for (const mode of ['installed', 'checkout']) {
+    for (const body of ['export const unrelated = true;', 'export const parseMissionPatch = "invalid";']) {
+      const f = await fixture(t, mode);
+      await writeFile(join(f.prefix, f.paths.governance), body);
+      const options = mode === 'installed' ? { runtimePrefix: f.prefix } : { checkoutRoot: f.prefix };
+      await assert.rejects(loadBridgeRuntime(options), /bridge_runtime_governance_parser_required/);
+    }
+  }
+});
+
+test('governance import failure propagates without using a valid checkout parser', async t => {
+  const installed = await fixture(t);
+  const checkout = await fixture(t, 'checkout');
+  await writeFile(join(installed.prefix, installedPaths.governance), 'throw Error("selected_governance_import_failed");');
+  await assert.rejects(loadBridgeRuntime({ runtimePrefix: installed.prefix, checkoutRoot: checkout.prefix }), /selected_governance_import_failed/);
+  assert.equal(globalThis[checkout.counter], undefined);
+});
+
+test('governance classifier must be an exported function even when the parser is valid', async t => {
+  for (const mode of ['installed', 'checkout']) {
+    for (const classifier of ['', 'export const classifyMissionPatch = "invalid";']) {
+      const f = await fixture(t, mode);
+      const checkout = await fixture(t, 'checkout');
+      await writeFile(join(f.prefix, f.paths.governance), `export function parseMissionPatch() { throw Error("parser must not be called"); }\n${classifier}`);
+      const options = mode === 'installed' ? { runtimePrefix: f.prefix, checkoutRoot: checkout.prefix } : { checkoutRoot: f.prefix };
+      await assert.rejects(loadBridgeRuntime(options), /bridge_runtime_governance_classifier_required/);
+      assert.equal(globalThis[checkout.counter], undefined, 'invalid selected classifier must not use another checkout');
+    }
+  }
 });
