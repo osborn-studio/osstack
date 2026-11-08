@@ -1,5 +1,7 @@
 # Installed bridge candidate audit
 
+> Historical source-scoped report. For current acceptance, see [v2 status](bridge-phase5-verification/current-v2-status.md) and the [fourth-run evidence](bridge-phase5-verification/fourth-run-v2.md): fourth sandbox v2 `LIVE_5G_ONLY` PASSED 13/13; attempts 1–3 remain failed/unqualified. Old pending, checkout-selection and cold-helper findings below retain their original scope. The fourth cold scenario still cancels before first executor tick, not during an in-flight executor. Production remains CLOSED; no fifth run is authorized.
+
 Date: 2026-11-07. Worker model: `gpt-6.1-sol`.
 
 **Verdict: package integrity and bridge import checks pass. Production acceptance remains CLOSED.** This candidate is inactive and is not approved for deployment. Two P2 packaging limitations were found outside the bridge path. No P1 was found in the checks performed.

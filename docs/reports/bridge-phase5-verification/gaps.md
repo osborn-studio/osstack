@@ -1,6 +1,6 @@
 # Phase 5 verification gap matrix
 
-Baseline: `5602b901`. This report separates existing tests from completed acceptance evidence. No real GitHub writes were made.
+Baseline: `5602b901`. The baseline/local tables below preserve their historical scope; no real GitHub writes were made for those local checks. The later real fourth-run result is recorded at the end.
 
 | Design requirement | Baseline evidence | Fulfilled versus required |
 |---|---|---|
@@ -34,7 +34,7 @@ Local Docker with a fake GitHub server can validate execution, denial injection,
 
 `docker` is installed. Initial `docker info` failed because `/Users/osborn/.docker/run/docker.sock` was absent. Parent owns daemon startup. TLC v1.7.4 jar exists at the documented path. Fresh worktree dependencies were absent; frozen pnpm install and build were started. Every test uses `OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack`; no default control-plane home is opened.
 
-## Current gate verdicts
+## Local gate verdicts (historical scope)
 
 | Gate | Verdict | Evidence |
 |---|---|---|
@@ -55,3 +55,11 @@ Local Docker with a fake GitHub server can validate execution, denial injection,
 | Real 5-G sandbox A/B, permission and timeline checks | not run here | parent owns sandbox driver and any authorized external run; Docker/fake service cannot prove GitHub rulesets/App identity |
 
 Phase 5 is not declared complete. The earlier table records the baseline, not a claim that its test-exists rows independently establish every live acceptance scenario.
+
+## Current 5-G acceptance (2026-11-08 Asia/Shanghai)
+
+The tables above preserve their historical baseline/local scope. **Attempt 4 passed v2 `LIVE_5G_ONLY`, 13/13, `qualified:true`, exit 0**; [fourth-run evidence](fourth-run-v2.md) binds benign/mixed model work, controlled patch-only hostile T2, independent real W13 revocation and exact final timeline. Independent readback made 68 successful GETs and matched eleven confirmed heads, eleven App B success checks and eleven App A activities. The driver observed open heads before cleanup; the six owned PRs are now closed/unmerged.
+
+Attempts 1–3 remain failed/unqualified; the third-run report remains 7/13. The cold case still cancels before the first executor tick and does not establish parent shutdown or in-flight executor recovery. The single predeclared mixed case is bounded evidence. Historical mutation/model assumptions are unchanged. All 69 host journals are stopped and all 14 mission stop obligations are zero, but two decision reservations/missions/claims remain; `ledger_settled:false` is expected and no rows were manipulated to clear them.
+
+All five Sol CLI scope reviews now PASS; GLM-5.3 post-run review returned SCOPED PASS with no unresolved material findings for static projection/artifact consistency only; it executed nothing and does not prove authenticity or full-project completion. Reporter provenance fix `05eb6600` passed 12/12 targeted tests; parent fifteen-file Node run passed 484/484 (zero failures/skips, exit 0). Actual external Grok capability and [Watcher failure/local repair intake](acceptance-v2.md#product-closure-still-missing) remain open, as do production admission and five production chains. Reviewer remains paused/excluded and the counted human main gate remains unchanged. Production is **CLOSED**; no fifth real run is authorized. See [current status](current-v2-status.md).

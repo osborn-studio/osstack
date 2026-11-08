@@ -1,6 +1,6 @@
 # 执行图检查表
 
-每行一条要求。判定只取 pass、fail、unresolved。证据写到能直接打开的位置（PR、文件、命令）。没有证据的标“缺证据”。节点见 [graph.md](graph.md)。
+每行一条要求。判定只取 pass、fail、unresolved。证据写到能直接打开的位置（PR、文件、命令）。没有证据的标“缺证据”。节点见 [graph.md](graph.md)。最新状态与历史范围以 [progress.md](progress.md) 为准；沙箱 PASS 不打开生产门。
 
 ## 收尾清单（来自 graph.md §0 的“完成”定义）
 
@@ -35,23 +35,27 @@
 | N9 | D7：只写 closed 与观测；关闭时同事务作废预留 | pass | #412；ZCode 第 1 轮 P1 已修 |
 | N9 | D9 与停止链扫描服务已合入 main | pass | #414、#416；基线 `b7815b6c` |
 | N9 | 评审反馈定位已合入 main | pass | #417，合并 `a9b1a605` |
-| N9 | 手动 check 与 live 观测的当前 head CI/合并 | unresolved | #418 head `2da03590` 新 CI 待定；#419 head `5b5b70c4` 检查全绿但未合并 |
-| N9 | 回执恢复、production factory、pending scheduler、exact ledger 独立 PR 门 | unresolved | 本地实现完成，提交与导出清单见 progress.md；正常生产 acceptance lock 仍关闭 |
-| N9 | token 后复查与 deferred receipt 审阅修复 | unresolved | GLM-5.3 最终 delta 四项认可；条件 P2 的 `d8964643`（N9 `c486bd69`）invocation-scope 修复已获 GLM 复审通过；用户 Reviewer 暂停且尚无正式 CR，独立 head CI/验收仍待完成 |
+| N9 | 手动 check 与 live 观测的合并 | pass | #418/#419 已进入 main `9e2eaf9c`；历史 head/CI 待定记录保留于 progress.md |
+| N9 | 回执恢复、production factory、pending scheduler、exact ledger 独立 PR 门 | pass | #422 用户合并 main `d89cd4a5`；正常生产 acceptance lock 关闭 |
+| N9 | token 后复查与 deferred receipt 审阅修复 | pass | 随 #422 合并；invocation-scope 修复获历史 GLM 静态复审；不替代人审或正式批准 |
 | N10 | 历史 #413：三个主配置无错、14 个模型变异被捉到 | pass | #413 README；仅证明该历史快照，不是本轮 Phase 5 模型验收 |
-| N10 | Phase 5 故障、源变异、properties 的最终快照归档 | unresolved | phase5 报告已归档 19 个严格断言 kill、两组 10k 历史记录和 reconstructed source provenance；`87375400` classifier/F5 加强后 final-head/source-hash 绑定的追加门仍待运行 |
-| N10 | Phase 5 broad TLC 完整穷举 | unresolved | 两个 broad 运行仍 pending，资源暂停、checkpoint 保留；未见 queue 清零和最终无错证明 |
-| N9/N10 | 最终 candidate 全仓门 | unresolved | 第三轮 workspace 串行仍运行；此前 graph deadline 和 candidate-policy 争用失败均保留，见 progress.md |
-| 辅助 | loop 进程夹具 CI | unresolved | #420 head `5cd15888` 矩阵绿，主 check 仍运行 |
+| N10 | Phase 5 故障、源变异、properties 的最终快照归档 | pass | phase5 报告与 final-property-runs.json、final-source-mutants.json；分别绑定来源，不声称第四轮重跑 |
+| N10 | Phase 5 broad TLC 完整穷举 | pass | model-checks.json：main 69,290,566 distinct；rounds 95,121,536；queue 0、exit 0；模型边界保留 |
+| N9/N10 | 已记录 candidate 全仓门 | pass | source `7f657613`：22 包、8,905 pass/6 skip；本轮 reporter delta 另有 484 Node pass，不声称重跑全仓 |
+| 辅助 | loop 进程夹具合并 | pass | #420 已进入 main `9e2eaf9c`；本地最终 loop 116/116，历史失败保留 |
 | N12 | M-D 沙箱场景录制 | pass | #403 |
 | N11 | 宿主 Docker 与真实 preflight | pass | 真实 driver 的 `--preflight --run revision-5g-20261107` 已通过；私有记录 `/Volumes/AIMATE_WORK/tmp/osstack/revision-sandbox-preflight.json`；输出明确 `qualified:false` |
-| N11 | 实际 5-G A/B、越权与 timeline 一致性 | unresolved | driver 已实现；`--execute` 待用户批准，未运行 |
+| N11 | 实际 v2 5-G A/B、越权与 timeline 一致性 | pass | 第四轮 13/13，driver `c6c3dd93` / installed `81205698`；[第四轮证据](../../reports/bridge-phase5-verification/fourth-run-v2.md)，独立 68 GET；前三失败保留 |
 | N13 | 共享云电脑 gh 流程可替代 App C/D 迁移 | unresolved | 不能替代；App 身份、安装权限、U-1…U-11 仍须分别提供证据 |
 | N13 | Grok 平台能力 U-1…U-11 已核实 | unresolved | 阶段 6 规格 §0；需运营者 |
 | N14 | `main-quality` 在主仓库读回与文件一致 | unresolved | 需仓库管理员 |
+| N11 | 第四轮 host 停止与待决账本 | pass | 69 host stopped、14 mission stop_obligation=0；两个 T2/revocation 待决状态保留，ledger_settled=false；不声称全清 |
+| N11 | 第四轮五个 Sol scope 审阅 | pass | rounds/containment/inventory 与 release-delta/timeline-delta；原 retention gaps 由冻结 snapshot 与完整 raw GET 解答 |
+| N11 | 第四轮 GLM post-run 静态复审 | pass | SCOPED PASS，无未解决实质发现；仅 strict-allowlist projection/retained artifact 静态一致性、无执行/真实性/完整项目声明；input hash 见 current-v2-status.md |
+| 交付 | 五片 main-base PR 的新 head CI、人审与合并 | unresolved | #425 CI 已报告全通过；#426–#429 draft/base main；按 #425 → #426 → #427 → #428 → #429，未声称合并 |
 
 
-## N9/N10 确定性门命令（本轮只规划，不执行重型门）
+## N9/N10 历史确定性门命令（复现参考；不是当前执行指令）
 
 先记录完整仓库身份、base/head SHA、干净 checkout 与工具版本。代码在无宿主凭证、无 App keys、无生产数据的隔离 disposable runner 中执行；读取 PR/CI 的连接留在 runner 外。worktree 仍使用 `~/Developer/CodeX/.worktrees/osstack/<task>`，所有临时内容落在 `/Volumes/AIMATE_WORK/tmp/osstack` 的规范子目录。以下 `VERIFY_BASE_SHA`/`VERIFY_HEAD_SHA` 必须由可信控制器设置为完整 SHA，不从 PR 正文拼接。
 
@@ -91,7 +95,7 @@ node --test scripts/smoke-bridge-revision-sandbox.test.mjs
 node --check scripts/smoke-bridge-revision-sandbox.mjs
 ```
 
-资源释放后，在独立 disposable checkout 串行执行以下重型门；当前 TLC 暂停，不应现在启动。这些命令是待执行清单，不是通过证据：
+以下是历史重型门复现命令。TLC、属性与变异已有源绑定完成记录；仅在相关源码变化或新失败要求时，由当前控制器选择受影响门，不按此历史清单重复执行：
 
 ```sh
 OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack node scripts/verify-bridge-phase5-mutations.mjs
@@ -114,4 +118,4 @@ git diff --quiet "$VERIFY_BASE_SHA" "$VERIFY_HEAD_SHA" -- .agents/skills/verify-
 
 轻量 `git merge-tree` 只回答文本/树冲突；它不证明两个独立 green PR 合起来能运行。在独立 hidden worktree 构造 main + #418 当前 head + #419 + N9，再加入 N10，记录精确 merge-result SHA，并运行相关定向、typecheck、inventory 与串行全仓门。更新 base 或任何 head 后旧 merge-result 证据即过时。不得把 merge/rebase 或测试结果直接写回 frozen final candidate。
 
-N11 的真实 preflight 与 `--execute` 不属于普通无凭证 CI 门。Docker 已可用，但真实沙箱写入仍需用户批准；N10 通过、部署解锁和 App C/D 迁移也各有独立条件。
+N11 的真实 preflight 与 `--execute` 不属于普通无凭证 CI 门。第四轮已用完额外一次沙箱授权；无第五轮授权。N11 sandbox PASS 不批准部署、生产准入或 App C/D 迁移。
