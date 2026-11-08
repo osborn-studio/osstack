@@ -1,18 +1,22 @@
 /** Unregistered, additive diagnostic journal. This DDL does not enable intake, authorize a
- * process, change review reservations, or integrate the shared grant budget. */
+ * process, change review reservations, or integrate the shared grant budget.
+ * receipt_json is an opaque diagnostic observation. receipt_bytes_sha256 checks raw UTF-8 bytes only.
+ * Never use it as canonical receipt_digest. Typed host receipt persistence needs a separate bound
+ * field/table/adapter before any receipt consumption or repair dispatch can be implemented. */
 export const ENGINEERING_LOCAL_FAILURE_INTAKE_DDL = `
 CREATE TABLE engineering_local_failure_intakes (
-  intake_id TEXT NOT NULL PRIMARY KEY CHECK(intake_id GLOB 'lf_*' AND length(intake_id) BETWEEN 4 AND 128),
+  intake_id TEXT NOT NULL PRIMARY KEY CHECK(intake_id GLOB 'lfi_*' AND length(intake_id)=40
+    AND substr(intake_id,5) NOT GLOB '*[^0-9a-f-]*' AND instr(intake_id,char(0))=0),
   chain_id TEXT NOT NULL REFERENCES engineering_revision_chains(chain_id),
   chain_revision INTEGER NOT NULL CHECK(typeof(chain_revision)='integer' AND chain_revision>0),
   root_mission_id TEXT NOT NULL REFERENCES engineering_contained_missions(mission_id),
   repository TEXT NOT NULL CHECK(length(repository) BETWEEN 1 AND 200),
   pr_number INTEGER NOT NULL CHECK(typeof(pr_number)='integer' AND pr_number>0),
   branch TEXT NOT NULL CHECK(length(branch) BETWEEN 1 AND 255),
-  head_sha TEXT NOT NULL CHECK(length(head_sha)=40 AND head_sha NOT GLOB '*[^0-9a-f]*'),
-  tree_sha TEXT NOT NULL CHECK(length(tree_sha)=40 AND tree_sha NOT GLOB '*[^0-9a-f]*'),
+  head_sha TEXT NOT NULL CHECK(length(head_sha) IN (40,64) AND head_sha NOT GLOB '*[^0-9a-f]*' AND instr(head_sha,char(0))=0),
+  tree_sha TEXT NOT NULL CHECK(length(tree_sha) IN (40,64) AND tree_sha NOT GLOB '*[^0-9a-f]*' AND instr(tree_sha,char(0))=0),
   base_ref TEXT NOT NULL CHECK(length(base_ref) BETWEEN 1 AND 255),
-  base_sha TEXT NOT NULL CHECK(length(base_sha)=40 AND base_sha NOT GLOB '*[^0-9a-f]*'),
+  base_sha TEXT NOT NULL CHECK(length(base_sha) IN (40,64) AND base_sha NOT GLOB '*[^0-9a-f]*' AND instr(base_sha,char(0))=0),
   profile_id TEXT NOT NULL CHECK(length(profile_id) BETWEEN 1 AND 256),
   profile_digest TEXT NOT NULL CHECK(length(profile_digest)=64 AND profile_digest NOT GLOB '*[^0-9a-f]*'),
   trusted_source_digest TEXT NOT NULL CHECK(length(trusted_source_digest)=64 AND trusted_source_digest NOT GLOB '*[^0-9a-f]*'),
@@ -33,9 +37,10 @@ CREATE TABLE engineering_local_failure_intakes (
     (typeof(container_used_seconds)='integer' AND container_used_seconds BETWEEN 0 AND container_cap_seconds)),
   stop_obligation INTEGER NOT NULL CHECK(stop_obligation IN (0,1)),
   started_at INTEGER CHECK(started_at IS NULL OR (typeof(started_at)='integer' AND started_at>=created_at)),
-  outcome TEXT CHECK(outcome IS NULL OR outcome IN ('passed','reproducible_failure','infrastructure_error','cancelled','not_started')),
+  outcome TEXT CHECK(outcome IS NULL OR outcome IN ('passed','reproducible_failure','infrastructure_error','cancelled','timeout','not_started')),
   receipt_json TEXT CHECK(receipt_json IS NULL OR (json_valid(receipt_json) AND length(receipt_json)<=32768)),
-  receipt_digest TEXT CHECK(receipt_digest IS NULL OR (length(receipt_digest)=64 AND receipt_digest NOT GLOB '*[^0-9a-f]*')),
+  -- Raw byte integrity only; no canonical host receipt identity or authority alias.
+  receipt_bytes_sha256 TEXT CHECK(receipt_bytes_sha256 IS NULL OR (length(receipt_bytes_sha256)=64 AND receipt_bytes_sha256 NOT GLOB '*[^0-9a-f]*')),
   evidence_digest TEXT CHECK(evidence_digest IS NULL OR (length(evidence_digest)=64 AND evidence_digest NOT GLOB '*[^0-9a-f]*')),
   proof_ref TEXT CHECK(proof_ref IS NULL OR length(proof_ref) BETWEEN 1 AND 1024),
   proof_digest TEXT CHECK(proof_digest IS NULL OR (length(proof_digest)=64 AND proof_digest NOT GLOB '*[^0-9a-f]*')),
@@ -43,10 +48,10 @@ CREATE TABLE engineering_local_failure_intakes (
   updated_at INTEGER NOT NULL CHECK(typeof(updated_at)='integer' AND updated_at>=created_at),
   CHECK((state='stopped' AND stop_obligation=0 AND container_used_seconds IS NOT NULL
       AND outcome IS NOT NULL AND proof_ref IS NOT NULL AND proof_digest IS NOT NULL
-      AND ((outcome='not_started' AND container_used_seconds=0 AND receipt_json IS NULL AND receipt_digest IS NULL AND evidence_digest IS NULL)
-        OR (outcome<>'not_started' AND receipt_json IS NOT NULL AND receipt_digest IS NOT NULL AND evidence_digest IS NOT NULL)))
+      AND ((outcome='not_started' AND container_used_seconds=0 AND receipt_json IS NULL AND receipt_bytes_sha256 IS NULL AND evidence_digest IS NULL)
+        OR (outcome<>'not_started' AND receipt_json IS NOT NULL AND receipt_bytes_sha256 IS NOT NULL AND evidence_digest IS NOT NULL)))
     OR (state<>'stopped' AND stop_obligation=1 AND container_used_seconds IS NULL AND outcome IS NULL
-      AND receipt_json IS NULL AND receipt_digest IS NULL AND evidence_digest IS NULL AND proof_ref IS NULL AND proof_digest IS NULL)),
+      AND receipt_json IS NULL AND receipt_bytes_sha256 IS NULL AND evidence_digest IS NULL AND proof_ref IS NULL AND proof_digest IS NULL)),
   CHECK(state<>'stop_unknown' OR reason IS NOT NULL),
   CHECK(state<>'reserved' OR started_at IS NULL),
   CHECK(state<>'running' OR started_at IS NOT NULL),

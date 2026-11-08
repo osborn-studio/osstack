@@ -8,8 +8,10 @@ export interface NewLocalFailureIntake {
   profile_id: string; profile_digest: string; trusted_source_digest: string; grant_id: string; grant_digest: string;
   ci_hint_json: string; invocation_id: string; journal_ref: string; container_cap_seconds: number;
 }
-export type DiagnosticOutcome = "passed" | "reproducible_failure" | "infrastructure_error" | "cancelled";
-/** Host-only evidence storage; opaque receipt bytes do not establish repair eligibility or process stop. */
+/** Timeout is a terminal observation only after proven stop. It is ineligible for repair. */
+export type DiagnosticOutcome = "passed" | "reproducible_failure" | "infrastructure_error" | "cancelled" | "timeout";
+/** Host-only opaque diagnostic observation, not a typed LocalVerificationReceipt.
+ * Receipt bytes do not establish repair eligibility, host provenance, binding or process stop. */
 export interface StoppedDiagnostic {
   outcome: DiagnosticOutcome; container_used_seconds: number; receipt_json: string; evidence_digest: string;
   proof_ref: string; proof_digest: string;
@@ -19,13 +21,18 @@ export interface LocalFailureIntake extends NewLocalFailureIntake {
   writer_instance: string; writer_generation: number; revision: number;
   state: "reserved" | "running" | "stop_unknown" | "stopped"; reason: string | null;
   stop_obligation: 0 | 1; started_at: number | null; container_used_seconds: number | null;
-  outcome: DiagnosticOutcome | "not_started" | null; receipt_json: string | null; receipt_digest: string | null;
+  outcome: DiagnosticOutcome | "not_started" | null; receipt_json: string | null;
+  /** SHA256 of the exact receipt_json UTF-8 bytes. Raw byte integrity only.
+   * Never use this as canonical receipt_digest or expose an authority alias. */
+  receipt_bytes_sha256: string | null;
   evidence_digest: string | null; proof_ref: string | null; proof_digest: string | null; created_at: number; updated_at: number;
 }
 const digest = (s: string): string => createHash("sha256").update(s).digest("hex");
 
 /** Unregistered host journal. No launch, grant verification, child dispatch, receipt consumption or
- * global budget integration. All mutations use the real daemon owner and an immediate transaction.
+ * global budget integration. Typed canonical host receipt persistence/consumption requires a separate
+ * explicit bound field/table/adapter; this journal must never supply canonical receipt_digest.
+ * All mutations use the real daemon owner and an immediate transaction.
  *
  * Later admission MUST verify signed v2 authority/profile/lineage and subtract containerDebit from
  * RevisionChainStore.remainingBudget in the SAME immediate transaction as reserve. Both review and
@@ -58,6 +65,10 @@ export class LocalFailureIntakeStore {
   reserve(input: NewLocalFailureIntake): LocalFailureIntake {
     const now = this.now();
     return this.write(() => {
+      // Keep identity parsing aligned with frozen efbea370 and the independent SQL checks.
+      if (typeof input.intake_id !== "string" || input.intake_id.length !== 40 || !/^lfi_[0-9a-f-]{36}$/.test(input.intake_id)
+        || ![input.head_sha, input.tree_sha, input.base_sha].every(value => typeof value === "string"
+          && (value.length === 40 || value.length === 64) && /^[0-9a-f]+$/.test(value))) throw Error("intake_identity_invalid");
       const chain = this.db.prepare("SELECT grant_json FROM engineering_revision_chains WHERE chain_id=?").get(input.chain_id) as { grant_json: string } | undefined;
       if (!chain || digest(chain.grant_json) !== input.grant_digest) throw Error("intake_grant_mismatch");
       // Copy only declared input fields: JS callers cannot inject lifecycle or owner columns.
@@ -94,11 +105,13 @@ export class LocalFailureIntakeStore {
     });
   }
   /** Only the trusted host stop reconciler may call this. It must verify proof/evidence existence
-   * and receipt binding first. Evidence digests here are references, never client repair authority. */
+   * and actual process stop first, including for timeout. A timeout event alone cannot settle a run.
+   * receipt_json remains opaque; its hash preserves exact bytes without parsing or canonicalization.
+   * Evidence digests here are references, never client repair authority. */
   settleStopped(intakeId: string, ifRevision: number, stopped: StoppedDiagnostic): LocalFailureIntake {
     return this.change(intakeId, ifRevision, () => {
       this.db.prepare(`UPDATE engineering_local_failure_intakes SET state='stopped',stop_obligation=0,outcome=?,
-        container_used_seconds=?,receipt_json=?,receipt_digest=?,evidence_digest=?,proof_ref=?,proof_digest=?,revision=revision+1,
+        container_used_seconds=?,receipt_json=?,receipt_bytes_sha256=?,evidence_digest=?,proof_ref=?,proof_digest=?,revision=revision+1,
         writer_instance=?,writer_generation=?,updated_at=? WHERE intake_id=?`).run(stopped.outcome,stopped.container_used_seconds,
         stopped.receipt_json,digest(stopped.receipt_json),stopped.evidence_digest,stopped.proof_ref,stopped.proof_digest,
         this.owner.instance_id,this.owner.generation,this.now(),intakeId);

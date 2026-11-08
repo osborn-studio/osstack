@@ -14,6 +14,9 @@ it("stays unregistered and adds only journal objects without changing existing s
     const before = objects(), version = db.pragma("user_version", { simple: true });
     db.exec(ENGINEERING_LOCAL_FAILURE_INTAKE_DDL);
     const after = objects();
+    const columns = db.pragma("table_info(engineering_local_failure_intakes)") as Array<{ name: string }>;
+    expect(columns.map(c => c.name)).toContain("receipt_bytes_sha256");
+    expect(columns.map(c => c.name)).not.toContain("receipt_digest");
     for (const object of before) expect(after.find(o => o.name === object.name && o.type === object.type)).toEqual(object);
     expect(after.filter(o => !before.some(b => b.name === o.name)).every(o =>
       o.name.startsWith("engineering_local_failure_") || o.name.startsWith("sqlite_autoindex_engineering_local_failure_")
