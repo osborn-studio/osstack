@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { constants, closeSync, fstatSync, lstatSync, openSync, readSync, realpathSync, type Stats } from 'node:fs';
 import { isAbsolute, join, normalize } from 'node:path';
+import { LocalFailureRepositorySchema, VerificationProfileIdSchema } from '@osstack/core';
 import { canonicalJson } from '@osstack/protocol/source';
 import { z } from 'zod';
 
@@ -19,7 +20,7 @@ const exits = z.array(z.number().int().min(1).max(123)).min(1).max(32).refine(va
 const check = z.object({ check_id: identifier.max(64), category: z.enum(['test', 'build', 'static_analysis']), failure_exit_codes: exits }).strict();
 const bounded = (max: number) => z.number().int().positive().max(max);
 const profileSchema = z.object({
-  version: z.literal(1), profile_id: identifier,
+  version: z.literal(1), profile_id: VerificationProfileIdSchema,
   harness: file, fixtures: z.array(file).max(128),
   argv: z.array(argument).min(2).max(128),
   image: z.string().max(512).regex(/^[a-z0-9][a-z0-9./_-]*@sha256:[a-f0-9]{64}$/),
@@ -38,8 +39,8 @@ const profileSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid verification contract' });
   }
 });
-const sourceSchema = z.object({ repository: z.string().max(256).regex(/^[a-zA-Z0-9_-][a-zA-Z0-9._-]*\/[a-zA-Z0-9_-][a-zA-Z0-9._-]*$/), commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/) }).strict();
-const bindingSchema = z.object({ profile_id: identifier, profile_digest: digest, trusted_source: sourceSchema.extend({ artifact_digest: digest }).strict() }).strict();
+const sourceSchema = z.object({ repository: LocalFailureRepositorySchema, commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/) }).strict();
+const bindingSchema = z.object({ profile_id: VerificationProfileIdSchema, profile_digest: digest, trusted_source: sourceSchema.extend({ artifact_digest: digest }).strict() }).strict();
 const artifactSchema = z.object({ version: z.literal(1), trusted_source: sourceSchema, profile: profileSchema }).strict();
 
 /** Profile v1 is a self-contained UTF-8 harness/fixture payload, with no host file references. */

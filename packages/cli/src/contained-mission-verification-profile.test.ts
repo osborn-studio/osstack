@@ -185,3 +185,8 @@ describe('host-installed pinned verification profiles', () => {
     expect(verificationProfileDigest({ ...rest, version })).toBe(digest);
   });
 });
+
+it.each(['o/.', 'o/..', './r', '../r', 'o/r/extra', 'o/r\n'])('rejects malformed installed trusted-source repository: %s', repository => {
+  const f = fixture(); f.binding.trusted_source.repository = repository;
+  expect(f.load).toThrow('VERIFICATION_PROFILE_BINDING_INVALID');
+});
