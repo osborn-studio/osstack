@@ -299,6 +299,7 @@ jobs:
           scripts/bridge-sandbox-activity.test.mjs
           scripts/bridge-sandbox-publication-hook.test.mjs
           scripts/lib/bridge-sandbox-adversarial.test.mjs
+          scripts/lib/bridge-mutation-result.test.mjs
 
   graph-macos-fixtures:
     runs-on: macos-15
