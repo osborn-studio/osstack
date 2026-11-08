@@ -300,6 +300,7 @@ jobs:
           scripts/bridge-sandbox-publication-hook.test.mjs
           scripts/lib/bridge-sandbox-adversarial.test.mjs
           scripts/lib/bridge-mutation-result.test.mjs
+          scripts/lib/bridge-sandbox-security-oracles.test.mjs
 
   graph-macos-fixtures:
     runs-on: macos-15
