@@ -30,6 +30,27 @@ test('all 13 cases qualify only the declared live scope', () => {
   const result = build(live()); assert.equal(result.live.status, 'PASSED'); assert.equal(result.live.required, 13);
   assert.equal(result.offline_mutation.status, 'UNKNOWN'); assert.equal(result.all_tasks_done, false);
 });
+test('installed runtime and driver commits remain distinct, with missing or invalid driver commits null', () => {
+  const runtimeCommit = `812${'0'.repeat(37)}`, driverCommit = `c6${'0'.repeat(38)}`;
+  const sandbox = { ...live(), source_commit: runtimeCommit, driver_source_commit: driverCommit,
+    runtime_provenance: { mode: 'installed', sourceCommit: runtimeCommit } };
+  const result = build(sandbox);
+  assert.equal(result.provenance.sandbox_source_commit, runtimeCommit);
+  assert.equal(result.provenance.runtime_source_commit, runtimeCommit);
+  assert.equal(result.provenance.driver_source_commit, driverCommit);
+  assert.notEqual(result.provenance.driver_source_commit, result.provenance.runtime_source_commit);
+  assert.equal(result.provenance.runtime_mode, 'installed');
+  for (const invalid of [undefined, null, '', 'c6', 'g'.repeat(40), 'C'.repeat(40), 123, {}, 'TOP_SECRET']) {
+    const input = { ...sandbox, driver_source_commit: invalid };
+    if (invalid === undefined) delete input.driver_source_commit;
+    const report = build(input);
+    assert.equal(report.provenance.driver_source_commit, null);
+    assert.equal(report.provenance.sandbox_source_commit, runtimeCommit);
+    assert.equal(report.provenance.runtime_source_commit, runtimeCommit);
+    assert.equal(report.live.status, result.live.status);
+    assert.ok(!JSON.stringify(report).includes('TOP_SECRET'));
+  }
+});
 test('explicit run and cleanup failures override claimed complete qualification without leaking codes', () => {
   for (const failure of [{ failure_code: 'ruleset_probe_not_rejected' }, { failure_code: 'TOP_SECRET' },
     { cleanup_failed: true }, { cold_restart_failure: { message: 'TOP_SECRET' } }]) {

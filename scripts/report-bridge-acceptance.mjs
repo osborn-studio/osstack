@@ -77,6 +77,7 @@ export function buildAcceptanceReport({ sandbox, localTests, mutationEvidence, o
       metadata_collection_complete: operatorReadiness?.schemaVersion === 1 && operatorReadiness.collectionComplete === true,
       capability_proven: false },
     provenance: { sandbox_source_commit: commit(sandbox.source_commit), runtime_source_commit: commit(runtime.sourceCommit),
+      driver_source_commit: commit(sandbox.driver_source_commit),
       runtime_mode: ['installed', 'checkout'].includes(runtime.mode) ? runtime.mode : null, module_sha256: entries,
       cross_artifact_binding: 'NOT_ESTABLISHED', current_source_match: 'NOT_CHECKED' },
     limits: ['Artifact assertions only; input hashes identify bytes, not authenticity.',
