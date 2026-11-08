@@ -3,10 +3,16 @@ import { isAbsolute } from 'node:path';
 import { ContainedDocker } from './contained-docker.js';
 
 export interface ContainedCandidateFile { path: string; mode: '100644' | '100755'; bytes: Uint8Array }
-export interface ContainedImageOptions { socketPath: string; daemonId: string; baseImageId: string; authorize: () => void }
+export interface ContainedImageOptions {
+  socketPath: string; daemonId: string; baseImageId: string; authorize: () => void;
+  /** Optional host-only data; never candidate paths or Dockerfile instructions. */
+  trustedProfile?: { baseImageReference: string; profileDigest: string; artifactDigest: string; files: readonly ContainedCandidateFile[] };
+}
 export interface ContainedImageReceipt {
   version: 1; daemonId: string; baseImageId: string; imageId: string;
   contentDigest: string; archiveDigest: string; workingDirectory: string;
+  /** Preparation provenance only, not proof of a verified runtime namespace. */
+  trustedProfile?: { baseImageReference: string; profileDigest: string; artifactDigest: string; contentDigest: string };
 }
 const sha = (bytes: string | Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 /** Restricted USTAR regular files only. No links, devices, PAX overrides or host paths. */
@@ -47,21 +53,32 @@ export async function prepareContainedImage(options: ContainedImageOptions, inpu
   if (!isAbsolute(socketPath) || socketPath.includes('\0') || !daemonId || !/^sha256:[a-f0-9]{64}$/.test(baseImageId)) throw Error('CONTAINED_IMAGE_CONFIG');
   const check = () => { const value: unknown = authorize(); if (value !== undefined) { void Promise.resolve(value).catch(() => {}); throw Error('CONTAINED_AUTHORITY_MUST_BE_SYNC'); } };
   check(); const { files, contentDigest } = snapshotContainedCandidate(input);
+  const trusted = options.trustedProfile === undefined ? undefined : structuredClone(options.trustedProfile);
+  if (trusted && (!/^[a-z0-9][a-z0-9./_-]*@sha256:[a-f0-9]{64}$/.test(trusted.baseImageReference)
+    || !/^[a-f0-9]{64}$/.test(trusted.profileDigest) || !/^[a-f0-9]{64}$/.test(trusted.artifactDigest)
+    || trusted.files.some(file => file.mode !== '100644'))) throw Error('CONTAINED_PROFILE_IMAGE_CONFIG');
+  const trustedSnapshot = trusted ? snapshotContainedCandidate(trusted.files) : undefined;
+  const trustedProfile = trusted && trustedSnapshot ? { baseImageReference: trusted.baseImageReference, profileDigest: trusted.profileDigest,
+    artifactDigest: trusted.artifactDigest, contentDigest: trustedSnapshot.contentDigest } : undefined;
   const workingDirectory = `/osstack-candidate-${randomUUID()}`;
-  const dockerfile = `FROM ${baseImageId}\nCOPY candidate/ ${workingDirectory}/\nWORKDIR ${workingDirectory}\n`;
-  const archive = Buffer.concat([tarFile('Dockerfile', 0o644, Buffer.from(dockerfile)), ...files.map(f => tarFile(`candidate/${f.path}`, f.mode === '100755' ? 0o755 : 0o644, f.bytes)), Buffer.alloc(1024)]);
+  const dockerfile = `FROM ${baseImageId}\nCOPY candidate/ ${workingDirectory}/\n${trustedProfile ? 'COPY --chown=0:0 trusted/ /osstack-trusted/\n' : ''}WORKDIR ${workingDirectory}\n`;
+  const archive = Buffer.concat([tarFile('Dockerfile', 0o644, Buffer.from(dockerfile)), ...files.map(f => tarFile(`candidate/${f.path}`, f.mode === '100755' ? 0o755 : 0o644, f.bytes)),
+    ...(trustedSnapshot?.files.map(f => tarFile(`trusted/${f.path}`, 0o444, f.bytes)) ?? []), Buffer.alloc(1024)]);
   const archiveDigest = sha(archive); const api = new ContainedDocker(socketPath, 120000);
   const call = async (method: string, path: string, body?: unknown) => { check(); const value = await api.call(method, path, body); check(); return value; };
   const daemon = async () => { const r = await call('GET', '/info'); const info = JSON.parse(r.bytes.toString()) as { ID?: string; OSType?: string };
     if (r.status !== 200 || info.ID !== daemonId || info.OSType !== 'linux') throw Error('CONTAINED_DAEMON_MISMATCH'); };
   const inspect = async (imageId: string) => {
     const r = await call('GET', `/images/${imageId}/json`);
-    const image = JSON.parse(r.bytes.toString()) as { Id?: string; Config?: { OnBuild?: unknown[] | null; Volumes?: object | null; WorkingDir?: string; Labels?: Record<string, string> } };
+    const image = JSON.parse(r.bytes.toString()) as { Id?: string; RepoDigests?: string[]; Config?: { OnBuild?: unknown[] | null; Volumes?: object | null; WorkingDir?: string; Labels?: Record<string, string> } };
     if (r.status !== 200 || image.Id !== imageId || !image.Config || (image.Config.OnBuild?.length ?? 0) || Object.keys(image.Config.Volumes ?? {}).length) throw Error('CONTAINED_IMAGE_UNSAFE');
+    if (trustedProfile && imageId === baseImageId && !image.RepoDigests?.includes(trustedProfile.baseImageReference)) throw Error('CONTAINED_PROFILE_BASE_MISMATCH');
     return image.Config;
   };
   await daemon(); await inspect(baseImageId); await daemon();
-  const labels = { 'osstack.candidate.content': contentDigest, 'osstack.candidate.archive': archiveDigest };
+  const labels = { 'osstack.candidate.content': contentDigest, 'osstack.candidate.archive': archiveDigest,
+    ...(trustedProfile ? { 'osstack.profile.digest': trustedProfile.profileDigest, 'osstack.profile.artifact': trustedProfile.artifactDigest,
+      'osstack.profile.content': trustedProfile.contentDigest, 'osstack.profile.base-reference': trustedProfile.baseImageReference } : {}) };
   const query = new URLSearchParams({ version: '1', pull: 'false', networkmode: 'none', rm: 'true', forcerm: 'true', labels: JSON.stringify(labels) });
   const built = await call('POST', `/build?${query}`, archive);
   if (built.status !== 200) throw Error('CONTAINED_IMAGE_BUILD_FAILED');
@@ -74,5 +91,5 @@ export async function prepareContainedImage(options: ContainedImageOptions, inpu
   if (!imageId || !/^sha256:[a-f0-9]{64}$/.test(imageId)) throw Error('CONTAINED_IMAGE_ID_MISSING');
   await daemon(); const config = await inspect(imageId); await daemon();
   if (config.WorkingDir !== workingDirectory || Object.entries(labels).some(([key, value]) => config.Labels?.[key] !== value)) throw Error('CONTAINED_IMAGE_BINDING_MISMATCH');
-  check(); return { version: 1, daemonId, baseImageId, imageId, contentDigest, archiveDigest, workingDirectory };
+  check(); return { version: 1, daemonId, baseImageId, imageId, contentDigest, archiveDigest, workingDirectory, ...(trustedProfile ? { trustedProfile } : {}) };
 }

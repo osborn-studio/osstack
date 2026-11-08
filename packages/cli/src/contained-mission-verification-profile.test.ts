@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { createScratchDirSync } from '@osstack/core';
 import { canonicalJson } from '@osstack/protocol/source';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadInstalledVerificationProfile, verificationProfileDigest, type ContainedVerificationProfile } from './contained-mission-verification-profile.js';
+import { loadInstalledVerificationProfile, revalidateInstalledVerificationProfile, verificationProfileDigest, type ContainedVerificationProfile } from './contained-mission-verification-profile.js';
 
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
 const roots: string[] = [];
@@ -42,6 +42,12 @@ describe('host-installed pinned verification profiles', () => {
     expect(Object.isFrozen(verified.profile.argv)).toBe(true);
     expect(Object.isFrozen(verified.profile.checks[0]?.failure_exit_codes)).toBe(true);
     expect(() => { (verified.profile.argv as string[])[0] = '/bin/sh'; }).toThrow();
+  });
+  it('requires the actual loader-issued capability rather than a structural copy', () => {
+    const f = fixture(); const verified = f.load();
+    expect(revalidateInstalledVerificationProfile(verified).profile).toBe(verified.profile);
+    expect(() => revalidateInstalledVerificationProfile({ ...verified })).toThrow('VERIFICATION_PROFILE_CAPABILITY_REQUIRED');
+    expect(() => revalidateInstalledVerificationProfile(Object.freeze({ ...verified }))).toThrow('VERIFICATION_PROFILE_CAPABILITY_REQUIRED');
   });
   it('takes argv only from the verified artifact and snapshots host inputs', () => {
     const f = fixture(); const verified = f.load();
