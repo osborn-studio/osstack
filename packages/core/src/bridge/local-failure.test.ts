@@ -162,3 +162,12 @@ it.each(['bridge:profile', 'a'.repeat(129)])('rejects receipt profile ID outside
   expect(() => parseLocalFailureBinding({ ...binding, profile_id })).toThrow('local_failure_binding_invalid');
   expect(() => parseLocalVerificationReceipt({ ...receipt(), profile_id })).toThrow('local_verification_receipt_invalid');
 });
+
+it.each(['o/.github', 'o/_fixtures', '.owner/_repo'])('preserves a legitimate prefixed repository identity: %s', repository => {
+  expect(parseLocalFailureBinding({ ...binding, repository }).repository).toBe(repository);
+  expect(parseCiFailureHint({ ...hint, repository }).repository).toBe(repository);
+});
+it.each(['o/.', 'o/..', './r', '../r', 'o/r/extra', 'o/r\n'])('rejects malformed local repository identity: %s', repository => {
+  expect(() => parseLocalFailureBinding({ ...binding, repository })).toThrow('local_failure_binding_invalid');
+  expect(() => parseCiFailureHint({ ...hint, repository })).toThrow('ci_failure_hint_invalid');
+});

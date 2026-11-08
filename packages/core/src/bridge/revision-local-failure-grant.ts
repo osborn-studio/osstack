@@ -1,5 +1,6 @@
 import { createHash, sign, verify, type KeyObject } from "node:crypto";
 import { z } from "zod";
+import { LocalFailureRepositorySchema } from "./local-failure-repository.js";
 import { VerificationProfileIdSchema } from "./verification-profile-id.js";
 import {
   GRANT_LIMITS, RevisionGrantError, RevisionGrantPreviewSchema, RevisionGrantSchema, canonicalJson,
@@ -20,7 +21,7 @@ export const LocalFailureOptInSchema = z.object({
   profile_id: VerificationProfileIdSchema,
   profile_digest: v1Fields.protected_set_digest,
   trusted_source: z.object({
-    repository: v1Fields.repository,
+    repository: LocalFailureRepositorySchema,
     commit: v1Fields.base_sha,
     artifact_digest: v1Fields.protected_set_digest,
   }).strict(),
@@ -30,7 +31,7 @@ export const LocalFailureOptInSchema = z.object({
 export type LocalFailureOptIn = z.infer<typeof LocalFailureOptInSchema>;
 
 const previewObject = RevisionGrantPreviewSchema.innerType().extend({
-  version: z.literal(2), local_failure: LocalFailureOptInSchema,
+  version: z.literal(2), repository: LocalFailureRepositorySchema, local_failure: LocalFailureOptInSchema,
 });
 
 function validatePreview(value: z.infer<typeof previewObject>, ctx: z.RefinementCtx): void {

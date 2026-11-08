@@ -33,9 +33,9 @@ const profile = (profileId = 'bridge-contract'): ContainedVerificationProfile =>
   limits: { timeout_seconds: 60, memory_mb: 128, cpus: 1, pids: 64, stdout_bytes: 4096, stderr_bytes: 4096 },
   network: 'none', read_only_rootfs: true, no_new_privileges: true, working_directory: 'candidate',
 });
-function fixture(profileId = 'bridge-contract') {
+function fixture(profileId = 'bridge-contract', sourceRepository = 'o/trusted') {
   const root = realpathSync(createScratchDirSync('tests', 'local-failure-contracts')); roots.push(root);
-  const artifact = { version: 1, trusted_source: { repository: 'o/trusted', commit: 'e'.repeat(64) }, profile: profile(profileId) };
+  const artifact = { version: 1, trusted_source: { repository: sourceRepository, commit: 'e'.repeat(64) }, profile: profile(profileId) };
   const bytes = JSON.stringify(artifact), artifactDigest = sha(bytes), path = join(root, `${artifactDigest}.json`);
   writeFileSync(path, bytes, { mode: 0o600 });
   const keys = generateKeyPairSync('ed25519');
@@ -125,4 +125,11 @@ it.each(['A', 'bridge.v1-main_2', '9' + 'a'.repeat(127)])('composes the shared p
 it.each(['bridge profile', 'bridge:profile', 'bridge/profile', '_bridge', '.bridge', 'bridge@v1', '验证', 'a'.repeat(129)])('shared profile grammar and installed profile parsing reject %s', profile_id => {
   expect(VerificationProfileIdSchema.safeParse(profile_id).success).toBe(false);
   expect(() => verificationProfileDigest({ ...profile(), profile_id })).toThrow();
+});
+
+it.each(['o/.github', 'o/_fixtures', '.owner/_repo'])('loads the legitimate trusted repository identity signed by V2: %s', repository => {
+  const f = fixture('bridge-contract', repository);
+  expect(f.stored.local_failure.trusted_source.repository).toBe(repository);
+  expect(f.loaded.binding.trusted_source.repository).toBe(repository);
+  expect(f.loaded.revalidateForLaunch().binding.trusted_source.repository).toBe(repository);
 });

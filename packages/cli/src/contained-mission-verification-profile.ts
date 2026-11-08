@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { constants, closeSync, fstatSync, lstatSync, openSync, readSync, realpathSync, type Stats } from 'node:fs';
 import { isAbsolute, join, normalize } from 'node:path';
-import { VerificationProfileIdSchema } from '@osstack/core';
+import { LocalFailureRepositorySchema, VerificationProfileIdSchema } from '@osstack/core';
 import { canonicalJson } from '@osstack/protocol/source';
 import { z } from 'zod';
 
@@ -39,7 +39,7 @@ const profileSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid verification contract' });
   }
 });
-const sourceSchema = z.object({ repository: z.string().max(256).regex(/^[a-zA-Z0-9_-][a-zA-Z0-9._-]*\/[a-zA-Z0-9_-][a-zA-Z0-9._-]*$/), commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/) }).strict();
+const sourceSchema = z.object({ repository: LocalFailureRepositorySchema, commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/) }).strict();
 const bindingSchema = z.object({ profile_id: VerificationProfileIdSchema, profile_digest: digest, trusted_source: sourceSchema.extend({ artifact_digest: digest }).strict() }).strict();
 const artifactSchema = z.object({ version: z.literal(1), trusted_source: sourceSchema, profile: profileSchema }).strict();
 

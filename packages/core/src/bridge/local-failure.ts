@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { canonicalJson } from "./revision-grant.js";
+import { LocalFailureRepositorySchema } from "./local-failure-repository.js";
 import { VerificationProfileIdSchema } from "./verification-profile-id.js";
 
 /** Offline data contracts only. Parsing, digests and eligibility do not authenticate host evidence,
@@ -26,13 +27,11 @@ const fullSha = z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/);
 const digest = z.string().regex(/^[0-9a-f]{64}$/);
 const positiveInteger = z.number().int().safe().min(1);
 const timestamp = z.number().int().safe().min(0).max(LOCAL_FAILURE_LIMITS.max_timestamp);
-const repository = z.string().max(200).regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
-  .refine(value => value.split("/").every(part => part !== "." && part !== ".."));
 
 /** Untrusted wake-up metadata. It deliberately has no logs, argv, commands, or review IDs.
  * The authenticated read adapter must separately establish producer, freshness and complete pagination. */
 export const CiFailureHintSchema = z.object({
-  repository, pr: positiveInteger, head: fullSha, app_id: positiveInteger, check_run_id: positiveInteger,
+  repository: LocalFailureRepositorySchema, pr: positiveInteger, head: fullSha, app_id: positiveInteger, check_run_id: positiveInteger,
   name: text(), status: z.literal("completed"), conclusion: z.literal("failure"), observed_at: timestamp,
 }).strict();
 export type CiFailureHint = z.infer<typeof CiFailureHintSchema>;
@@ -42,7 +41,7 @@ export const LocalFailureIntakeIdSchema = z.string().length(40).regex(/^lfi_[0-9
 
 const bindingFields = {
   intake_id: LocalFailureIntakeIdSchema, chain_id: token(), root_mission_id: token(), grant_id: token(),
-  repository, pr: positiveInteger, branch: text(255), head: fullSha, tree: fullSha,
+  repository: LocalFailureRepositorySchema, pr: positiveInteger, branch: text(255), head: fullSha, tree: fullSha,
   base_ref: text(255), base_sha: fullSha, profile_id: VerificationProfileIdSchema, profile_digest: digest,
   trusted_source_digest: digest, invocation_id: token(),
 };

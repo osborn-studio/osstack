@@ -227,3 +227,8 @@ it.each(['bridge profile', 'bridge:profile', 'bridge/profile', '_bridge', '.brid
   expect(() => parseLocalFailureRevisionGrant(JSON.stringify(signed))).toThrow('grant_invalid');
   expect(verifyLocalFailureRevisionGrantSignature(signed, k.publicKey)).toBe(false);
 });
+
+it.each(['o/.', 'o/..', './r', '../r', 'o/r/extra', 'o/r\n'])('refuses invalid new-V2 trusted repository identity %s', repository => {
+  const p = preview();
+  expect(() => signLocalFailureRevisionGrant({ ...p, local_failure: { ...p.local_failure, trusted_source: { ...p.local_failure.trusted_source, repository } } }, keys().privateKey)).toThrow('grant_invalid');
+});
