@@ -171,3 +171,10 @@ it.each(['o/.', 'o/..', './r', '../r', 'o/r/extra', 'o/r\n'])('rejects malformed
   expect(() => parseLocalFailureBinding({ ...binding, repository })).toThrow('local_failure_binding_invalid');
   expect(() => parseCiFailureHint({ ...hint, repository })).toThrow('ci_failure_hint_invalid');
 });
+
+it.each(['é'.repeat(129), 'é'.repeat(256), '验'.repeat(256), '😀'.repeat(128)])('preserves bounded Unicode CI names without truncation: %#', name => {
+  expect(parseCiFailureHint({ ...hint, name }).name).toBe(name);
+});
+it.each(['é'.repeat(257), '验'.repeat(257), '😀'.repeat(129), 'label\u200b', 'label\u2028', 'label\u0000', '  '])('rejects oversized or unsafe CI names: %#', name => {
+  expect(() => parseCiFailureHint({ ...hint, name })).toThrow('ci_failure_hint_invalid');
+});

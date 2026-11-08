@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parseCiFailureHint } from '@osstack/core';
 import {
   readCiFailureHints,
   type CiFailureReadDeps,
@@ -11,6 +12,17 @@ const OTHER = 'b'.repeat(40);
 const APP = 42;
 const NOW = '2026-11-08T12:00:00.000Z';
 const target: CiFailureReadTarget = { repository: REPO, pr: 7, head: HEAD, producerAppIds: [APP] };
+
+it.each(['é'.repeat(129), 'é'.repeat(256), '验'.repeat(256), '😀'.repeat(128)])('keeps exact Unicode CI identity within the canonical name bounds: %#', async name => {
+  const w = world(); w.runs.set(11, [run(101, { name })]);
+  const result = await readCiFailureHints({ ...ports(w), latestAttempt: async query => {
+    expect(query.name).toBe(name);
+    return latest(101, { name });
+  } }, target, { signal: signal() });
+  expect(result.ok).toBe(true);
+  expect(result.hints).toHaveLength(1);
+  expect(parseCiFailureHint(result.hints[0]).name).toBe(name);
+});
 const signal = () => new AbortController().signal;
 const suite = (id = 11) => ({ id, app: { id: APP }, head_sha: HEAD });
 const run = (id = 101, changes: Record<string, unknown> = {}) => ({

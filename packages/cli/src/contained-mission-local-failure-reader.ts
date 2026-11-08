@@ -1,5 +1,5 @@
 // Offline, read-only CI wakeup reader. No default transport and no scanner registration.
-import { LocalFailureRepositorySchema, parseCiFailureHint, type CiFailureHint } from '@osstack/core';
+import { CiCheckNameSchema, LocalFailureRepositorySchema, parseCiFailureHint, type CiFailureHint } from '@osstack/core';
 import { z } from 'zod';
 
 export type { CiFailureHint } from '@osstack/core';
@@ -55,7 +55,7 @@ const PAGE = 100;
 const id = z.number().int().positive().safe();
 const sha = z.string().regex(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u);
 const repository = LocalFailureRepositorySchema;
-const checkName = z.string().min(1).max(256).regex(/^[^\p{C}\p{Zl}\p{Zp}]+$/u);
+const checkName = CiCheckNameSchema;
 const status = z.enum(['queued', 'in_progress', 'completed', 'waiting', 'pending', 'requested']);
 const conclusion = z.enum(['success', 'failure', 'neutral', 'cancelled', 'skipped', 'timed_out', 'action_required', 'stale', 'startup_failure']).nullable();
 const state = { status, conclusion };

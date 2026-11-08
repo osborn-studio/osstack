@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { canonicalJson } from "./revision-grant.js";
+import { CiCheckNameSchema } from "./ci-check-name.js";
 import { LocalFailureRepositorySchema } from "./local-failure-repository.js";
 import { VerificationProfileIdSchema } from "./verification-profile-id.js";
 
@@ -32,7 +33,7 @@ const timestamp = z.number().int().safe().min(0).max(LOCAL_FAILURE_LIMITS.max_ti
  * The authenticated read adapter must separately establish producer, freshness and complete pagination. */
 export const CiFailureHintSchema = z.object({
   repository: LocalFailureRepositorySchema, pr: positiveInteger, head: fullSha, app_id: positiveInteger, check_run_id: positiveInteger,
-  name: text(), status: z.literal("completed"), conclusion: z.literal("failure"), observed_at: timestamp,
+  name: CiCheckNameSchema, status: z.literal("completed"), conclusion: z.literal("failure"), observed_at: timestamp,
 }).strict();
 export type CiFailureHint = z.infer<typeof CiFailureHintSchema>;
 

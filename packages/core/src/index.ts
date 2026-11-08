@@ -35,6 +35,7 @@ export { ENGINEERING_REVISION_CHAIN_DDL } from "./state/engineering-revision-cha
 export { ENGINEERING_REVISION_GRANT_DDL } from "./state/engineering-revision-grant-ddl.js";
 export { GRANT_LIMITS, LIVE_STOP_REASONS, RENEWABLE_STOP_REASONS, SAME_CHILD_RESUMABLE, REFRESHABLE_STOP_REASONS, RevisionGrantError, RevisionGrantSchema, RevisionGrantPreviewSchema, GrantBudgetSchema, canonicalJson, parseRevisionGrantPreview, previewDigest, revisionGrantSigningInput, signRevisionGrant, assembleGrant, grantPreviewOf, publicKeyFromSpkiB64, verifyRevisionGrantSignature, parseStoredGrant, resolveGrantTerms, grantSummary, grantBindsChain, type RevisionGrant, type RevisionGrantPreview, type RevisionGrantErrorCode, type GrantBudget, type GrantTerms, type GrantSummary, type GrantBinding, type LiveStopReason } from "./bridge/revision-grant.js";
 export { LocalFailureRepositorySchema } from "./bridge/local-failure-repository.js";
+export { CiCheckNameSchema } from "./bridge/ci-check-name.js";
 export { VerificationProfileIdSchema } from "./bridge/verification-profile-id.js";
 export { LocalFailureIntakeIdSchema, parseCiFailureHint, parseLocalFailureBinding, localFailureBindingFromLedger, localFailureEligibility, localVerificationReceiptDigest, type CiFailureHint, type LocalFailureBinding, type LocalFailureLedgerBinding, type LocalFailureProfileCheck, type LocalVerificationReceipt } from "./bridge/local-failure.js";
 export { signLocalFailureRevisionGrant, type LocalFailureRevisionGrant, type LocalFailureGrantPreview } from "./bridge/revision-local-failure-grant.js";
