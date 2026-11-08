@@ -320,12 +320,13 @@ test('workspace-ready fixture gate accepts real NULL expected_head and still bin
 
 test('remote history inspects intermediate trees even when final net diff hides a workflow add and removal', async t => {
   const { collectSandboxStageRemoteHistory } = await import('./smoke-bridge-revision-sandbox.mjs');
-  const { createScratchDir } = await import('./lib/scratch.mjs');
+  const { createScratchDir, scratchRoot } = await import('./lib/scratch.mjs');
   const { mkdir, writeFile, rm } = await import('node:fs/promises');
   const { execFileSync } = await import('node:child_process');
-  const { join } = await import('node:path');
-  const dir = await createScratchDir('tests', 'driver-history', { OSSTACK_SCRATCH_ROOT: '/Volumes/AIMATE_WORK/tmp/osstack' });
+  const { dirname, join } = await import('node:path');
+  const dir = await createScratchDir('tests', 'driver-history');
   t.after(() => rm(dir, { recursive: true, force: true }));
+  assert.equal(dirname(dir), join(scratchRoot(), 'tests'));
   const git = args => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args],
     { cwd: dir, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: dir, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' } });
   git(['init', '-q']); git(['config', 'user.name', 'Offline Fixture']); git(['config', 'user.email', 'fixture@invalid']);
