@@ -23,6 +23,16 @@ it.each(['é'.repeat(129), 'é'.repeat(256), '验'.repeat(256), '😀'.repeat(12
   expect(result.hints).toHaveLength(1);
   expect(parseCiFailureHint(result.hints[0]).name).toBe(name);
 });
+
+it.each(['é'.repeat(257), '验'.repeat(257), '😀'.repeat(129), 'label\u200b', 'label\u2028', 'label\u0000', '  '])('rejects malformed names during row ingestion before retry identity reads: %#', async name => {
+  const w = world(); w.runs.set(11, [run(101, { name })]);
+  let retryReads = 0;
+  const result = await readCiFailureHints({ ...ports(w), latestAttempt: async () => {
+    retryReads++; return latest(101, { name });
+  } }, target, { signal: signal() });
+  expect(result).toMatchObject({ ok: false, hints: [], code: 'malformed' });
+  expect(retryReads).toBe(0);
+});
 const signal = () => new AbortController().signal;
 const suite = (id = 11) => ({ id, app: { id: APP }, head_sha: HEAD });
 const run = (id = 101, changes: Record<string, unknown> = {}) => ({
