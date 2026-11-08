@@ -52,7 +52,7 @@ Read-only. Checks: the recorded pid is alive and is this checkout's `bin.js serv
 
 ## Drive
 
-Recipes per feature live in [`features/`](features/README.md). Shared mechanics:
+Recipes per feature live in [`features/`](features/README.md). The existing 31 UI/CLI recipes remain the default. For an explicitly requested bridge check, read the optional [contained Mission bridge recipe](features/contained-mission-bridge.md). It separates credential-free offline checks from operator-gated real 5-G; it does not enable live execution or production acceptance. The default exclusions above still apply outside that recipe. Shared mechanics:
 
 - **CLI:** `$V cli <label> -- <osstack args...>` runs the command with the run's env and writes `cli/<label>.{cmd,stdout,stderr,exit}` to evidence; it prints stdout and returns the command's exit code. Use `--json` where offered and assert on parsed JSON, not on prose.
 - **Scratch git repo:** `W=$($V workspace [name])` creates `/tmp/osstack-verify/$RUN_ID/workspaces/<name>` with one commit on `main`. Use one fresh workspace per `deliver` journey (the task queue persists in the workspace).

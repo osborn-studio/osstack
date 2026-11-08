@@ -5,6 +5,8 @@
 
 阶段 6 是平台侧工作，由 Grok Bots 运营者完成，osstack 不改代码。本文把方案阶段 6 那一段写成运营者可以照着实现、照着验收的规则：App C 与 App D 处理哪些事件、怎样在不读 osstack 账本的情况下认出 Mission PR、`grok/verify-osstack` 的 check run 合同、App D 的 review 规则、`main-quality` ruleset 的改动（只给出待审 diff，由人执行）、沙箱验收清单、回滚，以及 osstack 需要运营者提供什么。
 
+2026-11-07 运营交接补充：用户已说明既有 Grok Bots 共用云电脑及 `Rubebun-Jadeem` 登录，验证工程师维护原 `verify-osstack` 技能，Watcher 验证并 approve，Merger 合并，Order 管理顺序 labels，CoS 协调。具体增量交接见[既有平台接入交接](../runbooks/bridge-grok-bots-handoff.md)。这些角色事实不证明 App C/D 已迁移，也不替代下列平台能力和运行条件的验收。
+
 ---
 
 ## 0. 平台未确认项（先读）
@@ -25,7 +27,7 @@
 | U-10 | 平台能在一次评估里完成本文要求的读取并保证分页完整（读不完整时能识别出来） | 不能识别读取不完整时，App C 不能上线，因为它可能在不完整的数据上给出 `success` |
 | U-11 | 平台有**持久状态**并能**按（仓库，head）串行**执行评估：持久的锁、每个 head 的评估代次、已知 check run id 表、创建意图表（§6.4），平台重启后仍在 | App C **不能上线**。没有串行与代次，较早读到“成功”的评估可能晚写入、盖过较新的“失败”；没有已知 id 表，读取失败时撤不回已有的成功（§6.4 第 1、7 条）。还需要带租约的锁、PR→head 表、等待起点表与未决写表（§5.2、§6.3、§6.4 第 3 条）。这一项不能用“最终一致”代替 |
 
-本文的“已实测”只指 ADR-006 的探针 P-1–P-12（2026-11-05，沙箱）和 2026-11-06 本会话对主仓库做的只读查询（§2）。
+本文早期的“已实测”指 ADR-006 的探针 P-1–P-12（2026-11-05，沙箱）和 2026-11-06 对主仓库的只读查询（§2）。2026-11-07 新增[本机 C/D 最小权限读取样本](../reports/2026-11-07-bridge-local-app-cd-capability.md)：仅补充 sandbox PR/其他 App 检查的 API 读取证据；不证明云 Routine 身份注入、完整 U-3 或 U-1/U-9/U-10。
 
 ---
 
@@ -47,7 +49,7 @@
 | 项 | 现状 | 来源 |
 |---|---|---|
 | 方案阶段 6 前置：阶段 2 完成、阶段 3 沙箱验收 | 满足。沙箱 PR #13 作者是 `osstack-publisher[bot]`，App B 的 `osstack/verify` 为 success、`head_sha` 一致 | 方案阶段 3 验收记录 |
-| App C、App D | 已建，**只装在沙箱**（安装 id 178742326、178742542）；webhook 关闭；私钥在建 App 的会话所在主机上（ADR-006 决定 3），平台还没有 | ADR-006 登记表 |
+| App C、App D | ADR 登记已建并安装在沙箱（安装 id 178742326、178742542）；本地 sandbox 最小权限读取已实证，主仓库访问与平台注入仍未证实；webhook 与密钥历史状态见 ADR-006 决定 3 | ADR-006 登记表 |
 | 沙箱 ruleset | 四个都在：`main-quality` 26575831、`main-update` 26577634、`mission-writers` 26577637、`mission-history` 26577639 | 本会话 `gh api repos/osborn-studio/osstack-bridge-sandbox/rulesets`（只读） |
 | 主仓库 ruleset | **一个都没有**（`GET rulesets` 与 `GET rules/branches/main` 都返回空）。`main` 仍是旧式分支保护：1 个批准、`dismiss_stale_reviews`、`require_last_push_approval`、会话解决、`enforce_admins`，**没有任何必需状态检查** | 本会话 `gh api`（只读），2026-11-06 |
 | 主仓库可见性 | public | 同上 |
@@ -65,14 +67,16 @@
 
 | 身份 | App id（比较 `app.id`） | bot 用户 id（比较 `user.id`、`sender.id`） | 用在哪里 |
 |---|---|---|---|
-| App A `osstack-publisher` | 5620012 | 待填：`gh api users/osstack-publisher%5Bbot%5D --jq .id` | Mission PR 作者（§4.1 S-1） |
+| App A `osstack-publisher` | 5620012 | 352680398 | Mission PR 作者（§4.1 S-1） |
 | App B `osstack-evidence` | 5620053 | 不需要 | `osstack/verify` 的生产者（§5.3） |
-| App C `osborn-grok-pr-watcher` | 5620065 | 待填：`gh api users/osborn-grok-pr-watcher%5Bbot%5D --jq .id` | 发 `grok/verify-osstack`；过滤自身事件 |
-| App D `osborn-grok-pr-reviewer` | 5620078 | 待填：`gh api users/osborn-grok-pr-reviewer%5Bbot%5D --jq .id` | 提交 review；过滤自身事件 |
+| App C `osborn-grok-pr-watcher` | 5620065 | 352681463 | 发 `grok/verify-osstack`；过滤自身事件 |
+| App D `osborn-grok-pr-reviewer` | 5620078 | 352681749 | 提交 review；过滤自身事件 |
 | GitHub Actions | 15368 | — | 现有五个必需检查 |
 | `gilosbornhello` | — | 269190136（User） | 计入的批准（ADR-006 风险 4）；不是 App D 的事 |
 
-三个“待填”由所有者读一次并确认（与合并者附录 §8 决定 6 相同的做法；读的是公开的用户信息，只读），写进 §11 的交接表。在这几个数填好之前 App C 不能上线：缺 App A 的 bot 用户 id，就认不出 Mission PR。
+公开身份采样：2026-11-07 15:02:19 UTC，通过只读 `gh api users/<slug>%5Bbot%5D --jq '{login,id,type,html_url}'` 核对三条响应。A 返回 `osstack-publisher[bot]` / 352680398，C 返回 `osborn-grok-pr-watcher[bot]` / 352681463，D 返回 `osborn-grok-pr-reviewer[bot]` / 352681749；三者 `type` 均为 `Bot`，分别指向对应 App 的公开页面。上表 App id 列沿用既有 App 登记，不把用户 endpoint 的 `id` 当作 App id。
+
+这次 GET **只证明公开 bot 身份与数字 id 的对应关系**。它不证明任何仓库 installation 已存在、不证明平台实际使用这些 App 的令牌、不证明权限或 U/V 运行能力通过。§11 仍需运营者用实际配置和写入结果确认身份绑定；本次没有修改 ADR 的历史记录、私有 `producers.json` 或平台设置，也没有解除上线门。
 
 ### 3.2 公共过滤（App C 与 App D 都适用）
 
@@ -441,7 +445,8 @@ ruleset 改动与 `merger.json` 改动必须一起做或一起回滚：一边有
 
 | 项 | 值 / 位置 |
 |---|---|
-| App A 的 bot 用户 id | 所有者读出后填（§3.1） |
+| App A 的 bot 用户 id | 352680398；公开 GET 采样时间和证明边界见 §3.1 |
+| App C、App D 的 bot 用户 id | C：352681463；D：352681749。对应 App id 分别为 5620065、5620078，两类 id 不混用 |
 | App B 的 App id | 5620053 |
 | 登记的目标分支 | `main` |
 | 标记解析规则与对照测试 | §4.3；`packages/cli/src/contained-mission-marker.ts`、`contained-mission-marker.test.ts` |
@@ -451,7 +456,7 @@ ruleset 改动与 `merger.json` 改动必须一起做或一起回滚：一边有
 
 | 项 | 用在哪里 |
 |---|---|
-| App C、App D 的 bot 用户 id（所有者确认） | `producers.json` 的 `reviewers` 加 `{ "actor_id": <App D bot 用户 id>, "app_id": 5620078 }`（阶段 4 影子对账器按它读 App D 的 review，是否加入由所有者决定，§13 决定 5）；App C 的 bot 用户 id 用于识别 App C 的事件。`producers.json` 的 `publisher` 改为 App A 的 bot 用户 id 与 `app_id: 5620012` |
+| 将公开身份与平台实际 installation / 写入身份绑定的证据 | 已知 C bot 用户 id 为 352681463、D 为 352681749。若按 §13 决定 5 登记 D，`producers.json.reviewers` 使用 `{ "actor_id": 352681749, "app_id": 5620078 }`；C 的 bot 用户 id 用于事件识别。`publisher` 使用 A 的 `actor_id: 352680398` 与 `app_id: 5620012`。这些是待核对的配置值，不代表本次已经应用；installation、平台令牌和运行能力仍待实际证据 |
 | 确认 `grok/verify-osstack` 的生产者是 App id 5620065 | 两份 `merger.json` 的 `required_checks` 加 `{ "context": "grok/verify-osstack", "app_id": 5620065 }`（App id，不是 bot 用户 id），时间与 §8.3 第 2、4 步相同 |
 | 事件来源（U-2 的 a/b/c） | 写进运行手册；决定巡检间隔 |
 | Watcher 自身验证的定义与运行环境（U-9） | 写进运行手册 |
