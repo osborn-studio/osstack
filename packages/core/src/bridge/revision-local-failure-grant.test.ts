@@ -215,3 +215,15 @@ describe("standalone local-failure grant V2", () => {
     expect(() => parseLocalFailureRevisionGrant(JSON.stringify(unsigned))).toThrow("grant_invalid");
   });
 });
+
+it.each(['bridge profile', 'bridge:profile', 'bridge/profile', '_bridge', '.bridge', 'bridge@v1', '验证', 'a'.repeat(129)])('rejects signed V2 profile ID outside the installed grammar: %s', profile_id => {
+  const k = keys(), p = preview();
+  const invalid = { ...p, local_failure: { ...p.local_failure, profile_id } };
+  // A real issuer key can sign malformed bytes; parsing must still reject them.
+  const preview_sha256 = digest(invalid);
+  const signature = sign(null, Buffer.from(canonicalJson({ domain: LOCAL_FAILURE_SIGNING_DOMAIN, preview: invalid, preview_sha256 })), k.privateKey).toString('base64');
+  const signed = { ...invalid, preview_sha256, signature };
+  expect(() => signLocalFailureRevisionGrant(invalid, k.privateKey)).toThrow('grant_invalid');
+  expect(() => parseLocalFailureRevisionGrant(JSON.stringify(signed))).toThrow('grant_invalid');
+  expect(verifyLocalFailureRevisionGrantSignature(signed, k.publicKey)).toBe(false);
+});

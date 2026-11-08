@@ -157,3 +157,8 @@ it("rejects trailing newline aliases of immutable SHA and digest fields", () => 
   }
   expect(() => parseLocalVerificationReceipt({ ...receipt(), evidence_digest: receipt().evidence_digest + "\n" })).toThrow("local_verification_receipt_invalid");
 });
+
+it.each(['bridge:profile', 'a'.repeat(129)])('rejects receipt profile ID outside the installed grammar: %s', profile_id => {
+  expect(() => parseLocalFailureBinding({ ...binding, profile_id })).toThrow('local_failure_binding_invalid');
+  expect(() => parseLocalVerificationReceipt({ ...receipt(), profile_id })).toThrow('local_verification_receipt_invalid');
+});

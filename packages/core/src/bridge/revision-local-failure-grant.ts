@@ -1,5 +1,6 @@
 import { createHash, sign, verify, type KeyObject } from "node:crypto";
 import { z } from "zod";
+import { VerificationProfileIdSchema } from "./verification-profile-id.js";
 import {
   GRANT_LIMITS, RevisionGrantError, RevisionGrantPreviewSchema, RevisionGrantSchema, canonicalJson,
 } from "./revision-grant.js";
@@ -12,11 +13,11 @@ export const LOCAL_FAILURE_SIGNING_DOMAIN = "osstack.revision-grant.v2";
 const v1Fields = RevisionGrantPreviewSchema.innerType().shape;
 
 /** Required explicit opt-in. Trusted source identifies an artifact; it never supplies commands.
- * Profile IDs contain 1–128 characters without control characters. Digests are lowercase SHA-256.
+ * Profile IDs use the installed-profile ASCII identity grammar (1–128 characters). Digests are lowercase SHA-256.
  */
 export const LocalFailureOptInSchema = z.object({
   enabled: z.literal(true),
-  profile_id: v1Fields.principal_id.max(128),
+  profile_id: VerificationProfileIdSchema,
   profile_digest: v1Fields.protected_set_digest,
   trusted_source: z.object({
     repository: v1Fields.repository,

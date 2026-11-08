@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { canonicalJson } from "./revision-grant.js";
+import { VerificationProfileIdSchema } from "./verification-profile-id.js";
 
 /** Offline data contracts only. Parsing, digests and eligibility do not authenticate host evidence,
  * verify a grant, or authorize repair. Resolve receipts from the host ledger, never client/CI JSON. */
@@ -42,7 +43,7 @@ export const LocalFailureIntakeIdSchema = z.string().length(40).regex(/^lfi_[0-9
 const bindingFields = {
   intake_id: LocalFailureIntakeIdSchema, chain_id: token(), root_mission_id: token(), grant_id: token(),
   repository, pr: positiveInteger, branch: text(255), head: fullSha, tree: fullSha,
-  base_ref: text(255), base_sha: fullSha, profile_id: token(), profile_digest: digest,
+  base_ref: text(255), base_sha: fullSha, profile_id: VerificationProfileIdSchema, profile_digest: digest,
   trusted_source_digest: digest, invocation_id: token(),
 };
 /** Expected identity supplied independently by the host ledger and pinned profile. Compare every field exactly. */

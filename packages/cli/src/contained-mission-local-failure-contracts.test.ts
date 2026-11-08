@@ -3,7 +3,7 @@ import { createHash, generateKeyPairSync } from 'node:crypto';
 import { realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  localFailureBindingFromLedger, localFailureEligibility, localVerificationReceiptDigest,
+  VerificationProfileIdSchema, localFailureBindingFromLedger, localFailureEligibility, localVerificationReceiptDigest,
   parseCiFailureHint, parseLocalFailureBinding, type LocalVerificationReceipt,
   createScratchDirSync, signLocalFailureRevisionGrant, parseStoredRevisionGrant, verifyStoredRevisionGrantSignature,
 } from '@osstack/core';
@@ -26,16 +26,16 @@ const samplePreview = () => ({
   budget: { max_executor_seconds: 3600, max_container_seconds: 3600, max_wall_clock_hours: 48 },
   protected_set_digest: 'd'.repeat(64), nonce: 'e'.repeat(32), key_id: 'fixture-key',
 });
-const profile = (): ContainedVerificationProfile => ({
-  version: 1, profile_id: 'bridge-contract', harness: { path: '/osstack-trusted/harness.mjs', content: 'process.exit(1);\n' }, fixtures: [],
+const profile = (profileId = 'bridge-contract'): ContainedVerificationProfile => ({
+  version: 1, profile_id: profileId, harness: { path: '/osstack-trusted/harness.mjs', content: 'process.exit(1);\n' }, fixtures: [],
   argv: ['/usr/bin/node', '/osstack-trusted/harness.mjs'], image: `fixture/verification@sha256:${'a'.repeat(64)}`,
   checks: [{ check_id: 'bridge-test', category: 'test', failure_exit_codes: [1] }],
   limits: { timeout_seconds: 60, memory_mb: 128, cpus: 1, pids: 64, stdout_bytes: 4096, stderr_bytes: 4096 },
   network: 'none', read_only_rootfs: true, no_new_privileges: true, working_directory: 'candidate',
 });
-function fixture() {
+function fixture(profileId = 'bridge-contract') {
   const root = realpathSync(createScratchDirSync('tests', 'local-failure-contracts')); roots.push(root);
-  const artifact = { version: 1, trusted_source: { repository: 'o/trusted', commit: 'e'.repeat(64) }, profile: profile() };
+  const artifact = { version: 1, trusted_source: { repository: 'o/trusted', commit: 'e'.repeat(64) }, profile: profile(profileId) };
   const bytes = JSON.stringify(artifact), artifactDigest = sha(bytes), path = join(root, `${artifactDigest}.json`);
   writeFileSync(path, bytes, { mode: 0o600 });
   const keys = generateKeyPairSync('ed25519');
@@ -111,4 +111,18 @@ describe('local-failure cross-leaf contracts (no host authority)', () => {
     expect(result.hints).toHaveLength(1);
     expect(parseCiFailureHint(result.hints[0])).toEqual({ repository: target.repository, pr: 7, head: target.head, app_id: 42, check_run_id: 101, name: 'unit', status: 'completed', conclusion: 'failure', observed_at: now });
   });
+});
+
+it.each(['A', 'bridge.v1-main_2', '9' + 'a'.repeat(127)])('composes the shared profile ID grammar through signing, loading and receipt binding: %s', profile_id => {
+  expect(VerificationProfileIdSchema.parse(profile_id)).toBe(profile_id);
+  const f = fixture(profile_id);
+  expect(f.stored.local_failure.profile_id).toBe(profile_id);
+  expect(f.loaded.profile.profile_id).toBe(profile_id);
+  expect(f.binding.profile_id).toBe(profile_id);
+  expect(localFailureEligibility(f.receipt, f.binding, f.loaded.profile.checks)).toEqual({ eligible: true });
+});
+
+it.each(['bridge profile', 'bridge:profile', 'bridge/profile', '_bridge', '.bridge', 'bridge@v1', '验证', 'a'.repeat(129)])('shared profile grammar and installed profile parsing reject %s', profile_id => {
+  expect(VerificationProfileIdSchema.safeParse(profile_id).success).toBe(false);
+  expect(() => verificationProfileDigest({ ...profile(), profile_id })).toThrow();
 });
