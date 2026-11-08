@@ -2,7 +2,7 @@
 
 ## Current closeout snapshot — 2026-11-08 (supersedes historical status below)
 
-- Main `d89cd4a5`: #421 and #422 user-merged after exact-head CI passed (five jobs each; paid semantic smoke skipped). Subsequent PRs are not claimed merged.
+- Latest reported delivery snapshot (2026-11-08): #425 is merged; main `f034a51eef26676506788be0dc66cd55a043efbf`. Earlier main `d89cd4a5` included user-merged #421/#422 after exact-head CI passed (five jobs each; paid semantic smoke skipped). #426 is now Ready with fresh CI running; #427–#429 remain draft/main-base.
 - **N11 fourth real v2 run PASSED**, `LIVE_5G_ONLY`, **13/13**, `qualified:true`, exit 0. Run `revision-5g-20261108d`, driver `c6c3dd93fc1b797e3bd17e171dc96c94d95a050c`, installed runtime `8120569883fd23c30bd99858de8f3d0c6a34aa55`, 2026-11-08 15:03:47–15:16:20 Asia/Shanghai. The owner authorized one additional sandbox-only attempt. No fifth run is authorized. **Production CLOSED.**
 - Attempts 1–3 remain failed/unqualified, with unchanged original reports. Attempt 3 passed 7/13 then stopped at `ruleset_probe_not_rejected`; later HTTP 422 denial/unchanged-head evidence does not retroactively qualify it.
 - Independent fourth-run readback used **68 successful GETs, zero failures**: six PRs (23–28) closed/unmerged after cleanup, eleven confirmed heads, six root publications/five pushes, eleven App B success checks and eleven App A activities. Driver final open-head assertion passed before cleanup; current open precondition false is expected. Real W13 failed intent `detail=grant_invalid` has one stopped/unreleased `git_push` journal, `stop_proof=never_released`, remote unchanged. Controlled hostile T2 is separate.
@@ -16,11 +16,13 @@
 
 | PR | Output | Merge dependency | Current reported state |
 |---|---|---|---|
-| #425 | Selected installed runtime provenance and bounded executor hook | — | All CI checks passed; not merged |
-| #426 | CLI runner oracle and targeted protected-finding mutant | #425 | Draft, base `main` |
+| #425 | Selected installed runtime provenance and bounded executor hook | — | Merged; main `f034a51eef26676506788be0dc66cd55a043efbf` |
+| #426 | CLI runner oracle and targeted protected-finding mutant | #425 (merged) | Ready, base `main`; head `2013392ac8d08cf8502335d2f14e75feff6e0b97`, fresh CI running |
 | #427 | Full v2 sandbox driver, security oracles and REST refusal repair | #426 | Draft, base `main` |
 | #428 | Read-only ledger audit | #427 | Draft, base `main` |
 | #429 | Bounded diagnostic, advisory reporter, all Markdown closeout and optional skill recipe | #428 | Draft, base `main` |
+
+#426 was synchronized with merged main; its tree is byte-identical to previous head `75c5222c` and its portable eleven-file Node suite passed 358/358. The earlier Linux Node jobs for #427–#429 failed one history fixture because a hardcoded `/Volumes` scratch override caused `EACCES`. The test-only TDD fix honors and asserts the configured root: #427 `c481d583`, #428 `e4053b1d`, #429 `1a621ba2`. Replacement Linux Node jobs `42459490007`, `42459490062`, `42459489845` all succeeded. Portable local suites passed 422 (12 files), 441 (13 files) and 484 (15 files; `ci-portable-pr429-node.log`). This is a snapshot of those jobs, not an all-checks-pass claim. The real driver and fourth-run `c6c3dd93` source evidence are unchanged; no new live execution occurred.
 
 The earlier feature-base settings for #426–#429 were corrected to `main`. Dependencies are merge-order gates, never feature-branch PR targets. After each prerequisite merges, reconcile the next branch with current main, verify its exact diff and new head, rerun affected deterministic/CI checks, then obtain review. Keep each dependent PR draft until its requirements pass. Humans merge main one PR at a time. The private `review-slices-manifest.json` and `pr-1-body.md` through `pr-5-main-base-body.md` preserve the original file groups; their older run/test/status prose is historical. Review progress, a sandbox PASS or a previous head's green CI does not replace current exact-head gates.
 
@@ -220,7 +222,7 @@ scripts/verify-bridge-phase5-tlc.mjs
 ## 下一步
 
 1. 保留第四轮 GLM SCOPED PASS 的输入 hash、静态范围和限制；按当前报告核对交付 diff。不得把静态一致性评阅升级为真实性或完整项目验收。
-2. 按 #425 → #426 → #427 → #428 → #429 的依赖顺序准备人审。所有 PR 的 base 都保持 main；每次 base/head 改变后重新核对 diff、受影响检查和 exact-head CI。不得把 draft、绿 CI 或沙箱 PASS 写成已合并。
+2. #425 已合并；等待 #426 新 head CI，并按 #426 → #427 → #428 → #429 的依赖顺序准备人审。所有 PR 的 base 都保持 main；每次 base/head 改变后重新核对 diff、受影响检查和 exact-head CI。不得把 draft、绿 CI 或沙箱 PASS 写成已合并。
 3. 保留已通过的 TLC、两组 10k 属性和 source/model mutant 来源绑定；源变化或新失败需要时才追加受影响门，不重跑刷绿。
 4. 保留第四轮原报告、不可变 snapshot、完整只读 timeline 与 T2/revocation 的两个待决状态；无第五轮授权，不再运行真实 driver 或 probe。
 5. App C/D 外部能力、Watcher 失败到本地修复接入、主仓库规则与连续五条生产链分别补证；Reviewer 保持暂停/排除，human main gate 不变，生产 CLOSED。
