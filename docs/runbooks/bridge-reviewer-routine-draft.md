@@ -1,4 +1,6 @@
-# osstack Reviewer 例程草案（暂停，未应用）
+# osstack Reviewer 例程草案（PAUSED，legacy optional，未应用）
+
+**2026-11-08 范围更新：** Reviewer 已排除在用户要求的本地开发/修复 → Grok 验证批准 → 独立合并主循环之外；本草案保持暂停，仅保留可选历史参考，不要求粘贴、启用或恢复。Watcher 现行失败报告只进入 Grok chat，不发正式 `CHANGES_REQUESTED`；[本地失败 intake](../reports/bridge-phase5-verification/acceptance-v2.md#product-closure-still-missing) 仍需独立实现，不能用恢复 Reviewer 或伪造 review 替代。登记 reviewer 的现有正式 review 路径与 Mission-main 人工批准门保持不变。未删除或操作 Bot；以下启用条件仅适用于未来另行选择该方案。
 
 日期：2026-11-07。仅交付可审阅、可粘贴到既有平台的例程提示词。本文没有发送给 Bot，没有创建、更新或启用平台例程，也没有执行 GitHub 写入。
 
@@ -99,7 +101,7 @@ body 第二行 = head <实时 HEAD_SHA>  base <实时 BASE_SHA>
 | 正文 | 两行前缀、两个空格、小写完整 SHA、最多十条要点、固定末行 | 只保留本地草稿，不提交不合格式的 review |
 | 无额外写入 | 对照平台日志与 GitHub 时间线；没有线程、标签、推送、合并等越界写入 | 按阶段 6 回滚规则由运营者处理；本文没有自动修改安装或规则的权限 |
 
-## 现有下一步
+## 可选历史方案的后续条件（不是当前主循环任务）
 
 1. CoS 将本草案纳入原 Reviewer 的配置审阅，保留其暂停状态。本文已经给出完整草案，不需要用户再向 Bot 索要同一套配置说明。
 2. 运营者核对阶段 6 U-1–U-11、App D 身份及隔离运行条件。先在沙箱归档 COMMENT-only 的身份、格式与实时 head 证据。

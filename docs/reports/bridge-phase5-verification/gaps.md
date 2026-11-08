@@ -34,7 +34,7 @@ Local Docker with a fake GitHub server can validate execution, denial injection,
 
 `docker` is installed. Initial `docker info` failed because `/Users/osborn/.docker/run/docker.sock` was absent. Parent owns daemon startup. TLC v1.7.4 jar exists at the documented path. Fresh worktree dependencies were absent; frozen pnpm install and build were started. Every test uses `OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack`; no default control-plane home is opened.
 
-## Current gate verdicts
+## Local gate verdicts (historical scope)
 
 | Gate | Verdict | Evidence |
 |---|---|---|
@@ -55,3 +55,7 @@ Local Docker with a fake GitHub server can validate execution, denial injection,
 | Real 5-G sandbox A/B, permission and timeline checks | not run here | parent owns sandbox driver and any authorized external run; Docker/fake service cannot prove GitHub rulesets/App identity |
 
 Phase 5 is not declared complete. The earlier table records the baseline, not a claim that its test-exists rows independently establish every live acceptance scenario.
+
+## Current 5-G acceptance (2026-11-08 Asia/Shanghai)
+
+The tables above preserve their baseline/local evidence scope. Real attempts 1–3 are failed/unqualified, production **CLOSED**; [current v2 status](current-v2-status.md) separates completed third-run A/B/recovery from unexecuted mixed review, controlled hostile T2, real W13 revocation and timeline. Independent rule suites show the denied force push; the driver HTTP-result diagnosis remains pending. The user delegated the method choice and [acceptance v2](acceptance-v2.md) was adopted. Its benign/mixed real model cases, controlled patch-only hostile proposal case, offline actual-finding mutation and independent real W13 release revocation are all required; no completion is claimed by this documentation update.

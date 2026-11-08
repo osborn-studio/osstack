@@ -1,11 +1,14 @@
 # 执行进度
 
-## Current closeout snapshot (supersedes historical status below)
+## Current closeout snapshot — 2026-11-08 (supersedes historical status below)
 
 - Main `d89cd4a5`: #421 and #422 user-merged after exact-head CI passed (five jobs each; paid semantic smoke skipped).
 - Final `812` full acceptance completed: 22 workspaces, 8,901 passed / 6 skipped; CLI 3,985 passed / 5 skipped. After journal `cf6` + `dab`, only root verification JavaScript changed; Linux Node24 journal checks passed 220/220.
 - Final strict mutation gate at `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`: all19 killed by real AssertionError failures, every baseline exit0, zero invalid/survivor/timeout/signal/spawn errors; source SHA256 before/after equal and clean final diff. See `docs/reports/bridge-phase5-verification/final-source-mutants.json` for exact aggregate and manifest binding. No TLC/property rerun was needed.
-- Actual 5-G second attempt is running; cancellation and App A passed, but the run remains unqualified. Next action: parent collects remaining real sandbox results and records final qualification. Neither sandbox permission nor full-suite completion is pending.
+- All three actual 5-G attempts remain failed/unqualified. Attempt 3 `revision-5g-20261108c` at driver source `7f6576135fc16fe72817f12ca7f66b8b51347cfd` and installed source `8120569883fd23c30bd99858de8f3d0c6a34aa55` passed 7/13 scenarios, then stopped at `ruleset_probe_not_rejected`. A later HTTP 422 capture proves a denied diagnostic force update and unchanged head. It does not replace the missing original response or retroactively qualify the run. No fourth full paid run was performed or authorized. Production remains CLOSED.
+- Current integration source is frozen at `d98cc0fe`. The CI/recipe command contains 15 offline files: **483 passed, 0 failed, 0 skipped**, exit 0. The new tool suites passed ledger **19/19**, policy **31/31**, reporter **11/11** after concrete Sol findings were fixed. Historical 369/460 results remain source-scoped. An earlier tooling GLM PASS missed those failures; a fresh final-delta review is pending.
+- Final immutable snapshot/report-SHA audit: 3 chains, 5 reservations, 8 missions, 8 claims, 38 host processes, 11 intents, 7 ranges; all seven local unsettled counts zero. Separate post-run readback used 39 GETs to bind seven heads and seven App B success checks, including PR 20 baseline check 128638788875. Three branch creations and four pushes attribute to App A actor 352680398. This partial readback cannot replay the original live open-PR final timeline assertion after cleanup; that assertion remains unreached.
+- Resume from [current v2 status](../../reports/bridge-phase5-verification/current-v2-status.md) and [v2 acceptance boundaries](../../reports/bridge-phase5-verification/acceptance-v2.md). Mixed-review, controlled T2, real W13 release revocation and final live timeline gates remain unproved. Reviewer stays paused/excluded; actual external Grok capability and Watcher chat-failure/local-repair intake remain missing. Next: collect the final static delta review and prepare the parent's five coherent PR slices against main. No new PR URLs or live qualification are claimed here.
 
 ### Historical record
 

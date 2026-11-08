@@ -8,7 +8,11 @@ Final source-bound mutation rerun at `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`:
 
 Parent final `812` full acceptance: all 22 workspaces, 8,901 passed / 6 skipped; CLI 3,985 passed / 5 skipped. After journal fixes `cf6` + `dab`, only root verification JavaScript changed; Linux Node24 journal validation passed 220/220. Parent reports main `d89cd4a5` with #421 and #422 user-merged; their exact-head CI was green.
 
-Real 5-G second attempt is running: cancellation and App A stages passed, but it remains **unqualified** pending the remaining actual sandbox gates. Next step is to collect that run's final result; no sandbox permission or full-test run is pending. Parent owns final sandbox results.
+Real 5-G attempts 1–3 are **failed/unqualified**; production **CLOSED**. The [current v2 status](current-v2-status.md) records attempt 3's successful A/B and recovery scopes, subsequent `ruleset_probe_not_rejected` stop, and independent rule-suite evidence that force-push protection rejected the attempt. Mixed review, controlled hostile T2, real W13 release revocation and final timeline were not executed. Original report remains `qualified:false`; no fourth paid run is authorized. The user-delegated [v2 contract](acceptance-v2.md) remains required.
+
+The user's full local-code/Grok-approval loop is **not complete**: v2 5-G tests registered-review transport/containment, not Watcher chat failure → local repair. A distinct exact-head CI-failure intake → trusted local verification → bounded repair request is still missing; current dispatch requires actual review IDs and must not fabricate them. Watcher-only chat findings remain a further intake gap. See [product closure gaps and source references](acceptance-v2.md#product-closure-still-missing). No new Bot duties or Reviewer unpause is required; the counted Mission-main human approval gate remains unchanged.
+
+Final source `7f657613` local checks: full explicit-SSD-root suite **8,905 passed / 6 skipped across 22 packages** (CLI 3,989/5), twelve-file Node **369 passed**, final targeted finding mutant validly killed/restored, and GLM static delta review **PASS** with source hash binding. The initial long-socket environment run failed/was aborted 143 and remains preserved. These are separately scoped local results, not live v2 or Grok integration proof; see [current evidence](current-v2-status.md).
 
 ## Completed local checks
 
@@ -32,7 +36,7 @@ All fourteen guard configs produce invariant counterexamples on final model comm
 
 Model limits remain: one commit per modeled push, assumed root baseline, exact closed-state reservation cleanup and some R2 reason rewrites. These are explicit abstractions, not implementation proof. The TypeScript property covers real ordered multi-commit ranges and the baseline separately.
 
-The earlier 5-G sandbox non-execution statement below is historical: the current second attempt is running and remains unqualified. Local Docker/fake GitHub can rehearse process and ledger behavior but cannot establish real GitHub App attribution, installation permissions or ruleset enforcement. See `gaps.md` for the exact required-versus-existing matrix. Phase 5 remains incomplete until the real sandbox gates pass.
+Earlier execution-status statements are historical; all three actual attempts remain failed/unqualified, as recorded in [current v2 status](current-v2-status.md). Local Docker/fake GitHub can rehearse process and ledger behavior but cannot establish real GitHub App attribution, installation permissions or ruleset enforcement. See `gaps.md` for the exact required-versus-existing matrix. Phase 5 remains incomplete until the real sandbox gates pass.
 
 ## Reproduction
 

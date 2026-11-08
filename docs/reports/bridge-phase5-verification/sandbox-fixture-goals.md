@@ -1,5 +1,7 @@
 # Trusted stage fixture goal and workflow proposal
 
+Historical implementation/proposal report. Its original-default acceptance statements below describe the pre-v2 contract, not the current gate. On 2026-11-08 (Asia/Shanghai), v2 was adopted by delegated user choice; [acceptance-v2.md](acceptance-v2.md) now governs the evidence split. The trusted-root alternate below remains an unwired historical proposal, not the selected v2 method. Attempts 1 and 2 remain failed/unqualified; attempt 3 is NOT YET RUN; production CLOSED.
+
 Read-only investigation of attempt2 B2 found that a fresh Codex execution proposed the root's initial stage0 new-file patch for an existing stage file. This was not stale-artifact reuse. The trusted root goal described initial creation without sufficiently explicit revision semantics.
 
 `buildSandboxFixtureGoal({ run, label })` now supplies the driver's frozen trusted stage goal. It instructs the executor to first read the requested file from its current checkout. If absent, create only stage0. If present, preserve the checkout baseline and create an incremental modification diff for legitimate stage1/stage2 desired-state feedback, with a final newline; never use a new-file header or reset the existing file to stage0. This is fixture goal text, not host-generated/faked patch data or a production prompt change. The model still produces the actual candidate.

@@ -2,9 +2,11 @@
 
 The optional bridge recipe lets the verification engineer and Watcher distinguish offline contract evidence from real sandbox publication evidence. It extends the canonical skill maintained through PRs #338, #340, #366, #374 and #386. The existing 31 UI/CLI recipes and default helper behavior stay in place. The production gate is **CLOSED**.
 
+Current acceptance is [v2](../../../../docs/reports/bridge-phase5-verification/acceptance-v2.md): attempts 1–3 failed/unqualified; see [current v2 status](../../../../docs/reports/bridge-phase5-verification/current-v2-status.md) for completed versus unexecuted third-run scopes. Local coding/test/review/repair remains the intended path; the paused Reviewer is not a required dependency. Current Watcher failure reports in Grok chat do not create formal `CHANGES_REQUESTED`; [local failure intake remains open](../../../../docs/reports/bridge-phase5-verification/acceptance-v2.md#product-closure-still-missing). Registered formal-review transport and the Mission-main human approval gate remain unchanged. Historical handoff observations below do not override current status; no third-run or GLM pass is claimed.
+
 ## Sub-features
 
-- `bridge-offline-contracts`: the existing nine-file Node CI job (historically 218 tests), with injected ports and local fixtures. No credentials, GitHub, Docker or paid calls.
+- `bridge-offline-contracts`: the current fifteen-file Node CI job (the older nine-file scope historically had 218 tests), with injected ports and local fixtures. No credentials, GitHub, Docker or paid calls.
 - `bridge-model-properties`: main and rounds TLC, two 10,000-case property runs, and 19 source mutants. These are distinct deterministic gates with distinct source bindings.
 - `bridge-installed-provenance`: reviewed candidate source, manifest hash and selected installed entry hashes. This does not attest every transitive dependency.
 - `bridge-real-5g`: explicit operator handoff for real App A publication, App B checks, test reviewer, Codex, Docker, recovery, release-fence revocation and remote timeline evidence. **NEVER RUN BY DEFAULT.**
@@ -24,7 +26,7 @@ Preconditions:
 - Keep scratch below `/Volumes/AIMATE_WORK/tmp/osstack`. Use an explicit unique private canonical scratch home for any DB-owning run. Never use default/reserved `OSSTACK_HOME`, a serving DB, or `core.openDb` against serving state. The real driver allocates a new owner-only 0700 home below `smoke/`; its DB, authority, journals and worktrees must remain inside that run. Preserve evidence before any owned cleanup.
 - Keep offline and real gates separate. Do not run broad TLC, properties, mutations or full E2E as part of reading this recipe. The parent owns full testing and its frozen integration source. Mutations require their own disposable checkout and a passing baseline; never share it with another test run.
 
-**Offline Node gate.** From an isolated checkout without credentials or external-write capability, use the existing CI command:
+**Offline Node gate.** From an isolated checkout without credentials or external-write capability, use the existing CI command (15 test files):
 
 ```sh
 OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack \
@@ -37,7 +39,13 @@ OSSTACK_SCRATCH_ROOT=/Volumes/AIMATE_WORK/tmp/osstack \
   scripts/bridge-sandbox-cold-restart.test.mjs \
   scripts/bridge-sandbox-database.test.mjs \
   scripts/bridge-sandbox-activity.test.mjs \
-  scripts/bridge-sandbox-publication-hook.test.mjs
+  scripts/bridge-sandbox-publication-hook.test.mjs \
+  scripts/audit-bridge-sandbox-ledger.test.mjs \
+  scripts/probe-bridge-sandbox-rulesets.test.mjs \
+  scripts/report-bridge-acceptance.test.mjs \
+  scripts/lib/bridge-sandbox-adversarial.test.mjs \
+  scripts/lib/bridge-sandbox-security-oracles.test.mjs \
+  scripts/lib/bridge-mutation-result.test.mjs
 ```
 
 Record the actual count and exit status. The historical 218/218 record is in the [cold restart integration report](../../../../docs/reports/bridge-cli-cold-restart-integration.md). It is not a fixed expected count or a pass for a changed head. This job does not run the real driver or prove installed/live behavior.
@@ -70,7 +78,7 @@ Use separate gate verdicts: `pass` only for the recorded scope/source; `failed` 
 
 ## Gotchas
 
-- Status at this handoff (2026-11-07, user-provided): real 5-G attempt 1 failed on journal-root setup before PR creation. It is **not qualified / not pass**. This documentation base includes the reviewed journal-root fix and portable fixture follow-up (315e7fc4). Parent reported a second real attempt from the separate CLI6 tree; no result of that attempt was observed by this documentation node. Older reports that say no execution occurred are historical snapshots; a source fix does not prove a subsequent pass.
+- Current status is recorded in the [v2 verification report](../../../../docs/reports/bridge-phase5-verification/current-v2-status.md). All three real attempts remain failed/unqualified. Attempt 3 passed 7/13 scenarios before the refusal matcher missed a canonical REST 422 denial. A later retained diagnostic proves that force update was denied and the head stayed unchanged. The matcher fix, 53 focused regressions and later partial timeline readback do not retroactively qualify attempt 3. The final reviewed-source 15-file offline run passed 483 tests; it does not cover the missing live scenarios. No fourth full paid run was performed or authorized; production stays CLOSED.
 - Offline 218, TLC, 2x10k and 19-mutant evidence cannot prove real App attribution, live rulesets, remote timelines or production readiness. Installed fixture/product tests also do not substitute for real 5-G.
 - The optional recipe does not approve or merge PRs, enable production, migrate App C/D, change Bot duties/settings, or replace the paused formal Reviewer. App C/D migration and production launch remain not-covered/blocked by their own gates. Parent reported PR #421 operator checks and #422 N9 runtime CI green; merge state is not inferred and this task did not query GitHub.
 - Watcher reports the bound evidence and missing gates. It must not turn this recipe into automatic paid execution, external writes, approval, merge or reduced Bot obligations. Each external-write run must remain within existing explicit authorization and complete preflight; do not request the same authorization again when its scope already covers the run.
