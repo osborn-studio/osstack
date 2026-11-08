@@ -1,5 +1,7 @@
 # v2 protected-path source mutation evidence
 
+> **Historical evidence snapshot.** This report records the first targeted mutant at source `20b7b9d7`. Its attempt-3 and review status below apply only to that snapshot. See [current v2 status](current-v2-status.md) for the later source-`7f657613` mutant rerun, final static reviews and actual third live attempt: **FAILED, 7/13, `qualified:false`**.
+
 **One new targeted mutant validly killed**, first targeted attempt, on source HEAD `20b7b9d7187260d0599a263ecd55e4400422d543` in the isolated mutation-proof worktree. This is `offline_source_mutation`, with `executor_lifecycle_source=offline_scripted` and `proposal_source=fixture`. It does not establish real Codex lifecycle, actual git commit, GitHub, Docker, W13 release or live v2 sandbox acceptance. Attempts 1–2 remain failed/unqualified; attempt 3 **NOT YET RUN**; production **CLOSED**. The [local failure-intake product gap](acceptance-v2.md#product-closure-still-missing) remains open. GLM mutation static review is **running, not passed** at this evidence snapshot.
 
 `pnpm build` exited 0 before mutation. The strict harness invocation was:
