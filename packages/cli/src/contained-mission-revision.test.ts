@@ -395,3 +395,11 @@ describe('feedback source locations', () => {
     expect(text.length).toBeLessThan(1000);
   });
 });
+
+it('redacts reviewer credentials reconstructed by removing unsafe characters', () => {
+  const obfuscated = FAKE_TOKEN.slice(0, 12) + '\u200b' + FAKE_TOKEN.slice(12);
+  const text = renderFeedbackText([{ review_id: 77, top_level: obfuscated,
+    comments: [{ threadId: 'thread-1', databaseId: 1001, body: obfuscated, path: obfuscated }] }]);
+  expect(text).not.toContain(FAKE_TOKEN);
+  expect(text).not.toContain('\u200b');
+});

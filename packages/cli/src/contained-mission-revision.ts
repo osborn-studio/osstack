@@ -35,7 +35,7 @@ export interface ReviewFeedbackPiece { review_id: number; top_level: string; com
 /** Reviewer text -> one bounded, redacted string. The delimiter word is neutralised everywhere, so no reviewer text can close the prompt block, whatever its nonce. */
 export function renderFeedbackText(pieces: readonly ReviewFeedbackPiece[], limit: number = MAX_TEXT): string {
   const clean = (value: string, max: number): string => {
-    const text = redactSecrets(value).replace(UNSAFE, '').replace(/REVIEW-FEEDBACK/gi, 'REVIEW_FEEDBACK');
+    const text = redactSecrets(value.replace(UNSAFE, '')).replace(/REVIEW-FEEDBACK/gi, 'REVIEW_FEEDBACK');
     return text.length > max ? `${text.slice(0, max)} [truncated]` : text;
   };
   const lines: string[] = [];

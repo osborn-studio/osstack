@@ -141,3 +141,10 @@ describe('bounded untrusted feedback rendering', () => {
 it.each(['lf_fixture', 'lfi_fixture', 'lfi_' + 'a'.repeat(35)])('rejects noncanonical local intake key %s', intake_id => {
   expect(() => normalizeContainedRevisionFeedback({ ...local, source: { ...local.source, intake_id } })).toThrow('CONTAINED_SPEC_INVALID');
 });
+
+it('redacts synthetic credentials reconstructed by removing unsafe characters', () => {
+  const synthetic = 'ghp' + '_' + 'SYNTHETIC'.repeat(4);
+  const obfuscated = synthetic.slice(0, 12) + '\u200b' + synthetic.slice(12);
+  expect(renderContainedRevisionFeedbackText(obfuscated)).not.toContain(synthetic);
+  expect(renderContainedRevisionFeedbackBlock({ ...local, text: obfuscated }).join('\n')).not.toContain(synthetic);
+});

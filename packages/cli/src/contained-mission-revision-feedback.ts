@@ -59,7 +59,7 @@ const escapedLength = (text: string): number => JSON.stringify(text).length - 2;
 /** Prepare a summary for persistence/prompting. `limit` is the escaped JSON text budget left by the parent spec. */
 export function renderContainedRevisionFeedbackText(text: string, limit: number = MAX_TEXT): string {
   if (typeof text !== 'string' || !Number.isSafeInteger(limit) || limit < 0) throw Error('CONTAINED_SPEC_INVALID');
-  const clean = redactSecrets(text).replace(UNSAFE, '').replace(/REVIEW-FEEDBACK/gi, 'REVIEW_FEEDBACK');
+  const clean = redactSecrets(text.replace(UNSAFE, '')).replace(/REVIEW-FEEDBACK/gi, 'REVIEW_FEEDBACK');
   const room = Math.min(MAX_TEXT, limit);
   if (clean.length <= room && escapedLength(clean) <= room) return clean;
   const note = room >= 13 ? '\n[truncated]' : '[truncated]'.slice(0, room);
