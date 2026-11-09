@@ -100,6 +100,8 @@ describe("ContainedMissionRunner", () => {
     let pending = false;
     let attempt = 1;
     let mergeRequests = 0;
+    let ciReadSignal: AbortSignal | undefined;
+    let mergeSignal: AbortSignal | undefined;
     const observations: string[] = [];
     const repo = { id: 1446327922, full_name: repository };
     const app = { id: 15368 };
@@ -113,12 +115,13 @@ describe("ContainedMissionRunner", () => {
       store: f.store, scopeId: scope, enabled: () => true, now: () => 2000, log: line => observations.push(line), refresh: () => actor,
       worktreesRoot: join(spec.repo_path, "worktrees"),
       merge: {
-        request: async () => { mergeRequests++; },
+        request: async (_root, _child, _target, signal) => { mergeRequests++; mergeSignal = signal; },
         acceptsMerge: mergeService.acceptsMerge,
       },
       ci: {
         now: () => new Date(2000),
-        rest: async path => {
+        rest: async (path, { signal }) => {
+          ciReadSignal = signal;
           observations.push(path);
           if (path.endsWith("/pulls/7")) return { ok: true, body: { number: 7, state: merged ? "closed" : "open", merged,
             head: { sha: currentHead, ref: branch, repo }, base: { sha: merged ? merge : START, ref: "main", repo }, user: { id: 352680398, type: "Bot" },
@@ -181,6 +184,8 @@ describe("ContainedMissionRunner", () => {
       await observer.scan();
       expect(kinds()).toContain("ci_repair_verified");
       expect(mergeRequests).toBe(1);
+      expect(mergeSignal).toBeDefined();
+      expect(mergeSignal).not.toBe(ciReadSignal);
       f.store.record(id, "ci_auto_grant_reserved", {}, 2000);
       pending = true;
       attempt = 2;
@@ -204,6 +209,7 @@ describe("ContainedMissionRunner", () => {
       expect(JSON.parse(closed!.payload_json)).toMatchObject({ pr: 7, head: fixed, merge_commit_sha: merge,
         handoff_comment_id: 82, app_id: 5620091 });
     } finally { await observer.stop(); }
+    expect(mergeSignal?.aborted).toBe(true);
   });
 
   it("opens an admitted GitHub Actions Mission without a container receipt or App B check", async () => {

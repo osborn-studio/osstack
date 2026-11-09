@@ -3,7 +3,7 @@
 日期：2026-11-07。上位文档：[实施方案](../2026-11-02-osstack-grok-bridge-implementation.md)、[阶段 5 附录](../../design/2026-11-06-bridge-same-pr-revision.md)、[W13 设计](../../design/2026-11-06-w13-host-git-survival.md)、[App E 设计](../../design/2026-11-06-bridge-shadow-merger.md)、[阶段 6 规格](../../design/2026-11-06-bridge-phase6-operator.md)、[运行手册](../../runbooks/bridge.md)。
 配套：[checks.md](checks.md)（每条要求的判定与证据）、[progress.md](progress.md)（当前状态与下一步）。
 
-> 2026-11-09 首发执行顺序以[实施方案阶段 5–7](../2026-11-02-osstack-grok-bridge-implementation.md#阶段-5-github-ci-失败后的同-pr-修复)为准。先在沙箱跑通 GitHub CI 失败、人工授权推送、原 job 复验；再对同一 PR 验证 Watcher、人审、合并和关单；最后在批准的单 scope 试运行。下方节点及其证据对应原正式评审修订和 App 迁移路线。首发生产仍须完成 [ADR-007 提案](../../decisions/ADR-007-bridge-github-ci-first.md)的审批。
+> 2026-11-09 GitHub CI 首发路径已由 #437 合入，沙箱 #30 已关单。沙箱的一次性自动推送和独立审批按 [ADR-007](../../decisions/ADR-007-bridge-github-ci-first.md) 验收。进度及证据见 [progress.md](progress.md)。下方节点对应原正式评审修订和 App 迁移路线，生产仍按[实施方案阶段 7](../2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)单独放行。
 
 ## 0. 任务与“完成”的定义
 
@@ -60,7 +60,7 @@ N3 ─▶ N12                                         ├▶ N15
 N13 ─▶ N14 ───────────────────────────────────────┘
 ```
 
-下一条关键路径：第四轮 post-run GLM 已得静态 SCOPED PASS；按 #425 → #426 → #427 → #428 → #429 依赖顺序准备人审。五个 PR 全部以 main 为 base；#425 已报告 CI 全通过，#426–#429 是 draft，不声称已合并。前一依赖合并后，把下一分支与 main 对齐，核对 diff 并重新取得 exact-head 门。见 [progress.md](progress.md) 与 [第四轮证据](../../reports/bridge-phase5-verification/fourth-run-v2.md)。前三轮失败原样保留；无第五次沙箱授权。N13 外部 Grok 能力、本地失败接入、N14 与 N15 仍未完成，生产 CLOSED；Reviewer 暂停/排除和 human main gate 不变。
+GitHub CI 首发的下一步是合入沙箱 #30 的两处门禁修正，再确认生产仓库身份、必需检查、单 scope 接线和启用授权。原正式评审修订的四轮沙箱证据及 #425–#435 的交付顺序保存在 [progress.md](progress.md)。N13 的 App 身份迁移仍单独验收。
 
 ## 4. 每个节点的门（按顺序，只凭证据打开）
 
@@ -97,6 +97,9 @@ N13 ─▶ N14 ─────────────────────�
 16. 合并并发请求时先登记共享 Promise，再调用可能同步重入的端口；成功与失败都清理登记。终态意图不能再次结算。
 17. 关闭链恢复应优先使用关闭事件的原因，兼容旧行残留的停止原因；人工 abandon/takeover 也有持久取消义务。
 18. 评审输入记录提交号或内容哈希；已提交代码不能用空的工作区 diff 代替。测试运行期间有新修复时，明确区分快照覆盖和最终改动的追加验证。
+
+19. App E 独占更新权的沙箱里，GitHub 对 App E 本身也可能报告 `BLOCKED`。该聚合状态只用于进入逐项检查，实际放行依靠当前 head/base、计入审批、最新 CI、线程、两条精确规则集和 GitHub 最终写入裁决。
+20. 合并前的多轮现场复核使用独立有界时限。#30 单次 CI 复核实测约 23 秒，复用普通扫描时限会在写入预留前耗尽。保留取消信号及一次性写入约束。
 
 ## 7. 本图改动记录
 

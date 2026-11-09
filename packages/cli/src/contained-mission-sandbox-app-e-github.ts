@@ -40,7 +40,9 @@ const graph = z.object({ errors: z.array(z.unknown()).length(0).optional(), data
   pullRequest: z.object({ number: id, state: z.literal('OPEN'), isDraft: z.literal(false),
     author, headRefName: z.string(), headRefOid: sha, baseRefName: z.literal('main'), baseRefOid: sha,
     headRepository: z.object({ databaseId: z.literal(S.repositoryId) }),
-    mergeable: z.literal('MERGEABLE'), mergeStateStatus: z.literal('CLEAN'), reviewDecision: z.literal('APPROVED'), body: z.string().max(1_048_576), title: z.string().max(1024),
+    // GitHub can report BLOCKED with the App E-only update rule even to App E.
+    // The observer still verifies every quality gate and GitHub enforces them on the merge PUT.
+    mergeable: z.literal('MERGEABLE'), mergeStateStatus: z.enum(['CLEAN', 'BLOCKED']), reviewDecision: z.literal('APPROVED'), body: z.string().max(1_048_576), title: z.string().max(1024),
     mergeQueueEntry: z.null(), autoMergeRequest: z.null(),
     latestOpinionatedReviews: connection(review), reviewThreads: connection(z.object({ isResolved: z.boolean() })),
     labels: connection(z.object({ name: z.string() })),

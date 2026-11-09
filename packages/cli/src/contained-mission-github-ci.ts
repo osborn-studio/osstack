@@ -209,7 +209,9 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
               store.record(root.mission_id, 'ci_repair_verified', { pr: target.pr, old: target.head, head: repaired.pushed_commit,
                 base: target.base, child: child.mission_id, jobs: result.jobs }, now());
             }
-            await input.merge?.request(root, child, repairedTarget, signal);
+            // Give the independently repeated merge gates their own bounded window.
+            await input.merge?.request(root, child, repairedTarget,
+              AbortSignal.any([abort.signal, AbortSignal.timeout(180_000)]));
           }
         }
         return;
