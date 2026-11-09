@@ -2,20 +2,15 @@
 
 ## 2026-11-09 GitHub CI 首发路径
 
-- 本地实现覆盖登记沙箱 scope 的无 Docker Mission 启动、真实 Actions 失败识别、一次修复派发、精确候选审批、W13 租约推送与复验结果读回。测试先复现旧入口拒绝空验证命令，再通过独立的 CI 准入路径。GitHub CI 证据与 App B 容器回执分别保存。
-- 新读取器对 [沙箱 #29 的原失败 job](https://github.com/osborn-studio/osstack-bridge-sandbox/actions/runs/42552131265/job/128949826133) 完成只读核对。该 PR 仍处于人工暂缓推送，Docker 全程停止的新验收和阶段 6 的实际 Watcher、人工审批与 Merger 证据仍待完成。生产入口保持关闭。
-
-| 工作包 | 依赖 | 验收证据 |
+| 工作包 | 状态 | 证据 |
 |---|---|---|
-| 首发代码交付 | 代码和实施方案合成；审阅发现的旧绿灯问题修复 | 构建、类型、全套测试及正常 daemon 启动预检，提交进入 `main` |
-| 沙箱自动推送授权 | [ADR-007](../../decisions/ADR-007-bridge-github-ci-first.md) 中的限时许可获批 | 旧 head、base、候选和权限负例全部拒绝，最多一次可对账的真实快进 |
-| 沙箱失败修复 | Docker 全程停止；授权发出一条新 Mission PR | 原失败与修复后的 run、attempt、job 和提交都可读回 |
-| 沙箱独立审批及合并 | Watcher 权限和 Merger 执行路径获批；修复 CI 通过 | 真实 Routine、当前 head 的计入审批、App E squash SHA 及 osstack 关单；同一 head 重跑使旧绿灯失效 |
-| 生产单 scope 与验收 | 沙箱全链通过；单独批准生产规则和范围 | 影子观察、撤权恢复、连续五条生产链，至少一条包含真实失败修复 |
+| 首发代码交付 | 已进入 main | [#437](https://github.com/osborn-studio/osstack/pull/437) 合并为 `b9a71081` |
+| 沙箱失败修复 | 已实测 | [沙箱 #30](https://github.com/osborn-studio/osstack-bridge-sandbox/pull/30) 在 Docker 引擎停止后启动。原提交的 [Actions 检查](https://github.com/osborn-studio/osstack-bridge-sandbox/actions/runs/42595512439/job/129087057184) 因 `PROBE_FAIL` 失败。osstack 用一次性许可把只删除该文件的 `0671943a` 快进到同一 PR，[原矩阵五项检查](https://github.com/osborn-studio/osstack-bridge-sandbox/actions/runs/42595804149) 全部通过 |
+| 沙箱审批、合并和关单 | 已实测，运行中修正门禁并从原账本恢复 | Watcher 的 [当前 head 审批](https://github.com/osborn-studio/osstack-bridge-sandbox/pull/30#pullrequestreview-5824102502) 计入保护规则。Merger 发出 [绑定 head/base 的交接](https://github.com/osborn-studio/osstack-bridge-sandbox/pull/30#issuecomment-6737315718)。App E 完成 [一次 squash](https://github.com/osborn-studio/osstack-bridge-sandbox/commit/55dbb3b4f100884053f61cdc8e100a61b874f228)，osstack 于北京时间 18:09:50 读回 `github_ci_chain.state=closed` |
+| 沙箱修正交付 | 待合入 | 在精确沙箱门禁满足时接受 GitHub 的 `BLOCKED` 进入 App E 合并检查。给合并前的独立复核设置单独的有界时限 |
+| 生产单 scope 放行与验收 | 待实施与授权 | 登记生产身份、必需检查及仓库规则，完成单 scope 接线、撤权和重启对账，再做影子观察和连续五条生产链验收 |
 
-独立审阅复现了历史绿灯可被用于接受重跑期间的合并回读。回归先在旧代码上失败，修复后改为重读当前尝试与 squash 基线，并记录证据不齐的合并观察。单 scope 仍只允许一条活跃链。
-
-负责人已批准一条新沙箱 Mission 的一次性自动推送与独立审批合并。沙箱 Watcher 的 Write 权限和 `verified` 标签已读回。正常 daemon 接入限时许可、一次性 App E 合并和关单投影。实际 Grok Routine、真实新 PR 和端到端结果仍待验收。
+#30 使用原 Mission、PR、修复提交和账本继续验收，期间重启了 daemon 两次。该证据覆盖一次自动推送、一次独立计入审批、一次 App E 合并和关单。此前暂缓的 [沙箱 #29](https://github.com/osborn-studio/osstack-bridge-sandbox/pull/29) 仍保留在原提交。生产放行按 [ADR-007](../../decisions/ADR-007-bridge-github-ci-first.md) 单独决定。
 
 ## Closeout snapshot — updated 2026-11-09
 
