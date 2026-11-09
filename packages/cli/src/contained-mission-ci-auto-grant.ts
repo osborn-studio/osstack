@@ -1,7 +1,7 @@
 // Host-only opt-in. Candidate workspaces and RPC clients cannot issue this authority.
 import { createHash } from 'node:crypto';
 import { closeSync, constants, fstatSync, openSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { dirname, isAbsolute } from 'node:path';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import { z } from 'zod';
 import { approveSandboxCiRepair, latestCiEvent, type RefreshCiPrincipal } from './contained-mission-github-ci-approval.js';
@@ -18,7 +18,7 @@ export class SandboxCiAutoGrant {
   private readonly canonical: string;
   constructor(private readonly path: string, private readonly scope: string) {
     if (!isAbsolute(path)) throw Error('ci_auto_grant_invalid');
-    this.canonical = realpathSync(path);
+    this.canonical = join(realpathSync(dirname(path)), basename(path));
   }
   read(now: number) {
     let fd: number | undefined;

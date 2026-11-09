@@ -443,7 +443,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         const { runner, preflight } = await revisionPublicationAdapters();
         await preflight(spec, permit);
         return publishSandboxCiRepair({ mission, spec, permit, body, beforeRemoteMutation, signal }, { store, host: kit, runner, now,
-          assertAutoGrant: mission => options.githubCiAuthority?.assertAutoGrant?.(mission),
+          ...(options.githubCiAuthority?.assertAutoGrant ? { assertAutoGrant: options.githubCiAuthority.assertAutoGrant } : {}),
           enabled: () => options.githubCiAuthority?.enabled() === true, ...(options.githubCiAuthority ? { refresh: options.githubCiAuthority.refresh } : {}) });
       }
       if (spec.verification_mode) {

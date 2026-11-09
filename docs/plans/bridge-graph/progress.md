@@ -10,10 +10,12 @@
 | 首发代码交付 | 代码和实施方案合成；审阅发现的旧绿灯问题修复 | 构建、类型、全套测试及正常 daemon 启动预检，提交进入 `main` |
 | 沙箱自动推送授权 | [ADR-007](../../decisions/ADR-007-bridge-github-ci-first.md) 中的限时许可获批 | 旧 head、base、候选和权限负例全部拒绝，最多一次可对账的真实快进 |
 | 沙箱失败修复 | Docker 全程停止；授权发出一条新 Mission PR | 原失败与修复后的 run、attempt、job 和提交都可读回 |
-| 沙箱独立审批及合并 | Watcher 权限和 Merger 执行路径获批；修复 CI 通过 | 真实 Routine、当前 head 的计入审批、squash SHA 及 osstack 关单；同一 head 重跑使旧绿灯失效 |
+| 沙箱独立审批及合并 | Watcher 权限和 Merger 执行路径获批；修复 CI 通过 | 真实 Routine、当前 head 的计入审批、App E squash SHA 及 osstack 关单；同一 head 重跑使旧绿灯失效 |
 | 生产单 scope 与验收 | 沙箱全链通过；单独批准生产规则和范围 | 影子观察、撤权恢复、连续五条生产链，至少一条包含真实失败修复 |
 
 独立审阅复现了历史绿灯可被用于接受重跑期间的合并回读。回归先在旧代码上失败，修复后改为重读当前尝试与 squash 基线，并记录证据不齐的合并观察。单 scope 仍只允许一条活跃链。
+
+负责人已批准一条新沙箱 Mission 的一次性自动推送与独立审批合并。沙箱 Watcher 的 Write 权限和 `verified` 标签已读回。正常 daemon 接入限时许可、一次性 App E 合并和关单投影。实际 Grok Routine、真实新 PR 和端到端结果仍待验收。
 
 ## Closeout snapshot — updated 2026-11-09
 

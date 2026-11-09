@@ -38,7 +38,7 @@ describe('independent sandbox App E', () => {
     const { ports } = fixture();
     expect(await executeSandboxAppEMerge(handoff, ports)).toEqual({ kind: 'merged', sha: squash });
     expect(ports.merge).toHaveBeenCalledExactlyOnceWith({ appId: 5620091, installationId: 178742757,
-      repository: binding.repository, pr: binding.pr, sha: head, merge_method: 'squash' });
+      repository: binding.repository, pr: binding.pr, sha: head, merge_method: 'squash' }, expect.any(Function));
   });
   it.each([
     ['foreign repository', { ...handoff, binding: { ...binding, repository: 'owner/production' } }],

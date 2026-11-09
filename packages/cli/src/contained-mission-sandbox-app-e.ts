@@ -59,7 +59,7 @@ export interface SandboxAppEPorts {
   /** Dedicated sandbox App E installation capability. No publisher/host credential fallback.
    * The adapter must attest the installation identity before submitting this one PUT. */
   merge(request: { appId: 5620091; installationId: 178742757; repository: string; pr: number;
-    sha: string; merge_method: 'squash' }): Promise<{ merged: boolean; sha: string }>;
+    sha: string; merge_method: 'squash' }, beforeWrite: () => Promise<void>): Promise<{ merged: boolean; sha: string }>;
   /** Fresh GET pulls/{pr} and git/commits/{mergeSha}; bind repos/PR/head and merged_by numeric
    * Bot ID to authenticated App E identity. Squash must have exactly one parent = binding.base. */
   readback(binding: SandboxMergeBinding): Promise<{
@@ -116,7 +116,9 @@ export async function executeSandboxAppEMerge(raw: unknown, ports: SandboxAppEPo
       || !await ports.verifyCurrentPublicationAndCi(h.binding)) return { kind: 'refused', reason: 'gate_failed' };
     if (!await authorized()) return { kind: 'refused', reason: 'handoff_unauthorized' };
     const reply = await ports.merge({ appId: 5620091, installationId: 178742757,
-      repository: APP_E_SANDBOX.repository, pr: h.binding.pr, sha: h.binding.head, merge_method: 'squash' });
+      repository: APP_E_SANDBOX.repository, pr: h.binding.pr, sha: h.binding.head, merge_method: 'squash' }, async () => {
+      if (!await authorized()) throw Error('SANDBOX_APP_E_HANDOFF_REVOKED');
+    });
     if (!reply.merged || !sha.safeParse(reply.sha).success) return { kind: 'unknown' };
     const back = await ports.readback(h.binding);
     if (!same(back.binding, h.binding) || !back.merged || !back.actorVerified || back.actorType !== 'Bot'

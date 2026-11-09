@@ -83,6 +83,10 @@ export function createSandboxCiMerge(input: {
       const endpoint = `repos/${repo}/issues/${target.pr}/comments`;
       const list = await rest(`${endpoint}?per_page=100&page=1`, { signal });
       if (!list.ok || !Array.isArray(list.body) || list.body.length >= 100) return;
+      if (list.body.some(raw => {
+        const parsed = comment.safeParse(raw);
+        return parsed.success && parsed.data.user.id === APP_E_SANDBOX.watcherId && /merge[ _-]+after/iu.test(parsed.data.body);
+      })) return;
       const matching = list.body.map(raw => handoffFor(raw, binding, push.created_at, now())).filter(h => h !== null);
       if (matching.length !== 1 || !matching[0]) return;
       const handoff = matching[0];

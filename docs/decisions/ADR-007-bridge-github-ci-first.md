@@ -1,6 +1,6 @@
 # ADR-007 GitHub CI 驱动首发修复闭环
 
-**状态** 提案。首发路线已确定，生产授权及与 ADR-006 的例外范围待负责人审批。
+**状态** 一次性沙箱例外已获负责人批准。生产采用与上线待单独批准。
 **日期** 2026-11-09。
 
 ## 背景
@@ -18,10 +18,13 @@ osstack 的 CI 同时使用 Ubuntu 与 macOS runner。Mac mini 能分析失败�
 
 [实施方案阶段 5–7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-5-github-ci-失败后的同-pr-修复)以一次沙箱真实失败作为交付单位，要求 GitHub 复验、实际 Watcher、人审、合并及 osstack 关单。完成沙箱与生产前置演练后，单 scope 试运行按连续五条生产链验收。首发若因 CI 平台或基础设施问题无法复现，保留 PR 与失败证据并转人或等待原平台重跑。
 
-## 无人值守沙箱方案（待负责人批准）
+## 获批的无人值守沙箱例外
 
-- **修复推送。** 首次只给登记沙箱的一个 scope 和一条新 Mission PR 发限时许可，最多一次快进推送。夹具的补丁仅可撤回该 PR 自己加入的 `PROBE_FAIL`。许可绑定仓库、PR、分支、旧 head、base 和验证策略。宿主把本地候选及 tree 写入发布意图，在 W13 放行前再次核对真实 CI 失败和许可。过期、撤权、候选移动和未对账的远端写入均转人。
-- **计入审批。** 由现有 Watcher 使用独立的 GitHub 用户身份 `Rubebun-Jadeem` 验证并审批新 head。该账号目前在沙箱只有 Read 权限，试验需要限于沙箱的 Write 权限。Watcher 仅验证登记的验收 PR，待原工作流完成后读取当前 head、base 和必需检查，运行登记的夹具验证，再提交 review 和 `verified`。用 GitHub 的评审状态实测该 review 计入保护规则。
-- **合并。** 现有 Merger 负责调度，拟通过独立的 `osstack-merger` App 执行沙箱合并。沙箱 `main-update` 已登记该 App 的 PR 合并权限。实现仍需批准，合并须核对最新检查、计入审批、线程、发布意图和预期 head。验收需证明错误身份、旧审批、撤权或不完整证据均停住，并留存合并提交和 osstack 关单记录。
+- **修复推送。** 宿主配置一个私有许可文件，绑定登记沙箱的一个空 scope、新 root 和工程操作者，有效期最多 15 分钟。正常 daemon 只给一条新 Mission 的精确候选发一次快进许可。夹具补丁仅可删除该 PR 自己加入的 `PROBE_FAIL`。W13 核对旧 head、base、候选与 tree，并在释放写入前检查许可。过期、撤权、候选变化和未知远端结果停在当前链。
+- **计入审批。** 沙箱的 `Rubebun-Jadeem` 已从 Read 提升为 Write，由现有 Watcher 复验本轮 PR 并对准确修复 head 提交审批和 `verified`。沙箱规则仍要求 GitHub 认可的最新推送审批、原工作流必需检查与线程解决。真实计入结果须从 GitHub 读回。
+- **合并。** 现有 Merger 在验收 PR 发一条绑定完整 head 和 base 的 `osstack-sandbox-merge HEAD BASE` 评论，作为本地 daemon 的触发信号。Watcher 与 Merger 共享 GitHub 用户，Routine 的实际执行另从 Grok 运行记录核对。daemon 验证 W13 推送回执、实时 CI、Watcher 审批与沙箱规则后，才以独立 App E 提交一次预期 head 的 squash。App E 凭证只在本机使用。无法确认请求结果时通过只读 API 对账。GitHub 的合并 API 可锁定 head，base 在写入前读取并在合并后由 squash 父提交核验。
+- **关单。** daemon 要求合并前已观察到的同一次 CI 检查与合并后读回一致，且合并身份为 App E。通过后在 `mission status --json` 返回 `github_ci_chain.state=closed` 和合并提交。原 Mission 状态仍保留发布记录。
 
-两项无人值守授权分别审批。以上范围是首次沙箱演练。生产试运行另按阶段 7 放行。
+隔离 daemon 通过 `OSSTACK_CONTAINED_SANDBOX_CI_SCOPE` 选择 scope。将绝对路径传给 `OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT` 和 `OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY`。许可 JSON 使用 `version`、`grant_id`、`scope_id`、`principal_id`、`client_session_id`、`issued_at` 和 `expires_at`，时间使用 Unix 毫秒。许可文件和其目录分别限宿主用户读写，权限为 0600 和 0700。删除许可文件可撤销待发布修复。
+
+该例外只授权首次沙箱演练。生产试运行另按阶段 7 放行。

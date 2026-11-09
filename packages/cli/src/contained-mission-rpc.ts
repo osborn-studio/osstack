@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
-import { parseContainedMissionSpec } from './contained-mission-runner.js';
+import { GITHUB_CI_SANDBOX, parseContainedMissionSpec } from './contained-mission-runner.js';
 import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
 
@@ -325,7 +325,6 @@ export async function createContainedMissionService(deps: {
   if (autoGrantPath !== undefined && !githubCiSandboxScope) throw Error('ci_auto_grant_scope_required');
   const autoGrant = autoGrantPath === undefined ? undefined
     : new (await import('./contained-mission-ci-auto-grant.js')).SandboxCiAutoGrant(autoGrantPath, githubCiSandboxScope!);
-  autoGrant?.read(Date.now());
   const refreshCi = (principal: string, session: string) => deps.access.refresh(principal, session);
   const assertAutoGrant = (mission: import('@osstack/core').ContainedMission) => {
     const reservation = store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_auto_grant_reserved'").get(mission.mission_id);
@@ -410,9 +409,27 @@ export async function createContainedMissionService(deps: {
       compare: (repository, start, head, abort) => compareBridgeLedgerRange(repository, start, head, undefined, abort),
       now: Date.now, cancelChild: async chain => { if (chain.current_mission_id) await host.cancelFromBridge(chain.current_mission_id); } }, signal);
   };
-  const githubCi = githubCiSandboxScope === undefined ? undefined
-    : (await import('./contained-mission-github-ci.js')).createSandboxCiObserver({ store, scopeId: githubCiSandboxScope,
-      enabled: () => !deps.draining(), now: Date.now, log, refresh: (principal, session) => deps.access.refresh(principal, session) });
+  const appEKey = env['OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY'];
+  if (appEKey !== undefined && (!githubCiSandboxScope || bridge?.repository !== GITHUB_CI_SANDBOX)) {
+    throw Error('ci_app_e_scope_required');
+  }
+  const githubCi = githubCiSandboxScope === undefined ? undefined : await (async () => {
+    const { createSandboxCiObserver, createSandboxCiReader } = await import('./contained-mission-github-ci.js');
+    const ci = createSandboxCiReader();
+    let merge: ReturnType<typeof import('./contained-mission-sandbox-ci-merge.js').createSandboxCiMerge> | undefined;
+    if (appEKey !== undefined) {
+      const [{ createSandboxCiMerge }, { createSandboxAppEObserver, createSandboxAppEWriteAdapter }] = await Promise.all([
+        import('./contained-mission-sandbox-ci-merge.js'), import('./contained-mission-sandbox-app-e-github.js'),
+      ]);
+      const observe = createSandboxAppEObserver();
+      merge = createSandboxCiMerge({ store, scopeId: githubCiSandboxScope, now: Date.now, ci,
+        enabled: () => !bridgeKilled && !deps.draining(),
+        github: signal => ({ observe, ...createSandboxAppEWriteAdapter({ privateKeyPath: appEKey, signal }) }),
+      });
+    }
+    return createSandboxCiObserver({ store, scopeId: githubCiSandboxScope, enabled: () => !deps.draining(),
+      now: Date.now, log, refresh: refreshCi, ci, ...(merge ? { merge } : {}) });
+  })();
   const autoApproveCiRepair = autoGrant === undefined ? undefined : async () => {
     const { latestCiEvent } = await import('./contained-mission-github-ci-approval.js');
     const { createSandboxCiReader, readSandboxCiJobs } = await import('./contained-mission-github-ci.js');
