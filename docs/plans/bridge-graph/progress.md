@@ -1,8 +1,8 @@
 # 执行进度
 
-## Current closeout snapshot — 2026-11-08 (supersedes historical status below)
+## Closeout snapshot — updated 2026-11-09
 
-- Latest reported delivery snapshot (2026-11-08): #425 is merged; main `f034a51eef26676506788be0dc66cd55a043efbf`. Earlier main `d89cd4a5` included user-merged #421/#422 after exact-head CI passed (five jobs each; paid semantic smoke skipped). #426 is now Ready with fresh CI running; #427–#429 remain draft/main-base.
+- Merge status checked on 2026-11-09: #425 through #435 are in `main` at `40b8d40f`. The delivery queue below records the status before those merges.
 - **N11 fourth real v2 run PASSED**, `LIVE_5G_ONLY`, **13/13**, `qualified:true`, exit 0. Run `revision-5g-20261108d`, driver `c6c3dd93fc1b797e3bd17e171dc96c94d95a050c`, installed runtime `8120569883fd23c30bd99858de8f3d0c6a34aa55`, 2026-11-08 15:03:47–15:16:20 Asia/Shanghai. The owner authorized one additional sandbox-only attempt. No fifth run is authorized. **Production CLOSED.**
 - Attempts 1–3 remain failed/unqualified, with unchanged original reports. Attempt 3 passed 7/13 then stopped at `ruleset_probe_not_rejected`; later HTTP 422 denial/unchanged-head evidence does not retroactively qualify it.
 - Independent fourth-run readback used **68 successful GETs, zero failures**: six PRs (23–28) closed/unmerged after cleanup, eleven confirmed heads, six root publications/five pushes, eleven App B success checks and eleven App A activities. Driver final open-head assertion passed before cleanup; current open precondition false is expected. Real W13 failed intent `detail=grant_invalid` has one stopped/unreleased `git_push` journal, `stop_proof=never_released`, remote unchanged. Controlled hostile T2 is separate.
@@ -12,9 +12,9 @@
 - All five final Sol CLI scope reviews now PASS: rounds, containment and inventory plus resumed release/timeline deltas. The two initial retention gaps were resolved by frozen snapshot/raw complete GET artifacts, not original-report rewriting. GLM-5.3 post-run review is **SCOPED PASS**, no unresolved material findings; static strict-allowlist projection/artifact consistency only, no execution/authenticity/full-project claim. Input SHA256 `e8168ff7d72ac371ce0b232540eaad6a3a9147c38b0c059f5a01735c6c9279ea`, manifest/result `glm-fourth-postrun-manifest.json` / `glm-fourth-postrun.json`. Earlier static PASS results cover only their recorded source/scope.
 - Actual external Grok capability, Watcher chat-failure/local-repair intake, production admission and five production chains remain incomplete. Reviewer stays paused/excluded; the counted Mission-main human gate is unchanged. Resume from [current v2 status](../../reports/bridge-phase5-verification/current-v2-status.md) and [fourth-run evidence](../../reports/bridge-phase5-verification/fourth-run-v2.md).
 
-### Current five-slice delivery queue (all bases are main)
+### Historical five-slice delivery queue (all bases were main)
 
-| PR | Output | Merge dependency | Current reported state |
+| PR | Output | Merge dependency | Reported state before merge |
 |---|---|---|---|
 | #425 | Selected installed runtime provenance and bounded executor hook | — | Merged; main `f034a51eef26676506788be0dc66cd55a043efbf` |
 | #426 | CLI runner oracle and targeted protected-finding mutant | #425 (merged) | Ready, base `main`; head `2013392ac8d08cf8502335d2f14e75feff6e0b97`, fresh CI running |
