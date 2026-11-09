@@ -6,23 +6,28 @@ import { createSandboxCiReader, readSandboxCiJobs, readSandboxCiPr } from './con
 import type { HostProcessKit } from './contained-mission-host-process.js';
 import { fencedDeliveryRunner } from './contained-mission-ports.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
-import { GITHUB_CI_SANDBOX, type ContainedMissionPorts, type ContainedPublicationResult } from './contained-mission-runner.js';
+import type { ContainedMissionPorts, ContainedPublicationResult } from './contained-mission-runner.js';
+
+import { SANDBOX_CI_POLICY, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 
 type PushInput = Parameters<ContainedMissionPorts['publish']>[0];
 export type SandboxCiPushIntent = { intent_id: string; candidate: string; previous: string; base: string; branch: string; pr: number };
 
 export async function publishSandboxCiRepair(input: PushInput, deps: { store: ContainedMissionStore; host: Pick<HostProcessKit, 'recordForIntent'>;
+  policy?: GithubCiPolicy;
+  ci?: ReturnType<typeof createSandboxCiReader>;
   assertAutoGrant?: (mission: ContainedMission) => void;
   runner: DeliveryCommandRunner; now: () => number; refresh?: RefreshCiPrincipal; enabled: () => boolean;
   /** Test seam for the read-only forge observation. */
   readPr?: (target: Parameters<typeof readSandboxCiPr>[1], signal: AbortSignal) => ReturnType<typeof readSandboxCiPr> }): Promise<ContainedPublicationResult> {
   const { mission, spec, permit, signal } = input;
   const { store, now } = deps;
+  const policy = deps.policy ?? SANDBOX_CI_POLICY;
   const repair = spec.ci_repair;
-  if (!repair || spec.publication?.repository !== GITHUB_CI_SANDBOX) throw Error('CI_REPAIR_STOPPED');
+  if (!repair || spec.publication?.repository !== policy.repository) throw Error('CI_REPAIR_STOPPED');
   const target = { pr: repair.pr, head: spec.start_commit, base: repair.base, branch: repair.branch };
-  const ci = createSandboxCiReader();
-  const actual = () => deps.readPr ? deps.readPr(target, signal) : readSandboxCiPr(ci, target, signal);
+  const ci = deps.ci ?? createSandboxCiReader(policy);
+  const actual = () => deps.readPr ? deps.readPr(target, signal) : readSandboxCiPr(ci, target, signal, policy);
   const ref = `refs/heads/${repair.branch}`;
   const runOptions = { cwd: spec.worktree_path, timeoutMs: 60_000, signal };
   let intent = latestCiEvent<SandboxCiPushIntent>(store, mission.mission_id, 'ci_repair_push_intent');
@@ -35,7 +40,7 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
       || current.candidate_tree !== permit.tree || current.state !== 'delivering' || current.stop_obligation !== 0
       || store.claim(mission.mission_id).state !== 'active') throw Error('CI_REPAIR_STOPPED');
     assertSandboxCiApproval(store, current, spec, deps.refresh, now());
-    if (latestCiEvent(store, current.mission_id, 'ci_auto_grant_reserved')) {
+    if (policy.repository !== SANDBOX_CI_POLICY.repository || latestCiEvent(store, current.mission_id, 'ci_auto_grant_reserved')) {
       if (!deps.assertAutoGrant) throw Error('CI_REPAIR_STOPPED');
       deps.assertAutoGrant(current);
     }
@@ -44,7 +49,7 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
     if (kind !== 'push' || !intent || latestCiEvent<SandboxCiPushIntent>(store, mission.mission_id, 'ci_repair_push_intent')?.intent_id !== intent.intent_id) throw Error('CI_REPAIR_STOPPED');
     checkApproval();
     input.beforeRemoteMutation('push');
-  }, { remote: 'origin', repository: GITHUB_CI_SANDBOX, missionId: mission.mission_id, httpsOnly: true });
+  }, { remote: 'origin', repository: policy.repository, missionId: mission.mission_id, httpsOnly: true });
   async function observedHead(): Promise<string | null> {
     const result = await runner.run('git', ['ls-remote', '--refs', '--', 'origin', ref], runOptions);
     const match = /^([0-9a-f]{40})\t([^\r\n]+)$/.exec(result.stdout.trim());
@@ -59,7 +64,7 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
     const pr = await actual();
     if (pr?.state !== 'open' || pr.head.sha !== target.head || pr.base.sha !== target.base || await observedHead() !== target.head) throw Error('CI_REPAIR_STOPPED');
     if (latestCiEvent(store, mission.mission_id, 'ci_auto_grant_reserved')) {
-      const observed = await readSandboxCiJobs(ci, target, signal);
+      const observed = await readSandboxCiJobs(ci, target, signal, undefined, policy);
       if (observed.kind !== 'failure' || observed.job.check_run_id !== repair.check_run_id) throw Error('CI_REPAIR_STOPPED');
     }
     checkApproval();
@@ -72,7 +77,7 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
   }
   const process = deps.host.recordForIntent(intent.intent_id);
   if (process?.state !== 'stopped' || process.released_at === null || process.mission_id !== mission.mission_id
-    || process.kind !== 'git_push' || process.remote_target !== remoteTargetOf(GITHUB_CI_SANDBOX, repair.branch)) throw Error('CI_REPAIR_STOPPED');
+    || process.kind !== 'git_push' || process.remote_target !== remoteTargetOf(policy.repository, repair.branch)) throw Error('CI_REPAIR_STOPPED');
   const pr = await actual();
   const remote = await observedHead();
   if (!pr || !remote) throw Error('CI_REPAIR_RECEIPT_UNAVAILABLE');
@@ -87,5 +92,5 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
     store.record(mission.mission_id, 'ci_repair_push_confirmed', { ...intent, op_id: process.op_id }, now());
   }
   return { pushed_commit: permit.head, base_head: target.base, pr: { number: target.pr, reused: true,
-    url: `https://github.com/${GITHUB_CI_SANDBOX}/pull/${target.pr}` }, stop_proof_scope: 'app_isolated' };
+    url: `https://github.com/${policy.repository}/pull/${target.pr}` }, stop_proof_scope: 'app_isolated' };
 }

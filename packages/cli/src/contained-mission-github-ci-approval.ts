@@ -1,5 +1,5 @@
 import type { ContainedMission, ContainedMissionStore, EngineeringPrincipal } from '@osstack/core';
-import { GITHUB_CI_SANDBOX, parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
+import { parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
 
 export type RefreshCiPrincipal = (principalId: string, sessionId: string) => EngineeringPrincipal;
 const TTL = 15 * 60_000;
@@ -12,8 +12,8 @@ export function latestCiEvent<T>(store: ContainedMissionStore, missionId: string
 
 function binding(mission: ContainedMission, spec: ContainedMissionSpec) {
   const target = spec.ci_repair;
-  if (!target || !mission.candidate_head || !mission.candidate_tree) throw Error('ci_repair_candidate_missing');
-  return { repository: GITHUB_CI_SANDBOX, pr: target.pr, branch: target.branch, base: target.base,
+  if (!target || !spec.publication || !mission.candidate_head || !mission.candidate_tree) throw Error('ci_repair_candidate_missing');
+  return { repository: spec.publication.repository, pr: target.pr, branch: target.branch, base: target.base,
     old: spec.start_commit, candidate: mission.candidate_head, tree: mission.candidate_tree, spec_digest: mission.spec_digest };
 }
 type Approval = ReturnType<typeof binding> & { principal: string; session: string; expires_at: number };

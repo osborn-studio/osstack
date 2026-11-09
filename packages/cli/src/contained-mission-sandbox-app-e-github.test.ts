@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { APP_E_SANDBOX as S, type SandboxMergeBinding } from './contained-mission-sandbox-app-e.js';
+import { APP_E_SANDBOX as S, SANDBOX_MERGER_POLICY, type CiMergerPolicy, type SandboxMergeBinding } from './contained-mission-sandbox-app-e.js';
+import { PRODUCTION_CI_POLICY } from './contained-mission-ci-policy.js';
 const mocks = vi.hoisted(() => ({ mint: vi.fn(() => ({ token: async () => 'app-e-only' })), stat: vi.fn() }));
 vi.mock('./contained-mission-github-app.js', () => ({ createInstallationTokenSource: mocks.mint }));
 vi.mock('node:fs/promises', () => ({ lstat: mocks.stat }));
@@ -37,7 +38,7 @@ function fixture() {
     return { ok: true as const, body: routes[suffix] };
   });
   const graphql = vi.fn(async () => ({ data: { repository: { databaseId: S.repositoryId, nameWithOwner: S.repository, pullRequest: pr } } }));
-  return { pr, p, q, u, applied, observe: createSandboxAppEObserver({ rest, graphql }), rest };
+  return { pr, p, q, u, applied, routes, observe: createSandboxAppEObserver({ rest, graphql }), rest };
 }
 describe('bounded sandbox observer', () => {
   it('binds complete REST and GraphQL evidence to exact sandbox rules', async () => {
@@ -89,6 +90,45 @@ describe('bounded sandbox observer', () => {
       author: { __typename: 'User', databaseId: 42 }, commit: { oid: b.base } });
     await expect(f.observe(b)).rejects.toThrow();
   });
+});
+describe('production repository merge gates', () => {
+  it.each(['eligible', 'missing marker', 'wrong Actions producer', 'loose base checks', 'App A missing', 'workflow token can write'])(
+    'checks the counted review, branch rules, and CI settings (%s)', async fault => {
+      const f = fixture();
+      const ci = PRODUCTION_CI_POLICY;
+      const policy: CiMergerPolicy = { ...SANDBOX_MERGER_POLICY, ci, repository: ci.repository, repositoryId: ci.repositoryId,
+        missionRulesets: { writers: 111, history: 112 } };
+      const bound = { ...b, repository: ci.repository, repositoryId: ci.repositoryId };
+      const repo = { id: ci.repositoryId, full_name: ci.repository, default_branch: 'main' };
+      const status = { strict_required_status_checks_policy: fault !== 'loose base checks',
+        required_status_checks: ci.jobs.map(j => ({ context: j.name, integration_id: fault === 'wrong Actions producer' ? 9 : ci.actionsAppId })) };
+      const quality = f.q.rules.find(r => r.type === 'required_status_checks')!;
+      const applied = f.applied.find(r => r.type === 'required_status_checks')!;
+      const missionRules = { ...f.q, conditions: { ref_name: { include: ['refs/heads/osstack/mission/**'], exclude: [] } } };
+      const writers = { ...missionRules, id: 111, name: 'mission-writers', rules: [{ type: 'creation' }, { type: 'update' }],
+        bypass_actors: fault === 'App A missing' ? [] : [{ actor_type: 'Integration', actor_id: 5620012, bypass_mode: 'always' }] };
+      const history = { ...missionRules, id: 112, name: 'mission-history', rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }] };
+      const routes: Record<string, unknown> = {
+        ...f.routes, '': repo, '/pulls/7': { ...f.p, head: { ...f.p.head, repo }, base: { ...f.p.base, repo } },
+        '/rulesets/26575831': { ...f.q, rules: f.q.rules.map(r => r === quality ? { ...r, parameters: status } : r) },
+        '/rules/branches/main?per_page=100&page=1': f.applied.map(r => r === applied ? { ...r, parameters: status } : r),
+        '/rulesets/111': writers, '/rulesets/112': history,
+        '/rules/branches/osstack%2Fmission%2Ftest?per_page=100&page=1':
+          [writers, history].flatMap(r => r.rules.map(x => ({ ...x, ruleset_id: r.id }))),
+        '/actions/permissions/workflow': { default_workflow_permissions: fault === 'workflow token can write' ? 'write' : 'read',
+          can_approve_pull_request_reviews: false },
+      };
+      const observe = createSandboxAppEObserver({
+        policy, rest: async path => ({ ok: true, body: routes[path.slice(`repos/${ci.repository}`.length)] }),
+        graphql: async () => ({ data: { repository: { databaseId: ci.repositoryId, nameWithOwner: ci.repository, pullRequest: {
+          ...f.pr, headRepository: { databaseId: ci.repositoryId },
+          latestOpinionatedReviews: conn(f.pr.latestOpinionatedReviews.nodes.map(r => ({ ...r,
+            body: fault === 'missing marker' ? 'approved' : `verify-osstack: pass ${b.head} ${b.base}` }))),
+        } } } }),
+      });
+      if (fault === 'eligible') await expect(observe(bound)).resolves.toMatchObject({ binding: bound, watcher: { counted: true } });
+      else await expect(observe(bound)).rejects.toThrow();
+    });
 });
 function writerFixture() {
   mocks.stat.mockResolvedValue({ isFile: () => true, isSymbolicLink: () => false, mode: 0o600, uid: process.getuid?.() });

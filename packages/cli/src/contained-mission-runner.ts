@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { CODEX_PROXY_END_MARKER, type CodexProxyRun, type CodexQualification } from '@osstack/agents';
 import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import { classifyMissionPatch, parseMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
+import { GITHUB_CI_PILOT_REPOSITORY, GITHUB_CI_SANDBOX, PILOT_PATH } from './contained-mission-ci-policy.js';
 import { formatMissionMarker, renderBodyLine } from './contained-mission-marker.js';
 import { applyContainedPatchFile } from './contained-patch-apply.js';
 import { HOST_PROCESS_UNPROVEN_PREFIX, WORKSPACE_RECOVERED, WORKSPACE_RECOVERY_FAILED, hostOnlyObligation, hostProcessRouteOf, unprovenOpId } from './contained-mission-host-process.js';
@@ -13,9 +14,9 @@ export interface ContainedMissionSpec {
   goal: string; repo_path: string; base_ref: string; start_commit: string; branch: string; worktree_path: string;
   allowed_paths: string[]; caps?: Partial<{ maxFiles: number; maxChangedLines: number; maxFileBytes: number; maxTotalBytes: number }>;
   verify: { argv: string[] }; max_repair_cycles?: number; verification_paths?: string[];
-  /** Sandboxed opt-in. GitHub runs CI after the host admits a candidate for publication. */
+  /** Explicit scope opt-in. GitHub runs CI after the host admits a candidate for publication. */
   verification_mode?: 'github_actions';
-  /** Installed only by the sandbox CI observer. The repair uses a different local branch. */
+  /** Installed only by the scoped CI observer. The repair uses a different local branch. */
   ci_repair?: { root: string; pr: number; branch: string; base: string; check_run_id: number };
   /** Bounded publication grant (§4.2): one PR on this repository and base. `preauthorized` skips the publication_pending decision. */
   publication?: ContainedPublicationSpec;
@@ -80,7 +81,7 @@ export interface ContainedMissionPorts {
   commitWorktree: (input: { mission_id: string; fence: () => void; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
   /** `stopped` only when the verification container was proven removed. */
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
-  assertGithubCiScope?: (scopeId: string, spec: ContainedMissionSpec) => void;
+  assertGithubCiScope?: (scopeId: string, spec: ContainedMissionSpec, mission?: ContainedMission) => void;
   /** Read-only admission of the recorded Git commit and tree. No candidate command is executed. */
   admitGithubCiCandidate?: (mission: ContainedMission, spec: ContainedMissionSpec) => Promise<void>;
   /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
@@ -142,13 +143,15 @@ export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
     || (p.title !== undefined && (typeof p.title !== 'string' || p.title.length > 200)) || (p.preauthorized !== undefined && typeof p.preauthorized !== 'boolean'))) throw Error('CONTAINED_SPEC_INVALID');
   if (v.verification_mode === 'github_actions') {
     if (v.verify.argv.length !== 0 || v.max_repair_cycles !== 0 || v.publish_target || v.revision_feedback
-      || p?.repository !== GITHUB_CI_SANDBOX || p.remote !== 'origin' || p.base !== 'main' || v.base_ref !== 'main'
+      || !p || (p.repository !== GITHUB_CI_SANDBOX && p.repository !== GITHUB_CI_PILOT_REPOSITORY) || p.remote !== 'origin' || p.base !== 'main' || v.base_ref !== 'main'
       || !v.branch.startsWith('osstack/mission/')) throw Error('CONTAINED_SPEC_INVALID');
+    if (p.repository === GITHUB_CI_PILOT_REPOSITORY && (p.draft || v.allowed_paths.length === 0
+      || !v.allowed_paths.every(path => typeof path === 'string' && PILOT_PATH.test(path)))) throw Error('CONTAINED_SPEC_INVALID');
     const repair = v.ci_repair;
     if (repair !== undefined && (!repair || !/^cm_[0-9a-f-]{36}$/.test(repair.root) || !Number.isSafeInteger(repair.pr) || repair.pr < 1
       || !/^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(repair.branch) || repair.branch === v.branch
       || !SHA_RE.test(repair.base) || !Number.isSafeInteger(repair.check_run_id) || repair.check_run_id < 1
-      || p.preauthorized === true || v.allowed_paths.length !== 1 || v.allowed_paths[0] !== 'PROBE_FAIL')) throw Error('CONTAINED_SPEC_INVALID');
+      || p.preauthorized === true || (p.repository === GITHUB_CI_SANDBOX && (v.allowed_paths.length !== 1 || v.allowed_paths[0] !== 'PROBE_FAIL')))) throw Error('CONTAINED_SPEC_INVALID');
   } else if (v.verification_mode !== undefined || v.ci_repair !== undefined || v.verify.argv.length === 0) throw Error('CONTAINED_SPEC_INVALID');
   if ((v.publish_target === undefined) !== (v.revision_feedback === undefined)) throw Error('CONTAINED_SPEC_INVALID');
   if (v.publish_target !== undefined) {
@@ -166,12 +169,11 @@ function chainTierAllowed(spec: ContainedMissionSpec, tier: string | undefined):
 }
 const BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/;
 const SHA_RE = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-export const GITHUB_CI_SANDBOX = 'osborn-studio/osstack-bridge-sandbox';
-export const GITHUB_CI_SANDBOX_ID = 1446327922;
+export { GITHUB_CI_SANDBOX, GITHUB_CI_SANDBOX_ID } from './contained-mission-ci-policy.js';
 
 /** The sandbox workflow uses this root-added sentinel. The admission port independently proves its ancestry. */
 function sandboxSentinelRemoval(spec: ContainedMissionSpec, classification: ReturnType<typeof classifyMissionPatch>): boolean {
-  return !!spec.ci_repair && classification.tier === 'T2' && classification.reasons.length === 1 && classification.reasons[0] === 'DELETE_TRACKED'
+  return spec.publication?.repository === GITHUB_CI_SANDBOX && !!spec.ci_repair && classification.tier === 'T2' && classification.reasons.length === 1 && classification.reasons[0] === 'DELETE_TRACKED'
     && classification.files.length === 1 && classification.files[0]?.path === 'PROBE_FAIL' && classification.files[0].kind === 'delete';
 }
 
@@ -202,7 +204,7 @@ export class ContainedMissionRunner {
 
   private assertGithubCiScope(m: ContainedMission, spec: ContainedMissionSpec): void {
     if (!this.ports.assertGithubCiScope || !this.ports.admitGithubCiCandidate) throw Error('github_ci_scope_unavailable');
-    this.ports.assertGithubCiScope(m.scope_id, spec);
+    this.ports.assertGithubCiScope(m.scope_id, spec, m);
   }
 
   private async admitGithubCiCandidate(m: ContainedMission, spec: ContainedMissionSpec): Promise<ContainedMission> {

@@ -6,6 +6,7 @@ import { createScratchDir } from '@osstack/core';
 import {
   EVIDENCE_PERMISSIONS,
   PUBLISHER_PERMISSIONS,
+  assertBridgeAppInstallation,
   createInstallationTokenSource,
   loadBridgeConfig,
 } from './contained-mission-github-app.js';
@@ -54,6 +55,30 @@ const msg = async (p: Promise<unknown>): Promise<string> => {
   }
   throw new Error('expected rejection');
 };
+
+describe('CI pilot installation readback', () => {
+  it.each(['valid', 'missing', 'wrong installation', 'wrong App', 'suspended', 'all repositories', 'extra write', 'missing write'])(
+    'authenticates with GET and rejects incomplete permission evidence (%s)', async fault => {
+      let requests = 0;
+      const check = assertBridgeAppInstallation(app(), { repository: 'acme/widgets',
+        permissions: { contents: 'write', pull_requests: 'read' } }, new AbortController().signal, async (url, init) => {
+        requests++;
+        expect(url).toBe('https://api.github.com/repos/acme/widgets/installation');
+        expect(init?.method).toBe('GET');
+        expect(init?.redirect).toBe('error');
+        if (fault === 'missing') return new Response('', { status: 404 });
+        return Response.json({ id: fault === 'wrong installation' ? 23 : 22, app_id: fault === 'wrong App' ? 12 : 11,
+          suspended_at: fault === 'suspended' ? '2026-01-01T00:00:00Z' : null,
+          repository_selection: fault === 'all repositories' ? 'all' : 'selected',
+          permissions: { contents: fault === 'missing write' ? 'read' : 'write', pull_requests: 'read', metadata: 'read',
+            ...(fault === 'extra write' ? { administration: 'write' } : {}) },
+        });
+      });
+      if (fault === 'valid') await expect(check).resolves.toBeUndefined();
+      else await expect(check).rejects.toThrow('CI_PILOT_APP_INSTALLATION_UNVERIFIED');
+      expect(requests).toBe(1);
+    });
+});
 
 describe('loadBridgeConfig', () => {
   it('returns undefined when neither file exists', async () => {

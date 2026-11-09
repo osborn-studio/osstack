@@ -88,6 +88,32 @@ describe("createContainedMissionService bridge wiring", () => {
     await expect(createContainedMissionService({ ...f.deps, env: { ...env, OSSTACK_BRIDGE: "1" } })).rejects.toThrow("BRIDGE_LIVE_NOT_IMPLEMENTED");
   });
 
+  it.each(["shadow", "live"])("wires the production pilot without Docker and without ambient write authority (%s)", async mode => {
+    const f = setup();
+    const dir = join(f.home, "bridge"); chmodSync(dir, 0o700);
+    const key = join(f.root, "key.pem"); writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
+    const mergerKey = join(f.root, "merger.pem"); writeFileSync(mergerKey, "fixture", { mode: 0o600 });
+    const repository = "osborn-studio/osstack";
+    const publisher = { app_id: 5620012, installation_id: 2, private_key_path: key };
+    const scope = "a".repeat(64);
+    writeFileSync(join(dir, "apps.json"), JSON.stringify({ version: 1, repository, publisher,
+      evidence: { ...publisher, app_id: 3, installation_id: 4 } }));
+    writeFileSync(join(dir, "rulesets.json"), JSON.stringify({ version: 1, repository, mission_ruleset_ids: [10, 11] }));
+    writeFileSync(join(dir, "ci-pilot.json"), JSON.stringify({ version: 1, scope_id: scope,
+      paths: ["packages/cli/src/fixture.ts"], publisher_installation_id: 2, merger_installation_id: 5, merger_key_path: mergerKey,
+      main_quality_ruleset_id: 6, main_update_ruleset_id: 7, mission_writers_ruleset_id: 10, mission_history_ruleset_id: 11 }), { mode: 0o600 });
+    const env = { OSSTACK_CONTAINED_CODEX_BIN: "/bin/true", OSSTACK_CONTAINED_CODEX_HOME: f.root, OSSTACK_CONTAINED_CI_PILOT: mode };
+    const service = await createContainedMissionService({ ...f.deps, env });
+    expect(typeof f.portsOf(service)["bindCiRoot"]).toBe("function");
+    expect(f.portsOf(service)["publishVerifyCheck"]).toBeUndefined();
+    const bind = f.portsOf(service)["bindCiRoot"] as (...args: unknown[]) => unknown;
+    expect(() => bind({}, scope, { repo_path: f.root, worktree_path: join(f.root, "wt"), publication: { repository },
+      allowed_paths: ["packages/cli/src/fixture.ts"] })).toThrow();
+    await service.close();
+    await expect(createContainedMissionService({ ...f.deps, env: { ...env, OSSTACK_CONTAINED_SANDBOX_CI_SCOPE: scope } }))
+      .rejects.toThrow("CI_PILOT_MIXED_SCOPE");
+  });
+
   describe("OSSTACK_BRIDGE publication switch matrix", () => {
     function configure(f: ReturnType<typeof setup>, repository: string | null) {
       if (repository === null) return;
