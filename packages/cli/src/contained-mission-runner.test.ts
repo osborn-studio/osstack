@@ -95,6 +95,9 @@ describe("ContainedMissionRunner", () => {
     let currentHead = head;
     let merged = false;
     let pending = false;
+    let attempt = 1;
+    let appMerge = false;
+    let mergeRequests = 0;
     const repo = { id: 1446327922, full_name: repository };
     const app = { id: 15368 };
     const suite = { id: 19, app, head_sha: head };
@@ -104,11 +107,15 @@ describe("ContainedMissionRunner", () => {
     const observer = createSandboxCiObserver({
       store: f.store, scopeId: scope, enabled: () => true, now: () => 2000, log: () => {}, refresh: () => actor,
       worktreesRoot: join(spec.repo_path, "worktrees"),
+      merge: {
+        request: async () => { mergeRequests++; },
+        acceptsMerge: () => appMerge ? { handoff_comment_id: 82, app_id: 5620091 } : null,
+      },
       ci: {
         rest: async path => {
           if (path.endsWith("/pulls/7")) return { ok: true, body: { number: 7, state: merged ? "closed" : "open", merged,
             head: { sha: currentHead, ref: branch, repo }, base: { sha: merged ? merge : START, ref: "main", repo }, user: { id: 352680398, type: "Bot" },
-            ...(merged ? { merge_commit_sha: merge, merged_by: { id: 1, type: "Bot" } } : {}) } };
+            ...(merged ? { merge_commit_sha: merge, merged_by: { id: 352681958, type: "Bot" } } : {}) } };
           if (path.endsWith(`/git/commits/${merge}`)) return { ok: true, body: { sha: merge, parents: [{ sha: START }] } };
           if (path.includes("/contents/")) return { ok: true, body: { sha: "562d683c3e9ab500aea73f09278a00d4cc266db1", type: "file" } };
           if (path.includes("/check-suites?")) return { ok: true, body: { total_count: 1, check_suites: [{ ...suite, head_sha: currentHead }] } };
@@ -120,7 +127,7 @@ describe("ContainedMissionRunner", () => {
         latestAttempt: async query => ({ ...query, complete: true, requests_used: 1,
           latest: { check_suite_id: suite.id, check_run_id: check.id, status: "completed", conclusion: "failure" } }),
         observeLatestJob: async query => ({ outcome: currentHead === head ? "failure" : pending ? "pending" : "success",
-          run_id: currentHead === head ? 2 : 3, workflow_id: 407532337, attempt: pending ? 2 : 1,
+          run_id: currentHead === head ? 2 : 3, workflow_id: 407532337, attempt,
           check_run_id: check.id, check_suite_id: suite.id, job_id: check.id, job_name: query.name, runner_labels: ["ubuntu-latest"], matrix: {},
           workflow_path: ".github/workflows/ci.yml", head: currentHead, base: START, app_id: app.id }),
       },
@@ -155,14 +162,26 @@ describe("ContainedMissionRunner", () => {
       currentHead = fixed;
       await observer.scan();
       expect(kinds()).toContain("ci_repair_verified");
+      expect(mergeRequests).toBe(1);
+      f.store.record(id, "ci_auto_grant_reserved", {}, 2000);
       pending = true;
+      attempt = 2;
       merged = true;
       await observer.scan();
       expect(kinds()).not.toContain("ci_pr_merged_observed");
       expect(kinds()).toContain("ci_pr_merge_unverified");
       pending = false;
       await observer.scan();
-      expect(kinds()).toContain("ci_pr_merged_observed");
+      expect(kinds()).not.toContain("ci_pr_merged_observed");
+      expect(kinds().filter(kind => kind === "ci_repair_verified")).toHaveLength(1);
+      attempt = 1;
+      await observer.scan();
+      expect(kinds()).not.toContain("ci_pr_merged_observed");
+      appMerge = true;
+      await observer.scan();
+      const closed = f.store.events(root.mission_id).find(event => event.kind === "ci_pr_merged_observed");
+      expect(JSON.parse(closed!.payload_json)).toMatchObject({ pr: 7, head: fixed, merge_commit_sha: merge,
+        handoff_comment_id: 82, app_id: 5620091 });
     } finally { await observer.stop(); }
   });
 

@@ -28,7 +28,7 @@ function fixture() {
     }),
     merge: vi.fn(async () => ({ merged: true, sha: squash })),
     readback: vi.fn(async () => ({ binding: { ...binding }, merged: true, actorAppId: 5620091,
-      actorType: 'Bot', actorVerified: true, actorUserId: 999, sha: squash, parents: [base] })),
+      actorType: 'Bot', actorVerified: true, actorUserId: 352681958, sha: squash, parents: [base] })),
   } satisfies SandboxAppEPorts;
   return { ports, observation };
 }

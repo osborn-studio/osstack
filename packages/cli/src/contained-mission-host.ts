@@ -9,6 +9,7 @@ import { classifyHostProcess, processGroupEmpty, runHardenedGit, type AgentHostP
 import { scratchPath, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal, type HostProcessRecord } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { ContainedMissionRunner, parseContainedMissionSpec, type ContainedDecision, type ContainedMissionSpec } from './contained-mission-runner.js';
+import { latestCiEvent } from './contained-mission-github-ci-approval.js';
 import { readMissionPublication, type MissionPublication } from './contained-mission-publication.js';
 import { containedEvents, eventPayload, lastTransitionTo, type ContainedMissionHostPorts } from './contained-mission-ports.js';
 import { PUBLICATION_RECOVERED, WORKSPACE_RECOVERED, HOST_PROCESS_UNPROVEN_PREFIX, hostOnlyObligation, hostProcessRouteOf, type HostProcessRoute } from './contained-mission-host-process.js';
@@ -116,10 +117,16 @@ export class ContainedMissionHost {
     const mission = this.store.readable(principal, missionId);
     const tail = (this.store.db.prepare('SELECT seq,kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq DESC LIMIT ?')
       .all(missionId, EVENT_TAIL) as Array<{ seq: number; kind: string; created_at: number; payload_json: string }>).reverse();
+    const publication = this.publication(missionId);
+    const merged = publication?.kind === 'github_ci_opened'
+      ? latestCiEvent<{ pr: number; head: string; merge_commit_sha: string; handoff_comment_id?: number; app_id?: number }>(
+        this.store, missionId, 'ci_pr_merged_observed') : undefined;
     return {
       mission: { ...mission, spec_json: redactSecrets(mission.spec_json) }, claim: this.store.claim(missionId), stepping: this.inFlight.has(missionId),
       events: tail.map(e => ({ seq: e.seq, kind: e.kind, created_at: e.created_at, payload: redactSecrets(e.payload_json).slice(0, EVENT_EXCERPT) })),
-      publication: this.publication(missionId),
+      publication,
+      ...(merged ? { github_ci_chain: { state: 'closed' as const, pr: merged.pr, head: merged.head, merge_commit_sha: merged.merge_commit_sha,
+        ...(merged.app_id ? { app_id: merged.app_id, handoff_comment_id: merged.handoff_comment_id } : {}) } } : {}),
     };
   }
 

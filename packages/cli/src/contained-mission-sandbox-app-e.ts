@@ -3,7 +3,7 @@ import { z } from 'zod';
 // No environment, credential, DB or CLI access. Only the owner-approved sandbox exception.
 export const APP_E_SANDBOX = Object.freeze({
   repository: 'osborn-studio/osstack-bridge-sandbox', repositoryId: 1446327922,
-  appId: 5620091, installationId: 178742757, publisherId: 352680398, watcherId: 243772068,
+  appId: 5620091, installationId: 178742757, actorId: 352681958, publisherId: 352680398, watcherId: 243772068,
 });
 const sha = z.string().regex(/^[0-9a-f]{40}$/u);
 const bindingSchema = z.object({
@@ -120,7 +120,7 @@ export async function executeSandboxAppEMerge(raw: unknown, ports: SandboxAppEPo
     if (!reply.merged || !sha.safeParse(reply.sha).success) return { kind: 'unknown' };
     const back = await ports.readback(h.binding);
     if (!same(back.binding, h.binding) || !back.merged || !back.actorVerified || back.actorType !== 'Bot'
-      || !Number.isSafeInteger(back.actorUserId) || back.actorUserId <= 0
+      || back.actorUserId !== APP_E_SANDBOX.actorId
       || back.actorAppId !== APP_E_SANDBOX.appId || back.sha !== reply.sha
       || back.parents.length !== 1 || back.parents[0] !== h.binding.base) return { kind: 'unknown' };
     return { kind: 'merged', sha: back.sha };

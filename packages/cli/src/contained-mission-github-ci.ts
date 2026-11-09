@@ -10,6 +10,7 @@ import { readCiFailureHints } from './contained-mission-local-failure-reader.js'
 import { createActionsCiFailureReadDeps, type ActionsJobObservation } from './contained-mission-local-failure-reader-transport.js';
 import { readMissionPublication } from './contained-mission-publication.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
+import type { createSandboxCiMerge } from './contained-mission-sandbox-ci-merge.js';
 import { GITHUB_CI_SANDBOX, parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
 
 // This policy is for the registered sandbox's fixture workflow only.
@@ -109,7 +110,8 @@ export async function assertSandboxCiRepository(signal: AbortSignal): Promise<vo
 }
 
 export function createSandboxCiObserver(input: { store: ContainedMissionStore; scopeId: string; enabled: () => boolean;
-  now: () => number; log: (line: string) => void; refresh?: RefreshCiPrincipal; ci?: CiReader; worktreesRoot?: string }) {
+  now: () => number; log: (line: string) => void; refresh?: RefreshCiPrincipal; ci?: CiReader; worktreesRoot?: string;
+  merge?: ReturnType<typeof createSandboxCiMerge> }) {
   const { store, scopeId, enabled, now, log } = input;
   const ci = input.ci ?? createSandboxCiReader();
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -181,8 +183,13 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
           if (result.kind !== 'success' || !isDeepStrictEqual(facts.jobs, result.jobs)) {
             holdMerge(result.kind === 'waiting' ? result.reason : 'premerge_ci_changed'); return;
           }
+          const appMerge = live.merged_by && live.merge_commit_sha
+            ? input.merge?.acceptsMerge(root, child, repairedTarget, live.merged_by, live.merge_commit_sha) : null;
+          if (!appMerge && latestCiEvent(store, child.mission_id, 'ci_auto_grant_reserved')) {
+            holdMerge('app_e_handoff_unavailable'); return;
+          }
           store.record(root.mission_id, 'ci_pr_merged_observed', { pr: target.pr, head: live.head.sha,
-            merge_commit_sha: live.merge_commit_sha, merged_by: live.merged_by }, now());
+            merge_commit_sha: live.merge_commit_sha, merged_by: live.merged_by, ...appMerge }, now());
           return;
         }
         const result = await readSandboxCiJobs(ci, repairedTarget, signal);
@@ -202,6 +209,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
               store.record(root.mission_id, 'ci_repair_verified', { pr: target.pr, old: target.head, head: repaired.pushed_commit,
                 base: target.base, child: child.mission_id, jobs: result.jobs }, now());
             }
+            await input.merge?.request(root, child, repairedTarget, signal);
           }
         }
         return;
