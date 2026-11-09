@@ -209,6 +209,7 @@ describe("ContainedMissionRunner", () => {
       expect(JSON.parse(closed!.payload_json)).toMatchObject({ pr: 7, head: fixed, merge_commit_sha: merge,
         handoff_comment_id: 82, app_id: 5620091 });
     } finally { await observer.stop(); }
+    expect(mergeSignal?.aborted).toBe(true);
   });
 
   it("opens an admitted GitHub Actions Mission without a container receipt or App B check", async () => {

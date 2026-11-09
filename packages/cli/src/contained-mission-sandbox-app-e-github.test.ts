@@ -76,7 +76,10 @@ describe('bounded sandbox observer', () => {
     ['quality bypass', f => { f.q.bypass_actors.push({ actor_id: S.appId }); }],
     ['App E bypass mode', f => { f.u.bypass_actors[0]!.bypass_mode = 'always'; }],
     ['missing applied rule', f => { f.applied.pop(); }],
-    ['wrong check producer', f => { f.q.rules[3]!.parameters!.required_status_checks![0]!.integration_id = 9; }],
+    ['wrong check producer on BLOCKED', f => {
+      f.pr.mergeStateStatus = 'BLOCKED';
+      f.q.rules[3]!.parameters!.required_status_checks![0]!.integration_id = 9;
+    }],
     ['inactive ruleset', f => { f.q.enforcement = 'evaluate'; }],
   ] as [string, (f: ReturnType<typeof fixture>) => void][])('refuses %s', async (_name, change) => {
     const f = fixture(); change(f); await expect(f.observe(b)).rejects.toThrow();
