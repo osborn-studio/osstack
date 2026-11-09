@@ -89,6 +89,7 @@ describe("ContainedMissionRunner", () => {
       publication: { remote: "origin", repository, base: "main", draft: false, preauthorized: true },
     });
     const root = await drive(f, 5);
+    expect(root.state, f.kinds().join(", ")).toBe("pr_opened");
     const spec = JSON.parse(root.spec_json) as ContainedMissionSpec;
     mkdirSync(spec.repo_path);
     const head = root.candidate_head!;
@@ -99,6 +100,7 @@ describe("ContainedMissionRunner", () => {
     let pending = false;
     let attempt = 1;
     let mergeRequests = 0;
+    const observations: string[] = [];
     const repo = { id: 1446327922, full_name: repository };
     const app = { id: 15368 };
     const suite = { id: 19, app, head_sha: head };
@@ -108,14 +110,16 @@ describe("ContainedMissionRunner", () => {
     const mergeService = createSandboxCiMerge({ store: f.store, scopeId: scope, enabled: () => true, now: () => 2000,
       ci: createSandboxCiReader(), github: () => { throw Error("no network adapters in this closure fixture"); } });
     const observer = createSandboxCiObserver({
-      store: f.store, scopeId: scope, enabled: () => true, now: () => 2000, log: () => {}, refresh: () => actor,
+      store: f.store, scopeId: scope, enabled: () => true, now: () => 2000, log: line => observations.push(line), refresh: () => actor,
       worktreesRoot: join(spec.repo_path, "worktrees"),
       merge: {
         request: async () => { mergeRequests++; },
         acceptsMerge: mergeService.acceptsMerge,
       },
       ci: {
+        now: () => new Date(2000),
         rest: async path => {
+          observations.push(path);
           if (path.endsWith("/pulls/7")) return { ok: true, body: { number: 7, state: merged ? "closed" : "open", merged,
             head: { sha: currentHead, ref: branch, repo }, base: { sha: merged ? merge : START, ref: "main", repo }, user: { id: 352680398, type: "Bot" },
             ...(merged ? { merge_commit_sha: merge, merged_by: { id: 352681958, type: "Bot" } } : {}) } };
@@ -139,7 +143,7 @@ describe("ContainedMissionRunner", () => {
       await observer.scan();
       await observer.scan();
       const events = f.store.events(root.mission_id);
-      expect(events.filter(event => event.kind === "ci_failure_observed")).toHaveLength(1);
+      expect(events.filter(event => event.kind === "ci_failure_observed"), observations.join("\n")).toHaveLength(1);
       const dispatched = events.filter(event => event.kind === "ci_repair_dispatched");
       expect(dispatched).toHaveLength(1);
       const child = f.store.get(JSON.parse(dispatched[0]!.payload_json).child as string);
