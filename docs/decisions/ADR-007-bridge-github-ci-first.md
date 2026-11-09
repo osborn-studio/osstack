@@ -17,3 +17,11 @@ osstack 的 CI 同时使用 Ubuntu 与 macOS runner。Mac mini 能分析失败�
 ## 影响
 
 [实施方案阶段 5–7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-5-github-ci-失败后的同-pr-修复)以一次沙箱真实失败作为交付单位，要求 GitHub 复验、实际 Watcher、人审、合并及 osstack 关单。完成沙箱与生产前置演练后，单 scope 试运行按连续五条生产链验收。首发若因 CI 平台或基础设施问题无法复现，保留 PR 与失败证据并转人或等待原平台重跑。
+
+## 无人值守沙箱方案（待负责人批准）
+
+- **修复推送。** 首次只给登记沙箱的一个 scope 和一条新 Mission PR 发限时许可，最多一次快进推送。夹具的补丁仅可撤回该 PR 自己加入的 `PROBE_FAIL`。许可绑定仓库、PR、分支、旧 head、base 和验证策略。宿主把本地候选及 tree 写入发布意图，在 W13 放行前再次核对真实 CI 失败和许可。过期、撤权、候选移动和未对账的远端写入均转人。
+- **计入审批。** 由现有 Watcher 使用独立的 GitHub 用户身份 `Rubebun-Jadeem` 验证并审批新 head。该账号目前在沙箱只有 Read 权限，试验需要限于沙箱的 Write 权限。Watcher 仅验证登记的验收 PR，待原工作流完成后读取当前 head、base 和必需检查，运行登记的夹具验证，再提交 review 和 `verified`。用 GitHub 的评审状态实测该 review 计入保护规则。
+- **合并。** 现有 Merger 负责调度，拟通过独立的 `osstack-merger` App 执行沙箱合并。沙箱 `main-update` 已登记该 App 的 PR 合并权限。实现仍需批准，合并须核对最新检查、计入审批、线程、发布意图和预期 head。验收需证明错误身份、旧审批、撤权或不完整证据均停住，并留存合并提交和 osstack 关单记录。
+
+两项无人值守授权分别审批。以上范围是首次沙箱演练。生产试运行另按阶段 7 放行。

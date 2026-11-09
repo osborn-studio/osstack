@@ -73,7 +73,7 @@ async function drive(f: ReturnType<typeof setup>, steps: number): Promise<Contai
 }
 
 describe("ContainedMissionRunner", () => {
-  it("records one diagnosis and dispatches only one repair for the same completed CI failure", async () => {
+  it("dispatches one repair and rechecks the latest CI attempt before accepting merge readback", async () => {
     const repository = "osborn-studio/osstack-bridge-sandbox";
     const branch = "osstack/mission/ci-seed";
     const f = setup({
@@ -90,6 +90,11 @@ describe("ContainedMissionRunner", () => {
     const spec = JSON.parse(root.spec_json) as ContainedMissionSpec;
     mkdirSync(spec.repo_path);
     const head = root.candidate_head!;
+    const fixed = "c".repeat(40);
+    const merge = "f".repeat(40);
+    let currentHead = head;
+    let merged = false;
+    let pending = false;
     const repo = { id: 1446327922, full_name: repository };
     const app = { id: 15368 };
     const suite = { id: 19, app, head_sha: head };
@@ -101,18 +106,23 @@ describe("ContainedMissionRunner", () => {
       worktreesRoot: join(spec.repo_path, "worktrees"),
       ci: {
         rest: async path => {
-          if (path.endsWith("/pulls/7")) return { ok: true, body: { number: 7, state: "open", merged: false,
-            head: { sha: head, ref: branch, repo }, base: { sha: START, ref: "main", repo }, user: { id: 352680398, type: "Bot" } } };
+          if (path.endsWith("/pulls/7")) return { ok: true, body: { number: 7, state: merged ? "closed" : "open", merged,
+            head: { sha: currentHead, ref: branch, repo }, base: { sha: merged ? merge : START, ref: "main", repo }, user: { id: 352680398, type: "Bot" },
+            ...(merged ? { merge_commit_sha: merge, merged_by: { id: 1, type: "Bot" } } : {}) } };
+          if (path.endsWith(`/git/commits/${merge}`)) return { ok: true, body: { sha: merge, parents: [{ sha: START }] } };
           if (path.includes("/contents/")) return { ok: true, body: { sha: "562d683c3e9ab500aea73f09278a00d4cc266db1", type: "file" } };
-          if (path.includes("/check-suites?")) return { ok: true, body: { total_count: 1, check_suites: [suite] } };
-          if (path.includes("/check-runs?")) return { ok: true, body: { total_count: 1, check_runs: [check] } };
+          if (path.includes("/check-suites?")) return { ok: true, body: { total_count: 1, check_suites: [{ ...suite, head_sha: currentHead }] } };
+          if (path.includes("/check-runs?")) return { ok: true, body: { total_count: 1, check_runs: [{
+            ...check, head_sha: currentHead, conclusion: currentHead === head ? "failure" : "success",
+          }] } };
           return { ok: false };
         },
         latestAttempt: async query => ({ ...query, complete: true, requests_used: 1,
           latest: { check_suite_id: suite.id, check_run_id: check.id, status: "completed", conclusion: "failure" } }),
-        observeLatestJob: async () => ({ outcome: "failure", run_id: 2, workflow_id: 407532337, attempt: 1,
-          check_run_id: check.id, check_suite_id: suite.id, job_id: check.id, job_name: "check", runner_labels: ["ubuntu-latest"], matrix: {},
-          workflow_path: ".github/workflows/ci.yml", head, base: START, app_id: app.id }),
+        observeLatestJob: async query => ({ outcome: currentHead === head ? "failure" : pending ? "pending" : "success",
+          run_id: currentHead === head ? 2 : 3, workflow_id: 407532337, attempt: pending ? 2 : 1,
+          check_run_id: check.id, check_suite_id: suite.id, job_id: check.id, job_name: query.name, runner_labels: ["ubuntu-latest"], matrix: {},
+          workflow_path: ".github/workflows/ci.yml", head: currentHead, base: START, app_id: app.id }),
       },
     });
     try {
@@ -126,6 +136,33 @@ describe("ContainedMissionRunner", () => {
       expect(child.state).toBe("authorized");
       expect(JSON.parse(child.spec_json)).toMatchObject({ start_commit: head, allowed_paths: ["PROBE_FAIL"],
         publication: { preauthorized: false }, ci_repair: { root: root.mission_id, branch, base: START, pr: 7, check_run_id: check.id } });
+      const id = child.mission_id;
+      const move = (to: ContainedMission["state"], candidate?: { head: string; tree: string; diff_digest: string }) => f.store.transition(id, {
+        to, if_revision: f.store.get(id).revision, event: { kind: "fixture", payload: {} }, ...(candidate ? { candidate } : {}),
+      }, 2000);
+      move("workspace_ready"); move("executing");
+      f.store.recordStopEvidence(id, f.store.get(id).revision, {}, 2000);
+      move("candidate_ready", { head: fixed, tree: "d".repeat(40), diff_digest: "a".repeat(64) });
+      move("verifying"); f.store.recordStopEvidence(id, f.store.get(id).revision, {}, 2000);
+      move("verified"); move("revalidating"); move("delivering");
+      const digest = "e".repeat(64);
+      const pr = { number: 7, url: `https://github.com/${repository}/pull/7`, reused: true };
+      f.store.record(id, "ci_delivery_evidence", { head: fixed, base_head: START, evidence_digest: digest }, 2000);
+      f.store.transition(id, { to: "pr_opened", if_revision: f.store.get(id).revision, event: {
+        kind: "pr_opened", payload: { pr, evidence_digest: digest, verification_kind: "github_actions" },
+      } }, 2000);
+      const kinds = () => f.store.events(root.mission_id).map(event => event.kind);
+      currentHead = fixed;
+      await observer.scan();
+      expect(kinds()).toContain("ci_repair_verified");
+      pending = true;
+      merged = true;
+      await observer.scan();
+      expect(kinds()).not.toContain("ci_pr_merged_observed");
+      expect(kinds()).toContain("ci_pr_merge_unverified");
+      pending = false;
+      await observer.scan();
+      expect(kinds()).toContain("ci_pr_merged_observed");
     } finally { await observer.stop(); }
   });
 
