@@ -45,13 +45,22 @@ describe('bounded sandbox observer', () => {
     expect(observed.binding).toEqual(b); expect(observed.watcher.counted).toBe(true);
     expect(observed.quality.requiredChecksEnforced).toBe(true); expect(f.rest).toHaveBeenCalledTimes(6);
   });
+  it('accepts GitHub BLOCKED after verifying the exact App E update rule and independent quality gates', async () => {
+    const f = fixture();
+    f.pr.mergeStateStatus = 'BLOCKED';
+    await expect(f.observe(b)).resolves.toMatchObject({ binding: b, watcher: { counted: true }, update: { bypassActors: [
+      { actorId: S.appId, actorType: 'Integration', mode: 'pull_request' },
+    ] } });
+    f.applied.pop();
+    await expect(f.observe(b)).rejects.toThrow();
+  });
   it.each([
     ['REST author', (f: ReturnType<typeof fixture>) => { f.p.user.id++; }],
     ['REST head', f => { f.p.head.sha = b.base; }],
     ['REST base', f => { f.p.base.sha = b.head; }],
     ['GraphQL head', f => { f.pr.headRefOid = b.base; }],
     ['unknown mergeability', f => { f.pr.mergeable = 'UNKNOWN'; }],
-    ['blocked merge status', f => { f.pr.mergeStateStatus = 'BLOCKED'; }],
+    ['unstable merge status', f => { f.pr.mergeStateStatus = 'UNSTABLE'; }],
     ['GitHub review decision', f => { f.pr.reviewDecision = 'REVIEW_REQUIRED'; }],
     ['Watcher identity', f => { f.pr.latestOpinionatedReviews.nodes[0]!.author.databaseId++; }],
     ['Watcher type', f => { f.pr.latestOpinionatedReviews.nodes[0]!.author.__typename = 'Bot'; }],
