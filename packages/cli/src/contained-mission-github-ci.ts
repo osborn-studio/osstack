@@ -11,11 +11,11 @@ import { createActionsCiFailureReadDeps, type ActionsJobObservation } from './co
 import { readMissionPublication } from './contained-mission-publication.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
 import type { createSandboxCiMerge } from './contained-mission-sandbox-ci-merge.js';
-import { GITHUB_CI_SANDBOX, parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
+import { GITHUB_CI_SANDBOX, GITHUB_CI_SANDBOX_ID, parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
 
 // This policy is for the registered sandbox's fixture workflow only.
 const policy = {
-  repositoryId: 1446327922, publisherActorId: 352680398, actionsAppId: 15368,
+  repositoryId: GITHUB_CI_SANDBOX_ID, publisherActorId: 352680398, actionsAppId: 15368,
   workflowId: 407532337, workflowPath: '.github/workflows/ci.yml',
   workflowBlob: '562d683c3e9ab500aea73f09278a00d4cc266db1',
   runnerLabels: ['ubuntu-latest'], failureStep: 'Run test ! -e PROBE_FAIL',

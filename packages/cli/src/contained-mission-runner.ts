@@ -167,6 +167,7 @@ function chainTierAllowed(spec: ContainedMissionSpec, tier: string | undefined):
 const BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/;
 const SHA_RE = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 export const GITHUB_CI_SANDBOX = 'osborn-studio/osstack-bridge-sandbox';
+export const GITHUB_CI_SANDBOX_ID = 1446327922;
 
 /** The sandbox workflow uses this root-added sentinel. The admission port independently proves its ancestry. */
 function sandboxSentinelRemoval(spec: ContainedMissionSpec, classification: ReturnType<typeof classifyMissionPatch>): boolean {

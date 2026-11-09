@@ -23,7 +23,7 @@ osstack 的 CI 同时使用 Ubuntu 与 macOS runner。Mac mini 能分析失败�
 - **修复推送。** 宿主配置一个私有许可文件，绑定登记沙箱的一个空 scope、新 root 和工程操作者，有效期最多 15 分钟。正常 daemon 只给一条新 Mission 的精确候选发一次快进许可。夹具补丁仅可删除该 PR 自己加入的 `PROBE_FAIL`。W13 核对旧 head、base、候选与 tree，并在释放写入前检查许可。过期、撤权、候选变化和未知远端结果停在当前链。
 - **计入审批。** 沙箱的 `Rubebun-Jadeem` 已从 Read 提升为 Write，由现有 Watcher 复验本轮 PR 并对准确修复 head 提交审批和 `verified`。沙箱规则仍要求 GitHub 认可的最新推送审批、原工作流必需检查与线程解决。真实计入结果须从 GitHub 读回。
 - **合并。** 现有 Merger 在验收 PR 发一条绑定完整 head 和 base 的 `osstack-sandbox-merge HEAD BASE` 评论，作为本地 daemon 的触发信号。Watcher 与 Merger 共享 GitHub 用户，Routine 的实际执行另从 Grok 运行记录核对。daemon 验证 W13 推送回执、实时 CI、Watcher 审批与沙箱规则后，才以独立 App E 提交一次预期 head 的 squash。App E 凭证只在本机使用。无法确认请求结果时通过只读 API 对账。GitHub 的合并 API 可锁定 head，base 在写入前读取并在合并后由 squash 父提交核验。
-- **关单。** daemon 要求合并前已观察到的同一次 CI 检查与合并后读回一致，且合并身份为 App E。通过后在 `mission status --json` 返回 `github_ci_chain.state=closed` 和合并提交。原 Mission 状态仍保留发布记录。
+- **关单。** daemon 要求合并前已观察到的同一次 CI 检查与合并后读回一致，且合并身份为 App E。通过后在 `mission status --json` 返回 `github_ci_chain.state=closed` 和合并提交。合并预留、写入待对账和证据不足分别显示为 `merge_reserved`、`merge_reconciling` 和 `merge_held`。原 Mission 状态仍保留发布记录。
 
 隔离 daemon 通过 `OSSTACK_CONTAINED_SANDBOX_CI_SCOPE` 选择 scope。将绝对路径传给 `OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT` 和 `OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY`。许可 JSON 使用 `version`、`grant_id`、`scope_id`、`principal_id`、`client_session_id`、`issued_at` 和 `expires_at`，时间使用 Unix 毫秒。许可文件和其目录分别限宿主用户读写，权限为 0600 和 0700。删除许可文件可撤销待发布修复。
 

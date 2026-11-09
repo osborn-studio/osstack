@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { GITHUB_CI_SANDBOX, GITHUB_CI_SANDBOX_ID } from './contained-mission-runner.js';
 
 // No environment, credential, DB or CLI access. Only the owner-approved sandbox exception.
 export const APP_E_SANDBOX = Object.freeze({
-  repository: 'osborn-studio/osstack-bridge-sandbox', repositoryId: 1446327922,
+  repository: GITHUB_CI_SANDBOX, repositoryId: GITHUB_CI_SANDBOX_ID,
   appId: 5620091, installationId: 178742757, actorId: 352681958, publisherId: 352680398, watcherId: 243772068,
 });
 const sha = z.string().regex(/^[0-9a-f]{40}$/u);
