@@ -428,13 +428,20 @@ describe("only the publication fence reaches a remote write (static scan, T13)",
   const text = (f: string) => readFileSync(join(dir, f), "utf8");
   it("push and pr create are named only in the fenced publication paths", () => {
     const naming = sources.filter(f => /args\[[^\]]*\]\s*===\s*["']push["']|\[\s*["']push["']|args\[1\]\s*===\s*["']create["']|["']pr["']\s*,\s*["']create["']/.test(text(f)));
-    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-ports.ts", "contained-mission-revision-publication.ts"]);
+    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-github-ci-publish.ts", "contained-mission-ports.ts", "contained-mission-revision-publication.ts"]);
+    const ci = text("contained-mission-github-ci-publish.ts");
+    expect(ci).toContain("const runner = fencedDeliveryRunner");
+    expect(ci).toContain("--force-with-lease=");
+    expect(ci).not.toMatch(/["']pr["']\s*,\s*["']create["']/);
   });
-  it("the only process spawns on the Mission path are the gated launcher, the bridge's ungated exec (refused for writes), a read-only ps and the read-only gh GraphQL reader", () => {
+  it("limits process spawns to the existing launchers and read-only observers", () => {
     const spawning = sources.filter(f => /\b(?:execFile|execFileSync|spawn|spawnSync)\(/.test(text(f)));
-    expect(spawning.sort()).toEqual(["contained-mission-bridge-reader.ts", "contained-mission-bridge.ts", "contained-mission-host.ts", "contained-mission-remote-writes.ts"]);
+    expect(spawning.sort()).toEqual(["contained-mission-bridge-reader.ts", "contained-mission-bridge.ts", "contained-mission-host.ts",
+      "contained-mission-local-failure-reader-transport.ts", "contained-mission-remote-writes.ts"]);
     expect(text("contained-mission-bridge.ts")).toContain("CONTAINED_PUBLICATION_UNGATED");
     expect(text("contained-mission-bridge-reader.ts")).not.toMatch(/["'](?:push|create|POST|PATCH|PUT|DELETE)["']/);
+    expect(text("contained-mission-local-failure-reader-transport.ts")).toContain("['api', '--hostname', 'github.com', '--method', 'GET', path]");
+    expect(text("contained-mission-local-failure-reader-transport.ts")).not.toMatch(/["'](?:push|create|POST|PATCH|PUT|DELETE)["']/);
     expect(readFileSync(join(dir, "../../github/src/delivery.ts"), "utf8")).toContain("DELIVERY_RUNNER_UNGATED");
   });
   it("ports.publish launches through the gated host runner unless a caller injects a runner", () => {

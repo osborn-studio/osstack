@@ -1,10 +1,16 @@
-import { realpathSync, rmSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
+import { AttentionStore, ContainedMissionStore, HostProcessStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
 import type { CodexProxyRun, CodexQualification } from "@osstack/agents";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContainedMissionRunner, type ContainedMissionPorts, type ContainedMissionSpec } from "./contained-mission-runner.js";
 import { parseMissionMarkers } from "./contained-mission-marker.js";
+import { approveSandboxCiRepair, assertSandboxCiApproval } from "./contained-mission-github-ci-approval.js";
+import { publishSandboxCiRepair } from "./contained-mission-github-ci-publish.js";
+import { createSandboxCiObserver, createSandboxCiReader } from "./contained-mission-github-ci.js";
+import { createSandboxCiMerge } from "./contained-mission-sandbox-ci-merge.js";
+import { remoteTargetOf } from "./contained-mission-remote-writes.js";
+import type { HostProcessRecord } from "@osstack/core";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -69,6 +75,275 @@ async function drive(f: ReturnType<typeof setup>, steps: number): Promise<Contai
 }
 
 describe("ContainedMissionRunner", () => {
+  it("dispatches one repair and rechecks the latest CI attempt before accepting merge readback", async () => {
+    const repository = "osborn-studio/osstack-bridge-sandbox";
+    const branch = "osstack/mission/ci-seed";
+    const f = setup({
+      assertGithubCiScope: () => {},
+      admitGithubCiCandidate: async () => {},
+      publish: async ({ permit }) => ({ pushed_commit: permit.head, base_head: START,
+        pr: { number: 7, url: `https://github.com/${repository}/pull/7`, reused: false } }),
+    }, {
+      branch, verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0,
+      allowed_paths: ["src/**", "PROBE_FAIL"],
+      publication: { remote: "origin", repository, base: "main", draft: false, preauthorized: true },
+    });
+    const root = await drive(f, 5);
+    expect(root.state, f.kinds().join(", ")).toBe("pr_opened");
+    const spec = JSON.parse(root.spec_json) as ContainedMissionSpec;
+    mkdirSync(spec.repo_path);
+    const head = root.candidate_head!;
+    const fixed = "c".repeat(40);
+    const merge = "f".repeat(40);
+    let currentHead = head;
+    let merged = false;
+    let pending = false;
+    let attempt = 1;
+    let mergeRequests = 0;
+    const observations: string[] = [];
+    const repo = { id: 1446327922, full_name: repository };
+    const app = { id: 15368 };
+    const suite = { id: 19, app, head_sha: head };
+    const check = { id: 41, name: "check", app, head_sha: head, check_suite: { id: suite.id }, status: "completed", conclusion: "failure" };
+    const scope = root.scope_id;
+    const actor = { principal_id: "human", client_session_id: "cli", read_scopes: [scope], write_scopes: [scope], stop_scopes: [], operator_scopes: [scope] };
+    const mergeService = createSandboxCiMerge({ store: f.store, scopeId: scope, enabled: () => true, now: () => 2000,
+      ci: createSandboxCiReader(), github: () => { throw Error("no network adapters in this closure fixture"); } });
+    const observer = createSandboxCiObserver({
+      store: f.store, scopeId: scope, enabled: () => true, now: () => 2000, log: line => observations.push(line), refresh: () => actor,
+      worktreesRoot: join(spec.repo_path, "worktrees"),
+      merge: {
+        request: async () => { mergeRequests++; },
+        acceptsMerge: mergeService.acceptsMerge,
+      },
+      ci: {
+        now: () => new Date(2000),
+        rest: async path => {
+          observations.push(path);
+          if (path.endsWith("/pulls/7")) return { ok: true, body: { number: 7, state: merged ? "closed" : "open", merged,
+            head: { sha: currentHead, ref: branch, repo }, base: { sha: merged ? merge : START, ref: "main", repo }, user: { id: 352680398, type: "Bot" },
+            ...(merged ? { merge_commit_sha: merge, merged_by: { id: 352681958, type: "Bot" } } : {}) } };
+          if (path.endsWith(`/git/commits/${merge}`)) return { ok: true, body: { sha: merge, parents: [{ sha: START }] } };
+          if (path.includes("/contents/")) return { ok: true, body: { sha: "562d683c3e9ab500aea73f09278a00d4cc266db1", type: "file" } };
+          if (path.includes("/check-suites?")) return { ok: true, body: { total_count: 1, check_suites: [{ ...suite, head_sha: currentHead }] } };
+          if (path.includes("/check-runs?")) return { ok: true, body: { total_count: 1, check_runs: [{
+            ...check, head_sha: currentHead, conclusion: currentHead === head ? "failure" : "success",
+          }] } };
+          return { ok: false };
+        },
+        latestAttempt: async query => ({ ...query, complete: true, requests_used: 1,
+          latest: { check_suite_id: suite.id, check_run_id: check.id, status: "completed", conclusion: "failure" } }),
+        observeLatestJob: async query => ({ outcome: currentHead === head ? "failure" : pending ? "pending" : "success",
+          run_id: currentHead === head ? 2 : 3, workflow_id: 407532337, attempt,
+          check_run_id: check.id, check_suite_id: suite.id, job_id: check.id, job_name: query.name, runner_labels: ["ubuntu-latest"], matrix: {},
+          workflow_path: ".github/workflows/ci.yml", head: currentHead, base: START, app_id: app.id }),
+      },
+    });
+    try {
+      await observer.scan();
+      await observer.scan();
+      const events = f.store.events(root.mission_id);
+      expect(events.filter(event => event.kind === "ci_failure_observed"), observations.join("\n")).toHaveLength(1);
+      const dispatched = events.filter(event => event.kind === "ci_repair_dispatched");
+      expect(dispatched).toHaveLength(1);
+      const child = f.store.get(JSON.parse(dispatched[0]!.payload_json).child as string);
+      expect(child.state).toBe("authorized");
+      expect(JSON.parse(child.spec_json)).toMatchObject({ start_commit: head, allowed_paths: ["PROBE_FAIL"],
+        publication: { preauthorized: false }, ci_repair: { root: root.mission_id, branch, base: START, pr: 7, check_run_id: check.id } });
+      const id = child.mission_id;
+      const move = (to: ContainedMission["state"], candidate?: { head: string; tree: string; diff_digest: string }) => f.store.transition(id, {
+        to, if_revision: f.store.get(id).revision, event: { kind: "fixture", payload: {} }, ...(candidate ? { candidate } : {}),
+      }, 2000);
+      move("workspace_ready"); move("executing");
+      f.store.recordStopEvidence(id, f.store.get(id).revision, {}, 2000);
+      move("candidate_ready", { head: fixed, tree: "d".repeat(40), diff_digest: "a".repeat(64) });
+      move("verifying"); f.store.recordStopEvidence(id, f.store.get(id).revision, {}, 2000);
+      move("verified"); move("revalidating"); move("delivering");
+      const intent = { intent_id: "ci_fixture", candidate: fixed, previous: head, base: START, branch, pr: 7 };
+      f.store.record(id, "ci_repair_push_intent", intent, 2000);
+      const journal = new HostProcessStore(f.store.attention, f.store.owner, { clock: () => 2000 });
+      const opId = "hp_fixture";
+      journal.launching({ op_id: opId, mission_id: id, kind: "git_push", remote_target: remoteTargetOf(repository, branch),
+        local_target: "/isolated/fixture", intent_id: intent.intent_id, argv_digest: "a".repeat(64), boot_id: "fixture",
+        marker: { path: "/isolated/marker", dev: "1", ino: "1" } });
+      journal.registered(opId, { pid: 4242, pgid: 4242, leader_start: null });
+      journal.release(opId, () => {});
+      journal.stopped(opId, { proof: "group_empty+marker_unheld", detail: {}, exit_code: 0 });
+      f.store.record(id, "ci_repair_push_confirmed", { ...intent, op_id: opId }, 2000);
+      const digest = "e".repeat(64);
+      const pr = { number: 7, url: `https://github.com/${repository}/pull/7`, reused: true };
+      f.store.record(id, "ci_delivery_evidence", { head: fixed, base_head: START, evidence_digest: digest }, 2000);
+      f.store.transition(id, { to: "pr_opened", if_revision: f.store.get(id).revision, event: {
+        kind: "pr_opened", payload: { pr, evidence_digest: digest, verification_kind: "github_actions" },
+      } }, 2000);
+      const kinds = () => f.store.events(root.mission_id).map(event => event.kind);
+      currentHead = fixed;
+      await observer.scan();
+      expect(kinds()).toContain("ci_repair_verified");
+      expect(mergeRequests).toBe(1);
+      f.store.record(id, "ci_auto_grant_reserved", {}, 2000);
+      pending = true;
+      attempt = 2;
+      merged = true;
+      await observer.scan();
+      expect(kinds()).not.toContain("ci_pr_merged_observed");
+      expect(kinds()).toContain("ci_pr_merge_unverified");
+      pending = false;
+      await observer.scan();
+      expect(kinds()).not.toContain("ci_pr_merged_observed");
+      expect(kinds().filter(kind => kind === "ci_repair_verified")).toHaveLength(1);
+      attempt = 1;
+      const handoff = { id: "82", expiresAt: 3000,
+        binding: { repository, repositoryId: repo.id, pr: 7, head: fixed, base: START, branch } };
+      f.store.record(root.mission_id, "ci_app_e_merge_reserved", handoff, 2000);
+      await observer.scan();
+      expect(kinds()).not.toContain("ci_pr_merged_observed");
+      f.store.record(root.mission_id, "ci_app_e_merge_released", handoff, 2000);
+      await observer.scan();
+      const closed = f.store.events(root.mission_id).find(event => event.kind === "ci_pr_merged_observed");
+      expect(JSON.parse(closed!.payload_json)).toMatchObject({ pr: 7, head: fixed, merge_commit_sha: merge,
+        handoff_comment_id: 82, app_id: 5620091 });
+    } finally { await observer.stop(); }
+  });
+
+  it("opens an admitted GitHub Actions Mission without a container receipt or App B check", async () => {
+    let checks = 0;
+    const f = setup({
+      assertGithubCiScope: () => {},
+      admitGithubCiCandidate: async () => {},
+      publishVerifyCheck: async () => { checks++; return { check_run_id: 1, created: true }; },
+    }, {
+      branch: "osstack/mission/ci-seed",
+      verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0,
+      publication: { remote: "origin", repository: "osborn-studio/osstack-bridge-sandbox", base: "main", draft: false, preauthorized: true },
+    });
+    const m = await drive(f, 5);
+    expect(m.state).toBe("pr_opened");
+    expect(f.calls.verify).toBe(0);
+    expect(checks).toBe(0);
+    expect(f.kinds()).toContain("ci_candidate_admitted");
+    expect(f.kinds()).toContain("ci_delivery_evidence");
+    expect(f.kinds()).not.toContain("verify_receipt");
+    expect(f.kinds()).not.toContain("delivery_evidence");
+    expect(f.calls.publish[0]?.body).toContain("GitHub Actions");
+    await expect(f.runner.retryVerifyCheck(m.mission_id)).rejects.toThrow("github_ci_has_no_local_verify_check");
+  });
+
+  it("fails closed before opening a GitHub Actions Mission without a configured scope", async () => {
+    const f = setup({}, {
+      branch: "osstack/mission/ci-seed",
+      verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0,
+      publication: { remote: "origin", repository: "osborn-studio/osstack-bridge-sandbox", base: "main", draft: false, preauthorized: true },
+    });
+    const m = await drive(f, 1);
+    expect(m.state).toBe("awaiting_decision");
+    expect(f.allPayloads()).toContain("github_ci_scope_unavailable");
+    expect(f.calls.publish).toHaveLength(0);
+  });
+
+  it("requires a fresh operator approval for the exact repair commit after the local sandbox proposal", async () => {
+    const deletion = "diff --git a/PROBE_FAIL b/PROBE_FAIL\ndeleted file mode 100644\n--- a/PROBE_FAIL\n+++ /dev/null\n@@ -1 +0,0 @@\n-ci pilot\n";
+    const f = setup({
+      assertGithubCiScope: () => {},
+      admitGithubCiCandidate: async () => {},
+      readFile: async (_worktree, path) => path === "PROBE_FAIL" ? "ci pilot\n" : null,
+      cumulativeDiff: async () => deletion,
+      execute: async input => {
+        input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 });
+        return run({ patch: { ok: true, text: deletion, bytes: deletion.length } });
+      },
+    }, {
+      branch: "osstack/mission/ci-repair", allowed_paths: ["PROBE_FAIL"],
+      verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0,
+      publication: { remote: "origin", repository: "osborn-studio/osstack-bridge-sandbox", base: "main", draft: false },
+      ci_repair: { root: "cm_00000000-0000-4000-8000-000000000001", pr: 7, branch: "osstack/mission/ci-seed", base: "e".repeat(40), check_run_id: 9 },
+    });
+    const m = await drive(f, 4);
+    expect(m.state).toBe("awaiting_decision");
+    expect(f.calls.publish).toHaveLength(0);
+    expect(f.calls.verify).toBe(0);
+    await expect(f.runner.decide(m.mission_id, { kind: "approve_publication" })).rejects.toThrow("ci_repair_candidate_approval_required");
+    const actor = { principal_id: "human", client_session_id: "cli", read_scopes: [m.scope_id], write_scopes: [m.scope_id], stop_scopes: [], operator_scopes: [m.scope_id] };
+    expect(() => approveSandboxCiRepair(f.store, { ...actor, operator_scopes: [] }, m.mission_id, m.candidate_head!, 2000)).toThrow("permission_denied");
+    expect(() => approveSandboxCiRepair(f.store, actor, m.mission_id, "f".repeat(40), 2000)).toThrow("ci_repair_approval_refused");
+    const approved = approveSandboxCiRepair(f.store, actor, m.mission_id, m.candidate_head!, 2000);
+    expect(approved.state).toBe("revalidating");
+    const spec = JSON.parse(approved.spec_json) as ContainedMissionSpec;
+    expect(() => assertSandboxCiApproval(f.store, approved, spec, () => actor, 2001)).not.toThrow();
+    expect(() => assertSandboxCiApproval(f.store, approved, spec, () => actor, 2000 + 15 * 60_000)).toThrow("ci_repair_approval_invalid");
+    expect(() => assertSandboxCiApproval(f.store, approved, spec, () => ({ ...actor, write_scopes: [] }), 2001)).toThrow("permission_denied");
+    expect(() => assertSandboxCiApproval(f.store, { ...approved, candidate_head: START }, spec, () => actor, 2001)).toThrow("ci_repair_approval_invalid");
+  });
+
+  it.each([false, true])("only releases a single leased CI repair, with revoked=%s", async revoked => {
+    const deletion = "diff --git a/PROBE_FAIL b/PROBE_FAIL\ndeleted file mode 100644\n--- a/PROBE_FAIL\n+++ /dev/null\n@@ -1 +0,0 @@\n-ci pilot\n";
+    const f = setup({
+      assertGithubCiScope: () => {},
+      admitGithubCiCandidate: async () => {},
+      readFile: async () => "ci pilot\n",
+      cumulativeDiff: async () => deletion,
+      execute: async input => {
+        input.onLaunched({ pid: 4242, pgid: 4242, started_at: 1 });
+        return run({ patch: { ok: true, text: deletion, bytes: deletion.length } });
+      },
+    });
+    const repository = "osborn-studio/osstack-bridge-sandbox";
+    const branch = "osstack/mission/ci-original";
+    const base = "e".repeat(40);
+    const spec = { ...(JSON.parse(f.mission.spec_json) as ContainedMissionSpec), branch: "osstack/mission/repair",
+      worktree_path: "/tmp/fake-ci-worktree", allowed_paths: ["PROBE_FAIL"], max_repair_cycles: 0,
+      verification_mode: "github_actions", verify: { argv: [] },
+      publication: { repository, remote: "origin", base: "main", draft: false },
+      ci_repair: { root: f.mission.mission_id, pr: 7, branch, base, check_run_id: 42 },
+    } satisfies ContainedMissionSpec;
+    const scope = f.mission.scope_id;
+    const actor = { principal_id: "human", client_session_id: "cli", read_scopes: [scope], write_scopes: [scope], stop_scopes: [], operator_scopes: [scope] };
+    let child = f.store.authorize(actor, { scope_id: scope, spec, claim: { repo_identity: "repo", branch: spec.branch, worktree_identity: spec.worktree_path } }, 1001);
+    f.store.record(f.mission.mission_id, "ci_repair_dispatched", { child: child.mission_id }, 1001);
+    for (let i = 0; i < 4; i++) child = await f.runner.step(child.mission_id);
+    const candidate = child.candidate_head!;
+    child = approveSandboxCiRepair(f.store, actor, child.mission_id, candidate, 2000);
+    child = f.store.transition(child.mission_id, { if_revision: child.revision, to: "delivering", event: { kind: "delivery_intent", payload: {} } }, 2001);
+    let pushed = 0;
+    let atRelease = false;
+    let remote = START;
+    let stopped: HostProcessRecord | undefined;
+    const repo = { id: 1446327922, full_name: repository };
+    const pushInput = { mission: child, spec, permit: { mission_id: child.mission_id, revision: child.revision, head: candidate,
+      tree: child.candidate_tree!, spec_digest: child.spec_digest }, body: "", beforeRemoteMutation: () => {}, signal: new AbortController().signal };
+    const deps: Parameters<typeof publishSandboxCiRepair>[1] = {
+      store: f.store, now: () => 2002, enabled: () => true,
+      refresh: () => revoked && atRelease ? { ...actor, write_scopes: [] } : actor,
+      host: { recordForIntent: () => stopped },
+      readPr: async () => ({ number: 7, state: "open", merged: false, head: { sha: remote, ref: branch, repo }, base: { sha: base, ref: "main", repo }, user: { id: 352680398, type: "Bot" } }),
+      runner: { gated: true, run: async (command, args, options) => {
+        expect(command).toBe("git");
+        if (args.includes("remote")) return { stdout: `https://github.com/${repository}.git\n`, stderr: "", exitCode: 0 };
+        if (args.includes("ls-remote")) return { stdout: `${remote}\trefs/heads/${branch}\n`, stderr: "", exitCode: 0 };
+        expect(args).toContain(`--force-with-lease=refs/heads/${branch}:${START}`);
+        expect(args).toContain(`${candidate}:refs/heads/${branch}`);
+        atRelease = true;
+        options.gate!.fence();
+        pushed++;
+        remote = candidate;
+        stopped = { state: "stopped", released_at: 2002, mission_id: child.mission_id, kind: "git_push",
+          remote_target: `${repository}#refs/heads/${branch}`, op_id: "test-push" } as HostProcessRecord;
+        return { stdout: "", stderr: "", exitCode: 0 };
+      } },
+    };
+    if (revoked) {
+      await expect(publishSandboxCiRepair(pushInput, deps)).rejects.toThrow("permission_denied");
+      expect(pushed).toBe(0);
+      expect(remote).toBe(START);
+    } else {
+      await expect(publishSandboxCiRepair(pushInput, deps)).resolves.toMatchObject({ pushed_commit: candidate, pr: { number: 7, reused: true } });
+      await expect(publishSandboxCiRepair(pushInput, deps)).resolves.toMatchObject({ pushed_commit: candidate });
+      expect(pushed).toBe(1);
+      expect(f.store.events(child.mission_id).filter(e => e.kind === "ci_repair_push_intent")).toHaveLength(1);
+      expect(f.store.events(child.mission_id).filter(e => e.kind === "ci_repair_push_confirmed")).toHaveLength(1);
+    }
+  });
+
   it("drives a Mission to verified, then waits for a publication decision", async () => {
     const f = setup();
     let m = await drive(f, 3);

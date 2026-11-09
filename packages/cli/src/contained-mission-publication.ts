@@ -7,6 +7,7 @@ const EVIDENCE_PAGE = 20; const EVIDENCE_PAGES = 10;
 type PrRef = { number: number; url: string; reused: boolean };
 export type MissionPublication =
   | { kind: 'opened'; pr: PrRef; evidence_digest: string; pushed_commit: string; base_head: string | null }
+  | { kind: 'github_ci_opened'; pr: PrRef; evidence_digest: string; pushed_commit: string; base_head: string | null }
   | { kind: 'opened_before_cancel'; pr: PrRef; pushed_commit: string | null; base_head: string | null }
   | { kind: 'evidence_missing'; pr: PrRef; evidence_digest: string };
 
@@ -21,24 +22,27 @@ export function readMissionPublication(store: Pick<ContainedMissionStore, 'db'>,
   const evidenceOf = (row: { payload_json: string }) => { const e = JSON.parse(row.payload_json) as Record<string, unknown>; return { head: text(e['head']), base_head: text(e['base_head']), digest: e['evidence_digest'] }; };
   const opened = last('pr_opened');
   if (opened) {
-    const p = JSON.parse(opened.payload_json) as { pr: unknown; evidence_digest: unknown };
+    const p = JSON.parse(opened.payload_json) as { pr: unknown; evidence_digest: unknown; verification_kind?: unknown };
+    const githubCi = p.verification_kind === 'github_actions';
+    const evidenceKind = githubCi ? 'ci_delivery_evidence' : 'delivery_evidence';
     const digest = text(p.evidence_digest) ?? '';
     // delivery_evidence is recorded just before pr_opened; look back a bounded number of pages.
     let before = opened.seq; let match: ReturnType<typeof evidenceOf> | undefined;
     for (let page = 0; page < EVIDENCE_PAGES && !match; page++) {
-      const rows = store.db.prepare("SELECT seq,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind='delivery_evidence' AND seq<? ORDER BY seq DESC LIMIT ?")
-        .all(missionId, before, EVIDENCE_PAGE) as Array<{ seq: number; payload_json: string }>;
+      const rows = store.db.prepare("SELECT seq,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind=? AND seq<? ORDER BY seq DESC LIMIT ?")
+        .all(missionId, evidenceKind, before, EVIDENCE_PAGE) as Array<{ seq: number; payload_json: string }>;
       match = rows.map(evidenceOf).find(e => e.digest === p.evidence_digest);
       if (rows.length < EVIDENCE_PAGE) break;
       before = rows.at(-1)!.seq;
     }
     return match?.head
-      ? { kind: 'opened', pr: prRef(p.pr), evidence_digest: digest, pushed_commit: match.head, base_head: match.base_head }
+      ? { kind: githubCi ? 'github_ci_opened' : 'opened', pr: prRef(p.pr), evidence_digest: digest, pushed_commit: match.head, base_head: match.base_head }
       : { kind: 'evidence_missing', pr: prRef(p.pr), evidence_digest: digest };
   }
   const cancelled = last('pr_opened_before_cancel');
   if (!cancelled) return null;
-  const prior = last('delivery_evidence', cancelled.seq);
+  const facts = JSON.parse(cancelled.payload_json) as { pr: unknown; verification_kind?: unknown };
+  const prior = last(facts.verification_kind === 'github_actions' ? 'ci_delivery_evidence' : 'delivery_evidence', cancelled.seq);
   const evidence = prior ? evidenceOf(prior) : undefined;
-  return { kind: 'opened_before_cancel', pr: prRef((JSON.parse(cancelled.payload_json) as { pr: unknown }).pr), pushed_commit: evidence?.head ?? null, base_head: evidence?.base_head ?? null };
+  return { kind: 'opened_before_cancel', pr: prRef(facts.pr), pushed_commit: evidence?.head ?? null, base_head: evidence?.base_head ?? null };
 }

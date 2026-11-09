@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
-import { parseContainedMissionSpec } from './contained-mission-runner.js';
+import { GITHUB_CI_SANDBOX, parseContainedMissionSpec } from './contained-mission-runner.js';
 import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
 
@@ -26,16 +26,18 @@ export const ContainedMissionRpcRequests = {
     request: z.object({
       goal: z.string().min(1).max(8000), repo_path: Text(4096), base_ref: Text(256),
       allowed_paths: z.array(Text(512)).min(1).max(64), verification_paths: z.array(Text(512)).max(64).optional(),
-      verify: z.object({ argv: z.array(Text(4096)).min(1).max(64) }).strict(),
+      verify: z.object({ argv: z.array(Text(4096)).max(64) }).strict(),
+      verification_mode: z.literal('github_actions').optional(),
       max_repair_cycles: z.number().int().min(0).max(8).optional(),
       publication: z.object({ remote: Text(256), repository: z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/), base: Text(256),
         draft: z.boolean(), title: Text(200).optional(), preauthorized: z.boolean().optional() }).strict().optional(),
       caps: z.object({ maxFiles: z.number().int().positive(), maxChangedLines: z.number().int().positive(), maxFileBytes: z.number().int().positive(), maxTotalBytes: z.number().int().positive() }).partial().strict().optional(),
-    }).strict(),
+    }).strict().refine(r => r.verification_mode ? r.verify.argv.length === 0 : r.verify.argv.length > 0, 'verification_mode'),
   }).strict(),
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
+  'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/) }).strict(),
   'mission.decide': z.object({ credential: Credential, mission_id: MissionId,
     decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'resume_workspace', 'retry_stop_check', 'resume_budget', 'resume_grant']) }).strict(),
   // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
@@ -67,6 +69,8 @@ export interface ContainedMissionServiceOptions {
   /** D7 stopped live-chain scan; starts after recovery and stops before the host closes. */
   stoppedScan?: Pick<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService, 'start' | 'stop'>;
   checkRetry?: { start(): void; stop(): Promise<void> };
+  githubCi?: { start(): void; stop(): Promise<void> };
+  autoApproveCiRepair?: () => Promise<void>;
   /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
   merger?: import('./contained-mission-merger-shadow.js').MergerShadowHandle;
   /** Comparison report over the shadow merger tables (SELECT only). */
@@ -141,6 +145,7 @@ export class ContainedMissionService {
       this.options.live?.start();
       this.options.stoppedScan?.start();
       this.options.checkRetry?.start();
+      this.options.githubCi?.start();
       this.options.merger?.start();
       this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
       this.timer.unref();
@@ -150,7 +155,12 @@ export class ContainedMissionService {
   /** One tick at a time; a slow step never overlaps the next scan. */
   tick(): Promise<void> {
     if (this.closed || this.options.draining()) return Promise.resolve();
-    if (!this.ticking) this.ticking = this.options.host.tick().catch(() => undefined).finally(() => { this.ticking = undefined; });
+    if (!this.ticking) {
+      const work = this.options.autoApproveCiRepair
+        ? this.options.autoApproveCiRepair().then(async () => { if (!this.closed && !this.options.draining()) await this.options.host.tick(); })
+        : this.options.host.tick();
+      this.ticking = work.catch(() => undefined).finally(() => { this.ticking = undefined; });
+    }
     return this.ticking;
   }
   close(): Promise<void> {
@@ -160,7 +170,7 @@ export class ContainedMissionService {
       if (this.timer) clearInterval(this.timer);
       await this.starting?.catch(() => undefined);
       // Stop all readers before closing the host ledger, even when one stop rejects.
-      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.checkRetry, this.options.merger]
+      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.checkRetry, this.options.githubCi, this.options.merger]
         .map(service => Promise.resolve().then(() => service?.stop())));
       await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
       const failure = stopped.find(result => result.status === 'rejected');
@@ -187,6 +197,7 @@ export class ContainedMissionService {
         const caps = r.caps ? Object.fromEntries(Object.entries(r.caps).filter(([, v]) => v !== undefined)) as Record<string, number> : undefined;
         const spec = await (this.options.resolveStart ?? resolveContainedMissionStart)({
           goal: r.goal, repo_path: r.repo_path, base_ref: r.base_ref, allowed_paths: [...r.allowed_paths], verify: { argv: [...r.verify.argv] },
+          ...(r.verification_mode ? { verification_mode: r.verification_mode } : {}),
           ...(r.verification_paths ? { verification_paths: [...r.verification_paths] } : {}),
           ...(r.max_repair_cycles !== undefined ? { max_repair_cycles: r.max_repair_cycles } : {}), ...(caps ? { caps } : {}),
           ...(r.publication ? { publication: { remote: r.publication.remote, repository: r.publication.repository, base: r.publication.base, draft: r.publication.draft,
@@ -206,6 +217,13 @@ export class ContainedMissionService {
       case 'mission.publish_check': {
         const p = ContainedMissionRpcRequests['mission.publish_check'].parse(params);
         return host.publishCheck(actor, p.mission_id);
+      }
+      case 'mission.approve_ci_repair': {
+        if (this.options.draining() || !this.options.githubCi) throw Error('github_ci_scope_unavailable');
+        const p = ContainedMissionRpcRequests['mission.approve_ci_repair'].parse(params);
+        const { approveSandboxCiRepair } = await import('./contained-mission-github-ci-approval.js');
+        if (this.closed || this.options.draining() || host.isBusy(p.mission_id)) throw Error('github_ci_scope_unavailable');
+        return view(approveSandboxCiRepair(this.store, actor, p.mission_id, p.candidate, Date.now()));
       }
       case 'mission.revision_grant_preview': case 'mission.revision_grant_renew_preview': case 'mission.grant_revisions': case 'mission.chain_decide': {
         const grants = this.options.grants;
@@ -302,6 +320,17 @@ export async function createContainedMissionService(deps: {
   // OSSTACK_BRIDGE=0 (explicit) is a kill switch: with a bridge config present, Mission publication for that repository is refused
   // (BRIDGE_DISABLED) instead of falling back to host credentials. Read once, here; changing it needs a service restart.
   const bridgeKilled = env['OSSTACK_BRIDGE'] === '0';
+  const githubCiSandboxScope = env['OSSTACK_CONTAINED_SANDBOX_CI_SCOPE'];
+  const autoGrantPath = env['OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT'];
+  if (autoGrantPath !== undefined && !githubCiSandboxScope) throw Error('ci_auto_grant_scope_required');
+  const autoGrant = autoGrantPath === undefined ? undefined
+    : new (await import('./contained-mission-ci-auto-grant.js')).SandboxCiAutoGrant(autoGrantPath, githubCiSandboxScope!);
+  const refreshCi = (principal: string, session: string) => deps.access.refresh(principal, session);
+  const assertAutoGrant = (mission: import('@osstack/core').ContainedMission) => {
+    const reservation = store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_auto_grant_reserved'").get(mission.mission_id);
+    if (!reservation) return;
+    if (!autoGrant || deps.draining() || !autoGrant.assert(store, mission, refreshCi, Date.now()).reserved) throw Error('CI_REPAIR_STOPPED');
+  };
   if (bridge && bridgeKilled) log('osstack: bridge: disabled by OSSTACK_BRIDGE=0 (Mission publication for the configured repository is refused)');
   const ports = createContainedMissionPorts({
     store, ...(bridge ? { bridge: { config: bridge, ...(bridgeKilled ? { disabled: true } : {}) } } : {}),
@@ -310,8 +339,11 @@ export async function createContainedMissionService(deps: {
     codex: { bin: need('OSSTACK_CONTAINED_CODEX_BIN'), sourceCodexHome: need('OSSTACK_CONTAINED_CODEX_HOME'),
       ...(env['OSSTACK_CONTAINED_CODEX_IDENTITY'] ? { identityBinary: env['OSSTACK_CONTAINED_CODEX_IDENTITY'] } : {}),
       ...(env['OSSTACK_CONTAINED_CODEX_MODEL'] ? { model: env['OSSTACK_CONTAINED_CODEX_MODEL'] } : {}) },
-    verification: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
-      baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: join(deps.home, 'contained-verification') },
+    ...(githubCiSandboxScope === undefined ? { verification: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
+      baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: join(deps.home, 'contained-verification') } } : {
+        githubCiSandboxScope, githubCiAuthority: { assertAutoGrant, enabled: () => !deps.draining(),
+          refresh: (principal, session) => deps.access.refresh(principal, session) },
+      }),
     author: { name: env['OSSTACK_CONTAINED_AUTHOR_NAME'] ?? 'OSStack Mission', email: env['OSSTACK_CONTAINED_AUTHOR_EMAIL'] ?? 'mission@osstack.invalid' },
   });
   // Owner decision 2026-11-07 (W13 design section 10, decision 2): unproven host-process records are re-checked every 60 seconds.
@@ -377,7 +409,47 @@ export async function createContainedMissionService(deps: {
       compare: (repository, start, head, abort) => compareBridgeLedgerRange(repository, start, head, undefined, abort),
       now: Date.now, cancelChild: async chain => { if (chain.current_mission_id) await host.cancelFromBridge(chain.current_mission_id); } }, signal);
   };
+  const appEKey = env['OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY'];
+  if (appEKey !== undefined && (!githubCiSandboxScope || bridge?.repository !== GITHUB_CI_SANDBOX)) {
+    throw Error('ci_app_e_scope_required');
+  }
+  const githubCi = githubCiSandboxScope === undefined ? undefined : await (async () => {
+    const { createSandboxCiObserver, createSandboxCiReader } = await import('./contained-mission-github-ci.js');
+    const ci = createSandboxCiReader();
+    let merge: ReturnType<typeof import('./contained-mission-sandbox-ci-merge.js').createSandboxCiMerge> | undefined;
+    if (appEKey !== undefined) {
+      const [{ createSandboxCiMerge }, { createSandboxAppEObserver, createSandboxAppEWriteAdapter }] = await Promise.all([
+        import('./contained-mission-sandbox-ci-merge.js'), import('./contained-mission-sandbox-app-e-github.js'),
+      ]);
+      const observe = createSandboxAppEObserver();
+      merge = createSandboxCiMerge({ store, scopeId: githubCiSandboxScope, now: Date.now, ci,
+        enabled: () => !bridgeKilled && !deps.draining(),
+        github: signal => ({ observe, ...createSandboxAppEWriteAdapter({ privateKeyPath: appEKey, signal }) }),
+      });
+    }
+    return createSandboxCiObserver({ store, scopeId: githubCiSandboxScope, enabled: () => !deps.draining(),
+      now: Date.now, log, refresh: refreshCi, ci, ...(merge ? { merge } : {}) });
+  })();
+  const autoApproveCiRepair = autoGrant === undefined ? undefined : async () => {
+    const { latestCiEvent } = await import('./contained-mission-github-ci-approval.js');
+    const { createSandboxCiReader, readSandboxCiJobs } = await import('./contained-mission-github-ci.js');
+    const rows = store.db.prepare("SELECT * FROM engineering_contained_missions WHERE scope_id=? AND state='awaiting_decision' AND json_type(spec_json,'$.ci_repair')='object' LIMIT 16")
+      .all(githubCiSandboxScope) as import('@osstack/core').ContainedMission[];
+    for (const child of rows) {
+      if (deps.draining()) return;
+      if (latestCiEvent(store, child.mission_id, 'ci_repair_approval')) continue;
+      try {
+        autoGrant.assert(store, child, refreshCi, Date.now());
+        const spec = parseContainedMissionSpec(child.spec_json);
+        const repair = spec.ci_repair!;
+        const observed = await readSandboxCiJobs(createSandboxCiReader(), { pr: repair.pr, head: spec.start_commit, base: repair.base, branch: repair.branch }, AbortSignal.timeout(60000));
+        if (deps.draining() || observed.kind !== 'failure' || observed.job.check_run_id !== repair.check_run_id) continue;
+        autoGrant.approve(store, child, refreshCi, Date.now());
+      } catch { /* Missing, expired, revoked or mismatched authority leaves the owner decision pending. */ }
+    }
+  };
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,
+    ...(autoApproveCiRepair ? { autoApproveCiRepair } : {}), ...(githubCi ? { githubCi } : {}),
     revisionRecovery: live?.revisionRecovery ?? revisionRecovery, ...(shadow ? { shadow } : {}),
     ...(live ? { live: live.live, stoppedScan: live.stoppedScan, grants: live.grants,
       ...(live.checkRetry ? { checkRetry: live.checkRetry } : {}) } : {}), ...(merger ? { merger } : {}), mergerReport });

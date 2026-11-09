@@ -362,6 +362,27 @@ describe("ContainedMissionHost status publication", () => {
     expect(f.host.status(f.principal, m.mission_id).publication).toEqual({ kind: "opened", pr, evidence_digest: "2".repeat(64), pushed_commit: "b".repeat(40), base_head: "e".repeat(40) });
   });
 
+  it("reports the one-shot merge state from durable CI evidence", async () => {
+    const f = fixture(); const m = await f.start();
+    const id = m.mission_id;
+    const head = "b".repeat(40);
+    const digest = "2".repeat(64);
+    f.store.record(id, "ci_delivery_evidence", evidence(digest, head), f.now());
+    f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, f.now());
+    const state = () => f.host.status(f.principal, id).github_ci_chain;
+    expect(state()).toBeUndefined();
+    const handoff = { binding: { pr: 7, head } };
+    f.store.record(id, "ci_app_e_merge_reserved", handoff, f.now());
+    expect(state()).toEqual({ state: "merge_reserved", pr: 7, head });
+    f.store.record(id, "ci_app_e_merge_released", handoff, f.now());
+    expect(state()).toEqual({ state: "merge_reconciling", pr: 7, head });
+    f.store.record(id, "ci_pr_merge_unverified", { pr: 7, head, reason: "job_binding_unavailable" }, f.now());
+    expect(state()).toEqual({ state: "merge_held", pr: 7, head, reason: "job_binding_unavailable" });
+    const merged = { pr: 7, head, merge_commit_sha: "f".repeat(40), handoff_comment_id: 82, app_id: 5620091 };
+    f.store.record(id, "ci_pr_merged_observed", merged, f.now());
+    expect(state()).toEqual({ state: "closed", ...merged });
+  });
+
   it("reports missing evidence instead of throwing", async () => {
     const f = fixture(); const m = await f.start();
     f.store.record(m.mission_id, "pr_opened", { pr, evidence_digest: "3".repeat(64) }, f.now());

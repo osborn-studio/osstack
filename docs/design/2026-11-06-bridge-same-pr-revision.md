@@ -5,6 +5,8 @@
 
 方案阶段 5 要求开工前把实现细节写成设计附录并做一次独立审计（设计 §14 第 3 轮末尾、§11 S5“先出实现细节并审计”）。本文就是这份附录。行号均指基线 `cafadc19`。
 
+> 2026-11-09 首发计划更新。本附录保留正式评审触发和本地验证的既有合同及 5-G 证据。首发新增 GitHub CI 触发的同 PR 修复，采用人工确认候选和 GitHub runner 复验的独立授权路径，见[实施方案阶段 5](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-5-github-ci-失败后的同-pr-修复)与 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)。
+
 ## 1. 范围
 
 阶段 5 让 osstack 在**有人工授权的链**上自己完成一轮修订：读到合格的 `CHANGES_REQUESTED` → 预留 → 派发修订子 Mission → 子 Mission 执行与验证 → App A 以带租约的快进推送到同一个 PR 的远端分支 → 读回确认 → 回到等待评审。没有授权的 Mission 继续只跑影子（阶段 4）。
@@ -225,7 +227,7 @@ revision_feedback?: { review_ids: number[]; feedback_digest: string /* 64 hex */
 | 保护集合 | 代码常量 `matchMissionProtectedPath`（`governance/src/mission-patch/protected-set.ts`），不在规格中 | 派发前 `missionProtectedSetDigest() === grant.protected_set_digest`，否则 `protected_set_changed` |
 | `publish_target`、`revision_feedback` | 见上 | 新增 |
 
-规格摘要随 `start_commit`、`branch`、`worktree_path`、`publish_target`、`revision_feedback` 变化，不作断言（方案 5.2 验收）。
+规格摘要随 `start_commit`、`branch`、`worktree_path`、`publish_target`、`revision_feedback` 变化，不作断言（原方案 5.2 验收）。
 
 **累计分类：** runner 现在只对 `start_commit` 起的累计 diff 分类。修订子 Mission 的 `start_commit` 是上一轮的 head，两轮之后改动可以达到 caps 的两倍。有 `publish_target` 时，再算一次从 `chain_start_commit` 起的累计 diff 并用同一 spec 分类；任一为 `T2`/`rejected` 即 `tier_escalated`。产生候选的两条路径都要做：执行器补丁路径（`runner.ts` L272–281）与 `adoptWorktree`（L141 起，它按子 Mission 的 `start_commit` 计算 `worktreeDiff` 并分类）；二者共用一个 `classifyForChain(spec, …)`。`publicationBlocker`（L364–378）对修订规格再查一次：最近的 `candidate_committed` 事件必须带 `chain_tier`（链累计分类结果）且为 T0/T1。测试：子 Mission 相对 diff 在 caps 内、链累计 diff 超 caps，分别走补丁路径与采纳路径，都被拒。
 
@@ -322,7 +324,7 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 
 全部是同步数据库读与一次同步文件读（`EngineeringAccess.read`，L44–63）。修订路径上它作为 `fence` 传给 W13 的 `journal.release(op_id, fence)`：在登记之后、放行之前、放行记账的同一顶层事务里运行（§2 第 1 条）；之后同步写放行字节，放行才是授权边界。同一远端分支的串行由 W13 的 `engineering_host_process_remote_open` 索引保证（§2 第 5 条）。任一失败抛 `CONTAINED_REVISION_FENCE:<code>`；没有推送；`deliverRevision` 把意图结算为 `failed`，子 Mission `publication_failed:<code>`，链按 §4.4 停止。
 
-**验收（方案 5.4）：** 取消子 Mission 后重启不推送——取消后子 Mission 为 `cancel_requested`，`recover()` 结算为 `cancelled`（`host.ts` L205–226）；即使有 `pending` 推送意图，§5.5 只读对账判为 `failed`；栅栏的 `state === 'delivering'` 检查兜底。测试在第 1 步之后、第 4 步之前各注入一次取消与重启。
+**验收（原方案 5.4）：** 取消子 Mission 后重启不推送——取消后子 Mission 为 `cancel_requested`，`recover()` 结算为 `cancelled`（`host.ts` L205–226）；即使有 `pending` 推送意图，§5.5 只读对账判为 `failed`；栅栏的 `state === 'delivering'` 检查兜底。测试在第 1 步之后、第 4 步之前各注入一次取消与重启。
 
 ### 5.5 恢复：只读回执对账（5-E）
 
@@ -444,7 +446,7 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 | 7 | `OSSTACK_BRIDGE=0` 同时阻止在途子 Mission 推送 | 关闭开关应意味着不再有任何推送（§6） |
 | 8 | 新增 live 停止原因与 `chain-decide`；`child_halted` 自动恢复 | 设计 §8.5 的“人：再授一轮 / 放弃 / 手工接管”需要命令面；子 Mission 被人恢复后链不应再要一次决定（§4.4） |
 | 9 | 修订子 Mission 另按根的 `start_commit` 做累计分类 | 否则两轮后改动可达 caps 两倍（§5.2） |
-| 10 | live 对账周期没有方案任务，放在 5-E | 方案 5.1–5.7 没有列出它；它与恢复同属服务启动与周期 |
+| 10 | live 对账周期没有方案任务，放在 5-E | 原方案 5.1–5.7 没有列出它；它与恢复同属服务启动与周期 |
 | 11 | 修订后 PR 正文标记不更新 | 不放开 `gh pr edit`；App E 需要经链解析（§5.3 末） |
 | 12 | 不变式 6 按提交范围检查，每次推送绑定引入的提交列表（上限 64） | 一轮可有多个修复提交，只看分支顶端不能说明“每个提交都有意图”（§5.3、§5.5） |
 | 13 | 停止后的推送回执走 `reconcileReceipt`，check 意图可在发布后单独写 | 4-A 的 `recordIntent`/`settleIntent` 只在 `revising`/`publishing` 生效（§4.1） |

@@ -3,6 +3,8 @@
 日期：2026-11-07。上位文档：[实施方案](../2026-11-02-osstack-grok-bridge-implementation.md)、[阶段 5 附录](../../design/2026-11-06-bridge-same-pr-revision.md)、[W13 设计](../../design/2026-11-06-w13-host-git-survival.md)、[App E 设计](../../design/2026-11-06-bridge-shadow-merger.md)、[阶段 6 规格](../../design/2026-11-06-bridge-phase6-operator.md)、[运行手册](../../runbooks/bridge.md)。
 配套：[checks.md](checks.md)（每条要求的判定与证据）、[progress.md](progress.md)（当前状态与下一步）。
 
+> 2026-11-09 首发执行顺序以[实施方案阶段 5–7](../2026-11-02-osstack-grok-bridge-implementation.md#阶段-5-github-ci-失败后的同-pr-修复)为准。先在沙箱跑通 GitHub CI 失败、人工授权推送、原 job 复验；再对同一 PR 验证 Watcher、人审、合并和关单；最后在批准的单 scope 试运行。下方节点及其证据对应原正式评审修订和 App 迁移路线。首发生产仍须完成 [ADR-007 提案](../../decisions/ADR-007-bridge-github-ci-first.md)的审批。
+
 ## 0. 任务与“完成”的定义
 
 **任务：** 让 osstack 与 Grok Bots 自动互相联系：Mission PR 由 App A 发布、App B 发证据、Grok Bots（App C/D）评审与验证；收到合格的要求修改后，osstack 在同一 PR 上受控修订；App E 先影子评估合并；最后在主仓库对单个 scope 打开 `OSSTACK_BRIDGE=1`。

@@ -49,7 +49,7 @@ export function createMergerMissionView(store: Pick<ContainedMissionStore, 'db' 
       const mission = store.get(missionId);
       if (mission.state !== 'pr_opened') return null;
       const publication = readMissionPublication(store, missionId);
-      if (!publication) return null;
+      if (!publication || publication.kind === 'github_ci_opened') return null;
       const opened = store.db.prepare("SELECT seq,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind='pr_opened' ORDER BY seq DESC LIMIT 1")
         .get(missionId) as { seq: number; payload_json: string } | undefined;
       if (!opened) return null;

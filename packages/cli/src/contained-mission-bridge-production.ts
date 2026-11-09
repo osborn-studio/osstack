@@ -9,6 +9,9 @@ export { createContainedMissionPorts } from './contained-mission-ports.js';
 export { ContainedMissionHost } from './contained-mission-host.js';
 export { ContainedMissionService } from './contained-mission-rpc.js';
 export { EngineeringAccess } from './engineering-access.js';
+export { readCiFailureHints } from './contained-mission-local-failure-reader.js';
+export { createActionsCiFailureReadDeps } from './contained-mission-local-failure-reader-transport.js';
+export { readSandboxCiJobs, createSandboxCiReader } from './contained-mission-github-ci.js';
 
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const compared = z.object({ status: z.enum(['ahead', 'behind', 'diverged', 'identical']),

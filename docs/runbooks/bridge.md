@@ -442,7 +442,19 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 ---
 
+### 6.1 GitHub Actions 修复试验
+
+在独立沙箱控制面配置 App A 与现行 Mission ruleset，把 `OSSTACK_CONTAINED_SANDBOX_CI_SCOPE` 设为沙箱克隆所在的登记 scope。此模式可以省略 Docker 配置。启动权限限于该 scope 的 operator，当前 fixture 使用 `osborn-studio/osstack-bridge-sandbox`。
+
+用 `osstack mission start --github-ci --base main --publish-repository osborn-studio/osstack-bridge-sandbox` 及正常的 scope、repo、goal 和 allow 参数启动。在夹具演练中显式允许 `PROBE_FAIL` 和需要保留的探针文件。初始发布使用原有的 `approve_publication` 入口。失败观察确认已登记的工作流、检查、提交和失败步骤后，最多派发一个修复 Mission。
+
+从原 Mission 的状态事件 `ci_repair_dispatched` 取出修复 Mission ID。审阅该 Mission 的候选提交和本地 diff 后，使用 `osstack mission approve-ci-repair --mission ID --candidate SHA`。授权有效期为 15 分钟。发布前 osstack 再读 PR、CI 失败和授权，用旧 head 的 Git 租约推送单个快进提交。修复停在 `ci_repair_publication_unresolved` 时，先对照发布意图与远端，保留该次尝试的记录。
+
+`ci_repair_verified` 保存新提交的 GitHub 检查证据。App B 的本地检查信号仍用于容器验证路径。Watcher、计入的人工审批和合并身份继续按阶段 6 审批与验收。
+
 ## 7. 阶段 7 上线前检查清单
+
+> 2026-11-09 首发计划更新。下列是既有本地验证和 App 迁移路径的清单。GitHub CI 驱动首发须先按[实施方案阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)完成验证、更新运行手册，并审批 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)后再开启单 scope 试运行。
 
 方案阶段 7 的验收是“连续 5 条链无异常，设计 §6 的指标能用 `osstack stats` 读出”。下面每一项都要有记录（PR 号、链 id、时间）。任何一项不满足，不在主仓库开 `OSSTACK_BRIDGE=1`。
 

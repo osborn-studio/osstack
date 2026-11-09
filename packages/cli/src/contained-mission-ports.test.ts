@@ -16,7 +16,7 @@ const env = { ...hardenedGitEnvironment(process.env), GIT_AUTHOR_NAME: "t", GIT_
 const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env, encoding: "utf8" }).trim();
 const AUTHOR = { name: "Mission Host", email: "host@example.invalid", date: "1700000000 +0000" };
 
-function fixture(bridge?: import('./contained-mission-bridge.js').BridgeOptions) {
+function fixture(bridge?: import('./contained-mission-bridge.js').BridgeOptions, githubCi = false) {
   const root = realpathSync(createScratchDirSync("tests", "contained-ports"));
   const repo = join(root, "repo"); mkdirSync(repo);
   const files: Record<string, string> = { "src/a.txt": "hi\n", "src/b.txt": "bye\n", "bin/run.sh": "#!/bin/sh\necho run\n", "README.md": "readme\n" };
@@ -28,12 +28,14 @@ function fixture(bridge?: import('./contained-mission-bridge.js').BridgeOptions)
   cleanup.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   const attention = new AttentionStore(db, path); const owner = attention.claimOwner("owner");
-  const scope = attention.registerScope(owner, "t", root);
+  const scope = attention.registerScope(owner, "t", githubCi ? repo : root);
   const store = new ContainedMissionStore(attention, owner);
   const journalRoot = join(root, "journal"); mkdirSync(journalRoot);
   let clock = 1000;
   const ports = createContainedMissionPorts({ store, ...(bridge ? { bridge } : {}), hostProcess: hostProcessOptions(root), now: () => ++clock, codex: { bin: join(root, "no-codex"), sourceCodexHome: root }, runtimeRoot: join(root, "runtime"),
-    verification: { socketPath: join(root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot }, author: AUTHOR });
+    ...(githubCi ? { githubCiSandboxScope: scope.scope_id } : {
+      verification: { socketPath: join(root, "docker.sock"), daemonId: "d", baseImageId: "sha256:" + "0".repeat(64), journalRoot },
+    }), author: AUTHOR });
   const spec: ContainedMissionSpec = { goal: "g", repo_path: repo, base_ref: "main", start_commit: start, branch: "osstack/mission/t1", worktree_path: join(root, "worktrees", "mission-t1"),
     allowed_paths: ["src/**"], verify: { argv: ["true"] } };
   const principal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [], operator_scopes: [] };
@@ -64,6 +66,25 @@ describe('revision production publication adapters', () => {
 const indexDigest = (worktree: string) => createHash("sha256").update(readFileSync(join(sh(worktree, "rev-parse", "--absolute-git-dir"), "index"))).digest("hex");
 
 describe("contained Mission ports: workspace", () => {
+  it("admits a real Git candidate for the registered CI scope without a Docker port", async () => {
+    const repository = "osborn-studio/osstack-bridge-sandbox";
+    const publisher = { app_id: 5620012, installation_id: 1, private_key_path: "/not-read-for-local-git" };
+    const f = fixture({ config: { repository, publisher, evidence: { ...publisher, app_id: 3 }, mission_ruleset_ids: [26577637, 26577639] } }, true);
+    const spec = { ...f.spec, verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0,
+      publication: { repository, remote: "origin", base: "main", draft: false } } satisfies ContainedMissionSpec;
+    const mission = f.authorize(spec);
+    expect(() => f.ports.assertStartMode!(mission.scope_id, spec)).not.toThrow();
+    expect(() => f.ports.assertStartMode!("f".repeat(64), spec)).toThrow("CONTAINED_GITHUB_CI_SCOPE");
+    const ws = await f.ports.createWorkspace(spec, signal(), f.write());
+    f.store.record(mission.mission_id, "workspace_created", { worktree: ws.worktree, config_digest: ws.configDigest }, f.now());
+    const candidate = await f.ports.commit({ mission_id: mission.mission_id, worktree: ws.worktree, branch: spec.branch, expectedHead: ws.head,
+      files: [{ action: "write", path: "src/a.txt", content: "candidate\n" }], message: "candidate", fence: () => {} });
+    const admitted = { ...mission, candidate_head: candidate.head, candidate_tree: candidate.tree };
+    await expect(f.ports.admitGithubCiCandidate!(admitted, spec)).resolves.toBeUndefined();
+    await expect(f.ports.admitGithubCiCandidate!({ ...admitted, candidate_tree: "e".repeat(40) }, spec)).rejects.toThrow("CONTAINED_GITHUB_CI_CANDIDATE");
+    await expect(f.ports.verify(mission, ["true"], signal())).rejects.toThrow("CONTAINED_VERIFICATION_NOT_CONFIGURED");
+  });
+
   it("creates a no-checkout worktree at start_commit and reports the common git dir", async () => {
     const f = fixture();
     const ws = await f.ports.createWorkspace(f.spec, signal(), f.write());
