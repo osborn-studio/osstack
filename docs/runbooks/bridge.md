@@ -454,6 +454,8 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 ## 7. 阶段 7 上线前检查清单
 
+> 2026-11-09 首发计划更新。下列是既有本地验证和 App 迁移路径的清单。GitHub CI 驱动首发须先按[实施方案阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)完成验证、更新运行手册，并审批 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)后再开启单 scope 试运行。
+
 方案阶段 7 的验收是“连续 5 条链无异常，设计 §6 的指标能用 `osstack stats` 读出”。下面每一项都要有记录（PR 号、链 id、时间）。任何一项不满足，不在主仓库开 `OSSTACK_BRIDGE=1`。
 
 **前置代码与决定**

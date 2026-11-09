@@ -3,7 +3,7 @@
 日期：2026-11-02。基线：`main` `54e640df`（含 #364 设计、#365 ADR-005）。
 输入：《osstack × Grok Bots 打通设计草稿》（PDF，下称“草稿”）、[双循环接通设计 v3](../design/2026-11-01-osstack-grok-bridge.md)（下称“设计”）、[ADR-005 登记名单](../decisions/ADR-005-bridge-identity-registry.md)。
 
-本文把草稿和设计变成可以执行的开发计划：每个阶段写明前置条件、要改的文件、测试、命令和验收标准。第一部分是**使用说明**，阶段 0 合并后即可按它操作。范围以设计为准：阶段 0 现在生效；阶段 1 需用户同意后开工；阶段 2 起需先做设计 §12 的决定；修订链（阶段 4、5）仍按设计**暂缓**，这里只给出开工时的工作分解，不改变暂缓决定。
+本文把草稿和设计变成可以执行的开发计划：每个阶段写明前置条件、要改的文件、测试、命令和验收标准。第一部分是**使用说明**，阶段 0 合并后即可按它操作。2026-11-09 更新阶段 5–7。首发由 GitHub Actions 执行 CI，Mac mini 上的 osstack 负责诊断和修复，现有 Watcher/Merger 参与受控验收。生产证据和身份政策见 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)。
 
 ---
 
@@ -18,10 +18,10 @@
 | 阶段 2 | 决定 ADR、ruleset 基线、沙箱仓库、GitHub App 与平台探针 | S0 | S0、S1、S2 | 只有脚本 | 设计 §12 决定（ADR-006） | **已完成**（#369–#372；P-10 端到端已在阶段 3 验收中通过） |
 | 阶段 3 | 证据：Publisher App 推送、`osstack/verify` check run | — | S3 | 是，中 | 阶段 2 完成 | **已实现**（沙箱发布路径验收通过；完整 Mission 端到端待 Docker 环境） |
 | 阶段 4 | 影子对账器、链表与意图日志、回放语料、模型检查 | S3 前半 | S4 | 是，大 | 用户取消暂缓（2026-11-04 已取消） | **可执行**（只做影子记录，不预留、不派发、不写 GitHub） |
-| 阶段 5 | 同 PR 受控修订 | S3、S4 | S5 | 是，大 | 阶段 4；W13 已合并 | 已取消暂缓（2026-11-04），等阶段 4 |
-| 阶段 6 | Grok Bots 改用 App 身份、`grok/verify-osstack` 必需检查 | S1 的 routine 修改 | S6 | 否（平台侧） | 阶段 2、阶段 3 沙箱验收 | 待决定 |
-| 阶段 7 | 主仓库开启 `OSSTACK_BRIDGE=1` 与运行手册 | — | S7 | 文档 | 阶段 5、6 | **暂缓** |
-| 不做 | 出站 webhook、普通 PR 的 bot 合并（Mission PR 的影子合并见 ADR-006）、Grok Bot 在 osstack 主机执行 CLI | S5、S6、S4 中的“调 CLI” | 推迟项、§7 差异表 | — | 有真实需求再提 | 已否决或推迟 |
+| 阶段 5 | GitHub CI 失败后，同一 PR 受控修复并由原 CI 复验 | S3、S4 | S5 首发增量 | 是 | 阶段 3、4；W13；登记沙箱 | 正式评审修订 5-G 已通过；CI 驱动路径待验收 |
+| 阶段 6 | 验证实际 Watcher、Mission 人工审批、合并和回读 | S1 的 routine 修改 | S6 首发接入 | 平台侧 | 阶段 5 的修复 PR；身份与证据策略 | #436 普通 PR 已通过；Mission PR 待验收 |
+| 阶段 7 | 单 scope 试运行、连续五条链和指标验收 | — | S7 | 运行配置 | 阶段 5、6；运行手册、规则读回和生产批准 | 生产关闭 |
+| 不做 | 出站 webhook、另建普通 PR 合并流程（已有流程见 #436）、Grok Bot 在 osstack 主机执行 CLI | S5、S6、S4 中的“调 CLI” | 推迟项、§7 差异表 | — | 有真实需求再提 | 已否决或推迟 |
 
 草稿与设计的三处主要差异照设计执行：
 - Grok Bot 不在 osstack 主机上执行 `mission revise`，修订由人发起（阶段 0）或由 osstack 自己的对账器发起（阶段 5）。
@@ -30,19 +30,15 @@
 
 ### 0.2 依赖图
 
-```
-阶段 0 ──▶ 阶段 1（与阶段 2 互不依赖）
-
-§12 决定 ──▶ 阶段 2 ──▶ 阶段 3 ──▶ 阶段 6 ──────────────┐
-                           │                             ▼
-                           └──▶ 阶段 4 ──▶ 阶段 5 ──▶ 阶段 7
-                                            ▲
-                     W13（阶段 5 硬前置）、W14（生产级验收）
+```text
+阶段 0 ─▶ 阶段 1（与阶段 2 互不依赖）
+阶段 2 ─▶ 阶段 3 ─▶ 阶段 4 + W13 ─▶ 阶段 5 ─▶ 阶段 6 ─▶ 阶段 7
+                                        CI 修复    Bot 验收    单 scope 试运行
 ```
 
 ### 0.3 全局约束（所有阶段）
 
-- 每个 PR 目标分支 `main`，一个 PR 只做一件事；阶段 0–3、6 各一个 PR，阶段 4、5 在解除暂缓后的实现设计里再拆分。osstack 和任何会话都不合并 `main`，由人合并。
+- 每个 PR 目标分支 `main`，一个 PR 只做一件事；阶段 0–3、6 各一个 PR，阶段 4、5 按实现和验收边界拆分。osstack 负责发布与读回；合并由符合仓库规则和已批准身份策略的操作者完成。
 - 开发版 CLI 只能对显式的临时 `OSSTACK_HOME` 运行，不能对 `~/.osstack` 或保留 home 运行（AGENTS.md）。
 - 临时目录用 `createScratchDir` / `scripts/lib/scratch.mjs`，不直接 `mkdtemp`。
 - 新的顶层 import 要先测加载时间（AGENTS.md 性能预算）；桥接相关代码只在 `mission` 命令路径上懒加载。
@@ -449,37 +445,34 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 | 4.6 回放语料 | `scripts/record-pr-timeline.mjs`：录制指定 PR 的时间线到 `packages/cli/src/__fixtures__/bridge/`（去掉正文中的个人信息，只保留结构与 id） | 录制 #340–#363 |
 | 4.7 影子运行 | `OSSTACK_BRIDGE=shadow`：只记录“会做的动作”事件，不预留、不派发 | 回放无异常；无未登记身份被消费 |
 
-### 阶段 5　同 PR 受控修订（设计 S5，暂缓）
+### 阶段 5 GitHub CI 失败后的同 PR 修复
 
-**硬前置：** 阶段 4 完成；W13（主机 git 子进程在守护进程崩溃后存活）已合并；阶段 2 探针 P-2 至 P-4 通过。生产级验收另需 W14。
+**目标。** Mac mini 上的 osstack 负责识别失败、准备补丁、受控推送和读回。GitHub Actions 在原 runner 和矩阵上验证新提交。首发路径在 Mac mini 的 Docker 引擎停止时也要跑通。阶段 4 的观察、阶段 3 的 App A 发布和 W13 的写入保护是本阶段的基础。
 
-实现附录：[阶段 5 同 PR 受控修订](../design/2026-11-06-bridge-same-pr-revision.md)（2026-11-06，三轮 Codex 审计）。附录把本阶段拆成 5-P、5-A 至 5-G，核对了前置条件（W13 未实现；P-2 至 P-4 未覆盖带租约的 `git push`），并列出需要用户做的决定。
+[原同 PR 受控修订附录](../design/2026-11-06-bridge-same-pr-revision.md)与[恢复和确认事务](../design/2026-11-07-bridge-phase5-resume-and-ordering.md)继续说明正式评审触发的路径。其 5-G v2 沙箱验收已通过 13/13，按[原始验收范围](../reports/bridge-phase5-verification/fourth-run-v2.md)保存。#432、#434、#435 的可信镜像与本地诊断基础可用于后续独立路径。首发的 CI 证据及推送授权见 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)。
 
-补充：[同子 Mission 恢复、决定顺序、停止链扫描与确认事务](../design/2026-11-07-bridge-phase5-resume-and-ordering.md)（2026-11-07，模型说明 D4、D7–D10 的协议，归 5-C、5-E、5-F）。
-
-| 任务 | 文件 | 验收 |
+| 任务 | 交付与依赖 | 验收 |
 |---|---|---|
-| 5.1 授权 | `contained-mission-command.ts` 加 `grant-revisions --mission <root> --rounds 1\|2 --expires <时长>`，只能在交互终端执行并要求输入确认（与 `issue-grant` 相同） | 非 TTY 被拒；`grant` 绑定 principal、client session、scope、仓库与 base |
-| 5.2 子 Mission | `contained-mission-host.ts`：每轮新本地分支 `osstack/mission/<新随机 id>`，`start_commit = published_head`，规格继承允许路径、验证命令、保护集合，带 `publish_target` | 允许路径、验证命令、保护集合与根 Mission 完全相同（逐字段断言）；规格摘要会因分支、worktree 路径、`publish_target` 等字段不同而变化，不作断言 |
-| 5.3 发布 | `contained-mission-ports.ts` 的 `publishRevision`（设计 §8.7 第 4 步的 7 个子步骤）；`ports.publish` 拒绝带 `publish_target` 的规格 | 租约失败、读回不符、base 变化、PR 关闭都转人 |
-| 5.4 栅栏 | `contained-mission-runner.ts`：`beforeRemoteMutation` 加链与授权检查，紧挨着推送；每次发布尝试按 `publish_target` 分派 | 取消子 Mission 后重启，不推送 |
-| 5.5 恢复 | 启动时只读回执对账（设计 §8.7 第 5 步） | 推送后、记录前杀进程，重启后按回执完成或转人 |
-| 5.6 故障注入与变异 | 设计 §10.3 的故障注入与变异测试 | 每个变异都有测试失败 |
-| 5.7 沙箱端到端 | 沙箱中两轮修订后通过；另一条链第 3 次要求修改转人；越权测试 | 时间线与账本一致 |
+| 5.1 从 GitHub 识别失败 | 复用 #433 的检查读取合同，接上真实 GitHub 读取和扫描。只接受登记沙箱 Mission PR 当前提交上、受信任工作流最新已完成尝试的实际失败。读取真正失败的 job、runner 系统和矩阵，沿依赖区分下游汇总失败。 | 一次真实失败只产生一条诊断。旧提交、旧尝试、缺页、错误生产者、取消、超时和基础设施失败按原因等待、重跑或转人。Ubuntu 的汇总检查失败不会把上游 macOS 故障当成 Linux 故障。 |
+| 5.2 在同一 PR 上发布一轮受控修复 | 基于 5.1 的提交与基线准备隔离补丁。首发最多一轮，负责人审阅并授权推送指定候选提交，授权绑定仓库、PR、分支、当前 head、base、候选和有效期。复用 App A 和 W13 的发布、租约、意图日志及重启对账。CI 路径有独立的授权分支，原本地验证路径继续使用自己的回执。 | 暂无授权、授权撤销、候选改动、head/base 移动、保护路径触及和并发重复派发均拒绝推送；取消或重启后按意图对账。PR 仍是同一个，只追加一次快进提交。推送授权与新提交上的合并审批分别记录。 |
+| 5.3 等 GitHub 验证新提交 | 5.2 推送后进入等待 CI。读回原失败 job 和全部指定必需检查在新提交上的最新完整结果。保留工作流、运行、尝试、矩阵、检查生产者、head/base 和发布意图关联。 | 原 job 在对应 runner 上通过，全部必需检查满足，才交给阶段 6。检查仍失败、缺失或不可归因时保留原因和证据，首发由负责人处理。CI 路径保存远端检查证据，App B 的本地验证结论只按实际本地运行发布。 |
+| 5.4 沙箱演练 | 在登记沙箱以单 scope 授权从正常入口使用 App A 开出 Mission PR，记录首个 head 并等待 GitHub CI。用受控夹具触发真实 job 失败，再完成 5.1–5.3。保留防重、撤权和错误结果的定向用例。阶段 6 继续验收同一 PR。 | Docker 引擎全程停止时，初始 PR 开出，真实失败被识别，经过授权的修复快进到同一 PR，原失败 job 与必需检查在新提交上通过。记录 PR、修复前后提交、失败和成功的 run/job，以及发布者和账本。 |
 
-### 阶段 6　Grok Bots 改用 App 身份（设计 S6）
+### 阶段 6 Watcher Merger 与分支规则验收
 
-**前置：** 阶段 2 完成，且阶段 3 已在沙箱验收（Publisher 已是 App A）。阶段 3 未完成时不能切换：否则 PR 作者仍是用户账号，而 ADR-005 已被取代。
+**目标。** 用现有 Grok PR Watcher 和 PR Merger 验证修复后的 Mission PR。#436 已验证普通 PR 的 Watcher 审批、Merger 合并和 osstack 读回。Mission PR 在阶段 5 的同一沙箱 PR 上补验，身份方案由 [ADR-007](../decisions/ADR-007-bridge-github-ci-first.md) 明确首发范围；[App C/D 运营规格](../design/2026-11-06-bridge-phase6-operator.md)保留为独立的身份迁移路径。
 
-运营者规格：[阶段 6 运营者规格](../design/2026-11-06-bridge-phase6-operator.md)（2026-11-06，两轮 Codex 审计）：App C/D 的事件规则、不读账本的 Mission PR 识别、`grok/verify-osstack` check run 合同、`main-quality.json` 待审 diff（下文的 `main.json` 即该文件）、沙箱验收清单与回滚。
+| 任务 | 交付与依赖 | 验收 |
+|---|---|---|
+| 6.1 读回实际角色与检查配置 | 运营者核对 Watcher/Merger 的账号、登记沙箱、事件及巡检、Mission 识别和版本。管理员核对拟用于试点的 GitHub Actions 必需检查和生产者、禁止绕过、批准、线程和分支写入规则。可在阶段 5 实现前先做只读核对，尽早暴露接入阻塞。 | 当前 PR 身份、修订后 head、受保护基线中的工作流和检查来源可读回。同名错误生产者、旧 head 的绿灯以及只有 `verified` 标签均无法通过。 |
+| 6.2 验证修订后复验和合并 | 阶段 5.4 绿灯后，Watcher 对新 head 复验、审批并打 `verified`。由 `gilosbornhello` 阅读新提交并给出 Mission 计入的人工审批。合并前核对当前 head/base、检查、批准、线程和依赖。 | 缺人工审批或存在未处理的失败时，Mission 保持待合并。经批准的 Mission 合并路径对已评估 head 执行 squash，osstack 读回 `MERGED`、合并 SHA 和账本后关单。保存 Routine 和 GitHub 两侧证据。 |
+| 6.3 确定生产合并方式 | 首发验收由现有 PR Merger 按 Mission 门合并。先在 ADR-007 审批该账号和沙箱范围，再证明指定审批、发布账本、GitHub 检查和预期 head 均在合并前被核对。按仓库规则验证缺人审时旧流程也不能自动合并 Mission。普通 PR 沿用原流程。人工合并可用于独立演练，Merger 接入仍需实际验证。 | 通过普通 PR、合法 Mission、旧标记、缺失标记和读取不完整的路由验证。修订后的标记与当前 head 用受信任发布账本绑定；歧义时保持待处理。没有实证的自动合并路径保持禁用。 |
 
-平台侧工作，由 Grok Bots 运营者完成：Watcher 改为 App C，对所有 PR 发 `grok/verify-osstack` check run（取代阶段 0 的“结论以 review 形式提交”），并对 Mission PR 检查当前 head 上有 App B 产生的 `osstack/verify` 且为成功；Reviewer 改为 App D。之后由人把 `grok/verify-osstack` 加进 `main` 的必需检查（绑定 App C 的 integration id，改 `.github/rulesets/main.json` 并按 2.2 执行）。若探针 P-5、P-6 显示 App 的 review 不计入批准或不能解决线程，批准与解决仍由人完成，写进运行手册。ADR-005 被新的 ADR 取代。
+### 阶段 7 主仓库单 scope 试运行
 
-### 阶段 7　主仓库上线（设计 S7，暂缓）
-
-运行手册 `docs/runbooks/bridge.md` 先合并（关闭开关、吊销 App A、`awaiting_decision` 每种原因的处理），再对单个 scope 开 `OSSTACK_BRIDGE=1`。验收：连续 5 条链无异常，设计 §6 的指标能用 `osstack stats` 读出。
-
-运行手册：[Bridge 运行手册](../runbooks/bridge.md)（2026-11-06 草稿，含上线前检查清单 §7；`osstack stats` 的链指标尚未实现，是本阶段的阻塞项）。
+1. **试运行放行。** 完成 5.4 和 6.1–6.3，合入更新后的[运行手册](../runbooks/bridge.md)，完成 ADR-007 的生产决策和仓库设置读回。确认实际发布及合并身份、单 scope 开关、GitHub 必需检查、计入的人工审批、指标和审计记录。沙箱先演练关闭开关、撤销推送授权和不确定推送的重启对账。上线批准前生产保持关闭。
+2. **单 scope 灰度。** 按运行手册在生产做至少一周影子观察，再由负责人只为一个登记 scope 放行；初始每次一条活跃链、最多一轮人工确认的推送。生产开关须实际识别并执行该 scope 的 CI 证据政策。继续使用 GitHub 原 CI 矩阵，保留主机发布保护。
+3. **正式验收。** 连续 5 条试点链无异常，至少记录一条真实失败修复并关单的链。逐条核对 CI、发布意图、Watcher 记录、人工审批、合并提交与 osstack 状态。`osstack stats` 能读出轮次、耗时、停止原因和对账失败。遇到越权、来源不明的结果或无法对账的推送，停止新派发，保留记录并按手册处置；全部达到条件后再扩大范围。
 
 ---
 
@@ -494,7 +487,9 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 | 2 | `rulesets-check.mjs`、探针脚本 | GitHub 平台拒绝越权调用 |
 | 3 | 单元测试、沙箱 PR | check run 的 `head_sha` 与账本对账 |
 | 4–5 | 属性测试、模型检查、回放、故障注入、变异 | TLC、沙箱端到端、对账后账本与分支一致 |
-| 6–7 | ruleset 读回 | 必需检查由指定 App 产生 |
+| 5 首发增量 | CI 失败读取、修复授权、快进推送及对账 | 一条真实沙箱失败在原 runner 上通过复验 |
+| 6 | Routine 与 ruleset 读回、分支门负向检查 | 修订后 Watcher 记录、计入的人工审批、合并和读回 |
+| 7 | 停机与撤权演练、指标核对 | 生产试点连续五条链的 CI、合并和关单证据 |
 
 每个代码阶段的 PR 在开出前都要跑：`pnpm build`、`pnpm typecheck`、全套 `pnpm test`（迭代时可以只跑受影响包）、CLI 启动预算，以及一次 Codex 只读审查；审查结果写进 PR 描述。阶段 0 的独立证明有限：PR 时间线只说明某个 PR 上发生了什么，不能证明主机上没有执行命令，需要 routine 运行日志补充。
 
@@ -512,7 +507,7 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 2. 阶段 0 的轮次记录是人写的，可能漏写或写错；bot 只把它当提示。
 3. Watcher 结论以 review 提交，而 Reviewer 与 Watcher 是同一批账号（ADR-005 说明），只能靠 review 正文开头的 `verify-osstack:` 区分。
 4. base 绑定很严格：`main` 每次前移都会让旧的验证结论失效，Watcher 需要重新运行；PR 多时成本上升。
-5. W14 之前，Mission 的验证只能是冒烟级。
+5. 首发按 ADR-007 审阅 GitHub Actions 是否覆盖 W14 级验证。受保护的工作流、矩阵和 runner 不足以覆盖目标时，该 scope 保持关闭。
 6. 使用说明 1.3 的“从原候选继续”（`--base <旧候选提交> --publish-base main`）按代码推断可行，还没有实际跑过；阶段 0 演练 A5 是它的第一次实测，失败时改用“从 `main` 重做”。
 7. 设计 §13 列出的平台未确认项（App review 是否计入批准、ruleset 能否把合并限制到人等）由阶段 2 探针回答。
 

@@ -7,6 +7,8 @@
 
 2026-11-07 运营交接补充：用户已说明既有 Grok Bots 共用云电脑及 `Rubebun-Jadeem` 登录，验证工程师维护原 `verify-osstack` 技能，Watcher 验证并 approve，Merger 合并，Order 管理顺序 labels，CoS 协调。具体增量交接见[既有平台接入交接](../runbooks/bridge-grok-bots-handoff.md)。这些角色事实不证明 App C/D 已迁移，也不替代下列平台能力和运行条件的验收。
 
+> 2026-11-09 首发计划更新。本规格供 App C/D 身份迁移使用。首发阶段 6 改为验收现有 Watcher/Merger、Mission 人工审批及合并读回，首发范围内的身份和证据例外由 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)审批，见[实施方案阶段 6](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-6-watcher-merger-与分支规则验收)。
+
 ---
 
 ## 0. 平台未确认项（先读）
