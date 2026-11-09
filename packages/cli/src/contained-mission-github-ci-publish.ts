@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { ContainedMissionStore } from '@osstack/core';
+import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import type { DeliveryCommandRunner } from '@osstack/github';
 import { assertSandboxCiApproval, latestCiEvent, type RefreshCiPrincipal } from './contained-mission-github-ci-approval.js';
-import { createSandboxCiReader, readSandboxCiPr } from './contained-mission-github-ci.js';
+import { createSandboxCiReader, readSandboxCiJobs, readSandboxCiPr } from './contained-mission-github-ci.js';
 import type { HostProcessKit } from './contained-mission-host-process.js';
 import { fencedDeliveryRunner } from './contained-mission-ports.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
@@ -12,6 +12,7 @@ type PushInput = Parameters<ContainedMissionPorts['publish']>[0];
 export type SandboxCiPushIntent = { intent_id: string; candidate: string; previous: string; base: string; branch: string; pr: number };
 
 export async function publishSandboxCiRepair(input: PushInput, deps: { store: ContainedMissionStore; host: Pick<HostProcessKit, 'recordForIntent'>;
+  assertAutoGrant?: (mission: ContainedMission) => void;
   runner: DeliveryCommandRunner; now: () => number; refresh?: RefreshCiPrincipal; enabled: () => boolean;
   /** Test seam for the read-only forge observation. */
   readPr?: (target: Parameters<typeof readSandboxCiPr>[1], signal: AbortSignal) => ReturnType<typeof readSandboxCiPr> }): Promise<ContainedPublicationResult> {
@@ -34,6 +35,10 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
       || current.candidate_tree !== permit.tree || current.state !== 'delivering' || current.stop_obligation !== 0
       || store.claim(mission.mission_id).state !== 'active') throw Error('CI_REPAIR_STOPPED');
     assertSandboxCiApproval(store, current, spec, deps.refresh, now());
+    if (latestCiEvent(store, current.mission_id, 'ci_auto_grant_reserved')) {
+      if (!deps.assertAutoGrant) throw Error('CI_REPAIR_STOPPED');
+      deps.assertAutoGrant(current);
+    }
   };
   const runner = fencedDeliveryRunner(deps.runner, kind => {
     if (kind !== 'push' || !intent || latestCiEvent<SandboxCiPushIntent>(store, mission.mission_id, 'ci_repair_push_intent')?.intent_id !== intent.intent_id) throw Error('CI_REPAIR_STOPPED');
@@ -50,8 +55,13 @@ export async function publishSandboxCiRepair(input: PushInput, deps: { store: Co
   if (intent) {
     if (!Object.entries(intended).every(([key, value]) => intent?.[key as keyof SandboxCiPushIntent] === value)) throw Error('CI_REPAIR_STOPPED');
   } else {
+    checkApproval();
     const pr = await actual();
     if (pr?.state !== 'open' || pr.head.sha !== target.head || pr.base.sha !== target.base || await observedHead() !== target.head) throw Error('CI_REPAIR_STOPPED');
+    if (latestCiEvent(store, mission.mission_id, 'ci_auto_grant_reserved')) {
+      const observed = await readSandboxCiJobs(ci, target, signal);
+      if (observed.kind !== 'failure' || observed.job.check_run_id !== repair.check_run_id) throw Error('CI_REPAIR_STOPPED');
+    }
     checkApproval();
     intent = { intent_id: `ci_${randomUUID()}`, ...intended };
     store.record(mission.mission_id, 'ci_repair_push_intent', intent, now());

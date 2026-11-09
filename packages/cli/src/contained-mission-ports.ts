@@ -26,6 +26,7 @@ export interface ContainedMissionPortsOptions {
   /** Explicit one-scope pilot. This does not enable the production bridge. */
   githubCiSandboxScope?: string;
   githubCiAuthority?: {
+    assertAutoGrant?: (mission: ContainedMission) => void;
     enabled: () => boolean;
     refresh: import('./contained-mission-github-ci-approval.js').RefreshCiPrincipal;
   };
@@ -442,6 +443,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         const { runner, preflight } = await revisionPublicationAdapters();
         await preflight(spec, permit);
         return publishSandboxCiRepair({ mission, spec, permit, body, beforeRemoteMutation, signal }, { store, host: kit, runner, now,
+          assertAutoGrant: mission => options.githubCiAuthority?.assertAutoGrant?.(mission),
           enabled: () => options.githubCiAuthority?.enabled() === true, ...(options.githubCiAuthority ? { refresh: options.githubCiAuthority.refresh } : {}) });
       }
       if (spec.verification_mode) {

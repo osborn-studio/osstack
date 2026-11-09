@@ -70,6 +70,7 @@ export interface ContainedMissionServiceOptions {
   stoppedScan?: Pick<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService, 'start' | 'stop'>;
   checkRetry?: { start(): void; stop(): Promise<void> };
   githubCi?: { start(): void; stop(): Promise<void> };
+  autoApproveCiRepair?: () => Promise<void>;
   /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
   merger?: import('./contained-mission-merger-shadow.js').MergerShadowHandle;
   /** Comparison report over the shadow merger tables (SELECT only). */
@@ -154,7 +155,12 @@ export class ContainedMissionService {
   /** One tick at a time; a slow step never overlaps the next scan. */
   tick(): Promise<void> {
     if (this.closed || this.options.draining()) return Promise.resolve();
-    if (!this.ticking) this.ticking = this.options.host.tick().catch(() => undefined).finally(() => { this.ticking = undefined; });
+    if (!this.ticking) {
+      const work = this.options.autoApproveCiRepair
+        ? this.options.autoApproveCiRepair().then(async () => { if (!this.closed && !this.options.draining()) await this.options.host.tick(); })
+        : this.options.host.tick();
+      this.ticking = work.catch(() => undefined).finally(() => { this.ticking = undefined; });
+    }
     return this.ticking;
   }
   close(): Promise<void> {
@@ -315,6 +321,17 @@ export async function createContainedMissionService(deps: {
   // (BRIDGE_DISABLED) instead of falling back to host credentials. Read once, here; changing it needs a service restart.
   const bridgeKilled = env['OSSTACK_BRIDGE'] === '0';
   const githubCiSandboxScope = env['OSSTACK_CONTAINED_SANDBOX_CI_SCOPE'];
+  const autoGrantPath = env['OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT'];
+  if (autoGrantPath !== undefined && !githubCiSandboxScope) throw Error('ci_auto_grant_scope_required');
+  const autoGrant = autoGrantPath === undefined ? undefined
+    : new (await import('./contained-mission-ci-auto-grant.js')).SandboxCiAutoGrant(autoGrantPath, githubCiSandboxScope!);
+  autoGrant?.read(Date.now());
+  const refreshCi = (principal: string, session: string) => deps.access.refresh(principal, session);
+  const assertAutoGrant = (mission: import('@osstack/core').ContainedMission) => {
+    const reservation = store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_auto_grant_reserved'").get(mission.mission_id);
+    if (!reservation) return;
+    if (!autoGrant || deps.draining() || !autoGrant.assert(store, mission, refreshCi, Date.now()).reserved) throw Error('CI_REPAIR_STOPPED');
+  };
   if (bridge && bridgeKilled) log('osstack: bridge: disabled by OSSTACK_BRIDGE=0 (Mission publication for the configured repository is refused)');
   const ports = createContainedMissionPorts({
     store, ...(bridge ? { bridge: { config: bridge, ...(bridgeKilled ? { disabled: true } : {}) } } : {}),
@@ -325,7 +342,7 @@ export async function createContainedMissionService(deps: {
       ...(env['OSSTACK_CONTAINED_CODEX_MODEL'] ? { model: env['OSSTACK_CONTAINED_CODEX_MODEL'] } : {}) },
     ...(githubCiSandboxScope === undefined ? { verification: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
       baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: join(deps.home, 'contained-verification') } } : {
-        githubCiSandboxScope, githubCiAuthority: { enabled: () => !deps.draining(),
+        githubCiSandboxScope, githubCiAuthority: { assertAutoGrant, enabled: () => !deps.draining(),
           refresh: (principal, session) => deps.access.refresh(principal, session) },
       }),
     author: { name: env['OSSTACK_CONTAINED_AUTHOR_NAME'] ?? 'OSStack Mission', email: env['OSSTACK_CONTAINED_AUTHOR_EMAIL'] ?? 'mission@osstack.invalid' },
@@ -396,7 +413,26 @@ export async function createContainedMissionService(deps: {
   const githubCi = githubCiSandboxScope === undefined ? undefined
     : (await import('./contained-mission-github-ci.js')).createSandboxCiObserver({ store, scopeId: githubCiSandboxScope,
       enabled: () => !deps.draining(), now: Date.now, log, refresh: (principal, session) => deps.access.refresh(principal, session) });
-  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf, ...(githubCi ? { githubCi } : {}),
+  const autoApproveCiRepair = autoGrant === undefined ? undefined : async () => {
+    const { latestCiEvent } = await import('./contained-mission-github-ci-approval.js');
+    const { createSandboxCiReader, readSandboxCiJobs } = await import('./contained-mission-github-ci.js');
+    const rows = store.db.prepare("SELECT * FROM engineering_contained_missions WHERE scope_id=? AND state='awaiting_decision' AND json_type(spec_json,'$.ci_repair')='object' LIMIT 16")
+      .all(githubCiSandboxScope) as import('@osstack/core').ContainedMission[];
+    for (const child of rows) {
+      if (deps.draining()) return;
+      if (latestCiEvent(store, child.mission_id, 'ci_repair_approval')) continue;
+      try {
+        autoGrant.assert(store, child, refreshCi, Date.now());
+        const spec = parseContainedMissionSpec(child.spec_json);
+        const repair = spec.ci_repair!;
+        const observed = await readSandboxCiJobs(createSandboxCiReader(), { pr: repair.pr, head: spec.start_commit, base: repair.base, branch: repair.branch }, AbortSignal.timeout(60000));
+        if (deps.draining() || observed.kind !== 'failure' || observed.job.check_run_id !== repair.check_run_id) continue;
+        autoGrant.approve(store, child, refreshCi, Date.now());
+      } catch { /* Missing, expired, revoked or mismatched authority leaves the owner decision pending. */ }
+    }
+  };
+  return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,
+    ...(autoApproveCiRepair ? { autoApproveCiRepair } : {}), ...(githubCi ? { githubCi } : {}),
     revisionRecovery: live?.revisionRecovery ?? revisionRecovery, ...(shadow ? { shadow } : {}),
     ...(live ? { live: live.live, stoppedScan: live.stoppedScan, grants: live.grants,
       ...(live.checkRetry ? { checkRetry: live.checkRetry } : {}) } : {}), ...(merger ? { merger } : {}), mergerReport });
