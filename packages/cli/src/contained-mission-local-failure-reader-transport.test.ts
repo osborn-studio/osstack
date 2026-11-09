@@ -46,6 +46,31 @@ describe('authenticated Actions latest attempt transport', () => {
     await expect(w.deps.observeLatestJob(query, { ...binding, runnerLabels: ['macos-latest'] }, options())).resolves.toBeNull();
     await expect(w.deps.observeLatestJob(query, { ...binding, failureStep: 'Run a different job' }, options())).resolves.toMatchObject({ outcome: 'infrastructure_failure' });
   });
+  it('rechecks an exact pre-merge success when GitHub clears the PR association', async () => {
+    const w = world();
+    const base = 'b'.repeat(40);
+    const binding = { repositoryId: 99, base, baseRef: 'main', headRef: 'mission/1', workflowId: 12,
+      workflowPath: '.github/workflows/ci.yml', runnerLabels: ['ubuntu-latest'], matrix: {}, failureStep: 'Run tests' };
+    const workflow = { event: 'pull_request', path: binding.workflowPath, status: 'completed' };
+    const association = { number: 7, head: { sha: head, ref: 'mission/1', repo: { id: 99 } },
+      base: { sha: base, ref: 'main', repo: { id: 99 } } };
+    const runPath = `repos/${repo}/actions/runs?head_sha=${head}&per_page=100&page=1`;
+    w.rows.set(runPath, { total_count: 1, workflow_runs: [run({ ...workflow, pull_requests: [association] })] });
+    w.rows.set(`repos/${repo}/actions/runs/90/attempts/1/jobs?per_page=100&page=1`, { total_count: 1, jobs: [job({
+      conclusion: 'success', labels: ['ubuntu-latest'], steps: [{ name: 'Run tests', conclusion: 'success' }],
+    })] });
+    w.rows.set(`repos/${repo}/check-runs/101`, { id: 101, name: 'unit', app: { id: 42 }, head_sha: head,
+      check_suite: { id: 11 }, status: 'completed', conclusion: 'success' });
+    const observed = await w.deps.observeLatestJob(query, binding, options());
+    expect(observed?.outcome).toBe('success');
+    const preMerge = observed!;
+    w.rows.set(runPath, { total_count: 1, workflow_runs: [run({ ...workflow, pull_requests: [] })] });
+    await expect(w.deps.observeLatestJob(query, binding, options())).resolves.toBeNull();
+    await expect(w.deps.observeLatestJob(query, { ...binding, preMerge }, options())).resolves.toEqual(preMerge);
+    await expect(w.deps.observeLatestJob(query, { ...binding, preMerge: { ...preMerge, attempt: 2 } }, options())).resolves.toBeNull();
+    w.rows.set(runPath, { total_count: 1, workflow_runs: [run({ ...workflow, pull_requests: [{ ...association, number: 8 }] })] });
+    await expect(w.deps.observeLatestJob(query, { ...binding, preMerge }, options())).resolves.toBeNull();
+  });
   it('maps exact job check URL to authenticated check identity and counts all reads', async () => {
     const w = world();
     expect(await w.deps.latestAttempt(query, options())).toEqual({ complete: true, requests_used: 4, ...query,

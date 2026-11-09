@@ -1,5 +1,6 @@
 // Authenticated GET-only transport. No scanner, logs, annotations, token minting or remote writes.
 import { execFile } from 'node:child_process';
+import { isDeepStrictEqual } from 'node:util';
 import { CiCheckNameSchema, LocalFailureRepositorySchema } from '@osstack/core';
 import { z } from 'zod';
 import type { CiFailureReadDeps, CiLatestAttemptQuery } from './contained-mission-local-failure-reader.js';
@@ -28,6 +29,8 @@ export interface ActionsJobBinding {
   /** Host policy maps each complete, exact job name to its matrix axes. */
   matrix: Readonly<Record<string, string>>;
   failureStep: string;
+  /** Previously verified success for this exact job, used only to recheck a merged PR. */
+  preMerge?: ActionsJobObservation;
 }
 export interface ActionsJobObservation {
   outcome: 'failure' | 'success' | 'infrastructure_failure' | 'pending' | 'unusable';
@@ -138,9 +141,12 @@ export function createActionsCiFailureReadDeps(options: {
       let observation: ActionsJobObservation | null = null;
       if (binding) {
         const pr = run.pull_requests?.length === 1 ? run.pull_requests[0] : undefined;
+        const linked = pr?.number === query.pr && pr.head.ref === binding.headRef && pr.head.sha === query.head
+          && pr.base.ref === binding.baseRef && pr.base.sha === binding.base && pr.base.repo.id === binding.repositoryId && pr.head.repo.id === binding.repositoryId;
+        // GitHub may remove the PR from the run after squash. Only an exact prior success can replace that link.
+        const clearedAfterMerge = binding.preMerge?.outcome === 'success' && run.pull_requests?.length === 0;
         if (run.event !== 'pull_request' || run.workflow_id !== binding.workflowId || run.path !== binding.workflowPath
-          || pr?.number !== query.pr || pr.head.ref !== binding.headRef || pr.head.sha !== query.head
-          || pr.base.ref !== binding.baseRef || pr.base.sha !== binding.base || pr.base.repo.id !== binding.repositoryId || pr.head.repo.id !== binding.repositoryId
+          || (!linked && !clearedAfterMerge)
           || !job.labels || JSON.stringify([...job.labels].sort()) !== JSON.stringify([...binding.runnerLabels].sort())) throw Error('CI_PROVENANCE');
         const expectedStep = job.steps?.filter(step => step.name === binding.failureStep) ?? [];
         const otherFailed = job.steps?.some(step => step.name !== binding.failureStep && step.conclusion === 'failure');
@@ -151,6 +157,7 @@ export function createActionsCiFailureReadDeps(options: {
           check_run_id: check.id, check_suite_id: check.check_suite.id, job_id: job.id, job_name: job.name,
           runner_labels: job.labels, matrix: structuredClone(binding.matrix), workflow_path: binding.workflowPath,
           head: query.head, base: binding.base, app_id: query.app_id };
+        if (binding.preMerge && (outcome !== 'success' || !isDeepStrictEqual(observation, binding.preMerge))) throw Error('CI_PROVENANCE');
       }
       return { response: { complete: true, requests_used: used, ...query, latest: latestCheck }, observation };
     } catch {

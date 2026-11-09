@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { scratchPath, type ContainedMission, type ContainedMissionStore, type HostProcessRecord } from '@osstack/core';
 import { z } from 'zod';
 import { latestCiEvent, type RefreshCiPrincipal } from './contained-mission-github-ci-approval.js';
@@ -48,19 +49,19 @@ export async function readSandboxCiPr(ci: Pick<CiReader, 'rest'>, target: Sandbo
   return pr;
 }
 
-export async function readSandboxCiJobs(ci: CiReader, target: SandboxCiTarget, signal: AbortSignal, mergedHead?: string): Promise<
+export async function readSandboxCiJobs(ci: CiReader, target: SandboxCiTarget, signal: AbortSignal, afterMerge?: { sha: string; jobs: readonly ActionsJobObservation[] }): Promise<
   { kind: 'failure'; job: ActionsJobObservation } | { kind: 'success'; jobs: readonly ActionsJobObservation[] } | { kind: 'waiting'; reason: string }> {
   const current = async () => {
     const pr = await readSandboxCiPr(ci, target, signal);
     if (pr?.head.sha !== target.head) return false;
-    return mergedHead === undefined ? pr.state === 'open' && pr.base.sha === target.base
-      : pr.state === 'closed' && pr.merged && pr.merge_commit_sha === mergedHead;
+    return afterMerge === undefined ? pr.state === 'open' && pr.base.sha === target.base
+      : pr.state === 'closed' && pr.merged && pr.merge_commit_sha === afterMerge.sha;
   };
   if (!await current()) return { kind: 'waiting', reason: 'pr_binding_unavailable' };
-  if (mergedHead !== undefined) {
+  if (afterMerge !== undefined) {
     // The PR's reported base tip can move after a merge. The squash commit binds the actual base.
-    const response = await ci.rest(`${basePath}/git/commits/${mergedHead}`, { signal });
-    const squash = z.object({ sha: z.literal(mergedHead), parents: z.tuple([z.object({ sha: z.literal(target.base) })]) });
+    const response = await ci.rest(`${basePath}/git/commits/${afterMerge.sha}`, { signal });
+    const squash = z.object({ sha: z.literal(afterMerge.sha), parents: z.tuple([z.object({ sha: z.literal(target.base) })]) });
     if (!response.ok || !squash.safeParse(response.body).success) return { kind: 'waiting', reason: 'merge_base_unavailable' };
   }
   for (const commit of [target.base, target.head]) {
@@ -71,15 +72,18 @@ export async function readSandboxCiJobs(ci: CiReader, target: SandboxCiTarget, s
   }
   const request = { repository: GITHUB_CI_SANDBOX, pr: target.pr, head: target.head, app_id: policy.actionsAppId };
   // Failure hints wake the repair of open PRs. Closed PRs are eligible only for a fresh success readback.
-  const hints = mergedHead === undefined
+  const hints = afterMerge === undefined
     ? await readCiFailureHints(ci, { repository: request.repository, pr: request.pr, head: request.head, producerAppIds: [request.app_id] }, { signal })
     : { ok: true as const, hints: [] };
   if (!hints.ok) return { kind: 'waiting', reason: hints.code };
   const results: ActionsJobObservation[] = [];
   for (const { name, matrix } of policy.jobs) {
     const { repositoryId, workflowId, workflowPath, runnerLabels, failureStep } = policy;
+    const preMerge = afterMerge?.jobs.find(job => job.job_name === name);
+    if (afterMerge && !preMerge) return { kind: 'waiting', reason: 'premerge_job_unavailable' };
     const result = await ci.observeLatestJob({ ...request, name }, { repositoryId, workflowId, workflowPath, runnerLabels, failureStep,
-      base: target.base, baseRef: 'main', headRef: target.branch, matrix }, { maxPages: 2, maxRequests: 10, signal });
+      base: target.base, baseRef: 'main', headRef: target.branch, matrix, ...(preMerge ? { preMerge } : {}) },
+    { maxPages: 2, maxRequests: 10, signal });
     if (!result) return { kind: 'waiting', reason: 'job_binding_unavailable' };
     if (result.outcome === 'failure' && hints.hints.some(h => h.check_run_id === result.check_run_id && h.name === name)) {
       return await current() ? { kind: 'failure', job: result } : { kind: 'waiting', reason: 'pr_binding_unavailable' };
@@ -163,16 +167,29 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         if (repaired?.kind !== 'github_ci_opened' || repaired.pushed_commit !== live.head.sha
           || repaired.pr.number !== target.pr || repaired.base_head !== target.base) { holdMerge('repair_receipt_unavailable'); return; }
         if (live.merged && (!live.merge_commit_sha || !live.merged_by)) { holdMerge('merge_identity_unavailable'); return; }
-        const result = await readSandboxCiJobs(ci, { ...target, head: repaired.pushed_commit }, signal, live.merged ? live.merge_commit_sha! : undefined);
-        if (!enabled() || signal.aborted) return;
         const prior = store.db.prepare(`SELECT kind,payload_json FROM engineering_contained_events WHERE mission_id=?
           AND kind IN ('ci_repair_verified','ci_repair_failed','ci_repair_verification_waiting') ORDER BY seq DESC LIMIT 1`)
           .get(root.mission_id) as { kind: string; payload_json: string } | undefined;
-        const facts = prior ? JSON.parse(prior.payload_json) as { reason?: string; jobs?: readonly ActionsJobObservation[]; job?: ActionsJobObservation } : undefined;
+        const facts = prior ? JSON.parse(prior.payload_json) as { head?: string; reason?: string; jobs?: readonly ActionsJobObservation[]; job?: ActionsJobObservation } : undefined;
+        const repairedTarget = { ...target, head: repaired.pushed_commit };
+        if (live.merged) {
+          if (prior?.kind !== 'ci_repair_verified' || facts?.head !== repairedTarget.head || !facts.jobs) {
+            holdMerge('premerge_ci_unavailable'); return;
+          }
+          const result = await readSandboxCiJobs(ci, repairedTarget, signal, { sha: live.merge_commit_sha!, jobs: facts.jobs });
+          if (!enabled() || signal.aborted) return;
+          if (result.kind !== 'success' || !isDeepStrictEqual(facts.jobs, result.jobs)) {
+            holdMerge(result.kind === 'waiting' ? result.reason : 'premerge_ci_changed'); return;
+          }
+          store.record(root.mission_id, 'ci_pr_merged_observed', { pr: target.pr, head: live.head.sha,
+            merge_commit_sha: live.merge_commit_sha, merged_by: live.merged_by }, now());
+          return;
+        }
+        const result = await readSandboxCiJobs(ci, repairedTarget, signal);
+        if (!enabled() || signal.aborted) return;
         if (result.kind === 'waiting') {
           if (prior?.kind !== 'ci_repair_verification_waiting' || facts?.reason !== result.reason) store.record(root.mission_id, 'ci_repair_verification_waiting',
             { pr: target.pr, head: repaired.pushed_commit, reason: result.reason }, now());
-          holdMerge(result.reason);
         }
         if (result.kind === 'failure') {
           if (prior?.kind !== 'ci_repair_failed' || facts?.job?.check_run_id !== result.job.check_run_id) store.record(root.mission_id, 'ci_repair_failed',
@@ -181,12 +198,10 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         if (result.kind === 'success') {
           const original = latestCiEvent<{ job: ActionsJobObservation }>(store, root.mission_id, 'ci_failure_observed');
           if (original && result.jobs.some(job => job.job_name === original.job.job_name)) {
-            if (prior?.kind !== 'ci_repair_verified' || JSON.stringify(facts?.jobs) !== JSON.stringify(result.jobs)) {
+            if (prior?.kind !== 'ci_repair_verified' || !isDeepStrictEqual(facts?.jobs, result.jobs)) {
               store.record(root.mission_id, 'ci_repair_verified', { pr: target.pr, old: target.head, head: repaired.pushed_commit,
                 base: target.base, child: child.mission_id, jobs: result.jobs }, now());
             }
-            if (live.merged) store.record(root.mission_id, 'ci_pr_merged_observed', { pr: target.pr, head: live.head.sha,
-              merge_commit_sha: live.merge_commit_sha, merged_by: live.merged_by }, now());
           }
         }
         return;
