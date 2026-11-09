@@ -74,6 +74,20 @@ describe("createContainedMissionService bridge wiring", () => {
     await service.close();
   });
 
+  it("starts the registered sandbox CI service with no Docker configuration", async () => {
+    const f = setup();
+    const key = join(f.root, "key.pem"); writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
+    const repository = "osborn-studio/osstack-bridge-sandbox";
+    const publisher = { app_id: 5620012, installation_id: 2, private_key_path: key };
+    writeFileSync(join(f.home, "bridge", "apps.json"), JSON.stringify({ version: 1, repository, publisher, evidence: { ...publisher, app_id: 3, installation_id: 4 } }));
+    writeFileSync(join(f.home, "bridge", "rulesets.json"), JSON.stringify({ version: 1, repository, mission_ruleset_ids: [26577637, 26577639] }));
+    const env = { OSSTACK_CONTAINED_CODEX_BIN: "/bin/true", OSSTACK_CONTAINED_CODEX_HOME: f.root, OSSTACK_CONTAINED_SANDBOX_CI_SCOPE: "a".repeat(64) };
+    const service = await createContainedMissionService({ ...f.deps, env });
+    expect(typeof f.portsOf(service)["admitGithubCiCandidate"]).toBe("function");
+    await service.close();
+    await expect(createContainedMissionService({ ...f.deps, env: { ...env, OSSTACK_BRIDGE: "1" } })).rejects.toThrow("BRIDGE_LIVE_NOT_IMPLEMENTED");
+  });
+
   describe("OSSTACK_BRIDGE publication switch matrix", () => {
     function configure(f: ReturnType<typeof setup>, repository: string | null) {
       if (repository === null) return;

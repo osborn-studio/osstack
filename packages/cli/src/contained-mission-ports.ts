@@ -13,7 +13,7 @@ import { redactSecrets } from '@osstack/governance';
 import { containedBindingCanonical, containedCommandFromArgv, containedOwnerPort, missionVerificationBinding, prepareContainedCandidateImage, registerContainedExecution, reopenContainedExecution, type ContainedOwnerIdentity } from './contained-verification.js';
 import { HostProcessKit, type HostProcessKitOptions } from './contained-mission-host-process.js';
 import { appTransportConfig, gatedBridgeExec, gatedHostRunner, remoteBranchOf, remoteTargetOf, type RemoteWriteBinaries } from './contained-mission-remote-writes.js';
-import { parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
+import { GITHUB_CI_SANDBOX, parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
 import type { BridgeKit, BridgeOptions, DeliveryEvidenceFacts } from './contained-mission-bridge.js';
 
 export interface ContainedMissionPortsOptions {
@@ -22,7 +22,13 @@ export interface ContainedMissionPortsOptions {
   codex: Omit<CodexProxyOptions, 'runtimeDir'>;
   /** Parent of the per-Mission runtime directories (default: the scratch root's runtime/). */
   runtimeRoot?: string;
-  verification: { socketPath: string; daemonId: string; baseImageId: string; journalRoot: string };
+  verification?: { socketPath: string; daemonId: string; baseImageId: string; journalRoot: string };
+  /** Explicit one-scope pilot. This does not enable the production bridge. */
+  githubCiSandboxScope?: string;
+  githubCiAuthority?: {
+    enabled: () => boolean;
+    refresh: import('./contained-mission-github-ci-approval.js').RefreshCiPrincipal;
+  };
   author: PlumbingCommitAuthor;
   /** Command runner for the PR-only publication; the default uses the host's own git and gh credentials. */
   delivery?: { runner?: DeliveryCommandRunner; /** Test seam: absolute `git`/`gh` for the gated launcher. */ binaries?: RemoteWriteBinaries };
@@ -34,6 +40,7 @@ export interface ContainedMissionPortsOptions {
 }
 export type ContainedVerificationStop = { stopped: true; proof: 'container_removed' | 'never_launched'; evidence: string } | { stopped: false };
 export interface ContainedMissionHostPorts extends ContainedMissionPorts {
+  assertStartMode?: (scopeId: string, spec: import('./contained-mission-runner.js').ContainedMissionSpec) => void;
   /** Bind live authority before installing revision services. Checks re-read this at the network boundary. */
   installRevisionCheckAuthority?: (enabled: () => boolean) => void;
   revisionLaunchCaps?: { executor_seconds: number; verify_seconds: number };
@@ -193,6 +200,17 @@ export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteM
 
 export function createContainedMissionPorts(options: ContainedMissionPortsOptions): ContainedMissionHostPorts {
   const { store, verification, author } = options; const ctx = options.git ?? {};
+  const ciScope = options.githubCiSandboxScope;
+  if (ciScope !== undefined && (!/^[0-9a-f]{64}$/.test(ciScope)
+    || options.bridge?.config.repository !== GITHUB_CI_SANDBOX || options.bridge.config.publisher.app_id !== 5620012
+    || options.bridge.disabled === true)) throw Error('CONTAINED_GITHUB_CI_CONFIG');
+  if (!verification && ciScope === undefined) throw Error('CONTAINED_VERIFICATION_NOT_CONFIGURED');
+  const assertGithubCiScope: NonNullable<ContainedMissionPorts['assertGithubCiScope']> = (scopeId, spec) => {
+    store.attention.assertOwner(store.owner);
+    const registered = store.attention.getScope(scopeId);
+    if (scopeId !== ciScope || !registered || realpathSync(registered.repo_path) !== realpathSync(spec.repo_path)
+      || spec.publication?.repository !== GITHUB_CI_SANDBOX) throw Error('CONTAINED_GITHUB_CI_SCOPE');
+  };
   const now = options.now ?? Date.now;
   const kit = new HostProcessKit(store, options.hostProcess, now);
   const runtimeRoot = resolve(options.runtimeRoot ?? scratchPath('runtime'));
@@ -286,6 +304,14 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       const head = args.map(arg => /^([0-9a-f]{40}(?:[0-9a-f]{24})?):refs\/heads\//.exec(arg)?.[1]).find(Boolean);
       if (!head) throw Error('local_head_mismatch');
       await preflight(spec, { mission_id: mission.mission_id, revision: mission.revision, head, tree: mission.candidate_tree ?? '', spec_digest: mission.spec_digest }, opts.signal);
+      if (spec.ci_repair) {
+        const { createSandboxCiReader, readSandboxCiJobs } = await import('./contained-mission-github-ci.js');
+        const repair = spec.ci_repair;
+        const limit = AbortSignal.timeout(45_000);
+        const facts = await readSandboxCiJobs(createSandboxCiReader(), { pr: repair.pr, branch: repair.branch, base: repair.base, head: spec.start_commit },
+          opts.signal ? AbortSignal.any([opts.signal, limit]) : limit);
+        if (facts.kind !== 'failure' || facts.job.check_run_id !== repair.check_run_id) throw Error('CI_REPAIR_STOPPED');
+      }
       return app.exec(command, args, opts);
     }, { gated: true as const });
     const runner: DeliveryCommandRunner = { gated: true, run: async (command, args, opts) => {
@@ -341,6 +367,29 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
 
   const ports: ContainedMissionHostPorts = {
     store, now, hostProcesses: kit, revisionPublicationAdapters,
+    assertStartMode: (scopeId, spec) => {
+      if (spec.verification_mode) assertGithubCiScope(scopeId, spec);
+      else if (!verification) throw Error('CONTAINED_VERIFICATION_NOT_CONFIGURED');
+    },
+    ...(ciScope === undefined ? {} : {
+      assertGithubCiScope,
+      admitGithubCiCandidate: async (mission: ContainedMission, spec: ReturnType<typeof parseContainedMissionSpec>) => {
+        assertGithubCiScope(mission.scope_id, spec);
+        const run = git(spec.worktree_path);
+        const candidate = mission.candidate_head!;
+        await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), ctx);
+        const ancestry = text(await run(['rev-list', '--parents', '-n', '1', candidate]));
+        if (await branchHead(spec.worktree_path, spec.branch) !== candidate || ancestry !== `${candidate} ${spec.start_commit}`
+          || text(await run(['rev-parse', '--verify', `${candidate}^{tree}`])) !== mission.candidate_tree) throw Error('CONTAINED_GITHUB_CI_CANDIDATE');
+        await run(['diff', '--check', '--no-ext-diff', '--no-textconv', spec.start_commit, candidate, '--']);
+        if (spec.ci_repair) {
+          const names = text(await run(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-status', spec.start_commit, candidate, '--']));
+          const seeded = text(await run(['ls-tree', spec.start_commit, '--', 'PROBE_FAIL']));
+          const initial = text(await run(['ls-tree', spec.ci_repair.base, '--', 'PROBE_FAIL']));
+          if (names !== 'D\tPROBE_FAIL' || initial !== '' || !/^100644 blob [0-9a-f]{40}\tPROBE_FAIL$/.test(seeded)) throw Error('CONTAINED_GITHUB_CI_REPAIR_OUTSIDE_FIXTURE');
+        }
+      },
+    }),
     installRevisionCheckAuthority: enabled => { revisionCheckEnabled = enabled; },
     revisionLaunchCaps: { executor_seconds: Math.ceil((options.codex.timeoutMs ?? 600_000) / 1000), verify_seconds: 120 },
     hasOpenHostProcess: missionId => kit.hasOpen(missionId),
@@ -387,6 +436,19 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       if (options.bridge !== undefined && options.bridge.config.repository.toLowerCase() !== p.repository.toLowerCase()) throw Error('CONTAINED_BRIDGE_REPOSITORY');
       // Kill switch (OSSTACK_BRIDGE=0): refuse before the kit, any token source, any git/gh call. Never falls back to host credentials.
       if (options.bridge?.disabled === true) throw Error('BRIDGE_DISABLED');
+      if (spec.ci_repair) {
+        assertGithubCiScope(mission.scope_id, spec);
+        const { publishSandboxCiRepair } = await import('./contained-mission-github-ci-publish.js');
+        const { runner, preflight } = await revisionPublicationAdapters();
+        await preflight(spec, permit);
+        return publishSandboxCiRepair({ mission, spec, permit, body, beforeRemoteMutation, signal }, { store, host: kit, runner, now,
+          enabled: () => options.githubCiAuthority?.enabled() === true, ...(options.githubCiAuthority ? { refresh: options.githubCiAuthority.refresh } : {}) });
+      }
+      if (spec.verification_mode) {
+        assertGithubCiScope(mission.scope_id, spec);
+        const { assertSandboxCiRepository } = await import('./contained-mission-github-ci.js');
+        await assertSandboxCiRepository(signal);
+      }
       // The repository config that made the workspace safe must still hold before anything leaves the machine.
       await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), ctx);
       if (await branchHead(spec.worktree_path, spec.branch) !== permit.head) throw Error('CONTAINED_PUBLICATION_HEAD_MISMATCH');
@@ -408,7 +470,18 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       // The credential runner sits inside the fence, so the fence still runs before every mutation.
       const { appCredentialRunner } = app ? await import('./contained-mission-bridge.js') : { appCredentialRunner: undefined };
       const inner = app && appCredentialRunner ? appCredentialRunner(hostRunner, () => app.publisherToken(), app.exec, transport) : hostRunner;
-      const runner = fencedDeliveryRunner(inner, beforeRemoteMutation, { remote: p.remote, repository: p.repository, missionId: mission.mission_id, ...(app ? { httpsOnly: true } : {}) });
+      const fenced = fencedDeliveryRunner(inner, beforeRemoteMutation, { remote: p.remote, repository: p.repository, missionId: mission.mission_id, ...(app ? { httpsOnly: true } : {}) });
+      const readBase = async () => {
+        const listed = await fenced.run('git', ['ls-remote', '--refs', '--', p.remote, `refs/heads/${p.base}`], { cwd: spec.worktree_path, timeoutMs: 30_000, signal });
+        const match = /^([0-9a-f]{40}(?:[0-9a-f]{24})?)\t([^\r\n]+)$/.exec(listed.stdout.trim());
+        return listed.exitCode === 0 && match?.[2] === `refs/heads/${p.base}` ? match[1]! : null;
+      };
+      const runner: DeliveryCommandRunner = spec.verification_mode ? { ...fenced, run: async (command, args, opts) => {
+        if ((command === 'git' && args[0] === 'push') || (command === 'gh' && args[0] === 'pr' && args[1] === 'create')) {
+          if (await readBase() !== spec.start_commit) throw Error('CI_MISSION_BASE_CHANGED');
+        }
+        return fenced.run(command, args, opts);
+      } } : fenced;
       // The title is published verbatim, so it is redacted like the body; control characters never reach gh.
       const title = redactSecrets(p.title ?? `Contained Mission ${mission.mission_id.slice(3, 11)}: ${spec.goal.replace(/\s+/g, ' ').slice(0, 72)}`)
         // biome-ignore lint/suspicious/noControlCharactersInRegex: titles must not carry control characters to gh.
@@ -494,6 +567,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       return commit;
     }),
     verify: async (mission, argv, signal) => {
+      if (!verification) throw Error('CONTAINED_VERIFICATION_NOT_CONFIGURED');
       const spec = parseContainedMissionSpec(mission.spec_json);
       const binding = missionVerificationBinding(mission, { argv }); const { command } = containedCommandFromArgv(argv);
       const invocationId = containedVerifyInvocationId(mission);
@@ -527,6 +601,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         const recorded = events.slice(opened + 1).filter(e => e.kind === 'verify_invocation').at(-1);
         // verify_invocation is written before any Docker call; without it nothing was launched for this attempt.
         if (opened >= 0 && !recorded) return { stopped: true, proof: 'never_launched', evidence: 'verify_invocation_absent' };
+        if (!verification) return { stopped: false };
         const invocationId = containedVerifyInvocationId(mission);
         const r = recorded ? eventPayload(recorded) : {};
         if (!recorded || r.invocation_id !== invocationId || r.journal_root !== verification.journalRoot || realpathSync(verification.journalRoot) !== verification.journalRoot) return { stopped: false };

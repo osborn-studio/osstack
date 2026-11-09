@@ -13,6 +13,10 @@ export interface ContainedMissionSpec {
   goal: string; repo_path: string; base_ref: string; start_commit: string; branch: string; worktree_path: string;
   allowed_paths: string[]; caps?: Partial<{ maxFiles: number; maxChangedLines: number; maxFileBytes: number; maxTotalBytes: number }>;
   verify: { argv: string[] }; max_repair_cycles?: number; verification_paths?: string[];
+  /** Sandboxed opt-in. GitHub runs CI after the host admits a candidate for publication. */
+  verification_mode?: 'github_actions';
+  /** Installed only by the sandbox CI observer. The repair uses a different local branch. */
+  ci_repair?: { root: string; pr: number; branch: string; base: string; check_run_id: number };
   /** Bounded publication grant (§4.2): one PR on this repository and base. `preauthorized` skips the publication_pending decision. */
   publication?: ContainedPublicationSpec;
   /** Set only on a revision child built by `buildRevisionChildSpec`; `mission.start` cannot carry it. Together with `revision_feedback` or not at all. */
@@ -76,6 +80,9 @@ export interface ContainedMissionPorts {
   commitWorktree: (input: { mission_id: string; fence: () => void; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string; tree: string; message: string }) => Promise<{ head: string; tree: string }>;
   /** `stopped` only when the verification container was proven removed. */
   verify: (mission: ContainedMission, argv: readonly string[], signal: AbortSignal) => Promise<{ exit_code: number | null; output: string; cancelled: boolean; evidence: string; stopped: boolean }>;
+  assertGithubCiScope?: (scopeId: string, spec: ContainedMissionSpec) => void;
+  /** Read-only admission of the recorded Git commit and tree. No candidate command is executed. */
+  admitGithubCiCandidate?: (mission: ContainedMission, spec: ContainedMissionSpec) => Promise<void>;
   /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
   publish: (input: { mission: ContainedMission; spec: ContainedMissionSpec; permit: ContainedPublicationPermit; body: string; beforeRemoteMutation: (kind: 'push' | 'pr_create') => void; signal: AbortSignal }) => Promise<ContainedPublicationResult>;
   /** Phase 5-C revision publisher. Phase 5-D selects this port for publish_target attempts. */
@@ -129,10 +136,20 @@ export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
   const v = JSON.parse(json) as ContainedMissionSpec;
   const str = (x: unknown) => typeof x === 'string' && x.length > 0;
   if (!v || ![v.goal, v.repo_path, v.base_ref, v.start_commit, v.branch, v.worktree_path].every(str) || !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/.test(v.start_commit)
-    || !Array.isArray(v.allowed_paths) || !Array.isArray(v.verify?.argv) || v.verify.argv.length === 0 || !v.verify.argv.every(str)) throw Error('CONTAINED_SPEC_INVALID');
+    || !Array.isArray(v.allowed_paths) || !Array.isArray(v.verify?.argv) || !v.verify.argv.every(str)) throw Error('CONTAINED_SPEC_INVALID');
   const p = v.publication;
   if (p !== undefined && (!p || !str(p.remote) || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(p.repository) || !str(p.base) || typeof p.draft !== 'boolean'
     || (p.title !== undefined && (typeof p.title !== 'string' || p.title.length > 200)) || (p.preauthorized !== undefined && typeof p.preauthorized !== 'boolean'))) throw Error('CONTAINED_SPEC_INVALID');
+  if (v.verification_mode === 'github_actions') {
+    if (v.verify.argv.length !== 0 || v.max_repair_cycles !== 0 || v.publish_target || v.revision_feedback
+      || p?.repository !== GITHUB_CI_SANDBOX || p.remote !== 'origin' || p.base !== 'main' || v.base_ref !== 'main'
+      || !v.branch.startsWith('osstack/mission/')) throw Error('CONTAINED_SPEC_INVALID');
+    const repair = v.ci_repair;
+    if (repair !== undefined && (!repair || !/^cm_[0-9a-f-]{36}$/.test(repair.root) || !Number.isSafeInteger(repair.pr) || repair.pr < 1
+      || !/^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(repair.branch) || repair.branch === v.branch
+      || !SHA_RE.test(repair.base) || !Number.isSafeInteger(repair.check_run_id) || repair.check_run_id < 1
+      || p.preauthorized === true || v.allowed_paths.length !== 1 || v.allowed_paths[0] !== 'PROBE_FAIL')) throw Error('CONTAINED_SPEC_INVALID');
+  } else if (v.verification_mode !== undefined || v.ci_repair !== undefined || v.verify.argv.length === 0) throw Error('CONTAINED_SPEC_INVALID');
   if ((v.publish_target === undefined) !== (v.revision_feedback === undefined)) throw Error('CONTAINED_SPEC_INVALID');
   if (v.publish_target !== undefined) {
     const t = v.publish_target; const f = v.revision_feedback!;
@@ -149,6 +166,13 @@ function chainTierAllowed(spec: ContainedMissionSpec, tier: string | undefined):
 }
 const BRANCH_NAME = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/;
 const SHA_RE = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+export const GITHUB_CI_SANDBOX = 'osborn-studio/osstack-bridge-sandbox';
+
+/** The sandbox workflow uses this root-added sentinel. The admission port independently proves its ancestry. */
+function sandboxSentinelRemoval(spec: ContainedMissionSpec, classification: ReturnType<typeof classifyMissionPatch>): boolean {
+  return !!spec.ci_repair && classification.tier === 'T2' && classification.reasons.length === 1 && classification.reasons[0] === 'DELETE_TRACKED'
+    && classification.files.length === 1 && classification.files[0]?.path === 'PROBE_FAIL' && classification.files[0].kind === 'delete';
+}
 
 export class ContainedMissionRunner {
   private readonly live = new Map<string, AbortController>();
@@ -157,10 +181,14 @@ export class ContainedMissionRunner {
   /** Advance one state. Returns the Mission after the step; no-op for halted or terminal Missions. */
   async step(missionId: string): Promise<ContainedMission> {
     const m = this.ports.store.get(missionId); const spec = parseContainedMissionSpec(m.spec_json);
+    if (spec.verification_mode && ['authorized', 'workspace_ready', 'candidate_ready', 'verified', 'revalidating', 'delivering'].includes(m.state)) {
+      try { this.assertGithubCiScope(m, spec); }
+      catch { return this.halt(m, 'awaiting_decision', 'github_ci_scope_unavailable'); }
+    }
     switch (m.state) {
       case 'authorized': return this.createWorkspace(m, spec);
       case 'workspace_ready': return this.qualifyAndExecute(m, spec, executorPromptFor(spec));
-      case 'candidate_ready': return this.verify(m, spec);
+      case 'candidate_ready': return spec.verification_mode ? this.admitGithubCiCandidate(m, spec) : this.verify(m, spec);
       case 'verify_failed': return this.repair(m, spec);
       case 'verified': return spec.publication?.preauthorized
         ? this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'revalidating', event: { kind: 'publication_preauthorized', payload: {} } }, this.ports.now())
@@ -171,8 +199,33 @@ export class ContainedMissionRunner {
     }
   }
 
+  private assertGithubCiScope(m: ContainedMission, spec: ContainedMissionSpec): void {
+    if (!this.ports.assertGithubCiScope || !this.ports.admitGithubCiCandidate) throw Error('github_ci_scope_unavailable');
+    this.ports.assertGithubCiScope(m.scope_id, spec);
+  }
+
+  private async admitGithubCiCandidate(m: ContainedMission, spec: ContainedMissionSpec): Promise<ContainedMission> {
+    const binding = { head: m.candidate_head, tree: m.candidate_tree, diff_digest: m.candidate_diff_digest };
+    const verifying = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'verifying',
+      event: { kind: 'ci_candidate_admission_intent', payload: binding } }, this.ports.now());
+    let failure: string | undefined;
+    try {
+      await this.ports.admitGithubCiCandidate!(verifying, spec);
+      this.assertGithubCiScope(verifying, spec);
+    } catch (error) { failure = code(error); }
+    const current = this.ports.store.get(m.mission_id);
+    // This route never starts the verification container or any candidate program.
+    if (current.state !== 'verifying' && current.state !== 'cancel_requested') return current;
+    const stopped = this.ports.store.recordStopEvidence(m.mission_id, current.revision, { stop_proof: 'never_launched', evidence: 'git_object_admission' }, this.ports.now());
+    if (stopped.state === 'cancel_requested') return this.settleCancel(stopped) ?? stopped;
+    if (failure) return this.halt(stopped, 'awaiting_decision', `github_ci_admission_failed:${failure}`);
+    return this.ports.store.transition(m.mission_id, { if_revision: stopped.revision, to: 'verified',
+      event: { kind: 'ci_candidate_admitted', payload: binding } }, this.ports.now());
+  }
+
   async decide(missionId: string, decision: ContainedDecision): Promise<ContainedMission> {
     const m = this.ports.store.get(missionId); const reason = this.haltReason(m);
+    if (decision.kind === 'approve_publication' && parseContainedMissionSpec(m.spec_json).ci_repair) throw Error('ci_repair_candidate_approval_required');
     if (decision.kind !== 'abandon' && m.state !== 'stop_unknown') {
       const raw = JSON.parse(m.spec_json) as { publish_target?: unknown };
       if (raw.publish_target) {
@@ -439,7 +492,7 @@ export class ContainedMissionRunner {
     // The turn's own patch decides what may be applied; the cumulative diff (below) decides the tier.
     const incremental = classify(patch);
     if (incremental.tier === 'rejected') return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId, reasons: incremental.reasons });
-    if (incremental.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: incremental.reasons });
+    if (incremental.tier === 'T2' && !sandboxSentinelRemoval(spec, incremental)) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: incremental.reasons });
     // Apply exactly the files the classifier parsed; the patch text is never parsed a second way.
     const parsed = parseMissionPatch(patch);
     if (!parsed.ok) return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId });
@@ -466,7 +519,7 @@ export class ContainedMissionRunner {
       const totals = overall.tier === 'rejected' ? undefined : overall.totals;
       this.ports.store.record(m.mission_id, 't0_intent', { operation_id: operationId, worktree: spec.worktree_path, head_before: m.expected_head, tier: overall.tier, reasons: overall.reasons,
         files: parsed.files.map(f => ({ path: f.path, kind: f.kind })), cumulative_totals: totals }, this.ports.now());
-      if (overall.tier === 'rejected' || overall.tier === 'T2') return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: overall.reasons, cumulative: true });
+      if (overall.tier === 'rejected' || (overall.tier === 'T2' && !sandboxSentinelRemoval(spec, overall))) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: overall.reasons, cumulative: true });
       if (screenOutputs({ patch: cumulative }).hits.length > 0) return this.halt(m, 'awaiting_decision', 'secret_detected', { operation_id: operationId, cumulative: true });
       const tier = overall.tier;
       // A revision child's own diff may be small while the whole chain's diff since the root's start is not (two rounds can reach twice the caps).
@@ -619,10 +672,14 @@ export class ContainedMissionRunner {
     const intent = events.filter(e => e.kind === 'verify_intent').at(-1); const receipt = events.filter(e => e.kind === 'verify_receipt').at(-1);
     const i = intent ? JSON.parse(intent.payload_json) as { candidate?: string } : undefined;
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code?: number | null; cancelled?: boolean } : undefined;
-    if (!intent || !receipt || receipt.seq < intent.seq || i?.candidate !== m.candidate_head || r?.exit_code !== 0 || r.cancelled !== false) return 'verify_receipt_mismatch';
+    if (spec.verification_mode) {
+      const admitted = events.filter(e => e.kind === 'ci_candidate_admitted').at(-1);
+      const a = admitted ? JSON.parse(admitted.payload_json) as { head?: string; tree?: string; diff_digest?: string } : undefined;
+      if (a?.head !== m.candidate_head || a.tree !== m.candidate_tree || a.diff_digest !== m.candidate_diff_digest) return 'ci_admission_mismatch';
+    } else if (!intent || !receipt || receipt.seq < intent.seq || i?.candidate !== m.candidate_head || r?.exit_code !== 0 || r.cancelled !== false) return 'verify_receipt_mismatch';
     const committed = events.filter(e => e.kind === 'candidate_committed').at(-1);
     const c = committed ? JSON.parse(committed.payload_json) as { head_commit?: string; tier?: string; chain_tier?: string } : undefined;
-    if (c?.head_commit !== m.candidate_head || (c.tier !== 'T0' && c.tier !== 'T1')) return 'candidate_untraced';
+    if (c?.head_commit !== m.candidate_head || (c.tier !== 'T0' && c.tier !== 'T1' && !(spec.ci_repair && c.tier === 'T2'))) return 'candidate_untraced';
     if (spec.publish_target && !chainTierAllowed(spec, c.chain_tier)) return 'chain_tier_unproven';
     return undefined;
   }
@@ -660,6 +717,7 @@ export class ContainedMissionRunner {
       const now = this.ports.store.get(m.mission_id);
       if (spec.publish_target && now.state === 'cancel_requested') throw Error('CONTAINED_REVISION_FENCE:child_cancelled');
       if (now.state !== 'delivering' || now.revision !== permit.revision || now.candidate_head !== permit.head || now.stop_obligation === 1 || now.candidate_verified !== 1) throw Error('CONTAINED_PUBLICATION_FENCE');
+      if (spec.verification_mode) this.assertGithubCiScope(now, spec);
       this.ports.store.record(m.mission_id, 'remote_mutation', { kind, head: permit.head }, this.ports.now());
       mutated = true;
     };
@@ -698,6 +756,7 @@ export class ContainedMissionRunner {
       if (unproven !== undefined) return this.haltUnproven(current, unproven);
       const cancelled = this.settleCancel(current); if (cancelled) return cancelled;
       if (current.revision !== m.revision) return current;
+      if (spec.ci_repair && error instanceof Error && error.message === 'CI_REPAIR_STOPPED') return this.halt(current, 'awaiting_decision', 'ci_repair_publication_unresolved');
       // The release record decides: the fence ran inside the release transaction, which may have rolled back; no release means git and gh never ran.
       if (this.ports.remoteWriteReleasedSince ? !this.ports.remoteWriteReleasedSince(m.mission_id, attemptAt) : !mutated) return this.halt(current, 'awaiting_decision', `publication_failed:${code(error)}`);
       this.ports.store.record(m.mission_id, 'delivery_uncertain', { code: code(error) }, this.ports.now());
@@ -705,16 +764,19 @@ export class ContainedMissionRunner {
     } finally { this.live.delete(m.mission_id); }
     if (result.pushed_commit !== permit.head) return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', 'publication_failed:pushed_head_mismatch');
     const evidence = this.deliveryEvidence(m, spec, permit, result);
-    this.ports.store.record(m.mission_id, 'delivery_evidence', evidence, this.ports.now());
+    this.ports.store.record(m.mission_id, spec.verification_mode ? 'ci_delivery_evidence' : 'delivery_evidence', evidence, this.ports.now());
     if (result.stop_proof_scope) this.ports.store.record(m.mission_id, 'delivery_stop_proof_scope', { scope: result.stop_proof_scope }, this.ports.now());
     const current = this.ports.store.get(m.mission_id);
     if (current.state === 'cancel_requested') {
-      this.ports.store.record(m.mission_id, 'pr_opened_before_cancel', { pr: result.pr }, this.ports.now());
+      this.ports.store.record(m.mission_id, 'pr_opened_before_cancel', { pr: result.pr,
+        ...(spec.verification_mode ? { verification_kind: spec.verification_mode } : {}) }, this.ports.now());
       return this.settleCancel(current) ?? current;
     }
-    const opened = this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'pr_opened', event: { kind: 'pr_opened', payload: { pr: result.pr, evidence_digest: evidence.evidence_digest } } }, this.ports.now());
+    const opened = this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'pr_opened',
+      event: { kind: 'pr_opened', payload: { pr: result.pr, evidence_digest: evidence.evidence_digest,
+        ...(spec.verification_mode ? { verification_kind: spec.verification_mode } : {}) } } }, this.ports.now());
     // The Mission stays pr_opened whatever happens to the check; a failure is a recorded event and a manual retry.
-    if (this.ports.publishVerifyCheck) await this.attemptVerifyCheck(opened);
+    if (!spec.verification_mode && this.ports.publishVerifyCheck) await this.attemptVerifyCheck(opened);
     return opened;
   }
 
@@ -736,6 +798,7 @@ export class ContainedMissionRunner {
   async retryVerifyCheck(missionId: string): Promise<{ check_run_id: number; created: boolean }> {
     const m = this.ports.store.get(missionId);
     if (m.state !== 'pr_opened') throw Error('mission_not_pr_opened');
+    if (parseContainedMissionSpec(m.spec_json).verification_mode) throw Error('github_ci_has_no_local_verify_check');
     if (!this.ports.publishVerifyCheck) throw Error('bridge_not_configured');
     const spec = parseContainedMissionSpec(m.spec_json);
     const publication = this.ports.revisionPublication;
@@ -750,13 +813,17 @@ export class ContainedMissionRunner {
   /** v3 §2 delivery evidence. The ledger copy is authoritative; the PR body is only a display copy. */
   private deliveryEvidence(m: ContainedMission, spec: ContainedMissionSpec, permit: ContainedPublicationPermit, result: ContainedPublicationResult) {
     const events = this.allEvents(m.mission_id);
-    const receipt = JSON.parse(events.filter(e => e.kind === 'verify_receipt').at(-1)!.payload_json) as { exit_code: number; evidence: string };
+    const verification = () => {
+      if (spec.verification_mode) return { verification_kind: 'github_actions', ci_result: 'pending' };
+      const receipt = JSON.parse(events.filter(e => e.kind === 'verify_receipt').at(-1)!.payload_json) as { exit_code: number; evidence: string };
+      return { verify: { argv: spec.verify.argv, exit_code: receipt.exit_code, evidence: receipt.evidence } };
+    };
     const committed = JSON.parse(events.filter(e => e.kind === 'candidate_committed').at(-1)!.payload_json) as { tier: string };
     const p = spec.publication!;
-    // Migrations and every other protected path are T2, and a T2 candidate never reaches delivery.
-    const body = { schema_version: 1, mission_id: m.mission_id, spec_digest: m.spec_digest, repository: p.repository, remote: p.remote, branch: spec.branch,
+    // The CI fixture's only allowed T2 edit removes its own sentinel. Protected paths never reach delivery.
+    const body = { schema_version: 1, mission_id: m.mission_id, spec_digest: m.spec_digest, repository: p.repository, remote: p.remote, branch: spec.ci_repair?.branch ?? spec.branch,
       base: p.base, base_head: result.base_head, start_commit: spec.start_commit, head: permit.head, tree: permit.tree, draft: p.draft, pr: result.pr,
-      verify: { argv: spec.verify.argv, exit_code: receipt.exit_code, evidence: receipt.evidence }, tier: committed.tier,
+      ...verification(), tier: committed.tier,
       migrations_changed: false, protected_paths_changed: false };
     return { ...body, evidence_digest: createHash('sha256').update(canonical(body)).digest('hex') };
   }
@@ -767,9 +834,10 @@ export class ContainedMissionRunner {
       `Contained Mission \`${m.mission_id}\`, opened by OSStack. Review before merging; OSStack never merges.`, '',
       `**Goal:** ${renderBodyLine(redactSecrets(spec.goal), 2000)}`, '',
       `- Candidate: \`${m.candidate_head}\` (tree \`${m.candidate_tree}\`) from \`${spec.start_commit}\``,
-      `- Verification: \`${renderBodyLine(redactSecrets(spec.verify.argv.join(' ')), 2000)}\` exited ${r?.exit_code ?? 'unknown'} in a no-network container (${r?.evidence ?? 'no receipt'})`,
+      spec.verification_mode ? '- Verification: GitHub Actions pending on the published candidate.' :
+        `- Verification: \`${renderBodyLine(redactSecrets(spec.verify.argv.join(' ')), 2000)}\` exited ${r?.exit_code ?? 'unknown'} in a no-network container (${r?.evidence ?? 'no receipt'})`,
       `- Spec digest: \`${m.spec_digest}\``, '',
-      'The authoritative delivery evidence is the `delivery_evidence` event in the OSStack ledger for this Mission.', '',
+      `The authoritative delivery evidence is the \`${spec.verification_mode ? 'ci_delivery_evidence' : 'delivery_evidence'}\` event in the OSStack ledger for this Mission.`, '',
       // Locator only: the body is editable, so readers check the first line agrees and the ledger stays authoritative.
       formatMissionMarker({ id: m.mission_id, spec_digest: m.spec_digest, head: m.candidate_head ?? '', start: spec.start_commit }),
     ].join('\n');

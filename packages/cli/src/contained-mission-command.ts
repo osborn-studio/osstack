@@ -5,28 +5,31 @@ const HELP = `Usage: osstack mission <command> [flags] [--json]
 Contained single-executor Missions: Codex proposes a patch read-only, the host classifies,
 applies and commits it, verifies in a no-network container, and stops at publication_pending.
   start --scope ID --repo PATH --base REF --goal TEXT --allow GLOB [--allow GLOB...]
-        --verify-arg ARG [--verify-arg ARG...] [--max-repair N] [--supersedes MISSION]
+        (--verify-arg ARG [--verify-arg ARG...] | --github-ci) [--max-repair N] [--supersedes MISSION]
         [--publish-repository OWNER/NAME [--publish-remote origin] [--publish-base REF]
          [--publish-draft true|false] [--publish-title TEXT] [--publish-preauthorized]]
   status --mission ID                (includes publication: the opened PR and pushed commit, if any)
   cancel --mission ID
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
+  approve-ci-repair --mission ID --candidate SHA
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check|resume_budget|resume_grant
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
   merger report [--json]             (shadow merger: classify shadow decisions against real outcomes; read-only, no recommendation)
   chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain; never merges)
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
 OSSTACK_CONTAINED_CODEX_BIN, OSSTACK_CONTAINED_CODEX_HOME and the OSSTACK_CONTAINED_DOCKER_* settings.
+The --github-ci sandbox pilot uses an App A host with OSSTACK_CONTAINED_SANDBOX_CI_SCOPE set to its registered scope.
 The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No daemon starts automatically.
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "status" | "cancel" | "decide" | "publish-check" | "chain-decide" | "merger-report";
+type Command = "start" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "chain-decide" | "merger-report";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   status: { single: ["mission"], repeated: [] },
   cancel: { single: ["mission"], repeated: [] },
   "publish-check": { single: ["mission"], repeated: [] },
+  "approve-ci-repair": { single: ["mission", "candidate"], repeated: [] },
   decide: { single: ["mission", "decision"], repeated: [] },
   "chain-decide": { single: ["chain", "decision"], repeated: [] },
   "merger-report": { single: [], repeated: [] },
@@ -70,7 +73,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     const command = args[0]! as Command;
     if (!Object.hasOwn(flagsByCommand, command)) throw new Error("unknown_mission_command");
     const single = new Map<string, string>(); const repeated = new Map<string, string[]>();
-    let json = false; let preauthorized = false;
+    let json = false; let preauthorized = false; let githubCi = false;
     for (let i = 1; i < args.length; i += 1) {
       const arg = args[i]!;
       if (arg === "--help" || arg === "-h") { out(HELP); return 0; }
@@ -78,6 +81,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       const key = arg.slice(2);
       if (key === "json") { if (json) throw new Error("duplicate_flag:--json"); json = true; continue; }
       if (key === "publish-preauthorized" && command === "start") { if (preauthorized) throw new Error("duplicate_flag:--publish-preauthorized"); preauthorized = true; continue; }
+      if (key === "github-ci" && command === "start") { if (githubCi) throw new Error("duplicate_flag:--github-ci"); githubCi = true; continue; }
       const value = args[++i];
       if (value === undefined || value.includes("\0")) throw new Error(`missing_value:--${key}`);
       if (flagsByCommand[command].repeated.includes(key)) { repeated.set(key, [...(repeated.get(key) ?? []), value]); continue; }
@@ -90,18 +94,23 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     let params: Record<string, unknown>;
     if (command === "start") {
       const argv = repeated.get("verify-arg") ?? []; const allow = repeated.get("allow") ?? [];
-      if (argv.length === 0) throw new Error("required:--verify-arg");
+      if (!githubCi && argv.length === 0) throw new Error("required:--verify-arg");
+      if (githubCi && (argv.length > 0 || (single.has("max-repair") && required("max-repair") !== "0"))) throw new Error("conflict:--github-ci");
       if (allow.length === 0) throw new Error("required:--allow");
       params = { scope_id: required("scope"), ...(single.has("supersedes") ? { supersedes: required("supersedes") } : {}),
         request: { goal: required("goal"), repo_path: resolve(deps.cwd ?? process.cwd(), required("repo")), base_ref: required("base"), allowed_paths: allow,
-          verify: { argv }, ...(single.has("max-repair") ? { max_repair_cycles: Number(required("max-repair")) } : {}),
+          verify: { argv }, ...(githubCi ? { verification_mode: "github_actions", max_repair_cycles: 0 }
+            : single.has("max-repair") ? { max_repair_cycles: Number(required("max-repair")) } : {}),
           ...(single.has("publish-repository") ? { publication: { repository: required("publish-repository"), remote: single.get("publish-remote") ?? "origin",
             base: single.get("publish-base") ?? required("base"), draft: (single.get("publish-draft") ?? "true") !== "false",
             ...(single.has("publish-title") ? { title: required("publish-title") } : {}), ...(preauthorized ? { preauthorized: true } : {}) } } : {}) } };
       if (single.has("publish-draft") && !["true", "false"].includes(required("publish-draft"))) throw new Error("invalid:--publish-draft");
       if (!single.has("publish-repository") && [...single.keys(), ...(preauthorized ? ["publish-preauthorized"] : [])].some(k => k.startsWith("publish-"))) throw new Error("required:--publish-repository");
+      if (githubCi && !single.has("publish-repository")) throw new Error("required:--publish-repository");
     } else if (command === "decide") {
       params = { mission_id: required("mission"), decision: required("decision") };
+    } else if (command === "approve-ci-repair") {
+      params = { mission_id: required("mission"), candidate: required("candidate") };
     } else if (command === "chain-decide") {
       params = { chain_id: required("chain"), decision: required("decision") };
     } else if (command === "merger-report") {
@@ -109,7 +118,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     } else {
       params = { mission_id: required("mission") };
     }
-    const method = (command === "publish-check" ? "mission.publish_check" : command === "chain-decide" ? "mission.chain_decide" : command === "merger-report" ? "mission.merger_report" : `mission.${command}`) as `mission.${Exclude<Command, "publish-check" | "chain-decide" | "merger-report">}` | "mission.publish_check" | "mission.chain_decide" | "mission.merger_report";
+    const method = `mission.${command.replaceAll("-", "_")}` as keyof typeof ContainedMissionRpcRequests;
     // Validate locally before reading the credential, so a typo never needs the secret.
     const probe = ContainedMissionRpcRequests[method].safeParse({ ...params, credential: "x".repeat(32) });
     if (!probe.success) throw new Error(`invalid_request:${probe.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).join(",")}`);

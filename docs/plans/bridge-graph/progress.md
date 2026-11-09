@@ -1,5 +1,10 @@
 # 执行进度
 
+## 2026-11-09 GitHub CI 首发路径
+
+- 本地实现覆盖登记沙箱 scope 的无 Docker Mission 启动、真实 Actions 失败识别、一次修复派发、精确候选审批、W13 租约推送与复验结果读回。测试先复现旧入口拒绝空验证命令，再通过独立的 CI 准入路径。GitHub CI 证据与 App B 容器回执分别保存。
+- 新读取器对 [沙箱 #29 的原失败 job](https://github.com/osborn-studio/osstack-bridge-sandbox/actions/runs/42552131265/job/128949826133) 完成只读核对。该 PR 仍处于人工暂缓推送，Docker 全程停止的新验收和阶段 6 的实际 Watcher、人工审批与 Merger 证据仍待完成。生产入口保持关闭。
+
 ## Closeout snapshot — updated 2026-11-09
 
 - Merge status checked on 2026-11-09: #425 through #435 are in `main` at `40b8d40f`. The delivery queue below records the status before those merges.

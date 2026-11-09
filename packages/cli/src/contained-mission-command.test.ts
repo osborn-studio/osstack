@@ -23,6 +23,17 @@ describe("osstack mission", () => {
     expect(r.out.join("\n")).not.toContain(credential);
   });
 
+  it("selects the sandbox CI route without accepting a local command", async () => {
+    const args = ["start", "--scope", "s1", "--repo", "repo", "--base", "main", "--goal", "sandbox seed", "--allow", "probe/**",
+      "--publish-repository", "osborn-studio/osstack-bridge-sandbox", "--github-ci"];
+    const accepted = await run(args);
+    expect(accepted.code).toBe(0);
+    expect(accepted.calls[0]?.params).toMatchObject({ request: { verification_mode: "github_actions", max_repair_cycles: 0, verify: { argv: [] } } });
+    const conflict = await run([...args, "--verify-arg", "true"]);
+    expect(conflict.reads).toBe(0);
+    expect(conflict.err[0]).toContain("conflict:--github-ci");
+  });
+
   it("validates locally before reading the credential", async () => {
     const r = await run(["decide", "--mission", MID, "--decision", "merge"]);
     expect(r.code).toBe(1); expect(r.reads).toBe(0); expect(r.calls).toEqual([]);

@@ -93,9 +93,23 @@ export class ContainedMissionHost {
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
     // Only the revision dispatcher builds these, and it does not come through here.
-    if (spec.publish_target !== undefined || spec.revision_feedback !== undefined) throw Error('CONTAINED_SPEC_INVALID');
+    if (spec.publish_target !== undefined || spec.revision_feedback !== undefined || spec.ci_repair !== undefined) throw Error('CONTAINED_SPEC_INVALID');
+    if (spec.verification_mode && (!this.options.ports.assertStartMode || !principal.operator_scopes.includes(input.scope_id))) throw Error('permission_denied');
+    this.options.ports.assertStartMode?.(input.scope_id, spec);
     const { claim } = validateContainedStart(spec, this.options.worktreesRoot);
-    return this.store.authorize(principal, { scope_id: input.scope_id, spec: spec as unknown as Record<string, unknown>, ...(input.supersedes ? { supersedes: input.supersedes } : {}), claim }, this.options.ports.now());
+    const authorize = () => this.store.authorize(principal, { scope_id: input.scope_id, spec: spec as unknown as Record<string, unknown>,
+      ...(input.supersedes ? { supersedes: input.supersedes } : {}), claim }, this.options.ports.now());
+    if (!spec.verification_mode) return authorize();
+    return this.store.db.transaction(() => {
+      this.store.attention.assertOwner(this.store.owner);
+      const active = this.store.db.prepare(`SELECT 1 FROM engineering_contained_missions m WHERE scope_id=?
+        AND json_extract(spec_json,'$.verification_mode')='github_actions' AND json_type(spec_json,'$.ci_repair') IS NULL
+        AND state NOT IN ('cancelled','abandoned','failed')
+        AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=m.mission_id
+          AND e.kind IN ('ci_closed_unmerged','ci_pr_merged_observed')) LIMIT 1`).get(input.scope_id);
+      if (active) throw Error('github_ci_scope_busy');
+      return authorize();
+    }).immediate();
   }
 
   status(principal: EngineeringPrincipal, missionId: string) {
