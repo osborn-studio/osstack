@@ -4,6 +4,8 @@
 
 配套：[Bridge 运行手册](bridge.md)、[阶段 6 运营者规格](../design/2026-11-06-bridge-phase6-operator.md)、[阶段 5 同 PR 修订设计](../design/2026-11-06-bridge-same-pr-revision.md)、[ADR-005 身份登记](../decisions/ADR-005-bridge-identity-registry.md)、[ADR-006 阶段决定](../decisions/ADR-006-bridge-s0-decisions.md)。历史规格中的“今天”“当前”只代表其标注日期；本文不把那些快照当作本次平台配置读回。
 
+**2026-11-08 工作流澄清：** 代码开发、测试、审阅与修复尽量在本地 osstack 完成；Watcher 继续 `verify-*` 后 approve + `verified`，Merger 独立检查规则后 squash merge。Reviewer 排除在必需主循环之外，草案仅保留为 **PAUSED/legacy optional**，不需要恢复或迁移 App D 才能推进本地主循环，也未删除任何 Bot。按用户提供的现行指令，Watcher 失败只报 Grok chat，不发正式 `CHANGES_REQUESTED`；该聊天失败回到本地修复的 intake 仍是[独立未完成工作](../reports/bridge-phase5-verification/acceptance-v2.md#product-closure-still-missing)。已有登记 reviewer 的正式 review 修订路径保留，普通评论/chat 不替代真实 review ID。Mission-main 人工计入批准门不变；本文不宣称自动化闭环或第三次 5-G 通过。
+
 ## 1. 接续现有平台和分工
 
 用户已经说明：现有 Grok Bots 共用云电脑，`gh` 登录为 `Rubebun-Jadeem`。继续使用现有平台和已有角色，不另建一套 Bot 平台。
@@ -117,7 +119,7 @@ App review 是否计入批准、由谁给出计入的批准，以及规则与身
 
 CoS 汇总 §5 表格，验证工程师提交原技能的增量 PR，Watcher 提供目标 head 的运行证据，运营者与仓库管理员补 App/规则的实际读回。只有相应验收门通过后才更新“已迁移/已上线”状态；本文本身没有完成阶段 5-G、阶段 6 或生产启动。
 
-最新补充：Reviewer 暂停且没有正式 `CHANGES_REQUESTED` 证据，意味着当前主循环未提供已证明的同 PR 修订触发来源。已准备[独立 App D Reviewer 例程草案](bridge-reviewer-routine-draft.md)，初始只登记沙箱、暂停且为 COMMENT-only；它没有被发送或启用，不能用共享 `Rubebun-Jadeem` 的另一个例程替代独立 App D。
+最新补充：[独立 App D Reviewer 例程草案](bridge-reviewer-routine-draft.md) 作为暂停的可选历史方案保留，不是本地主循环接入任务。Watcher chat 失败的本地 intake 缺口不能靠恢复 Reviewer、伪造正式修改请求或共享账号的另一例程补齐。
 
 ## 本地身份读探针补充（与云能力分开）
 

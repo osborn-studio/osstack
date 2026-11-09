@@ -1,5 +1,7 @@
 # Operator handoff and canonical verification recipe integration
 
+> Historical source-scoped report. For current acceptance, see [v2 status](bridge-phase5-verification/current-v2-status.md) and the [fourth-run evidence](bridge-phase5-verification/fourth-run-v2.md): fourth sandbox v2 `LIVE_5G_ONLY` PASSED 13/13; attempts 1–3 remain failed/unqualified. Old pending, checkout-selection and cold-helper findings below retain their original scope. The fourth cold scenario still cancels before first executor tick, not during an in-flight executor. Production remains CLOSED; no fifth run is authorized.
+
 Branch `codex/bridge-operator-handoff`, base `315e7fc4` (frozen812 plus reviewed
 journal-root fix and portable fixtures). This node changes only documentation
 and the existing `.cursor/skills/verify-osstack` content. It does not change
