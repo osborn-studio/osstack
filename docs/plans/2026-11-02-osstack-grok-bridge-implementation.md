@@ -3,7 +3,7 @@
 日期：2026-11-02。基线：`main` `54e640df`（含 #364 设计、#365 ADR-005）。
 输入：《osstack × Grok Bots 打通设计草稿》（PDF，下称“草稿”）、[双循环接通设计 v3](../design/2026-11-01-osstack-grok-bridge.md)（下称“设计”）、[ADR-005 登记名单](../decisions/ADR-005-bridge-identity-registry.md)。
 
-本文把草稿和设计变成可以执行的开发计划：每个阶段写明前置条件、要改的文件、测试、命令和验收标准。第一部分是**使用说明**，阶段 0 合并后即可按它操作。2026-11-09 更新阶段 5–7。首发由 GitHub Actions 执行 CI，Mac mini 上的 osstack 负责诊断和修复，现有 Watcher/Merger 参与受控验收。生产证据和身份政策见 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)。
+本文把草稿和设计变成可以执行的开发计划：每个阶段写明前置条件、要改的文件、测试、命令和验收标准。第一部分是**使用说明**，阶段 0 合并后即可按它操作。2026-11-09 更新阶段 5–7。首发由 GitHub Actions 执行 CI，Mac mini 上的 osstack 负责诊断和修复，现有 Watcher/Merger 参与受控验收。生产证据和身份政策见 [ADR-007](../decisions/ADR-007-bridge-github-ci-first.md)。
 
 ---
 
@@ -449,12 +449,12 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 
 **目标。** Mac mini 上的 osstack 负责识别失败、准备补丁、受控推送和读回。GitHub Actions 在原 runner 和矩阵上验证新提交。首发路径在 Mac mini 的 Docker 引擎停止时也要跑通。阶段 4 的观察、阶段 3 的 App A 发布和 W13 的写入保护是本阶段的基础。
 
-[原同 PR 受控修订附录](../design/2026-11-06-bridge-same-pr-revision.md)与[恢复和确认事务](../design/2026-11-07-bridge-phase5-resume-and-ordering.md)继续说明正式评审触发的路径。其 5-G v2 沙箱验收已通过 13/13，按[原始验收范围](../reports/bridge-phase5-verification/fourth-run-v2.md)保存。#432、#434、#435 的可信镜像与本地诊断基础可用于后续独立路径。首发的 CI 证据及推送授权见 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)。
+[原同 PR 受控修订附录](../design/2026-11-06-bridge-same-pr-revision.md)与[恢复和确认事务](../design/2026-11-07-bridge-phase5-resume-and-ordering.md)继续说明正式评审触发的路径。其 5-G v2 沙箱验收已通过 13/13，按[原始验收范围](../reports/bridge-phase5-verification/fourth-run-v2.md)保存。#432、#434、#435 的可信镜像与本地诊断基础可用于后续独立路径。首发的 CI 证据及推送授权见 [ADR-007](../decisions/ADR-007-bridge-github-ci-first.md)。
 
 | 任务 | 交付与依赖 | 验收 |
 |---|---|---|
 | 5.1 从 GitHub 识别失败 | 复用 #433 的检查读取合同，接上真实 GitHub 读取和扫描。只接受登记沙箱 Mission PR 当前提交上、受信任工作流最新已完成尝试的实际失败。读取真正失败的 job、runner 系统和矩阵，沿依赖区分下游汇总失败。 | 一次真实失败只产生一条诊断。旧提交、旧尝试、缺页、错误生产者、取消、超时和基础设施失败按原因等待、重跑或转人。Ubuntu 的汇总检查失败不会把上游 macOS 故障当成 Linux 故障。 |
-| 5.2 在同一 PR 上发布一轮受控修复 | 基于 5.1 的提交与基线准备隔离补丁。首发最多一轮，负责人审阅并授权推送指定候选提交，授权绑定仓库、PR、分支、当前 head、base、候选和有效期。复用 App A 和 W13 的发布、租约、意图日志及重启对账。CI 路径有独立的授权分支，原本地验证路径继续使用自己的回执。 | 暂无授权、授权撤销、候选改动、head/base 移动、保护路径触及和并发重复派发均拒绝推送；取消或重启后按意图对账。PR 仍是同一个，只追加一次快进提交。推送授权与新提交上的合并审批分别记录。 |
+| 5.2 在同一 PR 上发布一轮受控修复 | 基于 5.1 的提交与基线准备隔离补丁。首发最多一轮，常规授权由负责人确认指定候选提交。ADR-007 已批准一次沙箱例外，由宿主限时许可发出精确候选授权。授权绑定仓库、PR、分支、当前 head、base、候选和有效期。复用 App A 和 W13 的发布、租约、意图日志及重启对账。CI 路径有独立的授权分支，原本地验证路径继续使用自己的回执。 | 暂无授权、授权撤销、候选改动、head/base 移动、保护路径触及和并发重复派发均拒绝推送；取消或重启后按意图对账。PR 仍是同一个，只追加一次快进提交。推送授权与新提交上的合并审批分别记录。 |
 | 5.3 等 GitHub 验证新提交 | 5.2 推送后进入等待 CI。读回原失败 job 和全部指定必需检查在新提交上的最新完整结果。保留工作流、运行、尝试、矩阵、检查生产者、head/base 和发布意图关联。 | 原 job 在对应 runner 上通过，全部必需检查满足，才交给阶段 6。检查仍失败、缺失或不可归因时保留原因和证据，首发由负责人处理。CI 路径保存远端检查证据，App B 的本地验证结论只按实际本地运行发布。 |
 | 5.4 沙箱演练 | 在登记沙箱以单 scope 授权从正常入口使用 App A 开出 Mission PR，记录首个 head 并等待 GitHub CI。用受控夹具触发真实 job 失败，再完成 5.1–5.3。保留防重、撤权和错误结果的定向用例。阶段 6 继续验收同一 PR。 | Docker 引擎全程停止时，初始 PR 开出，真实失败被识别，经过授权的修复快进到同一 PR，原失败 job 与必需检查在新提交上通过。记录 PR、修复前后提交、失败和成功的 run/job，以及发布者和账本。 |
 
@@ -465,8 +465,8 @@ node scripts/bench-cli-startup.mjs                        # 新模块只在 miss
 | 任务 | 交付与依赖 | 验收 |
 |---|---|---|
 | 6.1 读回实际角色与检查配置 | 运营者核对 Watcher/Merger 的账号、登记沙箱、事件及巡检、Mission 识别和版本。管理员核对拟用于试点的 GitHub Actions 必需检查和生产者、禁止绕过、批准、线程和分支写入规则。可在阶段 5 实现前先做只读核对，尽早暴露接入阻塞。 | 当前 PR 身份、修订后 head、受保护基线中的工作流和检查来源可读回。同名错误生产者、旧 head 的绿灯以及只有 `verified` 标签均无法通过。 |
-| 6.2 验证修订后复验和合并 | 阶段 5.4 绿灯后，Watcher 对新 head 复验、审批并打 `verified`。由 `gilosbornhello` 阅读新提交并给出 Mission 计入的人工审批。合并前核对当前 head/base、检查、批准、线程和依赖。 | 缺人工审批或存在未处理的失败时，Mission 保持待合并。经批准的 Mission 合并路径对已评估 head 执行 squash，osstack 读回 `MERGED`、合并 SHA 和账本后关单。保存 Routine 和 GitHub 两侧证据。 |
-| 6.3 确定生产合并方式 | 首发验收由现有 PR Merger 按 Mission 门合并。先在 ADR-007 审批该账号和沙箱范围，再证明指定审批、发布账本、GitHub 检查和预期 head 均在合并前被核对。按仓库规则验证缺人审时旧流程也不能自动合并 Mission。普通 PR 沿用原流程。人工合并可用于独立演练，Merger 接入仍需实际验证。 | 通过普通 PR、合法 Mission、旧标记、缺失标记和读取不完整的路由验证。修订后的标记与当前 head 用受信任发布账本绑定；歧义时保持待处理。没有实证的自动合并路径保持禁用。 |
+| 6.2 验证修订后复验和合并 | 阶段 5.4 绿灯后，Watcher 对新 head 复验、审批并打 `verified`。已批准的一次沙箱演练由 Watcher 使用有 Write 权限的独立 GitHub 用户提交计入审批。其他 scope 的人工审批规则仍由相应 ADR 决定。合并前核对当前 head/base、检查、批准、线程和依赖。 | 缺 GitHub 计入审批或存在未处理的失败时，Mission 保持待合并。经批准的 Mission 合并路径对已评估 head 执行 squash，osstack 读回 `MERGED`、合并 SHA 和账本后关单。保存 Routine 和 GitHub 两侧证据。 |
+| 6.3 确定生产合并方式 | 沙箱首发由现有 PR Merger 通知独立 App E。按 ADR-007 的一次性例外，证明计入审批、发布账本、GitHub 检查和预期 head 均在合并前被核对。按仓库规则验证缺计入审批时，旧流程也无法自动合并 Mission。普通 PR 沿用原流程。人工合并可用于独立演练，Merger 接入仍需实际验证。 | 通过普通 PR、合法 Mission、旧标记、缺失标记和读取不完整的路由验证。修订后的标记与当前 head 用受信任发布账本绑定；歧义时保持待处理。没有实证的自动合并路径保持禁用。 |
 
 ### 阶段 7 主仓库单 scope 试运行
 

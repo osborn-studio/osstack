@@ -22,7 +22,7 @@ function requireOperator(actor: EngineeringPrincipal, scope: string) {
 }
 
 export function approveSandboxCiRepair(store: ContainedMissionStore, actor: EngineeringPrincipal,
-  missionId: string, candidate: string, now: number): ContainedMission {
+  missionId: string, candidate: string, now: number, autoGrantId?: string): ContainedMission {
   return store.db.transaction(() => {
     store.attention.assertOwner(store.owner);
     const mission = store.readable(actor, missionId);
@@ -34,9 +34,12 @@ export function approveSandboxCiRepair(store: ContainedMissionStore, actor: Engi
       || mission.candidate_verified !== 1 || facts.candidate !== candidate || store.claim(missionId).state !== 'active'
       || latestCiEvent(store, missionId, 'ci_repair_approval')) throw Error('ci_repair_approval_refused');
     const approved: Approval = { ...facts, principal: actor.principal_id, session: actor.client_session_id, expires_at: now + TTL };
-    store.record(missionId, 'ci_repair_approval', approved, now, actor.principal_id);
+    const source = autoGrantId === undefined ? {} : { automatic_grant_id: autoGrantId };
+    const approvalActor = autoGrantId === undefined ? actor.principal_id : undefined;
+    store.record(missionId, 'ci_repair_approval', { ...approved, ...source }, now, approvalActor);
     return store.transition(missionId, { if_revision: mission.revision, to: 'revalidating',
-      event: { kind: 'ci_repair_approved', payload: facts }, actor: actor.principal_id }, now);
+      event: { kind: 'ci_repair_approved', payload: { ...facts, ...source } },
+      ...(approvalActor ? { actor: approvalActor } : {}) }, now);
   }).immediate();
 }
 

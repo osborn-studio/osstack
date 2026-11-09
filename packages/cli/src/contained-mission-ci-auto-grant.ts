@@ -82,7 +82,7 @@ export class SandboxCiAutoGrant {
       const live = this.assert(store, child, refresh, now);
       // Reservation and exact-candidate approval commit together. No renewal or retry after a reservation.
       if (live.reserved || latestCiEvent(store, child.mission_id, 'ci_repair_push_intent')) throw Error('ci_auto_grant_consumed');
-      const approved = approveSandboxCiRepair(store, live.actor, child.mission_id, child.candidate_head!, now);
+      const approved = approveSandboxCiRepair(store, live.actor, child.mission_id, child.candidate_head!, now, live.reservation.grant_id);
       store.record(child.mission_id, 'ci_auto_grant_reserved', live.reservation, now);
       return approved;
     }).immediate();

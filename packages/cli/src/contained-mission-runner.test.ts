@@ -1,13 +1,15 @@
 import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
+import { AttentionStore, ContainedMissionStore, HostProcessStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
 import type { CodexProxyRun, CodexQualification } from "@osstack/agents";
 import { afterEach, describe, expect, it } from "vitest";
 import { ContainedMissionRunner, type ContainedMissionPorts, type ContainedMissionSpec } from "./contained-mission-runner.js";
 import { parseMissionMarkers } from "./contained-mission-marker.js";
 import { approveSandboxCiRepair, assertSandboxCiApproval } from "./contained-mission-github-ci-approval.js";
 import { publishSandboxCiRepair } from "./contained-mission-github-ci-publish.js";
-import { createSandboxCiObserver } from "./contained-mission-github-ci.js";
+import { createSandboxCiObserver, createSandboxCiReader } from "./contained-mission-github-ci.js";
+import { createSandboxCiMerge } from "./contained-mission-sandbox-ci-merge.js";
+import { remoteTargetOf } from "./contained-mission-remote-writes.js";
 import type { HostProcessRecord } from "@osstack/core";
 
 const cleanup: Array<() => void> = [];
@@ -96,7 +98,6 @@ describe("ContainedMissionRunner", () => {
     let merged = false;
     let pending = false;
     let attempt = 1;
-    let appMerge = false;
     let mergeRequests = 0;
     const repo = { id: 1446327922, full_name: repository };
     const app = { id: 15368 };
@@ -104,12 +105,14 @@ describe("ContainedMissionRunner", () => {
     const check = { id: 41, name: "check", app, head_sha: head, check_suite: { id: suite.id }, status: "completed", conclusion: "failure" };
     const scope = root.scope_id;
     const actor = { principal_id: "human", client_session_id: "cli", read_scopes: [scope], write_scopes: [scope], stop_scopes: [], operator_scopes: [scope] };
+    const mergeService = createSandboxCiMerge({ store: f.store, scopeId: scope, enabled: () => true, now: () => 2000,
+      ci: createSandboxCiReader(), github: () => { throw Error("no network adapters in this closure fixture"); } });
     const observer = createSandboxCiObserver({
       store: f.store, scopeId: scope, enabled: () => true, now: () => 2000, log: () => {}, refresh: () => actor,
       worktreesRoot: join(spec.repo_path, "worktrees"),
       merge: {
         request: async () => { mergeRequests++; },
-        acceptsMerge: () => appMerge ? { handoff_comment_id: 82, app_id: 5620091 } : null,
+        acceptsMerge: mergeService.acceptsMerge,
       },
       ci: {
         rest: async path => {
@@ -152,6 +155,17 @@ describe("ContainedMissionRunner", () => {
       move("candidate_ready", { head: fixed, tree: "d".repeat(40), diff_digest: "a".repeat(64) });
       move("verifying"); f.store.recordStopEvidence(id, f.store.get(id).revision, {}, 2000);
       move("verified"); move("revalidating"); move("delivering");
+      const intent = { intent_id: "ci_fixture", candidate: fixed, previous: head, base: START, branch, pr: 7 };
+      f.store.record(id, "ci_repair_push_intent", intent, 2000);
+      const journal = new HostProcessStore(f.store.attention, f.store.owner, { clock: () => 2000 });
+      const opId = "hp_fixture";
+      journal.launching({ op_id: opId, mission_id: id, kind: "git_push", remote_target: remoteTargetOf(repository, branch),
+        local_target: "/isolated/fixture", intent_id: intent.intent_id, argv_digest: "a".repeat(64), boot_id: "fixture",
+        marker: { path: "/isolated/marker", dev: "1", ino: "1" } });
+      journal.registered(opId, { pid: 4242, pgid: 4242, leader_start: null });
+      journal.release(opId, () => {});
+      journal.stopped(opId, { proof: "group_empty+marker_unheld", detail: {}, exit_code: 0 });
+      f.store.record(id, "ci_repair_push_confirmed", { ...intent, op_id: opId }, 2000);
       const digest = "e".repeat(64);
       const pr = { number: 7, url: `https://github.com/${repository}/pull/7`, reused: true };
       f.store.record(id, "ci_delivery_evidence", { head: fixed, base_head: START, evidence_digest: digest }, 2000);
@@ -175,9 +189,12 @@ describe("ContainedMissionRunner", () => {
       expect(kinds()).not.toContain("ci_pr_merged_observed");
       expect(kinds().filter(kind => kind === "ci_repair_verified")).toHaveLength(1);
       attempt = 1;
+      const handoff = { id: "82", expiresAt: 3000,
+        binding: { repository, repositoryId: repo.id, pr: 7, head: fixed, base: START, branch } };
+      f.store.record(root.mission_id, "ci_app_e_merge_reserved", handoff, 2000);
       await observer.scan();
       expect(kinds()).not.toContain("ci_pr_merged_observed");
-      appMerge = true;
+      f.store.record(root.mission_id, "ci_app_e_merge_released", handoff, 2000);
       await observer.scan();
       const closed = f.store.events(root.mission_id).find(event => event.kind === "ci_pr_merged_observed");
       expect(JSON.parse(closed!.payload_json)).toMatchObject({ pr: 7, head: fixed, merge_commit_sha: merge,

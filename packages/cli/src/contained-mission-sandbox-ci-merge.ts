@@ -96,8 +96,20 @@ export function createSandboxCiMerge(input: {
         const reread = current.ok ? handoffFor(current.body, binding, push.created_at, now()) : null;
         return reread?.id === h.id && reread.expiresAt === h.expiresAt && !signal.aborted && enabled();
       };
+      const github = input.github(signal);
       const result = await executeSandboxAppEMerge(handoff, {
-        ...input.github(signal), now, authenticateHandoff,
+        ...github, now, authenticateHandoff,
+        merge: (request, beforeWrite) => github.merge(request, async () => {
+          await beforeWrite();
+          store.db.transaction(() => {
+            store.attention.assertOwner(store.owner);
+            if (!enabled() || signal.aborted || handoff.expiresAt <= now() || !pushReceipt(root, child, target)
+              || reservedFor(root, target)?.id !== handoff.id || record(root.mission_id, 'ci_app_e_merge_released')) {
+              throw Error('SANDBOX_APP_E_RELEASE_REFUSED');
+            }
+            store.record(root.mission_id, 'ci_app_e_merge_released', handoff, now());
+          }).immediate();
+        }),
         verifyCurrentPublicationAndCi: async b => !!pushReceipt(root, child, b)
           && (await readSandboxCiJobs(ci, b, signal)).kind === 'success',
         reserveOnce: (key, h) => Promise.resolve(store.db.transaction(() => {
@@ -115,7 +127,9 @@ export function createSandboxCiMerge(input: {
     },
     acceptsMerge(root: ContainedMission, child: ContainedMission, target: SandboxCiTarget, actor: { id: number; type: string }, mergeSha: string) {
       const handoff = reservedFor(root, target);
-      if (!handoff || actor.id !== APP_E_SANDBOX.actorId || actor.type !== 'Bot' || !pushReceipt(root, child, target)) return null;
+      const released = latestCiEvent<SandboxMergerHandoff>(store, root.mission_id, 'ci_app_e_merge_released');
+      if (!handoff || released?.id !== handoff.id || !sameTarget(released.binding, target)
+        || actor.id !== APP_E_SANDBOX.actorId || actor.type !== 'Bot' || !pushReceipt(root, child, target)) return null;
       const confirmed = latestCiEvent<{ pr: number; head: string; sha: string }>(store, root.mission_id, 'ci_app_e_merge_confirmed');
       if (confirmed && (confirmed.pr !== target.pr || confirmed.head !== target.head || confirmed.sha !== mergeSha)) return null;
       return { handoff_comment_id: Number(handoff.id), app_id: APP_E_SANDBOX.appId };
