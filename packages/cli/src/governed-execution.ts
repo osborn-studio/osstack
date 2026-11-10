@@ -7,6 +7,8 @@ export interface ExecutionLease {
   release(): Promise<void>;
   /** Keep ownership until a trusted caller has confirmed external exit. */
   retain(reason: string): void;
+  /** After retain, await any renewal already in flight before journaling its exact owner. */
+  settleRetained?(): Promise<void>;
   /** Trusted host only; never accept a worker-provided proof callback.
    * Idempotent after release: recovery must never release semaphore permits twice. */
   releaseAfterReconciliation?(verify: () => Promise<void>): Promise<void>;
@@ -223,6 +225,12 @@ export class GovernedExecution {
           throw error;
         }).finally(() => { reconciled = undefined; });
         return reconciled;
+      },
+      settleRetained: async () => {
+        if (!retained || released || releasing || reconciled || writeGuardActive) throw new Error('retained lease required');
+        if (timer) clearInterval(timer);
+        await renewing;
+        if (!retained || released || releasing || reconciled || writeGuardActive) throw new Error('retained lease changed');
       },
       retain: (reason) => { retained = true; if (timer) clearInterval(timer); if (scope) this.quarantine(scope.repoId, input.runId); process.stderr.write(`osstack: retaining write lease ${input.runId}: ${reason}\n`); },
       release: () => {

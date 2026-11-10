@@ -503,3 +503,38 @@ it.each(['before_publication', 'after_publication'] as const)(
     expect(await readdir(guard)).toEqual(['block-rmdir']);
   },
 );
+
+describe('foreground local-loop administrative release', () => {
+  const localRun = 'local_loop_11111111-1111-4111-8111-111111111111';
+  it('rechecks owner replacement under the mutation guard', async () => {
+    const { releaseReconciledLocalLoopLock } = await import('./repo-lock.js');
+    const lease = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'local', autonomy_run_id: localRun,
+      pid: 2147483646, recover_stale: false });
+    await expect(releaseReconciledLocalLoopLock({ root_dir: directory, repo_id: 'local', expectedOwner: lease.owner,
+      verifyQuiescent: async () => {
+        await writeFile(lease.path, JSON.stringify({ ...lease.owner, token: '22222222-2222-4222-8222-222222222222' }));
+      } })).rejects.toThrow(RepoLockOwnershipError);
+    expect((await inspectRepoWriteLock(directory, 'local'))?.token).not.toBe(lease.owner.token);
+  });
+  it('holds acquisition behind the guard until verification completes', async () => {
+    const { releaseReconciledLocalLoopLock } = await import('./repo-lock.js');
+    const lease = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'local', autonomy_run_id: localRun,
+      pid: 2147483646, recover_stale: false });
+    let contender: Promise<unknown> | undefined;
+    await releaseReconciledLocalLoopLock({ root_dir: directory, repo_id: 'local', expectedOwner: lease.owner,
+      verifyQuiescent: async () => {
+        contender = acquireRepoWriteLock({ root_dir: directory, repo_id: 'local', autonomy_run_id: 'new', recover_stale: false });
+        expect((await inspectRepoWriteLock(directory, 'local'))?.token).toBe(lease.owner.token);
+      } });
+    await contender;
+    expect((await inspectRepoWriteLock(directory, 'local'))?.autonomy_run_id).toBe('new');
+  });
+  it('never releases graph or legacy owners with local-loop authority', async () => {
+    const { releaseReconciledLocalLoopLock } = await import('./repo-lock.js');
+    const lease = await acquireRepoWriteLock({ root_dir: directory, repo_id: 'graph', autonomy_run_id: 'graph-action:fixture',
+      pid: 2147483646, recover_stale: false });
+    await expect(releaseReconciledLocalLoopLock({ root_dir: directory, repo_id: 'graph', expectedOwner: lease.owner,
+      verifyQuiescent: async () => {} })).rejects.toThrow(RepoLockOwnershipError);
+    expect(await inspectRepoWriteLock(directory, 'graph')).toEqual(lease.owner);
+  });
+});

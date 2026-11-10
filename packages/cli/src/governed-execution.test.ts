@@ -326,3 +326,31 @@ it.each(['corrupt_owner', 'foreign_repository', 'guard_timeout', 'directory_erro
     await next.release();
   },
 );
+it('settles an in-flight renewal before the retained owner is journaled', async () => {
+  const f = await fixture();
+  const acquire = autonomy.acquireRepoWriteLock;
+  let finishRenewal!: () => void;
+  let renewalStarted!: () => void;
+  const started = new Promise<void>(resolve => { renewalStarted = resolve; });
+  const deferred = new Promise<void>(resolve => { finishRenewal = resolve; });
+  vi.spyOn(autonomy, 'acquireRepoWriteLock').mockImplementation(async options => {
+    const lock = await acquire(options);
+    return { ...lock, renew: async () => { renewalStarted(); await deferred; await lock.renew(); } };
+  });
+  let tick!: () => void;
+  const interval = globalThis.setInterval;
+  vi.spyOn(globalThis, 'setInterval').mockImplementation((callback, timeout, ...args) => {
+    if (timeout === 20_000) tick = callback as () => void;
+    return interval(callback, timeout, ...args);
+  });
+  const lease = await f.admission.acquire({ kind: 'write', runId: 'renewal-barrier', workspacePath: f.repo });
+  tick(); await started;
+  lease.retain('journal terminal owner');
+  let settled = false;
+  const pending = lease.settleRetained!().then(() => { settled = true; });
+  await Promise.resolve(); expect(settled).toBe(false);
+  finishRenewal(); await pending; expect(settled).toBe(true);
+  expect(f.writes.in_use).toBe(1);
+  await expect(lease.release()).rejects.toThrow(/unconfirmed/);
+  await lease.releaseAfterReconciliation!(async () => {});
+});

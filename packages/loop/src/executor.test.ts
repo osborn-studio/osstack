@@ -7,7 +7,7 @@ import { join } from "node:path";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { executePlan, runShellCommand } from "./executor.js";
+import { executePlan, runShellCommand, withCommandObserver } from "./executor.js";
 import { planTask } from "./planner.js";
 import type { Task } from "./types.js";
 
@@ -666,6 +666,14 @@ describe("command process groups", () => {
     });
   });
 
+  it("drains a contained descendant that finishes after the leader exits", async () => {
+    const result = await runShellCommand("/bin/sleep 0.3 & exit 0", {
+      cwd: workspace, timeoutMs: 3000, outputLimit: 1000, terminationGraceMs: 700,
+    });
+    expect(result).toMatchObject({ exitCode: 0, termination: { trigger: "exit", stop_confirmed: true, signals: [] } });
+    expect(result.failure_code).toBeUndefined();
+  });
+
   it.each(["inherit", "ignore"])("cleans surviving descendants after successful leader exit with %s stdio", async (stdio) => {
     await withProcessFixture(`
       const code = "const fs = require('node:fs'); fs.writeFileSync('child.pid', String(process.pid)); process.on('SIGTERM', () => {}); fs.writeFileSync('ready', 'yes'); setInterval(() => {}, 1000);";
@@ -1078,4 +1086,26 @@ it('confirms process-group exit when cancelling a clean environment command', as
       termination: { stop_confirmed: true, scope: 'posix_process_group' } });
     fixture.assertStopped();
   });
+});
+
+it("does not spawn if durable command intent fails", async () => {
+  await expect(withCommandObserver(() => { throw Error("journal unavailable"); }, () =>
+    runShellCommand("touch must-not-exist", { cwd: workspace, timeoutMs: 1000, outputLimit: 100 })))
+    .rejects.toThrow("journal unavailable");
+  expect(existsSync(join(workspace, "must-not-exist"))).toBe(false);
+});
+it("awaits group stop even if the spawn journal fails", async () => {
+  const result = await withCommandObserver(event => { if (event.kind === "spawn") throw Error("disk full"); }, () =>
+    runShellCommand("/bin/sleep 10", { cwd: workspace, timeoutMs: 1000, outputLimit: 1000 }));
+  expect(result.termination).toMatchObject({ trigger: "process_error", stop_confirmed: true });
+  expect(result.exitCode).not.toBe(0);
+});
+it("rejects terminal journal failure after awaiting group exit", async () => {
+  let pgid = 0;
+  await expect(withCommandObserver(event => {
+    if (event.kind === "spawn") pgid = event.pgid;
+    if (event.kind === "terminal") throw Error("terminal write failed");
+  }, () => runShellCommand("true", { cwd: workspace, timeoutMs: 1000, outputLimit: 100 })))
+    .rejects.toThrow("terminal write failed");
+  expect(() => process.kill(-pgid, 0)).toThrow();
 });

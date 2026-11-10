@@ -269,6 +269,7 @@ export type {
 export * from "./verifier.js";
 export * from "./loop-engine.js";
 export type { LoopLifecycleLease, LoopLifecycleAdmission } from "./policy-gate.js";
+export { loopContainmentPath } from "./loop-containment.js";
 ```
 
 ## `@osstack/neat-eval` (private)
