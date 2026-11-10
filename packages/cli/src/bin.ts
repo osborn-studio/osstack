@@ -10459,6 +10459,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${landBranch.message}`);
       return 1;
     }
+    const localRecoveryRequested = args.includes("--local-recovery-contained");
+    if (localRecoveryRequested && (useDaemon || agentId !== undefined || autoAgent || verifierAgentIds.length > 0
+      || selfImprovementEnabled || neatFinalize || candidatePolicy !== undefined || args.includes("--worktree") || args.includes("--land-branch"))) {
+      throw Error("local recovery requires foreground contained commands without adapters or external finalizers");
+    }
     const profileRouting = await resolveLoopProfileRouting(args, agentId, verifierAgentIds);
     if (profileRouting instanceof Error) {
       console.error(`osstack: ${profileRouting.message}`);
@@ -10471,9 +10476,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     if (candidatePolicy !== undefined && agentId !== undefined && verifierAgentIds.includes(agentId)) {
       console.error("osstack: candidate Builder and Evaluator must differ"); return 1;
     }
-    const localRecoveryRequested = args.includes("--local-recovery-contained");
-    if (localRecoveryRequested && (useDaemon || agentId !== undefined || autoAgent || verifierAgentIds.length > 0
-      || selfImprovementEnabled || neatFinalize || candidatePolicy !== undefined || args.includes("--worktree") || args.includes("--land-branch"))) {
+    if (localRecoveryRequested && (agentId !== undefined || verifierAgentIds.length > 0)) {
       throw Error("local recovery requires foreground contained commands without adapters or external finalizers");
     }
     let localRecovery: Awaited<ReturnType<typeof import("./local-loop-recovery.js").beginLocalLoopJournal>> | undefined;

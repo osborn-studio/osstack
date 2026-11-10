@@ -43,7 +43,10 @@ it('journals and retains a stopped leader-exit failure through the foreground CL
 });
 it.each(['--agent', '--auto-agent', '--daemon', '--worktree'])('refuses recovery opt-in with %s', async flag => {
   const args = ['loop', 'run', '--local-recovery-contained', flag]; if (flag === '--agent') args.push('codex-cli');
+  const route = vi.spyOn(await import('./loop-profile-routing.js'), 'resolveLoopProfileRouting')
+    .mockResolvedValue(new Error('no Builder is available'));
   await expect(main(args)).rejects.toThrow(/foreground contained/);
+  expect(route).not.toHaveBeenCalled();
 });
 
 it('releases newly admitted ownership when journal initialization fails before execution', async () => {
