@@ -54,7 +54,7 @@ export async function readSandboxCiJobs(ci: CiReader, target: SandboxCiTarget, s
     if (!response.ok || !squash.safeParse(response.body).success) return { kind: 'waiting', reason: 'merge_base_unavailable' };
   }
   for (const commit of [target.base, target.head]) {
-    if (!await readBoundWorkflow(ci, policy, commit, signal)) return { kind: 'waiting', reason: 'workflow_binding_unavailable' };
+    if (!await readBoundWorkflows(ci, policy, commit, signal)) return { kind: 'waiting', reason: 'workflow_binding_unavailable' };
   }
   const request = { repository: policy.repository, pr: target.pr, head: target.head, app_id: policy.actionsAppId };
   // Failure hints wake the repair of open PRs. Closed PRs are eligible only for a fresh success readback.
@@ -63,22 +63,36 @@ export async function readSandboxCiJobs(ci: CiReader, target: SandboxCiTarget, s
     : { ok: true as const, hints: [] };
   if (!hints.ok) return { kind: 'waiting', reason: hints.code };
   const results: ActionsJobObservation[] = [];
-  for (const { name, matrix, runnerLabels, failureStep } of policy.jobs) {
-    const { repositoryId, workflowId, workflowPath } = policy;
+  const runs = new Map<number, ActionsJobObservation>();
+  const workflowSet = [...new Set(policy.jobs.map(job => (job.workflow ?? policy).workflowId))];
+  let snapshot: string | undefined;
+  for (const { name, matrix, runnerLabels, failureStep, workflow = policy } of policy.jobs) {
+    const { repositoryId } = policy;
+    const { workflowId, workflowPath } = workflow;
     const preMerge = afterMerge?.jobs.find(job => job.job_name === name);
     if (afterMerge && !preMerge) return { kind: 'waiting', reason: 'premerge_job_unavailable' };
     const result = await ci.observeLatestJob({ ...request, name }, { repositoryId, workflowId, workflowPath, runnerLabels, failureStep,
+      ...(workflowSet.length > 1 ? { workflowSet } : {}),
       base: target.base, baseRef: 'main', headRef: target.branch, matrix, ...(preMerge ? { preMerge } : {}) },
     { maxPages: 2, maxRequests: 10, signal });
     if (!result) return { kind: 'waiting', reason: 'job_binding_unavailable' };
+    const { runSnapshot, ...job } = result;
+    if (workflowSet.length > 1 && (!runSnapshot || (snapshot !== undefined && runSnapshot !== snapshot))) {
+      return { kind: 'waiting', reason: 'workflow_attempts_moved' };
+    }
+    snapshot = runSnapshot;
     if (policy.repository === SANDBOX_CI_POLICY.repository && result.outcome === 'failure'
       && hints.hints.some(h => h.check_run_id === result.check_run_id && h.name === name)) {
-      return await current() ? { kind: 'failure', job: result } : { kind: 'waiting', reason: 'pr_binding_unavailable' };
+      return await current() ? { kind: 'failure', job } : { kind: 'waiting', reason: 'pr_binding_unavailable' };
     }
-    results.push(result);
+    const first = runs.get(workflowId);
+    if (first && (result.run_id !== first.run_id || result.attempt !== first.attempt)) {
+      return { kind: 'waiting', reason: 'matrix_binding_unavailable' };
+    }
+    runs.set(workflowId, job);
+    results.push(job);
   }
-  const first = results[0];
-  if (!first || results.some(r => r.run_id !== first.run_id || r.attempt !== first.attempt)) return { kind: 'waiting', reason: 'matrix_binding_unavailable' };
+  if (results.length === 0) return { kind: 'waiting', reason: 'matrix_binding_unavailable' };
   if (results.every(r => r.outcome === 'success') && await current()) return { kind: 'success', jobs: results };
   if (policy.repository !== SANDBOX_CI_POLICY.repository) {
     const failures = results.filter(r => r.outcome === 'failure');
@@ -97,10 +111,14 @@ export function createSandboxCiReader(policy = SANDBOX_CI_POLICY) {
   return createActionsCiFailureReadDeps({ actionsAppId: policy.actionsAppId });
 }
 
-async function readBoundWorkflow(ci: Pick<CiReader, 'rest'>, policy: GithubCiPolicy, commit: string, signal: AbortSignal) {
+async function readBoundWorkflows(ci: Pick<CiReader, 'rest'>, policy: GithubCiPolicy, commit: string, signal: AbortSignal) {
   if (!sha.safeParse(commit).success) return false;
-  const response = await ci.rest(`repos/${policy.repository}/contents/${policy.workflowPath}?ref=${commit}`, { signal });
-  return response.ok && z.object({ sha: z.literal(policy.workflowBlob), type: z.literal('file') }).safeParse(response.body).success;
+  const workflows = new Set(policy.jobs.map(job => job.workflow ?? policy));
+  for (const workflow of workflows) {
+    const response = await ci.rest(`repos/${policy.repository}/contents/${workflow.workflowPath}?ref=${commit}`, { signal });
+    if (!response.ok || !z.object({ sha: z.literal(workflow.workflowBlob), type: z.literal('file') }).safeParse(response.body).success) return false;
+  }
+  return workflows.size > 0;
 }
 
 export async function assertSandboxCiRepository(signal: AbortSignal, policy = SANDBOX_CI_POLICY, base?: string): Promise<void> {
@@ -108,7 +126,7 @@ export async function assertSandboxCiRepository(signal: AbortSignal, policy = SA
   const response = await ci.rest(`repos/${policy.repository}`, { signal });
   const schema = z.object({ id: z.literal(policy.repositoryId), full_name: z.literal(policy.repository), default_branch: z.literal('main') });
   if (!response.ok || !schema.safeParse(response.body).success) throw Error('CI_MISSION_REPOSITORY_UNVERIFIED');
-  if (base && !await readBoundWorkflow(ci, policy, base, signal)) throw Error('CI_PILOT_WORKFLOW_UNVERIFIED');
+  if (base && !await readBoundWorkflows(ci, policy, base, signal)) throw Error('CI_PILOT_WORKFLOW_UNVERIFIED');
 }
 
 export function createSandboxCiObserver(input: { store: ContainedMissionStore; scopeId: string; enabled: () => boolean;

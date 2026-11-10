@@ -3,15 +3,15 @@ import { closeSync, constants, fstatSync, openSync, readFileSync, realpathSync, 
 import { dirname, isAbsolute, join } from 'node:path';
 import type { ContainedMission, ContainedMissionStore, EngineeringPrincipal } from '@osstack/core';
 import { z } from 'zod';
-import { GITHUB_CI_PILOT_REPOSITORY, PILOT_PATH } from './contained-mission-ci-policy.js';
+import { GITHUB_CI_PILOT_REPOSITORY, PRODUCTION_CI_REPOSITORIES, productionCiPath, productionCiPolicy, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 import { approveSandboxCiRepair, latestCiEvent, type RefreshCiPrincipal } from './contained-mission-github-ci-approval.js';
 import { parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
 
 const number = z.number().int().positive().safe();
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/u);
-const paths = z.array(z.string().max(256).regex(PILOT_PATH)).min(1).max(24);
+const paths = z.array(z.string().max(256)).min(1).max(24);
 const profile = z.object({
-  version: z.literal(1), scope_id: sha256, paths, publisher_installation_id: number,
+  version: z.literal(1), repository: z.enum(PRODUCTION_CI_REPOSITORIES).optional(), scope_id: sha256, paths, publisher_installation_id: number,
   merger_installation_id: number, merger_key_path: z.string().refine(isAbsolute),
   main_quality_ruleset_id: number, main_update_ruleset_id: number,
   mission_writers_ruleset_id: number, mission_history_ruleset_id: number,
@@ -38,6 +38,7 @@ function readPrivate(path: string): string {
 
 export class ProductionCiPilot {
   readonly config: PilotProfile;
+  readonly policy: GithubCiPolicy;
   readonly profileDigest: string;
   private readonly profilePath: string;
   private readonly releasePath: string;
@@ -50,13 +51,16 @@ export class ProductionCiPilot {
     this.config = profile.parse(JSON.parse(raw));
     this.profileDigest = digest(raw);
     const c = this.config;
-    if (new Set(c.paths).size !== c.paths.length
+    const policy = productionCiPolicy(c.repository ?? GITHUB_CI_PILOT_REPOSITORY);
+    if (!policy || !c.paths.every(path => productionCiPath(policy.repository, path))
+      || new Set(c.paths).size !== c.paths.length
       || new Set([c.main_quality_ruleset_id, c.main_update_ruleset_id, c.mission_writers_ruleset_id, c.mission_history_ruleset_id]).size !== 4
       || c.publisher_installation_id === c.merger_installation_id) throw refusal();
+    this.policy = policy;
   }
 
   private permit(spec: ContainedMissionSpec, scope: string, now: number) {
-    if (!this.live || this.draining() || scope !== this.config.scope_id || spec.publication?.repository !== GITHUB_CI_PILOT_REPOSITORY
+    if (!this.live || this.draining() || scope !== this.config.scope_id || spec.publication?.repository !== this.policy.repository
       || spec.allowed_paths.length === 0 || !spec.allowed_paths.every(path => this.config.paths.includes(path))
       || digest(readPrivate(this.profilePath)) !== this.profileDigest) throw refusal();
     const repo = realpathSync(spec.repo_path);

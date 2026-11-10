@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { CODEX_PROXY_END_MARKER, type CodexProxyRun, type CodexQualification } from '@osstack/agents';
 import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import { classifyMissionPatch, parseMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
-import { GITHUB_CI_PILOT_REPOSITORY, GITHUB_CI_SANDBOX, PILOT_PATH } from './contained-mission-ci-policy.js';
+import { GITHUB_CI_SANDBOX, productionCiPath, productionCiPolicy } from './contained-mission-ci-policy.js';
 import { formatMissionMarker, renderBodyLine } from './contained-mission-marker.js';
 import { applyContainedPatchFile } from './contained-patch-apply.js';
 import { HOST_PROCESS_UNPROVEN_PREFIX, WORKSPACE_RECOVERED, WORKSPACE_RECOVERY_FAILED, hostOnlyObligation, hostProcessRouteOf, unprovenOpId } from './contained-mission-host-process.js';
@@ -142,11 +142,12 @@ export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
   if (p !== undefined && (!p || !str(p.remote) || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(p.repository) || !str(p.base) || typeof p.draft !== 'boolean'
     || (p.title !== undefined && (typeof p.title !== 'string' || p.title.length > 200)) || (p.preauthorized !== undefined && typeof p.preauthorized !== 'boolean'))) throw Error('CONTAINED_SPEC_INVALID');
   if (v.verification_mode === 'github_actions') {
+    const production = p && productionCiPolicy(p.repository);
     if (v.verify.argv.length !== 0 || v.max_repair_cycles !== 0 || v.publish_target || v.revision_feedback
-      || !p || (p.repository !== GITHUB_CI_SANDBOX && p.repository !== GITHUB_CI_PILOT_REPOSITORY) || p.remote !== 'origin' || p.base !== 'main' || v.base_ref !== 'main'
+      || !p || (p.repository !== GITHUB_CI_SANDBOX && !production) || p.remote !== 'origin' || p.base !== 'main' || v.base_ref !== 'main'
       || !v.branch.startsWith('osstack/mission/')) throw Error('CONTAINED_SPEC_INVALID');
-    if (p.repository === GITHUB_CI_PILOT_REPOSITORY && (p.draft || v.allowed_paths.length === 0
-      || !v.allowed_paths.every(path => typeof path === 'string' && PILOT_PATH.test(path)))) throw Error('CONTAINED_SPEC_INVALID');
+    if (production && (p.draft || v.allowed_paths.length === 0
+      || !v.allowed_paths.every(path => typeof path === 'string' && productionCiPath(production.repository, path)))) throw Error('CONTAINED_SPEC_INVALID');
     const repair = v.ci_repair;
     if (repair !== undefined && (!repair || !/^cm_[0-9a-f-]{36}$/.test(repair.root) || !Number.isSafeInteger(repair.pr) || repair.pr < 1
       || !/^osstack\/mission\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(repair.branch) || repair.branch === v.branch

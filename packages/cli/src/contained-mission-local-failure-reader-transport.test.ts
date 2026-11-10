@@ -45,6 +45,14 @@ describe('authenticated Actions latest attempt transport', () => {
     await expect(w.deps.observeLatestJob(query, { ...binding, base: head }, options())).resolves.toBeNull();
     await expect(w.deps.observeLatestJob(query, { ...binding, runnerLabels: ['macos-latest'] }, options())).resolves.toBeNull();
     await expect(w.deps.observeLatestJob(query, { ...binding, failureStep: 'Run a different job' }, options())).resolves.toMatchObject({ outcome: 'infrastructure_failure' });
+    await expect(w.deps.observeLatestJob(query, { ...binding, workflowSet: [12, 13] }, options())).resolves.toBeNull();
+    const runResponse = w.rows.get(runPath) as { workflow_runs: unknown[] };
+    w.rows.set(runPath, { total_count: 2, workflow_runs: [...runResponse.workflow_runs,
+      run({ id: 91, workflow_id: 13, run_attempt: 2, status: 'completed' })] });
+    w.rows.set(`repos/${repo}/actions/runs/91/attempts/2/jobs?per_page=100&page=1`, { total_count: 1,
+      jobs: [job({ id: 21, run_id: 91, run_attempt: 2, name: 'fixtures' })] });
+    await expect(w.deps.observeLatestJob(query, { ...binding, workflowSet: [12, 13] }, options()))
+      .resolves.toMatchObject({ runSnapshot: '[[90,1,"completed"],[91,2,"completed"]]' });
   });
   it('rechecks an exact pre-merge success when GitHub clears the PR association', async () => {
     const w = world();

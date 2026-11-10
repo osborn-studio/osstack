@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
-import { GITHUB_CI_PILOT_REPOSITORY, PRODUCTION_CI_POLICY, SANDBOX_CI_POLICY } from './contained-mission-ci-policy.js';
+import { SANDBOX_CI_POLICY } from './contained-mission-ci-policy.js';
 import { GITHUB_CI_SANDBOX, parseContainedMissionSpec } from './contained-mission-runner.js';
 import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
@@ -332,15 +332,15 @@ export async function createContainedMissionService(deps: {
   const pilot = pilotMode ? new (await import('./contained-mission-ci-pilot.js')).ProductionCiPilot(
     deps.home, pilotMode === 'live' && !bridgeKilled, deps.draining) : undefined;
   const scopeId = pilot?.config.scope_id ?? githubCiSandboxScope;
-  const policy = pilot ? PRODUCTION_CI_POLICY : SANDBOX_CI_POLICY;
+  const policy = pilot?.policy ?? SANDBOX_CI_POLICY;
   const pilotPolicy = pilot ? {
     ...(await import('./contained-mission-sandbox-app-e.js')).SANDBOX_MERGER_POLICY,
-    repository: PRODUCTION_CI_POLICY.repository, repositoryId: PRODUCTION_CI_POLICY.repositoryId, ci: PRODUCTION_CI_POLICY,
+    repository: policy.repository, repositoryId: policy.repositoryId, ci: policy,
     installationId: pilot.config.merger_installation_id,
     qualityRulesetId: pilot.config.main_quality_ruleset_id, updateRulesetId: pilot.config.main_update_ruleset_id,
     missionRulesets: { writers: pilot.config.mission_writers_ruleset_id, history: pilot.config.mission_history_ruleset_id },
   } : undefined;
-  if (pilot && (bridge?.repository !== GITHUB_CI_PILOT_REPOSITORY || bridge.publisher.installation_id !== pilot.config.publisher_installation_id
+  if (pilot && (bridge?.repository !== policy.repository || bridge.publisher.installation_id !== pilot.config.publisher_installation_id
     || bridge.mission_ruleset_ids.length !== 2 || !bridge.mission_ruleset_ids.includes(pilot.config.mission_writers_ruleset_id)
     || !bridge.mission_ruleset_ids.includes(pilot.config.mission_history_ruleset_id))) throw Error('CI_PILOT_APP_CONFIGURATION_MISMATCH');
   if (pilot && bridge) {

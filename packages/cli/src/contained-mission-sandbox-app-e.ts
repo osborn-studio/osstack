@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GITHUB_CI_SANDBOX, GITHUB_CI_SANDBOX_ID, SANDBOX_CI_POLICY, type GithubCiPolicy } from './contained-mission-ci-policy.js';
+import { GITHUB_CI_SANDBOX, GITHUB_CI_SANDBOX_ID, PRODUCTION_CI_REPOSITORIES, SANDBOX_CI_POLICY, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 
 // Pure merge gates. The service chooses the authorized repository policy and supplies the ports.
 export const APP_E_SANDBOX = Object.freeze({
@@ -17,7 +17,7 @@ export const SANDBOX_MERGER_POLICY: CiMergerPolicy = {
 };
 const sha = z.string().regex(/^[0-9a-f]{40}$/u);
 const bindingSchema = z.object({
-  repository: z.enum(['osborn-studio/osstack-bridge-sandbox', 'osborn-studio/osstack']), repositoryId: z.number().int().positive().safe(),
+  repository: z.enum([GITHUB_CI_SANDBOX, ...PRODUCTION_CI_REPOSITORIES]), repositoryId: z.number().int().positive().safe(),
   pr: z.number().int().positive(), branch: z.string().regex(/^osstack\/mission\/[A-Za-z0-9_.-]+$/u),
   head: sha, base: sha,
 }).strict();
