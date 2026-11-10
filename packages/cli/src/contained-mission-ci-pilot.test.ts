@@ -4,29 +4,31 @@ import { AttentionStore, ContainedMissionStore, HostProcessStore, createScratchD
 import { describe, expect, it, vi } from 'vitest';
 import { createRig, oid } from './contained-mission-bridge-shadow.testkit.js';
 import { ProductionCiPilot } from './contained-mission-ci-pilot.js';
-import { PRODUCTION_CI_POLICY as ciPolicy } from './contained-mission-ci-policy.js';
-import { createSandboxCiObserver, createSandboxCiReader } from './contained-mission-github-ci.js';
+import { ALPHA_CI_POLICY, PRODUCTION_CI_POLICY as ciPolicy } from './contained-mission-ci-policy.js';
+import { createSandboxCiObserver, createSandboxCiReader, readSandboxCiJobs } from './contained-mission-github-ci.js';
 import { publishSandboxCiRepair, type SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
 import { latestCiEvent } from './contained-mission-github-ci-approval.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
 import { SANDBOX_MERGER_POLICY, type CiMergerPolicy, type SandboxAppEPorts } from './contained-mission-sandbox-app-e.js';
 import { createSandboxCiMerge } from './contained-mission-sandbox-ci-merge.js';
-import type { ContainedMissionSpec } from './contained-mission-runner.js';
+import { parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
 
 const [base, head, mergedHead] = ['a', 'b', 'c'].map(oid) as [string, string, string];
 const branch = 'osstack/mission/pilot-test';
 const target = { pr: 17, branch, base, head };
 const allowed = 'packages/cli/src/example.ts';
+const alphaAllowed = 'src/lib/example.ts';
 
-function fixture() {
+function fixture(policy = ciPolicy) {
   const rig = createRig();
+  const path = policy === ciPolicy ? allowed : alphaAllowed;
   const home = realpathSync(createScratchDirSync('tests', 'ci-pilot'));
   const bridge = join(home, 'bridge');
   mkdirSync(bridge, { mode: 0o700 });
   const key = join(bridge, 'fixture-key');
   writeFileSync(key, 'fixture', { mode: 0o600 });
   const profile = {
-    version: 1, scope_id: rig.scope.scope_id, paths: [allowed],
+    version: 1, ...(policy === ciPolicy ? {} : { repository: policy.repository }), scope_id: rig.scope.scope_id, paths: [path],
     publisher_installation_id: 7001, merger_installation_id: 7002, merger_key_path: key,
     main_quality_ruleset_id: 31, main_update_ruleset_id: 32, mission_writers_ruleset_id: 33, mission_history_ruleset_id: 34,
   };
@@ -38,9 +40,9 @@ function fixture() {
   const actor = { ...rig.principal, operator_scopes: [rig.scope.scope_id] };
   const spec: ContainedMissionSpec = {
     goal: 'fixture', repo_path: rig.root, base_ref: 'main', start_commit: base, branch,
-    worktree_path: join(rig.root, 'worktree'), allowed_paths: [allowed], verification_mode: 'github_actions',
+    worktree_path: join(rig.root, 'worktree'), allowed_paths: [path], verification_mode: 'github_actions',
     verify: { argv: [] }, max_repair_cycles: 0,
-    publication: { remote: 'origin', repository: ciPolicy.repository, base: 'main', draft: false, preauthorized: true },
+    publication: { remote: 'origin', repository: policy.repository, base: 'main', draft: false, preauthorized: true },
   };
   const writeRelease = (over = {}) => writeFileSync(releasePath, JSON.stringify({ version: 1, profile_sha256: pilot.profileDigest,
     issued_at: 1000, expires_at: 120_000, principal_id: actor.principal_id, client_session_id: actor.client_session_id, ...over }), { mode: 0o600 });
@@ -59,7 +61,7 @@ function fixture() {
   };
   const seed = (beforeOpen?: (id: string) => void) => {
     const binding = bind();
-    const id = rig.seedMission({ pr_number: target.pr, head, base_head: base, repository: ciPolicy.repository,
+    const id = rig.seedMission({ pr_number: target.pr, head, base_head: base, repository: policy.repository,
       spec: spec as unknown as Record<string, unknown>, ...(beforeOpen ? { beforeOpen } : {}) });
     rig.missions.record(id, 'ci_pilot_root_bound', binding, 2000);
     const digest = 'fixture';
@@ -71,6 +73,25 @@ function fixture() {
 }
 
 describe('single-scope production CI pilot', () => {
+  it('binds an Alpha release to the Alpha repository, paths, and scope', () => {
+    const f = fixture(ALPHA_CI_POLICY);
+    try {
+      expect(f.pilot.policy).toBe(ALPHA_CI_POLICY);
+      expect(parseContainedMissionSpec(JSON.stringify(f.spec))).toEqual(f.spec);
+      f.writeRelease();
+      expect(f.bind()).toMatchObject({ profile_digest: f.pilot.profileDigest });
+      for (const publication of [{ ...f.spec.publication!, repository: ciPolicy.repository },
+        { ...f.spec.publication!, repository: 'osborn-studio/unregistered' }, { ...f.spec.publication!, draft: true }]) {
+        expect(() => parseContainedMissionSpec(JSON.stringify({ ...f.spec, publication }))).toThrow('CONTAINED_SPEC_INVALID');
+      }
+      const sameAllowedPath = { ...f.spec, publication: { ...f.spec.publication!, repository: ciPolicy.repository } };
+      expect(() => f.pilot.bindNewRoot(f.rig.missions, f.actor, f.rig.scope.scope_id, sameAllowedPath, 2000)).toThrow('CI_PILOT_NOT_AUTHORIZED');
+      expect(() => f.pilot.bindNewRoot(f.rig.missions, f.actor, 'f'.repeat(64), f.spec, 2000)).toThrow('CI_PILOT_NOT_AUTHORIZED');
+      f.writeProfile({ paths: ['.github/workflows/ci.yml'] });
+      expect(() => new ProductionCiPilot(f.home, true, () => false)).toThrow('CI_PILOT_NOT_AUTHORIZED');
+    } finally { f.close(); }
+  });
+
   it('defaults to no write authority and refuses out-of-scope paths, changed policy, expiry, and owner revocation', () => {
     const f = fixture();
     try {
@@ -198,8 +219,9 @@ describe('single-scope production CI pilot', () => {
     } finally { f.close(); }
   });
 
-  it.each([false, true])('reopens a real ledger after an ambiguous App E write and reconciles without retry (merged=%s)', async merged => {
-    const f = fixture();
+  it.each([ciPolicy, ALPHA_CI_POLICY].flatMap(policy => [false, true].map(merged => ({ policy, merged }))))(
+    'reconciles an ambiguous App E write without retry ($policy.repository, merged=$merged)', async ({ policy: ciPolicy, merged }) => {
+    const f = fixture(ciPolicy);
     let active: ReturnType<typeof createSandboxCiObserver> | undefined;
     try {
       f.writeRelease();
@@ -224,7 +246,8 @@ describe('single-scope production CI pilot', () => {
         created_at: new Date(2500).toISOString(), updated_at: new Date(2500).toISOString(), author_association: 'MEMBER' };
       const ci: ReturnType<typeof createSandboxCiReader> = {
         latestAttempt: async () => { throw Error('no failure'); },
-        observeLatestJob: async (q, job) => ({ outcome: 'success', run_id: 1, workflow_id: job.workflowId, attempt: 1,
+        observeLatestJob: async (q, job) => ({ outcome: 'success', run_id: job.workflowId, workflow_id: job.workflowId, attempt: 1,
+          ...(job.workflowSet ? { runSnapshot: 'same-attempts' } : {}),
           check_run_id: 10, check_suite_id: 11, job_id: 12, job_name: q.name, runner_labels: job.runnerLabels,
           matrix: job.matrix, workflow_path: job.workflowPath, head, base, app_id: ciPolicy.actionsAppId }),
         rest: async path => {
@@ -232,7 +255,10 @@ describe('single-scope production CI pilot', () => {
             head: { sha: head, ref: branch, repo }, base: { sha: githubMerged ? mergedHead : base, ref: 'main', repo },
             user: { id: policy.publisherId, type: 'Bot' }, merge_commit_sha: githubMerged ? mergedHead : null,
             merged_by: githubMerged ? { id: policy.actorId, type: 'Bot' } : null } };
-          if (path.includes('/contents/')) return { ok: true, body: { sha: ciPolicy.workflowBlob, type: 'file' } };
+          if (path.includes('/contents/')) {
+            const workflow = ciPolicy.jobs.map(job => job.workflow ?? ciPolicy).find(item => path.includes(`/${item.workflowPath}?`));
+            return { ok: !!workflow, body: { sha: workflow?.workflowBlob, type: 'file' } };
+          }
           if (path.includes('/check-suites?')) return { ok: true, body: { total_count: 0, check_suites: [] } };
           if (path.includes('/issues/17/comments?')) return { ok: true, body: [comment] };
           if (path.endsWith('/issues/comments/271')) return { ok: true, body: comment };
@@ -285,4 +311,50 @@ describe('single-scope production CI pilot', () => {
       else expect(latestCiEvent(restarted, root.mission_id, 'ci_pr_merged_observed')).toBeUndefined();
     } finally { await active?.stop(); f.close(); }
   });
+});
+
+describe('Alpha CI provenance', () => {
+  it.each(['eligible', 'foreign PR', 'changed workflow', 'moved workflow attempts', 'wrong test step', 'verified failure'])(
+    'binds every workflow to the exact head and base (%s)', async scenario => {
+      const policy = ALPHA_CI_POLICY;
+      const repo = { id: policy.repositoryId, full_name: policy.repository };
+      const app = { id: policy.actionsAppId };
+      const hasFailure = scenario === 'wrong test step' || scenario === 'verified failure';
+      const failing = { id: 19, name: 'test', app, head_sha: head, check_suite: { id: 11 },
+        status: 'completed', conclusion: 'failure' };
+      const rest: ReturnType<typeof createSandboxCiReader>['rest'] = async path => {
+        if (path.endsWith('/pulls/17')) return { ok: true, body: { number: 17, state: 'open', merged: false,
+          head: { sha: head, ref: branch, repo: scenario === 'foreign PR' ? { ...repo, id: repo.id + 1 } : repo },
+          base: { sha: base, ref: 'main', repo }, user: { id: policy.publisherActorId, type: 'Bot' } } };
+        if (path.includes('/check-suites?')) return { ok: true, body: { total_count: hasFailure ? 1 : 0,
+          check_suites: hasFailure ? [{ id: 11, app, head_sha: head }] : [] } };
+        if (path.includes('/check-runs?')) return { ok: true, body: { total_count: 1, check_runs: [failing] } };
+        const workflow = policy.jobs.map(job => job.workflow ?? policy).find(item => path.includes(`/${item.workflowPath}?`));
+        if (!workflow) return { ok: false };
+        const changed = scenario === 'changed workflow' && workflow.workflowId !== policy.workflowId && path.endsWith(head);
+        return { ok: true, body: { sha: changed ? head : workflow.workflowBlob, type: 'file' } };
+      };
+      const observeLatestJob = vi.fn<ReturnType<typeof createSandboxCiReader>['observeLatestJob']>(async (q, job) => ({
+        outcome: q.name !== failing.name || !hasFailure ? 'success' : scenario === 'wrong test step' ? 'infrastructure_failure' : 'failure',
+        runSnapshot: scenario === 'moved workflow attempts' && job.workflowId !== policy.workflowId ? 'new-attempt' : 'same-attempts',
+        run_id: job.workflowId + 100, workflow_id: job.workflowId, attempt: 1, check_run_id: q.name === failing.name ? 19 : 20,
+        check_suite_id: 11, job_id: 12, job_name: q.name, runner_labels: job.runnerLabels, matrix: job.matrix,
+        workflow_path: job.workflowPath, head, base, app_id: app.id,
+      }));
+      const result = await readSandboxCiJobs({ rest, observeLatestJob,
+        latestAttempt: async query => ({ ...query, complete: true, requests_used: 1, latest: { check_suite_id: 11, check_run_id: 19,
+          status: 'completed', conclusion: 'failure' } }) }, target, new AbortController().signal, undefined, policy);
+      if (scenario === 'eligible') {
+        expect(result.kind).toBe('success');
+        expect(observeLatestJob.mock.calls.map(([, job]) => job.workflowId)).toEqual([342738089, 410444879, 410445349]);
+      } else if (scenario === 'verified failure') {
+        expect(result).toMatchObject({ kind: 'failure', job: { check_run_id: 19, workflow_id: 342738089 } });
+      } else {
+        const reason = scenario === 'foreign PR' ? 'pr_binding_unavailable'
+          : scenario === 'changed workflow' ? 'workflow_binding_unavailable'
+          : scenario === 'moved workflow attempts' ? 'workflow_attempts_moved' : 'job_infrastructure_failure';
+        expect(result).toEqual({ kind: 'waiting', reason });
+        if (scenario === 'foreign PR' || scenario === 'changed workflow') expect(observeLatestJob).not.toHaveBeenCalled();
+      }
+    });
 });

@@ -162,8 +162,9 @@ export function createSandboxAppEObserver(deps: { rest?: RestGet; graphql?: Grap
     const reviews = g.latestOpinionatedReviews.nodes;
     if (new Set(reviews.map(r => r.author.databaseId)).size !== reviews.length) fail();
     const watcher = reviews.find(r => r.author.databaseId === s.watcherId);
+    const verifySkill = `verify-${name}`;
     if (watcher?.author.__typename !== 'User' || watcher.state !== 'APPROVED' || !watcher.authorCanPushToRepository || watcher.commit.oid !== b.head
-      || (s.missionRulesets && !watcher.body?.split(/\r?\n/u).some(line => line === `verify-osstack: pass ${b.head} ${b.base}`))
+      || (s.missionRulesets && !watcher.body?.split(/\r?\n/u).some(line => line === `${verifySkill}: pass ${b.head} ${b.base}`))
       || reviews.some(r => r.state === 'CHANGES_REQUESTED') || g.reviewThreads.nodes.some(t => !t.isResolved)) fail();
     const labels = g.labels.nodes.map(l => l.name);
     if (!labels.includes('verified') || labels.some(l => /merge[ _-]?after|block|do[ _-]?not[ _-]?merge|hold/iu.test(l))) fail();

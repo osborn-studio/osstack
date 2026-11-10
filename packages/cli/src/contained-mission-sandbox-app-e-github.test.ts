@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { APP_E_SANDBOX as S, SANDBOX_MERGER_POLICY, type CiMergerPolicy, type SandboxMergeBinding } from './contained-mission-sandbox-app-e.js';
-import { PRODUCTION_CI_POLICY } from './contained-mission-ci-policy.js';
+import { ALPHA_CI_POLICY, PRODUCTION_CI_POLICY } from './contained-mission-ci-policy.js';
 const mocks = vi.hoisted(() => ({ mint: vi.fn(() => ({ token: async () => 'app-e-only' })), stat: vi.fn() }));
 vi.mock('./contained-mission-github-app.js', () => ({ createInstallationTokenSource: mocks.mint }));
 vi.mock('node:fs/promises', () => ({ lstat: mocks.stat }));
@@ -92,10 +92,11 @@ describe('bounded sandbox observer', () => {
   });
 });
 describe('production repository merge gates', () => {
-  it.each(['eligible', 'missing marker', 'wrong Actions producer', 'loose base checks', 'App A missing', 'workflow token can write'])(
+  it.each(['eligible', 'Alpha eligible', 'Alpha with osstack marker', 'missing marker', 'wrong Actions producer', 'loose base checks', 'App A missing', 'workflow token can write'])(
     'checks the counted review, branch rules, and CI settings (%s)', async fault => {
       const f = fixture();
-      const ci = PRODUCTION_CI_POLICY;
+      const ci = fault.startsWith('Alpha') ? ALPHA_CI_POLICY : PRODUCTION_CI_POLICY;
+      const marker = fault === 'Alpha eligible' ? 'verify-osbornalpha' : 'verify-osstack';
       const policy: CiMergerPolicy = { ...SANDBOX_MERGER_POLICY, ci, repository: ci.repository, repositoryId: ci.repositoryId,
         missionRulesets: { writers: 111, history: 112 } };
       const bound = { ...b, repository: ci.repository, repositoryId: ci.repositoryId };
@@ -123,10 +124,10 @@ describe('production repository merge gates', () => {
         graphql: async () => ({ data: { repository: { databaseId: ci.repositoryId, nameWithOwner: ci.repository, pullRequest: {
           ...f.pr, headRepository: { databaseId: ci.repositoryId },
           latestOpinionatedReviews: conn(f.pr.latestOpinionatedReviews.nodes.map(r => ({ ...r,
-            body: fault === 'missing marker' ? 'approved' : `verify-osstack: pass ${b.head} ${b.base}` }))),
+            body: fault === 'missing marker' ? 'approved' : `${marker}: pass ${b.head} ${b.base}` }))),
         } } } }),
       });
-      if (fault === 'eligible') await expect(observe(bound)).resolves.toMatchObject({ binding: bound, watcher: { counted: true } });
+      if (fault === 'eligible' || fault === 'Alpha eligible') await expect(observe(bound)).resolves.toMatchObject({ binding: bound, watcher: { counted: true } });
       else await expect(observe(bound)).rejects.toThrow();
     });
 });

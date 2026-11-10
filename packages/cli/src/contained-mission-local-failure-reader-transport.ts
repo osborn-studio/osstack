@@ -29,6 +29,8 @@ export interface ActionsJobBinding {
   /** Host policy maps each complete, exact job name to its matrix axes. */
   matrix: Readonly<Record<string, string>>;
   failureStep: string;
+  /** For a multi-workflow policy, let callers detect an attempt change between job reads. */
+  workflowSet?: readonly number[];
   /** Previously verified success for this exact job, used only to recheck a merged PR. */
   preMerge?: ActionsJobObservation;
 }
@@ -38,6 +40,7 @@ export interface ActionsJobObservation {
   job_id: number; job_name: string; runner_labels: readonly string[]; matrix: Readonly<Record<string, string>>;
   workflow_path: string; head: string; base: string; app_id: number;
 }
+type ObservedActionsJob = ActionsJobObservation & { runSnapshot?: string };
 
 /** Uses the operator's existing gh authentication. The argv always specifies GET; no shell or caller URL.
  * execFile bounds the complete stdout/stderr bytes and elapsed time, and AbortSignal stops the subprocess. */
@@ -61,7 +64,7 @@ export function createAuthenticatedCiRest(): AuthenticatedCiRest {
 export function createActionsCiFailureReadDeps(options: {
   actionsAppId: number; rest?: AuthenticatedCiRest; now?: () => Date;
 }): CiFailureReadDeps & { observeLatestJob(query: CiLatestAttemptQuery, binding: ActionsJobBinding,
-  limits: Parameters<CiFailureReadDeps['latestAttempt']>[1]): Promise<ActionsJobObservation | null> } {
+  limits: Parameters<CiFailureReadDeps['latestAttempt']>[1]): Promise<ObservedActionsJob | null> } {
   if (!id.safeParse(options.actionsAppId).success) throw Error('CI_ACTIONS_APP_INVALID');
   const rest = options.rest ?? createAuthenticatedCiRest();
   const resolveLatestAttempt = async (input: CiLatestAttemptQuery, limits: Parameters<CiFailureReadDeps['latestAttempt']>[1],
@@ -138,7 +141,7 @@ export function createActionsCiFailureReadDeps(options: {
       // Detect retries/new runs admitted while jobs/checks were being fetched.
       if (JSON.stringify(await readRuns()) !== JSON.stringify(runs)) throw Error('CI_MOVED');
       const latestCheck = { check_suite_id: check.check_suite.id, check_run_id: check.id, status: check.status, conclusion: check.conclusion };
-      let observation: ActionsJobObservation | null = null;
+      let observation: ObservedActionsJob | null = null;
       if (binding) {
         const pr = run.pull_requests?.length === 1 ? run.pull_requests[0] : undefined;
         const linked = pr?.number === query.pr && pr.head.ref === binding.headRef && pr.head.sha === query.head
@@ -158,6 +161,13 @@ export function createActionsCiFailureReadDeps(options: {
           runner_labels: job.labels, matrix: structuredClone(binding.matrix), workflow_path: binding.workflowPath,
           head: query.head, base: binding.base, app_id: query.app_id };
         if (binding.preMerge && (outcome !== 'success' || !isDeepStrictEqual(observation, binding.preMerge))) throw Error('CI_PROVENANCE');
+        if (binding.workflowSet) {
+          observation.runSnapshot = JSON.stringify(binding.workflowSet.map(id => {
+            const run = latest.get(id);
+            if (!run) throw Error('CI_UNRESOLVED');
+            return [run.id, run.run_attempt, run.status];
+          }));
+        }
       }
       return { response: { complete: true, requests_used: used, ...query, latest: latestCheck }, observation };
     } catch {
