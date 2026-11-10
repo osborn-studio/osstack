@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -10,6 +11,16 @@ import type { ExecutionPlan } from "./types.js";
 
 /** Env var pointing local execute commands at the previous-attempt feedback JSON. */
 export const ITERATION_FEEDBACK_FILE_ENV = "OSSTACK_ITERATION_FEEDBACK_FILE";
+
+/** Trusted host journal hooks. Never pass a worker-provided observer. */
+export type CommandObservation =
+  | { kind: "intent"; id: string; command: string; cwd: string }
+  | { kind: "spawn"; id: string; pgid: number }
+  | { kind: "terminal"; id: string; result: CommandResult };
+const commandObserver = new AsyncLocalStorage<(event: CommandObservation) => void>();
+export function withCommandObserver<T>(observe: (event: CommandObservation) => void, operation: () => T): T {
+  return commandObserver.run(observe, operation);
+}
 
 export interface CommandResult {
   command: string;
@@ -562,7 +573,11 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
       failure_code: "process_control_unsupported",
       termination: { scope: "unsupported", trigger: "process_error", stop_confirmed: true, signals: [], evidence } };
   }
-  return await new Promise<CommandResult>((resolve) => {
+  const observe = commandObserver.getStore();
+  const observationId = randomUUID();
+  // A durable intent precedes spawn. A crash in the spawn/receipt window stays ambiguous.
+  observe?.({ kind: "intent", id: observationId, command, cwd: options.cwd });
+  return await new Promise<CommandResult>((resolve, reject) => {
     const child = spawn(command, {
       cwd: options.cwd,
       shell: true,
@@ -632,7 +647,7 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
         : trigger === "external" ? "Command cancelled"
           : trigger === "leader_exit" ? "Command leader exited with surviving descendants"
             : exitSignal ? `Command exited from signal ${exitSignal}` : "";
-      resolve({ command, stdout,
+      const result: CommandResult = { command, stdout,
         stderr: appendLimited(stderr, [diagnostic, ...(!confirmed ? [detail] : []), ...errors].filter(Boolean).join("; "), options.outputLimit),
         exitCode: !confirmed ? 125 : notStarted ? 127 : trigger === "timeout" ? 124
           : trigger === "external" ? 130 : trigger !== undefined ? 1 : exitCode,
@@ -644,7 +659,9 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
         ...(failureCode !== undefined ? { failure_code: failureCode } : {}),
         ...(cancellation !== undefined ? { cancellation: { ...cancellation, stop_confirmed: confirmed,
           evidence: detail, ...(confirmed ? { confirmed_at: new Date().toISOString() } : {}) } } : {}),
-      });
+      };
+      try { observe?.({ kind: "terminal", id: observationId, result }); resolve(result); }
+      catch (error) { reject(error); }
     };
     const inspect = (): void => {
       if (settled || pgid === undefined) return;
@@ -667,7 +684,7 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
       }
       if (leaderExited && trigger === undefined) {
         // A short drain window avoids killing auxiliaries already finishing.
-        if (descendantDeadline === Infinity) descendantDeadline = now + Math.min(timerDuration(options.terminationGraceMs, 1_000), 100);
+        if (descendantDeadline === Infinity) descendantDeadline = now + timerDuration(options.terminationGraceMs, 1_000);
         if (now >= descendantDeadline) requestStop("leader_exit");
       }
       if (now >= termDeadline && killDeadline === Infinity) {
@@ -705,6 +722,10 @@ export async function runShellCommand(command: string, options: ShellCommandOpti
       else signalGroup("SIGKILL");
     });
     options.signal?.addEventListener("abort", onAbort, { once: true });
+    if (pgid !== undefined) {
+      try { observe?.({ kind: "spawn", id: observationId, pgid }); }
+      catch (error) { errors.push(`Host journal failed: ${String(error)}`); requestStop("process_error"); }
+    }
     if (options.signal?.aborted) onAbort();
   });
 }

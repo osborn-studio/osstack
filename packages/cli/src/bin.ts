@@ -10243,6 +10243,21 @@ async function handleLoopCommand(args: string[]): Promise<number> {
   const { resolveLoopProfileRouting } = await import("./loop-profile-routing.js");
   const sub = args[0];
 
+  if (sub === "recover-local") {
+    if (args.includes("--daemon")) throw Error("local recovery cannot target a daemon session");
+    const runId = flagValue(args, "--run-id");
+    const journalSha256 = flagValue(args, "--approve-journal-sha256");
+    const quiescenceEvidencePath = flagValue(args, "--quiescence-evidence");
+    const quiescenceEvidenceSha256 = flagValue(args, "--approve-evidence-sha256");
+    if (!runId || !journalSha256 || !quiescenceEvidencePath || !quiescenceEvidenceSha256) {
+      throw Error("local recovery requires run ID, journal digest and approved external quiescence evidence");
+    }
+    const { recoverLocalLoop } = await import("./local-loop-recovery.js");
+    const result = await recoverLocalLoop({ workspacePath: flagValue(args, "--workspace") ?? process.cwd(), runId, journalSha256, quiescenceEvidencePath, quiescenceEvidenceSha256 });
+    console.log(JSON.stringify({ run_id: runId, result }));
+    return 0;
+  }
+
   if (sub === "start") {
     const workspacePath = flagValue(args, "--workspace") ?? process.cwd();
     const policyGate = await enforceObservePolicyGate(workspacePath);
@@ -10444,6 +10459,11 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       console.error(`osstack: ${landBranch.message}`);
       return 1;
     }
+    const localRecoveryRequested = args.includes("--local-recovery-contained");
+    if (localRecoveryRequested && (useDaemon || agentId !== undefined || autoAgent || verifierAgentIds.length > 0
+      || selfImprovementEnabled || neatFinalize || candidatePolicy !== undefined || args.includes("--worktree") || args.includes("--land-branch"))) {
+      throw Error("local recovery requires foreground contained commands without adapters or external finalizers");
+    }
     const profileRouting = await resolveLoopProfileRouting(args, agentId, verifierAgentIds);
     if (profileRouting instanceof Error) {
       console.error(`osstack: ${profileRouting.message}`);
@@ -10456,6 +10476,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     if (candidatePolicy !== undefined && agentId !== undefined && verifierAgentIds.includes(agentId)) {
       console.error("osstack: candidate Builder and Evaluator must differ"); return 1;
     }
+    if (localRecoveryRequested && (agentId !== undefined || verifierAgentIds.length > 0)) {
+      throw Error("local recovery requires foreground contained commands without adapters or external finalizers");
+    }
+    let localRecovery: Awaited<ReturnType<typeof import("./local-loop-recovery.js").beginLocalLoopJournal>> | undefined;
     let repositoryLease: import("./governed-execution.js").ExecutionLease | undefined;
     let unconfirmed = false;
     if (!useDaemon) {
@@ -10465,13 +10489,21 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       catch (error) { if (!String(error).includes("not a git repository")) throw error; }
       if (repository) {
         const { acquireLocalExecution } = await import("./local-execution.js");
-        repositoryLease = await acquireLocalExecution({ workspacePath, runId: `local_loop_${randomUUID()}`,
+        const runId = `local_loop_${randomUUID()}`;
+        repositoryLease = await acquireLocalExecution({ workspacePath, runId,
           dbPath: await ensureLocalStateDbPath(), home: osstackHome(), socketPath: resolveSocketPath(),
           requiresAgent: agentId !== undefined || autoAgent || verifierAgentIds.length > 0,
         });
+        if (localRecoveryRequested) {
+          try { localRecovery = await (await import("./local-loop-recovery.js")).beginLocalLoopJournal(workspacePath, runId, true); }
+          catch (error) { await repositoryLease.release(); throw error; }
+          console.error(`local recovery journal=${localRecovery.path}`);
+        }
       }
     }
+    if (localRecoveryRequested && !repositoryLease) throw Error("local recovery requires a Git repository lease");
     try {
+    const executeLocal = async (): Promise<number> => {
     const useWorktree = args.includes("--worktree");
     const checkpoint = args.includes("--checkpoint") && !useWorktree
       ? await createShadowCheckpoint(realpathSync(workspacePath))
@@ -10679,6 +10711,18 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       || result.budget?.exceeded === true
       ? 2
       : 0;
+    };
+    const exitCode = localRecovery
+      ? await (await loadLoop()).withCommandObserver(localRecovery.observe, executeLocal)
+      : await executeLocal();
+    if (localRecovery && unconfirmed) {
+      repositoryLease?.retain("local Loop requires explicit recovery");
+      await repositoryLease?.settleRetained?.();
+      await localRecovery.seal();
+      const { journalDigest } = await import("./local-loop-recovery.js");
+      console.error(`local recovery run journal sha256=${journalDigest(localRecovery.path)}`);
+    }
+    return exitCode;
     } finally {
       if (unconfirmed) repositoryLease?.retain("local Loop external exit unconfirmed");
       else await repositoryLease?.release();
@@ -10802,6 +10846,9 @@ async function handleLoopCommand(args: string[]): Promise<number> {
   osstack loop list [--json]       List daemon-managed polling loops
   osstack loop stop <id> [--json]  Stop a daemon-managed polling loop
   osstack loop status [options]    Print current loop state
+  osstack loop recover-local --run-id ID --approve-journal-sha256 SHA
+    --quiescence-evidence FILE --approve-evidence-sha256 SHA
+                                  Reconcile one journaled foreground run
 
 Options:
   --workspace P       Workspace to scan and run commands in (default: cwd)
@@ -10811,6 +10858,10 @@ Options:
   --auto-agent        Let router + policy choose an available adapter by capability
   --profile P         Resolve Builder/Evaluator/Designer from a device profile
   --role R=ID         Override one profile role: coder, evaluator, or designer; repeatable
+  --local-recovery-contained
+                      Opt in to recovery journaling. Assert that all commands and
+                      their descendants stay in their owned process groups and
+                      start no external producers. Adapters are not supported.
   --execute CMD       Shell command to run for each task
   --verify CMD        Shell verifier; repeatable. Non-zero exit marks failure
   --reviewer ID       Adapter verifier to run after execution; repeatable

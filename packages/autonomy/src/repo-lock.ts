@@ -420,3 +420,30 @@ export async function releaseReconciledRepoWriteLock(options: {
     await rm(path);
   });
 }
+
+/** Foreground local-loop administration. The trusted verifier must prove a
+ * durable exact run inventory, terminal contained producers and preserved
+ * workspace fingerprints. This is separate from registered graph recovery.
+ * Missing locks are acknowledgements only when the journal proves release intent. */
+export async function releaseReconciledLocalLoopLock(options: {
+  root_dir: string; repo_id: string; expectedOwner: Readonly<RepoLockOwner>;
+  verifyQuiescent: (owner: Readonly<RepoLockOwner>, absent: boolean) => Promise<void>;
+}): Promise<void> {
+  const expected = Object.freeze(RepoLockOwner.parse(options.expectedOwner));
+  const path = repoLockPath(options.root_dir, options.repo_id);
+  if (expected.repo_id !== options.repo_id || !/^local_loop_[a-f0-9-]{36}$/.test(expected.autonomy_run_id)
+    || !expected.token || expected.recovery_policy !== 'reconcile' || typeof options.verifyQuiescent !== 'function') {
+    throw new RepoLockOwnershipError(path);
+  }
+  await withMutationGuard(path, async () => {
+    const current = await inspectRepoWriteLock(options.root_dir, options.repo_id);
+    if (current && (!sameOwner(current, expected) || current.expires_at !== expected.expires_at)) throw new RepoLockOwnershipError(path);
+    if (defaultIsProcessAlive(expected.pid)) throw new Error('recorded local-loop owner alive or PID reused');
+    const result: unknown = await options.verifyQuiescent(expected, current === null);
+    if (result !== undefined) throw new Error('invalid local-loop quiescence authority');
+    const after = await inspectRepoWriteLock(options.root_dir, options.repo_id);
+    if (current ? !after || !sameOwner(after, expected) || after.expires_at !== expected.expires_at : after !== null) throw new RepoLockOwnershipError(path);
+    if (defaultIsProcessAlive(expected.pid)) throw new Error('recorded local-loop owner alive or PID reused');
+    if (current) await rm(path);
+  });
+}
