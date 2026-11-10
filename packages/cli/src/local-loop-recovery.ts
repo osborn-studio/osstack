@@ -73,6 +73,9 @@ function snapshot(workspace: string): z.infer<typeof snapshotSchema> {
   const add = (value: unknown) => hash.update(JSON.stringify(value));
   add(git(workspace, ['rev-parse', 'HEAD']));
   add(git(workspace, ['ls-files', '--stage', '-z']));
+  const indexFlags = git(workspace, ['ls-files', '-v', '-z']).split('\0').filter(Boolean);
+  if (indexFlags.some(entry => /^[a-zS] /.test(entry))) throw Error('local recovery workspace has hidden index entries');
+
   // Drivers are disabled by git() even for stat/racy-index comparisons.
   // Cached diff compares staged entries without generating a patch.
   const changed = git(workspace, ['ls-files', '-z', '--modified', '--deleted']);

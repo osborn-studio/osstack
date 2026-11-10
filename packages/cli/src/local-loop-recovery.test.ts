@@ -213,3 +213,14 @@ it('fingerprints changes without reading an oversized clean baseline or unchange
   expect(JSON.parse(readFileSync(path, 'utf8')).snapshot.fileCount).toBe(2);
   expect(await recover(path)).toBe('released');
 });
+
+
+it.each(['--assume-unchanged', '--skip-worktree'])('refuses a dirty path hidden by %s', async (flag) => {
+  writeFileSync(join(workspace, 'hidden.txt'), 'base');
+  execFileSync('git', ['-C', workspace, 'add', 'hidden.txt']);
+  execFileSync('git', ['-C', workspace, 'update-index', flag, 'hidden.txt']);
+  writeFileSync(join(workspace, 'hidden.txt'), 'edit');
+  const journal = await beginLocalLoopJournal(workspace, runId, true);
+  await expect(journal.seal()).rejects.toThrow(/hidden index entries/);
+  expect(await inspectRepoWriteLock(locks, repoId)).not.toBeNull();
+});
