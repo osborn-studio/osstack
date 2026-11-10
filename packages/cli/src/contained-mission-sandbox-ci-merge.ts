@@ -7,7 +7,7 @@ import type { AuthenticatedCiRest } from './contained-mission-local-failure-read
 import { readMissionPublication } from './contained-mission-publication.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
 import { parseContainedMissionSpec } from './contained-mission-runner.js';
-import { APP_E_SANDBOX, executeSandboxAppEMerge, type SandboxAppEPorts, type SandboxMergeBinding,
+import { SANDBOX_MERGER_POLICY, executeSandboxAppEMerge, type CiMergerPolicy, type SandboxAppEPorts, type SandboxMergeBinding,
   type SandboxMergerHandoff } from './contained-mission-sandbox-app-e.js';
 
 const commentTTL = 30 * 60_000;
@@ -17,12 +17,13 @@ const comment = z.object({ id: safeId, body: z.string(), user: z.object({ id: sa
 const sameTarget = (a: SandboxCiTarget, b: SandboxCiTarget) =>
   a.pr === b.pr && a.head === b.head && a.base === b.base && a.branch === b.branch;
 
-function handoffFor(raw: unknown, binding: SandboxMergeBinding, pushedAt: number, now: number): SandboxMergerHandoff | null {
+function handoffFor(raw: unknown, binding: SandboxMergeBinding, pushedAt: number, now: number, policy: CiMergerPolicy): SandboxMergerHandoff | null {
   const parsed = comment.safeParse(raw);
   if (!parsed.success) return null;
   const c = parsed.data;
   const timestamp = Date.parse(c.created_at);
-  if (c.body !== `osstack-sandbox-merge ${binding.head} ${binding.base}` || c.user.id !== APP_E_SANDBOX.watcherId
+  const prefix = policy.missionRulesets ? 'osstack-ci-pilot-merge' : 'osstack-sandbox-merge';
+  if (c.body !== `${prefix} ${binding.head} ${binding.base}` || c.user.id !== policy.watcherId
     || c.user.type !== 'User' || !['COLLABORATOR', 'MEMBER', 'OWNER'].includes(c.author_association)
     || c.created_at !== c.updated_at || !Number.isSafeInteger(timestamp) || timestamp < pushedAt || timestamp > now
     || now >= timestamp + commentTTL) return null;
@@ -31,24 +32,40 @@ function handoffFor(raw: unknown, binding: SandboxMergeBinding, pushedAt: number
 
 export function createSandboxCiMerge(input: {
   store: ContainedMissionStore; scopeId: string; enabled: () => boolean; now: () => number;
+  policy?: CiMergerPolicy;
+  writeEnabled?: (root: ContainedMission) => boolean;
   ci: Parameters<typeof readSandboxCiJobs>[0];
   github: (signal: AbortSignal) => Pick<SandboxAppEPorts, 'observe' | 'merge' | 'readback'>;
 }) {
   const { store, scopeId, enabled, now, ci } = input;
-  const repo = APP_E_SANDBOX.repository;
+  const policy = input.policy ?? SANDBOX_MERGER_POLICY;
+  const repo = policy.repository;
+  const production = !!policy.missionRulesets;
+  const canWrite = (root: ContainedMission) => enabled() && (!production || input.writeEnabled?.(root) === true);
   const record = (mission: string, kind: string) => store.db.prepare(
     'SELECT created_at,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind=? ORDER BY seq DESC LIMIT 1')
     .get(mission, kind) as { created_at: number; payload_json: string } | undefined;
 
   function pushReceipt(root: ContainedMission, child: ContainedMission, target: SandboxCiTarget) {
-    if (!enabled() || root.scope_id !== scopeId || child.scope_id !== scopeId || root.state !== 'pr_opened' || child.state !== 'pr_opened'
+    if (root.scope_id !== scopeId || child.scope_id !== scopeId || root.state !== 'pr_opened' || child.state !== 'pr_opened'
       || store.get(root.mission_id).revision !== root.revision || store.get(child.mission_id).revision !== child.revision
-      || root.stop_obligation !== 0 || child.stop_obligation !== 0 || child.candidate_head !== target.head
-      || !record(child.mission_id, 'ci_auto_grant_reserved')) return null;
+      || root.stop_obligation !== 0 || child.stop_obligation !== 0 || child.candidate_head !== target.head) return null;
     const parent = readMissionPublication(store, root.mission_id);
     const publication = readMissionPublication(store, child.mission_id);
     const spec = parseContainedMissionSpec(child.spec_json);
     const repair = spec.ci_repair;
+    if (production && root.mission_id === child.mission_id && !repair) {
+      if (spec.publication?.repository !== repo || spec.start_commit !== target.base || spec.branch !== target.branch
+        || !record(root.mission_id, 'ci_pilot_root_bound') || record(root.mission_id, 'ci_repair_dispatched')
+        || parent?.kind !== 'github_ci_opened' || parent.pr.reused || parent.pr.number !== target.pr
+        || parent.pushed_commit !== target.head || parent.base_head !== target.base) return null;
+      const processes = store.db.prepare(`SELECT * FROM engineering_host_processes WHERE mission_id=? AND kind IN ('git_push','gh_pr_create') AND released_at IS NOT NULL`)
+        .all(root.mission_id) as HostProcessRecord[];
+      if (processes.length !== 2 || new Set(processes.map(p => p.kind)).size !== 2
+        || processes.some(p => p.state !== 'stopped' || p.remote_target !== remoteTargetOf(repo, target.branch))) return null;
+      return record(root.mission_id, 'pr_opened') ?? null;
+    }
+    if (!record(child.mission_id, 'ci_auto_grant_reserved')) return null;
     if (spec.publication?.repository !== repo || repair?.root !== root.mission_id || repair.pr !== target.pr
       || repair.base !== target.base || repair.branch !== target.branch
       || parent?.kind !== 'github_ci_opened' || parent.pr.number !== target.pr || parent.pr.reused || parent.pushed_commit !== spec.start_commit
@@ -68,16 +85,16 @@ export function createSandboxCiMerge(input: {
 
   function reservedFor(root: ContainedMission, target: SandboxCiTarget) {
     const handoff = latestCiEvent<SandboxMergerHandoff>(store, root.mission_id, 'ci_app_e_merge_reserved');
-    return handoff?.binding.repository === repo && handoff.binding.repositoryId === APP_E_SANDBOX.repositoryId && sameTarget(handoff.binding, target)
+    return handoff?.binding.repository === repo && handoff.binding.repositoryId === policy.repositoryId && sameTarget(handoff.binding, target)
       ? handoff : null;
   }
 
   return {
     async request(root: ContainedMission, child: ContainedMission, target: SandboxCiTarget, signal: AbortSignal) {
-      if (record(root.mission_id, 'ci_app_e_merge_reserved') || signal.aborted) return;
+      if (!canWrite(root) || record(root.mission_id, 'ci_app_e_merge_reserved') || signal.aborted) return;
       const push = pushReceipt(root, child, target);
       if (!push) return;
-      const binding = { ...target, repository: repo, repositoryId: APP_E_SANDBOX.repositoryId };
+      const binding = { ...target, repository: repo, repositoryId: policy.repositoryId };
       // The shared GitHub user supplies a wake-up only. It cannot grant merge authority.
       const rest: AuthenticatedCiRest = ci.rest;
       const endpoint = `repos/${repo}/issues/${target.pr}/comments`;
@@ -85,16 +102,16 @@ export function createSandboxCiMerge(input: {
       if (!list.ok || !Array.isArray(list.body) || list.body.length >= 100) return;
       if (list.body.some(raw => {
         const parsed = comment.safeParse(raw);
-        return parsed.success && parsed.data.user.id === APP_E_SANDBOX.watcherId && /merge[ _-]+after/iu.test(parsed.data.body);
+        return parsed.success && parsed.data.user.id === policy.watcherId && /merge[ _-]+after/iu.test(parsed.data.body);
       })) return;
-      const matching = list.body.map(raw => handoffFor(raw, binding, push.created_at, now())).filter(h => h !== null);
+      const matching = list.body.map(raw => handoffFor(raw, binding, push.created_at, now(), policy)).filter(h => h !== null);
       if (matching.length !== 1 || !matching[0]) return;
       const handoff = matching[0];
       const authenticateHandoff = async (h: SandboxMergerHandoff) => {
-        if (!enabled() || signal.aborted || !pushReceipt(root, child, target) || h.id !== handoff.id) return false;
+        if (!canWrite(root) || signal.aborted || !pushReceipt(root, child, target) || h.id !== handoff.id) return false;
         const current = await rest(`repos/${repo}/issues/comments/${h.id}`, { signal });
-        const reread = current.ok ? handoffFor(current.body, binding, push.created_at, now()) : null;
-        return reread?.id === h.id && reread.expiresAt === h.expiresAt && !signal.aborted && enabled();
+        const reread = current.ok ? handoffFor(current.body, binding, push.created_at, now(), policy) : null;
+        return reread?.id === h.id && reread.expiresAt === h.expiresAt && !signal.aborted && canWrite(root);
       };
       const github = input.github(signal);
       const result = await executeSandboxAppEMerge(handoff, {
@@ -103,7 +120,7 @@ export function createSandboxCiMerge(input: {
           await beforeWrite();
           store.db.transaction(() => {
             store.attention.assertOwner(store.owner);
-            if (!enabled() || signal.aborted || handoff.expiresAt <= now() || !pushReceipt(root, child, target)
+            if (!canWrite(root) || signal.aborted || handoff.expiresAt <= now() || !pushReceipt(root, child, target)
               || reservedFor(root, target)?.id !== handoff.id || record(root.mission_id, 'ci_app_e_merge_released')) {
               throw Error('SANDBOX_APP_E_RELEASE_REFUSED');
             }
@@ -111,28 +128,28 @@ export function createSandboxCiMerge(input: {
           }).immediate();
         }),
         verifyCurrentPublicationAndCi: async b => !!pushReceipt(root, child, b)
-          && (await readSandboxCiJobs(ci, b, signal)).kind === 'success',
+          && (await readSandboxCiJobs(ci, b, signal, undefined, policy.ci)).kind === 'success',
         reserveOnce: (key, h) => Promise.resolve(store.db.transaction(() => {
           store.attention.assertOwner(store.owner);
-          if (!enabled() || signal.aborted || !pushReceipt(root, child, target) || h.expiresAt <= now()
-            || key !== `${APP_E_SANDBOX.repositoryId}:${target.pr}`
+          if (!canWrite(root) || signal.aborted || !pushReceipt(root, child, target) || h.expiresAt <= now()
+            || key !== `${policy.repositoryId}:${target.pr}`
             || store.db.prepare(`SELECT 1 FROM engineering_contained_events WHERE kind='ci_app_e_merge_reserved'
               AND json_extract(payload_json,'$.binding.repositoryId')=? AND json_extract(payload_json,'$.binding.pr')=? LIMIT 1`)
-              .get(APP_E_SANDBOX.repositoryId, target.pr)) return false;
+              .get(policy.repositoryId, target.pr)) return false;
           store.record(root.mission_id, 'ci_app_e_merge_reserved', h, now());
           return true;
         }).immediate()),
-      });
+      }, policy);
       if (result.kind === 'merged') store.record(root.mission_id, 'ci_app_e_merge_confirmed', { pr: target.pr, head: target.head, sha: result.sha }, now());
     },
     acceptsMerge(root: ContainedMission, child: ContainedMission, target: SandboxCiTarget, actor: { id: number; type: string }, mergeSha: string) {
       const handoff = reservedFor(root, target);
       const released = latestCiEvent<SandboxMergerHandoff>(store, root.mission_id, 'ci_app_e_merge_released');
       if (!handoff || released?.id !== handoff.id || !sameTarget(released.binding, target)
-        || actor.id !== APP_E_SANDBOX.actorId || actor.type !== 'Bot' || !pushReceipt(root, child, target)) return null;
+        || actor.id !== policy.actorId || actor.type !== 'Bot' || !pushReceipt(root, child, target)) return null;
       const confirmed = latestCiEvent<{ pr: number; head: string; sha: string }>(store, root.mission_id, 'ci_app_e_merge_confirmed');
       if (confirmed && (confirmed.pr !== target.pr || confirmed.head !== target.head || confirmed.sha !== mergeSha)) return null;
-      return { handoff_comment_id: Number(handoff.id), app_id: APP_E_SANDBOX.appId };
+      return { handoff_comment_id: Number(handoff.id), app_id: policy.appId };
     },
   };
 }

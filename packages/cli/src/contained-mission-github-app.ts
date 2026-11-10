@@ -134,6 +134,24 @@ function appJwt(app: BridgeApp, pem: string, nowMs: number): string {
   return `${head}.${createSign('RSA-SHA256').update(head).sign(pem, 'base64url')}`;
 }
 
+/** Reads installation metadata as the App. This does not mint an installation token. */
+export async function assertBridgeAppInstallation(app: BridgeApp, scope: TokenScope, signal: AbortSignal, fetchImpl = fetch): Promise<void> {
+  const repository = repoSchema.parse(scope.repository);
+  await checkKey('publisher', app.private_key_path);
+  const jwt = appJwt(app, await readFile(app.private_key_path, 'utf8'), Date.now());
+  const response = await fetchImpl(`https://api.github.com/repos/${repository}/installation`, {
+    method: 'GET', redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
+    headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${jwt}`, 'x-github-api-version': '2022-11-28' },
+  });
+  if (!response.ok || response.redirected) throw Error('CI_PILOT_APP_INSTALLATION_UNVERIFIED');
+  const result = z.object({ id: z.literal(app.installation_id), app_id: z.literal(app.app_id),
+    suspended_at: z.null(), repository_selection: z.literal('selected'), permissions: z.record(z.string()) }).safeParse(await response.json());
+  if (!result.success || Object.entries(scope.permissions).some(([key, required]) => result.data.permissions[key] !== required)
+    || Object.entries(result.data.permissions).some(([key, level]) => level === 'write' && scope.permissions[key] !== 'write')) {
+    throw Error('CI_PILOT_APP_INSTALLATION_UNVERIFIED');
+  }
+}
+
 export function createInstallationTokenSource(
   app: BridgeApp,
   scope: TokenScope,

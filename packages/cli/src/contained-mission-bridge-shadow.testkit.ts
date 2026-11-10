@@ -110,6 +110,8 @@ export interface RigMission {
   base_head: string | null;
   /** Extra spec fields (a full spec for revision tests). */
   spec?: Record<string, unknown>;
+  /** Journal fixture writes while the Mission is still delivering. */
+  beforeOpen?: (missionId: string) => void;
   /** Merger tests: the full `delivery_evidence` payload (including `evidence_digest`), built once the Mission id and spec digest exist. */
   evidence?: (mission: { mission_id: string; spec_digest: string }) => Record<string, unknown>;
 }
@@ -174,6 +176,7 @@ export function createRig(): Rig {
     step('verified');
     step('revalidating');
     step('delivering');
+    m.beforeOpen?.(id);
     missions.record(id, 'delivery_evidence', full ?? { head: m.head, base_head: m.base_head, repository: m.repository ?? 'o/r', evidence_digest: digest, verify: { argv: ['true'], exit_code: 0 } }, ++clock);
     // The runner records the evidence, then transitions with a `pr_opened` event that carries the PR (contained-mission-runner deliver()).
     clock += 1;

@@ -1,5 +1,12 @@
 # 执行进度
 
+## 2026-11-09 阶段 7 单仓库试点准备
+
+- 沙箱 #31 用 #438 合入的 `38550cf1` 从登记到关单无人介入。Docker 三个 socket 在 34 次探测中均未连接。GitHub 证据见 [#31](https://github.com/osborn-studio/osstack-bridge-sandbox/pull/31)。
+- 本地候选实现独立的主仓库 CI policy、单 scope 限时授权、自动快进修复和 App E 合并。保持生产关闭。App A 和 App E 自身对主仓库安装的读取均为 404。生产 `main` 现有计入审批与线程门，必需检查和新 ruleset 待批准后配置。
+- 本地重启回归最初在测试夹具的终态错误登记进程，SQLite 正确拒绝。把夹具写入移至 delivering。重开的 SQLite 恢复 FULL 同步后，验证撤权后零释放、已经释放的推送只读停在待处理、已合并的请求只读关单。
+- 生产灰度和普通 PR 合并窗口的审批项见 `docs/runbooks/bridge-ci-production-pilot.md`。
+
 ## 2026-11-09 GitHub CI 首发路径
 
 | 工作包 | 状态 | 证据 |

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
+import { GITHUB_CI_PILOT_REPOSITORY, PRODUCTION_CI_POLICY, SANDBOX_CI_POLICY } from './contained-mission-ci-policy.js';
 import { GITHUB_CI_SANDBOX, parseContainedMissionSpec } from './contained-mission-runner.js';
 import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
@@ -223,6 +224,9 @@ export class ContainedMissionService {
         const p = ContainedMissionRpcRequests['mission.approve_ci_repair'].parse(params);
         const { approveSandboxCiRepair } = await import('./contained-mission-github-ci-approval.js');
         if (this.closed || this.options.draining() || host.isBusy(p.mission_id)) throw Error('github_ci_scope_unavailable');
+        if (parseContainedMissionSpec(this.store.readable(actor, p.mission_id).spec_json).publication?.repository !== GITHUB_CI_SANDBOX) {
+          throw Error('github_ci_scope_unavailable');
+        }
         return view(approveSandboxCiRepair(this.store, actor, p.mission_id, p.candidate, Date.now()));
       }
       case 'mission.revision_grant_preview': case 'mission.revision_grant_renew_preview': case 'mission.grant_revisions': case 'mission.chain_decide': {
@@ -315,34 +319,81 @@ export async function createContainedMissionService(deps: {
   const { join } = await import('node:path');
   const store = new ContainedMissionStore(deps.attention, deps.owner);
   // A bridge config error must stop the service (fail closed), never fall back to host credentials.
-  const { loadBridgeConfig } = await import('./contained-mission-github-app.js');
+  const { assertBridgeAppInstallation, loadBridgeConfig } = await import('./contained-mission-github-app.js');
   const bridge = await loadBridgeConfig(deps.home);
   // OSSTACK_BRIDGE=0 (explicit) is a kill switch: with a bridge config present, Mission publication for that repository is refused
   // (BRIDGE_DISABLED) instead of falling back to host credentials. Read once, here; changing it needs a service restart.
   const bridgeKilled = env['OSSTACK_BRIDGE'] === '0';
   const githubCiSandboxScope = env['OSSTACK_CONTAINED_SANDBOX_CI_SCOPE'];
+  const pilotMode = env['OSSTACK_CONTAINED_CI_PILOT'];
+  if (pilotMode !== undefined && pilotMode !== 'shadow' && pilotMode !== 'live') throw Error('CI_PILOT_MODE_INVALID');
+  if (pilotMode && (githubCiSandboxScope !== undefined || env['OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT'] !== undefined
+    || env['OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY'] !== undefined)) throw Error('CI_PILOT_MIXED_SCOPE');
+  const pilot = pilotMode ? new (await import('./contained-mission-ci-pilot.js')).ProductionCiPilot(
+    deps.home, pilotMode === 'live' && !bridgeKilled, deps.draining) : undefined;
+  const scopeId = pilot?.config.scope_id ?? githubCiSandboxScope;
+  const policy = pilot ? PRODUCTION_CI_POLICY : SANDBOX_CI_POLICY;
+  const pilotPolicy = pilot ? {
+    ...(await import('./contained-mission-sandbox-app-e.js')).SANDBOX_MERGER_POLICY,
+    repository: PRODUCTION_CI_POLICY.repository, repositoryId: PRODUCTION_CI_POLICY.repositoryId, ci: PRODUCTION_CI_POLICY,
+    installationId: pilot.config.merger_installation_id,
+    qualityRulesetId: pilot.config.main_quality_ruleset_id, updateRulesetId: pilot.config.main_update_ruleset_id,
+    missionRulesets: { writers: pilot.config.mission_writers_ruleset_id, history: pilot.config.mission_history_ruleset_id },
+  } : undefined;
+  if (pilot && (bridge?.repository !== GITHUB_CI_PILOT_REPOSITORY || bridge.publisher.installation_id !== pilot.config.publisher_installation_id
+    || bridge.mission_ruleset_ids.length !== 2 || !bridge.mission_ruleset_ids.includes(pilot.config.mission_writers_ruleset_id)
+    || !bridge.mission_ruleset_ids.includes(pilot.config.mission_history_ruleset_id))) throw Error('CI_PILOT_APP_CONFIGURATION_MISMATCH');
+  if (pilot && bridge) {
+    const { realpath } = await import('node:fs/promises');
+    const mergerKey = await realpath(pilot.config.merger_key_path);
+    if (mergerKey === await realpath(bridge.publisher.private_key_path) || mergerKey === await realpath(bridge.evidence.private_key_path)) {
+      throw Error('CI_PILOT_APP_CONFIGURATION_MISMATCH');
+    }
+  }
   const autoGrantPath = env['OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT'];
   if (autoGrantPath !== undefined && !githubCiSandboxScope) throw Error('ci_auto_grant_scope_required');
   const autoGrant = autoGrantPath === undefined ? undefined
     : new (await import('./contained-mission-ci-auto-grant.js')).SandboxCiAutoGrant(autoGrantPath, githubCiSandboxScope!);
   const refreshCi = (principal: string, session: string) => deps.access.refresh(principal, session);
+  const pilotCanWrite = (mission: import('@osstack/core').ContainedMission) => {
+    try { return !!pilot?.assertWrite(store, mission, refreshCi, Date.now()); } catch { return false; }
+  };
   const assertAutoGrant = (mission: import('@osstack/core').ContainedMission) => {
-    const reservation = store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_auto_grant_reserved'").get(mission.mission_id);
-    if (!reservation) return;
-    if (!autoGrant || deps.draining() || !autoGrant.assert(store, mission, refreshCi, Date.now()).reserved) throw Error('CI_REPAIR_STOPPED');
+    const { payload_json: raw } = store.db.prepare("SELECT payload_json FROM engineering_contained_events WHERE mission_id=? AND kind='ci_auto_grant_reserved' ORDER BY seq DESC LIMIT 1")
+      .get(mission.mission_id) as { payload_json?: string } | undefined ?? {};
+    if (pilot) {
+      const grant = pilot.assertWrite(store, mission, refreshCi, Date.now());
+      if (!raw || JSON.parse(raw).digest !== grant.digest) throw Error('CI_REPAIR_STOPPED');
+    } else if (raw && (!autoGrant || deps.draining() || !autoGrant.assert(store, mission, refreshCi, Date.now()).reserved)) throw Error('CI_REPAIR_STOPPED');
   };
   if (bridge && bridgeKilled) log('osstack: bridge: disabled by OSSTACK_BRIDGE=0 (Mission publication for the configured repository is refused)');
   const ports = createContainedMissionPorts({
-    store, ...(bridge ? { bridge: { config: bridge, ...(bridgeKilled ? { disabled: true } : {}) } } : {}),
+    store, ...(bridge ? { bridge: { config: bridge, ...(bridgeKilled || pilotMode === 'shadow' ? { disabled: true } : {}) } } : {}),
     // Hold markers live in the daemon home, not the scratch root: `scratch:clean` must not turn a provable stop into an unknown one (W13 design 4.1).
     hostProcess: { markerDir: join(deps.home, 'contained', 'host-processes') },
     codex: { bin: need('OSSTACK_CONTAINED_CODEX_BIN'), sourceCodexHome: need('OSSTACK_CONTAINED_CODEX_HOME'),
       ...(env['OSSTACK_CONTAINED_CODEX_IDENTITY'] ? { identityBinary: env['OSSTACK_CONTAINED_CODEX_IDENTITY'] } : {}),
       ...(env['OSSTACK_CONTAINED_CODEX_MODEL'] ? { model: env['OSSTACK_CONTAINED_CODEX_MODEL'] } : {}) },
-    ...(githubCiSandboxScope === undefined ? { verification: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
+    ...(scopeId === undefined ? { verification: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
       baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: join(deps.home, 'contained-verification') } } : {
-        githubCiSandboxScope, githubCiAuthority: { assertAutoGrant, enabled: () => !deps.draining(),
-          refresh: (principal, session) => deps.access.refresh(principal, session) },
+        ...(pilot && pilotPolicy && bridge ? { githubCiPilot: { scopeId: pilot.config.scope_id, policy,
+          bindRoot: (actor, scope, spec) => pilot.bindNewRoot(store, actor, scope, spec, Date.now()),
+          assertWrite: mission => { pilot.assertWrite(store, mission, refreshCi, Date.now()); },
+          assertRemoteRules: async (branch, signal) => {
+            const { assertCiPilotWriteRules } = await import('./contained-mission-sandbox-app-e-github.js');
+            await assertCiPilotWriteRules(pilotPolicy, branch, signal);
+          },
+          assertInstallations: async signal => {
+            const repository = pilotPolicy.repository;
+            await Promise.all([
+              assertBridgeAppInstallation(bridge.publisher, { repository, permissions: { contents: 'write', pull_requests: 'write' } }, signal),
+              assertBridgeAppInstallation({ app_id: pilotPolicy.appId, installation_id: pilotPolicy.installationId,
+                private_key_path: pilot.config.merger_key_path },
+              { repository, permissions: { contents: 'write', pull_requests: 'read', checks: 'read' } }, signal),
+            ]);
+          },
+        } } : { githubCiSandboxScope: scopeId }),
+        githubCiAuthority: { assertAutoGrant, enabled: () => !deps.draining(), refresh: refreshCi },
       }),
     author: { name: env['OSSTACK_CONTAINED_AUTHOR_NAME'] ?? 'OSStack Mission', email: env['OSSTACK_CONTAINED_AUTHOR_EMAIL'] ?? 'mission@osstack.invalid' },
   });
@@ -413,38 +464,43 @@ export async function createContainedMissionService(deps: {
   if (appEKey !== undefined && (!githubCiSandboxScope || bridge?.repository !== GITHUB_CI_SANDBOX)) {
     throw Error('ci_app_e_scope_required');
   }
-  const githubCi = githubCiSandboxScope === undefined ? undefined : await (async () => {
+  const githubCi = scopeId === undefined ? undefined : await (async () => {
     const { createSandboxCiObserver, createSandboxCiReader } = await import('./contained-mission-github-ci.js');
-    const ci = createSandboxCiReader();
+    const ci = createSandboxCiReader(policy);
     let merge: ReturnType<typeof import('./contained-mission-sandbox-ci-merge.js').createSandboxCiMerge> | undefined;
-    if (appEKey !== undefined) {
+    const privateKeyPath = pilot?.config.merger_key_path ?? appEKey;
+    if (privateKeyPath !== undefined) {
       const [{ createSandboxCiMerge }, { createSandboxAppEObserver, createSandboxAppEWriteAdapter }] = await Promise.all([
         import('./contained-mission-sandbox-ci-merge.js'), import('./contained-mission-sandbox-app-e-github.js'),
       ]);
-      const observe = createSandboxAppEObserver();
-      merge = createSandboxCiMerge({ store, scopeId: githubCiSandboxScope, now: Date.now, ci,
+      const mergerPolicy = pilotPolicy ? { policy: pilotPolicy } : {};
+      const observe = createSandboxAppEObserver(mergerPolicy);
+      merge = createSandboxCiMerge({ store, scopeId, now: Date.now, ci, ...mergerPolicy,
+        ...(pilot ? { writeEnabled: pilotCanWrite } : {}),
         enabled: () => !bridgeKilled && !deps.draining(),
-        github: signal => ({ observe, ...createSandboxAppEWriteAdapter({ privateKeyPath: appEKey, signal }) }),
+        github: signal => ({ observe, ...createSandboxAppEWriteAdapter({ privateKeyPath, signal, ...mergerPolicy }) }),
       });
     }
-    return createSandboxCiObserver({ store, scopeId: githubCiSandboxScope, enabled: () => !deps.draining(),
-      now: Date.now, log, refresh: refreshCi, ci, ...(merge ? { merge } : {}) });
+    return createSandboxCiObserver({ store, scopeId, enabled: () => !deps.draining(),
+      now: Date.now, log, refresh: refreshCi, ci, policy, ...(pilot ? { writeEnabled: pilotCanWrite } : {}), ...(merge ? { merge } : {}) });
   })();
-  const autoApproveCiRepair = autoGrant === undefined ? undefined : async () => {
+  const autoApproveCiRepair = autoGrant === undefined && (!pilot || pilotMode !== 'live' || bridgeKilled) ? undefined : async () => {
     const { latestCiEvent } = await import('./contained-mission-github-ci-approval.js');
     const { createSandboxCiReader, readSandboxCiJobs } = await import('./contained-mission-github-ci.js');
     const rows = store.db.prepare("SELECT * FROM engineering_contained_missions WHERE scope_id=? AND state='awaiting_decision' AND json_type(spec_json,'$.ci_repair')='object' LIMIT 16")
-      .all(githubCiSandboxScope) as import('@osstack/core').ContainedMission[];
+      .all(scopeId) as import('@osstack/core').ContainedMission[];
     for (const child of rows) {
       if (deps.draining()) return;
       if (latestCiEvent(store, child.mission_id, 'ci_repair_approval')) continue;
       try {
-        autoGrant.assert(store, child, refreshCi, Date.now());
+        if (pilot) pilot.assertWrite(store, child, refreshCi, Date.now());
+        else autoGrant!.assert(store, child, refreshCi, Date.now());
         const spec = parseContainedMissionSpec(child.spec_json);
         const repair = spec.ci_repair!;
-        const observed = await readSandboxCiJobs(createSandboxCiReader(), { pr: repair.pr, head: spec.start_commit, base: repair.base, branch: repair.branch }, AbortSignal.timeout(60000));
+        const observed = await readSandboxCiJobs(createSandboxCiReader(policy), { pr: repair.pr, head: spec.start_commit, base: repair.base, branch: repair.branch }, AbortSignal.timeout(60000), undefined, policy);
         if (deps.draining() || observed.kind !== 'failure' || observed.job.check_run_id !== repair.check_run_id) continue;
-        autoGrant.approve(store, child, refreshCi, Date.now());
+        if (pilot) pilot.approveRepair(store, child, refreshCi, Date.now());
+        else autoGrant!.approve(store, child, refreshCi, Date.now());
       } catch { /* Missing, expired, revoked or mismatched authority leaves the owner decision pending. */ }
     }
   };

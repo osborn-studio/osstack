@@ -7,13 +7,14 @@ import { lstat, realpath, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { CodexProxyExecutor, SafeFileError, assertRepoConfigUnchanged, commitPlumbing, createNoCheckoutWorktree, filterNeutralizingConfig, inspectRepoConfig, materializeCommit, runHardenedGit, safeReadFile, safeRelativePathSegments,
   type CodexProxyOptions, type HardenedGitContext, type HardenedGitOptions, type PlumbingCommitAuthor } from '@osstack/agents';
-import { scratchPath, type ContainedEvent, type ContainedMission, type ContainedMissionStore } from '@osstack/core';
+import { scratchPath, type ContainedEvent, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal } from '@osstack/core';
 import { openPullRequestToGitHub, type DeliveryCommandRunner } from '@osstack/github';
 import { redactSecrets } from '@osstack/governance';
 import { containedBindingCanonical, containedCommandFromArgv, containedOwnerPort, missionVerificationBinding, prepareContainedCandidateImage, registerContainedExecution, reopenContainedExecution, type ContainedOwnerIdentity } from './contained-verification.js';
 import { HostProcessKit, type HostProcessKitOptions } from './contained-mission-host-process.js';
 import { appTransportConfig, gatedBridgeExec, gatedHostRunner, remoteBranchOf, remoteTargetOf, type RemoteWriteBinaries } from './contained-mission-remote-writes.js';
 import { GITHUB_CI_SANDBOX, parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
+import { SANDBOX_CI_POLICY, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 import type { BridgeKit, BridgeOptions, DeliveryEvidenceFacts } from './contained-mission-bridge.js';
 
 export interface ContainedMissionPortsOptions {
@@ -25,6 +26,13 @@ export interface ContainedMissionPortsOptions {
   verification?: { socketPath: string; daemonId: string; baseImageId: string; journalRoot: string };
   /** Explicit one-scope pilot. This does not enable the production bridge. */
   githubCiSandboxScope?: string;
+  githubCiPilot?: {
+    scopeId: string; policy: GithubCiPolicy;
+    bindRoot: (actor: EngineeringPrincipal, scope: string, spec: ReturnType<typeof parseContainedMissionSpec>) => Record<string, string>;
+    assertWrite: (mission: ContainedMission) => void;
+    assertRemoteRules: (branch: string, signal: AbortSignal) => Promise<void>;
+    assertInstallations: (signal: AbortSignal) => Promise<void>;
+  };
   githubCiAuthority?: {
     assertAutoGrant?: (mission: ContainedMission) => void;
     enabled: () => boolean;
@@ -41,6 +49,7 @@ export interface ContainedMissionPortsOptions {
 }
 export type ContainedVerificationStop = { stopped: true; proof: 'container_removed' | 'never_launched'; evidence: string } | { stopped: false };
 export interface ContainedMissionHostPorts extends ContainedMissionPorts {
+  bindCiRoot?: NonNullable<ContainedMissionPortsOptions['githubCiPilot']>['bindRoot'];
   assertStartMode?: (scopeId: string, spec: import('./contained-mission-runner.js').ContainedMissionSpec) => void;
   /** Bind live authority before installing revision services. Checks re-read this at the network boundary. */
   installRevisionCheckAuthority?: (enabled: () => boolean) => void;
@@ -201,16 +210,26 @@ export function fencedDeliveryRunner(inner: DeliveryCommandRunner, beforeRemoteM
 
 export function createContainedMissionPorts(options: ContainedMissionPortsOptions): ContainedMissionHostPorts {
   const { store, verification, author } = options; const ctx = options.git ?? {};
-  const ciScope = options.githubCiSandboxScope;
+  const pilot = options.githubCiPilot;
+  const ciScope = pilot?.scopeId ?? options.githubCiSandboxScope;
+  const policy = pilot?.policy ?? SANDBOX_CI_POLICY;
   if (ciScope !== undefined && (!/^[0-9a-f]{64}$/.test(ciScope)
-    || options.bridge?.config.repository !== GITHUB_CI_SANDBOX || options.bridge.config.publisher.app_id !== 5620012
-    || options.bridge.disabled === true)) throw Error('CONTAINED_GITHUB_CI_CONFIG');
+    || options.bridge?.config.repository !== policy.repository || options.bridge.config.publisher.app_id !== 5620012
+    || (!pilot && options.bridge.disabled === true))) throw Error('CONTAINED_GITHUB_CI_CONFIG');
   if (!verification && ciScope === undefined) throw Error('CONTAINED_VERIFICATION_NOT_CONFIGURED');
-  const assertGithubCiScope: NonNullable<ContainedMissionPorts['assertGithubCiScope']> = (scopeId, spec) => {
+  const assertGithubCiScope: NonNullable<ContainedMissionPorts['assertGithubCiScope']> = (scopeId, spec, mission) => {
     store.attention.assertOwner(store.owner);
     const registered = store.attention.getScope(scopeId);
     if (scopeId !== ciScope || !registered || realpathSync(registered.repo_path) !== realpathSync(spec.repo_path)
-      || spec.publication?.repository !== GITHUB_CI_SANDBOX) throw Error('CONTAINED_GITHUB_CI_SCOPE');
+      || spec.publication?.repository !== policy.repository) throw Error('CONTAINED_GITHUB_CI_SCOPE');
+    if (pilot && options.bridge) {
+      const repo = realpathSync(spec.repo_path);
+      for (const path of [options.bridge.config.publisher.private_key_path, options.bridge.config.evidence.private_key_path]) {
+        const key = realpathSync(path);
+        if (key === repo || key.startsWith(`${repo}/`) || key === spec.worktree_path || key.startsWith(`${spec.worktree_path}/`)) throw Error('CONTAINED_GITHUB_CI_SCOPE');
+      }
+      if (mission) pilot.assertWrite(mission);
+    }
   };
   const now = options.now ?? Date.now;
   const kit = new HostProcessKit(store, options.hostProcess, now);
@@ -308,9 +327,11 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       if (spec.ci_repair) {
         const { createSandboxCiReader, readSandboxCiJobs } = await import('./contained-mission-github-ci.js');
         const repair = spec.ci_repair;
-        const limit = AbortSignal.timeout(45_000);
-        const facts = await readSandboxCiJobs(createSandboxCiReader(), { pr: repair.pr, branch: repair.branch, base: repair.base, head: spec.start_commit },
-          opts.signal ? AbortSignal.any([opts.signal, limit]) : limit);
+        const limit = AbortSignal.timeout(pilot ? 90_000 : 45_000);
+        const signal = opts.signal ? AbortSignal.any([opts.signal, limit]) : limit;
+        if (pilot) await pilot.assertRemoteRules(repair.branch, signal);
+        const facts = await readSandboxCiJobs(createSandboxCiReader(policy), { pr: repair.pr, branch: repair.branch, base: repair.base, head: spec.start_commit },
+          signal, undefined, policy);
         if (facts.kind !== 'failure' || facts.job.check_run_id !== repair.check_run_id) throw Error('CI_REPAIR_STOPPED');
       }
       return app.exec(command, args, opts);
@@ -372,6 +393,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       if (spec.verification_mode) assertGithubCiScope(scopeId, spec);
       else if (!verification) throw Error('CONTAINED_VERIFICATION_NOT_CONFIGURED');
     },
+    ...(pilot ? { bindCiRoot: pilot.bindRoot } : {}),
     ...(ciScope === undefined ? {} : {
       assertGithubCiScope,
       admitGithubCiCandidate: async (mission: ContainedMission, spec: ReturnType<typeof parseContainedMissionSpec>) => {
@@ -383,7 +405,17 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
         if (await branchHead(spec.worktree_path, spec.branch) !== candidate || ancestry !== `${candidate} ${spec.start_commit}`
           || text(await run(['rev-parse', '--verify', `${candidate}^{tree}`])) !== mission.candidate_tree) throw Error('CONTAINED_GITHUB_CI_CANDIDATE');
         await run(['diff', '--check', '--no-ext-diff', '--no-textconv', spec.start_commit, candidate, '--']);
-        if (spec.ci_repair) {
+        if (spec.ci_repair && pilot) {
+          const original = new Set(nulList(await run(['diff-tree', '-r', '-z', '--no-renames', '--name-only',
+            spec.ci_repair.base, spec.start_commit, '--'])));
+          const changed = nulList(await run(['diff-tree', '-r', '-z', '--no-renames', '--name-status',
+            spec.start_commit, candidate, '--']));
+          if (changed.length === 0 || changed.length % 2 !== 0 || changed.some((entry, index) => index % 2 === 0
+            ? entry !== 'M' : !original.has(entry) || !spec.allowed_paths.includes(entry) || /\.(?:test|spec)\.tsx?$/u.test(entry))) {
+            throw Error('CI_PILOT_REPAIR_OUTSIDE_ROOT_DIFF');
+          }
+        }
+        if (spec.ci_repair && policy.repository === GITHUB_CI_SANDBOX) {
           const names = text(await run(['diff', '--no-ext-diff', '--no-textconv', '--no-renames', '--name-status', spec.start_commit, candidate, '--']));
           const seeded = text(await run(['ls-tree', spec.start_commit, '--', 'PROBE_FAIL']));
           const initial = text(await run(['ls-tree', spec.ci_repair.base, '--', 'PROBE_FAIL']));
@@ -432,6 +464,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     publish: ({ mission, spec, permit, body, beforeRemoteMutation, signal }) => kit.guard(mission.mission_id, async () => {
       // A revision child updates its PR's own branch through the revision publisher (phase 5-C); this path opens PRs and must never serve it.
       if (spec.publish_target) throw Error('CONTAINED_PUBLISH_TARGET_REQUIRES_REVISION');
+      if (pilot && !spec.verification_mode) throw Error('CI_PILOT_NOT_AUTHORIZED');
       const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
       // A configured bridge confines publication to its repository: never fall back to host credentials for another one.
       if (options.bridge !== undefined && options.bridge.config.repository.toLowerCase() !== p.repository.toLowerCase()) throw Error('CONTAINED_BRIDGE_REPOSITORY');
@@ -439,17 +472,20 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       if (options.bridge?.disabled === true) throw Error('BRIDGE_DISABLED');
       if (spec.ci_repair) {
         assertGithubCiScope(mission.scope_id, spec);
+        pilot?.assertWrite(mission);
         const { publishSandboxCiRepair } = await import('./contained-mission-github-ci-publish.js');
         const { runner, preflight } = await revisionPublicationAdapters();
         await preflight(spec, permit);
-        return publishSandboxCiRepair({ mission, spec, permit, body, beforeRemoteMutation, signal }, { store, host: kit, runner, now,
+        return publishSandboxCiRepair({ mission, spec, permit, body, beforeRemoteMutation, signal }, { store, host: kit, runner, now, policy,
           ...(options.githubCiAuthority?.assertAutoGrant ? { assertAutoGrant: options.githubCiAuthority.assertAutoGrant } : {}),
           enabled: () => options.githubCiAuthority?.enabled() === true, ...(options.githubCiAuthority ? { refresh: options.githubCiAuthority.refresh } : {}) });
       }
       if (spec.verification_mode) {
         assertGithubCiScope(mission.scope_id, spec);
         const { assertSandboxCiRepository } = await import('./contained-mission-github-ci.js');
-        await assertSandboxCiRepository(signal);
+        pilot?.assertWrite(mission);
+        await assertSandboxCiRepository(signal, policy, pilot ? spec.start_commit : undefined);
+        if (pilot) await Promise.all([pilot.assertRemoteRules(spec.branch, signal), pilot.assertInstallations(signal)]);
       }
       // The repository config that made the workspace safe must still hold before anything leaves the machine.
       await assertRepoConfigUnchanged(spec.repo_path, recordedConfigDigest(spec.worktree_path), ctx);
@@ -472,7 +508,10 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       // The credential runner sits inside the fence, so the fence still runs before every mutation.
       const { appCredentialRunner } = app ? await import('./contained-mission-bridge.js') : { appCredentialRunner: undefined };
       const inner = app && appCredentialRunner ? appCredentialRunner(hostRunner, () => app.publisherToken(), app.exec, transport) : hostRunner;
-      const fenced = fencedDeliveryRunner(inner, beforeRemoteMutation, { remote: p.remote, repository: p.repository, missionId: mission.mission_id, ...(app ? { httpsOnly: true } : {}) });
+      const fenced = fencedDeliveryRunner(inner, kind => {
+        if (pilot && spec.verification_mode) pilot.assertWrite(store.get(mission.mission_id));
+        beforeRemoteMutation(kind);
+      }, { remote: p.remote, repository: p.repository, missionId: mission.mission_id, ...(app ? { httpsOnly: true } : {}) });
       const readBase = async () => {
         const listed = await fenced.run('git', ['ls-remote', '--refs', '--', p.remote, `refs/heads/${p.base}`], { cwd: spec.worktree_path, timeoutMs: 30_000, signal });
         const match = /^([0-9a-f]{40}(?:[0-9a-f]{24})?)\t([^\r\n]+)$/.exec(listed.stdout.trim());
@@ -495,7 +534,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       const baseHead = listed.exitCode === 0 ? /^([0-9a-f]{40}|[0-9a-f]{64})\s/.exec(listed.stdout)?.[1] ?? null : null;
       return { pushed_commit: opened.pushedCommit, pr: opened.pr, base_head: baseHead, stop_proof_scope: app ? 'app_isolated' as const : 'host_credential_helpers_untrusted' as const };
     }),
-    ...(options.bridge && options.bridge.disabled !== true ? { publishVerifyCheck: async (mission: ContainedMission) => (await bridgeKit()).publishVerifyCheck(mission, deliveryEvidenceFacts(mission.mission_id)) } : {}),
+    ...(!pilot && options.bridge && options.bridge.disabled !== true ? { publishVerifyCheck: async (mission: ContainedMission) => (await bridgeKit()).publishVerifyCheck(mission, deliveryEvidenceFacts(mission.mission_id)) } : {}),
     execute: input => executor(input.worktree).run({ worktree: input.worktree, prompt: input.prompt, signal: input.signal, onLaunched: input.onLaunched }),
     readFile: async (worktree, path) => {
       try { return utf8((await safeReadFile(worktree, path)).bytes, 'CONTAINED_FILE_NOT_UTF8'); }

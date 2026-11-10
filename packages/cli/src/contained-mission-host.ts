@@ -109,7 +109,10 @@ export class ContainedMissionHost {
         AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=m.mission_id
           AND e.kind IN ('ci_closed_unmerged','ci_pr_merged_observed')) LIMIT 1`).get(input.scope_id);
       if (active) throw Error('github_ci_scope_busy');
-      return authorize();
+      const binding = this.options.ports.bindCiRoot?.(principal, input.scope_id, spec);
+      const mission = authorize();
+      if (binding) this.store.record(mission.mission_id, 'ci_pilot_root_bound', binding, this.options.ports.now());
+      return mission;
     }).immediate();
   }
 
