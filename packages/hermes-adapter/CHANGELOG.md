@@ -1,5 +1,31 @@
 # @osstack/hermes-adapter
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [4b9bef0]
+- Updated dependencies [4c1cd4f]
+- Updated dependencies [4845be0]
+- Updated dependencies [0329eb8]
+- Updated dependencies [fb32543]
+- Updated dependencies [8f5d406]
+- Updated dependencies [21a14a2]
+- Updated dependencies [e4c33d0]
+- Updated dependencies [cafadc1]
+- Updated dependencies [ccef9bb]
+- Updated dependencies [64013bc]
+- Updated dependencies [5ccc9a9]
+- Updated dependencies [441d2a4]
+- Updated dependencies [2e1aafe]
+- Updated dependencies [20054f1]
+- Updated dependencies [32726b6]
+- Updated dependencies [203df2d]
+- Updated dependencies [4827af6]
+- Updated dependencies [8dc4976]
+- Updated dependencies [49d9a17]
+  - @osstack/core@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes
