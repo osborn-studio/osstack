@@ -36,6 +36,7 @@ export const ContainedMissionRpcRequests = {
     }).strict().refine(r => r.verification_mode ? r.verify.argv.length === 0 : r.verify.argv.length > 0, 'verification_mode'),
   }).strict(),
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
+  'mission.list': z.object({ credential: Credential, scope_id: Text(256).optional() }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/) }).strict(),
@@ -210,6 +211,10 @@ export class ContainedMissionService {
         const p = ContainedMissionRpcRequests['mission.status'].parse(params);
         const status = host.status(actor, p.mission_id);
         return { ...status, chain: this.options.chainOf?.(p.mission_id) ?? null };
+      }
+      case 'mission.list': {
+        const p = ContainedMissionRpcRequests['mission.list'].parse(params);
+        return host.listCiChains(actor, p.scope_id);
       }
       case 'mission.cancel': {
         const p = ContainedMissionRpcRequests['mission.cancel'].parse(params);

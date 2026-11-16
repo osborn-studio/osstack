@@ -5,6 +5,7 @@ import { hardenedGitEnvironment, type CodexProxyRun, type CodexQualification } f
 import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureHostProcessLedger, hostProcessOptions } from "./contained-mission-host-process.testkit.js";
+import { computeCiChainStats, listCiChains, readCiChain } from "./contained-mission-ci-chain-read.js";
 import { ContainedMissionHost, resolveContainedMissionStart } from "./contained-mission-host.js";
 import { createContainedMissionPorts, type ContainedMissionHostPorts } from "./contained-mission-ports.js";
 
@@ -53,6 +54,11 @@ function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { maxC
     setPatch: (p: string) => { patch = p; }, setGate: (g: Promise<void> | undefined) => { gate = g; }, setEmpty: (fn: (pgid: number) => boolean) => { empty = fn; }, setNamed: (pids: number[]) => { named = pids; } };
 }
 type Fixture = ReturnType<typeof fixture>;
+function ciRoot(f: Fixture, suffix: string) {
+  return f.store.authorize(f.principal, { scope_id: f.principal.read_scopes[0]!,
+    spec: { verification_mode: "github_actions", publication: { repository: "o/r" }, repo_path: f.repo },
+    claim: { repo_identity: `ci-${suffix}`, branch: `ci-${suffix}`, worktree_identity: `ci-${suffix}` } }, f.now());
+}
 const spec = (m: ContainedMission) => JSON.parse(m.spec_json) as { worktree_path: string; branch: string; start_commit: string };
 async function ticks(f: Fixture, n: number) { for (let i = 0; i < n; i++) await f.host.tick(); }
 /** A daemon that crashed mid-turn: workspace created, executor launched, nothing settled. */
@@ -370,17 +376,107 @@ describe("ContainedMissionHost status publication", () => {
     f.store.record(id, "ci_delivery_evidence", evidence(digest, head), f.now());
     f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, f.now());
     const state = () => f.host.status(f.principal, id).github_ci_chain;
-    expect(state()).toBeUndefined();
+    expect(state()).toMatchObject({ state: "initial_ci_waiting", pr: 7, since: expect.any(Number) });
+    f.store.record(id, "ci_initial_verified", { head }, f.now());
+    expect(state()).toMatchObject({ state: "approval_and_handoff_waiting", pr: 7, reason: "CI is green; waiting for Watcher approval and Merger handoff. Approval has no separate ledger event.", since: expect.any(Number) });
     const handoff = { binding: { pr: 7, head } };
     f.store.record(id, "ci_app_e_merge_reserved", handoff, f.now());
-    expect(state()).toEqual({ state: "merge_reserved", pr: 7, head });
+    expect(state()).toMatchObject({ state: "merge_reserved", pr: 7, head, since: expect.any(Number) });
     f.store.record(id, "ci_app_e_merge_released", handoff, f.now());
-    expect(state()).toEqual({ state: "merge_reconciling", pr: 7, head });
+    expect(state()).toMatchObject({ state: "merge_reconciling", pr: 7, head, since: expect.any(Number) });
     f.store.record(id, "ci_pr_merge_unverified", { pr: 7, head, reason: "job_binding_unavailable" }, f.now());
-    expect(state()).toEqual({ state: "merge_held", pr: 7, head, reason: "job_binding_unavailable" });
+    expect(state()).toMatchObject({ state: "merge_held", pr: 7, head, reason: "job_binding_unavailable", since: expect.any(Number) });
     const merged = { pr: 7, head, merge_commit_sha: "f".repeat(40), handoff_comment_id: 82, app_id: 5620091 };
     f.store.record(id, "ci_pr_merged_observed", merged, f.now());
-    expect(state()).toEqual({ state: "closed", ...merged });
+    expect(state()).toMatchObject({ state: "closed", ...merged, since: expect.any(Number) });
+  });
+
+  it("reads every CI waiting state and unknown result from SQLite after restart", async () => {
+    const f = fixture(); const root = ciRoot(f, "one"); const id = root.mission_id;
+    const head = "b".repeat(40); const fixed = "c".repeat(40); const digest = "2".repeat(64);
+    f.store.record(id, "ci_delivery_evidence", evidence(digest, head), 2100);
+    f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 2101);
+    const state = () => readCiChain(f.store.db, f.store.get(id));
+    expect(state()).toMatchObject({ state: "initial_ci_waiting", since: 2101, head_before: head });
+    f.store.record(id, "ci_initial_verification_waiting", { reason: "jobs_pending" }, 2102);
+    expect(state()).toMatchObject({ state: "initial_ci_waiting", since: 2101 });
+    f.store.record(id, "ci_failure_observed", { job: { check_run_id: 9 } }, 2103);
+    expect(state()).toMatchObject({ state: "repair_permission_waiting", since: 2103 });
+    const child = f.store.authorize(f.principal, { scope_id: root.scope_id, spec: { repo_path: f.repo },
+      claim: { repo_identity: "child", branch: "child", worktree_identity: "child" } }, 2104);
+    f.store.record(id, "ci_repair_dispatched", { child: child.mission_id }, 2105);
+    expect(state()).toMatchObject({ state: "repair_permission_waiting", since: 2103 });
+    f.store.record(child.mission_id, "ci_repair_approval", {}, 2106);
+    expect(state()).toMatchObject({ state: "repair_in_progress", since: 2106 });
+    f.store.record(child.mission_id, "ci_repair_push_confirmed", {}, 2107);
+    expect(state()).toMatchObject({ state: "repair_ci_waiting", since: 2107 });
+    f.store.record(id, "ci_repair_verification_waiting", { reason: "jobs_pending" }, 2108);
+    expect(state()).toMatchObject({ state: "repair_ci_waiting", since: 2107, reason: "jobs_pending" });
+    f.store.record(id, "ci_repair_failed", { job: { check_run_id: 10 } }, 2109);
+    expect(state()).toMatchObject({ state: "stopped", since: 2109, stop_reason: "repair_ci_failed" });
+    f.store.record(id, "ci_repair_verified", { head: fixed }, 2110);
+    expect(state()).toMatchObject({ state: "approval_and_handoff_waiting", since: 2110, reason: "CI is green; waiting for Watcher approval and Merger handoff. Approval has no separate ledger event." });
+    const reopened = openDb({ path: join(f.root, "state.db") });
+    try {
+      expect(readCiChain(reopened, f.store.get(id))).toMatchObject({ state: "approval_and_handoff_waiting", since: 2110, reason: "CI is green; waiting for Watcher approval and Merger handoff. Approval has no separate ledger event." });
+      expect(listCiChains(reopened, [root.scope_id], root.scope_id)).toHaveLength(1);
+      expect(computeCiChainStats(reopened).ci_chain_by_state).toContainEqual({ state: "approval_and_handoff_waiting", count: 1 });
+    } finally { reopened.close(); }
+    f.store.record(id, "ci_closed_unmerged", {}, 2111);
+    expect(state()).toMatchObject({ state: "stopped", since: 2111 });
+  });
+
+  it("reports an unavailable repair child and a revoked child grant without guessing", async () => {
+    const f = fixture(); const root = ciRoot(f, "one"); const id = root.mission_id;
+    const head = "b".repeat(40); const digest = "2".repeat(64);
+    f.store.record(id, "ci_delivery_evidence", evidence(digest, head), 3100);
+    f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3101);
+    f.store.record(id, "ci_repair_dispatched", { child: "cm_missing" }, 3102);
+    expect(readCiChain(f.store.db, f.store.get(id))).toMatchObject({ state: "result_unknown", since: 3102, stop_reason: "repair_child_missing" });
+    const child = f.store.authorize(f.principal, { scope_id: root.scope_id, spec: { repo_path: f.repo },
+      claim: { repo_identity: "revoked-child", branch: "revoked-child", worktree_identity: "revoked-child" } }, 3103);
+    f.store.record(id, "ci_repair_dispatched", { child: child.mission_id }, 3104);
+    f.store.transition(child.mission_id, { if_revision: child.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "grant_revoked" } } }, 3105);
+    expect(readCiChain(f.store.db, f.store.get(id))).toMatchObject({ state: "stopped", since: 3105, reason: "grant_revoked" });
+  });
+
+  it("counts five consecutive closed chains and observed durations", async () => {
+    const f = fixture();
+    for (let i = 0; i < 5; i++) {
+      const root = ciRoot(f, String(i));
+      const head = String(i + 1).repeat(40); const digest = String(i + 1).repeat(64);
+      f.store.record(root.mission_id, "ci_pilot_root_bound", {}, 3999 + i * 10);
+      f.store.record(root.mission_id, "ci_delivery_evidence", evidence(digest, head), 4000 + i * 10);
+      f.store.record(root.mission_id, "pr_opened", { pr: { ...pr, number: i + 1 }, evidence_digest: digest, verification_kind: "github_actions" }, 4001 + i * 10);
+      if (i === 2) { f.store.record(root.mission_id, "ci_failure_observed", {}, 4002 + i * 10); f.store.record(root.mission_id, "ci_repair_verified", {}, 4003 + i * 10); }
+      f.store.record(root.mission_id, "ci_pr_merged_observed", { pr: i + 1, head, merge_commit_sha: "f".repeat(40), app_id: 123, handoff_comment_id: 82 }, 4005 + i * 10);
+    }
+    const stats = computeCiChainStats(f.store.db);
+    expect(stats).toMatchObject({ ci_chain_closed: 5, ci_chain_repaired_closed: 1, ci_chain_consecutive_normal_closed: 5,
+      ci_chain_by_state: [{ state: "closed", count: 5 }] });
+    expect(stats.ci_chain_registration_to_close_ms).toHaveLength(5);
+    expect(stats.ci_chain_registration_to_close_ms.every(row => row.duration_ms === 6)).toBe(true);
+    const stopped = ciRoot(f, "newest-stopped"); const digest = "a".repeat(64); const head = "a".repeat(40);
+    f.store.record(stopped.mission_id, "ci_delivery_evidence", evidence(digest, head), 4100);
+    f.store.record(stopped.mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 4101);
+    f.store.record(stopped.mission_id, "ci_closed_unmerged", {}, 4102);
+    expect(computeCiChainStats(f.store.db).ci_chain_consecutive_normal_closed).toBe(0);
+  });
+
+  it("breaks the normal closure streak for a manual merge without App E evidence", () => {
+    const f = fixture(); const root = ciRoot(f, "manual"); const head = "b".repeat(40); const digest = "2".repeat(64);
+    f.store.record(root.mission_id, "ci_delivery_evidence", evidence(digest, head), 5000);
+    f.store.record(root.mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 5001);
+    f.store.record(root.mission_id, "ci_pr_merged_observed", { pr: 7, head, merge_commit_sha: "f".repeat(40), merged_by: { id: 9, type: "User" } }, 5002);
+    expect(computeCiChainStats(f.store.db)).toMatchObject({ ci_chain_closed: 1, ci_chain_consecutive_normal_closed: 0 });
+  });
+
+  it("keeps duration null when registration time is absent", () => {
+    const f = fixture(); const root = ciRoot(f, "without-bound"); const head = "b".repeat(40); const digest = "2".repeat(64);
+    f.store.record(root.mission_id, "ci_delivery_evidence", evidence(digest, head), 5000);
+    f.store.record(root.mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 5001);
+    f.store.record(root.mission_id, "ci_pr_merged_observed", { pr: 7, head, merge_commit_sha: "f".repeat(40) }, 5002);
+    expect(computeCiChainStats(f.store.db).ci_chain_registration_to_close_ms).toEqual([{ mission_id: root.mission_id, duration_ms: null }]);
   });
 
   it("reports missing evidence instead of throwing", async () => {

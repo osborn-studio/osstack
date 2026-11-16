@@ -48,6 +48,11 @@ describe("daemon stats bridge section", () => {
     const r = resp.result!;
     expect(r["total_runs"]).toBe(0);
     expect(r).toHaveProperty("rpc");
+    expect(r["ci_chain"]).toMatchObject({
+      ci_chain_available: true, ci_chain_by_state: [], ci_chain_closed: 0,
+      ci_chain_repaired_closed: 0, ci_chain_consecutive_normal_closed: 0, ci_chain_registration_to_close_ms: [],
+    });
+    expect(JSON.parse(JSON.stringify(r))["ci_chain"]).toEqual(r["ci_chain"]);
     const bridge = r["bridge"] as { available: boolean; chains: { total: number }; deferred: Record<string, { value: null; reason: string }> };
     expect(bridge.available).toBe(true);
     expect(bridge.chains.total).toBe(0);

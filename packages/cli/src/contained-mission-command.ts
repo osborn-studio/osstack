@@ -8,6 +8,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
         (--verify-arg ARG [--verify-arg ARG...] | --github-ci) [--max-repair N] [--supersedes MISSION]
         [--publish-repository OWNER/NAME [--publish-remote origin] [--publish-base REF]
          [--publish-draft true|false] [--publish-title TEXT] [--publish-preauthorized]]
+  list --github-ci [--scope ID]       (read-only CI chain overview)
   status --mission ID                (includes publication: the opened PR and pushed commit, if any)
   cancel --mission ID
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
@@ -23,9 +24,10 @@ The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No 
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "chain-decide" | "merger-report";
+type Command = "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "chain-decide" | "merger-report";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
+  list: { single: ["scope"], repeated: [] },
   status: { single: ["mission"], repeated: [] },
   cancel: { single: ["mission"], repeated: [] },
   "publish-check": { single: ["mission"], repeated: [] },
@@ -81,7 +83,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       const key = arg.slice(2);
       if (key === "json") { if (json) throw new Error("duplicate_flag:--json"); json = true; continue; }
       if (key === "publish-preauthorized" && command === "start") { if (preauthorized) throw new Error("duplicate_flag:--publish-preauthorized"); preauthorized = true; continue; }
-      if (key === "github-ci" && command === "start") { if (githubCi) throw new Error("duplicate_flag:--github-ci"); githubCi = true; continue; }
+      if (key === "github-ci" && (command === "start" || command === "list")) { if (githubCi) throw new Error("duplicate_flag:--github-ci"); githubCi = true; continue; }
       const value = args[++i];
       if (value === undefined || value.includes("\0")) throw new Error(`missing_value:--${key}`);
       if (flagsByCommand[command].repeated.includes(key)) { repeated.set(key, [...(repeated.get(key) ?? []), value]); continue; }
@@ -107,6 +109,9 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       if (single.has("publish-draft") && !["true", "false"].includes(required("publish-draft"))) throw new Error("invalid:--publish-draft");
       if (!single.has("publish-repository") && [...single.keys(), ...(preauthorized ? ["publish-preauthorized"] : [])].some(k => k.startsWith("publish-"))) throw new Error("required:--publish-repository");
       if (githubCi && !single.has("publish-repository")) throw new Error("required:--publish-repository");
+    } else if (command === "list") {
+      if (!githubCi) throw new Error("required:--github-ci");
+      params = { ...(single.has("scope") ? { scope_id: required("scope") } : {}) };
     } else if (command === "decide") {
       params = { mission_id: required("mission"), decision: required("decision") };
     } else if (command === "approve-ci-repair") {
@@ -129,6 +134,10 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     const response = await deps.rpc(method, { ...params, credential }, 120000) as { ok?: boolean; result?: unknown; error?: { code?: unknown } };
     if (response?.ok !== true) throw new Error(typeof response?.error?.code === "string" ? response.error.code : "mission_request_failed");
     const text = safeJson(response.result ?? null).split(credential).join("[REDACTED]");
+    if (command === "list" && !json) {
+      for (const row of response.result as Array<Record<string, unknown>>) out([row["mission_id"], row["scope_id"], row["repository"], row["pr"], row["state"], row["since"], row["head_before"], row["head_after"], row["merge_commit_sha"], row["stop_reason"]].map(v => v ?? "-").join("\t"));
+      return 0;
+    }
     out(json ? text : command === "merger-report" ? `Mission · merger report\n${text}\nShadow evidence only. Nothing is merged by OSStack.` : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
     return 0;
   } catch (error) {
