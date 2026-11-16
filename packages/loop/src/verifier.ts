@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { z } from "zod";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import {
   StructuredReviewSchema,
@@ -754,6 +755,7 @@ async function invokeVerifierAdapter(
   let terminalError: string | undefined;
   let judgments: AdapterEvaluationJudgment[] | undefined;
   let implementationDeviations: ImplementationDeviationValue[] | undefined;
+  let deviationsProblem: { kind: "json" | "shape" | "entries" | "oversized"; invalid_count?: number | undefined } | undefined;
   let reviewArtifact: ReviewArtifactValue | undefined;
   let reviewArtifactError: string | undefined;
   let snapshotError: string | undefined;
@@ -815,9 +817,21 @@ async function invokeVerifierAdapter(
         } else {
           judgments = parseEvaluationJudgments(payload.evaluation_judgments);
         }
-        implementationDeviations = parseImplementationDeviations(
-          payload.implementation_deviations,
-        );
+        const parsedDeviations = parseImplementationDeviations(payload.implementation_deviations);
+        implementationDeviations = parsedDeviations.deviations;
+        const rawProblem = payload.implementation_deviations_problem;
+        const checkedProblem = rawProblem === undefined ? undefined : DeviationProblem.safeParse(rawProblem);
+        const payloadProblem = checkedProblem?.success === true
+          ? checkedProblem.data
+          : rawProblem === undefined ? undefined : { kind: "shape" as const };
+        deviationsProblem = payloadProblem ?? parsedDeviations.problem;
+        if (payloadProblem?.kind === "entries" && parsedDeviations.problem?.kind === "entries") {
+          deviationsProblem = {
+            kind: "entries",
+            invalid_count: (payloadProblem.invalid_count ?? 0)
+              + (parsedDeviations.problem.invalid_count ?? 0),
+          };
+        }
       }
     }
   } catch (error) {
@@ -849,6 +863,15 @@ async function invokeVerifierAdapter(
   }
 
   const issues: Issue[] = [];
+  // Report-format issues are separate from work failures. A later repair step
+  // can ask the executor to restate its result without rerunning the work.
+  if (deviationsProblem !== undefined) {
+    issues.push({
+      severity: "warning",
+      rule: "verify.deviations_invalid",
+      message: singleLine(`implementation deviation report invalid: ${deviationsProblem.kind}${deviationsProblem.invalid_count === undefined ? "" : `; invalid_count=${deviationsProblem.invalid_count}`}; adapter=${adapter.id}`),
+    });
+  }
   if (invocationAttempted && !iteratorFinished) {
     issues.push(adapterIssue(adapter.id,"verify.adapter_stop_unconfirmed","Verifier stream ended abnormally without physical stop evidence. A preflight refusal is possible; this is not evidence that a process remains alive. Reconcile before retry."));
   }
@@ -934,13 +957,18 @@ async function invokeVerifierAdapter(
 
 function parseImplementationDeviations(
   raw: unknown,
-): ImplementationDeviationValue[] | undefined {
-  if (!Array.isArray(raw) || raw.length > 100) return undefined;
+): { deviations?: ImplementationDeviationValue[]; problem?: { kind: "shape" | "entries"; invalid_count?: number } } {
+  if (raw === undefined) return {};
+  if (!Array.isArray(raw) || raw.length > 100) return { problem: { kind: "shape" } };
   const parsed = raw.flatMap((entry) => {
     const result = ImplementationDeviation.safeParse(entry);
     return result.success ? [result.data] : [];
   });
-  return parsed.length > 0 ? parsed : undefined;
+  const invalidCount = raw.length - parsed.length;
+  return {
+    ...(parsed.length > 0 ? { deviations: parsed } : {}),
+    ...(invalidCount > 0 ? { problem: { kind: "entries", invalid_count: invalidCount } } : {}),
+  };
 }
 
 function parseEvaluationJudgments(raw: unknown): AdapterEvaluationJudgment[] | undefined {
@@ -1096,11 +1124,17 @@ function errorPayload(payload: HermesEvent["payload"]): { message: string } {
   return payload as { message: string };
 }
 
+const DeviationProblem = z.object({
+  kind: z.enum(["json", "shape", "entries", "oversized"]),
+  invalid_count: z.number().int().positive().optional(),
+});
+
 function donePayload(payload: HermesEvent["payload"]): {
   status: "completed" | "failed" | "cancelled" | "expired";
   result_summary?: string;
   evaluation_judgments?: unknown;
   implementation_deviations?: unknown;
+  implementation_deviations_problem?: unknown;
   review?: unknown;
 } {
   return payload as {
@@ -1108,6 +1142,7 @@ function donePayload(payload: HermesEvent["payload"]): {
     result_summary?: string;
     evaluation_judgments?: unknown;
     implementation_deviations?: unknown;
+    implementation_deviations_problem?: unknown;
     review?: unknown;
   };
 }

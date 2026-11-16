@@ -1,10 +1,10 @@
 import { loopContainmentPath } from "./loop-containment.js";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdtempSync, realpathSync } from "node:fs";
 import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core";
-import type { AgentAdapter, AgentAvailability, AgentTask } from "@osstack/agents";
+import { DeepSeekVerifyAdapter, type AgentAdapter, type AgentAvailability, type AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { describe, expect, it, vi } from "vitest";
 import { LoopEngine } from "./loop-engine.js";
@@ -253,6 +253,43 @@ describe("LoopEngine", () => {
         deviation_id: "architecture-drift-1",
       }),
     }));
+  });
+
+  it("emits an invalid declaration event and retains its warning on a passing task", async () => {
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: "task-1", capability: "code.test", prompt: "Check report", priority: 80,
+      context: { emit_invalid_deviation: true },
+    }));
+    const reviewer = new FakeReviewAdapter();
+    const result = await new LoopEngine({
+      workspacePath: workspace, sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').writeFileSync('agent-output.txt', 'done')\"",
+      verifierAgentIds: [reviewer.id], adapters: [reviewer],
+    }).runOnce();
+    expect(result.state.completed_tasks[0]).toMatchObject({ outcome: "success",
+      verify_issues: [expect.objectContaining({ rule: "verify.deviations_invalid", severity: "warning" })],
+    });
+    expect(result.events).toContainEqual(expect.objectContaining({
+      type: "loop.implementation.deviations_invalid",
+      payload: expect.objectContaining({ task_id: "task-1", kind: "json", invalid_count: 1 }),
+    }));
+  });
+
+  it("uses the verifier failure for error_summary when its declaration is invalid", async () => {
+    const workspace = await makeGitQueuedWorkspace("baseline\n");
+    const bin = join(workspace, "ds-verify-failure.sh");
+    await writeFile(bin, "#!/bin/sh\nprintf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json\\n'\necho actual verifier failure >&2\nexit 7\n");
+    await chmod(bin, 0o755);
+    const reviewer = new DeepSeekVerifyAdapter({ bin });
+    const result = await new LoopEngine({
+      workspacePath: workspace, sources: ["task_queue"], maxIterations: 1,
+      executeCommand: "node -e \"require('fs').writeFileSync('agent-output.txt', 'done')\"",
+      verifierAgentIds: [reviewer.id], adapters: [reviewer],
+    }).runOnce();
+    expect(result.state.completed_tasks[0]).toMatchObject({
+      error_summary: expect.stringContaining("actual verifier failure"),
+    });
   });
 
   it("records changed files, diff summary, and commit hash in task evidence", async () => {
@@ -1305,6 +1342,8 @@ class FakeReviewAdapter implements AgentAdapter {
       status: "completed",
       last_seq: 0,
       result_summary: "fake review passed",
+      implementation_deviations_problem: task.context?.["emit_invalid_deviation"] === true
+        ? { kind: "json" } : undefined,
       implementation_deviations: task.context?.["emit_deviation"] === true
         ? [{
             deviation_id: "architecture-drift-1",

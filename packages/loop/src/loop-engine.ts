@@ -1145,6 +1145,18 @@ export class LoopEngine {
             ...deviation,
           });
         }
+        for (const issue of finalVerdict.issues) {
+          if (issue.rule !== "verify.deviations_invalid") continue;
+          const kind = issue.message.match(/report invalid: (json|shape|entries|oversized)/)?.[1] ?? "shape";
+          const invalidCount = Number(issue.message.match(/invalid_count=(\d+)/)?.[1] ?? 1);
+          this.emit(loopId, "loop.implementation.deviations_invalid", {
+            task_id: task.task_id,
+            iteration,
+            reviewer_agent_id: finalVerdict.reviewer_agent_id,
+            kind,
+            invalid_count: invalidCount,
+          });
+        }
 
         let decision = evaluateIteration({
           verdict: finalVerdict,
@@ -1837,7 +1849,7 @@ function redactReviewArtifacts(
 }
 
 function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): string {
-  const firstIssue = verdict?.issues[0];
+  const firstIssue = verdict?.issues.find((issue) => issue.severity === "error") ?? verdict?.issues[0];
   if (firstIssue !== undefined) return singleLine(firstIssue.message);
   if (run?.summary !== undefined) return singleLine(run.summary);
   if (run !== null && run.outcome !== "completed") return `execution ${run.outcome}`;

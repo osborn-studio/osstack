@@ -31,6 +31,7 @@ interface CommandResult {
   stdout: string;
   stderr: string;
   timedOut: boolean;
+  deviations: ImplementationDeviationsParseResult;
 }
 
 /** Env var pointing the DeepSeek command at the loop's evaluation specs JSON. */
@@ -180,7 +181,7 @@ export abstract class DeepSeekCommandAdapter extends BaseAgentAdapter {
       yield progressEvent(task, seq++, `${this.id}.stderr`, result.stderr);
     }
     const judgments = extractEvaluationJudgments(result.stdout);
-    const deviations = extractImplementationDeviations(result.stdout);
+    const deviations = result.deviations;
 
     if (result.exitCode === 0) {
       yield doneEvent(
@@ -289,7 +290,7 @@ function doneEvent(
   lastSeq: number,
   summary: string,
   judgments?: EvaluationJudgment[],
-  deviations?: Record<string, unknown>[],
+  deviations?: ImplementationDeviationsParseResult,
 ): HermesEvent {
   return {
     ...envelope(task, seq, true),
@@ -299,9 +300,10 @@ function doneEvent(
       last_seq: lastSeq,
       result_summary: summary,
       ...(judgments !== undefined && judgments.length > 0 ? { evaluation_judgments: judgments } : {}),
-      ...(deviations !== undefined && deviations.length > 0
-        ? { implementation_deviations: deviations }
+      ...(deviations !== undefined && deviations.deviations.length > 0
+        ? { implementation_deviations: deviations.deviations }
         : {}),
+      ...(deviations?.problem !== undefined ? { implementation_deviations_problem: deviations.problem } : {}),
     },
   };
 }
@@ -334,36 +336,86 @@ export function extractEvaluationJudgments(stdout: string): EvaluationJudgment[]
   }
 }
 
-/**
- * Parse an explicit JSON envelope from command stdout. Shape validation remains
- * the consumer's responsibility; this transport only admits JSON objects and
- * never infers a deviation from prose or a non-zero exit code.
- */
+export interface ImplementationDeviationsParseResult {
+  deviations: Record<string, unknown>[];
+  problem?: { kind: "json" | "shape" | "entries" | "oversized"; invalid_count?: number };
+}
+
+/** Parse declarations; the last valid line wins and every invalid line is reported. */
 export function extractImplementationDeviations(
   stdout: string,
-): Record<string, unknown>[] {
-  const lines = stdout
-    .split(/\r?\n/)
-    .filter((line) =>
-      line.trimStart().startsWith(IMPLEMENTATION_DEVIATIONS_PREFIX),
-    );
-  const last = lines.at(-1);
-  if (last === undefined) return [];
-  const raw = last
-    .trimStart()
-    .slice(IMPLEMENTATION_DEVIATIONS_PREFIX.length)
-    .trim();
-  try {
-    const parsed = JSON.parse(raw) as { deviations?: unknown };
-    if (!Array.isArray(parsed.deviations) || parsed.deviations.length > 100) {
-      return [];
+): ImplementationDeviationsParseResult {
+  const collector = new DeviationLineCollector();
+  collector.feed(stdout);
+  return collector.finish();
+}
+
+// A complete declaration can contain 100 entries with long evidence paths.
+// Bound one stdout line independently of the small output display buffer.
+const DEVIATION_LINE_LIMIT = 8 * 1024 * 1024;
+
+class DeviationLineCollector {
+  private line = "";
+  private oversized = false;
+  private deviations: Record<string, unknown>[] = [];
+  private problem: ImplementationDeviationsParseResult["problem"];
+
+  feed(chunk: string): void {
+    const parts = chunk.split("\n");
+    for (const [index, part] of parts.entries()) {
+      if (this.line.length + part.length > DEVIATION_LINE_LIMIT) {
+        this.oversized = true;
+      } else if (!this.oversized) {
+        this.line += part;
+      }
+      if (index < parts.length - 1) this.acceptLine();
     }
-    return parsed.deviations.filter(
+  }
+
+  finish(): ImplementationDeviationsParseResult {
+    this.acceptLine();
+    return { deviations: this.deviations, ...(this.problem ? { problem: this.problem } : {}) };
+  }
+
+  private acceptLine(): void {
+    if (this.oversized) {
+      this.recordProblem({ kind: "oversized" });
+    } else if (this.line.trimStart().startsWith(IMPLEMENTATION_DEVIATIONS_PREFIX)) {
+      const raw = this.line.trimStart().slice(IMPLEMENTATION_DEVIATIONS_PREFIX.length).trim();
+      const result = parseDeviationLine(raw);
+      if (result.problem) this.recordProblem(result.problem);
+      if (result.deviations.length > 0 || !result.problem) this.deviations = result.deviations;
+    }
+    this.line = "";
+    this.oversized = false;
+  }
+
+  private recordProblem(problem: NonNullable<ImplementationDeviationsParseResult["problem"]>): void {
+    const count = (this.problem === undefined ? 0 : this.problem.invalid_count ?? 1)
+      + (problem.invalid_count ?? 1);
+    this.problem = count === 1 && problem.kind !== "entries"
+      ? { kind: problem.kind }
+      : { kind: problem.kind, invalid_count: count };
+  }
+}
+
+function parseDeviationLine(raw: string): ImplementationDeviationsParseResult {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
+      || !Array.isArray((parsed as Record<string, unknown>)["deviations"])
+      || (parsed as { deviations: unknown[] }).deviations.length > 100) {
+      return { deviations: [], problem: { kind: "shape" } };
+    }
+    const entries = (parsed as { deviations: unknown[] }).deviations;
+    const deviations = entries.filter(
       (entry): entry is Record<string, unknown> =>
         entry !== null && typeof entry === "object" && !Array.isArray(entry),
     );
+    const invalidCount = entries.length - deviations.length;
+    return { deviations, ...(invalidCount > 0 ? { problem: { kind: "entries" as const, invalid_count: invalidCount } } : {}) };
   } catch {
-    return [];
+    return { deviations: [], problem: { kind: "json" } };
   }
 }
 
@@ -423,7 +475,7 @@ function runCommand(
     outputLimit: number;
   },
 ): Promise<CommandResult> {
-  if (options.signal?.aborted) return Promise.resolve({ exitCode: 1, stdout: "", stderr: "cancelled before spawn", timedOut: false });
+  if (options.signal?.aborted) return Promise.resolve({ exitCode: 1, stdout: "", stderr: "cancelled before spawn", timedOut: false, deviations: { deviations: [] } });
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -433,6 +485,7 @@ function runCommand(
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    const deviationLines = new DeviationLineCollector();
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -445,7 +498,9 @@ function runCommand(
     options.signal?.addEventListener("abort", onAbort, { once: true });
 
     child.stdout.on("data", (chunk: Buffer) => {
-      stdout = appendLimited(stdout, chunk.toString("utf-8"), options.outputLimit);
+      const text = chunk.toString("utf-8");
+      deviationLines.feed(text);
+      stdout = appendLimited(stdout, text, options.outputLimit);
     });
     child.stderr.on("data", (chunk: Buffer) => {
       stderr = appendLimited(stderr, chunk.toString("utf-8"), options.outputLimit);
@@ -458,6 +513,7 @@ function runCommand(
         stdout,
         stderr: appendLimited(stderr, error.message, options.outputLimit),
         timedOut,
+        deviations: deviationLines.finish(),
       });
     });
     child.on("close", (code, signal) => {
@@ -472,6 +528,7 @@ function runCommand(
             ? appendLimited(stderr, `Command exited from signal ${signal}`, options.outputLimit)
             : stderr,
         timedOut,
+        deviations: deviationLines.finish(),
       });
     });
 
