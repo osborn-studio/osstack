@@ -1,0 +1,62 @@
+[
+  {
+    "file": "packages/cli/src/deployed-home.test.ts",
+    "count": 11,
+    "reason": "Synthetic /Users/example launchd plist home/socket values exercise deployed-home discovery and environment binding."
+  },
+  {
+    "file": "packages/cli/src/hub-cli.test.ts",
+    "count": 3,
+    "reason": "Injected volume paths exercise redaction of Hub status, reasons and candidate identity."
+  },
+  {
+    "file": "packages/cli/src/serve-install-cli.test.ts",
+    "count": 3,
+    "reason": "Synthetic /Users/example LaunchAgents path exercises daemon installation output."
+  },
+  {
+    "file": "packages/cli/src/upgrade-deployed-home.test.ts",
+    "count": 7,
+    "reason": "Synthetic /Users/example home/socket values verify upgrades bind to the serving home."
+  },
+  {
+    "file": "packages/loop/src/loop-engine.test.ts",
+    "count": 1,
+    "reason": "Injected volume path in a blocked publish result verifies event and decision redaction."
+  },
+  {
+    "file": "packages/loop/src/publisher.test.ts",
+    "count": 4,
+    "reason": "Injected volume paths verify published identity rejection and blocked-reason redaction."
+  },
+  {
+    "file": "packages/loop/src/publisher.ts",
+    "count": 1,
+    "reason": "Existing default publish command points at the owner's Skill Hub checkout. Moving it to configuration changes publishing behaviour and needs an owner decision."
+  },
+  {
+    "file": "scripts/README.md",
+    "count": 1,
+    "reason": "Install example for the owner's machine. Replace with a variable when the default publish command moves to configuration."
+  },
+  {
+    "file": "scripts/audit-bridge-sandbox-ledger.test.mjs",
+    "count": 1,
+    "reason": "Production-shaped home database path verifies the sandbox auditor rejects a database outside its private root."
+  },
+  {
+    "file": "scripts/bridge-sandbox-cold-restart.test.mjs",
+    "count": 1,
+    "reason": "Foreign /Users/other home value verifies cold-restart provenance rejects a changed home."
+  },
+  {
+    "file": "scripts/notify-osborn.py",
+    "count": 2,
+    "reason": "Existing lookup paths for the owner's Hermes install, including the SSD location in use. Changing them alters notification delivery and needs an owner decision."
+  },
+  {
+    "file": "scripts/smoke-bridge-revision-sandbox.mjs",
+    "count": 1,
+    "reason": "The live sandbox smoke harness pins its SSD scratch root and rejects other roots before running costly Docker/Codex work."
+  }
+]
