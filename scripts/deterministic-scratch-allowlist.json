@@ -1,0 +1,572 @@
+[
+  {
+    "file": "packages/agents/src/adapters/deepseek-command.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-eval-specs-\"))",
+    "count": 1,
+    "reason": "Writes evaluation specs to a temporary JSON file for the DeepSeek command adapter."
+  },
+  {
+    "file": "packages/agents/src/adapters/deepseek-command.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Writes evaluation specs to a temporary JSON file for the DeepSeek command adapter."
+  },
+  {
+    "file": "packages/agents/src/adapters/kimi-code.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-kimi-review-\"))",
+    "count": 1,
+    "reason": "Creates an isolated review root with a skills directory for Kimi review."
+  },
+  {
+    "file": "packages/agents/src/adapters/kimi-code.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Creates an isolated review root with a skills directory for Kimi review."
+  },
+  {
+    "file": "packages/agents/src/semantic/anthropic-no-tools.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-semantic-\"))",
+    "count": 1,
+    "reason": "Creates a semantic judge workspace and checks that a supplied temporary directory is inside the OS temporary root."
+  },
+  {
+    "file": "packages/agents/src/semantic/anthropic-no-tools.ts",
+    "expression": "tmpdir()",
+    "count": 2,
+    "reason": "Creates a semantic judge workspace and checks that a supplied temporary directory is inside the OS temporary root."
+  },
+  {
+    "file": "packages/agents/src/worktree.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Uses the OS temporary directory as the default parent for managed worktrees when no root is configured."
+  },
+  {
+    "file": "packages/cli/src/graph-maintenance.ts",
+    "expression": "mkdtempSync(join(parent, 'graph-maintenance-'))",
+    "count": 1,
+    "reason": "Creates a uniquely named backup directory inside the user-specified maintenance backup parent."
+  },
+  {
+    "file": "packages/cli/src/improvement-candidate-artifacts.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-improvement-patch-\"))",
+    "count": 1,
+    "reason": "Builds a binary-capable patch in a disposable bare Git repository."
+  },
+  {
+    "file": "packages/cli/src/improvement-candidate-artifacts.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Builds a binary-capable patch in a disposable bare Git repository."
+  },
+  {
+    "file": "packages/cli/src/improvement-environment.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-env-preview-\"))",
+    "count": 1,
+    "reason": "Materializes dependency inputs in a temporary home to preview the improvement environment."
+  },
+  {
+    "file": "packages/cli/src/improvement-environment.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Materializes dependency inputs in a temporary home to preview the improvement environment."
+  },
+  {
+    "file": "packages/cli/src/improvement-pr-delivery.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-pr-rebuild-\"))",
+    "count": 1,
+    "reason": "Rebuilds and verifies a PR candidate in an isolated repository and home directory."
+  },
+  {
+    "file": "packages/cli/src/improvement-pr-delivery.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Rebuilds and verifies a PR candidate in an isolated repository and home directory."
+  },
+  {
+    "file": "packages/core/src/graph/artifact-store.ts",
+    "expression": "mkdtemp(join(root, \"scratch\", \"capture-\"))",
+    "count": 1,
+    "reason": "Creates capture, verification, and restore workspaces beneath the graph artifact store scratch root."
+  },
+  {
+    "file": "packages/core/src/graph/artifact-store.ts",
+    "expression": "mkdtemp(join(root, \"scratch\", \"restore-\"))",
+    "count": 1,
+    "reason": "Creates capture, verification, and restore workspaces beneath the graph artifact store scratch root."
+  },
+  {
+    "file": "packages/core/src/graph/artifact-store.ts",
+    "expression": "mkdtemp(join(root, \"scratch\", \"verify-\"))",
+    "count": 1,
+    "reason": "Creates capture, verification, and restore workspaces beneath the graph artifact store scratch root."
+  },
+  {
+    "file": "packages/loop/src/executor.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-feedback-\"))",
+    "count": 1,
+    "reason": "Writes iteration feedback to a temporary JSON file passed to the executor."
+  },
+  {
+    "file": "packages/loop/src/executor.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Writes iteration feedback to a temporary JSON file passed to the executor."
+  },
+  {
+    "file": "packages/neat-eval/src/cli.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-parity-lock-\"))",
+    "count": 1,
+    "reason": "Materializes a development corpus in a temporary directory to verify the parity lock."
+  },
+  {
+    "file": "packages/neat-eval/src/cli.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Materializes a development corpus in a temporary directory to verify the parity lock."
+  },
+  {
+    "file": "packages/neat-eval/src/corpus.ts",
+    "expression": "mkdtemp(join(dirname(destination), \".osstack-neat-v3-\"))",
+    "count": 1,
+    "reason": "Stages corpus runtime files beside their destination before publishing the baseline output."
+  },
+  {
+    "file": "packages/neat-eval/src/runner.ts",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-parity-arm-\"))",
+    "count": 1,
+    "reason": "Copies an external parity case into a disposable workspace before running its adapter."
+  },
+  {
+    "file": "packages/neat-eval/src/runner.ts",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Copies an external parity case into a disposable workspace before running its adapter."
+  },
+  {
+    "file": "scripts/demo-loop-daemon.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-loop-daemon-demo-\"))",
+    "count": 1,
+    "reason": "Demo script creates a disposable loop workspace."
+  },
+  {
+    "file": "scripts/demo-loop-daemon.mjs",
+    "expression": "tmpdir()",
+    "count": 2,
+    "reason": "Demo script creates a disposable loop workspace."
+  },
+  {
+    "file": "scripts/demo-loop.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-loop-demo-\"))",
+    "count": 1,
+    "reason": "Demo script creates a disposable loop workspace."
+  },
+  {
+    "file": "scripts/demo-loop.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Demo script creates a disposable loop workspace."
+  },
+  {
+    "file": "scripts/eval-neat-goldens.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-goldens-\"))",
+    "count": 1,
+    "reason": "Evaluation script creates a disposable corpus or parity workspace."
+  },
+  {
+    "file": "scripts/eval-neat-goldens.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Evaluation script creates a disposable corpus or parity workspace."
+  },
+  {
+    "file": "scripts/eval-neat-parity-offline.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-parity-offline-\"))",
+    "count": 1,
+    "reason": "Evaluation script creates a disposable corpus or parity workspace."
+  },
+  {
+    "file": "scripts/eval-neat-parity-offline.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Evaluation script creates a disposable corpus or parity workspace."
+  },
+  {
+    "file": "scripts/graph-test-env.mjs",
+    "expression": "mkdtempSync(join(tmpdir(), 'osstack-graph-test-'))",
+    "count": 1,
+    "reason": "Graph test environment script creates a disposable graph workspace."
+  },
+  {
+    "file": "scripts/graph-test-env.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Graph test environment script creates a disposable graph workspace."
+  },
+  {
+    "file": "scripts/lib/bridge-sandbox-cold-restart.mjs",
+    "expression": "mkdtemp(join(d.runRoot, '.cold-restart-'))",
+    "count": 1,
+    "reason": "Verification helper creates an isolated workspace for bridge, evidence, or skills checks."
+  },
+  {
+    "file": "scripts/lib/engineering-verification-evidence.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Verification helper creates an isolated workspace for bridge, evidence, or skills checks."
+  },
+  {
+    "file": "scripts/lib/skills-check-verification.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Verification helper creates an isolated workspace for bridge, evidence, or skills checks."
+  },
+  {
+    "file": "scripts/notarize-single-binary.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-single-binary-notarize-\"))",
+    "count": 1,
+    "reason": "Notarization script creates a temporary packaging workspace."
+  },
+  {
+    "file": "scripts/notarize-single-binary.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Notarization script creates a temporary packaging workspace."
+  },
+  {
+    "file": "scripts/probe-graph-c2.mjs",
+    "expression": "mkdtempSync(join(tmpdir(), 'osstack-graph-c2-evidence-'))",
+    "count": 1,
+    "reason": "Probe script creates an isolated graph or skill experiment workspace."
+  },
+  {
+    "file": "scripts/probe-graph-c2.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Probe script creates an isolated graph or skill experiment workspace."
+  },
+  {
+    "file": "scripts/smoke-bun-single-binary.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-bun-binary-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-bun-single-binary.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-deliver-proof.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-deliver-proof-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-deliver-proof.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-guarded-deploy.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-guarded-deploy-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-guarded-deploy.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-improvement-providers.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-provider-launcher-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-improvement-providers.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-knowledge-cloud-deploy-assets.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-knowledge-cloud-deploy-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-knowledge-cloud-deploy-assets.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-knowledge-cloud.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-loop.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-loop-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-loop.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-neat-semantic-live.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-semantic-live-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-neat-semantic-live.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-neat.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-neat-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-neat.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-broken-deprecation.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-npm-deprecation-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-broken-deprecation.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-install.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-npm-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-install.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-package-artifacts.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-package-artifacts-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-package-artifacts.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-package-bootstrap.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-npm-bootstrap-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-package-bootstrap.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-preflight-access.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-npm-preflight-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-preflight-access.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-registry-skew.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-registry-skew-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-registry-skew.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-trust-configuration.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-npm-trust-configure-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-trust-configuration.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-trusted-publishers.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-npm-trust-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-npm-trusted-publishers.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-portable-cli.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-portable-cli-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-portable-cli.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-probe-skill.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-probe-skill-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-probe-skill.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-probe.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-probe-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-probe.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-real-repo-deliver.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-real-repo-deliver-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-real-repo-deliver.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-release-plan.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-release-plan-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-release-plan.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-single-binary-release-pack.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-binary-release-pack-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-single-binary-release-pack.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-single-binary-release-publish.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-binary-release-publish-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-single-binary-release-publish.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-single-binary-signing.mjs",
+    "expression": "mkdtemp(join(tmpdir(), \"osstack-binary-signing-smoke-\"))",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/smoke-single-binary-signing.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Smoke script creates a disposable environment for its end-to-end check."
+  },
+  {
+    "file": "scripts/verify-bounded-deepseek.mjs",
+    "expression": "mkdtempSync(join(parent, 'pilot-'))",
+    "count": 1,
+    "reason": "Verification script creates an isolated pilot or executor workspace."
+  },
+  {
+    "file": "scripts/verify-contained-executor.mjs",
+    "expression": "mkdtempSync(join(process.env.OSSTACK_HOME, 'contained-real-'))",
+    "count": 1,
+    "reason": "Verification script creates an isolated pilot or executor workspace."
+  },
+  {
+    "file": "scripts/verify-graph-internal-pilot.mjs",
+    "expression": "mkdtempSync(join(parent, 'pilot-'))",
+    "count": 1,
+    "reason": "Verification script creates an isolated pilot or executor workspace."
+  },
+  {
+    "file": "scripts/verify-graph-pilot.mjs",
+    "expression": "mkdtempSync(join(tmpdir(), \"osstack-graph-e2e-\"))",
+    "count": 1,
+    "reason": "Verification script creates an isolated pilot or executor workspace."
+  },
+  {
+    "file": "scripts/verify-graph-pilot.mjs",
+    "expression": "tmpdir()",
+    "count": 1,
+    "reason": "Verification script creates an isolated pilot or executor workspace."
+  }
+]

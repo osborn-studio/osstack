@@ -4,6 +4,8 @@
 
 This is a pnpm TypeScript monorepo for OSBORN stack. Primary source lives in `packages/*/src`, with each package owning its own `package.json` and `tsconfig.json`. Key packages include `packages/cli` for the `osstack` binary, `packages/core` for orchestration and state, `packages/agents` for agent adapters, and `packages/hermes-adapter` for Hermes integration. Tests are colocated with source as `*.test.ts`. Documentation lives in `docs/`, helper scripts in `scripts/`, Hermes skill files in `hermes-skill/`, the reusable Loop Engineering Codex skill in `loop-engineering/`, and preserved V1 Python code in `legacy-python/`.
 
+Relative links in `docs/**/*.md` must point to existing repository files; `pnpm test:deterministic-rules` checks this.
+
 ## Build, Test, and Development Commands
 
 - `corepack enable pnpm`: enables the expected pnpm version.
@@ -23,6 +25,8 @@ Use TypeScript ESM and keep exports explicit through package `src/index.ts` entr
 ## Testing Guidelines
 
 Vitest is the test runner. Place tests beside the code they cover using `*.test.ts`, for example `packages/core/src/policy/engine.test.ts`. Add focused tests for new routing, policy, state, adapter, and parser behavior. Run `pnpm test` before opening a PR, and use `pnpm --filter <package> test` while iterating.
+
+Every package with tests must load `scripts/vitest-setup-scratch.ts` through `vitest.config.ts`; `pnpm test:deterministic-rules` checks this. Tests need no changes to temporary directory calls because `vitest-setup-scratch.ts` sets `TMPDIR` to a managed directory for each worker.
 
 ## Commit & Pull Request Guidelines
 
@@ -57,6 +61,10 @@ Startup and latency budgets (from `docs/design/2026-08-12-performance-hints-impr
 - Loop tick overhead < 1% of session wall-clock.
 
 Before adding a top-level import to `packages/cli/src/cli-entry.ts`, `bin.ts`, or any `@osstack/*` package's index: measure its load cost (`node --input-type=module -e "const t=performance.now(); await import('<dep>'); console.log(performance.now()-t)"`). Anything over ~20ms that isn't needed by every invocation should be a lazy `await import()` at its use site — the eager-import class of regression cost 100ms+ per offender when the plan landed.
+
+`pnpm test:deterministic-rules` checks the static import closure of `cli-entry.ts` and `bin.ts`.
+
+Package source must use `@osstack/core` `createScratchDir` / `scratchPath` for temporary directories; scripts must use `scripts/lib/scratch.mjs` `createScratchDir`. `pnpm test:deterministic-rules` checks direct `tmpdir()` and `mkdtemp` calls.
 
 ## Security & Configuration Tips
 
