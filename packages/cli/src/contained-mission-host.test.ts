@@ -240,6 +240,21 @@ describe("ContainedMissionHost recovery", () => {
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
   });
 
+  it("marks a keyed retry before removing a verification container", async () => {
+    const f = fixture({ verificationStopped: async (mission, beforeStop) => {
+      beforeStop?.();
+      const marker = f.store.events(mission.mission_id, 0, 500).find(e => e.kind === "decision_effect_started");
+      expect(marker && JSON.parse(marker.payload_json)).toMatchObject({ decision_id: "stop-key", effect: "verification_stop" });
+      return { stopped: true, proof: "container_removed", evidence: "docker-removed:abc" };
+    } });
+    const m = await f.start(); await ticks(f, 2);
+    let current = f.store.get(m.mission_id);
+    current = f.store.transition(m.mission_id, { if_revision: current.revision, to: "verifying", event: { kind: "verify_intent", payload: {} } }, f.now());
+    f.store.transition(m.mission_id, { if_revision: current.revision, to: "stop_unknown", event: { kind: "halted", payload: { reason: "test" } } }, f.now());
+    await f.host.decide(f.principal, m.mission_id, { kind: "retry_stop_check", decision_id: "stop-key" });
+    expect(f.store.get(m.mission_id).stop_obligation).toBe(0);
+  });
+
   it("settles an orphaned verification whose container was removed", async () => {
     const f = fixture({ verificationStopped: async () => ({ stopped: true, proof: "container_removed", evidence: "docker-removed:abc" }) });
     const m = await f.start();

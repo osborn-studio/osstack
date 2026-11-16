@@ -130,3 +130,5 @@ export {
   BehaviorRegistryV1, BehaviorQualificationProfileV1, BehaviorEvidenceV1,
   BehaviorEvidenceBundleV1, BehaviorQualificationV1, BehaviorDeliveryRecordV1,
 } from "./behavior-capability.js";
+
+export { MissionDecideRequest } from "./mission-decide.js";
