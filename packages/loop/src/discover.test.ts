@@ -52,6 +52,68 @@ describe("discover scanners", () => {
     expect(tasks[0]!.priority).toBeGreaterThan(tasks[1]!.priority);
   });
 
+  it("GitDiffScanner keeps the same id across scanner instances and changes it with diff content", async () => {
+    const repo = makeRepo();
+    try {
+      writeFileSync(join(repo, "small.ts"), "export const small = 2;\n");
+      const first = (await new GitDiffScanner(repo).scan())[0]!.task_id;
+      const restarted = (await new GitDiffScanner(repo).scan())[0]!.task_id;
+      expect(restarted).toBe(first);
+      writeFileSync(join(repo, "small.ts"), "export const small = 3;\n");
+      expect((await new GitDiffScanner(repo).scan())[0]!.task_id).not.toBe(first);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the id when HEAD moves without changing the dirty file", async () => {
+    const repo = makeRepo();
+    try {
+      writeFileSync(join(repo, "small.ts"), "changed\n");
+      const first = (await new GitDiffScanner(repo).scan()).find((task) => task.context?.["file"] === "small.ts")!.task_id;
+      writeFileSync(join(repo, "new.ts"), "new\n");
+      git(["add", "new.ts"], repo);
+      git(["commit", "-m", "unrelated"], repo);
+      expect((await new GitDiffScanner(repo).scan())[0]!.task_id).toBe(first);
+    } finally { rmSync(repo, { recursive: true, force: true }); }
+  });
+
+  it("uses the same id in different clones and under different diff algorithms", async () => {
+    const firstRepo = makeRepo();
+    const secondRepo = mkdtempSync(join(tmpdir(), "osstack-loop-clone-"));
+    try {
+      git(["clone", firstRepo, secondRepo], firstRepo);
+      for (const repo of [firstRepo, secondRepo]) writeFileSync(join(repo, "small.ts"), "changed\n");
+      const first = (await new GitDiffScanner(firstRepo).scan())[0]!.task_id;
+      expect((await new GitDiffScanner(secondRepo).scan())[0]!.task_id).toBe(first);
+      git(["config", "diff.algorithm", "patience"], secondRepo);
+      expect((await new GitDiffScanner(secondRepo).scan())[0]!.task_id).toBe(first);
+    } finally {
+      rmSync(firstRepo, { recursive: true, force: true });
+      rmSync(secondRepo, { recursive: true, force: true });
+    }
+  });
+
+  it("discovers a large file and a small file together", async () => {
+    const repo = makeRepo();
+    try {
+      writeFileSync(join(repo, "large.ts"), "x\n".repeat(600_000));
+      writeFileSync(join(repo, "small.ts"), "changed\n");
+      expect((await new GitDiffScanner(repo).scan()).map((task) => task.context?.["file"])).toEqual(["large.ts", "small.ts"]);
+    } finally { rmSync(repo, { recursive: true, force: true }); }
+  });
+
+  it("discovers an unstaged change before the first commit", async () => {
+    const repo = mkdtempSync(join(tmpdir(), "osstack-loop-unborn-"));
+    try {
+      git(["init"], repo);
+      writeFileSync(join(repo, "new.ts"), "before\n");
+      git(["add", "-N", "new.ts"], repo);
+      writeFileSync(join(repo, "new.ts"), "after\n");
+      expect((await new GitDiffScanner(repo).scan()).map((task) => task.context?.["file"])).toEqual(["new.ts"]);
+    } finally { rmSync(repo, { recursive: true, force: true }); }
+  });
+
   it("GitDiffScanner preserves full long ASCII paths", async () => {
     const repo = makeRepo();
     try {
