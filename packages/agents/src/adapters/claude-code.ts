@@ -441,7 +441,23 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
     }
   }
 
-  async *invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {
+  private readonly reportSessions = new Map<string, string>();
+
+  hasReportSession(originalRunId: string): boolean {
+    return this.reportSessions.has(originalRunId);
+  }
+
+  resumeReport(task: AgentTask, signal: AbortSignal, originalRunId: string): AsyncIterable<HermesEvent> {
+    const native = this.reportSessions.get(originalRunId);
+    if (native === undefined) throw new Error("Original report session is unavailable");
+    return this.invokeInSession(task, signal, native);
+  }
+
+  invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {
+    return this.invokeInSession(task, signal);
+  }
+
+  private async *invokeInSession(task: AgentTask, signal: AbortSignal, resume?: string): AsyncIterable<HermesEvent> {
     const seqRef = { v: 0 };
     const toolStarts = new Map<string, ToolStartTime>();
     yield runStarted(task, seqRef.v++);
@@ -452,6 +468,7 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
     }
 
     let sawTerminal = false;
+    let reportSessionConfirmed = false;
     try {
       // Wire --repo (carried as context.repo_path) to the SDK working dir, and
       // opt-in auto-approval so the sub-agent can actually land edits/run commands
@@ -461,11 +478,8 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
           ? (task.context["repo_path"] as string)
           : undefined;
       const autoApprove = process.env["OSSTACK_AUTOAPPROVE"] === "1";
-      const options: {
-        cwd?: string;
-        permissionMode?: "bypassPermissions";
-        allowDangerouslySkipPermissions?: boolean;
-      } = {};
+      const options: Options = {};
+      if (resume !== undefined) { options.resume = resume; options.tools = []; }
       if (repoPath) options.cwd = repoPath;
       if (autoApprove) {
         options.permissionMode = "bypassPermissions";
@@ -482,13 +496,32 @@ export class ClaudeCodeAdapter extends BaseAgentAdapter {
           yield doneEvent(task, seqRef.v, "cancelled", seqRef.v - 1, "cancel requested");
           return;
         }
+        const raw = msg as unknown as Record<string, unknown>;
+        if ((raw["type"] === "system" && raw["subtype"] === "init") || raw["type"] === "result") {
+          const native = raw["session_id"];
+          if (typeof native === "string" && native.length > 0) {
+            if (resume !== undefined && native !== resume) {
+              yield errorEvent(task, seqRef.v++, "native_session_mismatch", "Report resume returned a different native session");
+              return;
+            }
+            reportSessionConfirmed = true;
+            this.reportSessions.set(task.run_id, native);
+            if (this.reportSessions.size > 128) this.reportSessions.delete(this.reportSessions.keys().next().value!);
+          }
+        }
+        if (resume !== undefined && raw["type"] === "result" && !reportSessionConfirmed) {
+          yield errorEvent(task, seqRef.v++, "native_session_missing", "Report resume did not confirm its native session");
+          return;
+        }
         for (const ev of mapMessage(task, seqRef, msg, toolStarts)) {
           yield ev;
           if (ev.terminal) sawTerminal = true;
         }
         if (sawTerminal) return;
       }
-      if (!sawTerminal) {
+      if (resume !== undefined && !reportSessionConfirmed) {
+        yield errorEvent(task, seqRef.v++, "native_session_missing", "Report resume did not confirm its native session");
+      } else if (!sawTerminal) {
         yield doneEvent(task, seqRef.v, "completed", seqRef.v - 1, "SDK stream ended");
       }
     } catch (err) {

@@ -1,4 +1,6 @@
-import { REVIEWER_GIT_ARGS, reviewerGitEnvironment } from "./reviewer-isolation.js";
+import { executePlan } from "./executor.js";
+import { REPORT_REPAIR_PROMPT, type ReportRepairHooks } from "./report-repair.js";
+import { REVIEWER_GIT_ARGS, reviewerGitEnvironment, snapshotReviewerWorkspace, reviewerWorkspaceMutated } from "./reviewer-isolation.js";
 import { assertContainmentRootOutsideWorkspace, armLoopContainment, hasLoopContainment, loopContainmentPath, releaseLoopContainment } from "./loop-containment.js";
 import type { LoopLifecycleAdmission } from "./policy-gate.js";
 import { randomUUID } from "node:crypto";
@@ -245,6 +247,8 @@ export interface LoopRunCyclesResult {
 
 export class LoopEngine {
   private seq = 0;
+  private reportInvalid = false;
+  private budgetStartedAt = Date.now();
   private implementationUnconfirmed = false;
   private containmentPending = false;
   private candidateContaminated = false;
@@ -291,6 +295,7 @@ export class LoopEngine {
 
     const results: LoopRunResult[] = [];
     const runStartedAt = Date.now();
+    this.budgetStartedAt = runStartedAt;
     let noProgressCycles = 0;
     let budgetStatus: LoopBudgetStatus | undefined;
     let policyReason: string | undefined;
@@ -319,7 +324,7 @@ export class LoopEngine {
         estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
       });
-      if (budgetStatus?.exceeded === true || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) break;
+      if (budgetStatus?.exceeded === true || this.reportInvalid || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
@@ -334,7 +339,7 @@ export class LoopEngine {
     this.emit(last.loop_id, "loop.stopped", {
       ...(policyReason !== undefined
         ? { reason_code: "policy_denied", reason: policyStopReason(policyReason) }
-        : budgetStatus?.exceeded === true
+        : this.reportInvalid ? this.stopPayload(finalState, last.executedTaskCount) : budgetStatus?.exceeded === true
           ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
           : this.stopPayload(last.state, last.executedTaskCount, last.goal)),
       cycles: results.length,
@@ -381,6 +386,7 @@ export class LoopEngine {
       return this.policyDeniedRunResult(entryGate.reason, eventStartIndex);
     }
     const runStartedAt = Date.now();
+    this.budgetStartedAt = runStartedAt;
     const result = await this.runCycle(1, { emitStarted: true, emitStopped: false });
     const budgetStatus = this.checkLoopBudget(result.loop_id, {
       cycles: 1,
@@ -391,7 +397,7 @@ export class LoopEngine {
     });
     const finalState = await this.persistBudgetStatus(result, budgetStatus);
     this.emit(result.loop_id, "loop.stopped", {
-      ...(budgetStatus?.exceeded === true
+      ...(this.reportInvalid ? this.stopPayload(result.state, result.executedTaskCount) : budgetStatus?.exceeded === true
         ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
         : this.stopPayload(result.state, result.executedTaskCount, result.goal)),
     });
@@ -619,7 +625,7 @@ export class LoopEngine {
         if (frozenTask.branch !== policy!.branch) throw Error("CANDIDATE_BRANCH_MISMATCH");
         await candidateRecord.record(taskResult.completedTask.outcome === "success" ? "candidate_commit" : "local_validation_failed", { taskOrdinal: tasks.indexOf(task), ...frozenTask });
       }
-      if (this.implementationUnconfirmed || this.candidateContaminated || (policy && taskResult.completedTask.outcome !== "success")) break;
+      if (this.reportInvalid || this.implementationUnconfirmed || this.candidateContaminated || (policy && taskResult.completedTask.outcome !== "success")) break;
       if (!policy && this.options.archiveCompletedTasks === true) {
         const archive = await archiveCompletedTaskFile(task, taskResult.completedTask, workspacePath);
         this.emit(loopId, "loop.queue.archived", {
@@ -649,6 +655,24 @@ export class LoopEngine {
           for (const [index, task] of tasks.entries()) {
             const run: AgentRun = { run_id: "candidate-preflight", plan_id: "candidate-preflight", task_id: task.task_id, agent_id: "local-command", outcome: "completed", started_at: new Date().toISOString(), completed_at: new Date().toISOString(), duration_ms: 0, command_results: [] };
             const verdict = await this.awaitStopSensitive(() => verifyRun(run, {
+              reportRepair: {
+                remainingMs: () => {
+                  const remaining = (this.options.budget?.max_runtime_ms ?? Infinity) - (Date.now() - this.budgetStartedAt);
+                  const tokens = completed.reduce((sum, item) => sum + (item.tokens_in ?? 0) + (item.tokens_out ?? 0), 0);
+                  const cost = completed.reduce((sum, item) => sum + (item.cost_usd ?? 0), 0);
+                  if (remaining <= 0 || (this.options.budget?.max_tokens !== undefined && tokens >= this.options.budget.max_tokens)
+                    || (this.options.budget?.max_estimated_cost_usd !== undefined && cost >= this.options.budget.max_estimated_cost_usd)) return undefined;
+                  return Math.min(this.options.commandTimeoutMs ?? 120_000, remaining);
+                },
+                usage: usage => {
+                  const owner = current[index];
+                  if (owner === undefined) return;
+                  for (const key of ["tokens_in", "tokens_out", "cost_usd"] as const) {
+                    if (usage[key] !== undefined) owner[key] = (owner[key] ?? 0) + usage[key];
+                  }
+                },
+                event: (type, payload) => this.emit(loopId, type, { task_id: task.task_id, phase, ...payload }),
+              },
               workspacePath, sessionId: loopId, commands: index === 0 ? [...commands] : [],
               task, verifierAgentIds: this.options.verifierAgentIds ?? [],
               artifactBaseCommit: batchBase!,
@@ -662,6 +686,20 @@ export class LoopEngine {
               for (const completed of current) completed.implementation_unconfirmed = true;
             }
             if (verdict.issues.some(issue => issue.rule === "verify.reviewer_mutation" || issue.rule === "verify.reviewer_integrity_unconfirmed")) this.candidateContaminated = true;
+            if (verdict.issues.some(issue => issue.rule === "verify.review_artifact_invalid")) {
+              this.reportInvalid = true;
+              const owner = current[index];
+              if (owner !== undefined) {
+                owner.outcome = "escalated";
+                owner.report_invalid = "reviewer";
+                owner.error_summary = verdict.issues.find(issue => issue.rule === "verify.review_artifact_invalid")!.message;
+                owner.verify_issues = verdict.issues.map(issueAudit);
+                owner.verify_summary = verdict.summary;
+                owner.verify_issue_count = verdict.issues.length;
+                if (verdict.verify_commands !== undefined) owner.verify_commands = verdict.verify_commands;
+              }
+              this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason_code: "report_invalid", role: "reviewer", phase });
+            }
             assertCandidateFrozen(workspacePath, frozen);
             if (!verdict.pass) throw Error("CANDIDATE_PREFLIGHT_FAILED");
           }
@@ -903,6 +941,24 @@ export class LoopEngine {
     let iterations = 0;
     // Usage accrues across every iteration of this task, not just the last run.
     const taskUsage = { tokensIn: 0, tokensOut: 0, cost: 0, reported: false };
+    const repairHooks: ReportRepairHooks = {
+      remainingMs: () => {
+        const budget = this.options.budget;
+        const tokens = historyTasks.reduce((sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0), 0) + taskUsage.tokensIn + taskUsage.tokensOut;
+        const cost = historyTasks.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0) + taskUsage.cost;
+        const remaining = (budget?.max_runtime_ms ?? Infinity) - (Date.now() - this.budgetStartedAt);
+        if (remaining <= 0 || (budget?.max_tokens !== undefined && tokens >= budget.max_tokens)
+          || (budget?.max_estimated_cost_usd !== undefined && cost >= budget.max_estimated_cost_usd)) return undefined;
+        return Math.min(this.options.commandTimeoutMs ?? 120_000, remaining);
+      },
+      usage: usage => {
+        if (usage.tokens_in !== undefined || usage.tokens_out !== undefined || usage.cost_usd !== undefined) taskUsage.reported = true;
+        taskUsage.tokensIn += usage.tokens_in ?? 0;
+        taskUsage.tokensOut += usage.tokens_out ?? 0;
+        taskUsage.cost += usage.cost_usd ?? 0;
+      },
+      event: (type, payload) => this.emit(loopId, type, { task_id: task.task_id, ...payload }),
+    };
     let runWorkspacePath = workspacePath;
     let worktree: WorktreeHandle | undefined;
     let preserveWorktreeBranch = false;
@@ -970,6 +1026,8 @@ export class LoopEngine {
         });
         decisions.push(`${task.task_id}: selected ${plan.agent_id} - ${agentSelection.reason}`);
 
+        const beforeImplementation = (this.options.adapters ?? []).some(adapter => adapter.id === plan.agent_id)
+          ? await snapshotReviewerWorkspace(runWorkspacePath).catch(() => undefined) : undefined;
         finalRun = await this.awaitStopSensitive(() => executeLegacyImplementation(plan, {
           workspacePath: runWorkspacePath,
           sessionId: loopId,
@@ -1047,6 +1105,50 @@ export class LoopEngine {
         } else {
           const implementationRun = finalRun;
           finalVerdict = await this.awaitStopSensitive(() => verifyRun(implementationRun, {
+          reportRepair: repairHooks,
+          repairBuilderReport: async (run, deterministicPass) => {
+            const adapter = this.options.adapters?.find(candidate => candidate.id === run.agent_id);
+            const originalRunId = run.run_id;
+            const beforeRepair = await snapshotReviewerWorkspace(runWorkspacePath).catch(() => undefined);
+            const hasChanges = beforeImplementation !== undefined && beforeRepair !== undefined
+              && ["head", "diff_sha256", "staged_diff_sha256", "untracked_sha256"].some(key => beforeImplementation[key as keyof typeof beforeImplementation] !== beforeRepair[key as keyof typeof beforeRepair]);
+            let reason = !deterministicPass ? "deterministic_verification_failed"
+              : !hasChanges ? "no_verifiable_changes"
+              : (adapter?.resumeReport === undefined || adapter.hasReportSession?.(originalRunId) === false) ? "session_continuation_unsupported" : "repair_exhausted";
+            if (deterministicPass && hasChanges && adapter?.resumeReport !== undefined && adapter.hasReportSession?.(originalRunId) !== false) {
+              for (let attempt = 1; attempt <= 2; attempt++) {
+                const timeoutMs = repairHooks.remainingMs();
+                if (timeoutMs === undefined) { reason = "budget_insufficient"; break; }
+                repairHooks.event("loop.report_repair.attempt", { role: "builder", agent_id: adapter.id, attempt, original_run_id: originalRunId });
+                const repaired = await executePlan({ ...plan, task: { ...plan.task, prompt: REPORT_REPAIR_PROMPT } }, {
+                  workspacePath: runWorkspacePath, adapters: [adapter], sessionId: loopId, reportRunId: originalRunId, timeoutMs,
+                });
+                repairHooks.usage(repaired);
+                const afterRepair = await snapshotReviewerWorkspace(runWorkspacePath).catch(() => undefined);
+                repairHooks.event("loop.report_repair.result", { role: "builder", agent_id: adapter.id, attempt,
+                  outcome: repaired.outcome, report_valid: repaired.outcome === "completed" && afterRepair !== undefined && !reviewerWorkspaceMutated(beforeRepair!, afterRepair),
+                  failure_code: repaired.failure_code, summary: repaired.summary });
+                if (afterRepair === undefined || reviewerWorkspaceMutated(beforeRepair!, afterRepair)) {
+                  this.candidateContaminated = true;
+                  reason = "repair_changed_workspace_or_integrity_unknown";
+                  break;
+                }
+                if (isImplementationUnconfirmed(repaired)) {
+                  if (repaired.cancellation !== undefined) run.cancellation = repaired.cancellation;
+                  if (repaired.failure_code !== undefined) run.failure_code = repaired.failure_code;
+                  reason = "repair_stop_unconfirmed";
+                  break;
+                }
+                if (repaired.outcome === "completed") {
+                  run.outcome = "completed";
+                  delete run.failure_code;
+                  run.summary = repaired.summary ?? "Report repaired";
+                  return;
+                }
+              }
+            }
+            run.summary = `builder_report_invalid: ${reason}; ${run.summary ?? ""}`;
+          },
           workspacePath: runWorkspacePath,
           commands: this.candidatePolicy?.profiles.local ?? this.options.verifyCommands ?? [],
           verifierAgentIds,
@@ -1060,6 +1162,7 @@ export class LoopEngine {
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
           }));
         }
+        if (isImplementationUnconfirmed(finalRun)) this.implementationUnconfirmed = true;
         if (finalVerdict.issues.some(issue => issue.rule === "verify.adapter_stop_unconfirmed")) {
           this.implementationUnconfirmed = true;
           preserveWorktreeBranch = worktree !== undefined;
@@ -1158,6 +1261,19 @@ export class LoopEngine {
           });
         }
 
+        if (finalRun.outcome === "report_invalid" || finalVerdict.issues.some(issue => issue.rule === "verify.review_artifact_invalid")) {
+          this.reportInvalid = true;
+          outcome = "escalated";
+          preserveCandidateWorktree = true;
+          preserveWorktreeBranch = worktree !== undefined;
+          const reason = finalRun.outcome === "report_invalid" ? finalRun.summary ?? "builder_report_invalid"
+            : finalVerdict.issues.find(issue => issue.rule === "verify.review_artifact_invalid")?.message ?? "reviewer_report_invalid";
+          finalVerdict = { ...finalVerdict, pass: false, summary: reason,
+            issues: [{ severity: "error", rule: finalRun.outcome === "report_invalid" ? "execute.report_invalid" : "verify.review_artifact_invalid", message: reason }, ...finalVerdict.issues] };
+          this.emit(loopId, "loop.escalated", { task_id: task.task_id, reason, reason_code: "report_invalid", iteration, max_iterations: maxIterations });
+          decisions.push(`${task.task_id}: ${reason}; workspace and verification results retained`);
+          break;
+        }
         let decision = evaluateIteration({
           verdict: finalVerdict,
           iteration,
@@ -1312,7 +1428,7 @@ export class LoopEngine {
         }
       }
     } finally {
-      if (worktree !== undefined && !this.implementationUnconfirmed && !this.candidateContaminated && !preserveCandidateWorktree) {
+      if (worktree !== undefined && !this.reportInvalid && !this.implementationUnconfirmed && !this.candidateContaminated && !preserveCandidateWorktree) {
         const cleaned = await cleanupWorktree(worktree, { removeBranch: !preserveWorktreeBranch });
         // Cleanup also keeps a branch holding commits found nowhere else (D6).
         if (!cleaned.branchRemoved) preserveWorktreeBranch = true;
@@ -1331,6 +1447,7 @@ export class LoopEngine {
         capability: task.capability,
         outcome,
         iterations,
+        ...(finalRun?.outcome === "report_invalid" ? { report_invalid: "builder" } : {}),
         ...(this.implementationUnconfirmed ? { implementation_unconfirmed: true } : {}),
         agent_id: finalRun?.agent_id ?? "local-noop",
         duration_ms: Date.now() - started,
@@ -1342,6 +1459,7 @@ export class LoopEngine {
           ...(finalRun.command_results.length > 0 ? { execution_commands: finalRun.command_results.map(commandAudit) } : {}),
         } : {}),
         ...(finalVerdict !== null ? {
+          ...(finalVerdict.report_invalid !== undefined ? { report_invalid: finalVerdict.report_invalid } : {}),
           verifier_agent_id: finalVerdict.reviewer_agent_id,
           verify_summary: finalVerdict.summary,
           verify_issue_count: finalVerdict.issues.length,
@@ -1564,6 +1682,7 @@ export class LoopEngine {
     if (this.containmentPending || this.candidateContaminated || this.implementationUnconfirmed) {
       return { reason_code: "execution_containment_pending", reason: "Execution or validation requires reconciliation (including possible preflight refusal); this does not prove a process is alive; automatic retry is blocked" };
     }
+    if (this.reportInvalid) return { reason_code: "report_invalid", reason: "Report invalid; workspace and verification results retained" };
     return completionStopPayload(state, count, goal);
   }
 
@@ -1639,7 +1758,7 @@ interface AgentSelection {
  * unchanged — stop-when-idle and cycle caps govern those.
  */
 function nextNoProgressCycles(current: number, result: LoopRunResult): number {
-  if (result.executedTaskCount === 0) return current;
+  if (result.executedTaskCount === 0 || result.completedTasks.some(task => task.report_invalid !== undefined)) return current;
   const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
   return madeProgress ? 0 : current + 1;
 }

@@ -32,6 +32,16 @@ afterEach(() => {
 });
 
 describe("ClaudeCodeAdapter resumable sessions", () => {
+  it("restates an invoke report in the exact native session with tools disabled", async () => {
+    const adapter = new ClaudeCodeAdapter();
+    const task: AgentTask = { run_id: "report-original", task_id: "task", session_id: "host-session", capability_id: "code", prompt: "work" };
+    sdk.messages = [{ type: "system", subtype: "init", session_id: "native-report" }];
+    for await (const _event of adapter.invoke(task, new AbortController().signal)) { /* drain */ }
+    sdk.messages = [{ type: "result", subtype: "success", session_id: "native-report", result: "done" }];
+    for await (const _event of adapter.resumeReport({ ...task, run_id: "repair", prompt: "Restate" }, new AbortController().signal, task.run_id)) { /* drain */ }
+    expect(sdk.calls.at(-1)).toMatchObject({ prompt: "Restate", options: { resume: "native-report", tools: [] } });
+  });
+
   it("recognizes a dedicated Claude OAuth token as available headless auth", async () => {
     const previous = process.env["CLAUDE_CODE_OAUTH_TOKEN"];
     process.env["CLAUDE_CODE_OAUTH_TOKEN"] = "test-oauth-token";

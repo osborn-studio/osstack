@@ -544,7 +544,23 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     }
   }
 
-  async *invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {
+  private readonly reportSessions = new Map<string, string>();
+
+  hasReportSession(originalRunId: string): boolean {
+    return this.reportSessions.has(originalRunId);
+  }
+
+  resumeReport(task: AgentTask, signal: AbortSignal, originalRunId: string): AsyncIterable<HermesEvent> {
+    const native = this.reportSessions.get(originalRunId);
+    if (native === undefined) throw new Error("Original report session is unavailable");
+    return this.invokeInSession(task, signal, native);
+  }
+
+  invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent> {
+    return this.invokeInSession(task, signal);
+  }
+
+  private async *invokeInSession(task: AgentTask, signal: AbortSignal, resume?: string): AsyncIterable<HermesEvent> {
     const seqRef = { v: 0 };
     const tools = new Map<string, ToolStart>();
     const taskRepoPath = task.context?.["repo_path"];
@@ -560,9 +576,9 @@ export class CodexCliAdapter extends BaseAgentAdapter {
 
     const args = [
       "exec", "--json", "--skip-git-repo-check",
-      "-s", this.sandbox,
+      "-s", resume === undefined ? this.sandbox : "read-only",
       "-C", taskCwd,
-      ...this.writableRoots.flatMap(root => ["--add-dir", root]),
+      ...(resume === undefined ? this.writableRoots.flatMap(root => ["--add-dir", root]) : ["resume", resume]),
       task.prompt,
     ];
     const proc = spawn(this.bin, args, {
@@ -589,6 +605,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
     let exited = false;
     let exitCode: number | null = null;
     let turnCompleted = false;
+    let reportSessionConfirmed = false;
     let resolveNext: (() => void) | null = null;
 
     const wake = (): void => {
@@ -597,6 +614,20 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       r?.();
     };
 
+    const captureSession = (event: Record<string, unknown>): boolean => {
+      if (event["type"] !== "thread.started") return true;
+      const native = event["thread_id"];
+      if (typeof native !== "string" || native.length === 0) return false;
+      if (resume !== undefined && native !== resume) {
+        pending.push(errorEvent(task, seqRef.v++, "native_session_mismatch", "Report resume returned a different native session"));
+        onAbort();
+        return false;
+      }
+      reportSessionConfirmed = true;
+      this.reportSessions.set(task.run_id, native);
+      if (this.reportSessions.size > 128) this.reportSessions.delete(this.reportSessions.keys().next().value!);
+      return true;
+    };
     proc.stdout.on("data", (chunk: Buffer) => {
       buf += chunk.toString("utf8");
       let nl = buf.indexOf("\n");
@@ -607,6 +638,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
         if (line.length === 0) continue;
         try {
           const codexEvent = JSON.parse(line) as Record<string, unknown>;
+          if (!captureSession(codexEvent)) continue;
           if (codexEvent["type"] === "turn.completed") turnCompleted = true;
           for (const ev of mapEvent(task, seqRef, codexEvent, tools)) pending.push(ev);
         } catch {
@@ -624,6 +656,7 @@ export class CodexCliAdapter extends BaseAgentAdapter {
       if (buf.trim().length > 0) {
         try {
           const codexEvent = JSON.parse(buf.trim()) as Record<string, unknown>;
+          if (!captureSession(codexEvent)) { wake(); return; }
           if (codexEvent["type"] === "turn.completed") turnCompleted = true;
           for (const ev of mapEvent(task, seqRef, codexEvent, tools)) pending.push(ev);
         } catch { /* swallow trailing garbage */ }
@@ -647,7 +680,9 @@ export class CodexCliAdapter extends BaseAgentAdapter {
         yield doneEvent(task, seqRef.v, "cancelled", seqRef.v - 1, "cancel requested");
         return;
       }
-      if (exitCode === 0 && (!this.strictCompletion || turnCompleted)) {
+      if (resume !== undefined && !reportSessionConfirmed) {
+        yield errorEvent(task, seqRef.v++, "native_session_missing", "Report resume did not confirm its native session");
+      } else if (exitCode === 0 && (!this.strictCompletion || turnCompleted)) {
         yield doneEvent(task, seqRef.v, "completed", seqRef.v - 1, "codex exited 0");
       } else if (exitCode === 0) {
         yield errorEvent(task, seqRef.v++, "codex_completion_missing", "Codex exited without native turn.completed");

@@ -210,7 +210,7 @@ describe("adapter cancellation", () => {
       const run = await executePlan(plan(adapter.id), {
         workspacePath: workspace, adapters: [adapter], signal: controller.signal, cancellationGraceMs: 20,
       });
-      expect(run).toMatchObject({ outcome: "failed", failure_code: ending === "close" ? "missing_done" : "cancellation_unconfirmed",
+      expect(run).toMatchObject({ outcome: ending === "close" ? "report_invalid" : "failed", failure_code: ending === "close" ? "missing_done" : "cancellation_unconfirmed",
         cancellation: { stop_confirmed: false, invocation_started: true } });
       await vi.advanceTimersByTimeAsync(10);
       expect(effects).toEqual(["write", "write"]);
@@ -331,7 +331,7 @@ describe("adapter cancellation", () => {
     expect(signalSeen?.aborted).toBe(true);
     expect(active).toBe(false);
     expect(close).toHaveBeenCalledOnce();
-    expect(run).toMatchObject({ outcome: "failed", cancellation: {
+    expect(run).toMatchObject({ outcome: mode === "throw" ? "failed" : "report_invalid", cancellation: {
       source: "executor_error", stop_confirmed: false, invocation_started: true,
     } });
     expect(run.failure_code).toBe(mode === "invalid" ? "invalid_done_payload"
@@ -340,13 +340,13 @@ describe("adapter cancellation", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("keeps a protocol violation failed even with confirmed stop", async () => {
-    const adapter = mockAdapter({ async *invoke() { yield streamEvent("done", {}, true); } });
+  it("classifies a protocol violation as report invalid even with confirmed stop", async () => {
+    const adapter = mockAdapter({ async *invoke() { yield streamEvent("done", {}, true); yield streamEvent("progress", {}); } });
     adapter.confirmStopped = async () => ({ stopped: true, evidence: "owned-work:stopped" });
     const run = await executePlan(plan(adapter.id), {
       workspacePath: workspace, adapters: [adapter], cancellationGraceMs: 20,
     });
-    expect(run).toMatchObject({ outcome: "failed", failure_code: "invalid_done_payload",
+    expect(run).toMatchObject({ outcome: "report_invalid", failure_code: "invalid_done_payload",
       cancellation: { source: "executor_error", stop_confirmed: true } });
   });
 
@@ -474,9 +474,9 @@ describe("adapter terminal protocol", () => {
 
   it.each([null, undefined, [], {}, { type: 42 }, streamEvent("error", null, true),
     streamEvent("error", { message: 42 }, true), streamEvent("usage.final", null)].map((event) => [event]))(
-    "classifies malformed event %j and records stop uncertainty", async (event) => {
-      expect(await runEvents([event as HermesEvent])).toMatchObject({ outcome: "failed",
-        failure_code: "invalid_event", cancellation: { source: "executor_error", stop_confirmed: false } });
+    "classifies a closed malformed event stream %j as report invalid", async (event) => {
+      expect(await runEvents([event as HermesEvent])).toMatchObject({ outcome: "report_invalid",
+        failure_code: "invalid_event" });
     },
   );
 
@@ -489,7 +489,7 @@ describe("adapter terminal protocol", () => {
     } }]],
   ])("rejects %s as missing_done", async (_name, events) => {
     expect(await runEvents(events as HermesEvent[])).toMatchObject({
-      outcome: "failed", failure_code: "missing_done",
+      outcome: "report_invalid", failure_code: "missing_done",
       summary: expect.stringContaining("done"),
     });
   });
@@ -507,7 +507,7 @@ describe("adapter terminal protocol", () => {
     { status: "completed", last_seq: 1, review: {} },
   ].map((payload) => [payload]))("rejects malformed done payload %j", async (payload) => {
     expect(await runEvents([streamEvent("done", payload, true)])).toMatchObject({
-      outcome: "failed", failure_code: "invalid_done_payload",
+      outcome: "report_invalid", failure_code: "invalid_done_payload",
     });
   });
 
@@ -520,13 +520,13 @@ describe("adapter terminal protocol", () => {
     ["done then progress then success", [done(), progress, done()], "event_after_terminal"],
     ["terminal error then work", [error, progress, done("failed")], "event_after_terminal"],
   ])("rejects %s", async (_name, events, failureCode) => {
-    expect(await runEvents(events as HermesEvent[])).toMatchObject({ outcome: "failed", failure_code: failureCode });
+    expect(await runEvents(events as HermesEvent[])).toMatchObject({ outcome: "report_invalid", failure_code: failureCode });
   });
 
   it.each(["token.delta", "tool.started", "tool.updated", "tool.done", "run.started", "status", "approval.requested"])(
     "rejects %s after done", async (type) => {
       expect(await runEvents([done(), streamEvent(type, {})])).toMatchObject({
-        outcome: "failed", failure_code: "event_after_terminal",
+        outcome: "report_invalid", failure_code: "event_after_terminal",
       });
     },
   );

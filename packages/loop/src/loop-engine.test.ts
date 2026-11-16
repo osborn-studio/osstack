@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { loopContainmentPath } from "./loop-containment.js";
 import { chmod, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -23,6 +24,65 @@ async function makeQueuedWorkspace(): Promise<string> {
 }
 
 describe("LoopEngine", () => {
+  it.each(["success", "exhausted", "unsupported", "budget", "runtime", "budget_after_one", "no_changes", "failed_check", "no_session", "committed"])("repairs builder report only: %s", async (mode) => {
+    const workspace = await makeQueuedWorkspace();
+    execFileSync("git", ["init", "-q", workspace]);
+    execFileSync("git", ["add", "tasks/task.json"], { cwd: workspace });
+    execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture"], { cwd: workspace });
+    if (mode === "no_changes") await writeFile(join(workspace, "output.txt"), "work complete");
+    let builds = 0;
+    let repairs = 0;
+    const adapter: AgentAdapter = {
+      id: "report-builder", display_name: "Report builder", cost_tier: "low",
+      capabilities: () => [],
+      isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+      hasReportSession: () => mode !== "no_session",
+      async *invoke(task) {
+        builds++;
+        if (mode !== "no_changes") await writeFile(join(workspace, "output.txt"), "work complete");
+        if (mode === "committed") {
+          execFileSync("git", ["add", "output.txt"], { cwd: workspace });
+          execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", "work"], { cwd: workspace });
+        }
+        yield fakeEvent(task, 0, "usage.final", { tokens_in: 10, tokens_out: 1 });
+      },
+      ...(mode === "unsupported" ? {} : {
+        async *resumeReport(task: AgentTask, _signal: AbortSignal, originalRunId: string) {
+          repairs++;
+          expect(originalRunId).toBeTruthy();
+          expect(task.prompt).toContain("Do not use tools");
+          yield fakeEvent(task, 0, "usage.final", { tokens_in: 2, tokens_out: 1 });
+          if (mode === "success" || mode === "committed") yield fakeEvent(task, 1, "done", { status: "completed", last_seq: 0 }, true);
+        },
+      }),
+    };
+    const engine = new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      agentId: adapter.id, adapters: [adapter], maxIterations: 3,
+      verifyCommands: [mode === "failed_check" ? "node -e \"process.exit(1)\"" : "node -e \"process.exit(require('fs').existsSync('output.txt') ? 0 : 1)\""],
+      ...(mode === "budget" ? { budget: { max_tokens: 11 } } : mode === "runtime" ? { budget: { max_runtime_ms: 1 } } : mode === "budget_after_one" ? { budget: { max_tokens: 12 } } : mode === "exhausted" ? { budget: { no_progress_limit: 1 } } : {}),
+    });
+    const result = mode === "exhausted" ? await engine.runCycles({ cycles: 3 }) : await engine.runOnce();
+    if ("cycles" in result) {
+      expect(result.cycles).toHaveLength(1);
+      expect(result.budget?.usage.no_progress_cycles).toBe(0);
+    }
+    expect(builds).toBe(1);
+    expect(repairs).toBe(mode === "success" || mode === "committed" || mode === "budget_after_one" ? 1 : mode === "exhausted" ? 2 : 0);
+    const completed = result.state.completed_tasks[0]!;
+    expect(completed.iterations).toBe(1);
+    expect(completed.outcome).toBe(mode === "success" || mode === "committed" ? "success" : "escalated");
+    if (mode !== "success" && mode !== "committed") expect(completed.report_invalid).toBe("builder");
+    expect(completed.verify_commands?.[0]?.exit_code).toBe(mode === "failed_check" ? 1 : 0);
+    expect(completed.tokens_in).toBe(10 + repairs * 2);
+    expect(result.events.filter(e => e.type === "loop.report_repair.attempt")).toHaveLength(repairs);
+    expect(result.events.filter(e => e.type === "loop.report_repair.result")).toHaveLength(repairs);
+    if (mode !== "success" && mode !== "committed") {
+      expect(completed.error_summary).toContain("report_invalid");
+      expect(result.events.filter(event => event.type === "loop.stopped").at(-1)?.payload?.["reason_code"]).toBe("report_invalid");
+    }
+    await expect(readFile(join(workspace, "output.txt"), "utf8")).resolves.toBe("work complete");
+  });
+
   it("runs a real local command loop and writes state files", async () => {
     const workspace = await makeQueuedWorkspace();
     const result = await new LoopEngine({
@@ -178,6 +238,44 @@ describe("LoopEngine", () => {
         independence_reason: "reported provider or model differs",
       }),
     }));
+  });
+
+  it.each(["success", "exhausted", "unsupported", "budget"])("retries only the reviewer for invalid structured report: %s", async mode => {
+    const workspace = await makeGitQueuedWorkspace("stable\n");
+    await git(workspace, ["mv", "app.txt", "app.ts"]);
+    let reviews = 0;
+    let repairs = 0;
+    const base = new FakeKimiReviewAdapter();
+    const reviewer: AgentAdapter = {
+      id: base.id, display_name: base.display_name, cost_tier: base.cost_tier,
+      capabilities: () => base.capabilities(), isAvailable: () => base.isAvailable(),
+      async *invoke(task) {
+        reviews++;
+        yield fakeEvent(task, 0, "usage.final", { tokens_in: 10, tokens_out: 1 });
+        yield fakeEvent(task, 1, "done", { status: "completed", last_seq: 0 }, true);
+      },
+      ...(mode === "unsupported" ? {} : {
+        async *resumeReport(task: AgentTask) {
+          repairs++;
+          expect(task.prompt).toContain("Do not use tools");
+          if (mode === "success") yield* base.invoke(task);
+          else yield fakeEvent(task, 0, "done", { status: "completed", last_seq: 0 }, true);
+        },
+      }),
+    };
+    const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').appendFileSync('app.ts', 'work\\n')\"",
+      verifyCommands: ["node -e \"process.exit(0)\""],
+      verifierAgentIds: [reviewer.id], adapters: [reviewer], maxIterations: 3,
+      ...(mode === "budget" ? { budget: { max_tokens: 11 } } : {}),
+    }).runOnce();
+    expect(reviews).toBe(1);
+    expect(repairs).toBe(mode === "success" ? 1 : mode === "exhausted" ? 2 : 0);
+    expect(result.state.completed_tasks[0]).toMatchObject({ iterations: 1,
+      outcome: mode === "success" ? "success" : "escalated", tokens_in: 10 });
+    expect(result.events.filter(e => e.type === "loop.execute.done")).toHaveLength(1);
+    expect(result.events.filter(e => e.type === "loop.report_repair.result")).toHaveLength(repairs);
+    await expect(readFile(join(workspace, "app.ts"), "utf8")).resolves.toBe("stable\nwork\n");
   });
 
   it("persists redacted structured Kimi review evidence in events and completed tasks", async () => {
@@ -1414,7 +1512,7 @@ class FakeKimiReviewAdapter implements AgentAdapter {
 function fakeEvent(
   task: AgentTask,
   seq: number,
-  type: "run.started" | "done" | "error",
+  type: "run.started" | "done" | "error" | "usage.final",
   payload: unknown,
   terminal = false,
 ): HermesEvent {
