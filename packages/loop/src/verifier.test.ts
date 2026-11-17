@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentRun } from "./executor.js";
 import type { Task } from "./types.js";
 import { verifyRun } from "./verifier.js";
+import { deriveIterationFeedback, withIterationFeedback } from "./feedback.js";
 
 let workspace: string;
 
@@ -75,6 +76,7 @@ describe("verifyRun", () => {
 
     expect(verdict.pass).toBe(true);
     expect(verdict.reviewer_agent_id).toBe("reviewer");
+    expect(verdict.issues.some((issue) => issue.rule === "verify.deviations_invalid")).toBe(false);
     expect(verdict.summary).toContain("verifier adapter");
     expect(captured).toMatchObject({
       session_id: "loop-1",
@@ -140,6 +142,90 @@ describe("verifyRun", () => {
     expect(verdict.implementation_deviations).toEqual([
       expect.objectContaining({ deviation_id: "architecture-drift-1" }),
     ]);
+  });
+
+  it("shows an invalid report code in the verdict and next-attempt feedback while keeping valid entries", async () => {
+    const valid = {
+      deviation_id: "architecture-drift-1",
+      question: "Keep adapter boundary?",
+      category: "interface",
+      doc_type: "tech",
+      impact: 3,
+      irreversibility: 2,
+      uncertainty: 2,
+      required: true,
+      destination_hint: "technical_design",
+      evidence: [{ path: "src/app.ts", line: 1 }],
+    };
+    const adapter = mockAdapter({ async *invoke(agentTask) {
+      const event = doneEvent(agentTask.run_id, agentTask.session_id, "completed", "reviewed");
+      yield { ...event, payload: { ...event.payload,
+        implementation_deviations: [valid, { deviation_id: "bad" }],
+        implementation_deviations_problem: { kind: "entries", invalid_count: 1 },
+      } } as unknown as HermesEvent;
+    } });
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter], task: task(),
+    });
+    expect(verdict.pass).toBe(true);
+    expect(verdict.implementation_deviations).toEqual([valid]);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      severity: "warning", rule: "verify.deviations_invalid", message: expect.stringContaining("invalid_count=2"),
+    }));
+    const feedback = deriveIterationFeedback({ attempt: 1, verdict });
+    expect(feedback.reporting_issues)
+      .toContainEqual(expect.objectContaining({ rule: "verify.deviations_invalid" }));
+    expect(withIterationFeedback(undefined, feedback)["iteration_feedback"])
+      .toMatchObject({ reporting_issues: [expect.objectContaining({ rule: "verify.deviations_invalid" })] });
+  });
+
+  it("reports invalid deviation payload shape without treating the work as failed", async () => {
+    const adapter = mockAdapter({ async *invoke(agentTask) {
+      const event = doneEvent(agentTask.run_id, agentTask.session_id, "completed", "reviewed");
+      yield { ...event, payload: { ...event.payload, implementation_deviations: {} } } as unknown as HermesEvent;
+    } });
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter], task: task(),
+    });
+    expect(verdict.pass).toBe(true);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.deviations_invalid", message: expect.stringContaining("shape"),
+    }));
+  });
+
+  it("passes through a reported JSON declaration problem without failing the work", async () => {
+    const adapter = mockAdapter({ async *invoke(agentTask) {
+      const event = doneEvent(agentTask.run_id, agentTask.session_id, "completed", "reviewed");
+      yield { ...event, payload: { ...event.payload,
+        implementation_deviations_problem: { kind: "json" },
+      } } as unknown as HermesEvent;
+    } });
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter], task: task(),
+    });
+    expect(verdict.pass).toBe(true);
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.deviations_invalid", message: expect.stringContaining("json"),
+    }));
+  });
+
+  it.each([
+    { kind: "unexpected", invalid_count: 1 },
+    { kind: "entries", invalid_count: 0 },
+    { kind: "entries", invalid_count: 1.5 },
+  ])("treats an invalid reported problem schema as shape: %j", async (problem) => {
+    const adapter = mockAdapter({ async *invoke(agentTask) {
+      const event = doneEvent(agentTask.run_id, agentTask.session_id, "completed", "reviewed");
+      yield { ...event, payload: { ...event.payload,
+        implementation_deviations_problem: problem,
+      } } as unknown as HermesEvent;
+    } });
+    const verdict = await verifyRun(run(), {
+      workspacePath: workspace, verifierAgentIds: [adapter.id], adapters: [adapter], task: task(),
+    });
+    expect(verdict.issues).toContainEqual(expect.objectContaining({
+      rule: "verify.deviations_invalid", message: expect.stringContaining("shape"),
+    }));
   });
 
   it("fails when a verifier adapter is missing, unavailable, or reports failure", async () => {

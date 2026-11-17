@@ -561,12 +561,16 @@ export class LoopEngine {
       decisions.push(`knowledge: ${this.options.knowledge.mode}/${this.options.knowledge.status} with ${this.options.knowledge.results.length} chunk(s)`);
     }
     this.emit(loopId, "loop.cycle.started", { cycle });
-    const discoveredTasks = await this.discover(workspacePath);
+    const { tasks: discoveredTasks, duplicateCount } = await this.discover(workspacePath);
     const completedIds = new Set(state.completed_tasks.map((task) => task.task_id));
     const candidateTasks = this.candidatePolicy || this.options.skipCompletedTasks === false
       ? discoveredTasks
       : discoveredTasks.filter((task) => !completedIds.has(task.task_id));
     const skippedTaskCount = discoveredTasks.length - candidateTasks.length;
+    const escalatedIds = new Set(state.completed_tasks.filter((task) => task.outcome === "escalated").map((task) => task.task_id));
+    const escalatedSkippedCount = discoveredTasks.filter((task) => escalatedIds.has(task.task_id) && !candidateTasks.includes(task)).length;
+    if (escalatedSkippedCount > 0) decisions.push(`discovery: skipped ${escalatedSkippedCount} escalated task id(s)`);
+    if (duplicateCount > 0) decisions.push(`discovery: dropped ${duplicateCount} duplicate task id(s) in this cycle`);
     if (this.candidatePolicy) validateCandidateBatch(this.candidatePolicy, candidateTasks, workspacePath);
     const governance = this.applyDiscoveryPolicy(loopId, candidateTasks, decisions);
     const tasks = governance.executable;
@@ -582,6 +586,8 @@ export class LoopEngine {
       task_count: tasks.length,
       discovered_task_count: discoveredTasks.length,
       skipped_task_count: skippedTaskCount,
+      escalated_skipped_task_count: escalatedSkippedCount,
+      duplicate_task_count: duplicateCount,
       ...(this.options.discoveryPolicy !== undefined
         ? { deferred_task_count: governance.deferred.length }
         : {}),
@@ -873,7 +879,7 @@ export class LoopEngine {
     return { executable, deferred };
   }
 
-  private async discover(workspacePath: string): Promise<Task[]> {
+  private async discover(workspacePath: string): Promise<{ tasks: Task[]; duplicateCount: number }> {
     const sources = this.options.sources ?? ["git_diff", "task_queue"];
     const tasks: Task[] = (this.options.inputTasks ?? []).map(
       (task) => Task.parse(task),
@@ -883,7 +889,15 @@ export class LoopEngine {
       if (!parsed.success) continue;
       tasks.push(...await createScanner(parsed.data, workspacePath).scan());
     }
-    return tasks;
+    // Input tasks precede sources. Keep the first task with each id.
+    const seen = new Set<string>();
+    let duplicateCount = 0;
+    const unique = tasks.filter((task) => {
+      if (seen.has(task.task_id)) { duplicateCount++; return false; }
+      seen.add(task.task_id);
+      return true;
+    });
+    return { tasks: unique, duplicateCount };
   }
 
   private async runTask(
@@ -1143,6 +1157,18 @@ export class LoopEngine {
             iteration,
             reviewer_agent_id: finalVerdict.reviewer_agent_id,
             ...deviation,
+          });
+        }
+        for (const issue of finalVerdict.issues) {
+          if (issue.rule !== "verify.deviations_invalid") continue;
+          const kind = issue.message.match(/report invalid: (json|shape|entries|oversized)/)?.[1] ?? "shape";
+          const invalidCount = Number(issue.message.match(/invalid_count=(\d+)/)?.[1] ?? 1);
+          this.emit(loopId, "loop.implementation.deviations_invalid", {
+            task_id: task.task_id,
+            iteration,
+            reviewer_agent_id: finalVerdict.reviewer_agent_id,
+            kind,
+            invalid_count: invalidCount,
           });
         }
 
@@ -1837,7 +1863,7 @@ function redactReviewArtifacts(
 }
 
 function completionErrorSummary(run: AgentRun | null, verdict: Verdict | null): string {
-  const firstIssue = verdict?.issues[0];
+  const firstIssue = verdict?.issues.find((issue) => issue.severity === "error") ?? verdict?.issues[0];
   if (firstIssue !== undefined) return singleLine(firstIssue.message);
   if (run?.summary !== undefined) return singleLine(run.summary);
   if (run !== null && run.outcome !== "completed") return `execution ${run.outcome}`;

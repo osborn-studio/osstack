@@ -16,7 +16,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { CodexCliAdapter, KimiCodeAdapter, defaultAdapters } from "@osstack/agents";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "./bin.js";
+import { main, printLoopRun } from "./bin.js";
 import { startDaemon as startRealDaemon, type DaemonHandles } from "./daemon.js";
 
 let tmp: string;
@@ -66,6 +66,18 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation((...args) => {
     errors.push(args.map(String).join(" "));
   });
+});
+
+it("prints invalid deviation warnings for completed tasks", () => {
+  const result = { loop_id: "loop", json_path: "state.json", markdown_path: "state.md",
+    completed_tasks: [{ task_id: "task", outcome: "success" as const, iterations: 1,
+      agent_id: "builder", duration_ms: 1, verify_issues: [{ rule: "verify.deviations_invalid", message: "report invalid: json" }] }],
+  };
+  printLoopRun(result, false);
+  expect(logs).toContain("    warning: report invalid: json");
+  logs = [];
+  printLoopRun(result, true);
+  expect(JSON.parse(logs.join("\n"))).toEqual(result);
 });
 
 afterEach(async () => {

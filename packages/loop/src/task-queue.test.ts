@@ -70,6 +70,14 @@ describe("task queue", () => {
     }])).toBe(2);
   });
 
+  it("gives an id-less item the same id on each parse", () => {
+    const file = join(workspace, "tasks", "item.json");
+    const first = parseTaskQueueFile({ prompt: "Review", context: { b: 2, a: 1 } }, { taskFile: file })[0]!.task_id;
+    const second = parseTaskQueueFile({ context: { a: 1, b: 2 }, prompt: "Review" }, { taskFile: file })[0]!.task_id;
+    expect(second).toBe(first);
+    expect(parseTaskQueueFile({ prompt: "Review" }, { taskFile: join(workspace, "tasks", "other.json") })[0]!.task_id).not.toBe(first);
+  });
+
   it("rejects task queue files that cannot satisfy the task schema after normalization", () => {
     expect(() => parseTaskQueueFile({ task_id: "bad", prompt: "Ship", unexpected: true })).toThrow();
     expect(() => parseTaskQueueFile({ task_id: "bad-source", prompt: "Ship", source: "manual" })).toThrow();

@@ -183,6 +183,8 @@ export const IterationFeedback = z.object({
   attempt: z.number(),
   verdict_summary: z.string(),
   blocking_issues: z.array(Issue).default([]),
+  /** Report problems to show if another failure causes a next attempt. */
+  reporting_issues: z.array(Issue).optional(),
   /** Failed evaluation spec ids from the previous attempt. */
   failed_evaluations: z.array(z.string()).default([]),
   suggested_focus: z.array(z.string()).default([]),
@@ -490,6 +492,7 @@ export const LoopEventType = z.enum([
   "loop.execute.done",
   "loop.verify.done",
   "loop.implementation.deviation",
+  "loop.implementation.deviations_invalid",
   "loop.iterate.done",
   "loop.escalated",
   "loop.worktree.created",
