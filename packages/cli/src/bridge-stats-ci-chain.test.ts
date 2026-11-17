@@ -9,6 +9,7 @@ function output(ci_chain: unknown, loops?: unknown) {
 }
 const chain = {
   ci_chain_available: true,
+  ci_chain_scan_failing: 2, ci_chain_scan_failing_by_reason: [{ reason: "auth", count: 2 }],
   ci_chain_by_state: [{ state: "closed", count: 3 }],
   ci_chain_closed: 3, ci_chain_repaired_closed: 1, ci_chain_consecutive_normal_closed: 2,
   ci_chain_registration_to_close_ms: [
@@ -19,6 +20,7 @@ describe("stats CI chain text", () => {
   it("prints CI counts and median and latest duration without loop stats", () => {
     const text = output(chain);
     expect(text).toContain("CI chain");
+    expect(text).toContain("scan_failing=2 auth=2");
     expect(text).toContain("by_state: closed=3");
     expect(text).toContain("closed=3 repaired_closed=1 consecutive_normal_closed=2");
     expect(text).toContain("registration_to_close_ms: median=20 latest=30");

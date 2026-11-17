@@ -7,8 +7,9 @@ import { latestCiEvent, type RefreshCiPrincipal } from './contained-mission-gith
 import type { SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
 import { SANDBOX_CI_POLICY, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 import { validateContainedStart } from './contained-mission-host.js';
-import { readCiFailureHints } from './contained-mission-local-failure-reader.js';
-import { createActionsCiFailureReadDeps, type ActionsJobObservation } from './contained-mission-local-failure-reader-transport.js';
+import { createCiScanHealth, type CiScanStep } from './contained-mission-ci-scan-health.js';
+import { readCiFailureHints, type CiReadFailureReason } from './contained-mission-local-failure-reader.js';
+import { createActionsCiFailureReadDeps, createAuthenticatedCiRest, type ActionsJobObservation } from './contained-mission-local-failure-reader-transport.js';
 import { readMissionPublication } from './contained-mission-publication.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
 import type { createSandboxCiMerge } from './contained-mission-sandbox-ci-merge.js';
@@ -25,10 +26,15 @@ export interface SandboxCiTarget { pr: number; head: string; base: string; branc
 
 /** A PR's authored head, base and repository must all be those in the Mission's delivery record. */
 export async function readSandboxCiPr(ci: Pick<CiReader, 'rest'>, target: SandboxCiTarget, signal: AbortSignal, policy = SANDBOX_CI_POLICY) {
+  return readSandboxCiPrObserved(ci, target, signal, policy);
+}
+
+async function readSandboxCiPrObserved(ci: Pick<CiReader, 'rest'>, target: SandboxCiTarget, signal: AbortSignal,
+  policy: GithubCiPolicy, onMalformed?: () => void) {
   const basePath = `repos/${policy.repository}`;
   const result = await ci.rest(`${basePath}/pulls/${target.pr}`, { signal });
   const parsed = prSchema.safeParse(result.ok ? result.body : null);
-  if (!parsed.success) return null;
+  if (!parsed.success) { if (result.ok) onMalformed?.(); return null; }
   const pr = parsed.data;
   if (pr.number !== target.pr || pr.head.ref !== target.branch || pr.base.ref !== 'main'
     || pr.head.repo.id !== policy.repositoryId || pr.base.repo.id !== policy.repositoryId
@@ -132,15 +138,39 @@ export async function assertSandboxCiRepository(signal: AbortSignal, policy = SA
 export function createSandboxCiObserver(input: { store: ContainedMissionStore; scopeId: string; enabled: () => boolean;
   now: () => number; log: (line: string) => void; refresh?: RefreshCiPrincipal; ci?: CiReader; worktreesRoot?: string;
   merge?: ReturnType<typeof createSandboxCiMerge>; policy?: GithubCiPolicy;
+  ciFactory?: (onReadFailure: (reason: CiReadFailureReason) => void) => CiReader;
   writeEnabled?: (root: ContainedMission) => boolean }) {
   const { store, scopeId, enabled, now, log } = input;
   const policy = input.policy ?? SANDBOX_CI_POLICY;
   const sandbox = policy.repository === SANDBOX_CI_POLICY.repository;
-  const ci = input.ci ?? createSandboxCiReader(policy);
+  const abort = new AbortController();
+  const health = createCiScanHealth(store, now);
+  let probe: { step: CiScanStep; timeout?: AbortSignal; failure?: { reason: CiReadFailureReason; step: CiScanStep } } | undefined;
+  const note = (reason: CiReadFailureReason) => {
+    if (probe && !abort.signal.aborted) probe.failure ??= { reason, step: probe.step };
+  };
+  const wrapRest = (rest: CiReader['rest']): CiReader['rest'] => async (path, options) => {
+    const result = await rest(path, options);
+    if (!result.ok && !abort.signal.aborted) note(result.failure ?? (probe?.timeout?.aborted ? 'network' : 'unexpected_response'));
+    return result;
+  };
+  const reader = input.ciFactory?.(note) ?? input.ci;
+  const ci = reader ? { ...reader, rest: wrapRest(reader.rest) } : createActionsCiFailureReadDeps({
+    actionsAppId: policy.actionsAppId, rest: wrapRest(createAuthenticatedCiRest()), onReadFailure: note,
+  });
+  const readJobs: typeof readSandboxCiJobs = async (...args) => {
+    if (probe) probe.step = args[3] ? 'merge_readback' : 'ci_jobs_read';
+    const result = await readSandboxCiJobs(...args);
+    if (probe?.timeout?.aborted) note('network');
+    if (result.kind === 'waiting') {
+      if (result.reason === 'incomplete' || result.reason === 'limit') note('incomplete_read');
+      else if (result.reason === 'malformed') note('unexpected_response');
+    }
+    return result;
+  };
   const basePath = `repos/${policy.repository}`;
   let timer: ReturnType<typeof setInterval> | undefined;
   let pending: Promise<void> | undefined;
-  const abort = new AbortController();
   async function observeHeldPush(child: ContainedMission, target: SandboxCiTarget,
     live: NonNullable<Awaited<ReturnType<typeof readSandboxCiPr>>>, signal: AbortSignal) {
     if (!['cancelled', 'awaiting_decision', 'stop_unknown'].includes(child.state)
@@ -152,6 +182,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
     const process = store.db.prepare("SELECT * FROM engineering_host_processes WHERE intent_id=?").get(intent.intent_id) as HostProcessRecord | undefined;
     if (process?.state !== 'stopped' || process.released_at === null || process.mission_id !== child.mission_id
       || process.kind !== 'git_push' || process.remote_target !== remoteTargetOf(policy.repository, target.branch)) return;
+    if (probe) probe.step = 'held_push_ref_read';
     const response = await ci.rest(`${basePath}/git/ref/heads/${target.branch}`, { signal });
     const ref = z.object({ ref: z.literal(`refs/heads/${target.branch}`), object: z.object({ sha: z.literal(intent.candidate) }) });
     if (!enabled() || signal.aborted || !response.ok || !ref.safeParse(response.body).success
@@ -167,14 +198,24 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         AND e.kind IN ('ci_closed_unmerged','ci_pr_merged_observed'))
       ORDER BY m.created_at,m.mission_id LIMIT 1`).all(scopeId) as ContainedMission[];
     for (const root of roots) {
+      probe = { step: 'scan' };
+      let bound = false;
+      let facts: { pr: number; head: string } | undefined;
+      const body = async () => {
       const spec = parseContainedMissionSpec(root.spec_json);
       const publication = readMissionPublication(store, root.mission_id);
       if (spec.publication?.repository !== policy.repository || publication?.kind !== 'github_ci_opened' || publication.pushed_commit !== root.candidate_head
         || publication.base_head !== spec.start_commit) return;
       const target = { pr: publication.pr.number, head: publication.pushed_commit, base: spec.start_commit, branch: spec.branch };
-      const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(60_000)]);
-      const live = await readSandboxCiPr(ci, target, signal, policy);
+      facts = { pr: target.pr, head: target.head };
+      const timeout = AbortSignal.timeout(60_000);
+      probe!.timeout = timeout;
+      const signal = AbortSignal.any([abort.signal, timeout]);
+      probe!.step = 'pr_read';
+      const live = await readSandboxCiPrObserved(ci, target, signal, policy, () => note('unexpected_response'));
+      if (!live && timeout.aborted) note('network');
       if (!live || !enabled() || signal.aborted) return;
+      bound = true;
       const dispatch = latestCiEvent<{ child: string }>(store, root.mission_id, 'ci_repair_dispatched');
       if (live.state === 'closed' && !live.merged) {
         store.record(root.mission_id, 'ci_closed_unmerged', { pr: target.pr, head: live.head.sha }, now());
@@ -202,7 +243,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
           if (prior?.kind !== 'ci_repair_verified' || facts?.head !== repairedTarget.head || !facts.jobs) {
             holdMerge('premerge_ci_unavailable'); return;
           }
-          const result = await readSandboxCiJobs(ci, repairedTarget, signal, { sha: live.merge_commit_sha!, jobs: facts.jobs }, policy);
+          const result = await readJobs(ci, repairedTarget, signal, { sha: live.merge_commit_sha!, jobs: facts.jobs }, policy);
           if (!enabled() || signal.aborted) return;
           if (result.kind !== 'success' || !isDeepStrictEqual(facts.jobs, result.jobs)) {
             holdMerge(result.kind === 'waiting' ? result.reason : 'premerge_ci_changed'); return;
@@ -216,7 +257,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
             merge_commit_sha: live.merge_commit_sha, merged_by: live.merged_by, ...appMerge }, now());
           return;
         }
-        const result = await readSandboxCiJobs(ci, repairedTarget, signal, undefined, policy);
+        const result = await readJobs(ci, repairedTarget, signal, undefined, policy);
         if (!enabled() || signal.aborted) return;
         if (result.kind === 'waiting') {
           if (prior?.kind !== 'ci_repair_verification_waiting' || facts?.reason !== result.reason) store.record(root.mission_id, 'ci_repair_verification_waiting',
@@ -248,7 +289,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
       if (live.merged) {
         if (sandbox) { holdMerge('repair_receipt_unavailable'); return; }
         if (verified?.head !== target.head || !live.merge_commit_sha || !live.merged_by) { holdMerge('premerge_ci_unavailable'); return; }
-        const checked = await readSandboxCiJobs(ci, target, signal, { sha: live.merge_commit_sha, jobs: verified.jobs }, policy);
+        const checked = await readJobs(ci, target, signal, { sha: live.merge_commit_sha, jobs: verified.jobs }, policy);
         const accepted = input.merge?.acceptsMerge(root, root, target, live.merged_by, live.merge_commit_sha);
         if (!enabled() || signal.aborted) return;
         if (!accepted || checked.kind !== 'success' || !isDeepStrictEqual(verified.jobs, checked.jobs)) { holdMerge('app_e_readback_unavailable'); return; }
@@ -256,7 +297,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
           merge_commit_sha: live.merge_commit_sha, merged_by: live.merged_by, ...accepted }, now());
         return;
       }
-      const result = await readSandboxCiJobs(ci, target, signal, undefined, policy);
+      const result = await readJobs(ci, target, signal, undefined, policy);
       if (!sandbox && enabled() && !signal.aborted) {
         if (result.kind === 'success') {
           if (!isDeepStrictEqual(verified?.jobs, result.jobs)) store.record(root.mission_id, 'ci_initial_verified', { ...target, jobs: result.jobs }, now());
@@ -299,6 +340,24 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         const mission = registered.mission;
         store.record(root.mission_id, 'ci_repair_dispatched', { child: mission.mission_id, head: target.head, check_run_id: result.job.check_run_id }, now());
       }).immediate();
+      };
+      try { await body(); }
+      catch {
+        note('unexpected_response');
+        log('osstack: GitHub CI observation deferred');
+      }
+      try {
+        if (enabled() && !abort.signal.aborted) {
+          // A pre-read exception may still have a durable publication binding.
+          if (!facts && probe.failure) {
+            const publication = readMissionPublication(store, root.mission_id);
+            if (publication?.kind === 'github_ci_opened') facts = { pr: publication.pr.number, head: publication.pushed_commit };
+          }
+          if (facts && probe.failure) health.failed(root.mission_id, { ...facts, ...probe.failure });
+          else if (facts && bound) health.succeeded(root.mission_id, facts);
+        }
+      } catch { log('osstack: GitHub CI observation deferred'); }
+      finally { probe = undefined; }
     }
   };
   const run = () => {

@@ -358,3 +358,203 @@ describe('Alpha CI provenance', () => {
       }
     });
 });
+
+describe('durable CI scan failures', () => {
+  const pr = () => {
+    const repo = { id: ciPolicy.repositoryId, full_name: ciPolicy.repository };
+    return { number: 17, state: 'open', merged: false, head: { sha: head, ref: branch, repo },
+      base: { sha: base, ref: 'main', repo }, user: { id: ciPolicy.publisherActorId, type: 'Bot' } };
+  };
+  it.each([false, true])('does not fail a scan when merge outlives the read timeout (open streak: %s)', async openStreak => {
+    const f = fixture();
+    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    try {
+      f.writeRelease(); const root = f.seed(); const store = f.rig.missions;
+      const timeout = new AbortController();
+      const mergeTimeout = new AbortController();
+      vi.spyOn(AbortSignal, 'timeout').mockImplementation(ms => ms === 60_000 ? timeout.signal : mergeTimeout.signal);
+      let failing = openStreak;
+      const merge = { acceptsMerge: vi.fn(), request: vi.fn(async (_root, _child, _target, signal: AbortSignal) => {
+        timeout.abort();
+        await Promise.resolve();
+        expect(signal.aborted).toBe(false);
+      }) };
+      observer = createSandboxCiObserver({ store, scopeId: root.scope_id, policy: ciPolicy,
+        now: () => 8000, enabled: () => true, writeEnabled: () => true, log: () => {}, merge,
+        ci: { rest: async path => {
+          if (failing) return { ok: false, failure: 'network' };
+          if (path.includes('/pulls/')) return { ok: true, body: pr() };
+          if (path.includes('/contents/')) return { ok: true, body: { sha: ciPolicy.workflowBlob, type: 'file' } };
+          return { ok: true, body: { total_count: 0, check_suites: [] } };
+        }, latestAttempt: async () => ({}), observeLatestJob: async (query, job) => ({
+          outcome: 'success', run_id: 10, workflow_id: job.workflowId, attempt: 1, check_run_id: 19,
+          check_suite_id: 11, job_id: 12, job_name: query.name, runner_labels: job.runnerLabels, matrix: job.matrix,
+          workflow_path: job.workflowPath, head, base, app_id: ciPolicy.actionsAppId,
+        }) } });
+      if (openStreak) {
+        await observer.scan();
+        expect(latestCiEvent(store, root.mission_id, 'ci_scan_failed')).toMatchObject({ consecutive: 1 });
+      }
+      failing = false;
+      const before = store.events(root.mission_id).length;
+      await observer.scan();
+      expect(merge.request).toHaveBeenCalledOnce();
+      expect(timeout.signal.aborted).toBe(true);
+      const scanEvents = store.events(root.mission_id).slice(before).filter(e => e.kind.startsWith('ci_scan_'));
+      expect(scanEvents.map(e => e.kind)).toEqual(openStreak ? ['ci_scan_recovered'] : []);
+      if (openStreak) expect(JSON.parse(scanEvents[0]!.payload_json)).toMatchObject({ consecutive: 1, pr: 17, head });
+    } finally { vi.restoreAllMocks(); await observer?.stop(); f.close(); }
+  });
+  it('records network at the read step when rest resolves without a failure after timeout', async () => {
+    const f = fixture();
+    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    try {
+      f.writeRelease(); const root = f.seed(); const store = f.rig.missions;
+      const timeout = new AbortController();
+      vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+      observer = createSandboxCiObserver({ store, scopeId: root.scope_id, policy: ciPolicy,
+        now: () => 8000, enabled: () => true, log: () => {},
+        ci: { rest: async path => {
+          if (path.includes('/pulls/')) return { ok: true, body: pr() };
+          timeout.abort();
+          await Promise.resolve();
+          return { ok: false };
+        }, latestAttempt: async () => ({}), observeLatestJob: async () => null } });
+      const before = store.events(root.mission_id).length;
+      await observer.scan();
+      const added = store.events(root.mission_id).slice(before);
+      expect(added.map(e => e.kind)).toEqual(['ci_scan_failed']);
+      expect(JSON.parse(added[0]!.payload_json)).toEqual({ reason: 'network', step: 'ci_jobs_read',
+        consecutive: 1, since: 8000, pr: 17, head });
+    } finally { vi.restoreAllMocks(); await observer?.stop(); f.close(); }
+  });
+  it.each(['network', 'malformed', 'jobs', 'incomplete', 'throw', 'internal', 'identity', 'disabled', 'shutdown', 'timeout', 'scan_throw'])(
+    'records only the first read failure on the root: %s', async scenario => {
+      const f = fixture();
+      let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+      try {
+        f.writeRelease();
+        const root = f.seed();
+        const before = f.rig.missions.events(root.mission_id);
+        const merge = { request: vi.fn(), acceptsMerge: vi.fn() };
+        const rest: ReturnType<typeof createSandboxCiReader>['rest'] = async (path, { signal }) => {
+          if (scenario === 'throw') throw Error('private detail');
+          if (scenario === 'network') return { ok: false, failure: 'network' };
+          if (scenario === 'malformed') return { ok: true, body: {} };
+          if (scenario === 'shutdown' || scenario === 'timeout') {
+            return new Promise(resolve => signal.addEventListener('abort', () => resolve({ ok: false }), { once: true }));
+          }
+          if (path.includes('/pulls/')) return { ok: true, body: { ...pr(), ...(scenario === 'identity' ? { number: 99 } : {}) } };
+          if (scenario === 'jobs') return { ok: false, failure: 'auth' };
+          if (path.includes('/contents/')) return { ok: true, body: { sha: ciPolicy.workflowBlob, type: 'file' } };
+          return { ok: true, body: { total_count: scenario === 'incomplete' ? 1 : 0, check_suites: [] } };
+        };
+        let timeout: AbortController | undefined;
+        if (scenario === 'timeout') {
+          timeout = new AbortController();
+          vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+        }
+        if (scenario === 'scan_throw') vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => { throw Error('fixture'); });
+        observer = createSandboxCiObserver({ store: f.rig.missions, scopeId: root.scope_id, policy: ciPolicy,
+          now: () => 8000, enabled: () => scenario !== 'disabled', log: () => {}, merge,
+          ci: { rest: async () => ({ ok: false }), latestAttempt: async () => ({}), observeLatestJob: async () => null },
+          ciFactory: onReadFailure => ({ rest, latestAttempt: async () => ({}),
+            observeLatestJob: async () => { if (scenario === 'internal') { onReadFailure('rate_limited'); onReadFailure('network'); throw Error('private'); } return null; } }) });
+        const pending = observer.scan();
+        if (scenario === 'shutdown') await observer.stop();
+        if (scenario === 'timeout') timeout!.abort();
+        await pending;
+        const added = f.rig.missions.events(root.mission_id).slice(before.length);
+        if (['identity', 'disabled', 'shutdown'].includes(scenario)) expect(added).toEqual([]);
+        else {
+          const reason = scenario === 'network' || scenario === 'timeout' ? 'network' : scenario === 'jobs' ? 'auth'
+            : scenario === 'incomplete' ? 'incomplete_read' : scenario === 'internal' ? 'rate_limited' : 'unexpected_response';
+          expect(added.map(e => e.kind)).toEqual(['ci_scan_failed']);
+          expect(JSON.parse(added[0]!.payload_json)).toEqual({ reason, step: scenario === 'scan_throw' ? 'scan' : ['jobs','incomplete','internal'].includes(scenario) ? 'ci_jobs_read' : 'pr_read',
+            consecutive: 1, since: 8000, pr: 17, head });
+        }
+        expect(f.rig.missions.get(root.mission_id)).toEqual(root);
+        expect(merge.request).not.toHaveBeenCalled();
+        expect(f.rig.db.prepare('SELECT count(*) AS n FROM engineering_contained_missions').get()).toEqual({ n: 1 });
+      } finally { vi.restoreAllMocks(); await observer?.stop(); f.close(); }
+    });
+  it.each(['held_push_ref_read', 'merge_readback'])('records %s on the root without new write authority', async step => {
+    const f = fixture();
+    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    try {
+      f.writeRelease(); const root = f.seed(); const store = f.rig.missions;
+      if (step === 'held_push_ref_read') {
+        const child = store.authorize(f.actor, { scope_id: root.scope_id, spec: {},
+          claim: { repo_identity: 'repair', branch: 'repair', worktree_identity: 'repair' } }, 2200);
+        store.transition(child.mission_id, { if_revision: child.revision, to: 'awaiting_decision',
+          event: { kind: 'halted', payload: {} } }, 2201);
+        store.record(root.mission_id, 'ci_repair_dispatched', { child: child.mission_id }, 2202);
+        const intent = { intent_id: 'fixture-intent', pr: 17, branch, base, previous: head, candidate: mergedHead };
+        store.record(child.mission_id, 'ci_repair_push_intent', intent, 2203);
+        const hp = new HostProcessStore(f.rig.attention, f.rig.owner, { clock: () => 2300 });
+        const op_id = `hp_${'4'.repeat(32)}`;
+        hp.launching({ op_id, mission_id: child.mission_id, kind: 'git_push', intent_id: intent.intent_id,
+          remote_target: remoteTargetOf(ciPolicy.repository, branch), local_target: '/isolated/fixture',
+          argv_digest: 'a'.repeat(64), boot_id: 'fixture', marker: { path: '/isolated/marker', dev: '1', ino: '1' } });
+        hp.registered(op_id, { pid: 4242, pgid: 4242, leader_start: null });
+        hp.release(op_id, () => {});
+        hp.stopped(op_id, { proof: 'group_empty+marker_unheld', detail: {} });
+      } else store.record(root.mission_id, 'ci_initial_verified', { head, jobs: [] }, 2200);
+      const before = store.events(root.mission_id).length;
+      const missions = store.db.prepare('SELECT * FROM engineering_contained_missions ORDER BY mission_id').all();
+      const merge = { request: vi.fn(), acceptsMerge: vi.fn() };
+      observer = createSandboxCiObserver({ store, scopeId: root.scope_id, policy: ciPolicy, enabled: () => true,
+        now: () => 8000, log: () => {}, merge,
+        ci: { latestAttempt: async () => ({}), observeLatestJob: async () => null, rest: async path => {
+          if (path.includes('/pulls/')) return { ok: true, body: step === 'held_push_ref_read'
+            ? { ...pr(), head: { ...pr().head, sha: mergedHead } }
+            : { ...pr(), state: 'closed', merged: true, merge_commit_sha: mergedHead, merged_by: { id: 10, type: 'Bot' } } };
+          return { ok: false, failure: step === 'held_push_ref_read' ? 'network' : 'rate_limited' };
+        } } });
+      await observer.scan();
+      const added = store.events(root.mission_id).slice(before);
+      // A failed merge readback retains the existing hold event before health recording.
+      expect(added.map(e => e.kind)).toEqual(step === 'held_push_ref_read' ? ['ci_scan_failed'] : ['ci_pr_merge_unverified', 'ci_scan_failed']);
+      expect(JSON.parse(added.at(-1)!.payload_json)).toEqual({ reason: step === 'held_push_ref_read' ? 'network' : 'rate_limited',
+        step, consecutive: 1, since: 8000, pr: 17, head });
+      expect(store.db.prepare('SELECT * FROM engineering_contained_missions ORDER BY mission_id').all()).toEqual(missions);
+      expect(merge.request).not.toHaveBeenCalled();
+    } finally { await observer?.stop(); f.close(); }
+  });
+  it('records five failures in twenty ticks then recovers after the closing event', async () => {
+    const f = fixture();
+    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    try {
+      f.writeRelease(); const root = f.seed();
+      let failing = true;
+      observer = createSandboxCiObserver({ store: f.rig.missions, scopeId: root.scope_id, policy: ciPolicy,
+        now: () => 8000, enabled: () => true, log: () => {},
+        ci: { rest: async () => failing ? { ok: false, failure: 'network' } : { ok: true, body: { ...pr(), state: 'closed' } },
+          latestAttempt: async () => ({}), observeLatestJob: async () => null } });
+      const before = f.rig.missions.events(root.mission_id).length;
+      for (let i = 0; i < 20; i++) await observer.scan();
+      expect(f.rig.missions.events(root.mission_id).slice(before).map(e => JSON.parse(e.payload_json).consecutive)).toEqual([1,2,4,8,16]);
+      failing = false;
+      await observer.scan();
+      expect(f.rig.missions.events(root.mission_id).slice(before).map(e => e.kind)).toEqual([
+        ...Array(5).fill('ci_scan_failed'), 'ci_closed_unmerged', 'ci_scan_recovered',
+      ]);
+      expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_scan_recovered')).toMatchObject({ consecutive: 20 });
+    } finally { await observer?.stop(); f.close(); }
+  });
+  it('does not reject when health recording loses ownership', async () => {
+    const f = fixture();
+    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    try {
+      f.writeRelease(); const root = f.seed();
+      const record = vi.spyOn(f.rig.missions, 'record').mockImplementation(() => { throw Error('ownership'); });
+      const log = vi.fn();
+      observer = createSandboxCiObserver({ store: f.rig.missions, scopeId: root.scope_id, policy: ciPolicy,
+        now: () => 8000, enabled: () => true, log,
+        ci: { rest: async () => ({ ok: false, failure: 'network' }), latestAttempt: async () => ({}), observeLatestJob: async () => null } });
+      await expect(observer.scan()).resolves.toBeUndefined();
+      expect(record).toHaveBeenCalledOnce();
+      expect(log).toHaveBeenCalledWith('osstack: GitHub CI observation deferred');
+    } finally { vi.restoreAllMocks(); await observer?.stop(); f.close(); }
+  });
+});

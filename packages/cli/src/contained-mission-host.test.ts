@@ -407,6 +407,49 @@ describe("ContainedMissionHost status publication", () => {
     expect(state()).toMatchObject({ state: "closed", ...merged, since: expect.any(Number) });
   });
 
+  it.each(['initial_ci_waiting', 'repair_permission_waiting', 'repair_in_progress', 'repair_ci_waiting',
+    'approval_and_handoff_waiting', 'merge_reserved', 'merge_reconciling', 'merge_held', 'closed', 'stopped', 'result_unknown'])(
+    'scan events do not change chain state %s', state => {
+      const f = fixture(); const root = ciRoot(f, 'scan'); const id = root.mission_id;
+      const head = 'b'.repeat(40); const digest = '2'.repeat(64);
+      f.store.record(id, 'ci_delivery_evidence', evidence(digest, head), 2100);
+      f.store.record(id, 'pr_opened', { pr, evidence_digest: digest, verification_kind: 'github_actions' }, 2101);
+      const markers: Record<string, string> = { repair_permission_waiting: 'ci_failure_observed',
+        approval_and_handoff_waiting: 'ci_initial_verified', merge_reserved: 'ci_app_e_merge_reserved',
+        merge_reconciling: 'ci_app_e_merge_released', merge_held: 'ci_pr_merge_unverified',
+        closed: 'ci_pr_merged_observed', stopped: 'ci_closed_unmerged', result_unknown: 'ci_repair_dispatched' };
+      if (markers[state]) f.store.record(id, markers[state]!, { child: 'missing', head, reason: 'fixture' }, 2200);
+      if (state === 'repair_in_progress' || state === 'repair_ci_waiting') {
+        const child = f.store.authorize(f.principal, { scope_id: root.scope_id, spec: { repo_path: f.repo },
+          claim: { repo_identity: 'child', branch: 'child', worktree_identity: 'child' } }, 2200);
+        f.store.record(id, 'ci_repair_dispatched', { child: child.mission_id }, 2201);
+        f.store.record(child.mission_id, state === 'repair_in_progress' ? 'ci_repair_approval' : 'ci_repair_push_confirmed', {}, 2202);
+      }
+      const before = readCiChain(f.store.db, f.store.get(id));
+      expect(before?.state).toBe(state);
+      const scan = { failing: true, reason: 'auth', step: 'ci_jobs_read', since: 3000, consecutive: 1 };
+      f.store.record(id, 'ci_scan_failed', { reason: scan.reason, step: scan.step, since: scan.since, consecutive: 1, pr: 7, head }, 3000);
+      expect(readCiChain(f.store.db, f.store.get(id))).toEqual({ ...before, scan });
+      expect(computeCiChainStats(f.store.db)).toMatchObject({ ci_chain_scan_failing: 1, ci_chain_scan_failing_by_reason: [{ reason: 'auth', count: 1 }] });
+      f.store.record(id, 'ci_scan_recovered', { failed_since: 3000, consecutive: 1, pr: 7, head }, 3001);
+      expect(readCiChain(f.store.db, f.store.get(id))).toEqual(before);
+      expect(computeCiChainStats(f.store.db)).toMatchObject({ ci_chain_scan_failing: 0, ci_chain_scan_failing_by_reason: [] });
+    });
+
+  it('groups failing scans by reason across chain states', () => {
+    const f = fixture();
+    for (const [index, reason] of ['network', 'auth', 'auth'].entries()) {
+      const root = ciRoot(f, `scan-${index}`); const id = root.mission_id;
+      const head = 'b'.repeat(40); const digest = '2'.repeat(64);
+      f.store.record(id, 'ci_delivery_evidence', evidence(digest, head), 2100);
+      f.store.record(id, 'pr_opened', { pr, evidence_digest: digest, verification_kind: 'github_actions' }, 2101);
+      if (index === 0) f.store.record(id, 'ci_closed_unmerged', {}, 2200);
+      f.store.record(id, 'ci_scan_failed', { reason, step: 'pr_read', since: 3000, consecutive: 1, pr: 7, head }, 3000);
+    }
+    expect(computeCiChainStats(f.store.db)).toMatchObject({ ci_chain_scan_failing: 3,
+      ci_chain_scan_failing_by_reason: [{ reason: 'auth', count: 2 }, { reason: 'network', count: 1 }] });
+  });
+
   it("reads every CI waiting state and unknown result from SQLite after restart", async () => {
     const f = fixture(); const root = ciRoot(f, "one"); const id = root.mission_id;
     const head = "b".repeat(40); const fixed = "c".repeat(40); const digest = "2".repeat(64);

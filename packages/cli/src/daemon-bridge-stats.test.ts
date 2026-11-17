@@ -49,6 +49,7 @@ describe("daemon stats bridge section", () => {
     expect(r["total_runs"]).toBe(0);
     expect(r).toHaveProperty("rpc");
     expect(r["ci_chain"]).toMatchObject({
+      ci_chain_scan_failing: 0, ci_chain_scan_failing_by_reason: [],
       ci_chain_available: true, ci_chain_by_state: [], ci_chain_closed: 0,
       ci_chain_repaired_closed: 0, ci_chain_consecutive_normal_closed: 0, ci_chain_registration_to_close_ms: [],
     });

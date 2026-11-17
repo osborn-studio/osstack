@@ -45,6 +45,14 @@ describe("osstack mission", () => {
     expect((await run(["list"])).err[0]).toContain("required:--github-ci");
   });
 
+  it("shows scan health in text and JSON", async () => {
+    const row = { mission_id: MID, scan: { failing: true, reason: "auth", step: "ci_jobs_read", consecutive: 4, since: 1000 } };
+    const text = await run(["list", "--github-ci"], { ok: true, result: [row] });
+    expect(text.out[0]).toContain(" scan_failing=auth@ci_jobs_read x4 since=1970-01-01T00:00:01.000Z");
+    const json = await run(["list", "--github-ci", "--json"], { ok: true, result: [row] });
+    expect(JSON.parse(json.out[0]!)).toEqual([row]);
+  });
+
   it("validates locally before reading the credential", async () => {
     const r = await run(["decide", "--mission", MID, "--decision", "merge"]);
     expect(r.code).toBe(1); expect(r.reads).toBe(0); expect(r.calls).toEqual([]);

@@ -138,7 +138,10 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     if (response?.ok !== true) throw new Error(typeof response?.error?.code === "string" ? response.error.code : "mission_request_failed");
     const text = safeJson(response.result ?? null).split(credential).join("[REDACTED]");
     if (command === "list" && !json) {
-      for (const row of response.result as Array<Record<string, unknown>>) out([row["mission_id"], row["scope_id"], row["repository"], row["pr"], row["state"], row["since"], row["head_before"], row["head_after"], row["merge_commit_sha"], row["stop_reason"]].map(v => v ?? "-").join("\t"));
+      for (const row of response.result as Array<Record<string, unknown>>) {
+        const scan = row["scan"] as { failing: true; reason: string; step: string; consecutive: number; since: number } | undefined;
+        out([row["mission_id"], row["scope_id"], row["repository"], row["pr"], row["state"], row["since"], row["head_before"], row["head_after"], row["merge_commit_sha"], row["stop_reason"]].map(v => v ?? "-").join("\t") + (scan?.failing ? ` scan_failing=${scan.reason}@${scan.step} x${scan.consecutive} since=${new Date(scan.since).toISOString()}` : ""));
+      }
       return 0;
     }
     out(json ? text : command === "merger-report" ? `Mission · merger report\n${text}\nShadow evidence only. Nothing is merged by OSStack.` : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);

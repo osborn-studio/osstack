@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createActionsCiFailureReadDeps } from './contained-mission-local-failure-reader-transport.js';
+import { classifyCiRestFailure, createActionsCiFailureReadDeps } from './contained-mission-local-failure-reader-transport.js';
 
 const head = 'a'.repeat(40);
 const repo = 'fixture/project';
@@ -126,5 +126,39 @@ describe('authenticated Actions latest attempt transport', () => {
     const pending = deps.latestAttempt(query, { ...options(), signal: controller.signal });
     controller.abort();
     expect(await pending).toMatchObject({ complete: false });
+  });
+});
+
+describe('CI read failure categories', () => {
+  it.each([
+    [{ killed: true }, '', 'network'], [{ code: 'ENOENT' }, '', 'network'],
+    [null, 'dial tcp', 'network'], [null, 'no such host', 'network'],
+    [null, 'HTTP 401', 'auth'], [null, 'HTTP 403 rate limit exceeded', 'rate_limited'],
+    [null, 'HTTP 429', 'rate_limited'], [null, 'HTTP 403', 'auth'],
+    [null, 'HTTP 404', 'unexpected_response'], [null, 'HTTP 502', 'unexpected_response'],
+    [null, '', 'unexpected_response'],
+  ] as const)('classifies %j %s', (error, stderr, expected) => {
+    expect(classifyCiRestFailure(error, stderr)).toBe(expected);
+  });
+  it.each(['failure', 'short', 'malformed', 'empty', 'ambiguous', 'moved', 'limit', 'abort'])('reports read health for %s without changing results', async scenario => {
+    const w = world();
+    const reasons: string[] = [];
+    let reads = 0;
+    const rest: typeof w.deps.rest = async (path, opts) => {
+      if (scenario === 'failure') return { ok: false, failure: 'auth' };
+      if (scenario === 'short') return { ok: true, body: { total_count: 2, workflow_runs: [run()] } };
+      if (scenario === 'malformed') return { ok: true, body: {} };
+      if (scenario === 'empty') return { ok: true, body: { total_count: 0, workflow_runs: [] } };
+      if (scenario === 'ambiguous' && path.includes('/jobs?')) return { ok: true, body: { total_count: 1, jobs: [job({ name: 'other' })] } };
+      if (scenario === 'moved' && path.includes('/actions/runs?') && reads++ > 0) return { ok: true, body: { total_count: 1, workflow_runs: [run({ run_attempt: 2 })] } };
+      return w.deps.rest(path, opts);
+    };
+    const deps = createActionsCiFailureReadDeps({ actionsAppId: 42, rest, onReadFailure: reason => { reasons.push(reason); throw Error('hook'); } });
+    const limits = { ...options(), ...(scenario === 'limit' ? { maxRequests: 1 } : {}),
+      ...(scenario === 'abort' ? { signal: AbortSignal.abort() } : {}) };
+    const result = await deps.latestAttempt(query, limits);
+    reads = 0;
+    expect(result).toEqual(await createActionsCiFailureReadDeps({ actionsAppId: 42, rest }).latestAttempt(query, limits));
+    expect(reasons).toEqual(scenario === 'failure' ? ['auth'] : scenario === 'short' || scenario === 'limit' ? ['incomplete_read'] : scenario === 'malformed' ? ['unexpected_response'] : []);
   });
 });
