@@ -1,7 +1,9 @@
 // Daemon surface for contained Missions (W11 M6c): `mission.*` RPC over the M6b host,
 // authenticated by the engineering authority file, with recovery at start and a tick timer.
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
+import { MissionDecideRequest } from '@osstack/protocol';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
 import { SANDBOX_CI_POLICY } from './contained-mission-ci-policy.js';
@@ -36,11 +38,11 @@ export const ContainedMissionRpcRequests = {
     }).strict().refine(r => r.verification_mode ? r.verify.argv.length === 0 : r.verify.argv.length > 0, 'verification_mode'),
   }).strict(),
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
+  'mission.list': z.object({ credential: Credential, scope_id: Text(256).optional() }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/) }).strict(),
-  'mission.decide': z.object({ credential: Credential, mission_id: MissionId,
-    decision: z.enum(['abandon', 'extra_repair', 'approve_publication', 'discard_changes', 'adopt_worktree', 'resume_workspace', 'retry_stop_check', 'resume_budget', 'resume_grant']) }).strict(),
+  'mission.decide': MissionDecideRequest,
   // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
   'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, ...GrantTerms }).strict(),
   'mission.revision_grant_renew_preview': z.object({ credential: Credential, chain_id: ChainId, ...GrantTerms }).strict(),
@@ -211,6 +213,10 @@ export class ContainedMissionService {
         const status = host.status(actor, p.mission_id);
         return { ...status, chain: this.options.chainOf?.(p.mission_id) ?? null };
       }
+      case 'mission.list': {
+        const p = ContainedMissionRpcRequests['mission.list'].parse(params);
+        return host.listCiChains(actor, p.scope_id);
+      }
       case 'mission.cancel': {
         const p = ContainedMissionRpcRequests['mission.cancel'].parse(params);
         return view(await host.cancel(actor, p.mission_id));
@@ -248,6 +254,73 @@ export class ContainedMissionService {
       }
       case 'mission.decide': {
         const p = ContainedMissionRpcRequests['mission.decide'].parse(params);
+        if (p.decision_id || p.expected_revision !== undefined) {
+          const mission = this.store.readable(actor, p.mission_id);
+          if (!actor.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
+          if (p.decision_id) {
+            // This transaction contains admission and the first transition of an immediate decision.
+            // The mission index bounds the kind query to this Mission's event history.
+            const digest = createHash('sha256').update(JSON.stringify({ kind: p.decision })).digest('hex');
+            const admitted = this.store.attention.write(this.store.owner, () => {
+              const rows = this.store.db.prepare("SELECT kind,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind IN ('decision_accepted','decision_effect_started','decision_result','host_decision_failed') ORDER BY seq")
+                .all(p.mission_id) as Array<{ kind: string; payload_json: string }>;
+              const matching = rows.map(row => ({ kind: row.kind, payload: JSON.parse(row.payload_json) as Record<string, unknown> }))
+                .filter(row => row.payload.decision_id === p.decision_id);
+              const accepted = matching.find(row => row.kind === 'decision_accepted');
+              const current = this.store.get(p.mission_id);
+              if (accepted) {
+                if (accepted.payload.principal_id !== actor.principal_id) throw Error('decision_id_owner_mismatch');
+                if (accepted.payload.digest !== digest) throw Error('decision_id_conflict');
+                const result = matching.slice().reverse().find(row => row.kind === 'decision_result' || row.kind === 'host_decision_failed');
+                const effect = matching.some(row => row.kind === 'decision_effect_started');
+                if (result?.kind === 'decision_result')
+                  return { response: { ...result.payload.result as object, accepted: true, replay: true,
+                    mission_at_acceptance: accepted.payload.mission ?? null, mission_at_decision: result.payload.result, mission_current: view(current) } };
+                if (result?.kind === 'host_decision_failed' && result.payload.retryable !== true)
+                  return { response: { accepted: true, replay: true, outcome: 'failed', code: result.payload.code, mission_current: view(current) } };
+                if (effect || current.revision !== accepted.payload.revision || host.isBusy(p.mission_id))
+                  return { response: { accepted: true, replay: true, outcome: 'unknown', mission: view(current) } };
+                if (this.options.draining() && PRODUCES_WORK.has(p.decision)) throw Error('draining');
+                if (p.decision !== 'retry_stop_check') host.runner.prepareDecision(current, p.decision);
+                return { resume: true };
+              }
+              if (p.expected_revision !== undefined && p.expected_revision !== current.revision) throw Error('stale_revision');
+              if (this.options.draining() && PRODUCES_WORK.has(p.decision)) throw Error('draining');
+              if (host.isBusy(p.mission_id)) throw Error('CONTAINED_MISSION_BUSY');
+              if (p.decision === 'retry_stop_check') {
+                if (!host.retryStopCheckAllowed(current)) throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+              } else if (!host.runner.decisionAllowed(current, p.decision)) throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+              this.store.record(p.mission_id, 'decision_accepted', { decision_id: p.decision_id, principal_id: actor.principal_id, digest, revision: current.revision, kind: p.decision, mission: view(current) }, Date.now(), actor.principal_id);
+              if (p.decision === 'abandon' || p.decision === 'approve_publication'
+                || ((p.decision === 'resume_budget' || p.decision === 'resume_grant') && host.runner.isVerifyResume(current, p.decision))) {
+                const result = view(host.runner.decideImmediate(current, { kind: p.decision, decision_id: p.decision_id! }));
+                this.store.record(p.mission_id, 'decision_result', { decision_id: p.decision_id, result }, Date.now());
+                return { response: { ...result, accepted: true } };
+              }
+              if (p.decision !== 'retry_stop_check') host.runner.prepareDecision(current, p.decision);
+              return { resume: true };
+            });
+            if ('response' in admitted) return admitted.response;
+            const running = host.decide(actor, p.mission_id, { kind: p.decision, decision_id: p.decision_id });
+            const settled = running.then(m => {
+              const result = view(m);
+              this.store.record(p.mission_id, 'decision_result', { decision_id: p.decision_id, result }, Date.now());
+              return { ...result, accepted: true };
+            }, (error: unknown) => {
+              const code = error instanceof Error ? (error.message.split(':')[0] ?? 'error').slice(0, 64) : 'error';
+              const effect = this.store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='decision_effect_started' AND json_extract(payload_json,'$.decision_id')=? LIMIT 1").get(p.mission_id, p.decision_id);
+              this.store.record(p.mission_id, 'host_decision_failed', { decision_id: p.decision_id, decision: p.decision, code, retryable: !effect }, Date.now());
+              return { accepted: true, outcome: 'failed', code };
+            });
+            if (!PRODUCES_WORK.has(p.decision)) return settled;
+            const early = await Promise.race([settled, new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), this.options.ackMs ?? 2000).unref())]);
+            if (early) return early;
+            const tracked = settled.then(() => undefined).finally(() => { this.background.delete(tracked); });
+            this.background.add(tracked);
+            return { accepted: true, decision: p.decision, mission: view(this.store.get(p.mission_id)) };
+          }
+          if (p.expected_revision !== mission.revision) throw Error('stale_revision');
+        }
         if (!PRODUCES_WORK.has(p.decision)) return view(await host.decide(actor, p.mission_id, { kind: p.decision }));
         if (this.options.draining()) throw new Error('draining');
         // A work-producing decision can run for minutes: return once it is accepted or rejected, and let it continue.

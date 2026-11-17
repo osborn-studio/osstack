@@ -110,12 +110,19 @@ function cliCommandsDoc() {
       .filter((command) => command !== undefined),
   )].sort();
 
+  const missionHelp = execFileSync("node", [binPath, "mission", "--help"], { encoding: "utf-8", env: { ...process.env, NO_COLOR: "1" } });
+  const missionCommands = [...new Set(missionHelp.split("\n").map(line => /^ {2}([a-z][a-z0-9-]*(?: report)?)\b/.exec(line)?.[1]).filter(Boolean))];
+
   return [
     "# CLI Commands",
     "",
     `Top-level \`osstack\` commands parsed from \`--help\` (${commands.length} total).`,
     "",
     ...commands.map((command) => `- \`${command}\``),
+    "",
+    "## Mission subcommands",
+    "",
+    ...missionCommands.map(command => `- ` + "`mission " + command + "`"),
     "",
     "Doc 15 §2.2 context: this surface is the raw capability layer; the",
     "task-oriented golden paths (`daily` / `start` / `improve`) compose it.",

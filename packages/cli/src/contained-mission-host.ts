@@ -9,13 +9,13 @@ import { classifyHostProcess, processGroupEmpty, runHardenedGit, type AgentHostP
 import { scratchPath, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal, type HostProcessRecord } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { ContainedMissionRunner, parseContainedMissionSpec, type ContainedDecision, type ContainedMissionSpec } from './contained-mission-runner.js';
-import { latestCiEvent } from './contained-mission-github-ci-approval.js';
+import { readCiChain, listCiChains } from './contained-mission-ci-chain-read.js';
 import { readMissionPublication, type MissionPublication } from './contained-mission-publication.js';
 import { containedEvents, eventPayload, lastTransitionTo, type ContainedMissionHostPorts } from './contained-mission-ports.js';
 import { PUBLICATION_RECOVERED, WORKSPACE_RECOVERED, HOST_PROCESS_UNPROVEN_PREFIX, hostOnlyObligation, hostProcessRouteOf, type HostProcessRoute } from './contained-mission-host-process.js';
 
 export type { MissionPublication } from './contained-mission-publication.js';
-export type ContainedHostDecision = ContainedDecision | { kind: 'retry_stop_check' };
+export type ContainedHostDecision = (ContainedDecision | { kind: 'retry_stop_check' }) & { decision_id?: string };
 export interface ContainedMissionHostOptions {
   ports: ContainedMissionHostPorts;
   runner?: ContainedMissionRunner;
@@ -68,6 +68,7 @@ export function validateContainedStart(spec: ContainedMissionSpec, worktreesRoot
 export class ContainedMissionHost {
   readonly store: ContainedMissionStore;
   readonly runner: ContainedMissionRunner;
+  private readonly activeDecisionIds = new Map<string, string>();
   private readonly inFlight = new Map<string, Promise<void>>();
   private readonly groupEmpty: (pgid: number) => boolean;
   private readonly max: number;
@@ -90,6 +91,10 @@ export class ContainedMissionHost {
 
   /** Used by live chain synchronization; includes the synchronous entry of a human decision. */
   isBusy(missionId: string): boolean { return this.inFlight.has(missionId); }
+  retryStopCheckAllowed(mission: ContainedMission): boolean {
+    return mission.state === 'stop_unknown' || mission.state === 'cancel_requested'
+      || (TERMINAL.has(mission.state) && this.hp.hasOpen(mission.mission_id));
+  }
 
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
@@ -121,7 +126,7 @@ export class ContainedMissionHost {
     const tail = (this.store.db.prepare('SELECT seq,kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq DESC LIMIT ?')
       .all(missionId, EVENT_TAIL) as Array<{ seq: number; kind: string; created_at: number; payload_json: string }>).reverse();
     const publication = this.publication(missionId);
-    const githubCi = publication?.kind === 'github_ci_opened' ? this.githubCiChainStatus(missionId) : undefined;
+    const githubCi = publication?.kind === 'github_ci_opened' ? readCiChain(this.store.db, mission) : undefined;
     return {
       mission: { ...mission, spec_json: redactSecrets(mission.spec_json) }, claim: this.store.claim(missionId), stepping: this.inFlight.has(missionId),
       events: tail.map(e => ({ seq: e.seq, kind: e.kind, created_at: e.created_at, payload: redactSecrets(e.payload_json).slice(0, EVENT_EXCERPT) })),
@@ -130,17 +135,8 @@ export class ContainedMissionHost {
     };
   }
 
-  private githubCiChainStatus(missionId: string) {
-    const merged = latestCiEvent<{ pr: number; head: string; merge_commit_sha: string; handoff_comment_id?: number; app_id?: number }>(
-      this.store, missionId, 'ci_pr_merged_observed');
-    if (merged) return { state: 'closed' as const, pr: merged.pr, head: merged.head, merge_commit_sha: merged.merge_commit_sha,
-      ...(merged.app_id ? { app_id: merged.app_id, handoff_comment_id: merged.handoff_comment_id } : {}) };
-    const held = latestCiEvent<{ pr: number; head: string; reason: string }>(this.store, missionId, 'ci_pr_merge_unverified');
-    if (held) return { state: 'merge_held' as const, pr: held.pr, head: held.head, reason: held.reason };
-    const reserved = latestCiEvent<{ binding: { pr: number; head: string } }>(this.store, missionId, 'ci_app_e_merge_reserved');
-    if (!reserved) return undefined;
-    return { state: latestCiEvent(this.store, missionId, 'ci_app_e_merge_released') ? 'merge_reconciling' as const : 'merge_reserved' as const,
-      pr: reserved.binding.pr, head: reserved.binding.head };
+  listCiChains(principal: EngineeringPrincipal, scope?: string) {
+    return listCiChains(this.store.db, principal.read_scopes, scope);
   }
 
   /** The PR this Mission opened, read by event kind so it never depends on the bounded event tail. */
@@ -171,6 +167,7 @@ export class ContainedMissionHost {
     if (!principal.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
     if (this.inFlight.has(missionId)) throw Error('CONTAINED_MISSION_BUSY');
     let result: ContainedMission | undefined;
+    if (decision.decision_id) this.activeDecisionIds.set(missionId, decision.decision_id);
     await this.track(missionId, async () => {
       if (decision.kind !== 'retry_stop_check') { result = await this.runner.decide(missionId, decision); return; }
       if (mission.state === 'stop_unknown' || mission.state === 'cancel_requested') {
@@ -183,7 +180,7 @@ export class ContainedMissionHost {
         if (this.hp.hasOpen(missionId)) throw Error('CONTAINED_STOP_UNPROVEN');
         result = this.store.get(missionId);
       } else throw Error('CONTAINED_DECISION_NOT_ALLOWED');
-    }, true);
+    }, true).finally(() => { this.activeDecisionIds.delete(missionId); });
     return result!;
   }
 
@@ -398,7 +395,10 @@ export class ContainedMissionHost {
     const opened = lastTransitionTo(events, ['executing', 'verifying']);
     if (opened < 0) return undefined;
     if (eventPayload(events[opened]!).to === 'verifying') {
-      const result = await this.options.ports.verificationStopped(m);
+      const result = await this.options.ports.verificationStopped(m, () => {
+        const decisionId = this.activeDecisionIds.get(m.mission_id);
+        if (decisionId) this.store.record(m.mission_id, 'decision_effect_started', { decision_id: decisionId, effect: 'verification_stop' }, this.options.ports.now());
+      });
       return result.stopped ? { stop_proof: result.proof, evidence: result.evidence } : undefined;
     }
     const started = events.slice(opened + 1).filter(e => e.kind === 'executor_started').at(-1);
