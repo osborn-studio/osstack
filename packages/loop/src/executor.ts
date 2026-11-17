@@ -49,7 +49,7 @@ export interface AgentRun {
   plan_id: string;
   task_id: string;
   agent_id: string;
-  outcome: "completed" | "failed" | "cancelled";
+  outcome: "completed" | "failed" | "cancelled" | "report_invalid";
   started_at: string;
   completed_at: string;
   duration_ms: number;
@@ -80,6 +80,8 @@ export interface LocalExecutorOptions {
   command?: string;
   adapters?: readonly AgentAdapter[];
   sessionId?: string;
+  /** Trusted report-only continuation of this exact adapter run. */
+  reportRunId?: string;
   /** Invalid durations (nonfinite, negative, > 2^31-1) use defaults: timeout 120s, grace 1s. */
   timeoutMs?: number;
   /** Parent cancellation for adapter or command execution. */
@@ -225,7 +227,9 @@ async function executeAdapterPlan(
 
     cancellation.checkBeforeInvoke();
     cancellation.invocationStarted = true;
-    iterator = adapter.invoke(agentTask, cancellation.signal)[Symbol.asyncIterator]();
+    iterator = (options.reportRunId === undefined
+      ? adapter.invoke(agentTask, cancellation.signal)
+      : adapter.resumeReport!(agentTask, cancellation.signal, options.reportRunId))[Symbol.asyncIterator]();
     // Manual iteration avoids for-await's unbounded implicit await return().
     while (true) {
       const next = await cancellation.wait(iterator.next());
@@ -233,50 +237,63 @@ async function executeAdapterPlan(
         streamClosed = true;
         break;
       }
+      if (failureCode !== undefined) throw new AdapterProtocolError(failureCode, summary ?? "Adapter protocol invalid");
       const event = next.value;
-      validateEvent(event);
-      adapterEventCount += 1;
-      if (event.type === "usage.updated" || event.type === "usage.final") {
-        // usage events report running/final totals; the latest authoritative
-        // value wins (final supersedes updated, both supersede nothing).
-        usage = usagePayload(event.payload);
-        continue;
-      }
-      if (event.type === "done") {
-        if (terminalState === "done") {
-          throw new AdapterProtocolError("duplicate_done", "Adapter emitted more than one done event");
+      // After a protocol error, read at most once more to observe a closed stream.
+      // Never drain arbitrary events: a broken iterator can starve the timeout.
+      try {
+        validateEvent(event);
+        if (options.reportRunId !== undefined && event.type.startsWith("tool.")) {
+          throw new AdapterProtocolError("invalid_event", "Report repair used a tool");
         }
-        const parsed = DonePayload.safeParse(event.payload);
-        if (!parsed.success) {
-          throw new AdapterProtocolError("invalid_done_payload", "Adapter emitted an invalid done payload");
+        adapterEventCount += 1;
+        if (event.type === "usage.updated" || event.type === "usage.final") {
+          // usage events report running/final totals; the latest authoritative
+          // value wins (final supersedes updated, both supersede nothing).
+          usage = usagePayload(event.payload);
+          continue;
         }
-        const payload = parsed.data;
-        if (terminalState === "error" && payload.status !== "failed" && payload.status !== "expired") {
-          throw new AdapterProtocolError("conflicting_terminal", `Terminal error followed by done(${payload.status})`);
+        if (event.type === "done") {
+          if (terminalState === "done") {
+            throw new AdapterProtocolError("duplicate_done", "Adapter emitted more than one done event");
+          }
+          const parsed = DonePayload.safeParse(event.payload);
+          if (!parsed.success) {
+            throw new AdapterProtocolError("invalid_done_payload", "Adapter emitted an invalid done payload");
+          }
+          const payload = parsed.data;
+          if (terminalState === "error" && payload.status !== "failed" && payload.status !== "expired") {
+            throw new AdapterProtocolError("conflicting_terminal", `Terminal error followed by done(${payload.status})`);
+          }
+          terminalState = "done";
+          outcome = payload.status === "expired" ? "failed" : payload.status;
+          summary = payload.result_summary ?? summary;
+          if (payload.usage !== undefined) usage = usagePayload(payload.usage);
+          continue;
         }
-        terminalState = "done";
-        outcome = payload.status === "expired" ? "failed" : payload.status;
-        summary = payload.result_summary ?? summary;
-        if (payload.usage !== undefined) usage = usagePayload(payload.usage);
-        continue;
-      }
-      if (terminalState !== "running") {
-        throw new AdapterProtocolError("event_after_terminal", `Adapter emitted ${event.type} after a terminal event`);
-      }
-      if (event.type === "error" && event.terminal) {
-        terminalState = "error";
-        outcome = "failed";
-        summary = errorPayload(event.payload).message;
+        if (terminalState !== "running") {
+          throw new AdapterProtocolError("event_after_terminal", `Adapter emitted ${event.type} after a terminal event`);
+        }
+        if (event.type === "error" && event.terminal) {
+          terminalState = "error";
+          outcome = "failed";
+          summary = errorPayload(event.payload).message;
+        }
+      } catch (error) {
+        if (!(error instanceof AdapterProtocolError)) throw error;
+        failureCode ??= error.code;
+        summary = error.message;
       }
     }
-    if (terminalState === "running") {
+    if (failureCode !== undefined) outcome = "report_invalid";
+    else if (terminalState === "running") {
       throw new AdapterProtocolError("missing_done", "Adapter stream ended without done or a terminal error");
     }
   } catch (err) {
     outcome = "failed";
-    if (err instanceof AdapterProtocolError) failureCode = err.code;
+    if (err instanceof AdapterProtocolError) { failureCode = err.code; outcome = "report_invalid"; }
     summary = err instanceof Error ? err.message : String(err);
-    if (cancellation.invocationStarted) cancellation.stopAfterError(err);
+    if (cancellation.invocationStarted && !streamClosed) cancellation.stopAfterError(err);
   } finally {
     if (iterator !== undefined && !streamClosed) {
       // Best-effort cleanup only. Neither return() nor a pending next() may
@@ -291,8 +308,9 @@ async function executeAdapterPlan(
   const evidence = cancellation.evidence;
   if (evidence !== undefined) {
     // Cancellation wins over every late status, including completed/cancelled.
-    // Keep protocol violations failed even when stop is independently proven.
-    outcome = evidence.stop_confirmed && failureCode === undefined && evidence.source !== "executor_error" ? "cancelled" : "failed";
+    // Report validity and physical stop evidence are separate classifications.
+    outcome = failureCode !== undefined && failureCode !== "cancellation_unconfirmed" ? "report_invalid"
+      : evidence.stop_confirmed && evidence.source !== "executor_error" ? "cancelled" : "failed";
     if (!evidence.stop_confirmed && failureCode === undefined) failureCode = "cancellation_unconfirmed";
     const originalFailure = failureCode !== undefined || evidence.source === "executor_error" ? summary : undefined;
     summary = (evidence.stop_confirmed

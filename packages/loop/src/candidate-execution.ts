@@ -27,7 +27,7 @@ export interface CandidateExecutionInput extends Omit<LocalExecutorOptions, "wor
 
 export interface CandidateExecutionResult {
   /** Completion only describes the implementation invocation, never a frozen/verified candidate. */
-  status: "implementation_complete" | "failed" | "cancelled" | "execution_unconfirmed" | "authorization_denied" | "invalid_input";
+  status: "implementation_complete" | "failed" | "cancelled" | "report_invalid" | "execution_unconfirmed" | "authorization_denied" | "invalid_input";
   workspace: Immutable<RegisteredCandidateWorkspace>;
   /** Exact executor evidence, absent when execution was not started. */
   execution?: AgentRun;
