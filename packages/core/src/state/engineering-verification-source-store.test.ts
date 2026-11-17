@@ -12,7 +12,7 @@ import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 import { ENGINEERING_VERIFICATION_SOURCE_DDL } from "./engineering-verification-source-ddl.js";
 import { VerificationSourceStore } from "./engineering-verification-source-store.js";
 const cleanups: (() => void)[] = [];
-afterEach(() => cleanups.splice(0).forEach(fn => fn()));
+afterEach(() => { for (const fn of cleanups.splice(0)) fn(); });
 function setup() {
   const root = createScratchDirSync("tests", "verification-source"); const path = join(root, "state.db");
   const db = openDb({ path }); db.pragma("synchronous=FULL");
