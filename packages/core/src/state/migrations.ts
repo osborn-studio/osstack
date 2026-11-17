@@ -1,3 +1,4 @@
+import { ENGINEERING_MISSION_LINEAGE_DDL } from "./engineering-mission-lineage-ddl.js";
 import { SOURCE_OBSERVATIONS_DDL } from "./source-observations-ddl.js";
 import { ENGINEERING_DDL } from "./engineering-ddl.js";
 import { ATTENTION_REMINDERS_DDL } from "./attention-reminders-ddl.js";
@@ -1888,6 +1889,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 53, name: "engineering_revision_grant_monotonic", sql: ENGINEERING_REVISION_GRANT_DDL },
   { id: 54, name: "engineering_host_processes", sql: ENGINEERING_HOST_PROCESS_DDL },
   { id: 55, name: "engineering_merger_scans", sql: ENGINEERING_MERGER_SCAN_DDL },
+  { id: 56, name: "engineering_mission_lineage", sql: ENGINEERING_MISSION_LINEAGE_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

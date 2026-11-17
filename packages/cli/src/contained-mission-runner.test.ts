@@ -1,3 +1,4 @@
+import { withLegacyRoot } from './contained-mission-lineage.testkit.js';
 import { createHash } from "node:crypto";
 import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -81,10 +82,10 @@ async function drive(f: ReturnType<typeof setup>, steps: number): Promise<Contai
 }
 
 describe("ContainedMissionRunner", () => {
-  it("dispatches one repair and rechecks the latest CI attempt before accepting merge readback", async () => {
+  it.each([false, true])("dispatches one repair and rechecks CI, or waits on unknown lineage (%s)", async unknownLineage => {
     const repository = "osborn-studio/osstack-bridge-sandbox";
     const branch = "osstack/mission/ci-seed";
-    const f = setup({
+    const create = () => setup({
       assertGithubCiScope: () => {},
       admitGithubCiCandidate: async () => {},
       publish: async ({ permit }) => ({ pushed_commit: permit.head, base_head: START,
@@ -94,6 +95,7 @@ describe("ContainedMissionRunner", () => {
       allowed_paths: ["src/**", "PROBE_FAIL"],
       publication: { remote: "origin", repository, base: "main", draft: false, preauthorized: true },
     });
+    const f = unknownLineage ? withLegacyRoot(create) : create();
     const root = await drive(f, 5);
     expect(root.state, f.kinds().join(", ")).toBe("pr_opened");
     const spec = JSON.parse(root.spec_json) as ContainedMissionSpec;
@@ -154,9 +156,16 @@ describe("ContainedMissionRunner", () => {
       const events = f.store.events(root.mission_id);
       expect(events.filter(event => event.kind === "ci_failure_observed"), observations.join("\n")).toHaveLength(1);
       const dispatched = events.filter(event => event.kind === "ci_repair_dispatched");
+      if (unknownLineage) {
+        expect(dispatched).toHaveLength(0);
+        expect(events.filter(e => e.kind === 'mission_lineage_unknown')).toHaveLength(1);
+        expect(f.store.db.prepare('SELECT count(*) n FROM engineering_contained_missions').get()).toEqual({ n: 1 });
+        return;
+      }
       expect(dispatched).toHaveLength(1);
       const child = f.store.get(JSON.parse(dispatched[0]!.payload_json).child as string);
       expect(child.state).toBe("authorized");
+      expect(f.store.lineage(child.mission_id)).toMatchObject({ origin_mission_id: root.mission_id, parent_mission_id: root.mission_id, chain_depth: 1, source_kind: "github_actions" });
       expect(JSON.parse(child.spec_json)).toMatchObject({ start_commit: head, allowed_paths: ["PROBE_FAIL"],
         publication: { preauthorized: false }, ci_repair: { root: root.mission_id, branch, base: START, pr: 7, check_run_id: check.id } });
       const id = child.mission_id;

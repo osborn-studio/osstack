@@ -8,7 +8,7 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const copy = value => structuredClone(value);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const ownerMatches = (a, b) => a && b && ['home_id', 'instance_id', 'generation'].every(key => a[key] === b[key]);
-const firstTurnKinds = ['contained_authorized', 'workspace_claimed', 'workspace_intent', 'workspace_created', 'qualification_probe', 'executor_launch_intent'];
+const firstTurnKinds = ['contained_authorized', 'workspace_claimed', 'mission_lineage_registered', 'workspace_intent', 'workspace_created', 'qualification_probe', 'executor_launch_intent'];
 // Match attentionDigest in the store without importing the production runtime.
 const canonical = value => Array.isArray(value) ? `[${value.map(canonical).join(',')}]`
   : value !== null && typeof value === 'object' ? `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`
@@ -121,16 +121,18 @@ export function installAdversarialExecuteHook(ports, options) {
       if (event.mission_id !== target.missionId || !Number.isSafeInteger(event.seq) || event.seq <= seq) refuse('history');
       seq = event.seq;
       let payload;
-      try { payload = JSON.parse(event.payload_json); } catch { refuse('history_payload'); }
+      try { payload = JSON.parse(event.payload_json); } catch { refuse(event.kind === 'mission_lineage_registered' ? 'first_turn_history' : 'history_payload'); }
       return { ...event, payload };
     });
     const rows = snapshot.hostProcesses;
     if (rows.length !== 0 && rows.length !== 3) refuse('workspace_host_rows');
     const hostKinds = rows.flatMap(() => ['host_process_launching', 'host_process_registered', 'host_process_released', 'host_process_stopped']);
-    const expectedKinds = [...firstTurnKinds.slice(0, 3), ...hostKinds, ...firstTurnKinds.slice(3), ...(starts === 1 ? ['executor_started'] : [])];
+    const expectedKinds = [...firstTurnKinds.slice(0, 4), ...hostKinds, ...firstTurnKinds.slice(4), ...(starts === 1 ? ['executor_started'] : [])];
     if (!same(decoded.map(event => event.kind), expectedKinds)) refuse('first_turn_history');
-    const [authorization, claim, intent, workspace, qualification, launchIntent, started] = [...decoded.slice(0, 3), ...decoded.slice(3 + hostKinds.length)];
-    validateWorkspaceSetup(rows, decoded.slice(3, 3 + hostKinds.length), intent, workspace);
+    const [authorization, claim, lineage, intent, workspace, qualification, launchIntent, started] = [...decoded.slice(0, 4), ...decoded.slice(4 + hostKinds.length)];
+    if (canonical(lineage.payload) !== canonical({ origin_mission_id: target.missionId, parent_mission_id: null,
+      chain_depth: 0, source_kind: 'local_root', source_id: null, idempotency_key: null })) refuse('first_turn_history');
+    validateWorkspaceSetup(rows, decoded.slice(4, 4 + hostKinds.length), intent, workspace);
     if (!/^[a-f0-9]{64}$/.test(m.spec_digest) || hash(canonical(spec)) !== m.spec_digest
       || authorization.payload?.spec_digest !== m.spec_digest || authorization.payload?.supersedes !== null
       || !m.owner_principal_id || authorization.actor !== m.owner_principal_id) refuse('authorization_binding');

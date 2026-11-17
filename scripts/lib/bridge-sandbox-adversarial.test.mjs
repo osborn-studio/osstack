@@ -43,6 +43,7 @@ function setup(t, execute) {
   const event = (kind, payload, actor = null) => events.push({ seq: events.length + 1, mission_id: target.missionId, kind, actor, payload_json: JSON.stringify(payload), created_at: 90 + events.length });
   event('contained_authorized', { spec_digest: specDigest, supersedes: null }, mission.owner_principal_id);
   event('workspace_claimed', { repo_identity: `${realpathSync(dir)}#${repoStat.dev}:${repoStat.ino}`, branch: spec.branch, worktree_identity: dir });
+  event('mission_lineage_registered', { origin_mission_id: target.missionId, parent_mission_id: null, chain_depth: 0, source_kind: 'local_root', source_id: null, idempotency_key: null });
   event('workspace_intent', { worktree_path: dir, branch: spec.branch, start_commit: spec.start_commit });
   event('workspace_created', { worktree: dir, git_dir: join(dir, '.git'), config_digest: 'c'.repeat(64), from: 'authorized', to: 'workspace_ready' });
   event('qualification_probe', q);
@@ -257,10 +258,10 @@ test('offline: fresh dirty worktree after real-shaped execute refuses before sub
 test('offline: golden source-shaped first-turn ledger accepts store transition payloads', async t => {
   const f = setup(t); const hook = installAdversarialExecuteHook(f.ports, f.options);
   const ledger = f.snapshot.events.map(e => ({ kind: e.kind, payload: JSON.parse(e.payload_json) }));
-  assert.deepEqual(ledger.map(e => e.kind), ['contained_authorized', 'workspace_claimed', 'workspace_intent', 'workspace_created', 'qualification_probe', 'executor_launch_intent']);
-  assert.deepEqual([ledger[3].payload.from, ledger[3].payload.to, ledger[5].payload.from, ledger[5].payload.to], ['authorized', 'workspace_ready', 'workspace_ready', 'executing']);
-  assert.equal(Object.hasOwn(ledger[3].payload, 'expected_head'), false);
-  assert.equal(Object.hasOwn(ledger[5].payload, 'revision'), false);
+  assert.deepEqual(ledger.map(e => e.kind), ['contained_authorized', 'workspace_claimed', 'mission_lineage_registered', 'workspace_intent', 'workspace_created', 'qualification_probe', 'executor_launch_intent']);
+  assert.deepEqual([ledger[4].payload.from, ledger[4].payload.to, ledger[6].payload.from, ledger[6].payload.to], ['authorized', 'workspace_ready', 'workspace_ready', 'executing']);
+  assert.equal(Object.hasOwn(ledger[4].payload, 'expected_head'), false);
+  assert.equal(Object.hasOwn(ledger[6].payload, 'revision'), false);
   await f.ports.execute(f.input);
   assert.deepEqual(hook.getEvidence().worktree_clean, { before: true, after: true });
   assert.equal(hook.getEvidence().injected, true); hook.restore();
@@ -279,10 +280,10 @@ function addWorkspaceHostSetup(f) {
       local_target: f.input.worktree + (i === 0 ? '' : '#index'), intent_id: null, argv_digest: String(i + 1).repeat(64),
       owner_home: 'home', owner_instance: 'owner', owner_generation: 1, boot_id: 'offline-boot',
       marker_path: join(f.input.worktree, `${op}.hold`), marker_dev: '1', marker_ino: String(i + 1), state: 'stopped',
-      pid: 200 + i, pgid: 200 + i, leader_start: 'offline-start', released_at: 1050 + i * 40,
+      pid: 200 + i, pgid: 200 + i, leader_start: 'offline-start', released_at: 1060 + i * 40,
       exit_code: 0, exit_signal: null, stop_proof: 'group_empty+marker_unheld',
       stop_detail_json: JSON.stringify({ group_present: false, marker_ok: true, marker_held: false, waited_ms: 65 }),
-      created_at: 1030 + i * 40, updated_at: 1060 + i * 40 };
+      created_at: 1040 + i * 40, updated_at: 1070 + i * 40 };
     f.snapshot.hostProcesses.push(row);
     const payloads = [
       { op_id: op, kind, remote_target: null, local_target: row.local_target, intent_id: null, argv_digest: row.argv_digest, boot_id: row.boot_id },
@@ -292,7 +293,7 @@ function addWorkspaceHostSetup(f) {
     ];
     phases.forEach((phase, j) => events.push({ mission_id: row.mission_id, actor: null, kind: `host_process_${phase}`, payload_json: JSON.stringify(payloads[j]) }));
   }
-  f.snapshot.events.splice(3, 0, ...events);
+  f.snapshot.events.splice(4, 0, ...events);
   f.snapshot.events.forEach((e, i) => { e.seq = i + 1; e.created_at = 1000 + i * 10; });
   changePayload(f, 'workspace_created', { config_digest: `sha256:${'c'.repeat(64)}` });
   f.run.launch.started_at = 1300; f.run.stop.confirmed_at = 1310;
@@ -323,12 +324,12 @@ for (const [name, mutate] of Object.entries({
   failed: f => { f.snapshot.hostProcesses[0].exit_code = 1; },
   unproven: f => { f.snapshot.hostProcesses[0].stop_proof = 'never_released'; },
   falseProofDetail: f => { f.snapshot.hostProcesses[0].stop_detail_json = '{"group_present":true}'; },
-  missingEvent: f => { f.snapshot.events.splice(5, 1); },
+  missingEvent: f => { f.snapshot.events.splice(6, 1); },
   wrongEventOp: f => changePayload(f, 'host_process_registered', { op_id: 'hp_other' }),
   wrongEventProof: f => changePayload(f, 'host_process_stopped', { released: false }),
   wrongEventExit: f => changePayload(f, 'host_process_stopped', { exit_code: 1 }),
   wrongEventDigest: f => changePayload(f, 'host_process_launching', { argv_digest: '0'.repeat(64) }),
-  lateHostEvent: f => { const e = f.snapshot.events.splice(3, 1)[0]; f.snapshot.events.push(e); f.snapshot.events.forEach((e, i) => { e.seq = i + 1; }); },
+  lateHostEvent: f => { const e = f.snapshot.events.splice(4, 1)[0]; f.snapshot.events.push(e); f.snapshot.events.forEach((e, i) => { e.seq = i + 1; }); },
 })) test(`offline: refuses invalid W13 setup ${name}`, async t => {
   const f = setup(t); addWorkspaceHostSetup(f); mutate(f);
   const hook = installAdversarialExecuteHook(f.ports, f.options);
@@ -342,4 +343,19 @@ test('offline: unchanged host setup rows are required after execute even if even
   const hook = installAdversarialExecuteHook(f.ports, f.options);
   await assert.rejects(f.ports.execute(f.input), /concurrent_change/);
   assert.equal(f.calls(), 1); assert.equal(hook.getEvidence().injected, false); hook.restore();
+});
+
+for (const [name, mutate] of Object.entries({
+  missing: events => { events.splice(2, 1); },
+  depth: events => { const p = JSON.parse(events[2].payload_json); p.chain_depth = 1; events[2].payload_json = JSON.stringify(p); },
+  duplicate: events => { events.splice(3, 0, { ...events[2] }); },
+  misplaced: events => { [events[2], events[3]] = [events[3], events[2]]; },
+  extraField: events => { const p = JSON.parse(events[2].payload_json); p.extra = true; events[2].payload_json = JSON.stringify(p); },
+  invalidJson: events => { events[2].payload_json = '{'; },
+})) test(`offline: refuses ${name} root lineage`, async t => {
+  const f = setup(t); mutate(f.snapshot.events);
+  f.snapshot.events.forEach((event, i) => { event.seq = i + 1; });
+  const hook = installAdversarialExecuteHook(f.ports, f.options);
+  await assert.rejects(f.ports.execute(f.input), /BRIDGE_SANDBOX_ADVERSARIAL_REFUSED:first_turn_history/);
+  assert.equal(f.calls(), 0); assert.equal(hook.getEvidence().injected, false); hook.restore();
 });

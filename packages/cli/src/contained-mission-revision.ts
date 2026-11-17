@@ -337,6 +337,11 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
     if (!terminal || previous.stop_obligation !== 0) return failure('previous_child_busy');
     if (missions.claim(previous.mission_id).state !== 'released') return failure('previous_claim_active');
   }
+  const parent = fresh.current_mission_id ?? fresh.root_mission_id;
+  if (missions.resolveLineage(parent).status === 'unknown') {
+    chains.stopLive(fresh.chain_id, fresh.revision, 'verify_chain_lineage_unknown', deps.now());
+    return { status: 'stopped', reason: 'verify_chain_lineage_unknown' };
+  }
   const hex = deps.randomHex ?? ((n: number) => randomBytes(n).toString('hex'));
   let spec: ContainedMissionSpec; let claim: { repo_identity: string; branch: string; worktree_identity: string };
   try {
@@ -354,7 +359,11 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
       assertGrantLive(chains.get(fresh.chain_id), { access: deps.access, keys: deps.keys(), now: at });
       const reserved = chains.reserve(fresh.chain_id, fresh.revision, { head: b.head, review_ids: b.review_ids, feedback_digest: b.feedback_digest }, at);
       fault('reserve');
-      const child = missions.authorize(principal, { scope_id: grant.scope_id, spec: spec as unknown as Record<string, unknown>, claim }, at);
+      const registered = missions.registerDerived(principal, { parent_mission_id: parent, scope_id: grant.scope_id,
+        spec: spec as unknown as Record<string, unknown>, claim, source: { kind: 'review', id: fresh.chain_id },
+        idempotency_key: `revision:${fresh.chain_id}:${reserved.chain.rounds_used}` }, at);
+      if (registered.status === 'waiting') throw Error('verify_chain_lineage_unknown');
+      const child = registered.mission;
       fault('authorize');
       const dispatched = chains.dispatch(fresh.chain_id, reserved.chain.revision, b.head, child.mission_id, at);
       fault('dispatch');
