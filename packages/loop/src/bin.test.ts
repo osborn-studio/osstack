@@ -3,7 +3,7 @@ import { readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "./bin.js";
+import { main, printLoopRun } from "./bin.js";
 
 let workspace: string;
 let stdoutSpy: ReturnType<typeof vi.spyOn>;
@@ -30,6 +30,17 @@ afterEach(async () => {
 });
 
 describe("osstack-loop standalone CLI", () => {
+  it("prints invalid deviation warnings in text and preserves JSON data", () => {
+    const result = { loop_id: "loop", json_path: "state.json", markdown_path: "state.md",
+      completed_tasks: [{ task_id: "task", outcome: "success" as const, iterations: 1,
+        agent_id: "builder", duration_ms: 1, verify_issues: [{ rule: "verify.deviations_invalid", message: "report invalid: json" }] }],
+    };
+    printLoopRun(result, false);
+    expect(stdout).toContain("    warning: report invalid: json");
+    stdout = [];
+    printLoopRun(result, true);
+    expect(JSON.parse(stdout.join("\n"))).toEqual(result);
+  });
   it("enqueues, runs, and renders status without the osstack CLI package", async () => {
     await expect(main([
       "enqueue",
