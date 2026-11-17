@@ -20,6 +20,11 @@
     "reason": "Legacy database-path refusal message names the Hermes host that must receive the error."
   },
   {
+    "file": "packages/core/src/state/decision-queries.ts",
+    "count": 1,
+    "reason": "Read-only query named after the 'hermes' pending-decision source added in #453; it reads the Hermes approvals and clarifications tables. Renaming it changes the decisions.list contract."
+  },
+  {
     "file": "packages/core/src/state/migrations.ts",
     "count": 1,
     "reason": "Historical SQL migration defines persisted hermes_session_id columns; changing the schema requires a separate migration."
@@ -108,5 +113,10 @@
     "file": "packages/loop/src/verifier.ts",
     "count": 7,
     "reason": "Legacy Kimi adapter timeout, structured-review selection and context key affect verifier behavior; migrate through adapter contracts separately."
+  },
+  {
+    "file": "packages/protocol/src/decisions.ts",
+    "count": 1,
+    "reason": "Public DecisionSource enum value 'hermes' from #453 names where a pending decision comes from. It is a protocol value clients already receive, not an adapter or model selection."
   }
 ]
