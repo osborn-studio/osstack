@@ -314,6 +314,7 @@ export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftP
 export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
 export {
 export {
+export { MissionDecideRequest } from "./mission-decide.js";
 export { DecisionSource, PendingDecision, DecisionsListParams, DecisionsListResult } from "./decisions.js";
 ```
 

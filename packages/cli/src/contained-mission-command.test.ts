@@ -42,6 +42,18 @@ describe("osstack mission", () => {
     expect(missing.err.join("\n")).toContain("required:--verify-arg");
   });
 
+  it("passes bounded decision identity and expected revision to mission.decide", async () => {
+    const r = await run(["decide", "--mission", MID, "--decision", "abandon", "--decision-id", "operator:42", "--expected-revision", "3", "--json"]);
+    expect(r.code).toBe(0);
+    expect(r.calls).toEqual([{ method: "mission.decide", params: { credential, mission_id: MID, decision: "abandon", decision_id: "operator:42", expected_revision: 3 } }]);
+    for (const bad of ["", "!bad", "x".repeat(129)]) {
+      const result = await run(["decide", "--mission", MID, "--decision", "abandon", "--decision-id", bad]);
+      expect(result.calls).toEqual([]);
+    }
+    const stale = await run(["decide", "--mission", MID, "--decision", "abandon", "--expected-revision", "0"]);
+    expect(stale.calls).toEqual([]);
+  });
+
   it("rejects unknown commands and flags, and reports daemon errors without the credential", async () => {
     expect((await run(["merge"])).err.join("\n")).toContain("unknown_mission_command");
     expect((await run(["status", "--mission", MID, "--force", "1"])).err.join("\n")).toContain("unknown_flag:--force");
