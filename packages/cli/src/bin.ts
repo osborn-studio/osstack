@@ -236,6 +236,7 @@ function renderChineseMainHelp(): string {
   worker logs --grant-file <file>  凭独立授权只读查看持久输出
   engineering         采纳现有 Session，回答决定并观察本轮结果
   mission             受限单执行器 Mission：只读提议补丁，主机分类、应用、验证
+  decisions list      只读查看全部待决定事项 [--scope ID] [--json]
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden|paired_holdout  路由评估与配对留出比较
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
@@ -485,6 +486,7 @@ Project commands:
   worker logs --grant-file <file>  Read persisted output with a separate content grant
   engineering         Adopt a Session, answer decisions, and observe the reply turn
   mission             Contained single-executor Missions: read-only proposals, host-applied and verified
+  decisions list      Read pending decisions across sources [--scope ID] [--json]
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden|paired_holdout  Router evaluation and paired holdout comparison
   graph               Executable delivery graphs and read-only explain (graph --help)
@@ -853,6 +855,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "engineering") {
     const { handleEngineeringCommand } = await import("./engineering-command.js");
     return await handleEngineeringCommand(args.slice(1), { rpc });
+  }
+
+  if (cmd === "decisions") {
+    const { handleDecisionsCommand } = await import("./decisions/command.js");
+    return await handleDecisionsCommand(args.slice(1), { rpc });
   }
 
   if (cmd === "mission") {
