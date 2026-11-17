@@ -45,6 +45,8 @@ export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFi
 export { createBoundedMessagesAdapter, type BoundedMessagesOptions } from "./bounded-messages.js";
 export { createControlledTriageProvider } from "./controlled-triage.js";
 export type { ControlledTriageProvider, ControlledTriageOptions } from "./controlled-triage.js";
+export type { ContainedProfileCapture, ContainedProfileRunOptions } from './contained-profile-run.js';
+export type { ContainedProfileRunResult } from './contained-command.js';
 ```
 
 ## `@osstack/autonomy`

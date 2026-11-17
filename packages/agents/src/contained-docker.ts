@@ -1,9 +1,9 @@
-import { request } from 'node:http';
+import { request, type IncomingHttpHeaders } from 'node:http';
 
 /** Local, explicit Docker Engine only. Never inherits DOCKER_HOST/context or credentials. */
 export class ContainedDocker {
   constructor(readonly socketPath: string, private readonly timeoutMs = 5000) {}
-  async call(method: string, path: string, body?: unknown): Promise<{ status: number; bytes: Buffer }> {
+  async call(method: string, path: string, body?: unknown, maxResponseBytes = 1024 * 1024): Promise<{ status: number; bytes: Buffer; headers: IncomingHttpHeaders }> {
     return new Promise((resolve, reject) => {
       const bytes = body === undefined ? undefined : Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body));
       const req = request({ socketPath: this.socketPath, path: `/v1.47${path}`, method,
@@ -11,16 +11,38 @@ export class ContainedDocker {
         const chunks: Buffer[] = []; let length = 0;
         res.on('data', (chunk: Buffer) => {
           length += chunk.length;
-          if (length > 1024 * 1024) req.destroy(Error('CONTAINED_RESPONSE_LIMIT'));
+          if (length > maxResponseBytes) req.destroy(Error('CONTAINED_RESPONSE_LIMIT'));
           else chunks.push(chunk);
         });
         res.on('error', reject); res.on('aborted', () => reject(Error('CONTAINED_RESPONSE_ABORTED')));
-        res.on('end', () => resolve({ status: res.statusCode ?? 0, bytes: Buffer.concat(chunks) }));
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, bytes: Buffer.concat(chunks), headers: res.headers }));
       });
       const timer = setTimeout(() => req.destroy(Error('CONTAINED_API_TIMEOUT')), this.timeoutMs);
       req.on('close', () => clearTimeout(timer)); req.on('error', reject); req.end(bytes);
     });
   }
+  /** Header timeout only. The caller owns stream lifetime and byte accounting. */
+  async stream(method: string, path: string, onData: (chunk: Buffer) => void): Promise<{ status: number; done: Promise<void>; destroy: () => void }> {
+    return new Promise((resolve, reject) => {
+      let failStream: ((error: Error) => void) | undefined;
+      const req = request({ socketPath: this.socketPath, path: `/v1.47${path}`, method }, res => {
+        clearTimeout(timer);
+        const done = new Promise<void>((end, fail) => {
+          failStream = fail;
+          res.on('data', (chunk: Buffer) => { try { onData(chunk); } catch (error) { req.destroy(error instanceof Error ? error : Error(String(error))); } });
+          res.on('end', end); res.on('error', fail);
+          res.on('aborted', () => fail(Error('CONTAINED_RESPONSE_ABORTED')));
+        });
+        // Errors can arrive before the caller installs its completion handler.
+        void done.catch(() => {});
+        resolve({ status: res.statusCode ?? 0, done, destroy: () => res.destroy() });
+      });
+      const timer = setTimeout(() => req.destroy(Error('CONTAINED_API_TIMEOUT')), this.timeoutMs);
+      req.on('close', () => clearTimeout(timer));
+      req.on('error', error => { reject(error); failStream?.(error); }); req.end();
+    });
+  }
+
 }
 
 export function dockerLogs(bytes: Buffer): string {
