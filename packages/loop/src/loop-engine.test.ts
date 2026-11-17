@@ -241,6 +241,39 @@ describe("LoopEngine", () => {
     }));
   });
 
+  it("keeps an explicit reviewer failure on the normal implementation iteration path", async () => {
+    const workspace = await makeGitQueuedWorkspace("stable\n");
+    await git(workspace, ["mv", "app.txt", "app.ts"]);
+    await git(workspace, ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", "Use a reviewable source extension"]);
+    let reviews = 0;
+    const resumeReport = vi.fn();
+    const base = new FakeKimiReviewAdapter();
+    const reviewer: AgentAdapter = {
+      id: base.id, display_name: base.display_name, cost_tier: base.cost_tier,
+      capabilities: () => base.capabilities(), isAvailable: () => base.isAvailable(),
+      async *invoke(task) {
+        reviews++;
+        if (reviews === 1) yield fakeEvent(task, 0, "done", {
+          status: "failed", last_seq: 0, result_summary: "review rejected",
+        }, true);
+        else yield* base.invoke(task);
+      },
+      resumeReport,
+    };
+    const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      executeCommand: "node -e \"require('fs').appendFileSync('app.ts', 'work\\n')\"",
+      verifyCommands: ["node -e \"process.exit(0)\""],
+      verifierAgentIds: [reviewer.id], adapters: [reviewer], maxIterations: 3,
+    }).runOnce();
+    expect(result.state.completed_tasks[0]).toMatchObject({ iterations: 2, outcome: "success" });
+    expect(result.state.completed_tasks[0]?.report_invalid).toBeUndefined();
+    expect(reviews).toBe(2);
+    expect(resumeReport).not.toHaveBeenCalled();
+    expect(result.events.filter(event => event.type === "loop.execute.done")).toHaveLength(2);
+    expect(result.events.filter(event => event.type.startsWith("loop.report_repair."))).toHaveLength(0);
+    await expect(readFile(join(workspace, "app.ts"), "utf8")).resolves.toBe("stable\nwork\nwork\n");
+  });
+
   it.each(["success", "exhausted", "unsupported", "budget"])("retries only the reviewer for invalid structured report: %s", async mode => {
     const workspace = await makeGitQueuedWorkspace("stable\n");
     await git(workspace, ["mv", "app.txt", "app.ts"]);

@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import {
+  DonePayload,
   StructuredReviewSchema,
   type HermesEvent,
 } from "@osstack/hermes-adapter";
@@ -651,10 +652,6 @@ async function runVerifierAdapters(
       if (timeoutMs === undefined) { repairReason = "budget_insufficient"; break; }
       hooks.event("loop.report_repair.attempt", { role: "reviewer", agent_id: adapter.id, attempt, original_run_id: originalRunId });
       result = await invokeVerifierAdapter(run, { ...options, reportRunId: originalRunId, timeoutMs }, adapter, adapterSpecs, verificationResults);
-      if ((result.reviewArtifact === undefined || result.issues.some(issue => ["verify.adapter_failed", "verify.adapter_stop_unconfirmed", "verify.reviewer_mutation", "verify.reviewer_integrity_unconfirmed"].includes(issue.rule ?? "")))
-        && !result.issues.some(issue => issue.rule === "verify.review_artifact_invalid")) {
-        result.issues.push(adapterIssue(adapter.id, "verify.review_artifact_invalid", "Report repair did not produce a valid review artifact"));
-      }
       hooks.event("loop.report_repair.result", { role: "reviewer", agent_id: adapter.id, attempt,
         report_valid: result.reviewArtifact !== undefined && !result.issues.some(issue => issue.rule === "verify.adapter_failed"), issues: result.issues });
     }
@@ -785,6 +782,7 @@ async function invokeVerifierAdapter(
   let usage: Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd"> = {};
   let eventCount = 0;
   let summary: string | undefined;
+  let reportProtocolError: string | undefined;
   let status: "completed" | "failed" | "cancelled" | "expired" | undefined;
   let terminalError: string | undefined;
   let judgments: AdapterEvaluationJudgment[] | undefined;
@@ -836,7 +834,20 @@ async function invokeVerifierAdapter(
         terminalError = errorPayload(event.payload).message;
       }
       if (event.type === "done") {
-        const payload = donePayload(event.payload);
+        // Validate the envelope separately: structured review parsing below
+        // supplies its own protocol error without masking a valid failure status.
+        const parsedDone = DonePayload.omit({ review: true, implementation_deviations: true, implementation_deviations_problem: true }).safeParse(event.payload);
+        if (!parsedDone.success) {
+          reportProtocolError = "verifier emitted an invalid done payload";
+          continue;
+        }
+        const rawPayload = event.payload as Record<string, unknown>;
+        const payload = {
+          ...parsedDone.data,
+          review: rawPayload["review"],
+          implementation_deviations: rawPayload["implementation_deviations"],
+          implementation_deviations_problem: rawPayload["implementation_deviations_problem"],
+        };
         const rawUsage = (event.payload as Record<string, unknown>)["usage"];
         if (rawUsage && typeof rawUsage === "object") usage = reportUsage(rawUsage as Record<string, unknown>);
         status = payload.status;
@@ -934,14 +945,20 @@ async function invokeVerifierAdapter(
       "reviewer changed the builder workspace or Git metadata",
     ));
   }
+  if (reportProtocolError !== undefined || status === undefined) {
+    issues.push(adapterIssue(adapter.id, "verify.review_artifact_invalid",
+      reportProtocolError ?? "verifier did not emit a done event"));
+  }
+  // A failed/cancelled/expired review is a business outcome. Only a
+  // completed (or missing) report must supply a structured review artifact.
   if (structuredReview) {
-    if (reviewArtifact === undefined) {
+    if (reviewArtifact === undefined && status === "completed") {
       issues.push(adapterIssue(
         adapter.id,
         "verify.review_artifact_invalid",
         reviewArtifactError ?? "structured review payload is missing",
       ));
-    } else if (reviewArtifact.verdict !== "approved") {
+    } else if (reviewArtifact !== undefined && reviewArtifact.verdict !== "approved") {
       issues.push(adapterIssue(
         adapter.id,
         "verify.review_not_approved",
@@ -963,7 +980,7 @@ async function invokeVerifierAdapter(
     ));
   } else if (
     status !== "completed"
-    && !(structuredReview && reviewArtifact?.verdict !== "approved")
+    && !(structuredReview && reviewArtifact !== undefined && reviewArtifact.verdict !== "approved")
   ) {
     const message = summary
       ?? (controller.signal.aborted
@@ -1172,24 +1189,6 @@ const DeviationProblem = z.object({
   kind: z.enum(["json", "shape", "entries", "oversized"]),
   invalid_count: z.number().int().positive().optional(),
 });
-
-function donePayload(payload: HermesEvent["payload"]): {
-  status: "completed" | "failed" | "cancelled" | "expired";
-  result_summary?: string;
-  evaluation_judgments?: unknown;
-  implementation_deviations?: unknown;
-  implementation_deviations_problem?: unknown;
-  review?: unknown;
-} {
-  return payload as {
-    status: "completed" | "failed" | "cancelled" | "expired";
-    result_summary?: string;
-    evaluation_judgments?: unknown;
-    implementation_deviations?: unknown;
-    implementation_deviations_problem?: unknown;
-    review?: unknown;
-  };
-}
 
 function reportUsage(payload: Record<string, unknown>): Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd"> {
   const result: Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd"> = {};
