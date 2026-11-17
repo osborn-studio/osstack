@@ -8,9 +8,10 @@
 //   - CiLogScanner: parse CI failure logs → Task[]
 //   - TaskQueueScanner: read tasks/ YAML files → Task[]
 
-import { execSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { execFileSync, execSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { scanBranchStewardCandidates } from "@osstack/github";
 import { parseTaskQueueFile } from "./task-queue.js";
@@ -41,16 +42,25 @@ export class GitDiffScanner implements DiscoverScanner {
 
   async scan(): Promise<Task[]> {
     try {
-      const diffStat = execSync("git diff --numstat -z", {
-        cwd: this.workspacePath,
-        encoding: "utf-8",
-        timeout: 10_000,
+      const root = gitValue(this.workspacePath, ["rev-parse", "--show-toplevel"]);
+      if (!root) return [];
+      const diffStat = execFileSync("git", ["diff", "--numstat", "-z", "--", ":/"], {
+        cwd: root, encoding: "utf-8", maxBuffer: 32 * 1024 * 1024,
       });
 
       if (!diffStat) return [];
 
+      const index = execFileSync("git", ["ls-files", "-s", "-z"], {
+        cwd: root, encoding: "utf-8", maxBuffer: 64 * 1024 * 1024,
+      });
+      const indexIds = new Map<string, string>();
+      for (const record of index.split("\0")) {
+        const match = record.match(/^[0-9]+ ([a-f0-9]+) [0-3]\t([\s\S]+)$/);
+        if (match) indexIds.set(match[2]!, match[1]!);
+      }
+
       const records = diffStat.split("\0");
-      const tasks: Task[] = [];
+      const changed: { file: string; line: string; changes: number }[] = [];
 
       for (let index = 0; index < records.length; index++) {
         const line = records[index]!;
@@ -67,8 +77,34 @@ export class GitDiffScanner implements DiscoverScanner {
         if (!file || match[1] === "-" || match[2] === "-") continue;
         const changes = parseInt(match[1]!, 10) + parseInt(match[2]!, 10);
 
+        changed.push({ file, line, changes });
+      }
+
+      const present: string[] = [];
+      const failed = new Set<string>();
+      for (const { file } of changed) {
+        try {
+          if ((await stat(join(root, file))).isFile()) present.push(file);
+          else failed.add(file);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") failed.add(file);
+        }
+      }
+      const worktreeIds = await hashWorktreeFiles(root, present, indexIds);
+      const presentSet = new Set(present);
+      const tasks: Task[] = [];
+      for (const { file, line, changes } of changed) {
+        if (failed.has(file) || (presentSet.has(file) && !worktreeIds.has(file))) {
+          console.warn(`git_diff: skipped ${file}: could not hash worktree file`);
+          continue;
+        }
+        const fields = ["git_diff_blob_v1", file, indexIds.get(file) ?? "missing-index", worktreeIds.get(file) ?? "deleted-worktree"];
+        const hash = createHash("sha256");
+        for (const field of fields) hash.update(Buffer.from(`${Buffer.byteLength(field)}:`)).update(field);
+        const taskId = `git-diff-${hash.digest("hex")}`;
+
         tasks.push({
-          task_id: randomUUID(),
+          task_id: taskId,
           capability: "code.review",
           prompt: `Review changes in ${file} (${changes} lines modified). Check for correctness, style, and potential issues.`,
           priority: Math.min(changes * 5, 100),
@@ -82,10 +118,56 @@ export class GitDiffScanner implements DiscoverScanner {
       }
 
       return tasks.sort((a, b) => b.priority - a.priority);
-    } catch {
+    } catch (error) {
+      console.warn("git_diff: scan failed", error);
       // Not a git repo or git not available — no tasks
       return [];
     }
+  }
+}
+
+async function hashWorktreeFiles(root: string, files: string[], indexIds: Map<string, string>): Promise<Map<string, string>> {
+  if (files.length === 0) return new Map();
+  // Git's stdin-paths format uses LF. Fall back to streaming hashes for paths
+  // that cannot be represented there, or if a file changes during the batch.
+  const batchFiles = files.filter((file) => !file.includes("\n"));
+  const ids = new Map<string, string>();
+  try {
+    const output = execFileSync("git", ["hash-object", "--stdin-paths"], {
+      cwd: root, input: `${batchFiles.join("\n")}\n`, encoding: "utf-8",
+      maxBuffer: Math.max(1024 * 1024, batchFiles.length * 128),
+    }).trim();
+    const hashes = output === "" ? [] : output.split("\n");
+    if (hashes.length !== batchFiles.length) throw Error("hash-object returned fewer file ids than requested");
+    batchFiles.forEach((file, index) => { ids.set(file, hashes[index]!); });
+  } catch (error) {
+    console.warn("git_diff: batch hash failed; hashing files individually in process", error);
+  }
+  const algorithm = [...indexIds.values()][0]?.length === 64 ? "sha256" : "sha1";
+  for (const file of files) {
+    if (ids.has(file)) continue;
+    try {
+      const size = (await stat(join(root, file))).size;
+      const hash = createHash(algorithm).update(`blob ${size}\0`);
+      for await (const chunk of createReadStream(join(root, file))) hash.update(chunk);
+      ids.set(file, hash.digest("hex"));
+    } catch (error) {
+      console.warn(`git_diff: skipped ${file}:`, error);
+    }
+  }
+  return ids;
+}
+
+function gitValue(workspacePath: string, args: string[]): string | undefined {
+  try {
+    return execFileSync("git", args, {
+      cwd: workspacePath,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 10_000,
+    }).trim();
+  } catch {
+    return undefined;
   }
 }
 
