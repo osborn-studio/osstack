@@ -3,6 +3,8 @@
   "files": {
     "includes": [
       "packages/**/src/**/*.ts",
+      "scripts/check-deterministic-rules*.mjs",
+      "scripts/deterministic-*-allowlist.json",
       "!**/dist",
       "!**/node_modules"
     ]
