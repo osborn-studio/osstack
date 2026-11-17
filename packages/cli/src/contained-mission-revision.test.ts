@@ -4,7 +4,7 @@ import type { RevisionChain } from '@osstack/core';
 import { classifyMissionPatch } from '@osstack/governance';
 import { describe, expect, it } from 'vitest';
 import { type ScriptedPr, oid } from './contained-mission-bridge-shadow.testkit.js';
-import { FAKE_TOKEN, H, T0, changesRequested, code, dispatched, setup, type Fixture } from './contained-mission-revision.testkit.js';
+import { FAKE_TOKEN, H, T0, changesRequested, code, dispatched, setup, reserveFixtureIntake, type Fixture } from './contained-mission-revision.testkit.js';
 import { buildRevisionChildSpec, createRevisionLaunchPort, releaseRevisionChildClaim, renderFeedbackText, rootTierOf } from './contained-mission-revision.js';
 import { executorPromptFor, parseContainedMissionSpec, type ContainedMissionSpec } from './contained-mission-runner.js';
 
@@ -432,4 +432,29 @@ it('stops unknown lineage before reserving and refuses grant replacement', async
   const stopped = f.rig.chains.get(f.chain.chain_id);
   expect(stopped.rounds_used).toBe(0);
   expect(() => f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, f.renew(), T0)).toThrow('state_denied');
+});
+describe('root writer exclusion before the review budget pre-check', () => {
+  it('waits for an active intake without stopping the chain, then dispatches after proven settlement', async () => {
+    const f = setup({ budget: { max_executor_seconds: 3600, max_container_seconds: 240, max_wall_clock_hours: 48 } });
+    const diagnosis = reserveFixtureIntake(f.rig, f.chain.chain_id, T0, 20);
+    expect(await f.dispatch()).toEqual({ status: 'conflict', code: 'chain_busy' });
+    expect(f.rig.chains.get(f.chain.chain_id).state).toBe('awaiting_review');
+    expect(f.reservations()).toEqual([]);
+    expect(f.children()).toEqual([]);
+    expect(f.missionCount()).toBe(1);
+    diagnosis.settle();
+    expect((await f.dispatch()).status).toBe('dispatched');
+  });
+
+  it('waits while an Actions repair child has not settled', async () => {
+    const f = setup();
+    f.rig.missions.authorize(f.principal, { scope_id: f.rig.scope.scope_id,
+      spec: { goal: 'repair fixture', ci_repair: { root: f.rootId } },
+      claim: { repo_identity: 'actions', branch: 'actions', worktree_identity: 'actions' } }, T0);
+    expect(await f.dispatch()).toEqual({ status: 'conflict', code: 'chain_busy' });
+    expect(f.rig.chains.get(f.chain.chain_id).state).toBe('awaiting_review');
+    expect(f.reservations()).toEqual([]);
+    expect(f.children()).toEqual([]);
+    expect(f.missionCount()).toBe(2);
+  });
 });

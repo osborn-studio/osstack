@@ -6,7 +6,7 @@
 import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import {
-  RevisionChainError, RevisionGrantError, SAME_CHILD_RESUMABLE, combineFeedbackDigests, decideChainStep, parseStoredGrant, reduceReviewers, scratchPath,
+  RevisionChainError, RevisionGrantError, SAME_CHILD_RESUMABLE, combineFeedbackDigests, decideChainStep, readRootActivity, parseStoredGrant, reduceReviewers, scratchPath,
   type ChainDecision, type ChainView, type ContainedMissionStore, type PrSnapshot, type ProducerRegistry, type RevisionChain, type RevisionChainStore, type RevisionGrant,
 } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
@@ -329,6 +329,8 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
   try { rootSpec = parseContainedMissionSpec(rootMission.spec_json); } catch { return failure('root_spec_invalid'); }
   const repair = Math.min(rootSpec.max_repair_cycles ?? 2, 8);
   const slice = { executor_seconds: (1 + repair) * deps.launchCaps.executor_seconds, container_seconds: (1 + repair) * deps.launchCaps.verify_seconds };
+  const activity = readRootActivity(chains.db, fresh.root_mission_id);
+  if (activity.local_failure || activity.actions_repair) return { status: 'conflict', code: 'chain_busy' };
   const left = chains.remainingBudget(fresh.chain_id);
   if (left.executor_seconds < slice.executor_seconds || left.container_seconds < slice.container_seconds) return stop('budget_exhausted');
   if (fresh.current_mission_id !== null) {

@@ -1,3 +1,5 @@
+import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit } from "./engineering-root-admission.js";
+import { parseLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AttentionOwner, AttentionStore } from "./attention-store.js";
@@ -542,11 +544,12 @@ export class RevisionChainStore {
     const chain = this.get(chainId);
     if (chain.mode !== "live") fail("bridge_shadow_write_denied");
     const limits = this.budgetOf(chain);
-    let executor = limits.max_executor_seconds; let container = limits.max_container_seconds;
-    for (const [child, slice] of Object.entries(this.allocationsOf(chain))) {
+    let executor = limits.max_executor_seconds;
+    const allocations = this.allocationsOf(chain);
+    const container = limits.max_container_seconds - childContainerDebit(this.db, allocations) - readIntakeContainerDebit(this.db, chainId);
+    for (const [child, slice] of Object.entries(allocations)) {
       const settled = this.db.prepare(`SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state IN ${TERMINAL_CHILD} AND stop_obligation=0`).get(child);
       executor -= settled ? slice.executor_used : slice.executor_seconds;
-      container -= settled ? slice.container_used : slice.container_seconds;
     }
     return { executor_seconds: Math.max(0, executor), container_seconds: Math.max(0, container) };
   }
@@ -621,7 +624,11 @@ export class RevisionChainStore {
     } catch (error) { return error instanceof RevisionChainError ? fail(error.code) : fail("spent_unreadable"); }
   }
   private budgetOf(chain: RevisionChain) {
-    try { return parseStoredGrant(chain.grant_json).budget; } catch { return fail("chain_grant_unreadable"); }
+    try {
+      // Budget reading accepts the existing V2 contract; launch authorization is unchanged.
+      return (JSON.parse(chain.grant_json).version === 2
+        ? parseLocalFailureRevisionGrant(chain.grant_json) : parseStoredGrant(chain.grant_json)).budget;
+    } catch { return fail("chain_grant_unreadable"); }
   }
 
   appendEvent(chainId: string, kind: string, payload: unknown, now: number): number {
@@ -660,6 +667,7 @@ export class RevisionChainStore {
     if (!input.head || input.head.length > 128 || !input.feedback_digest || input.review_ids.length === 0) fail("invalid_reservation");
     if (this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE chain_id=? AND state IN ('reserved','dispatched')").get(chain.chain_id)) fail("chain_busy");
     if (this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, input.head)) fail("head_already_reserved");
+    if (!checkRootAdmission(this.db, chain.root_mission_id, "review").ok) fail("chain_busy");
     if (input.head !== chain.published_head) fail("head_mismatch");
     this.db.prepare(`INSERT INTO engineering_revision_reservations(repository,pr_number,head_sha,chain_id,review_ids_json,feedback_digest,state,created_at,updated_at)
       VALUES(?,?,?,?,?,?,'reserved',?,?)`).run(chain.repository, chain.pr_number, input.head, chain.chain_id, JSON.stringify([...input.review_ids]), input.feedback_digest, now, now);

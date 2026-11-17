@@ -1,10 +1,11 @@
 // Test support for revision children (phase 5-B): a live chain with a really signed grant over a rig ledger, a scripted PR with review text, and
 // the dispatch dependencies. Not imported by production code.
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomUUID } from 'node:crypto';
 import { mkdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { grantPreviewOf, signRevisionGrant, type EngineeringPrincipal, type RevisionGrant, type SnapshotReview } from '@osstack/core';
 import { afterEach } from 'vitest';
+import { LocalFailureIntakeStore } from '@osstack/core/dist/state/engineering-local-failure-intake-store.js';
 import { PULL_REQUEST_QUERY, readPullRequest } from './contained-mission-bridge-reader.js';
 import { createRig, oid, scriptedTransport, type ScriptedPr } from './contained-mission-bridge-shadow.testkit.js';
 import { type DispatchFaultStep, type DispatchRevisionDeps, dispatchRevision } from './contained-mission-revision.js';
@@ -99,3 +100,22 @@ export const dispatched = async (f: Fixture) => {
   if (out.status !== 'dispatched') throw new Error(`not dispatched: ${JSON.stringify(out)}`);
   return out;
 };
+
+/** A persisted V2 diagnosis survives a later review-only grant replacement. No process is started. */
+export function reserveFixtureIntake(rig: ReturnType<typeof createRig>, chainId: string, now: number, cap = 20) {
+  const original = rig.chains.get(chainId);
+  const grant = { ...JSON.parse(original.grant_json), version: 2,
+    local_failure: { enabled: true, profile_id: 'fixture', profile_digest: PD,
+      trusted_source: { artifact_digest: PD }, diagnostic_timeout_seconds: cap, max_diagnostics_per_head: 1 } };
+  rig.db.prepare('UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?').run(JSON.stringify(grant), chainId);
+  const chain = rig.chains.get(chainId);
+  const store = new LocalFailureIntakeStore(rig.attention, rig.owner, () => now);
+  const intake = store.reserve({ intake_id: `lfi_${randomUUID()}`, chain_id: chainId, chain_revision: chain.revision,
+    root_mission_id: chain.root_mission_id, repository: chain.repository, pr_number: chain.pr_number, branch: chain.branch,
+    head_sha: chain.published_head, tree_sha: oid('d'), base_ref: chain.base_ref, base_sha: chain.published_base!,
+    profile_id: 'fixture', profile_digest: PD, trusted_source_digest: PD, grant_id: grant.grant_id,
+    grant_digest: createHash('sha256').update(chain.grant_json).digest('hex'), invocation_id: randomUUID(),
+    journal_ref: 'fixture', container_cap_seconds: cap, ci_hint_json: '{}' });
+  rig.db.prepare('UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?').run(original.grant_json, chainId);
+  return { intake, store, settle: () => store.settleNotStarted(intake.intake_id, intake.revision) };
+}

@@ -9,7 +9,6 @@ import { AttentionStore } from "./attention-store.js";
 import { openDb } from "./db.js";
 import { ContainedMissionStore } from "./engineering-contained-store.js";
 import { RevisionChainStore } from "./engineering-revision-chain-store.js";
-import { ENGINEERING_LOCAL_FAILURE_INTAKE_DDL } from "./engineering-local-failure-intake-ddl.js";
 import { LocalFailureIntakeStore, type NewLocalFailureIntake, type StoppedDiagnostic } from "./engineering-local-failure-intake-store.js";
 
 const H = "a".repeat(40), B = "b".repeat(40), P = "c".repeat(64), E = "d".repeat(64);
@@ -22,7 +21,6 @@ function setup(identity: Partial<Pick<NewLocalFailureIntake, "head_sha" | "tree_
   const path = join(root, "state.db"), db = openDb({ path });
   cleanup.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   db.pragma("synchronous=FULL");
-  db.exec(ENGINEERING_LOCAL_FAILURE_INTAKE_DDL);
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   const attention = new AttentionStore(db, path), owner = attention.claimOwner("owner");
   const scope = attention.registerScope(owner, "t", root);
@@ -71,7 +69,7 @@ it("serializes duplicate and competing admissions across separate SQLite handles
   expect(() => other.reserve(f.input)).toThrow(/locked/);
   f.db.exec("ROLLBACK");
   f.store.reserve(f.input);
-  expect(() => other.reserve(f.input)).toThrow(/intake_reused/);
+  expect(() => other.reserve(f.input)).toThrow("verify_chain_busy");
   expect(() => other.reserve({ ...f.input, intake_id: `lfi_${randomUUID()}`, invocation_id: "other", profile_digest: P })).toThrow();
   expect(other.containerDebit(f.chain.chain_id)).toBe(20);
 });
@@ -196,7 +194,7 @@ it("keeps one active intake across a profile regrant and rejects a moved launch 
   f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?").run(JSON.stringify(grant), f.chain.chain_id);
   const chain = f.chains.get(f.chain.chain_id);
   expect(() => f.store.reserve({ ...f.input, intake_id: `lfi_${randomUUID()}`, invocation_id: "new-profile", chain_revision: chain.revision,
-    profile_digest: E, grant_digest: sha(chain.grant_json) })).toThrow("intake_reused");
+    profile_digest: E, grant_digest: sha(chain.grant_json) })).toThrow("verify_chain_busy");
   expect(() => f.store.start("lfi_00000000-0000-4000-8000-000000000001", 1)).toThrow("intake_start_denied");
   expect(f.store.containerDebit(f.chain.chain_id)).toBe(20);
 });

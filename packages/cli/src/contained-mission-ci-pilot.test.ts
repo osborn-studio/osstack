@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { AttentionStore, ContainedMissionStore, HostProcessStore, createScratchDirSync, openDb } from '@osstack/core';
 import { describe, expect, it, vi } from 'vitest';
 import { createRig, oid } from './contained-mission-bridge-shadow.testkit.js';
+import { reserveFixtureIntake } from './contained-mission-revision.testkit.js';
 import { ProductionCiPilot } from './contained-mission-ci-pilot.js';
 import { ALPHA_CI_POLICY, PRODUCTION_CI_POLICY as ciPolicy } from './contained-mission-ci-policy.js';
 import { createSandboxCiObserver, createSandboxCiReader, readSandboxCiJobs } from './contained-mission-github-ci.js';
@@ -556,5 +557,64 @@ describe('durable CI scan failures', () => {
       expect(record).toHaveBeenCalledOnce();
       expect(log).toHaveBeenCalledWith('osstack: GitHub CI observation deferred');
     } finally { vi.restoreAllMocks(); await observer?.stop(); f.close(); }
+  });
+});
+describe('CI repair root writer exclusion', () => {
+  it.each(['local_failure', 'review'] as const)('records failure but waits for %s, then dispatches once', async holder => {
+    const f = fixture();
+    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    try {
+      f.writeRelease();
+      const root = f.seed();
+      const chain = f.rig.chains.createLiveChain({ root_mission_id: root.mission_id, repository: ciPolicy.repository,
+        pr_number: target.pr, branch, base_ref: 'main', published_head: head, published_base: base, trace_id: 'exclusive',
+        grant: { kind: 'live', version: 1, grant_id: 'fixture', rounds: 1, expires_at: Number.MAX_SAFE_INTEGER,
+          budget: { max_container_seconds: 100, max_executor_seconds: 100, max_wall_clock_hours: 1 } } }, 2200);
+      let settle: () => unknown;
+      if (holder === 'local_failure') {
+        settle = reserveFixtureIntake(f.rig, chain.chain_id, 2300).settle;
+      } else {
+        const reserved = f.rig.chains.reserve(chain.chain_id, chain.revision, { head, review_ids: [1], feedback_digest: 'f'.repeat(64) }, 2300);
+        settle = () => f.rig.chains.voidReservation(chain.chain_id, reserved.chain.revision, head, 'test_settled', 2400);
+      }
+      const app = { id: ciPolicy.actionsAppId };
+      const repo = { id: ciPolicy.repositoryId, full_name: ciPolicy.repository };
+      const failing = { id: 19, name: 'graph-macos-fixtures (22)', app, head_sha: head, check_suite: { id: 11 },
+        status: 'completed', conclusion: 'failure' };
+      const ci: ReturnType<typeof createSandboxCiReader> = {
+        latestAttempt: async query => ({ ...query, complete: true, requests_used: 1,
+          latest: { check_suite_id: 11, check_run_id: 19, status: 'completed', conclusion: 'failure' } }),
+        observeLatestJob: async (q, job) => ({ outcome: q.name === failing.name ? 'failure' : 'success',
+          run_id: job.workflowId, workflow_id: job.workflowId, attempt: 1, ...(job.workflowSet ? { runSnapshot: 'same' } : {}),
+          check_run_id: q.name === failing.name ? 19 : 20, check_suite_id: 11, job_id: 12, job_name: q.name,
+          runner_labels: job.runnerLabels, matrix: job.matrix, workflow_path: job.workflowPath, head, base, app_id: app.id }),
+        rest: async path => {
+          if (path.endsWith('/pulls/17')) return { ok: true, body: { number: 17, state: 'open', merged: false,
+            head: { sha: head, ref: branch, repo }, base: { sha: base, ref: 'main', repo }, user: { id: ciPolicy.publisherActorId, type: 'Bot' } } };
+          if (path.includes('/contents/')) {
+            const workflow = ciPolicy.jobs.map(job => job.workflow ?? ciPolicy).find(item => path.includes(`/${item.workflowPath}?`));
+            return { ok: !!workflow, body: { sha: workflow?.workflowBlob, type: 'file' } };
+          }
+          if (path.includes('/check-suites?')) return { ok: true, body: { total_count: 1, check_suites: [{ id: 11, app, head_sha: head }] } };
+          if (path.includes('/check-runs?')) return { ok: true, body: { total_count: 1, check_runs: [failing] } };
+          return { ok: false };
+        },
+      };
+      const worktreesRoot = join(f.home, 'worktrees'); mkdirSync(worktreesRoot);
+      observer = createSandboxCiObserver({ store: f.rig.missions, scopeId: root.scope_id, enabled: () => true,
+        now: () => 3000, log: () => {}, refresh: () => f.actor, ci, policy: ciPolicy, worktreesRoot,
+        writeEnabled: mission => !!f.pilot.assertWrite(f.rig.missions, mission, () => f.actor, 3000) });
+      const count = () => (f.rig.db.prepare("SELECT COUNT(*) n FROM engineering_contained_missions WHERE json_extract(spec_json,'$.ci_repair.root')=?").get(root.mission_id) as { n: number }).n;
+      await observer.scan();
+      expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_failure_observed')).toBeDefined();
+      expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_repair_dispatched')).toBeUndefined();
+      expect(count()).toBe(0);
+      settle();
+      await observer.scan();
+      expect(count()).toBe(1);
+      expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_repair_dispatched')).toBeDefined();
+      await observer.scan();
+      expect(count()).toBe(1);
+    } finally { await observer?.stop(); f.close(); }
   });
 });
