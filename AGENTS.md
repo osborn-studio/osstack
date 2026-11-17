@@ -16,6 +16,8 @@ Relative links in `docs/**/*.md` must point to existing repository files; `pnpm 
 - `pnpm dev`: starts the CLI package in `tsup --watch` mode.
 - `pnpm --filter @osstack/core test`: runs one package test suite.
 
+Each `packages/*` package must define a `typecheck` script and inherit `tsconfig.base.json`; packages with source tests must also define a `test` script, checked by `pnpm test:deterministic-rules`.
+
 The root `lint` script delegates to packages, but package lint scripts are not currently defined.
 
 ## Coding Style & Naming Conventions
@@ -67,6 +69,14 @@ Before adding a top-level import to `packages/cli/src/cli-entry.ts`, `bin.ts`, o
 Package source must use `@osstack/core` `createScratchDir` / `scratchPath` for temporary directories; scripts must use `scripts/lib/scratch.mjs` `createScratchDir`. `pnpm test:deterministic-rules` checks direct `tmpdir()` and `mkdtemp` calls.
 
 ## Security & Configuration Tips
+
+Core state and decision code must not make network calls; `pnpm test:deterministic-rules` runs `scripts/check-deterministic-rules.mjs` to enforce this boundary with a counted allowlist that may only shrink.
+
+Core-like packages must use adapter-exported constants instead of hardcoded agent or model product names; `pnpm test:deterministic-rules` runs `scripts/check-deterministic-rules.mjs` to enforce this boundary with a counted allowlist that may only shrink.
+
+Direct Git ref, index, and remote writes in package source must use an explicitly managed location; `pnpm test:deterministic-rules` enforces the counted Git allowlist, which may only shrink.
+
+Secrets (private-key headers, GitHub token prefixes, and cloud-key shapes) are checked in all Git-tracked text files. Machine-specific absolute paths are checked only in `packages/*/src`, `scripts/`, `.github/`, root configuration files, `hermes-skill/`, and `loop-engineering/`. The path rule excludes `docs/` because historical run records use paths as evidence. Each rule has one counted allowlist entry per file with a specific reason. Entries that disappear or change count fail; remove or reduce stale entries so the allowlists only shrink. `pnpm test:deterministic-rules` enforces both rules.
 
 Do not commit local Hermes paths, secrets, socket data, or generated databases. Keep machine-specific settings in environment variables such as `HERMES_HOME`. Treat `legacy-python/` as compatibility code: update it only when intentionally maintaining V1 shims.
 

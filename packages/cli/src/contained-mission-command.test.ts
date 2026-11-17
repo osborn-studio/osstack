@@ -34,6 +34,17 @@ describe("osstack mission", () => {
     expect(conflict.err[0]).toContain("conflict:--github-ci");
   });
 
+  it("lists CI chains with scope filtering in text and JSON", async () => {
+    const row = { mission_id: MID, scope_id: "s1", repository: "o/r", pr: 7, state: "repair_ci_waiting", since: 1234,
+      head_before: "a", head_after: "b", merge_commit_sha: null, stop_reason: null };
+    const text = await run(["list", "--github-ci", "--scope", "s1"], { ok: true, result: [row] });
+    expect(text.calls).toEqual([{ method: "mission.list", params: { scope_id: "s1", credential } }]);
+    expect(text.out).toEqual([`${MID}\ts1\to/r\t7\trepair_ci_waiting\t1234\ta\tb\t-\t-`]);
+    const json = await run(["list", "--github-ci", "--json"], { ok: true, result: [row] });
+    expect(JSON.parse(json.out[0]!)).toEqual([row]);
+    expect((await run(["list"])).err[0]).toContain("required:--github-ci");
+  });
+
   it("validates locally before reading the credential", async () => {
     const r = await run(["decide", "--mission", MID, "--decision", "merge"]);
     expect(r.code).toBe(1); expect(r.reads).toBe(0); expect(r.calls).toEqual([]);

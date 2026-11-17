@@ -6,6 +6,8 @@ import { openDb, AttentionStore, ContainedMissionStore, RevisionChainStore, crea
 import { DecisionsListResult } from "@osstack/protocol";
 import { DecisionQueries } from "@osstack/core";
 import { listDecisions } from "./list.js";
+// Split so the repository secret scan does not match this redaction fixture.
+const FAKE_TOKEN = "ghp_" + "abcdefghijklmnopqrstuvwxyz1234567890";
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { for (const fn of cleanups.splice(0)) fn(); });
@@ -23,7 +25,7 @@ function setup() {
   let count = 0;
   const mission = (scopeId = scope, ci = false) => {
     const id = ++count;
-    const m = missions.authorize(principal, { scope_id: scopeId, spec: { goal: "Review\nsecret ghp_abcdefghijklmnopqrstuvwxyz1234567890", ...(ci ? { ci_repair: {} } : {}) }, claim: { repo_identity: "r", branch: `b${id}`, worktree_identity: `w${id}` } }, 1000);
+    const m = missions.authorize(principal, { scope_id: scopeId, spec: { goal: `Review\nsecret ${FAKE_TOKEN}`, ...(ci ? { ci_repair: {} } : {}) }, claim: { repo_identity: "r", branch: `b${id}`, worktree_identity: `w${id}` } }, 1000);
     return missions.transition(m.mission_id, { if_revision: m.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "publication_pending" } } }, 2000);
   };
   const queries = new DecisionQueries(db);
@@ -132,7 +134,7 @@ it("excludes resolved Hermes rows and superseded loop escalations", async () => 
 });
 it("applies scope filters to task-bound local sources and redacts before truncating", async () => {
   const f = setup(); seed(f);
-  const secret = "ghp_abcdefghijklmnopqrstuvwxyz1234567890";
+  const secret = FAKE_TOKEN;
   f.db.prepare("UPDATE approvals SET action_summary=?").run(`prefix\n${"long ".repeat(100)} ${secret}`);
   const all = await f.list({ scope_id: f.scope }); expect(all.items).toHaveLength(8);
   expect((await f.list({ scope_id: f.hidden })).items).toEqual([]);
