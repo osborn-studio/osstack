@@ -3,6 +3,7 @@ import { constants, closeSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirS
 import { dirname, isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
+import { createProfileOutputCapture, verifyTrustedNamespaceArchive, type ContainedProfileCapture, type ContainedProfileRunOptions } from './contained-profile-run.js';
 import { ContainedDocker, dockerLogs } from './contained-docker.js';
 
 const sha = (v: string) => createHash('sha256').update(v).digest('hex');
@@ -16,6 +17,11 @@ export type ContainedStopReceipt = z.infer<typeof receiptSchema>;
 const isolationSchema = z.object({ version: z.literal(1), kind: z.literal('docker_isolated'), launch: launchSchema,
   policyDigest: id, verifiedAt: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }).strict();
 export interface ContainedCommandResult { exitCode: number; output: string; cancelled: boolean; evidence: string; stopReceipt: ContainedStopReceipt }
+export type ContainedProfileRunResult =
+  | { status: 'stopped'; termination: 'exited' | 'timeout' | 'cancelled' | 'output_limit' | 'namespace_rejected' | 'runtime_error';
+      started: boolean; exitCode: number | null; oomKilled: boolean; reason: string | null;
+      stdout: ContainedProfileCapture; stderr: ContainedProfileCapture; evidence: string; stopReceipt: ContainedStopReceipt }
+  | { status: 'stop_unknown'; reason: string };
 export interface ContainedCommandOptions {
   socketPath: string;
   daemonId: string;
@@ -109,7 +115,7 @@ export class ContainedCommandExecutor {
         CapAdd: z.array(z.string()).nullable(), CapDrop: z.array(z.string()), SecurityOpt: z.array(z.string()), RestartPolicy: z.object({ Name: z.string() }),
         AutoRemove: z.boolean(), Tmpfs: z.record(z.string(), z.string()), PidsLimit: z.number(), Memory: z.number(), NanoCpus: z.number(),
         LogConfig: z.object({ Type: z.string(), Config: z.record(z.string(), z.string()) }) }), Mounts: z.array(z.unknown()),
-      State: z.object({ Status: z.string(), Running: z.boolean(), ExitCode: z.number().int() }) }).parse(JSON.parse(r.bytes.toString()));
+      State: z.object({ Status: z.string(), Running: z.boolean(), ExitCode: z.number().int(), OOMKilled: z.boolean().optional().catch(undefined) }) }).parse(JSON.parse(r.bytes.toString()));
     const expected = this.config(launch.nonce); const h = v.HostConfig;
     if (v.Id !== launch.containerId || v.Image !== this.options.imageId || v.Config.User !== expected.User
       || JSON.stringify(v.Config.Entrypoint) !== JSON.stringify(expected.Entrypoint) || JSON.stringify(v.Config.Cmd) !== JSON.stringify(expected.Cmd)
@@ -184,6 +190,104 @@ export class ContainedCommandExecutor {
     const receipt: ContainedStopReceipt = { version: 1, kind: 'docker_removed', launch, confirmedAt: Date.now() };
     durable(join(this.directory(invocationId), 'stopped.json'), receipt); sync(this.directory(invocationId));
     const proof = await this.confirmStopped(invocationId); if (!proof.stopped) throw Error('CONTAINED_STOP_UNCONFIRMED'); return proof;
+  }
+  /** Profile-only lifetime capture. Reuses the legacy immutable policy and stop proof. */
+  async executeProfile(invocationId: string, signal: AbortSignal, profile: ContainedProfileRunOptions): Promise<ContainedProfileRunResult> {
+    if (![profile.stdoutBytes, profile.stderrBytes].every(n => Number.isSafeInteger(n) && n >= 1 && n <= 1048576)
+      || !Array.isArray(profile.trustedFiles) || profile.trustedFiles.length < 1 || profile.trustedFiles.length > 129
+      || this.options.workingDirectory === undefined || this.options.bindingData === undefined) throw Error('CONTAINED_CONFIG_INVALID');
+    const fixed = structuredClone(profile);
+    this.authorize('start'); if (signal.aborted) throw Error('CONTAINED_CANCELLED_BEFORE_CREATE');
+    const dir = this.directory(invocationId); mkdirSync(dir, { mode: 0o700 }); sync(this.options.journalRoot);
+    durable(join(dir, 'binding.json'), { version: 1, bindingRef: this.options.bindingRef, data: this.options.bindingData });
+    const nonce = randomUUID(); await this.daemon(); this.authorize('start');
+    try {
+      const response = await this.api.call('GET', `/images/${this.options.imageId}/json`);
+      const image = z.object({ Id: z.string(), Config: z.object({ WorkingDir: z.string(), Labels: z.record(z.string(), z.string()) }) }).parse(JSON.parse(response.bytes.toString()));
+      const labels = image.Config.Labels; const trusted = fixed.trustedProfile;
+      if (response.status !== 200 || image.Id !== this.options.imageId || image.Config.WorkingDir !== this.options.workingDirectory
+        || labels['osstack.profile.digest'] !== trusted.profileDigest || labels['osstack.profile.artifact'] !== trusted.artifactDigest
+        || labels['osstack.profile.content'] !== trusted.contentDigest || labels['osstack.profile.base-reference'] !== trusted.baseImageReference) throw Error('CONTAINED_PROFILE_IMAGE_UNTRUSTED');
+    } catch { throw Error('CONTAINED_PROFILE_IMAGE_UNTRUSTED'); }
+    this.authorize('start'); if (signal.aborted) throw Error('CONTAINED_CANCELLED_BEFORE_CREATE');
+    const capture = createProfileOutputCapture(fixed);
+    let containerId: string;
+    try {
+      const created = await this.api.call('POST', '/containers/create', this.config(nonce));
+      if (created.status !== 201) throw Error('CONTAINED_CREATE_UNCONFIRMED');
+      containerId = z.object({ Id: id }).parse(JSON.parse(created.bytes.toString())).Id;
+    } catch { return { status: 'stop_unknown', reason: 'CONTAINED_CREATE_UNCONFIRMED' }; }
+    const launch: Launch = { version: 1, invocationId, specDigest: this.specDigest, daemonId: this.options.daemonId, containerId, nonce };
+    let started = false; let exitCode: number | null = null; let oomKilled = false;
+    let termination: Extract<ContainedProfileRunResult, { status: 'stopped' }>['termination'] = 'runtime_error';
+    let reason: string | null = null;
+    let attached: Awaited<ReturnType<ContainedDocker['stream']>> | undefined;
+    let streamFailed = false;
+    const outputCheck = () => {
+      const snapshot = capture.snapshot();
+      if (snapshot.state === 'exceeded') throw Error('CONTAINED_PROFILE_OUTPUT_LIMIT');
+      if (snapshot.state === 'invalid' || streamFailed) throw Error('CONTAINED_PROFILE_OUTPUT_STREAM');
+    };
+    const cancelled = () => { if (signal.aborted) throw Error('CONTAINED_CANCELLED'); };
+    const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 200);
+    try {
+      durable(join(dir, 'launch.json'), launch); sync(dir);
+      await this.daemon(); await this.inspect(launch); this.authorize('start'); this.recordIsolation(launch); cancelled();
+      try {
+        const pathStat = (header: string | string[] | undefined) => {
+          if (typeof header !== 'string') throw Error('CONTAINED_PROFILE_NAMESPACE_UNTRUSTED');
+          return z.object({ name: z.string(), mode: z.number().int(), linkTarget: z.string() }).parse(JSON.parse(Buffer.from(header, 'base64').toString('utf8')));
+        };
+        const archive = await this.api.call('GET', `/containers/${containerId}/archive?path=/osstack-trusted`, undefined, 4 * 1024 * 1024);
+        if (archive.status !== 200) throw Error('CONTAINED_PROFILE_NAMESPACE_UNTRUSTED');
+        verifyTrustedNamespaceArchive(archive.bytes, pathStat(archive.headers['x-docker-container-path-stat']), fixed.trustedFiles);
+        const cwd = await this.api.call('HEAD', `/containers/${containerId}/archive?path=${this.options.workingDirectory}`);
+        const stat = pathStat(cwd.headers['x-docker-container-path-stat']);
+        if (cwd.status !== 200 || stat.name !== this.options.workingDirectory.slice(1) || stat.linkTarget !== '' || !(stat.mode & 0x80000000) || (stat.mode & 0x08000000)) throw Error('CONTAINED_PROFILE_NAMESPACE_UNTRUSTED');
+      } catch { termination = 'namespace_rejected'; throw Error('CONTAINED_PROFILE_NAMESPACE_UNTRUSTED'); }
+      cancelled(); this.authorize('start');
+      attached = await this.api.stream('POST', `/containers/${containerId}/attach?stream=1&stdout=1&stderr=1`, chunk => {
+        capture.push(chunk); if (capture.snapshot().state !== 'ok') attached?.destroy();
+      });
+      void attached.done.catch(() => { streamFailed = true; });
+      if (capture.snapshot().state !== 'ok') attached.destroy();
+      if (attached.status !== 200) throw Error('CONTAINED_PROFILE_OUTPUT_STREAM');
+      cancelled(); outputCheck(); this.authorize('start');
+      if ((await this.api.call('POST', `/containers/${containerId}/start`)).status !== 204) throw Error('CONTAINED_START_UNCONFIRMED');
+      started = true;
+      const deadline = Date.now() + (this.options.timeoutMs ?? 120000);
+      for (;;) {
+        cancelled(); outputCheck(); if (Date.now() >= deadline) throw Error('CONTAINED_TIMEOUT');
+        await this.daemon(); const state = await this.inspect(launch); this.authorize('start'); oomKilled = state.OOMKilled ?? false;
+        cancelled(); outputCheck();
+        if (!state.Running && state.Status === 'exited') {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            await Promise.race([attached.done, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error('CONTAINED_PROFILE_OUTPUT_INCOMPLETE')), 5000); })]);
+          } catch (error) {
+            outputCheck(); throw error instanceof Error && error.message === 'CONTAINED_PROFILE_OUTPUT_INCOMPLETE' ? error : Error('CONTAINED_PROFILE_OUTPUT_STREAM');
+          } finally { clearTimeout(timer); }
+          cancelled(); outputCheck();
+          if (capture.snapshot().incompleteFrame) throw Error('CONTAINED_PROFILE_OUTPUT_INCOMPLETE');
+          termination = 'exited'; exitCode = state.ExitCode; break;
+        }
+        await delay(50);
+      }
+    } catch (error) {
+      exitCode = null;
+      if (signal.aborted) { termination = 'cancelled'; reason = null; }
+      else if (capture.snapshot().state === 'exceeded') { termination = 'output_limit'; reason = capture.snapshot().exceededStream!; }
+      else {
+        reason = message(error);
+        if (reason === 'CONTAINED_TIMEOUT') { termination = 'timeout'; reason = null; }
+      }
+    } finally { attached?.destroy(); }
+    try {
+      const proof = await this.stop(invocationId);
+      const stopReceipt = receiptSchema.parse(read(join(dir, 'stopped.json')));
+      const { stdout, stderr } = capture.snapshot();
+      return { status: 'stopped', termination, started, exitCode, oomKilled, reason, stdout, stderr, evidence: proof.evidence, stopReceipt };
+    } catch (error) { return { status: 'stop_unknown', reason: message(error) }; }
   }
   async execute(invocationId: string, signal: AbortSignal): Promise<ContainedCommandResult> {
     this.authorize('start'); if (signal.aborted) throw Error('CONTAINED_CANCELLED_BEFORE_CREATE');
