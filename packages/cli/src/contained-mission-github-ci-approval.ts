@@ -50,3 +50,26 @@ export function assertSandboxCiApproval(store: ContainedMissionStore, mission: C
     || !Object.entries(binding(mission, spec)).every(([key, value]) => approval[key as keyof Approval] === value)) throw Error('ci_repair_approval_invalid');
   requireOperator(refresh(approval.principal, approval.session), mission.scope_id);
 }
+
+/** Keyed admission and the existing synchronous approval share one SQLite commit. */
+export function approveCiRepairOnce(store: ContainedMissionStore, actor: EngineeringPrincipal,
+  input: { mission_id: string; candidate: string; decision_id?: string | undefined; expected_revision?: number | undefined }, now: number, beforeApprove?: () => void) {
+  return store.attention.write(store.owner, () => {
+    const mission = store.readable(actor, input.mission_id);
+    requireOperator(actor, mission.scope_id);
+    if (input.decision_id && store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='decision_accepted' AND json_extract(payload_json,'$.decision_id')=?").get(input.mission_id, input.decision_id)) throw Error('decision_id_conflict');
+    const receipt = input.decision_id ? store.db.prepare("SELECT payload_json FROM engineering_contained_events WHERE mission_id=? AND kind='ci_repair_answer' AND json_extract(payload_json,'$.decision_id')=? LIMIT 1").get(input.mission_id, input.decision_id) as { payload_json: string } | undefined : undefined;
+    const prior = receipt ? JSON.parse(receipt.payload_json) as { candidate: string; actor: string; session: string } : undefined;
+    if (prior) {
+      if (prior.actor !== actor.principal_id || prior.session !== actor.client_session_id) throw Error('decision_id_owner_mismatch');
+      if (prior.candidate !== input.candidate) throw Error('decision_id_conflict');
+      return { accepted: true, replay: true, state: mission.state, revision: mission.revision };
+    }
+    if (input.expected_revision !== undefined && mission.revision !== input.expected_revision) throw Error('stale_revision');
+    beforeApprove?.();
+    const approved = approveSandboxCiRepair(store, actor, input.mission_id, input.candidate, now);
+    if (input.decision_id) store.record(input.mission_id, 'ci_repair_answer', { decision_id: input.decision_id,
+      candidate: input.candidate, actor: actor.principal_id, session: actor.client_session_id }, now, actor.principal_id);
+    return { accepted: true, replay: false, state: approved.state, revision: approved.revision };
+  });
+}

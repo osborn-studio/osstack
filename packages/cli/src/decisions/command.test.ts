@@ -20,3 +20,13 @@ it("can list local sources without an engineering credential", async () => {
   expect(rpc).toHaveBeenCalledWith("decisions.list", { limit: 50 });
   expect(stdout.mock.calls.map(c => c[0]).join("\n")).toContain("permission_denied");
 });
+it("forwards answer identity, revision and repeated parameters", async () => {
+  const rpc = vi.fn().mockResolvedValue({ ok: true, result: { accepted: true, replay: false, outcome: "applied", code: null, current: { state: "accepted", item: null } } });
+  expect(await handleDecisionsCommand(["answer", "--source", "hermes", "--id", "approval:a", "--answer", "choice", "--param", "choice=yes", "--answer-id", "client:1", "--source-revision", "rev", "--json"], { rpc, stdout: vi.fn(), credential: () => "c".repeat(32) })).toBe(0);
+  expect(rpc).toHaveBeenCalledWith("decisions.answer", { credential: "c".repeat(32), source: "hermes", source_id: "approval:a", answer: "choice", params: { choice: "yes" }, answer_id: "client:1", source_revision: "rev" });
+});
+it("rejects duplicate answer parameters before RPC", async () => {
+  const rpc = vi.fn();
+  expect(await handleDecisionsCommand(["answer", "--param", "text=a", "--param", "text=b"], { rpc, stderr: vi.fn() })).toBe(1);
+  expect(rpc).not.toHaveBeenCalled();
+});
