@@ -288,7 +288,7 @@ it.each(['clean', 'mismatched-claim'] as const)('composes the offline execute ho
     expect(event('executor_stopped')).toEqual(originalRun!.stop);
     expect(event('executor_output')).toMatchObject({ exit_code: 0, timed_out: false, cancelled: false,
       stdout: originalRun!.stdout, stderr: originalRun!.stderr, patch: { bytes: Buffer.byteLength(`${PATCH}${CODEX_PROXY_END_MARKER}\n`) } });
-    const beforeKinds = ['contained_authorized', 'workspace_claimed', 'workspace_intent', 'workspace_created', 'qualification_probe', 'executor_launch_intent'];
+    const beforeKinds = ['contained_authorized', 'workspace_claimed', 'mission_lineage_registered', 'workspace_intent', 'workspace_created', 'qualification_probe', 'executor_launch_intent'];
     expect(snapshots).toEqual([{ revision: 3, kinds: beforeKinds }, { revision: 3, kinds: [...beforeKinds, 'executor_started'] }]);
     expect(events.map(e => e.kind)).toEqual([...beforeKinds, 'executor_started', 'executor_stopped', 'executor_output', 'halted']);
     expect(events.every(e => e.mission_id === mission.mission_id)).toBe(true);
@@ -405,7 +405,7 @@ it('accepts real W13 workspace setup before an offline scripted protected propos
   const workspace = JSON.parse(setupEvents.find(e => e.kind === 'workspace_created')!.payload_json) as { config_digest: string };
   expect(workspace.config_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
   const phases = ['host_process_launching', 'host_process_registered', 'host_process_released', 'host_process_stopped'];
-  expect(setupEvents.map(e => e.kind)).toEqual(['contained_authorized', 'workspace_claimed', 'workspace_intent', ...phases, ...phases, ...phases, 'workspace_created']);
+  expect(setupEvents.map(e => e.kind)).toEqual(['contained_authorized', 'workspace_claimed', 'mission_lineage_registered', 'workspace_intent', ...phases, ...phases, ...phases, 'workspace_created']);
   const treeBefore = git(spec.worktree_path, 'rev-parse', 'HEAD^{tree}');
   const indexPath = join(git(spec.worktree_path, 'rev-parse', '--absolute-git-dir'), 'index');
   const indexBefore = digest(readFileSync(indexPath));

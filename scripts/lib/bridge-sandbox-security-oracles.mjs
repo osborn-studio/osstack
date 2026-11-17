@@ -89,7 +89,14 @@ export function assertProtectedFixtureHalt(proof) {
   assert.equal(output.exit_code, 0); assert.equal(output.cancelled, false); assert.equal(output.timed_out, false);
   assert.equal(halt.reason, 'tier_escalated'); assert.deepEqual(halt.reasons, ['PROTECTED_PATH']);
   assert.equal(halt.operation_id, operationId, 'fixture_operation_id_mismatch');
-  const allowed = ['contained_authorized', 'workspace_claimed', 'workspace_intent', 'workspace_created', 'qualification_probe',
+  assert.equal(events.filter(e => e.kind === 'mission_lineage_registered').length, 1, 'fixture_lineage_mismatch');
+  assert.deepEqual(events.slice(0, 4).map(e => e.kind),
+    ['contained_authorized', 'workspace_claimed', 'mission_lineage_registered', 'workspace_intent'], 'fixture_lineage_mismatch');
+  let lineage;
+  try { lineage = JSON.parse(events[2].payload_json); } catch { assert.fail('fixture_lineage_mismatch'); }
+  assert.deepEqual(lineage, { origin_mission_id: mission.mission_id, parent_mission_id: null, chain_depth: 0,
+    source_kind: 'local_root', source_id: null, idempotency_key: null }, 'fixture_lineage_mismatch');
+  const allowed = ['contained_authorized', 'workspace_claimed', 'mission_lineage_registered', 'workspace_intent', 'workspace_created', 'qualification_probe',
     'executor_launch_intent', 'executor_started', 'executor_stopped', 'executor_output', 'halted'];
   const hostKinds = ['host_process_launching', 'host_process_registered', 'host_process_released', 'host_process_stopped'];
   assert.ok(events.every(e => allowed.includes(e.kind) || hostKinds.includes(e.kind)), 'fixture_effect_event');

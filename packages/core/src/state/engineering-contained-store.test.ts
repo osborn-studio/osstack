@@ -50,7 +50,7 @@ it("records the spec digest, the claim and an append-only event trail", () => {
   expect(m).toMatchObject({ state: "authorized", revision: 1, verify_attempts: 0, repair_cycles: 0, stop_obligation: 0, candidate_verified: 0, repair_pending: 0 });
   expect(m.spec_digest).toMatch(/^[0-9a-f]{64}$/);
   expect(f.store.claim(m.mission_id)).toMatchObject({ state: "active", branch: "osstack/m/1" });
-  expect(f.store.events(m.mission_id).map(e => e.kind)).toEqual(["contained_authorized", "workspace_claimed"]);
+  expect(f.store.events(m.mission_id).map(e => e.kind)).toEqual(["contained_authorized", "workspace_claimed", "mission_lineage_registered"]);
   expect(() => f.db.prepare("UPDATE engineering_contained_events SET kind='x'").run()).toThrow("contained_event_immutable");
   expect(() => f.db.prepare("DELETE FROM engineering_contained_events").run()).toThrow("contained_event_immutable");
   expect(() => f.db.prepare("UPDATE engineering_contained_missions SET spec_json='{}',revision=revision+1").run()).toThrow("contained_mission_immutable");

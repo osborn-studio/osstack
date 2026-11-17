@@ -574,7 +574,7 @@ it("adds migration 55 additively on a schema-54 database that already holds merg
   cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
   const old = new Database(path); old.pragma("foreign_keys = ON");
   for (const m of MIGRATIONS.filter(x => x.id <= 54)) { old.exec("BEGIN"); old.exec(m.sql); old.pragma(`user_version = ${m.id}`); old.exec("COMMIT"); }
-  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55]);
+  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55, 56]);
   old.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   old.exec("INSERT INTO engineering_merger_shadow_watermarks(repository,pr_number,issued_seq,accepted_seq,updated_at) VALUES('o/r',1,1,0,5)");
   old.exec("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'[]')");
@@ -584,7 +584,7 @@ it("adds migration 55 additively on a schema-54 database that already holds merg
   const db = openDb({ path });
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(55);
-  const added = objects(db).filter(o => !before.includes(o));
+  const added = objects(db).filter(o => !before.includes(o) && !o.includes("engineering_mission_lineage"));
   expect(added.filter(o => o.startsWith("table:"))).toEqual(["table:engineering_merger_shadow_scans"]);
   expect(added.filter(o => o.startsWith("index:"))).toEqual(["index:engineering_merger_cycle_scan"]);
   expect(added.filter(o => o.startsWith("trigger:"))).toEqual([

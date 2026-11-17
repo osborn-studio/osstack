@@ -1,3 +1,4 @@
+import { withLegacyRoot } from './contained-mission-lineage.testkit.js';
 import { randomUUID } from 'node:crypto';
 import type { RevisionChain } from '@osstack/core';
 import { classifyMissionPatch } from '@osstack/governance';
@@ -136,6 +137,7 @@ describe('dispatchRevision', () => {
     const f = setup();
     const out = await dispatched(f);
     expect(out.round).toBe(1);
+    expect(f.rig.missions.lineage(out.child_mission_id)).toMatchObject({ parent_mission_id: f.rootId, origin_mission_id: f.rootId, chain_depth: 1, source_kind: 'review' });
     expect(out.chain).toMatchObject({ state: 'revising', current_mission_id: out.child_mission_id, rounds_used: 1 });
     expect(f.reservations()).toMatchObject([{ head_sha: oid('1'), state: 'dispatched', child_mission_id: out.child_mission_id }]);
     expect(f.children()).toEqual([out.child_mission_id]);
@@ -188,6 +190,7 @@ describe('dispatchRevision', () => {
     f.faults.at = step;
     const crashed = await f.dispatch();
     expect(crashed).toMatchObject({ status: 'failed', code: 'crash_here', stopped: false });
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_mission_lineage').get()).toEqual({ n: 1 });
     expect(f.missionCount()).toBe(1);
     expect(f.reservations()).toEqual([]);
     expect(f.rig.chains.allocations(f.chain.chain_id)).toEqual({});
@@ -292,6 +295,7 @@ describe('dispatchRevision', () => {
       // 2400 - 600 used = 1800 left for a 1200 slice.
       const two = await dispatched(f);
       expect(two.round).toBe(2);
+      expect(f.rig.missions.lineage(two.child_mission_id)).toMatchObject({ parent_mission_id: one.child_mission_id, origin_mission_id: f.rootId, chain_depth: 2 });
       expect(f.rig.chains.allocations(f.chain.chain_id)[two.child_mission_id]).toMatchObject({ executor_seconds: 1200 });
       expect(f.rig.chains.remainingBudget(f.chain.chain_id).executor_seconds).toBe(2400 - 600 - 1200);
     });
@@ -318,6 +322,7 @@ describe('dispatchRevision', () => {
       expect(code(() => releaseRevisionChildClaim(f.rig.missions, one.child_mission_id, T0))).toBe('claim_released');
       const two = await dispatched(f);
       expect(two.round).toBe(2);
+      expect(f.rig.missions.lineage(two.child_mission_id)).toMatchObject({ parent_mission_id: one.child_mission_id, origin_mission_id: f.rootId, chain_depth: 2 });
       // The new child has its own branch and worktree claim.
       const a = f.rig.missions.claim(one.child_mission_id); const b = f.rig.missions.claim(two.child_mission_id);
       expect(a.branch).not.toBe(b.branch); expect(a.worktree_identity).not.toBe(b.worktree_identity);
@@ -418,4 +423,13 @@ it('keeps escaped reviewer feedback within small Unicode truncation budgets', ()
     expect(Buffer.from(text).toString('utf8') === text).toBe(true);
     expect(JSON.stringify(text).length - 2).toBeLessThanOrEqual(limit);
   }
+});
+
+it('stops unknown lineage before reserving and refuses grant replacement', async () => {
+  const f = withLegacyRoot(() => setup());
+  expect(await f.dispatch()).toEqual({ status: 'stopped', reason: 'verify_chain_lineage_unknown' });
+  expect(f.reservations()).toEqual([]); expect(f.children()).toEqual([]);
+  const stopped = f.rig.chains.get(f.chain.chain_id);
+  expect(stopped.rounds_used).toBe(0);
+  expect(() => f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision, f.renew(), T0)).toThrow('state_denied');
 });

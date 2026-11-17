@@ -1,0 +1,25 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { expect, it } from 'vitest';
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const INSERT_FILES = ['packages/core/src/state/engineering-contained-store.ts'];
+const ROOT_FILES = ['packages/cli/src/contained-mission-host.ts'];
+const DERIVED_FILES = ['packages/cli/src/contained-mission-github-ci.ts', 'packages/cli/src/contained-mission-revision.ts'];
+function sources(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    if (['dist', 'node_modules'].includes(e.name)) return [];
+    const path = join(dir, e.name);
+    return e.isDirectory() ? sources(path) : path.endsWith('.ts') && !/\.(test|testkit)\.ts$/.test(path) ? [path] : [];
+  });
+}
+it('keeps contained Mission and lineage registration behind the store and two derived callers', () => {
+  const files = readdirSync(resolve(ROOT, 'packages')).flatMap(pkg => {
+    try { return sources(join(ROOT, 'packages', pkg, 'src')); } catch { return []; }
+  }).map(path => ({ path: relative(ROOT, path), text: readFileSync(path, 'utf8') }));
+  const matching = (pattern: RegExp) => files.filter(f => pattern.test(f.text)).map(f => f.path).sort();
+  for (const table of ['engineering_contained_missions', 'engineering_mission_lineage'])
+    expect(matching(new RegExp(`INSERT INTO ${table}\\b`))).toEqual(INSERT_FILES);
+  expect(files.filter(f => /(?:store|missions)\.authorize\(/.test(f.text) && /\bclaim\b/.test(f.text)).map(f => f.path).sort()).toEqual(ROOT_FILES);
+  expect(matching(/\.registerDerived\(/)).toEqual(DERIVED_FILES);
+});

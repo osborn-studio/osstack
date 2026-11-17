@@ -40,6 +40,9 @@ function haltedProof() {
     op_id: `hp_${i}`, kind, mission_id: missionId, state: 'stopped', remote_target: null, intent_id: null,
     released_at: i + 1, stop_proof: 'group_empty+marker_unheld' }));
   let seq = 0;
+  const prefix = [event(++seq, 'contained_authorized', {}), event(++seq, 'workspace_claimed', {}),
+    event(++seq, 'mission_lineage_registered', { origin_mission_id: missionId, parent_mission_id: null, chain_depth: 0,
+      source_kind: 'local_root', source_id: null, idempotency_key: null }), event(++seq, 'workspace_intent', {})];
   const setup = journals.flatMap(row => [event(++seq, 'host_process_launching', { op_id: row.op_id, kind: row.kind }),
     event(++seq, 'host_process_registered', { op_id: row.op_id }), event(++seq, 'host_process_released', { op_id: row.op_id }),
     event(++seq, 'host_process_stopped', { op_id: row.op_id, proof: row.stop_proof, released: true, exit_code: 0, exit_signal: null })]);
@@ -53,7 +56,7 @@ function haltedProof() {
     mission: { mission_id: missionId, state: 'awaiting_decision', revision: 5, expected_head: head, stop_obligation: 0,
       candidate_head: null, candidate_tree: null, candidate_diff_digest: null },
     workspaceHostJournals: journals, hostJournals: structuredClone(journals),
-    events: [...setup, event(++seq, 'executor_launch_intent', {}), event(++seq, 'executor_started', launch), event(++seq, 'executor_stopped', stop),
+    events: [...prefix, ...setup, event(++seq, 'executor_launch_intent', {}), event(++seq, 'executor_started', launch), event(++seq, 'executor_stopped', stop),
       event(++seq, 'executor_output', { exit_code: 0, cancelled: false, timed_out: false }),
       event(++seq, 'halted', { reason: 'tier_escalated', reasons: ['PROTECTED_PATH'], operation_id: operationId })],
     expectedHead: head, localHead: head, remoteHead: head, localStatus: '', pushIntents: [], checks: [], writerJournals: [], publicationTripwireReached: false };
@@ -68,7 +71,7 @@ test('fixture oracle binds actual operation ID to post-stop classification revis
     p => { p.events.push({ ...p.events[0], seq: 100, kind: 't0_intent' }); },
     p => { p.events.find(e => e.kind === 'halted').payload_json = JSON.stringify({ reason: 'tier_escalated', reasons: ['PROTECTED_PATH'], operation_id: 'patch-hash-only' }); },
     p => { p.hostJournals.push({ kind: 'git_update_ref' }); },
-    p => { p.events[0].payload_json = JSON.stringify({ op_id: 'hp_0', kind: 'git_push' }); },
+    p => { p.events.find(e => e.kind === 'host_process_launching').payload_json = JSON.stringify({ op_id: 'hp_0', kind: 'git_push' }); },
     p => { p.hostJournals[0].state = 'released'; },
     p => { p.pushIntents.push({ kind: 'push' }); }, p => { p.checks.push({}); }, p => { p.writerJournals.push({ released_at: null }); },
     p => { p.remoteHead = 'b'.repeat(40); }, p => { p.localHead = 'b'.repeat(40); },
@@ -88,4 +91,17 @@ test('every original proposal uses selected mission grammar independently of Git
   assert.deepEqual(calls, [patch, text]); assert.equal(invalid.grammar_valid, false); assert.deepEqual(invalid.paths, []);
   assert.throws(() => assertSandboxProposals([{ ...turn, ...invalid, patch: { ok: true, text }, applicable: true }], 'scenario/a.txt'), /stage_invalid_grammar/);
   assert.throws(() => assertSandboxProposals([{ ...turn, ...valid, applicable: false }], 'scenario/a.txt'), /stage_inapplicable_diff/);
+});
+
+for (const [name, mutate] of Object.entries({
+  missing: events => { events.splice(2, 1); },
+  depth: events => { const p = JSON.parse(events[2].payload_json); p.chain_depth = 1; events[2].payload_json = JSON.stringify(p); },
+  duplicate: events => { events.splice(3, 0, { ...events[2] }); },
+  misplaced: events => { [events[2], events[3]] = [events[3], events[2]]; },
+  extraField: events => { const p = JSON.parse(events[2].payload_json); p.extra = true; events[2].payload_json = JSON.stringify(p); },
+  invalidJson: events => { events[2].payload_json = '{'; },
+})) test(`fixture oracle refuses ${name} root lineage`, () => {
+  const proof = haltedProof(); mutate(proof.events);
+  proof.events.forEach((event, i) => { event.seq = i + 1; });
+  assert.throws(() => assertProtectedFixtureHalt(proof), { name: 'AssertionError', message: /fixture_lineage_mismatch/ });
 });

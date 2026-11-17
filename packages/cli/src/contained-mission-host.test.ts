@@ -85,6 +85,7 @@ describe("ContainedMissionHost", () => {
     const f = fixture();
     const m = await f.start();
     expect(m.state).toBe("authorized");
+    expect(f.store.lineage(m.mission_id)).toMatchObject({ origin_mission_id: m.mission_id, parent_mission_id: null, chain_depth: 0 });
     expect(spec(m).branch).toMatch(/^osstack\/mission\/[0-9a-f]{12}$/);
     await ticks(f, 4);
     const done = f.store.get(m.mission_id);

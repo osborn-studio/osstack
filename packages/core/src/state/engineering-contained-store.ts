@@ -26,6 +26,25 @@ export interface ContainedAuthorizeInput {
   scope_id: string; spec: Record<string, unknown>; supersedes?: string;
   claim: { repo_identity: string; branch: string; worktree_identity: string };
 }
+export const MAX_REPAIR_CHAIN_DEPTH = 8;
+export const LINEAGE_UNKNOWN_REASON = "verify_chain_lineage_unknown";
+export type MissionLineageSourceKind = "local_root" | "supersede" | "review" | "github_actions" | "local_failure" | "verification" | "patrol";
+export type DerivedSourceKind = Exclude<MissionLineageSourceKind, "local_root" | "supersede">;
+export interface MissionLineage {
+  mission_id: string; origin_mission_id: string; parent_mission_id: string | null; chain_depth: number;
+  source_kind: MissionLineageSourceKind; source_id: string | null; idempotency_key: string | null; created_at: number;
+}
+export type LineageResolution = { status: "known"; lineage: MissionLineage }
+  | { status: "unknown"; reason: typeof LINEAGE_UNKNOWN_REASON; detail: string };
+export interface ContainedDeriveInput {
+  parent_mission_id: string; scope_id: string; spec: Record<string, unknown>;
+  claim: { repo_identity: string; branch: string; worktree_identity: string };
+  source: { kind: DerivedSourceKind; id: string }; idempotency_key: string;
+}
+export type ContainedDeriveResult =
+  | { status: "registered" | "duplicate"; mission: ContainedMission; lineage: MissionLineage }
+  | { status: "waiting"; reason: typeof LINEAGE_UNKNOWN_REASON; parent_mission_id: string };
+
 export interface ContainedTransition {
   if_revision: number; to: ContainedMissionState; event: { kind: string; payload: unknown }; actor?: string;
   candidate?: { head: string; tree: string; diff_digest: string } | null; expected_head?: string;
@@ -98,43 +117,139 @@ export class ContainedMissionStore {
       .all(after?.created_at ?? -1, after?.created_at ?? -1, after?.mission_id ?? "", limit) as Array<{ mission_id: string; created_at: number }>;
   }
 
+  lineage(missionId: string): MissionLineage | null {
+    return this.db.prepare("SELECT * FROM engineering_mission_lineage WHERE mission_id=?").get(missionId) as MissionLineage | undefined ?? null;
+  }
+
+  resolveLineage(missionId: string): LineageResolution {
+    const unknown = (detail: string): LineageResolution => ({ status: "unknown", reason: LINEAGE_UNKNOWN_REASON, detail });
+    const seen = new Set<string>();
+    const walk = (id: string, hops: number): LineageResolution => {
+      if (hops > 64 || seen.has(id)) return unknown("lineage_cycle_or_limit");
+      seen.add(id);
+      const row = this.lineage(id);
+      if (!row) return unknown("lineage_missing");
+      if (!Number.isSafeInteger(row.chain_depth) || row.chain_depth < 0) return unknown("lineage_depth_invalid");
+      if (row.source_kind === "supersede") {
+        const priorId = this.get(id).supersedes;
+        if (!priorId) return unknown("lineage_supersedes_missing");
+        const prior = walk(priorId, hops + 1);
+        if (prior.status === "unknown") return prior;
+        if (row.origin_mission_id !== prior.lineage.origin_mission_id || row.parent_mission_id !== prior.lineage.parent_mission_id
+          || row.chain_depth !== prior.lineage.chain_depth) return unknown("lineage_supersedes_mismatch");
+      } else if (row.parent_mission_id === null) {
+        if (row.chain_depth !== 0 || row.origin_mission_id !== id) return unknown("lineage_root_mismatch");
+      } else {
+        const parent = walk(row.parent_mission_id, hops + 1);
+        if (parent.status === "unknown") return parent;
+        if (row.origin_mission_id !== parent.lineage.origin_mission_id || row.chain_depth !== parent.lineage.chain_depth + 1)
+          return unknown("lineage_parent_mismatch");
+      }
+      return { status: "known", lineage: row };
+    };
+    return walk(missionId, 0);
+  }
+
   authorize(principal: EngineeringPrincipal, input: ContainedAuthorizeInput, now: number): ContainedMission {
-    this.clock(now);
-    if (!principal.principal_id || !principal.client_session_id || !principal.write_scopes.includes(input.scope_id)) throw Error("permission_denied");
-    if (input.spec === null || typeof input.spec !== "object" || Array.isArray(input.spec)) throw Error("invalid_spec");
-    const { repo_identity, branch, worktree_identity } = input.claim;
-    if (![repo_identity, branch, worktree_identity].every(v => typeof v === "string" && v.length > 0 && v.length <= 1024)) throw Error("invalid_claim");
-    const spec_json = JSON.stringify(input.spec);
-    if (spec_json.length > 32768) throw Error("invalid_spec");
+    this.rejectLineageInput(input, true);
+    const specJson = this.validateRegistration(principal, input, now);
     return this.write(() => {
       let repairCycles = 0; let repairPending = 0;
+      let priorLineage: LineageResolution | undefined;
       if (input.supersedes) {
         const prior = this.get(input.supersedes);
         if (prior.scope_id !== input.scope_id) throw Error("permission_denied");
         if (!TERMINAL.has(prior.state)) throw Error("supersedes_active_mission");
         repairCycles = prior.repair_cycles; repairPending = prior.repair_pending;
+        priorLineage = this.resolveLineage(prior.mission_id);
         // Hand the worktree over; a prior Mission with unproven stop keeps its claim, so this fails as workspace_claimed.
         if (prior.stop_obligation === 0 && this.claim(prior.mission_id).state === "active") {
           this.db.prepare("UPDATE engineering_workspace_claims SET state='released',released_at=?,release_reason='superseded' WHERE mission_id=?").run(now, prior.mission_id);
           this.event(prior.mission_id, "workspace_released", null, { reason: "superseded" }, now);
         }
       }
-      const missionId = `cm_${randomUUID()}`;
-      this.db.prepare(`INSERT INTO engineering_contained_missions(mission_id,scope_id,owner_principal_id,owner_client_session_id,spec_digest,spec_json,
-        state,revision,repair_cycles,repair_pending,supersedes,created_at,updated_at) VALUES(?,?,?,?,?,?,'authorized',1,?,?,?,?,?)`)
-        .run(missionId, input.scope_id, principal.principal_id, principal.client_session_id, attentionDigest(input.spec), spec_json, repairCycles, repairPending, input.supersedes ?? null, now, now);
-      try {
-        this.db.prepare(`INSERT INTO engineering_workspace_claims(claim_id,mission_id,repo_identity,branch,worktree_identity,state,created_at)
-          VALUES(?,?,?,?,?,'active',?)`).run(`wc_${randomUUID()}`, missionId, repo_identity, branch, worktree_identity, now);
-      } catch (error) {
-        if (error instanceof Error && /UNIQUE/.test(error.message)) throw Error("workspace_claimed");
-        throw error;
+      const mission = this.insertMission(principal, input, specJson, now, repairCycles, repairPending);
+      if (priorLineage?.status === "unknown") {
+        this.event(mission.mission_id, "mission_lineage_unknown", null, { reason: LINEAGE_UNKNOWN_REASON, supersedes: input.supersedes }, now);
+      } else {
+        this.insertLineage({ mission_id: mission.mission_id, origin_mission_id: priorLineage?.lineage.origin_mission_id ?? mission.mission_id,
+          parent_mission_id: priorLineage?.lineage.parent_mission_id ?? null, chain_depth: priorLineage?.lineage.chain_depth ?? 0,
+          source_kind: input.supersedes ? "supersede" : "local_root", source_id: input.supersedes ?? null, idempotency_key: null, created_at: now });
       }
-      const mission = this.get(missionId);
-      this.event(missionId, "contained_authorized", principal.principal_id, { spec_digest: mission.spec_digest, supersedes: mission.supersedes }, now);
-      this.event(missionId, "workspace_claimed", null, { repo_identity, branch, worktree_identity }, now);
       return mission;
     });
+  }
+
+  registerDerived(principal: EngineeringPrincipal, input: ContainedDeriveInput, now: number): ContainedDeriveResult {
+    this.rejectLineageInput(input, false);
+    const specJson = this.validateRegistration(principal, input, now);
+    const bounded = (value: unknown) => typeof value === "string" && value.length > 0 && value.length <= 256;
+    if (!input.source || !["review", "github_actions", "local_failure", "verification", "patrol"].includes(input.source.kind)
+      || !bounded(input.source.id) || !bounded(input.idempotency_key)) throw Error("invalid_lineage_input");
+    return this.write(() => {
+      const parent = this.get(input.parent_mission_id);
+      if (parent.scope_id !== input.scope_id) throw Error("permission_denied");
+      const prior = this.db.prepare("SELECT * FROM engineering_mission_lineage WHERE idempotency_key=?").get(input.idempotency_key) as MissionLineage | undefined;
+      if (prior) {
+        const mission = this.get(prior.mission_id);
+        if (prior.parent_mission_id !== parent.mission_id || prior.source_kind !== input.source.kind || prior.source_id !== input.source.id
+          || mission.spec_digest !== attentionDigest(input.spec)) throw Error("lineage_idempotency_conflict");
+        return { status: "duplicate", mission, lineage: prior };
+      }
+      const resolved = this.resolveLineage(parent.mission_id);
+      if (resolved.status === "unknown") {
+        const recorded = this.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='mission_lineage_unknown' AND json_extract(payload_json,'$.idempotency_key')=?")
+          .get(parent.mission_id, input.idempotency_key);
+        if (!recorded) this.event(parent.mission_id, "mission_lineage_unknown", null,
+          { reason: resolved.reason, detail: resolved.detail, source: input.source, idempotency_key: input.idempotency_key }, now);
+        return { status: "waiting", reason: LINEAGE_UNKNOWN_REASON, parent_mission_id: parent.mission_id };
+      }
+      const mission = this.insertMission(principal, { scope_id: input.scope_id, spec: input.spec, claim: input.claim }, specJson, now);
+      const lineage: MissionLineage = { mission_id: mission.mission_id, origin_mission_id: resolved.lineage.origin_mission_id,
+        parent_mission_id: parent.mission_id, chain_depth: resolved.lineage.chain_depth + 1, source_kind: input.source.kind,
+        source_id: input.source.id, idempotency_key: input.idempotency_key, created_at: now };
+      this.insertLineage(lineage);
+      return { status: "registered", mission, lineage };
+    });
+  }
+
+  private rejectLineageInput(input: ContainedAuthorizeInput | ContainedDeriveInput, root: boolean): void {
+    for (const key of ["origin_mission_id", "chain_depth", "depth", "root", "origin", ...(root ? ["parent_mission_id"] : [])])
+      if (Object.prototype.hasOwnProperty.call(input, key)) throw Error("invalid_lineage_input");
+  }
+  private validateRegistration(principal: EngineeringPrincipal, input: ContainedAuthorizeInput, now: number): string {
+    this.clock(now);
+    if (!principal.principal_id || !principal.client_session_id || !principal.write_scopes.includes(input.scope_id)) throw Error("permission_denied");
+    if (input.spec === null || typeof input.spec !== "object" || Array.isArray(input.spec)) throw Error("invalid_spec");
+    const { repo_identity, branch, worktree_identity } = input.claim ?? {};
+    if (![repo_identity, branch, worktree_identity].every(v => typeof v === "string" && v.length > 0 && v.length <= 1024)) throw Error("invalid_claim");
+    const spec_json = JSON.stringify(input.spec);
+    if (spec_json.length > 32768) throw Error("invalid_spec");
+    return spec_json;
+  }
+  private insertMission(principal: EngineeringPrincipal, input: ContainedAuthorizeInput, spec_json: string, now: number, repairCycles = 0, repairPending = 0): ContainedMission {
+    const { repo_identity, branch, worktree_identity } = input.claim;
+    const missionId = `cm_${randomUUID()}`;
+    this.db.prepare(`INSERT INTO engineering_contained_missions(mission_id,scope_id,owner_principal_id,owner_client_session_id,spec_digest,spec_json,
+      state,revision,repair_cycles,repair_pending,supersedes,created_at,updated_at) VALUES(?,?,?,?,?,?,'authorized',1,?,?,?,?,?)`)
+      .run(missionId, input.scope_id, principal.principal_id, principal.client_session_id, attentionDigest(input.spec), spec_json, repairCycles, repairPending, input.supersedes ?? null, now, now);
+    try {
+      this.db.prepare(`INSERT INTO engineering_workspace_claims(claim_id,mission_id,repo_identity,branch,worktree_identity,state,created_at)
+        VALUES(?,?,?,?,?,'active',?)`).run(`wc_${randomUUID()}`, missionId, repo_identity, branch, worktree_identity, now);
+    } catch (error) {
+      if (error instanceof Error && /UNIQUE/.test(error.message)) throw Error("workspace_claimed");
+      throw error;
+    }
+    const mission = this.get(missionId);
+    this.event(missionId, "contained_authorized", principal.principal_id, { spec_digest: mission.spec_digest, supersedes: mission.supersedes }, now);
+    this.event(missionId, "workspace_claimed", null, { repo_identity, branch, worktree_identity }, now);
+    return mission;
+  }
+  private insertLineage(row: MissionLineage): void {
+    const { mission_id, origin_mission_id, parent_mission_id, chain_depth, source_kind, source_id, idempotency_key, created_at } = row;
+    this.db.prepare(`INSERT INTO engineering_mission_lineage(mission_id,origin_mission_id,parent_mission_id,chain_depth,source_kind,source_id,idempotency_key,created_at)
+      VALUES(?,?,?,?,?,?,?,?)`).run(mission_id, origin_mission_id, parent_mission_id, chain_depth, source_kind, source_id, idempotency_key, created_at);
+    this.event(mission_id, "mission_lineage_registered", null, { origin_mission_id, parent_mission_id, chain_depth, source_kind, source_id, idempotency_key }, created_at);
   }
 
   /** One compare-and-swap step of the §4.3 state machine plus its event, atomically. */
