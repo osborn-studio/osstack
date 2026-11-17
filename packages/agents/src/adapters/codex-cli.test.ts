@@ -19,6 +19,15 @@ afterEach(async () => {
 });
 
 describe("CodexCliAdapter resumable sessions", () => {
+  it("restates an invoke report using its captured thread and read-only sandbox", async () => {
+    const log = join(tmp, "args.log");
+    const bin = await fakeCodex("codex-report", "019f-thread", log);
+    const adapter = new CodexCliAdapter({ bin, cwd: tmp });
+    for await (const _event of adapter.invoke(task(), new AbortController().signal)) { /* drain */ }
+    for await (const _event of adapter.resumeReport({ ...task(), run_id: "repair", prompt: "Restate" }, new AbortController().signal, task().run_id)) { /* drain */ }
+    expect(await readFile(log, "utf8")).toContain("-s read-only -C " + tmp + " resume 019f-thread Restate");
+  });
+
   it("captures the native thread id and emits only bounded public session events", async () => {
     const bin = await fakeCodex("codex-start", "019f-thread");
     const adapter = new CodexCliAdapter({ bin, cwd: tmp, sandbox: "workspace-write" });

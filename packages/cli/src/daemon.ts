@@ -1279,6 +1279,19 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
     }
   }
+  if (req.method === "decisions.list") {
+    try {
+      const [{ listDecisions }, { DecisionQueries }] = await Promise.all([
+        import("./decisions/list.js"), import("@osstack/core"),
+      ]);
+      const access = ctx.engineering?.access;
+      return singleOk(req.id, await listDecisions(new DecisionQueries(ctx.db), req.params,
+        access ? credential => access.authenticate(credential) : undefined));
+    } catch (error) {
+      const code = error instanceof Error && ["bad_request", "bad_cursor"].includes(error.message) ? error.message : "decisions_unavailable";
+      return singleErr(req.id, code, "Decision list unavailable");
+    }
+  }
   if (req.method.startsWith("engineering.")) {
     if (!ctx.supervision) return singleErr(req.id, "attention_disabled", "Enable OSSTACK_ATTENTION=1 for Session adoption");
     if (!ctx.engineering) return singleErr(req.id, "engineering_disabled", "Enable OSSTACK_ENGINEERING=1 with a private host authority file");
@@ -1560,7 +1573,8 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const stats = computeStats(ctx.db, ctx.loopSessions, ctx.rpcLatency, ctx.supervision);
       // Lazy: the bridge section is read-only SQL and must not weigh on CLI/daemon startup. A failure here never fails `stats`.
       const bridge = await import("./bridge-stats.js").then(m => m.computeBridgeStats(ctx.db, Date.now())).catch(() => null);
-      return singleOk(req.id, { ...stats, bridge });
+      const ciChain = await import("./contained-mission-ci-chain-read.js").then(m => m.computeCiChainStats(ctx.db)).catch(() => null);
+      return singleOk(req.id, { ...stats, bridge, ci_chain: ciChain });
     }
 
     case "autonomy.status": {

@@ -180,13 +180,12 @@ describe("executeCandidateImplementation", () => {
     expect(result.execution?.summary).toBe("implementation evidence");
   });
 
-  it("retains protocol failure and uncertainty evidence for a stream without done", async () => {
+  it("classifies a closed stream without done as report invalid", async () => {
     const input = fixture();
     input.plan.agent_id = "builder";
     input.adapters = [adapter(async function* () {})];
-    expect(await executeCandidateImplementation(input)).toMatchObject({ status: "execution_unconfirmed",
-      execution: { outcome: "failed", failure_code: "missing_done",
-        cancellation: { source: "executor_error", stop_confirmed: false } } });
+    expect(await executeCandidateImplementation(input)).toMatchObject({ status: "report_invalid",
+      execution: { outcome: "report_invalid", failure_code: "missing_done" } });
   });
 
   it("propagates live caller cancellation and independently confirmed stop evidence", async () => {

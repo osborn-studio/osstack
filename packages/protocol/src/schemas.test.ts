@@ -17,6 +17,8 @@ describe("generated JSON Schemas are committed and fresh", () => {
   it("emits one schema per public protocol contract", () => {
     expect(filenames).toEqual(
       [
+        "decisions-list-params.schema.json",
+        "decisions-list-result.schema.json",
         "agent-command-result.schema.json",
         "agent-command.schema.json",
         "approval-decision.schema.json",
@@ -53,6 +55,7 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "graph-checkpoint-response.schema.json",
         "graph.schema.json",
         "graph-worker.schema.json",
+        "mission-decide-request.schema.json",
         "policy-decision.schema.json",
         "run-summary.schema.json",
         "scoped-approval-decision.schema.json",

@@ -1,3 +1,4 @@
+import type { CiChainStats } from "./contained-mission-ci-chain-read.js";
 // osstack CLI entry. Talks to the running daemon via Unix socket when needed.
 // (shebang is injected by tsup banner)
 
@@ -236,6 +237,7 @@ function renderChineseMainHelp(): string {
   worker logs --grant-file <file>  凭独立授权只读查看持久输出
   engineering         采纳现有 Session，回答决定并观察本轮结果
   mission             受限单执行器 Mission：只读提议补丁，主机分类、应用、验证
+  decisions list      只读查看全部待决定事项 [--scope ID] [--json]
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden|paired_holdout  路由评估与配对留出比较
   graph               图执行 validate/run/status/cancel/resume；explain 只读关系诊断
@@ -485,6 +487,7 @@ Project commands:
   worker logs --grant-file <file>  Read persisted output with a separate content grant
   engineering         Adopt a Session, answer decisions, and observe the reply turn
   mission             Contained single-executor Missions: read-only proposals, host-applied and verified
+  decisions list      Read pending decisions across sources [--scope ID] [--json]
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden|paired_holdout  Router evaluation and paired holdout comparison
   graph               Executable delivery graphs and read-only explain (graph --help)
@@ -853,6 +856,11 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "engineering") {
     const { handleEngineeringCommand } = await import("./engineering-command.js");
     return await handleEngineeringCommand(args.slice(1), { rpc });
+  }
+
+  if (cmd === "decisions") {
+    const { handleDecisionsCommand } = await import("./decisions/command.js");
+    return await handleDecisionsCommand(args.slice(1), { rpc });
   }
 
   if (cmd === "mission") {
@@ -11244,6 +11252,7 @@ interface StatsResult {
   loops?: LoopStatsSummary;
   rpc?: RpcLatencyRow[];
   bridge?: BridgeStatsView | null;
+  ci_chain?: CiChainStats | null;
 }
 
 interface BridgeStatsView {
@@ -12678,7 +12687,7 @@ function streamTaskObserve(run_id: string, after_seq?: number): Promise<number> 
   return streamFrames("task.observe", after_seq !== undefined ? { run_id, after_seq } : { run_id });
 }
 
-function printStats(result: unknown): void {
+export function printStats(result: unknown): void {
   const s = result as StatsResult;
   console.log(`total_runs=${s.total_runs}  total_events=${s.total_events}`);
   if (s.per_agent.length === 0) {
@@ -12696,6 +12705,7 @@ function printStats(result: unknown): void {
   }
 
   if (s.loops === undefined) {
+    printCiChainStats(s.ci_chain);
     printBridgeStats(s.bridge);
     printRpcLatency(s.rpc);
     return;
@@ -12720,8 +12730,23 @@ function printStats(result: unknown): void {
     }
   }
 
+  printCiChainStats(s.ci_chain);
   printBridgeStats(s.bridge);
   printRpcLatency(s.rpc);
+}
+
+/** CI chain metrics use only observed ledger facts. Missing values stay unknown. */
+function printCiChainStats(stats: CiChainStats | null | undefined): void {
+  const c = stats?.ci_chain_available ? stats : undefined;
+  const durations = c?.ci_chain_registration_to_close_ms ?? [];
+  const known = durations.flatMap(row => row.duration_ms === null ? [] : [row.duration_ms]).sort((a, b) => a - b);
+  const middle = Math.floor(known.length / 2);
+  const median = known.length === 0 ? null : known.length % 2 ? known[middle]! : (known[middle - 1]! + known[middle]!) / 2;
+  console.log();
+  console.log("CI chain");
+  console.log(`by_state: ${c?.ci_chain_by_state.map(row => `${row.state}=${row.count}`).join(" ") || "-"}`);
+  console.log(`closed=${c?.ci_chain_closed ?? "-"} repaired_closed=${c?.ci_chain_repaired_closed ?? "-"} consecutive_normal_closed=${c?.ci_chain_consecutive_normal_closed ?? "-"}`);
+  console.log(`registration_to_close_ms: median=${median ?? "-"} latest=${durations[0]?.duration_ms ?? "-"}`);
 }
 
 /** Bridge section: omitted when the ledger has no revision-chain tables; one line per group, so it stays short with no bridge activity. */

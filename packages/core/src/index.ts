@@ -75,3 +75,5 @@ export { FollowUpObligationService, FollowUpError, FOLLOW_UP_ERROR_CODES, FOLLOW
 export { FollowUpDeliveryService, FollowUpDeliveryError, FOLLOW_UP_DELIVERY_ERRORS, deliveryCanonical, serializeFollowUpDelivery } from "./state/follow-up-delivery.js";
 export type { FollowUpDeliveryTrust, FollowUpTransport, FollowUpDeliveryOptions } from "./state/follow-up-delivery.js";
 export { SourceObservationLedger, SourceObservationScopeSchema, SourceSnapshotEvidenceSchema, type SourceObservationScope, type SourceObservation, type SourceSnapshotEvidence } from './state/source-observations.js';
+export { DecisionQueries } from "./state/decision-queries.js";
+export type { DecisionQuery, DecisionRow } from "./state/decision-queries.js";

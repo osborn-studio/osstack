@@ -84,6 +84,11 @@ export interface AgentAdapter {
    */
   invoke(task: AgentTask, signal: AbortSignal): AsyncIterable<HermesEvent>;
 
+  /** Continue the exact invocation session to restate its report. Never start new work.
+   * If the native session is unavailable, return an error; do not fall back to invoke. */
+  hasReportSession?(originalRunId: string): boolean;
+  resumeReport?(task: AgentTask, signal: AbortSignal, originalRunId: string): AsyncIterable<HermesEvent>;
+
   /**
    * Optional lifecycle evidence after cancellation of this exact invocation.
    * Return stopped:true only after observing that ALL owned work (including

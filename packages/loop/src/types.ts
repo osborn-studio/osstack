@@ -152,6 +152,7 @@ export const ReviewArtifact = z.object({
 export type ReviewArtifact = z.infer<typeof ReviewArtifact>;
 
 export const Verdict = z.object({
+  report_invalid: z.enum(["builder", "reviewer"]).optional(),
   pass: z.boolean(),
   score: z.number().min(0).max(1),
   issues: z.array(Issue).default([]),
@@ -306,6 +307,7 @@ export const CompletedTask = z.object({
   diff_summary: z.string().optional(),
   commit_hash: z.string().optional(),
   error_summary: z.string().optional(),
+  report_invalid: z.enum(["builder", "reviewer"]).optional(),
   /** Adapter-reported usage summed across this task's iterations. */
   tokens_in: z.number().optional(),
   tokens_out: z.number().optional(),
@@ -490,6 +492,8 @@ export const LoopEventType = z.enum([
   "loop.task.deferred",
   "loop.plan.done",
   "loop.execute.done",
+  "loop.report_repair.attempt",
+  "loop.report_repair.result",
   "loop.verify.done",
   "loop.implementation.deviation",
   "loop.implementation.deviations_invalid",

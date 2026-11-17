@@ -1,4 +1,5 @@
 import type { CodexProxyRun, CodexQualification } from '@osstack/agents';
+import { createHash } from 'node:crypto';
 import { HostProcessStore, type ContainedMission } from '@osstack/core';
 import { describe, expect, it, vi } from 'vitest';
 import { oid } from './contained-mission-bridge-shadow.testkit.js';
@@ -6,6 +7,7 @@ import { H, T0, dispatched, setup } from './contained-mission-revision.testkit.j
 import { createRevisionLaunchPort } from './contained-mission-revision.js';
 import { createRevisionPublicationPort, type RevisionPublicationDeps } from './contained-mission-revision-publication.js';
 import { ContainedMissionRunner, parseContainedMissionSpec, type ContainedMissionPorts } from './contained-mission-runner.js';
+import { ContainedMissionService } from './contained-mission-rpc.js';
 
 const PATCH = '--- a/src/a.txt\n+++ b/src/a.txt\n@@ -1 +1 @@\n-hi\n+hello\n';
 const manyFiles = (n: number) => Array.from({ length: n }, (_, i) => `--- a/src/f${i}.txt\n+++ b/src/f${i}.txt\n@@ -1 +1 @@\n-a\n+b\n`).join('');
@@ -411,6 +413,140 @@ describe('a revision child under the runner', () => {
     expect(h.calls.publish).toBe(0);
   });
 
+  it('replays a keyed child decision without resuming the chain twice', async () => {
+    const h = await harness();
+    h.setVerifyExit(1);
+    await h.step(6);
+    const chain = h.chain();
+    h.f.rig.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', T0);
+    const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false,
+      decide: async (_principal: unknown, id: string, decision: Parameters<typeof h.runner.decide>[1]) => h.runner.decide(id, decision) };
+    const service = new ContainedMissionService({ host: host as never,
+      access: { authenticate: () => h.f.principal } as never, draining: () => false });
+    const request = { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'extra_repair', decision_id: 'child-resume-1' };
+    expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true });
+    expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true, replay: true });
+    expect(h.f.rig.chains.events(chain.chain_id).filter(e => e.kind === 'round_resumed')).toHaveLength(1);
+    expect(h.events().filter(e => e.kind === 'decision_accepted')).toHaveLength(1);
+  });
+
+  it('continues admission after chain acknowledgement without a second round resume', async () => {
+    const h = await harness(); h.setVerifyExit(1); await h.step(6);
+    const stopped = h.chain(); h.f.rig.chains.stopLive(stopped.chain_id, stopped.revision, 'child_halted', T0);
+    const revision = h.get().revision;
+    const decisionId = 'ack-crash';
+    const digest = createHash('sha256').update(JSON.stringify({ kind: 'extra_repair' })).digest('hex');
+    h.f.rig.missions.attention.write(h.f.rig.missions.owner, () => {
+      h.f.rig.missions.record(h.childId, 'decision_accepted', { decision_id: decisionId, principal_id: h.f.principal.principal_id, digest, revision, kind: 'extra_repair' }, T0);
+      h.ports.revision!.acknowledgeAdvance(h.get(), h.spec, 'extra_repair');
+    });
+    const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false,
+      decide: async (_principal: unknown, id: string, decision: Parameters<typeof h.runner.decide>[1]) => h.runner.decide(id, decision) };
+    const service = new ContainedMissionService({ host: host as never, access: { authenticate: () => h.f.principal } as never, draining: () => false });
+    expect(await service.handle('mission.decide', { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'extra_repair', decision_id: decisionId }))
+      .toMatchObject({ accepted: true });
+    expect(h.f.rig.chains.events(stopped.chain_id).filter(e => e.kind === 'round_resumed')).toHaveLength(1);
+  });
+
+  for (const kind of ['resume_budget', 'resume_grant'] as const) {
+    for (const route of ['executor:workspace_ready', 'executor:repair', 'executor:extra_repair', 'executor:discard_changes']) {
+      it(`${kind} ${route}: marks the charged route before an executor or restore await`, async () => {
+        const h = await harness(); await h.step();
+        h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'awaiting_decision', event: { kind: 'halted',
+          payload: { reason: kind === 'resume_budget' ? 'budget_exhausted' : 'grant_stopped:grant_expired', blocked: route } } }, 20_000);
+        h.ports.execute = async () => new Promise(() => {});
+        h.ports.restoreWorkspace = async () => new Promise(() => {});
+        const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false,
+          decide: async (_principal: unknown, id: string, decision: Parameters<typeof h.runner.decide>[1]) => h.runner.decide(id, decision) };
+        const service = new ContainedMissionService({ host: host as never, access: { authenticate: () => h.f.principal } as never, draining: () => false, ackMs: 1 });
+        const request = { credential: 'c'.repeat(32), mission_id: h.childId, decision: kind, decision_id: 'route-crash' };
+        expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true });
+        const charged = h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used;
+        expect(charged).toBeGreaterThan(0);
+        expect(h.events().filter(e => e.kind === 'decision_effect_started').map(e => JSON.parse(e.payload_json)))
+          .toContainEqual({ decision_id: 'route-crash', effect: `chargeLaunch:${route}` });
+        expect(await service.handle('mission.decide', request)).toMatchObject({ replay: true, outcome: 'unknown' });
+        expect(h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used).toBe(charged);
+      });
+    }
+  }
+
+  it('retries an adopt refusal before the convergent worktree commit completes', async () => {
+    const h = await harness(); await h.step();
+    h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'test' } } }, 20_000);
+    const commit = h.ports.commitWorktree; let refused = false;
+    h.ports.commitWorktree = async input => { if (!refused) { refused = true; throw Error('CONTAINED_MISSION_BUSY'); } return commit(input); };
+    const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false,
+      decide: async (_principal: unknown, id: string, decision: Parameters<typeof h.runner.decide>[1]) => h.runner.decide(id, decision) };
+    const service = new ContainedMissionService({ host: host as never, access: { authenticate: () => h.f.principal } as never, draining: () => false });
+    const request = { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'adopt_worktree', decision_id: 'adopt-retry' };
+    expect(await service.handle('mission.decide', request)).toMatchObject({ outcome: 'failed' });
+    expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true, state: 'candidate_ready' });
+  });
+
+  it('rolls back a charge when its decision effect marker cannot be stored', async () => {
+    const h = await harness(); await h.step();
+    h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'test' } } }, 20_000);
+    const before = h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used;
+    h.f.rig.db.exec("CREATE TRIGGER fail_effect BEFORE INSERT ON engineering_contained_events WHEN NEW.kind='decision_effect_started' BEGIN SELECT RAISE(ABORT, 'injected_effect_failure'); END");
+    await expect(h.runner.decide(h.childId, { kind: 'discard_changes', decision_id: 'atomic-charge' })).rejects.toThrow('injected_effect_failure');
+    expect(h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used).toBe(before);
+    expect(h.events().filter(e => e.kind === 'decision_effect_started')).toHaveLength(0);
+  });
+
+  it('keeps an extra repair charge once after a crash before the executing transition', async () => {
+    const h = await harness(); h.setVerifyExit(1); await h.step(6);
+    const stopped = h.chain(); h.f.rig.chains.stopLive(stopped.chain_id, stopped.revision, 'child_halted', T0);
+    const revision = h.get().revision; const decisionId = 'extra-crash';
+    h.f.rig.missions.record(h.childId, 'decision_accepted', { decision_id: decisionId, principal_id: h.f.principal.principal_id,
+      digest: createHash('sha256').update(JSON.stringify({ kind: 'extra_repair' })).digest('hex'), revision }, T0);
+    h.f.rig.db.exec("CREATE TRIGGER crash_extra BEFORE INSERT ON engineering_contained_events WHEN NEW.kind='decision_extra_repair' BEGIN SELECT RAISE(ABORT, 'injected_crash'); END");
+    await expect(h.runner.decide(h.childId, { kind: 'extra_repair', decision_id: decisionId })).rejects.toThrow('injected_crash');
+    h.f.rig.db.exec('DROP TRIGGER crash_extra');
+    expect(h.get().revision).toBe(revision);
+    const charged = h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used;
+    expect(charged).toBeGreaterThan(0);
+    const host = { store: h.f.rig.missions, runner: new ContainedMissionRunner(h.ports), isBusy: () => false,
+      decide: () => { throw Error('must_not_execute'); } };
+    const service = new ContainedMissionService({ host: host as never, access: { authenticate: () => h.f.principal } as never, draining: () => false });
+    expect(await service.handle('mission.decide', { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'extra_repair', decision_id: decisionId }))
+      .toMatchObject({ accepted: true, replay: true, outcome: 'unknown' });
+    expect(h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used).toBe(charged);
+  });
+
+  it('keeps a discard charge once when replay arrives during workspace restoration', async () => {
+    const h = await harness(); await h.step();
+    h.f.rig.missions.transition(h.childId, { if_revision: h.get().revision, to: 'needs_reconciliation', event: { kind: 'halted', payload: { reason: 'stop_evidence_recovered' } } }, 20_000);
+    h.ports.restoreWorkspace = async () => new Promise(() => {});
+    const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false,
+      decide: async (_principal: unknown, id: string, decision: Parameters<typeof h.runner.decide>[1]) => h.runner.decide(id, decision) };
+    const service = new ContainedMissionService({ host: host as never, access: { authenticate: () => h.f.principal } as never, draining: () => false, ackMs: 1 });
+    const request = { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'discard_changes', decision_id: 'discard-crash' };
+    expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true });
+    const charged = h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used;
+    expect(charged).toBeGreaterThan(0);
+    expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true, replay: true, outcome: 'unknown' });
+    expect(h.f.rig.chains.allocations(h.chain().chain_id)[h.childId]!.executor_used).toBe(charged);
+    expect(h.events().filter(e => e.kind === 'decision_effect_started')).toHaveLength(1);
+  });
+
+  it('tags a halt raised while executing a keyed decision', async () => {
+    const h = await harness();
+    h.setVerifyExit(1);
+    await h.step(6);
+    const chain = h.chain();
+    h.f.rig.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', T0);
+    h.ports.qualify = async () => ({ ...qualified, qualified: false, reasons: ['test'] });
+    const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false,
+      decide: async (_principal: unknown, id: string, decision: Parameters<typeof h.runner.decide>[1]) => h.runner.decide(id, decision) };
+    const service = new ContainedMissionService({ host: host as never,
+      access: { authenticate: () => h.f.principal } as never, draining: () => false });
+    const request = { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'extra_repair', decision_id: 'failed-resume-1' };
+    expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true });
+    const halt = h.events().filter(e => e.kind === 'halted').at(-1)!;
+    expect(JSON.parse(halt.payload_json)).toMatchObject({ decision_id: 'failed-resume-1', reason: 'qualification_failed' });
+  });
+
   describe('budget and grant stops', () => {
     const exhaustExecutor = (h: Harness) => h.use('executor', 1200);
     const regrantStoppedChild = async () => {
@@ -524,6 +660,34 @@ describe('a revision child under the runner', () => {
       const m = await h.runner.decide(h.childId, { kind: 'resume_budget' });
       expect(m).toMatchObject({ state: 'verified', candidate_head: candidate, candidate_verified: 1 });
       expect(h.chain().state).toBe('revising');
+      expect(h.calls.verify).toBe(1);
+    });
+
+    it('accepts a keyed verification resume and its candidate transition in one transaction', async () => {
+      const h = await harness();
+      await h.step(2);
+      h.use('container', 240);
+      await h.step();
+      const stopped = h.chain();
+      h.f.rig.chains.replaceGrant(stopped.chain_id, stopped.revision,
+        h.f.renew({ budget: { max_executor_seconds: 3600, max_container_seconds: 3720, max_wall_clock_hours: 48 } }), T0);
+      const host = { store: h.f.rig.missions, runner: h.runner, isBusy: () => false };
+      const service = new ContainedMissionService({ host: host as never,
+        access: { authenticate: () => h.f.principal } as never, draining: () => false });
+      const request = { credential: 'c'.repeat(32), mission_id: h.childId, decision: 'resume_budget', decision_id: 'verify-resume-1' };
+      const before = h.get().revision;
+      const beforeChain = h.chain(); const beforeEvents = h.events();
+      h.f.rig.db.exec("CREATE TRIGGER fail_verify_resume BEFORE INSERT ON engineering_contained_events WHEN NEW.kind='resume_candidate_ready' BEGIN SELECT RAISE(ABORT, 'injected_resume_failure'); END");
+      await expect(service.handle('mission.decide', request)).rejects.toThrow('injected_resume_failure');
+      expect(h.get().revision).toBe(before);
+      expect(h.chain()).toEqual(beforeChain);
+      expect(h.events()).toEqual(beforeEvents);
+      h.f.rig.db.exec('DROP TRIGGER fail_verify_resume');
+      expect(await service.handle('mission.decide', request)).toMatchObject({ accepted: true, state: 'candidate_ready', revision: before + 1 });
+      expect(h.events().slice(-4).map(e => e.kind)).toEqual(['decision_accepted', 'decision_resume', 'resume_candidate_ready', 'decision_result']);
+      expect(await service.handle('mission.decide', request)).toMatchObject({ replay: true, state: 'candidate_ready' });
+      expect(h.f.rig.chains.events(stopped.chain_id).filter(e => e.kind === 'round_resumed')).toHaveLength(1);
+      expect((await h.step()).state).toBe('verified');
       expect(h.calls.verify).toBe(1);
     });
 

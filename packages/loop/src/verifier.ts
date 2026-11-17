@@ -1,7 +1,9 @@
+import { REPORT_REPAIR_PROMPT, type ReportRepairHooks } from "./report-repair.js";
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import type { AgentAdapter, AgentTask } from "@osstack/agents";
 import {
+  DonePayload,
   StructuredReviewSchema,
   type HermesEvent,
 } from "@osstack/hermes-adapter";
@@ -40,6 +42,10 @@ import {
 import { truncateUnicodeSafe } from "./unicode.js";
 
 export interface LocalVerifierOptions {
+  reportRepair?: ReportRepairHooks;
+  repairBuilderReport?(run: AgentRun, deterministicPass: boolean): Promise<void>;
+  /** Internal continuation; never sourced from repository task context. */
+  reportRunId?: string;
   workspacePath: string;
   commands?: string[];
   verifierAgentIds?: string[];
@@ -107,7 +113,12 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   const artifactStop = artifact.issues.find(issue => issue.rule === "verify.adapter_stop_unconfirmed");
   if (artifactStop !== undefined) return { pass: false, score: 0, reviewer_agent_id: "local-verifier", summary: artifactStop.message, issues: artifact.issues };
   const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);
-  const adapterResults = await runVerifierAdapters(
+  if (run.outcome === "report_invalid") {
+    await options.repairBuilderReport?.(run, commandRuns.length + artifact.evaluations.length > 0
+      && commandRuns.every(({ result }) => result.exitCode === 0)
+      && !artifact.issues.some(issue => issue.severity === "error"));
+  }
+  const adapterResults = run.outcome === "report_invalid" ? [] : await runVerifierAdapters(
     run,
     options,
     adapterSpecs,
@@ -124,7 +135,7 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
         message: `Builder execution ended ${run.outcome}${
           run.summary === undefined ? "" : `: ${singleLine(run.summary)}`
         }`,
-        rule: "execute.outcome_not_completed",
+        rule: run.outcome === "report_invalid" ? "execute.report_invalid" : "execute.outcome_not_completed",
       }];
   const verificationIssues = commandRuns
     .filter(({ implicit, result }) => implicit && result.exitCode !== 0)
@@ -192,6 +203,8 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   );
 
   return {
+    ...(run.outcome === "report_invalid" ? { report_invalid: "builder" as const }
+      : adapterIssues.some(issue => issue.rule === "verify.review_artifact_invalid") ? { report_invalid: "reviewer" as const } : {}),
     pass,
     score: evaluations.length > 0 ? evaluationScore(evaluations, pass) : pass ? 1 : 0,
     issues,
@@ -620,13 +633,30 @@ async function runVerifierAdapters(
       });
       continue;
     }
-    const result = await invokeVerifierAdapter(
+    let result = await invokeVerifierAdapter(
       run,
       options,
       adapter,
       adapterSpecs,
       verificationResults,
     );
+    const originalRunId = `${run.run_id}_verify_${sanitizeId(adapter.id)}`;
+    let repairReason = "repair_exhausted";
+    for (let attempt = 1; attempt <= 2 && result.issues.some(issue => issue.rule === "verify.review_artifact_invalid"); attempt++) {
+      if (result.issues.some(issue => ["verify.adapter_stop_unconfirmed", "verify.reviewer_mutation", "verify.reviewer_integrity_unconfirmed"].includes(issue.rule ?? ""))) break;
+      const hooks = options.reportRepair;
+      if (hooks === undefined || adapter.resumeReport === undefined || adapter.hasReportSession?.(originalRunId) === false) {
+        repairReason = "session_continuation_unsupported"; break;
+      }
+      const timeoutMs = hooks.remainingMs();
+      if (timeoutMs === undefined) { repairReason = "budget_insufficient"; break; }
+      hooks.event("loop.report_repair.attempt", { role: "reviewer", agent_id: adapter.id, attempt, original_run_id: originalRunId });
+      result = await invokeVerifierAdapter(run, { ...options, reportRunId: originalRunId, timeoutMs }, adapter, adapterSpecs, verificationResults);
+      hooks.event("loop.report_repair.result", { role: "reviewer", agent_id: adapter.id, attempt,
+        report_valid: result.reviewArtifact !== undefined && !result.issues.some(issue => issue.rule === "verify.adapter_failed"), issues: result.issues });
+    }
+    result.issues = result.issues.map(issue => issue.rule === "verify.review_artifact_invalid"
+      ? { ...issue, message: `reviewer_report_invalid: ${repairReason}; ${issue.message}` } : issue);
     results.push(result);
     if (result.issues.some(issue => ["verify.adapter_stop_unconfirmed", "verify.reviewer_mutation", "verify.reviewer_integrity_unconfirmed"].includes(issue.rule ?? ""))) break;
   }
@@ -749,8 +779,10 @@ async function invokeVerifierAdapter(
     timedOut = true;
     controller.abort();
   }, remaining());
+  let usage: Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd"> = {};
   let eventCount = 0;
   let summary: string | undefined;
+  let reportProtocolError: string | undefined;
   let status: "completed" | "failed" | "cancelled" | "expired" | undefined;
   let terminalError: string | undefined;
   let judgments: AdapterEvaluationJudgment[] | undefined;
@@ -785,17 +817,39 @@ async function invokeVerifierAdapter(
     );
     if (remaining() <= 0) throw Error("verifier deadline exhausted before invocation");
     invocationAttempted = true;
-    iterator = adapter.invoke(agentTask, controller.signal)[Symbol.asyncIterator]();
+    if (options.reportRunId !== undefined) agentTask.prompt = REPORT_REPAIR_PROMPT;
+    iterator = (options.reportRunId === undefined ? adapter.invoke(agentTask, controller.signal)
+      : adapter.resumeReport!(agentTask, controller.signal, options.reportRunId))[Symbol.asyncIterator]();
     while (true) {
       const next = await nextOrAbort();
       if (next.done) { iteratorFinished = true; break; }
       const event = next.value;
       eventCount += 1;
+      if (event.type === "usage.final" || event.type === "usage.updated") {
+        const payload = event.payload as Record<string, unknown>;
+        usage = reportUsage(payload);
+      }
+      if (options.reportRunId !== undefined && event.type.startsWith("tool.")) terminalError = "Report repair used a tool";
       if (event.type === "error" && event.terminal) {
         terminalError = errorPayload(event.payload).message;
       }
       if (event.type === "done") {
-        const payload = donePayload(event.payload);
+        // Validate the envelope separately: structured review parsing below
+        // supplies its own protocol error without masking a valid failure status.
+        const parsedDone = DonePayload.omit({ review: true, implementation_deviations: true, implementation_deviations_problem: true }).safeParse(event.payload);
+        if (!parsedDone.success) {
+          reportProtocolError = "verifier emitted an invalid done payload";
+          continue;
+        }
+        const rawPayload = event.payload as Record<string, unknown>;
+        const payload = {
+          ...parsedDone.data,
+          review: rawPayload["review"],
+          implementation_deviations: rawPayload["implementation_deviations"],
+          implementation_deviations_problem: rawPayload["implementation_deviations_problem"],
+        };
+        const rawUsage = (event.payload as Record<string, unknown>)["usage"];
+        if (rawUsage && typeof rawUsage === "object") usage = reportUsage(rawUsage as Record<string, unknown>);
         status = payload.status;
         summary = payload.result_summary;
         if (structuredReview) {
@@ -837,6 +891,7 @@ async function invokeVerifierAdapter(
   } catch (error) {
     terminalError = error instanceof Error ? error.message : String(error);
   } finally {
+    options.reportRepair?.usage(usage);
     clearTimeout(timeout);
     if (!iteratorFinished && iterator) {
       controller.abort();
@@ -890,14 +945,20 @@ async function invokeVerifierAdapter(
       "reviewer changed the builder workspace or Git metadata",
     ));
   }
+  if (reportProtocolError !== undefined || status === undefined) {
+    issues.push(adapterIssue(adapter.id, "verify.review_artifact_invalid",
+      reportProtocolError ?? "verifier did not emit a done event"));
+  }
+  // A failed/cancelled/expired review is a business outcome. Only a
+  // completed (or missing) report must supply a structured review artifact.
   if (structuredReview) {
-    if (reviewArtifact === undefined) {
+    if (reviewArtifact === undefined && status === "completed") {
       issues.push(adapterIssue(
         adapter.id,
         "verify.review_artifact_invalid",
         reviewArtifactError ?? "structured review payload is missing",
       ));
-    } else if (reviewArtifact.verdict !== "approved") {
+    } else if (reviewArtifact !== undefined && reviewArtifact.verdict !== "approved") {
       issues.push(adapterIssue(
         adapter.id,
         "verify.review_not_approved",
@@ -919,7 +980,7 @@ async function invokeVerifierAdapter(
     ));
   } else if (
     status !== "completed"
-    && !(structuredReview && reviewArtifact?.verdict !== "approved")
+    && !(structuredReview && reviewArtifact !== undefined && reviewArtifact.verdict !== "approved")
   ) {
     const message = summary
       ?? (controller.signal.aborted
@@ -1129,20 +1190,11 @@ const DeviationProblem = z.object({
   invalid_count: z.number().int().positive().optional(),
 });
 
-function donePayload(payload: HermesEvent["payload"]): {
-  status: "completed" | "failed" | "cancelled" | "expired";
-  result_summary?: string;
-  evaluation_judgments?: unknown;
-  implementation_deviations?: unknown;
-  implementation_deviations_problem?: unknown;
-  review?: unknown;
-} {
-  return payload as {
-    status: "completed" | "failed" | "cancelled" | "expired";
-    result_summary?: string;
-    evaluation_judgments?: unknown;
-    implementation_deviations?: unknown;
-    implementation_deviations_problem?: unknown;
-    review?: unknown;
-  };
+function reportUsage(payload: Record<string, unknown>): Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd"> {
+  const result: Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd"> = {};
+  for (const key of ["tokens_in", "tokens_out", "cost_usd"] as const) {
+    const value = payload[key];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) result[key] = value;
+  }
+  return result;
 }

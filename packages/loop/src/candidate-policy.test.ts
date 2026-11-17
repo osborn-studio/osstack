@@ -257,11 +257,13 @@ it("atomically claims one batch ID across differing task tuples and never steals
   await expect(record.value.record("candidate_frozen")).rejects.toThrow("CANDIDATE_BATCH_CLAIM_CHANGED");
 });
 
-it("preserves execution-unconfirmed escalation and stop evidence through candidate refusal", async () => {
+it.each(["report_invalid", "execution_unconfirmed"])("preserves %s escalation and stop evidence through candidate refusal", async kind => {
   const f = fixture(1); const { executeCommand: _, ...opts } = f.opts;
-  const adapter: AgentAdapter = { id: "synthetic-unconfirmed-builder", display_name: "Synthetic abnormal stream", cost_tier: "low", capabilities: () => [{ id: "synthetic-unconfirmed-builder.code.write", kind: "code.write", agent_id: "synthetic-unconfirmed-builder", description: "Synthetic only", cost_tier: "low", hints: {}, version: "0.0.0" }], isAvailable: async () => ({ available: true, last_checked_at: 0 }), async *invoke() {} };
+  const adapter: AgentAdapter = { id: "synthetic-unconfirmed-builder", display_name: "Synthetic abnormal stream", cost_tier: "low", capabilities: () => [{ id: "synthetic-unconfirmed-builder.code.write", kind: "code.write", agent_id: "synthetic-unconfirmed-builder", description: "Synthetic only", cost_tier: "low", hints: {}, version: "0.0.0" }], isAvailable: async () => ({ available: true, last_checked_at: 0 }), async *invoke() { if (kind === "execution_unconfirmed") throw Error("Synthetic unknown stop"); yield* []; } };
   const result = await new LoopEngine({ ...opts, agentId: adapter.id, adapters: [adapter] }).runOnce();
-  expect(result.completedTasks[0]).toMatchObject({ outcome: "escalated", implementation_unconfirmed: true, error_summary: expect.stringContaining("execution_unconfirmed:") });
+  expect(result.completedTasks[0]).toMatchObject({ outcome: "escalated",
+    ...(kind === "execution_unconfirmed" ? { implementation_unconfirmed: true, error_summary: expect.stringContaining("execution_unconfirmed:") }
+      : { report_invalid: "builder", error_summary: expect.stringContaining("builder_report_invalid:") }) });
   expect(result.completedTasks[0]?.candidate_evidence?.stage).toBe("final_preflight_failed");
   expect(f.stages().some(s => s.stage === "final_preflight_ready")).toBe(false);
 });

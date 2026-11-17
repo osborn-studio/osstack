@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (58 total).
+Top-level `osstack` commands parsed from `--help` (59 total).
 
 - `agent`
 - `attention`
@@ -16,6 +16,7 @@ Top-level `osstack` commands parsed from `--help` (58 total).
 - `control`
 - `daily`
 - `dashboard`
+- `decisions`
 - `deliver`
 - `doctor`
 - `engineering`
@@ -62,6 +63,19 @@ Top-level `osstack` commands parsed from `--help` (58 total).
 - `upgrade`
 - `version`
 - `worker`
+
+## Mission subcommands
+
+- `mission start`
+- `mission list`
+- `mission status`
+- `mission cancel`
+- `mission publish-check`
+- `mission approve-ci-repair`
+- `mission decide`
+- `mission grant-revisions`
+- `mission merger report`
+- `mission chain-decide`
 
 Doc 15 §2.2 context: this surface is the raw capability layer; the
 task-oriented golden paths (`daily` / `start` / `improve`) compose it.

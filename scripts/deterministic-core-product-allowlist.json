@@ -1,0 +1,122 @@
+[
+  {
+    "file": "packages/autonomy/src/deploy-policy.ts",
+    "count": 3,
+    "reason": "Legacy Kimi verification field and failure code are part of the deploy approval contract; preserve existing gates."
+  },
+  {
+    "file": "packages/autonomy/src/engine.ts",
+    "count": 1,
+    "reason": "Legacy deploy engine passes the Kimi verification field required by the existing approval contract."
+  },
+  {
+    "file": "packages/core/src/privacy/redactor.ts",
+    "count": 4,
+    "reason": "Provider-specific key patterns and redaction labels intentionally identify credentials; keep secret detection and log labels stable."
+  },
+  {
+    "file": "packages/core/src/state/db.ts",
+    "count": 1,
+    "reason": "Legacy database-path refusal message names the Hermes host that must receive the error."
+  },
+  {
+    "file": "packages/core/src/state/decision-queries.ts",
+    "count": 1,
+    "reason": "Read-only query named after the 'hermes' pending-decision source added in #453; it reads the Hermes approvals and clarifications tables. Renaming it changes the decisions.list contract."
+  },
+  {
+    "file": "packages/core/src/state/migrations.ts",
+    "count": 1,
+    "reason": "Historical SQL migration defines persisted hermes_session_id columns; changing the schema requires a separate migration."
+  },
+  {
+    "file": "packages/core/src/state/run-store.ts",
+    "count": 6,
+    "reason": "Legacy SQL inserts and input fields use persisted hermes_session_id columns; preserve database compatibility."
+  },
+  {
+    "file": "packages/core/src/state/schema.ts",
+    "count": 2,
+    "reason": "Legacy row types expose persisted hermes_session_id columns; preserve the public storage contract."
+  },
+  {
+    "file": "packages/governance/src/knowledge-hygiene/config.ts",
+    "count": 2,
+    "reason": "Legacy configuration keys claude_code and codex_local select memory adapters; preserve configuration compatibility."
+  },
+  {
+    "file": "packages/governance/src/knowledge-hygiene/engine.ts",
+    "count": 5,
+    "reason": "Legacy memory-adapter routing keys and CLAUDE.md discovery are coupled to existing configuration and surface contracts."
+  },
+  {
+    "file": "packages/governance/src/knowledge-hygiene/narrative-detector.ts",
+    "count": 6,
+    "reason": "Claude memory context markers are input syntax recognized by the detector; renaming markers would change parsing."
+  },
+  {
+    "file": "packages/governance/src/knowledge-hygiene/repository-reader.ts",
+    "count": 2,
+    "reason": "CLAUDE.md is an actual repository memory filename read by the hygiene scanner."
+  },
+  {
+    "file": "packages/governance/src/knowledge-hygiene/semantic-engine.ts",
+    "count": 4,
+    "reason": "Legacy Claude memory URI, adapter keys and configuration fields define semantic scan output and routing."
+  },
+  {
+    "file": "packages/governance/src/knowledge-hygiene/types.ts",
+    "count": 2,
+    "reason": "Legacy literal adapter ids are public memory-surface contract discriminants; require a separate contract migration."
+  },
+  {
+    "file": "packages/governance/src/mission-patch/protected-set.ts",
+    "count": 6,
+    "reason": "Product tool directories and the Codex guard path are intentional protected surfaces; removing them weakens protection."
+  },
+  {
+    "file": "packages/governance/src/probe/packs/calibration-v1.ts",
+    "count": 1,
+    "reason": "The versioned calibration pack cites a Claude research URL as provenance; preserve pack metadata."
+  },
+  {
+    "file": "packages/governance/src/probe/packs/product-v1.ts",
+    "count": 1,
+    "reason": "The versioned product pack cites a Claude research URL as provenance; preserve pack metadata."
+  },
+  {
+    "file": "packages/governance/src/probe/packs/tech-v1.ts",
+    "count": 1,
+    "reason": "The versioned technical pack cites a Claude research URL as provenance; preserve pack metadata."
+  },
+  {
+    "file": "packages/loop/src/discover.ts",
+    "count": 1,
+    "reason": "Legacy discovery excludes codex/ branches from candidate tasks; changing the prefix changes task discovery."
+  },
+  {
+    "file": "packages/loop/src/iterator.ts",
+    "count": 4,
+    "reason": "Legacy hermes source discriminant selects iteration decisions shared with the loop engine and public types."
+  },
+  {
+    "file": "packages/loop/src/loop-engine.ts",
+    "count": 8,
+    "reason": "Legacy hermes source discriminant controls adapter execution, verification and result accounting."
+  },
+  {
+    "file": "packages/loop/src/types.ts",
+    "count": 1,
+    "reason": "Legacy hermes literal is the public execution-source discriminant; preserve wire and consumer compatibility."
+  },
+  {
+    "file": "packages/loop/src/verifier.ts",
+    "count": 7,
+    "reason": "Legacy Kimi adapter timeout, structured-review selection and context key affect verifier behavior; migrate through adapter contracts separately."
+  },
+  {
+    "file": "packages/protocol/src/decisions.ts",
+    "count": 1,
+    "reason": "Public DecisionSource enum value 'hermes' from #453 names where a pending decision comes from. It is a protocol value clients already receive, not an adapter or model selection."
+  }
+]
