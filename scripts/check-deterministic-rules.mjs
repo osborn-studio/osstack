@@ -216,6 +216,162 @@ function packageProductionSource(root, path) {
     && !parts.slice(3, -1).some(part => /^(?:__)?(?:tests?|fixtures)(?:__)?$|^testkit$/.test(part))
     && !/(?:\.(?:test|spec|testkit|fixture)|-test-fixture)\.[cm]?[jt]sx?$/.test(path) && !/^test-/.test(parts.at(-1));
 }
+// Network scope: all core state/stores and decisions, including policy, kanban,
+// orchestrator, privacy, graph (local Git/artifact state) and top-level contracts.
+// Excluded: hermes/ shells out to the host; kg/ is the GBrain adapter;
+// observability/ exports telemetry. These are existing integration surfaces.
+// Tests/fixtures use the shared production-source exclusion above.
+export function coreNetworkScope(file) {
+  return file.startsWith("packages/core/src/")
+    && !/^packages\/core\/src\/(?:hermes|kg|observability)\//.test(file);
+}
+// Contracts, state machines, schedulers and deterministic validators are core-like.
+// Cover all loop files, not only loop-engine/verifier, so moving a decision to a
+// helper does not bypass the rule. Other packages are host/configuration, agent,
+// service, knowledge ingestion, UI/CLI, runtime or evaluation integrations.
+const coreProductPackages = new Set(["core", "protocol", "loop", "autonomy", "contracts", "governance", "graph", "plugins"]);
+// Existing adapter directories, including the two integrations still in core.
+export const productAdapterDirectories = ["packages/agents/src/adapters/", "packages/hermes-adapter/src/", "packages/core/src/hermes/", "packages/core/src/kg/", "packages/governance/src/knowledge-hygiene/adapters/"];
+export function coreProductScope(file) {
+  return coreProductPackages.has(file.split("/")[1]) && !productAdapterDirectories.some(prefix => file.startsWith(prefix));
+}
+// Inventory from agents/src/adapters: codex-{cli,proxy} (OpenAI), claude-*
+// (Anthropic), deepseek-*/ds-{review,verify}, kimi-*, opencode-cli, zcode-cli
+// (GLM), google-stitch. Gemini and gpt-* are additional requested model-family
+// guards (not currently named by adapter production sources); hermes is
+// the host adapter in hermes-adapter/ and core/hermes/. Do not match generic
+// words such as "code", "design", "research" or "stitch" on their own.
+// Split camelCase/ACRONYM identifiers first; delimiters include '_' and '-'.
+const productNamePattern = /(?:^|[^a-z0-9])(?:codex|claude|deep[ -]?seek|kimi|gemini|glm|open[ -]?code|z[ -]?code|hermes|open[ -]?ai|anthropic)(?=$|[^a-z0-9])|(?:^|[^a-z0-9])(?:gpt-|ds-(?:review|verify)(?=$|[^a-z0-9])|google[ -]stitch(?=$|[^a-z0-9]))/i;
+function identifierWords(value) {
+  return value.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
+function findingAt(root, path, source, node, category) {
+  return { file: rel(root, path), category, line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, expression: node.getText(source) };
+}
+function coreFiles(root, scope) {
+  return walk(join(root, "packages"), path => packageProductionSource(root, path) && scope(rel(root, path)));
+}
+export function coreProductFindings(root) {
+  const findings = [];
+  for (const path of coreFiles(root, coreProductScope)) {
+    const source = sourceFile(path);
+    // Bind imports to their references without loading dependencies. This permits
+    // adapter-exported constants/types, but still rejects local shadowing and
+    // product literals in registry keys or capability ids.
+    const host = ts.createCompilerHost({ noLib: true, noResolve: true });
+    host.getSourceFile = name => name === path ? source : undefined;
+    const program = ts.createProgram([path], { noLib: true, noResolve: true }, host);
+    const checker = program.getTypeChecker();
+    const adapterImports = new Set();
+    function adapterModule(module) {
+      const target = resolveSource(root, path, module);
+      return /^@osstack\/(?:agents|hermes-adapter)(?:\/|$)/.test(module)
+        || Boolean(target && productAdapterDirectories.some(prefix => rel(root, target).startsWith(prefix)));
+    }
+    traverse(source, node => {
+      if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return;
+      const module = node.moduleSpecifier.text;
+      if (!adapterModule(module)) return;
+      traverse(node.importClause ?? node, child => {
+        const symbol = ts.isIdentifier(child) ? checker.getSymbolAtLocation(child) : undefined;
+        if (symbol) adapterImports.add(symbol);
+      });
+    });
+    traverse(source, node => {
+      const identifier = ts.isIdentifier(node);
+      const literal = ts.isStringLiteralLike(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node);
+      if (!identifier && !literal) return;
+      if (identifier) {
+        let declaration = node.parent;
+        while (declaration && !ts.isSourceFile(declaration)) {
+          if ((ts.isImportDeclaration(declaration) || ts.isExportDeclaration(declaration))
+            && declaration.moduleSpecifier && ts.isStringLiteral(declaration.moduleSpecifier)
+            && adapterModule(declaration.moduleSpecifier.text)) return;
+          declaration = declaration.parent;
+        }
+        let reference = node;
+        if (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) {
+          reference = node.parent.expression;
+          while (ts.isPropertyAccessExpression(reference)) reference = reference.expression;
+        }
+        if (adapterImports.has(checker.getSymbolAtLocation(reference))) return;
+      }
+      // Module specifiers for approved adapter imports are references, not ids.
+      if (literal && adapterModule(node.text) && (
+        (ts.isImportDeclaration(node.parent) || ts.isExportDeclaration(node.parent)) && node.parent.moduleSpecifier === node
+        || ts.isCallExpression(node.parent) && node.parent.expression.kind === ts.SyntaxKind.ImportKeyword
+        || ts.isLiteralTypeNode(node.parent) && ts.isImportTypeNode(node.parent.parent))) return;
+      if (productNamePattern.test(identifier ? identifierWords(node.text) : node.text)) findings.push(findingAt(root, path, source, node, identifier ? "identifier" : "literal"));
+    });
+  }
+  return findings;
+}
+export function coreProductViolations(root, allowlist) {
+  return countedViolations(coreProductFindings(root), allowlist, "core product", () => "use exported constants from the adapter package for capability ids and registry keys; pass adapter/model selection as parameters; keep product names in adapters; do not expand the allowlist");
+}
+const networkModule = /^(?:(?:node:)?(?:https?|net|tls|dgram|dns)(?:\/|$)|undici(?:\/|$)|axios(?:\/|$)|ws$|websocket$)/i;
+const remoteGit = /(?:^|\s)(?:clone|fetch|pull|push|ls-remote)(?=\s|$)|(?:^|\s)remote\s+(?:update|prune|show)(?=\s|$)|(?:^|\s)submodule\s+(?:add|update)(?=\s|$)|(?:^|\s)archive\s+.*--remote(?:=|\s)/;
+export function coreNetworkFindings(root) {
+  const findings = [];
+  for (const path of coreFiles(root, coreNetworkScope)) {
+    const source = sourceFile(path);
+    const bindings = new Map();
+    const processNames = new Set(["exec", "execSync", "execFile", "execFileSync", "spawn", "spawnSync"]);
+    traverse(source, node => {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) bindings.set(node.name.text, node.initializer);
+      if (ts.isImportSpecifier(node) && processNames.has(node.propertyName?.text ?? node.name.text)) processNames.add(node.name.text);
+      if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer) {
+        for (const element of node.name.elements) {
+          if (ts.isIdentifier(element.name)) bindings.set(element.name.text, ts.factory.createPropertyAccessExpression(node.initializer, element.propertyName?.getText(source) ?? element.name.text));
+        }
+      }
+    });
+    function values(node, seen = new Set()) {
+      if (!node) return "";
+      if (ts.isStringLiteralLike(node)) return node.text;
+      if (ts.isTemplateExpression(node)) return node.head.text + node.templateSpans.map(span => " <dynamic> " + span.literal.text).join("");
+      if (ts.isIdentifier(node) && bindings.has(node.text) && !seen.has(node.text)) return values(bindings.get(node.text), new Set([...seen, node.text]));
+      if (ts.isArrayLiteralExpression(node)) return node.elements.map(item => values(item, seen)).join(" ");
+      if (ts.isSpreadElement(node)) return values(node.expression, seen);
+      if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node)) return values(node.expression, seen);
+      return "<dynamic>";
+    }
+    function apiName(node, seen = new Set()) {
+      if (ts.isIdentifier(node)) {
+        if (bindings.has(node.text) && !seen.has(node.text)) return apiName(bindings.get(node.text), new Set([...seen, node.text]));
+        return node.text;
+      }
+      if (ts.isPropertyAccessExpression(node)) return node.name.text;
+      if (ts.isElementAccessExpression(node)) return values(node.argumentExpression);
+      if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node)) return apiName(node.expression, seen);
+      return "";
+    }
+    traverse(source, node => {
+      let category;
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier) && networkModule.test(node.moduleSpecifier.text)) category = "network import";
+      if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && node.moduleReference.expression && networkModule.test(values(node.moduleReference.expression))) category = "network import";
+      if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+        const name = apiName(node.expression);
+        if (name === "fetch" || name === "WebSocket") category = "network API";
+        if ((name === "require" || node.expression.kind === ts.SyntaxKind.ImportKeyword) && networkModule.test(values(node.arguments?.[0]))) category = "network import";
+        // Include conventional exec/spawn wrappers: subprocess indirection must
+        // not make a literal remote command disappear from the decision layer.
+        if (processNames.has(name) || /exec|spawn|run|git/i.test(name)) {
+          const command = (node.arguments ?? []).map(arg => values(arg)).join(" ");
+          if (/(?:^|[\s/;&|])(?:curl|gh)(?=\s|$)/.test(command)
+            || (/(?:^|[\s/;&|])git(?=\s|$)/.test(command) || /git/i.test(name)) && remoteGit.test(command)) category = "remote command";
+        }
+      }
+      if (category) findings.push(findingAt(root, path, source, node, category));
+    });
+  }
+  return findings;
+}
+export function coreNetworkViolations(root, allowlist) {
+  return countedViolations(coreNetworkFindings(root), allowlist, "core network", () => "move network calls to an adapter or CLI; pass fetched results into core as parameters; do not expand the allowlist");
+}
+
 // Commands observed in the repository plus the other direct ref/index/remote writers.
 // Object-only plumbing (hash-object, write-tree, commit-tree) does not change refs or index.
 const gitWriters = new Set(["push", "commit", "merge", "rebase", "reset", "checkout", "switch", "restore", "update-ref", "add", "rm", "mv", "fetch", "pull", "cherry-pick", "revert", "stash", "read-tree", "update-index", "apply", "am", "init", "clone", "symbolic-ref", "pack-refs", "filter-branch", "notes", "replace"]);
@@ -363,6 +519,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     ...gitWriteViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-git-allowlist.json"), "utf8"))),
     ...secretViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-secret-allowlist.json"), "utf8"))),
     ...machinePathViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-machine-path-allowlist.json"), "utf8"))),
+    ...coreNetworkViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-core-network-allowlist.json"), "utf8"))),
+    ...coreProductViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-core-product-allowlist.json"), "utf8"))),
     ...packageContractViolations(repoRoot),
     ...docsLinkViolations(repoRoot, docsAllowlist),
     // Baseline: cli-entry.ts 2 files (+1), bin.ts 178 files (+4).
