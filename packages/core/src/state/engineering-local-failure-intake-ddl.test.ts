@@ -10,20 +10,20 @@ import { RevisionChainStore } from "./engineering-revision-chain-store.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
 it("registers intake migration 58 and leaves exactly the reserved 57 gap", () => {
-  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 58]);
+  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 57, 58]);
   expect(MIGRATIONS.find(m => m.id === 58)?.name).toBe("engineering_local_failure_intakes");
 });
 
-it("upgrades schema 56 additively without changing existing objects, rows or active reservations", () => {
+it("upgrades schema 57 additively without changing existing objects, rows or active reservations", () => {
   const root = realpathSync(createScratchDirSync("tests", "intake-ddl"));
   const path = join(root, "state.db");
   let db = new Database(path);
   try {
     db.pragma("foreign_keys=ON"); db.pragma("synchronous=FULL");
-    for (const migration of MIGRATIONS.filter(m => m.id <= 56)) {
+    for (const migration of MIGRATIONS.filter(m => m.id <= 57)) {
       db.exec(migration.sql); db.pragma(`user_version=${migration.id}`);
     }
-    expect(db.pragma("user_version", { simple: true })).toBe(56);
+    expect(db.pragma("user_version", { simple: true })).toBe(57);
     db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
     const attention = new AttentionStore(db, path), owner = attention.claimOwner("owner");
     const scope = attention.registerScope(owner, "t", root);

@@ -108,7 +108,6 @@ import {
 import { applyDeployedEnvDefaults } from "./deployed-home.js";
 import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
-import { handleUpgradeCommand } from "./upgrade.js";
 import { handlePolicyCommand } from "./policy-command.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { renderUpdateCheckStatus, type UpdateCheckCache } from "./update-check.js";
@@ -777,6 +776,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "upgrade") {
+    const { handleUpgradeCommand } = await import("./upgrade.js");
     return await handleUpgradeCommand(args.slice(1), rpc);
   }
 
