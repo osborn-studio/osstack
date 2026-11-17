@@ -16,7 +16,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 56;
+export const UPGRADE_QUALIFIED_SCHEMA = 57;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -151,6 +151,8 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // watermarks), one partial unique index and five triggers. Evidence only: no in-flight side effect, so no hold. The table, the index, the
       // triggers and the columns are required at 55, and a pre-55 home that already has any of them is refused below.
       // 56 adds immutable Mission lineage only; no launch or new upgrade hold. Require all named objects.
+      // 57 adds an append-only verification source ledger; no launch or new upgrade hold. Require all named objects.
+      if(schema>=57)expected.push('engineering_verification_sources');
       if(schema>=56)expected.push('engineering_mission_lineage');
       if(schema>=55)expected.push('engineering_merger_shadow_scans');
       if(schema>=54)expected.push('engineering_host_processes');
@@ -159,12 +161,16 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const triggers = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='trigger'").all() as {name:string}[]).map(r=>r.name));
       const grantTriggers=['engineering_chain_grant_monotonic','engineering_chain_grant_shadow_fixed'];
       const hostProcessTriggers=['engineering_host_process_fixed','engineering_host_process_flow','engineering_host_process_proof','engineering_host_process_no_delete','engineering_host_process_insert_shape','engineering_host_process_insert_gate','engineering_host_process_insert_mission_busy','engineering_host_process_insert_remote_busy','engineering_host_process_insert_intent_reused','engineering_host_process_insert_op_exists','engineering_claim_replace_host_processes','engineering_contained_host_process_replace','engineering_claim_release_host_processes','engineering_contained_host_process_gate'];
+      const verificationSourceTriggers=['engineering_verification_sources_no_delete','engineering_verification_sources_no_update'];
+      const verificationSourceIndexes=['engineering_verification_sources_pr','engineering_verification_sources_result','engineering_verification_sources_registration'];
       const lineageTriggers=['engineering_mission_lineage_no_update','engineering_mission_lineage_no_delete','engineering_mission_lineage_insert_gate'];
       const lineageIndexes=['engineering_mission_lineage_parent','engineering_mission_lineage_origin'];
       const scanTriggers=['engineering_merger_scan_append_only','engineering_merger_scan_no_delete','engineering_merger_cycle_scan_required','engineering_merger_outcome_scan_required','engineering_merger_watermark_poll_monotonic'];
       const indexes = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as {name:string}[]).map(r=>r.name));
       const scanColumns=[['engineering_merger_shadow_cycles','scan_id'],['engineering_merger_shadow_outcomes','scan_id'],['engineering_merger_shadow_watermarks','last_poll_at']] as const;
       const hasColumn=(table:string,column:string)=>tables.has(table)&&(db.prepare(`PRAGMA table_info(${table})`).all() as {name:string}[]).some(r=>r.name===column);
+      if(schema>=57&&(verificationSourceTriggers.some(name=>!triggers.has(name))||verificationSourceIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
+      if(schema<57&&(tables.has('engineering_verification_sources')||verificationSourceTriggers.some(name=>triggers.has(name))||verificationSourceIndexes.some(name=>indexes.has(name))))throw Error('upgrade_schema_unqualified');
       if(schema>=56&&(lineageTriggers.some(name=>!triggers.has(name))||lineageIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
       if(schema<56&&(tables.has('engineering_mission_lineage')||lineageTriggers.some(name=>triggers.has(name))||lineageIndexes.some(name=>indexes.has(name))))throw Error('upgrade_schema_unqualified');
       if(expected.some(name=>!tables.has(name))||(schema>=55&&(scanTriggers.some(name=>!triggers.has(name))||!indexes.has('engineering_merger_cycle_scan')||scanColumns.some(([t,c])=>!hasColumn(t,c))))||(schema>=53&&grantTriggers.some(name=>!triggers.has(name)))||(schema>=54&&hostProcessTriggers.some(name=>!triggers.has(name))))throw Error('upgrade_schema_tables_missing');
