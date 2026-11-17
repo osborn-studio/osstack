@@ -9,7 +9,7 @@ import { ContainedMissionStore, MAX_REPAIR_CHAIN_DEPTH, type ContainedDeriveInpu
 import { MIGRATIONS } from './migrations.js';
 
 const cleanup: (() => void)[] = [];
-afterEach(() => cleanup.splice(0).forEach(fn => fn()));
+afterEach(() => { for (const fn of cleanup.splice(0)) fn(); });
 function setup(legacy = false) {
   const root = createScratchDirSync('tests', 'mission-lineage'); const path = join(root, 'state.db');
   if (legacy) {
