@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { z } from "zod";
 import { EvaluationSpec } from "./evaluation-spec.js";
 import { CandidateBatchBinding } from "./candidate-policy.js";
@@ -65,7 +65,7 @@ export function parseTaskQueueFile(raw: unknown, options: ParseTaskQueueOptions 
   const parsed = TaskQueueFile.parse(raw);
   const items = Array.isArray(parsed) ? parsed : [parsed];
   return items.map((item) => Task.parse({
-    task_id: item.task_id ?? randomUUID(),
+    task_id: item.task_id ?? stableQueueId(item, options.taskFile),
     capability: item.capability ?? "code.write",
     prompt: item.prompt,
     priority: item.priority ?? 50,
@@ -77,6 +77,22 @@ export function parseTaskQueueFile(raw: unknown, options: ParseTaskQueueOptions 
     ...(item.evaluation !== undefined ? { evaluation: item.evaluation } : {}),
     ...(item.candidateBatch !== undefined ? { candidateBatch: item.candidateBatch } : {}),
   }));
+}
+
+function stableQueueId(item: z.infer<typeof TaskQueueFileItem>, taskFile: string | undefined): string {
+  const path = taskFile === undefined ? "unknown-file" : relative(dirname(dirname(taskFile)), taskFile).replaceAll("\\", "/");
+  const canonical = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value !== null && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => [key, canonical(entry)]));
+    }
+    return value;
+  };
+  const hash = createHash("sha256");
+  for (const field of ["task_queue_v1", path, JSON.stringify(canonical(item))]) {
+    hash.update(`${Buffer.byteLength(field)}:`).update(field);
+  }
+  return `task-queue-${hash.digest("hex")}`;
 }
 
 export function countTaskQueueTasks(raw: unknown): number {

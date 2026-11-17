@@ -8,6 +8,7 @@ import type { AgentAdapter, AgentAvailability, AgentTask } from "@osstack/agents
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { describe, expect, it, vi } from "vitest";
 import { LoopEngine } from "./loop-engine.js";
+import { GitDiffScanner } from "./discover.js";
 import { PublishConfig, type RunPublishDeps } from "./publisher.js";
 
 async function makeQueuedWorkspace(): Promise<string> {
@@ -378,6 +379,113 @@ describe("LoopEngine", () => {
     expect(second.executedTaskCount).toBe(0);
     expect(second.skippedTaskCount).toBe(1);
     await expect(readFile(join(workspace, "count.txt"), "utf-8")).resolves.toBe("1");
+  });
+
+  it("discovers an unchanged diff once and skips its completed id after restart", async () => {
+    const workspace = await makeGitQueuedWorkspace("before\n");
+    await writeFile(join(workspace, "app.txt"), "after\n");
+    const options = {
+      workspacePath: workspace,
+      sources: ["git_diff"] as const,
+      executeCommand: "node -e \"process.exit(0)\"",
+      maxIterations: 1,
+    };
+    const first = await new LoopEngine({ ...options, sources: [...options.sources] }).runOnce();
+    const second = await new LoopEngine({ ...options, sources: [...options.sources] }).runOnce();
+
+    expect(first.executedTaskCount).toBe(1);
+    expect(second.discoveredTaskCount).toBe(1);
+    expect(second.executedTaskCount).toBe(0);
+    expect(second.skippedTaskCount).toBe(1);
+    expect(second.state.completed_tasks[0]?.task_id).toBe(first.state.completed_tasks[0]?.task_id);
+  });
+
+  it("discovers a changed diff as a new task", async () => {
+    const workspace = await makeGitQueuedWorkspace("before\n");
+    const options = {
+      workspacePath: workspace,
+      sources: ["git_diff" as const],
+      executeCommand: "node -e \"process.exit(0)\"",
+      maxIterations: 1,
+    };
+    await writeFile(join(workspace, "app.txt"), "first\n");
+    const first = await new LoopEngine(options).runOnce();
+    await writeFile(join(workspace, "app.txt"), "other\n");
+    const second = await new LoopEngine(options).runOnce();
+
+    expect(second.discoveredTaskCount).toBe(1);
+    expect(second.executedTaskCount).toBe(1);
+    expect(second.state.completed_tasks).toHaveLength(2);
+    expect(second.state.completed_tasks[1]?.task_id).not.toBe(first.state.completed_tasks[0]?.task_id);
+  });
+
+  it("deduplicates the same task id from git diff and task queue", async () => {
+    const workspace = await makeGitQueuedWorkspace("before\n");
+    await writeFile(join(workspace, "app.txt"), "after\n");
+    const diffTask = (await new GitDiffScanner(workspace).scan())[0]!;
+    await writeFile(join(workspace, "tasks", "task.json"), JSON.stringify({
+      task_id: diffTask.task_id,
+      capability: "code.test",
+      prompt: "Duplicate work item",
+    }));
+
+    const result = await new LoopEngine({
+      workspacePath: workspace,
+      sources: ["git_diff", "task_queue"],
+      executeCommand: "node -e \"process.exit(0)\"",
+      maxIterations: 1,
+    }).runOnce();
+
+    expect(result.discoveredTaskCount).toBe(1);
+    expect(result.executedTaskCount).toBe(1);
+    expect(result.state.completed_tasks.map((task) => task.task_id)).toEqual([diffTask.task_id]);
+    expect(result.state.decisions).toContain("discovery: dropped 1 duplicate task id(s) in this cycle");
+    expect(result.events.find((event) => event.type === "loop.discover.done")?.payload).toMatchObject({ duplicate_task_count: 1 });
+    expect((await new LoopEngine({ workspacePath: workspace, sources: ["git_diff", "task_queue"] })["discover"](workspace)).tasks[0]?.capability).toBe("code.review");
+  });
+
+  it("retries stale in-progress ids and clears them", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const options = {
+      workspacePath: workspace,
+      sources: ["task_queue" as const],
+      executeCommand: "node -e \"process.exit(0)\"",
+    };
+    const first = await new LoopEngine(options).runOnce();
+    const statePath = join(workspace, "LOOP-STATE.json");
+    const inProgress = {
+      task_id: "task-1",
+      capability: "code.test",
+      prompt: "Exercise the local loop engine",
+      priority: 80,
+      source: "task_queue",
+    };
+    await writeFile(statePath, JSON.stringify({ ...first.state, completed_tasks: [], in_progress: [inProgress] }));
+    const active = await new LoopEngine(options).runOnce();
+    expect(active.executedTaskCount).toBe(1);
+    expect(active.skippedTaskCount).toBe(0);
+    expect(active.state.in_progress).toEqual([]);
+  });
+
+  it("skips an unchanged escalated id and reports the skip", async () => {
+    const workspace = await makeQueuedWorkspace();
+    const options = {
+      workspacePath: workspace,
+      sources: ["task_queue" as const],
+      executeCommand: "node -e \"process.exit(0)\"",
+    };
+    const first = await new LoopEngine(options).runOnce();
+    const statePath = join(workspace, "LOOP-STATE.json");
+    await writeFile(statePath, JSON.stringify({
+      ...first.state,
+      completed_tasks: [{ ...first.state.completed_tasks[0], outcome: "escalated" }],
+      in_progress: [],
+    }));
+    const escalated = await new LoopEngine(options).runOnce();
+    expect(escalated.executedTaskCount).toBe(0);
+    expect(escalated.skippedTaskCount).toBe(1);
+    expect(escalated.state.decisions).toContain("discovery: skipped 1 escalated task id(s)");
+    expect(escalated.events.find((event) => event.type === "loop.discover.done")?.payload).toMatchObject({ escalated_skipped_task_count: 1 });
   });
 
   it("can run multiple cycles and pick up tasks that appear later", async () => {
