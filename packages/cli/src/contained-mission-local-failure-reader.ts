@@ -23,9 +23,10 @@ export interface CiLatestAttemptQuery {
   readonly app_id: number;
   readonly name: string;
 }
+export type CiReadFailureReason = 'network' | 'auth' | 'rate_limited' | 'incomplete_read' | 'unexpected_response';
 export interface CiFailureReadDeps {
   /** Authenticated GET only. Bound response bytes/time at the transport. Never fetch logs or annotations. */
-  readonly rest: (path: string, options: { signal: AbortSignal }) => Promise<{ readonly ok: true; readonly body: unknown } | { readonly ok: false }>;
+  readonly rest: (path: string, options: { signal: AbortSignal }) => Promise<{ readonly ok: true; readonly body: unknown } | { readonly ok: false; readonly failure?: CiReadFailureReason }>;
   /**
    * Required authenticated producer-specific read, not client/CI-supplied identity.
    * Check-run IDs, suite IDs, timestamps, array order and `filter=latest` alone

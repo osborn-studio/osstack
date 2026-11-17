@@ -12747,6 +12747,7 @@ function printCiChainStats(stats: CiChainStats | null | undefined): void {
   console.log();
   console.log("CI chain");
   console.log(`by_state: ${c?.ci_chain_by_state.map(row => `${row.state}=${row.count}`).join(" ") || "-"}`);
+  console.log(`scan_failing=${c?.ci_chain_scan_failing ?? "-"}${c?.ci_chain_scan_failing ? c.ci_chain_scan_failing_by_reason.map(row => ` ${row.reason}=${row.count}`).join("") : ""}`);
   console.log(`closed=${c?.ci_chain_closed ?? "-"} repaired_closed=${c?.ci_chain_repaired_closed ?? "-"} consecutive_normal_closed=${c?.ci_chain_consecutive_normal_closed ?? "-"}`);
   console.log(`registration_to_close_ms: median=${median ?? "-"} latest=${durations[0]?.duration_ms ?? "-"}`);
 }

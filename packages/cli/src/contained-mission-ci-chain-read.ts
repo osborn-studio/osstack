@@ -1,6 +1,8 @@
 // Read-only CI chain projection. The event sequence, not the bounded status tail, is authoritative.
 import type Database from 'better-sqlite3';
 import type { ContainedMission } from '@osstack/core';
+import { readCiScanHealth, type CiScanStep } from './contained-mission-ci-scan-health.js';
+import type { CiReadFailureReason } from './contained-mission-local-failure-reader.js';
 import { readMissionPublication } from './contained-mission-publication.js';
 
 type Event = { kind: string; created_at: number; payload_json: string };
@@ -8,6 +10,7 @@ export type CiChainState = 'initial_ci_waiting' | 'repair_permission_waiting' | 
 export interface CiChainRow {
   mission_id: string; scope_id: string; repository: string; pr: number; state: CiChainState; since: number;
   head_before: string | null; head_after: string | null; merge_commit_sha: string | null; stop_reason: string | null;
+  scan?: { failing: true; reason: CiReadFailureReason; step: CiScanStep; since: number; consecutive: number };
   reason?: string; head?: string; app_id?: number; handoff_comment_id?: number;
 }
 const payload = (event: Event | undefined): Record<string, unknown> => {
@@ -77,7 +80,10 @@ export function readCiChain(db: Database.Database, mission: ContainedMission): C
   const heldFacts = payload(held);
   const reservedFacts = payload(reserved);
   const binding = reservedFacts['binding'] as Record<string, unknown> | undefined;
+  const health = readCiScanHealth(db, mission.mission_id);
+  const scan = health ? { failing: true as const, reason: health.reason, step: health.step, since: health.since, consecutive: health.consecutive } : undefined;
   return {
+    ...(scan ? { scan } : {}),
     mission_id: mission.mission_id, scope_id: mission.scope_id, repository: spec.publication?.repository ?? '',
     pr: state === 'closed' ? number(mergedFacts['pr']) ?? publication.pr.number
       : state === 'merge_held' ? number(heldFacts['pr']) ?? publication.pr.number
@@ -104,14 +110,17 @@ export function listCiChains(db: Database.Database, readScopes: readonly string[
 
 export function computeCiChainStats(db: Database.Database) {
   const hasTable = db.prepare("SELECT 1 FROM sqlite_master WHERE name='engineering_contained_missions'").get();
-  if (!hasTable) return { ci_chain_available: false, ci_chain_by_state: [], ci_chain_closed: 0, ci_chain_repaired_closed: 0,
+  if (!hasTable) return { ci_chain_scan_failing: 0, ci_chain_scan_failing_by_reason: [], ci_chain_available: false, ci_chain_by_state: [], ci_chain_closed: 0, ci_chain_repaired_closed: 0,
     ci_chain_consecutive_normal_closed: 0, ci_chain_registration_to_close_ms: [] };
   const scopes = db.prepare('SELECT DISTINCT scope_id FROM engineering_contained_missions').all() as Array<{ scope_id: string }>;
   const chains = scopes.length ? listCiChains(db, scopes.map(row => row.scope_id)) : [];
   const counts = new Map<string, number>();
+  const scanReasons = new Map<string, number>();
+  let scanFailing = 0;
   const durations: Array<{ mission_id: string; duration_ms: number | null }> = [];
   let closed = 0; let repairedClosed = 0; let consecutive = 0; let streakOpen = true;
   for (const chain of chains) {
+    if (chain.scan) { scanFailing++; scanReasons.set(chain.scan.reason, (scanReasons.get(chain.scan.reason) ?? 0) + 1); }
     counts.set(chain.state, (counts.get(chain.state) ?? 0) + 1);
     if (chain.state === 'closed') {
       closed++;
@@ -127,7 +136,9 @@ export function computeCiChainStats(db: Database.Database) {
       durations.push({ mission_id: chain.mission_id, duration_ms: opened && chain.since >= opened.created_at ? chain.since - opened.created_at : null });
     } else streakOpen = false;
   }
-  return { ci_chain_available: true, ci_chain_by_state: [...counts].map(([state, count]) => ({ state, count })).sort((a,b) => a.state.localeCompare(b.state)),
+  return { ci_chain_scan_failing: scanFailing,
+    ci_chain_scan_failing_by_reason: [...scanReasons].map(([reason, count]) => ({ reason, count })).sort((a, b) => a.reason.localeCompare(b.reason)),
+    ci_chain_available: true, ci_chain_by_state: [...counts].map(([state, count]) => ({ state, count })).sort((a,b) => a.state.localeCompare(b.state)),
     ci_chain_closed: closed, ci_chain_repaired_closed: repairedClosed, ci_chain_consecutive_normal_closed: consecutive,
     ci_chain_registration_to_close_ms: durations };
 }

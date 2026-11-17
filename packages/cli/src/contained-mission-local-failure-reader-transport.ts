@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import { CiCheckNameSchema, LocalFailureRepositorySchema } from '@osstack/core';
 import { z } from 'zod';
-import type { CiFailureReadDeps, CiLatestAttemptQuery } from './contained-mission-local-failure-reader.js';
+import type { CiFailureReadDeps, CiLatestAttemptQuery, CiReadFailureReason } from './contained-mission-local-failure-reader.js';
 
 export type AuthenticatedCiRest = CiFailureReadDeps['rest'];
 const id = z.number().int().positive().safe();
@@ -42,18 +42,28 @@ export interface ActionsJobObservation {
 }
 type ObservedActionsJob = ActionsJobObservation & { runSnapshot?: string };
 
+export function classifyCiRestFailure(error: { killed?: boolean; code?: unknown; signal?: unknown } | null, stderr: string): CiReadFailureReason {
+  if (error?.killed || error?.code === 'ETIMEDOUT' || (typeof error?.code === 'string' && ['ENOENT', 'EACCES', 'EPERM', 'EAGAIN', 'ENOMEM', 'EMFILE', 'ENFILE', 'ENOEXEC'].includes(error.code))
+    || /error connecting|dial tcp|no such host|connection refused|connection reset|timeout|TLS|EOF/i.test(stderr)) return 'network';
+  if (/HTTP 429/i.test(stderr) || (/HTTP 403/i.test(stderr) && /rate limit/i.test(stderr))) return 'rate_limited';
+  if (/HTTP 401|HTTP 403|gh auth login/i.test(stderr)) return 'auth';
+  return 'unexpected_response';
+}
+
 /** Uses the operator's existing gh authentication. The argv always specifies GET; no shell or caller URL.
  * execFile bounds the complete stdout/stderr bytes and elapsed time, and AbortSignal stops the subprocess. */
 export function createAuthenticatedCiRest(): AuthenticatedCiRest {
   return (path, { signal }) => new Promise(resolve => {
-    if (signal.aborted || !/^repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_/?=&.-]+)?$/.test(path)
+    if (signal.aborted) { resolve({ ok: false }); return; }
+    if (!/^repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_/?=&.-]+)?$/.test(path)
       || path.includes('..') || /(?:logs|annotations|artifacts|downloads)/.test(path)) {
-      resolve({ ok: false }); return;
+      resolve({ ok: false, failure: 'unexpected_response' }); return;
     }
-    execFile('gh', ['api', '--hostname', 'github.com', '--method', 'GET', path], { encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024, signal }, (error, stdout) => {
-      if (error || signal.aborted) { resolve({ ok: false }); return; }
+    execFile('gh', ['api', '--hostname', 'github.com', '--method', 'GET', path], { encoding: 'utf8', timeout: 15_000, maxBuffer: 1024 * 1024, signal }, (error, stdout, stderr) => {
+      if (signal.aborted) { resolve({ ok: false }); return; }
+      if (error) { resolve({ ok: false, failure: classifyCiRestFailure(error, stderr) }); return; }
       try { resolve({ ok: true, body: JSON.parse(stdout) as unknown }); }
-      catch { resolve({ ok: false }); }
+      catch { resolve({ ok: false, failure: 'unexpected_response' }); }
     });
   });
 }
@@ -63,6 +73,7 @@ export function createAuthenticatedCiRest(): AuthenticatedCiRest {
  * Every latest workflow must expose jobs; queued workflows with no jobs fail closed. */
 export function createActionsCiFailureReadDeps(options: {
   actionsAppId: number; rest?: AuthenticatedCiRest; now?: () => Date;
+  onReadFailure?: (reason: CiReadFailureReason) => void;
 }): CiFailureReadDeps & { observeLatestJob(query: CiLatestAttemptQuery, binding: ActionsJobBinding,
   limits: Parameters<CiFailureReadDeps['latestAttempt']>[1]): Promise<ObservedActionsJob | null> } {
   if (!id.safeParse(options.actionsAppId).success) throw Error('CI_ACTIONS_APP_INVALID');
@@ -70,6 +81,11 @@ export function createActionsCiFailureReadDeps(options: {
   const resolveLatestAttempt = async (input: CiLatestAttemptQuery, limits: Parameters<CiFailureReadDeps['latestAttempt']>[1],
     binding?: ActionsJobBinding) => {
     let used = 0;
+    let readingResponse = false;
+    const report = (reason: CiReadFailureReason) => {
+      if (limits.signal.aborted) return;
+      try { options.onReadFailure?.(reason); } catch { /* Observation must not change the read result. */ }
+    };
     try {
       const query = querySchema.parse(input);
       if (query.app_id !== options.actionsAppId || !Number.isSafeInteger(limits.maxPages) || limits.maxPages < 1 || limits.maxPages > 100
@@ -87,7 +103,7 @@ export function createActionsCiFailureReadDeps(options: {
         try {
           const result = await Promise.race([rest(path, { signal }), cancelled]);
           signal.throwIfAborted();
-          if (!result.ok) throw Error('CI_READ_FAILED');
+          if (!result.ok) { report(result.failure ?? 'unexpected_response'); throw Error('CI_READ_FAILED'); }
           return result.body;
         } finally { signal.removeEventListener('abort', abort); }
       };
@@ -116,6 +132,7 @@ export function createActionsCiFailureReadDeps(options: {
         }
         return runs.sort((a, b) => a.workflow_id - b.workflow_id || a.run_number - b.run_number);
       };
+      readingResponse = true;
       const runs = await readRuns();
       if (runs.length === 0) throw Error('CI_UNRESOLVED');
       const latest = new Map<number, z.infer<typeof runSchema>>();
@@ -170,7 +187,9 @@ export function createActionsCiFailureReadDeps(options: {
         }
       }
       return { response: { complete: true, requests_used: used, ...query, latest: latestCheck }, observation };
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && (error.message === 'CI_INCOMPLETE' || error.message === 'CI_LIMIT')) report('incomplete_read');
+      else if (readingResponse && error instanceof z.ZodError) report('unexpected_response');
       return { response: { complete: false, requests_used: used }, observation: null };
     }
   };
