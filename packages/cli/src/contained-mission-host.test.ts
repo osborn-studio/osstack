@@ -442,6 +442,36 @@ describe("ContainedMissionHost status publication", () => {
     expect(state()).toMatchObject({ state: "stopped", since: 2111 });
   });
 
+  it.each([
+    { reason: "publication_pending", event: null, state: "repair_permission_waiting", stopReason: null },
+    { reason: "github_ci_scope_unavailable", event: null, state: "stopped", stopReason: "github_ci_scope_unavailable" },
+    { reason: "github_ci_admission_failed:scope", event: null, state: "stopped", stopReason: "github_ci_admission_failed:scope" },
+    { reason: "repair_cycles_exhausted", event: null, state: "stopped", stopReason: "repair_cycles_exhausted" },
+    { reason: "publication_pending", event: "ci_repair_approval", state: "stopped", stopReason: "publication_pending" },
+    { reason: "publication_pending", event: "ci_repair_push_intent", state: "stopped", stopReason: "publication_pending" },
+  ])("projects a repair halt with $reason and $event as $state", ({ reason, event, state, stopReason }) => {
+    const f = fixture(); const root = ciRoot(f, "one"); const id = root.mission_id;
+    const head = "b".repeat(40); const digest = "2".repeat(64);
+    f.store.record(id, "ci_delivery_evidence", evidence(digest, head), 3100);
+    f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3101);
+    const child = f.store.authorize(f.principal, { scope_id: root.scope_id, spec: { repo_path: f.repo },
+      claim: { repo_identity: "repair-child", branch: "repair-child", worktree_identity: "repair-child" } }, 3102);
+    f.store.record(id, "ci_repair_dispatched", { child: child.mission_id }, 3103);
+    // Approval and intent can predate the halt. Neither permits the new waiting exception.
+    if (event) f.store.record(child.mission_id, event, {}, 3104);
+    f.store.transition(child.mission_id, { if_revision: child.revision, to: "awaiting_decision",
+      event: { kind: "halted", payload: { reason } } }, 3105);
+    const expected = { state, since: 3105, stop_reason: stopReason, reason };
+    expect(readCiChain(f.store.db, f.store.get(id))).toMatchObject(expected);
+    expect(f.host.status(f.principal, id).github_ci_chain).toMatchObject(expected);
+    expect(listCiChains(f.store.db, [root.scope_id])).toEqual([expect.objectContaining(expected)]);
+    if (state === "repair_permission_waiting") {
+      // Later unrelated events must not hide the persisted halt reason.
+      f.store.record(child.mission_id, "noise", { reason: "unrelated" }, 3106);
+      expect(readCiChain(f.store.db, f.store.get(id))).toMatchObject({ ...expected, since: 3106 });
+    }
+  });
+
   it("reports an unavailable repair child and a revoked child grant without guessing", async () => {
     const f = fixture(); const root = ciRoot(f, "one"); const id = root.mission_id;
     const head = "b".repeat(40); const digest = "2".repeat(64);

@@ -2,12 +2,12 @@ import { createHash } from 'node:crypto';
 import { realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createScratchDirSync } from '@osstack/core';
-import { prepareContainedImage, type ContainedImageReceipt } from '@osstack/agents';
+import { prepareContainedImage, createContainedCommandExecutor, type ContainedCommandExecutor, type ContainedImageReceipt } from '@osstack/agents';
 import { canonicalJson } from '@osstack/protocol/source';
 import { afterEach, expect, it, vi } from 'vitest';
 import { loadInstalledVerificationProfile, type ContainedVerificationProfile } from './contained-mission-verification-profile.js';
-import { assertContainedProfileRuntimeSupported, prepareContainedProfileImage } from './contained-mission-profile-execution.js';
-vi.mock('@osstack/agents', async importOriginal => ({ ...await importOriginal<object>(), prepareContainedImage: vi.fn() }));
+import { assertContainedProfileRuntimeSupported, prepareContainedProfileImage, runPreparedContainedProfile, parseContainedProfileRunIdentity } from './contained-mission-profile-execution.js';
+vi.mock('@osstack/agents', async importOriginal => ({ ...await importOriginal<object>(), prepareContainedImage: vi.fn(), createContainedCommandExecutor: vi.fn() }));
 const sha = (text: string) => createHash('sha256').update(text).digest('hex');
 const roots: string[] = [];
 afterEach(() => { vi.resetAllMocks(); for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
@@ -46,8 +46,8 @@ it('prepares only loader-issued bytes outside candidate data and carries exact c
   expect(prepared.image.workingDirectory).toBe(f.image.workingDirectory);
   expect(Object.isFrozen(prepared.outputLimits)).toBe(true); expect(Object.isFrozen(prepared.image.trustedProfile)).toBe(true);
   expect(fences).toBeGreaterThan(0);
-  // Current runtime cannot prove lifetime caps or a symlink-free trusted namespace.
-  expect(() => assertContainedProfileRuntimeSupported(prepared)).toThrow('CONTAINED_PROFILE_RUNTIME_UNSUPPORTED');
+  expect(prepared.runtimeBlockers).toEqual([]);
+  expect(() => assertContainedProfileRuntimeSupported(prepared)).not.toThrow();
 });
 it.each([{ memory_mb: 256 }, { cpus: 2 }, { pids: 32 }, { timeout_seconds: 121 }])('rejects unsupported runtime limits %j before preparation', async patch => {
   const f = fixture(patch);
@@ -88,4 +88,42 @@ it.each(['contentDigest', 'imageId'])('rejects mismatched prepared %s', async fi
   if (field === 'contentDigest') f.image.trustedProfile!.contentDigest = '0'.repeat(64);
   else f.image.imageId = 'unbound-local-image';
   await expect(prepareContainedProfileImage(f.options, f.candidate, f.loaded, () => {})).rejects.toThrow('CONTAINED_PROFILE_IMAGE_MISMATCH');
+});
+const host = { socketPath: '/tmp/test.sock', journalRoot: '/tmp/test-journal', authorizeStop: () => {}, authorizeRead: () => {} };
+const invocation = () => ({ invocationId: 'profile-run', signal: new AbortController().signal });
+it.each([{ stdout_bytes: 1048577 }, { stderr_bytes: 1048577 }])('prepares but refuses excessive output limits %j', async limits => {
+  const f = fixture(limits); const p = await prepareContainedProfileImage(f.options, f.candidate, f.loaded, () => {});
+  expect(p.runtimeBlockers).toEqual(['output_caps_exceed_runtime_maximum']);
+  expect(() => assertContainedProfileRuntimeSupported(p)).toThrow('CONTAINED_PROFILE_RUNTIME_UNSUPPORTED');
+  await expect(runPreparedContainedProfile(p, host, invocation())).rejects.toThrow('CONTAINED_PROFILE_RUNTIME_UNSUPPORTED'); expect(createContainedCommandExecutor).not.toHaveBeenCalled();
+});
+it('runs the loader command and exact provenance once, with canonical journal identity', async () => {
+  const f = fixture(); const p = await prepareContainedProfileImage(f.options, f.candidate, f.loaded, () => {});
+  const unknown = { status: 'stop_unknown' as const, reason: 'lost ack' }; const executeProfile = vi.fn().mockResolvedValue(unknown);
+  vi.mocked(createContainedCommandExecutor).mockResolvedValue({ executeProfile } as unknown as ContainedCommandExecutor);
+  const i = invocation(); const run = await runPreparedContainedProfile(p, host, i); expect(run.result).toBe(unknown);
+  const options = vi.mocked(createContainedCommandExecutor).mock.calls[0]![0];
+  expect(options).toMatchObject({ socketPath: host.socketPath, journalRoot: host.journalRoot, imageId: f.image.imageId, daemonId: f.image.daemonId,
+    workingDirectory: f.image.workingDirectory, command: p.command, timeoutMs: 60000, bindingData: canonicalJson(run.identity), bindingRef: sha(canonicalJson(run.identity)) });
+  expect(executeProfile).toHaveBeenCalledWith(i.invocationId, i.signal, { stdoutBytes: 4096, stderrBytes: 8192, trustedProfile: f.image.trustedProfile,
+    trustedFiles: [{ path: 'harness.mjs', size: Buffer.byteLength('trusted assertions'), sha256: sha('trusted assertions') }, { path: 'fixtures/case.json', size: 2, sha256: sha('{}') }] });
+  expect(parseContainedProfileRunIdentity(JSON.parse(canonicalJson(run.identity)))).toEqual(run.identity);
+  for (const key of Object.keys(run.identity)) { const bad = { ...run.identity } as Record<string, unknown>; delete bad[key]; expect(() => parseContainedProfileRunIdentity(bad)).toThrow('CONTAINED_PROFILE_IDENTITY_INVALID'); }
+  expect(() => parseContainedProfileRunIdentity({ ...run.identity, extra: true })).toThrow('CONTAINED_PROFILE_IDENTITY_INVALID');
+  expect(() => parseContainedProfileRunIdentity({ ...run.identity, image: { ...run.identity.image, extra: true } })).toThrow('CONTAINED_PROFILE_IDENTITY_INVALID');
+  await expect(runPreparedContainedProfile(p, host, invocation())).rejects.toThrow('CONTAINED_PROFILE_PLAN_CONSUMED'); expect(createContainedCommandExecutor).toHaveBeenCalledTimes(1);
+});
+it.each(['copy','revoked','tampered'])('refuses %s plan before executor creation', async mode => {
+  const f = fixture(); let allowed = true; const p = await prepareContainedProfileImage(f.options, f.candidate, f.loaded, () => { if (!allowed) throw Error('REVOKED'); });
+  if (mode === 'revoked') allowed = false; if (mode === 'tampered') writeFileSync(f.path, '{}');
+  await expect(runPreparedContainedProfile(mode === 'copy' ? { ...p } : p, host, invocation())).rejects.toThrow(mode === 'copy' ? 'CONTAINED_PROFILE_PREPARATION_REQUIRED' : mode === 'revoked' ? 'REVOKED' : 'VERIFICATION_PROFILE_ARTIFACT_MISMATCH');
+  expect(createContainedCommandExecutor).not.toHaveBeenCalled();
+});
+it('rechecks run authority and rejects asynchronous cleanup/inspection authority', async () => {
+  const f = fixture(); let allowed = true; const p = await prepareContainedProfileImage(f.options, f.candidate, f.loaded, () => { if (!allowed) throw Error('REVOKED'); });
+  vi.mocked(createContainedCommandExecutor).mockResolvedValue({ executeProfile: vi.fn().mockResolvedValue({ status: 'stop_unknown', reason: 'test' }) } as unknown as ContainedCommandExecutor);
+  await runPreparedContainedProfile(p, { ...host, authorizeStop: async () => {}, authorizeRead: async () => {} }, invocation());
+  const options = vi.mocked(createContainedCommandExecutor).mock.calls[0]![0];
+  expect(() => options.authorize('stop')).toThrow('CONTAINED_AUTHORITY_MUST_BE_SYNC'); expect(() => options.authorize('read')).toThrow('CONTAINED_AUTHORITY_MUST_BE_SYNC');
+  allowed = false; expect(() => options.authorize('start')).toThrow('REVOKED');
 });

@@ -16,3 +16,6 @@ export async function prepareContainedImage(options: import('./contained-image.j
 }
 export type { ContainedImageOptions, ContainedImageReceipt, ContainedCandidateFile } from './contained-image.js';
 export type { ContainedCommandResult } from './contained-command.js';
+
+export type { ContainedProfileCapture, ContainedProfileRunOptions } from './contained-profile-run.js';
+export type { ContainedProfileRunResult } from './contained-command.js';

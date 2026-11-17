@@ -52,6 +52,11 @@
       "types": "./dist/graph/invocation-evidence.d.ts",
       "import": "./dist/graph/invocation-evidence.js"
     },
+    "./verification-intake": {
+      "types": "./dist/bridge/verification-intake.d.ts",
+      "import": "./dist/bridge/verification-intake.js",
+      "default": "./dist/bridge/verification-intake.js"
+    },
     "./graph-recovery": {
       "types": "./dist/state/graph-recovery.d.ts",
       "import": "./dist/state/graph-recovery.js",

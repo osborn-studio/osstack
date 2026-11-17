@@ -36,7 +36,7 @@ const ubuntu = ['ubuntu-latest'];
 export const PRODUCTION_CI_POLICY: GithubCiPolicy = {
   repository: GITHUB_CI_PILOT_REPOSITORY, repositoryId: 1255570742, publisherActorId: PUBLISHER_ACTOR,
   actionsAppId: ACTIONS_APP, workflowId: 294875045, workflowPath: '.github/workflows/ci.yml',
-  workflowBlob: 'ad3dc86ffa37c402912d43688d0ed3670f62c3be',
+  workflowBlob: '622fd4127c777b46d655ab89023c1094ba79b0ba',
   // Read macOS first. The Ubuntu check depends on both macOS cells. Its prerequisite
   // failure is never repairable: only a failure in its own exact Test step is.
   jobs: [
@@ -46,6 +46,7 @@ export const PRODUCTION_CI_POLICY: GithubCiPolicy = {
     ...['20.6.0', '22.23.1'].map(node => ({ name: `graph-runtime-matrix (${node})`, matrix: { node },
       runnerLabels: ubuntu, failureStep: 'Graph worker and durable SQLite runtime' })),
     { name: 'bridge-offline-node-tests', matrix: {}, runnerLabels: ubuntu, failureStep: 'Bridge offline Node contracts' },
+    { name: 'verify-portable-cli', matrix: {}, runnerLabels: ubuntu, failureStep: 'Portable CLI verification' },
   ],
 };
 
