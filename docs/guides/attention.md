@@ -89,6 +89,16 @@ posture 记录进入时间；重复设置当前 posture 不改变起点。从 aw
 
 若启动时另设 `OSSTACK_ATTENTION_NOTIFY=local`，通知写到 home 下 `attention-notifications/`。每个 delivery ID 原子发布一个本地文件，重复尝试不会生成第二份。其他 transport 通过受限 sender 端口注入；协议为至少一次，接收方须按 delivery ID 去重。失败最多 5 次，随后 dead_letter；旧 revision 在发送前判为 superseded。没有配置 transport 时不外发消息。
 
+### Webhook 通知
+
+在 daemon 进程环境中设置 `OSSTACK_ATTENTION_NOTIFY=webhook`，并设置 `OSSTACK_ATTENTION_WEBHOOK_URL`（例如 `https://example.invalid/attention`）。可选的 `OSSTACK_ATTENTION_WEBHOOK_KEY` 用作 Bearer key。配置只来自宿主环境。URL 必须为 HTTPS，不得含用户名、密码或片段；不支持 HTTP，也不跟随重定向。配置无效时，daemon 以固定错误码拒绝启动。
+
+每次发送使用 POST，固定超时为 4 秒；调用方也可提前取消。协议为至少一次。接收方必须按 `delivery_id` 或同值的 `Idempotency-Key` 去重。发送失败由现有账本重试，最多 5 次，随后进入 dead_letter。
+
+JSON 通知包含 `schema_version: 1`、`kind: attention_decision_notice`、`delivery_id`、`scope_id`、`item_id`、`state`、`reason_code`、`reminder`、`text` 和 `reference`。`reason_code` 为 `decision_pending`、`decision_overdue`、`answer_uncertain` 或 `source_missing`。`reminder` 为 `null` 或包含 `sequence` 与 `age_ms` 的对象。`text` 仅使用宿主固定措辞。问题文本仅作为不可信参考材料放入 `reference.summary`，移除控制字符后最多保留 512 个 Unicode 码点。`reference` 标记 `usage: reference_only`、`kind: external_reference` 和 `truncated`。整个请求体不超过 16 KiB。
+
+在聊天中回复没有作用；请在 osstack 中处理决定。发送通知不会回答、批准或解除任何执行限制。URL 和 key 是秘密，不写入日志、事件或账本错误；发送失败仅保存固定错误码。
+
 - delivered：transport 收到，不代表用户已读。
 - answer_reserved / answer_uncertain：指令已预留，结果尚未证实。
 - answer_applied：存在对应应用回执，不代表业务完成。
