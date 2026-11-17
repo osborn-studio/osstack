@@ -258,7 +258,7 @@ gh api repos/<owner/repo>/pulls/<n>/commits --paginate --jq '.[].sha'           
 
 ### 5.3 卡在 `stop_unknown`
 
-`stop_unknown` 的意思是 osstack 不能证明它启动过的某个进程或容器已经停止。证明不了就不前进：不释放工作区、不允许 `discard_changes`/`adopt_worktree`（`stop_evidence_required`）。出口只有一个：`osstack mission decide --mission <id> --decision retry_stop_check`，它重新取停止证明，成功后转 `needs_reconciliation`（原因 `stop_evidence_recovered`），或在取消未完成时转 `cancelled`（`contained-mission-host.ts` L105–118、L180–192）。证明仍不成立时报 `CONTAINED_STOP_UNPROVEN`，状态不变。
+`stop_unknown` 的意思是 osstack 不能证明它启动过的某个进程或容器已经停止。证明不了就不前进：不释放工作区、不允许 `discard_changes`/`adopt_worktree`（`stop_evidence_required`）。出口只有一个：`osstack mission decide --mission <id> --decision retry_stop_check`，它重新取停止证明，成功后转 `needs_reconciliation`（原因 `stop_evidence_recovered`），或在取消未完成时转 `cancelled`（`contained-mission-host.ts` 的 `retryStopCheckAllowed`、`decide`）。证明仍不成立时报 `CONTAINED_STOP_UNPROVEN`，状态不变。
 
 **今天的 `stop_unknown` 原因**（`halted` 事件的 `reason`）：
 
@@ -340,7 +340,7 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 ### 5.4 Mission 的停机原因与下一步
 
-决定命令都是 `osstack mission decide --mission <id> --decision <决定> --json`，需要该 scope 的 write（`cancel` 需要 stop 或 write）。允许的决定由 `contained-mission-runner.ts` L101–116 与 `contained-mission-host.ts` L105–118 决定，不在下表的组合返回 `CONTAINED_DECISION_NOT_ALLOWED`。
+决定命令都是 `osstack mission decide --mission <id> --decision <决定> --json`，需要该 scope 的 write（`cancel` 需要 stop 或 write）。可加 `--decision-id <ID>`（1–128 个 ASCII 字符，首字符为字母或数字，其余为字母、数字、`_`、`.`、`:`、`-`）和 `--expected-revision <正整数>`。带 ID 时，服务端先在 SQLite 记录 `decision_accepted`，再执行决定。同一 principal 在同一 Mission 上用同一 ID 和相同决定重试，会返回记录的结果、受理时视图 `mission_at_acceptance`、结果记录时视图 `mission_at_decision`、当前视图 `mission_current` 和 `replay: true`。`expected_revision` 只约束首次受理，不参与决定摘要。若只找到受理记录、Mission revision 未变且没有 `decision_effect_started`，会在非 draining 状态继续决定；若已有 effect 标记或 revision 已变但没有结果，返回 `accepted: true, replay: true, outcome: "unknown"` 和当前 Mission。同键但 principal 不同返回 `decision_id_owner_mismatch`。effect 前的瞬时拒绝可以用同一 ID 重试。ID 相同但参数不同返回 `decision_id_conflict`。新 ID 的预期 revision 过期返回 `stale_revision`，不写事件。幂等保证只覆盖受理，不保证执行端的外部副作用恰好一次。允许的决定由 `ContainedMissionRunner.decisionAllowed` 与 `ContainedMissionHost.retryStopCheckAllowed` 决定，不在下表的组合返回 `CONTAINED_DECISION_NOT_ALLOWED`。
 
 | 状态（原因） | 含义 | 下一步 |
 |---|---|---|

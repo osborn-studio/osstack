@@ -57,7 +57,7 @@ export interface ContainedMissionHostPorts extends ContainedMissionPorts {
   /** Production revision publication effects. Available only with App A configured. */
   revisionPublicationAdapters?: () => Promise<Pick<import('./contained-mission-revision-publication.js').RevisionPublicationDeps, 'runner' | 'preflight' | 'localGit'>>;
   /** Recovery-only check that the Mission's last verification left no container; it never starts one. */
-  verificationStopped: (mission: ContainedMission) => Promise<ContainedVerificationStop>;
+  verificationStopped: (mission: ContainedMission, beforeStop?: () => void) => Promise<ContainedVerificationStop>;
   /** Recovery-side access to the host child-process ledger and its probes (W13). */
   hostProcesses: HostProcessKit;
 }
@@ -635,7 +635,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       }
       return { exit_code: result.exitCode, output: result.output, cancelled: result.cancelled, evidence: result.evidence, stopped: removalProven(result) };
     },
-    verificationStopped: async mission => {
+    verificationStopped: async (mission, beforeStop) => {
       try {
         const events = containedEvents(store, mission.mission_id);
         const opened = lastTransitionTo(events, ['verifying']);
@@ -661,7 +661,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
           },
         });
         let proof = await reopened.confirmStopped();
-        if (!proof.stopped) proof = await reopened.stop();
+        if (!proof.stopped) { beforeStop?.(); proof = await reopened.stop(); }
         return { stopped: true, proof: 'container_removed', evidence: proof.evidence };
       } catch { return { stopped: false }; }
     },

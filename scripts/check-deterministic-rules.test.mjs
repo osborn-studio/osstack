@@ -5,6 +5,13 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import {
   docsLinkViolations,
+  gitWriteFindings,
+  gitWriteViolations,
+  secretFindings,
+  secretViolations,
+  machinePathFindings,
+  machinePathViolations,
+  packageContractViolations,
   scratchViolations,
   startupGraphViolations,
   vitestConfigViolations,
@@ -91,5 +98,115 @@ test("startup graph follows static imports but not dynamic imports, and enforces
     assert.match(startupGraphViolations(root, { entry: 2, bin: 1 }).errors.join("\n"), /use await import\(\)/);
     writeFileSync(join(root, "packages/cli/src/cli-entry.ts"), 'import "./command.js";');
     assert.match(startupGraphViolations(root, { entry: 2, bin: 2 }).errors.join("\n"), /statically loads command module/);
+  });
+});
+
+test("git writes reject unmanaged array, wrapper, and shell calls but ignore reads and tests", () => {
+  fixture({
+    "packages/demo/src/a.ts": `execFileSync("git", ["push", "origin"]); runGit(root, ["-c", "x=y", "commit", "-m", "x"]); execSync("git checkout -B topic"); run(["worktree", "remove", path]); git(root, "update-ref", "HEAD", sha); runner.run("git", ["branch", "--show-current"]); git(root, ["tag", "--list"]); git();`,
+    "packages/demo/src/a.test.ts": 'execFileSync("git", ["push"]);',
+  }, (root) => {
+    const calls = gitWriteFindings(root);
+    assert.equal(calls.length, 5);
+    assert.match(gitWriteViolations(root, []).join("\n"), /managed Git location/);
+    const entries = [{ file: "packages/demo/src/a.ts", count: calls.length, reason: "test managed boundary" }];
+    assert.deepEqual(gitWriteViolations(root, entries), []);
+    assert.match(gitWriteViolations(root, [{ ...entries[0], count: 6 }]).join("\n"), /stale git write allowlist/);
+    writeFileSync(join(root, "packages/demo/src/a.ts"), "");
+    assert.match(gitWriteViolations(root, entries).join("\n"), /remove or narrow/);
+  });
+});
+
+test("git writes cover ref, index, remote and worktree mutation commands with global options", () => {
+  const commands = ["push", "commit", "merge", "rebase", "reset", "checkout -B", "branch -D", "update-ref", "worktree add", "worktree remove", "tag v1", "add", "fetch", "cherry-pick", "stash push", "read-tree", "update-index", "apply --cached", "switch -C", "remote add", "init", "clone", "restore --staged"];
+  fixture({ "packages/demo/src/a.ts": commands.map(command => `spawn("git", ["-C", root, ${command.split(" ").map(value => JSON.stringify(value)).join(",")}]);`).join("\n") }, root => {
+    assert.equal(gitWriteFindings(root).length, commands.length);
+  });
+});
+
+test("secrets scan every tracked text file; machine paths scan shipped content only", () => {
+  const token = "gh" + "p_fake";
+  const path = "/" + "Users/alice/project/";
+  const files = {
+    "docs/history.md": path,
+    "docs/secret.md": token,
+    "other/secret.txt": token,
+    "AGENTS.md": path,
+    "package.json": path,
+    ".npmrc": path,
+    ".gitignore": path,
+    "packages/demo/src/a.ts": path,
+    "scripts/a.mjs": path,
+    ".github/workflows/a.yml": path,
+    "hermes-skill/SKILL.md": path,
+    "loop-engineering/SKILL.md": path,
+    "binary.bin": `\0${token}`,
+    "untracked.txt": token,
+  };
+  fixture(files, root => {
+    const tracked = Object.keys(files).filter(file => file !== "untracked.txt");
+    assert.deepEqual(secretFindings(root, tracked).map(x => x.file), ["docs/secret.md", "other/secret.txt"]);
+    assert.equal(secretViolations(root, [], tracked).length, 2);
+    assert.equal(machinePathFindings(root, tracked).length, 8);
+    assert.ok(machinePathViolations(root, [], tracked).some(x => x.includes("packages/demo/src/a.ts")));
+    assert.ok(!machinePathViolations(root, [], tracked).some(x => x.includes("docs/")));
+    const entries = [{ file: "docs/secret.md", count: 1, reason: "fake token in audit example" }, { file: "other/secret.txt", count: 1, reason: "fake token fixture" }];
+    assert.deepEqual(secretViolations(root, entries, tracked), []);
+    writeFileSync(join(root, "docs/secret.md"), `${token} ${token}`);
+    assert.match(secretViolations(root, entries, tracked).join("\n"), /stale secret allowlist/);
+    writeFileSync(join(root, "docs/secret.md"), "");
+    assert.match(secretViolations(root, entries, tracked).join("\n"), /remove or narrow/);
+    assert.match(secretViolations(root, [entries[1], entries[1]], tracked).join("\n"), /stale secret allowlist/);
+    const paths = machinePathFindings(root, tracked).map(({ file }) => ({ file, count: 1, reason: "synthetic path fixture" }));
+    assert.deepEqual(machinePathViolations(root, paths, tracked), []);
+    writeFileSync(join(root, "packages/demo/src/a.ts"), `${path} ${path}`);
+    assert.match(machinePathViolations(root, paths, tracked).join("\n"), /stale machine path allowlist/);
+    writeFileSync(join(root, "packages/demo/src/a.ts"), "");
+    assert.match(machinePathViolations(root, paths, tracked).join("\n"), /remove or narrow/);
+  });
+});
+
+test("package contracts require scripts and base tsconfig inheritance, including indirect inheritance", () => {
+  fixture({
+    "tsconfig.base.json": "{}",
+    "packages/good/package.json": JSON.stringify({ scripts: { typecheck: "tsc --noEmit" } }),
+    "packages/good/tsconfig.json": JSON.stringify({ extends: "../../tsconfig.base.json" }),
+    "packages/bad/package.json": JSON.stringify({ scripts: {} }),
+    "packages/bad/tsconfig.json": "{}",
+    "packages/bad/src/a.test.ts": "",
+  }, root => {
+    const errors = packageContractViolations(root);
+    assert.equal(errors.length, 3);
+    assert.match(errors.join("\n"), /typecheck script/);
+    assert.match(errors.join("\n"), /test script/);
+    assert.match(errors.join("\n"), /inherit tsconfig.base.json/);
+    writeFileSync(join(root, "packages/bad/package.json"), JSON.stringify({ scripts: { typecheck: "tsc --noEmit", test: "vitest run" } }));
+    writeFileSync(join(root, "packages/bad/tsconfig.json"), '{"extends":"../good/tsconfig.json",}');
+    assert.deepEqual(packageContractViolations(root), []);
+    writeFileSync(join(root, "packages/bad/tsconfig.json"), '{"extends":"./tsconfig.json"}');
+    assert.match(packageContractViolations(root).join("\n"), /inherit tsconfig.base.json/);
+  });
+});
+
+test("git scan handles constant options, templates and remote branch deletion without counting observations", () => {
+  fixture({ "packages/demo/src/a.ts": `
+const hardening = ["-c", "core.hooksPath=/dev/null"] as const;
+runGit(root, [...hardening, "merge", "--ff-only", sha]);
+execSync(\`git push origin \${branch}\`);
+runner.run("git", ["branch", "-r", "-D", branch]);
+git("tag", "v1"); git("worktree", "add", path);
+runGit(root, ["symbolic-ref", "--quiet", "HEAD"], { allowFailure: true });
+// execSync("git push");
+const example = "git push";
+` }, root => {
+    assert.deepEqual(gitWriteFindings(root).map(x => x.command), ["merge", "push", "branch", "tag", "worktree add"]);
+  });
+});
+
+test("separate rules cover cloud shapes, token prefixes, Linux and Windows paths", () => {
+  const contents = ["gh" + "o_fake", "gh" + "s_fake", "github" + "_pat_fake", "AI" + "za" + "x".repeat(35), "LT" + "AI" + "a".repeat(16), "-----BEGIN " + "PRIVATE KEY-----", "/" + "home/alice/work/", "C:" + "\\Users\\alice\\work\\"];
+  fixture({ "scripts/a.txt": contents.join("\n") }, root => {
+    assert.equal(secretFindings(root, ["scripts/a.txt"]).length, 6);
+    assert.equal(machinePathFindings(root, ["scripts/a.txt"]).length, 2);
   });
 });
