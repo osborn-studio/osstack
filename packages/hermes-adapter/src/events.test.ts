@@ -51,11 +51,22 @@ describe("HermesEventSchema", () => {
         status: "completed",
         last_seq: 7,
         implementation_deviations: [{ deviation_id: "boundary-drift" }],
+        implementation_deviations_problem: { kind: "entries", invalid_count: 2 },
       },
     });
     expect(event.payload).toMatchObject({
       implementation_deviations: [{ deviation_id: "boundary-drift" }],
+      implementation_deviations_problem: { kind: "entries", invalid_count: 2 },
     });
+  });
+
+  it("accepts an oversized declaration problem on done events", () => {
+    expect(HermesEventSchema.parse({
+      event_id: "run_1:9", seq: 9, run_id: "run_1", session_id: "sess_1",
+      created_at: 1778750102, terminal: true, type: "done",
+      payload: { status: "completed", last_seq: 8,
+        implementation_deviations_problem: { kind: "oversized" } },
+    }).payload).toMatchObject({ implementation_deviations_problem: { kind: "oversized" } });
   });
 
   it("preserves structured review through DonePayload parse and event round trip", () => {

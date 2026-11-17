@@ -12,6 +12,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "test:deterministic-rules": "node --test scripts/check-deterministic-rules.test.mjs && node scripts/check-deterministic-rules.mjs",
     "typecheck": "pnpm build && pnpm typecheck:check",
     "typecheck:check": "pnpm -r typecheck",
     "lint": "biome check .",

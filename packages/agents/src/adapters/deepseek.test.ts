@@ -28,6 +28,22 @@ afterEach(async () => {
 });
 
 describe("DeepSeekReviewAdapter", () => {
+  it("reports invalid declaration shapes through the shared command parser", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("ds-review", `
+if [ "$1" = "--help" ]; then echo help; exit 0; fi
+cat >/dev/null
+printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":{}}\\n'
+`);
+    const events = await drain(new DeepSeekReviewAdapter({ bin }).invoke(
+      task("ds-review.review.code", workspace), new AbortController().signal,
+    ));
+    expect(doneStatus(events)).toBe("completed");
+    expect(events.find((event) => event.type === "done")?.payload).toMatchObject({
+      implementation_deviations_problem: { kind: "shape" },
+    });
+  });
+
   it("advertises review capabilities and runs ds-review over git diff", async () => {
     const workspace = await gitWorkspace();
     await writeFile(join(workspace, "app.txt"), "changed\n", "utf-8");
@@ -143,13 +159,86 @@ printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"bound
     ].join("\n"))).toEqual([{ id: "a", pass: true, summary: "ok" }]);
   });
 
-  it("transports only explicitly enveloped implementation deviation objects", () => {
-    expect(extractImplementationDeviations("ordinary review failure\n")).toEqual([]);
-    expect(extractImplementationDeviations([
-      "noise",
-      "OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json",
-      'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"boundary-drift"},null,"prose"]}',
-    ].join("\n"))).toEqual([{ deviation_id: "boundary-drift" }]);
+  it("allows a missing optional implementation deviation declaration", () => {
+    expect(extractImplementationDeviations("ordinary review failure\n")).toEqual({ deviations: [] });
+  });
+
+  it("keeps valid implementation deviation objects", () => {
+    expect(extractImplementationDeviations('OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"boundary-drift"}]}'))
+      .toEqual({ deviations: [{ deviation_id: "boundary-drift" }] });
+    expect(extractImplementationDeviations('OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[]}'))
+      .toEqual({ deviations: [] });
+  });
+
+  it("reports invalid JSON and an invalid envelope shape", () => {
+    expect(extractImplementationDeviations("OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json"))
+      .toEqual({ deviations: [], problem: { kind: "json" } });
+    expect(extractImplementationDeviations('OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":{}}'))
+      .toEqual({ deviations: [], problem: { kind: "shape" } });
+  });
+
+  it("keeps valid entries and counts invalid entries", () => {
+    expect(extractImplementationDeviations('OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"boundary-drift"},null,"prose"]}'))
+      .toEqual({ deviations: [{ deviation_id: "boundary-drift" }], problem: { kind: "entries", invalid_count: 2 } });
+  });
+
+  it("reports an invalid earlier declaration and keeps the last valid one", () => {
+    expect(extractImplementationDeviations('OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json\nOSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"kept"}]}'))
+      .toEqual({ deviations: [{ deviation_id: "kept" }], problem: { kind: "json" } });
+  });
+
+  it("counts invalid declarations across different kinds before the last valid line", () => {
+    expect(extractImplementationDeviations('OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json\nOSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":{}}\nOSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[]}'))
+      .toEqual({ deviations: [], problem: { kind: "shape", invalid_count: 2 } });
+  });
+
+  it("reports an oversized declaration line from streamed stdout", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("oversized-declaration", `printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: '; head -c 8400000 /dev/zero | tr '\\0' x; printf '\\n'`);
+    const events = await drain(new DeepSeekVerifyAdapter({ bin }).invoke(task("ds-verify.verify.alignment", workspace), new AbortController().signal));
+    expect(events.find((event) => event.type === "done")?.payload).toMatchObject({
+      implementation_deviations_problem: { kind: "oversized" },
+    });
+  });
+
+  it("parses a declaration longer than the 16 KB output display limit", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("long-declaration", `printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"long","question":"'; head -c 20000 /dev/zero | tr '\\0' x; printf '"}]}\\n'`);
+    const events = await drain(new DeepSeekVerifyAdapter({ bin }).invoke(task("ds-verify.verify.alignment", workspace), new AbortController().signal));
+    expect(events.find((event) => event.type === "done")?.payload).toMatchObject({
+      implementation_deviations: [{ deviation_id: "long", question: expect.stringMatching(/^x{20000}$/) }],
+    });
+  });
+
+  it("keeps an early declaration after more than the output limit of logs", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("early-declaration", `printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{"deviation_id":"early"}]}\\n'; head -c 20000 /dev/zero | tr '\\0' x`);
+    const events = await drain(new DeepSeekVerifyAdapter({ bin }).invoke(task("ds-verify.verify.alignment", workspace), new AbortController().signal));
+    expect(events.find((event) => event.type === "done")?.payload).toMatchObject({
+      implementation_deviations: [{ deviation_id: "early" }],
+    });
+  });
+
+  it("passes malformed JSON as a report problem in the completed event", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("ds-verify", `
+if [ "$1" = "--help" ]; then echo help; exit 0; fi
+printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: not-json\\n'
+`);
+    const adapter = new DeepSeekVerifyAdapter({ bin });
+    const events = await drain(adapter.invoke(task("ds-verify.verify.alignment", workspace), new AbortController().signal));
+    const done = events.find((event) => event.type === "done");
+    expect(doneStatus(events)).toBe("completed");
+    expect(done?.payload).toMatchObject({ implementation_deviations_problem: { kind: "json" } });
+  });
+
+  it("passes invalid entries as a report problem in the completed event", async () => {
+    const workspace = await gitWorkspace();
+    const bin = await fakeCommand("invalid-entries", `printf 'OSSTACK_IMPLEMENTATION_DEVIATIONS: {"deviations":[{},null]}\\n'`);
+    const events = await drain(new DeepSeekVerifyAdapter({ bin }).invoke(task("ds-verify.verify.alignment", workspace), new AbortController().signal));
+    expect(events.find((event) => event.type === "done")?.payload).toMatchObject({
+      implementation_deviations_problem: { kind: "entries", invalid_count: 1 },
+    });
   });
 
   it("maps command failures to terminal error and failed done events", async () => {

@@ -204,6 +204,10 @@ export const DonePayload = z.object({
   /** Optional application-neutral structured verifier extensions. */
   evaluation_judgments: z.unknown().optional(),
   implementation_deviations: z.array(z.record(z.unknown())).max(100).optional(),
+  implementation_deviations_problem: z.object({
+    kind: z.enum(["json", "shape", "entries", "oversized"]),
+    invalid_count: z.number().int().positive().optional(),
+  }).optional(),
   review: StructuredReviewSchema.optional(),
 });
 

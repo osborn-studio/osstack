@@ -11166,6 +11166,7 @@ interface LoopRunSummary {
     iterations: number;
     agent_id: string;
     duration_ms: number;
+    verify_issues?: Array<{ rule?: string | undefined; message: string }> | undefined;
   }>;
   artifacts?: LoopEvidenceArtifacts;
   learned_lessons?: {
@@ -11322,7 +11323,7 @@ interface LoopStatsRow {
   last_error?: string;
 }
 
-function printLoopRun(result: LoopRunSummary, json: boolean): void {
+export function printLoopRun(result: LoopRunSummary, json: boolean): void {
   if (json) {
     console.log(JSON.stringify(result, null, 2));
     return;
@@ -11379,6 +11380,9 @@ function printLoopRun(result: LoopRunSummary, json: boolean): void {
   }
   for (const task of result.completed_tasks) {
     console.log(`  ${task.task_id}: ${task.outcome} (${task.iterations} iteration${task.iterations === 1 ? "" : "s"})`);
+    for (const issue of task.verify_issues ?? []) {
+      if (issue.rule === "verify.deviations_invalid") console.log(`    warning: ${issue.message}`);
+    }
   }
 }
 

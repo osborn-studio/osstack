@@ -1,0 +1,320 @@
+[
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "author-reading.md",
+    "count": 2,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "capability-catalog.md",
+    "count": 2,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "integration-spec.md",
+    "count": 3,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "capability-map.json",
+    "count": 2,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "acceptance-cases.json",
+    "count": 2,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "validation.md",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "evidence/source-lock.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "evidence/pstack-inventory.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "evidence/osstack-source-index.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "evidence/author-articles.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-README.md",
+    "target": "evidence/semantic-probes.ts",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-author-reading.md",
+    "target": "evidence/author-articles.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-author-reading.md",
+    "target": "evidence/article-design-deltas.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-capability-catalog.md",
+    "target": "author-reading.md",
+    "count": 2,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-capability-catalog.md",
+    "target": "capability-map.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-capability-catalog.md",
+    "target": "integration-spec.md",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-integration-spec.md",
+    "target": "author-reading.md",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-integration-spec.md",
+    "target": "acceptance-cases.json",
+    "count": 2,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/research-checks.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/upstream-tools-tests.log",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/upstream-watch-typecheck.log",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/harness-generation-check.log",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/semantic-probes.log",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/semantic-probes.ts",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/pstack-inventory.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/osstack-source-index.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/validate-report.py",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/workspace-status-at-research.txt",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/author-articles.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/design/2026-10-27-joint-engineering/evidence/inputs/pstack-revision2-validation.md",
+    "target": "evidence/revision-1-artifact-hashes.json",
+    "count": 1,
+    "reason": "Archived evidence refers to an artifact that was not retained at this flattened path."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "target": "../reports/2026-10-23-firstmate-analysis.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "target": "../plans/2026-10-23-firstmate-adoption-plan.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "target": "../reports/2026-10-23-firstmate-claude-audit.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "target": "../reports/2026-10-23-firstmate-evidence/README.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round1.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round1.json",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "../reports/2026-10-23-firstmate-analysis.md",
+    "count": 2,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "../plans/2026-10-23-firstmate-adoption-plan.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "../reports/2026-10-23-firstmate-claude-audit.md",
+    "count": 2,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "../reports/2026-10-23-firstmate-evidence/README.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "target": "../design/2026-10-23-firstmate-capability-adoption.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round1.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round1.json",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round1-context.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round2.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round2.json",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "2026-10-23-firstmate-evidence/claude-round2-context.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "../reports/2026-10-23-firstmate-analysis.md",
+    "count": 2,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "../plans/2026-10-23-firstmate-adoption-plan.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "../reports/2026-10-23-firstmate-claude-audit.md",
+    "count": 2,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "../reports/2026-10-23-firstmate-evidence/README.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  },
+  {
+    "file": "docs/reports/2026-10-23-firstmate-evidence/claude-round3-context.md",
+    "target": "../design/2026-10-23-firstmate-capability-adoption.md",
+    "count": 1,
+    "reason": "Existing historical document link points to a missing local target; repair when this archived report is revised."
+  }
+]

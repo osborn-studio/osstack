@@ -130,6 +130,9 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Deterministic repository rules
+        run: pnpm test:deterministic-rules
+
       - name: Session adoption decision smoke (local fixture)
         run: pnpm smoke:engineering-decision
 
