@@ -1,3 +1,4 @@
+import type { CiChainStats } from "./contained-mission-ci-chain-read.js";
 // osstack CLI entry. Talks to the running daemon via Unix socket when needed.
 // (shebang is injected by tsup banner)
 
@@ -11251,6 +11252,7 @@ interface StatsResult {
   loops?: LoopStatsSummary;
   rpc?: RpcLatencyRow[];
   bridge?: BridgeStatsView | null;
+  ci_chain?: CiChainStats | null;
 }
 
 interface BridgeStatsView {
@@ -12685,7 +12687,7 @@ function streamTaskObserve(run_id: string, after_seq?: number): Promise<number> 
   return streamFrames("task.observe", after_seq !== undefined ? { run_id, after_seq } : { run_id });
 }
 
-function printStats(result: unknown): void {
+export function printStats(result: unknown): void {
   const s = result as StatsResult;
   console.log(`total_runs=${s.total_runs}  total_events=${s.total_events}`);
   if (s.per_agent.length === 0) {
@@ -12703,6 +12705,7 @@ function printStats(result: unknown): void {
   }
 
   if (s.loops === undefined) {
+    printCiChainStats(s.ci_chain);
     printBridgeStats(s.bridge);
     printRpcLatency(s.rpc);
     return;
@@ -12727,8 +12730,23 @@ function printStats(result: unknown): void {
     }
   }
 
+  printCiChainStats(s.ci_chain);
   printBridgeStats(s.bridge);
   printRpcLatency(s.rpc);
+}
+
+/** CI chain metrics use only observed ledger facts. Missing values stay unknown. */
+function printCiChainStats(stats: CiChainStats | null | undefined): void {
+  const c = stats?.ci_chain_available ? stats : undefined;
+  const durations = c?.ci_chain_registration_to_close_ms ?? [];
+  const known = durations.flatMap(row => row.duration_ms === null ? [] : [row.duration_ms]).sort((a, b) => a - b);
+  const middle = Math.floor(known.length / 2);
+  const median = known.length === 0 ? null : known.length % 2 ? known[middle]! : (known[middle - 1]! + known[middle]!) / 2;
+  console.log();
+  console.log("CI chain");
+  console.log(`by_state: ${c?.ci_chain_by_state.map(row => `${row.state}=${row.count}`).join(" ") || "-"}`);
+  console.log(`closed=${c?.ci_chain_closed ?? "-"} repaired_closed=${c?.ci_chain_repaired_closed ?? "-"} consecutive_normal_closed=${c?.ci_chain_consecutive_normal_closed ?? "-"}`);
+  console.log(`registration_to_close_ms: median=${median ?? "-"} latest=${durations[0]?.duration_ms ?? "-"}`);
 }
 
 /** Bridge section: omitted when the ledger has no revision-chain tables; one line per group, so it stays short with no bridge activity. */

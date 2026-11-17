@@ -1,11 +1,12 @@
 #!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 export const repoRoot = resolve(import.meta.dirname, "..");
-const sourceExtensions = new Set([".ts", ".tsx", ".js", ".mjs", ".mts"]);
+const sourceExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts", ".cjs", ".cts"]);
 
 export function walk(directory, predicate = () => true) {
   if (!existsSync(directory)) return [];
@@ -187,12 +188,182 @@ export function startupGraphViolations(root, limits) {
   return { errors, counts: { entry: entry.size, bin: bin.size } };
 }
 
+// One entry per file. Exact counts reject growth and require stale entries to shrink.
+function countedViolations(findings, allowlist, label, remedy) {
+  const keyOf = entry => entry.file;
+  const actual = new Map();
+  for (const finding of findings) {
+    const key = keyOf(finding);
+    const value = actual.get(key) ?? { finding, count: 0 };
+    value.count++;
+    actual.set(key, value);
+  }
+  const errors = [];
+  const seen = new Set();
+  for (const entry of allowlist) {
+    const key = keyOf(entry);
+    const count = actual.get(key)?.count ?? 0;
+    if (seen.has(key) || !entry.reason?.trim() || !Number.isInteger(entry.count) || entry.count < 1 || count !== entry.count) errors.push(`stale ${label} allowlist entry ${key}: expected ${entry.count}, found ${count}; remove or narrow this entry`);
+    seen.add(key);
+    actual.delete(key);
+  }
+  for (const [key, { finding, count }] of actual) errors.push(`${key} (line ${finding.line}, ${count} uses): ${remedy(finding)}`);
+  return errors;
+}
+function packageProductionSource(root, path) {
+  const parts = rel(root, path).split("/");
+  return parts[0] === "packages" && parts[2] === "src" && sourceExtensions.has(extname(path))
+    && !parts.slice(3, -1).some(part => /^(?:__)?(?:tests?|fixtures)(?:__)?$|^testkit$/.test(part))
+    && !/(?:\.(?:test|spec|testkit|fixture)|-test-fixture)\.[cm]?[jt]sx?$/.test(path) && !/^test-/.test(parts.at(-1));
+}
+// Commands observed in the repository plus the other direct ref/index/remote writers.
+// Object-only plumbing (hash-object, write-tree, commit-tree) does not change refs or index.
+const gitWriters = new Set(["push", "commit", "merge", "rebase", "reset", "checkout", "switch", "restore", "update-ref", "add", "rm", "mv", "fetch", "pull", "cherry-pick", "revert", "stash", "read-tree", "update-index", "apply", "am", "init", "clone", "symbolic-ref", "pack-refs", "filter-branch", "notes", "replace"]);
+function gitMutation(tokens) {
+  let i = 0;
+  while (i < tokens.length) {
+    const token = tokens[i];
+    if (token === "-c" || token === "-C" || token === "--git-dir" || token === "--work-tree" || token === "--namespace" || token === "--config-env") { i += 2; continue; }
+    if (token?.startsWith("-")) { i++; continue; }
+    break;
+  }
+  const command = tokens[i];
+  const args = tokens.slice(i + 1);
+  if (command === "worktree") return ["add", "remove", "move", "prune", "lock", "unlock", "repair"].includes(args[0]) ? `worktree ${args[0]}` : undefined;
+  if (command === "remote") return ["add", "remove", "rm", "rename", "set-url", "set-head", "set-branches", "prune", "update"].includes(args[0]) ? `remote ${args[0]}` : undefined;
+  if (command === "branch" || command === "tag") {
+    if (args.some(arg => ["-d", "-D", "--delete", "-m", "-M", "--move", "-c", "-C", "--copy", "-f", "--force"].includes(arg))) return command;
+    if (args.some(arg => ["--list", "-l", "--show-current", "-r", "-a", "--contains", "--no-merged", "--merged"].includes(arg))) return undefined;
+    return args.length ? command : undefined;
+  }
+  if (command === "symbolic-ref" && args.filter(arg => !arg.startsWith("-")).length < 2 && !args.includes("--delete")) return undefined;
+  if (command === "apply" && args.some(arg => ["--check", "--stat", "--numstat", "--summary"].includes(arg))) return undefined;
+  return gitWriters.has(command) ? command : undefined;
+}
+export function gitWriteFindings(root) {
+  const findings = [];
+  for (const path of walk(join(root, "packages"), path => packageProductionSource(root, path))) {
+    const source = sourceFile(path);
+    const bindings = new Map();
+    traverse(source, node => { if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) bindings.set(node.name.text, node.initializer); });
+    function tokens(node, seen = new Set()) {
+      if (ts.isStringLiteralLike(node)) return [node.text];
+      if (ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isParenthesizedExpression(node)) return tokens(node.expression, seen);
+      if (ts.isIdentifier(node) && bindings.has(node.text) && !seen.has(node.text)) return tokens(bindings.get(node.text), new Set([...seen, node.text]));
+      if (ts.isSpreadElement(node)) { const expanded = tokens(node.expression, seen); return expanded[0] === "<dynamic>" ? [] : expanded; }
+      if (ts.isArrayLiteralExpression(node)) return node.elements.flatMap(child => tokens(child, seen));
+      // Preserve unknown option values so -C root / -c config do not consume the command.
+      return ["<dynamic>"];
+    }
+    traverse(source, node => {
+      if (!ts.isCallExpression(node)) return;
+      const name = node.expression.getText(source);
+      const hasGit = node.arguments.some(arg => ts.isStringLiteralLike(arg) && /(?:^|\/)git$/.test(arg.text));
+      if (!hasGit && !/git|\brun\b|exec|spawn/i.test(name)) return;
+      const commands = new Set();
+      for (const arg of node.arguments) {
+        const shell = ts.isStringLiteralLike(arg) ? arg.text : ts.isTemplateExpression(arg) ? arg.head.text + arg.templateSpans.map(span => "<dynamic>" + span.literal.text).join("") : "";
+        if (/\bgit\s+/.test(shell)) {
+          for (const match of shell.matchAll(/(?:^|[;&|]\s*)\s*git\s+([^;&|]+)/g)) {
+            const command = gitMutation(match[1].trim().split(/\s+/));
+            if (command) commands.add(command);
+          }
+        }
+        const visitArg = value => {
+          if (ts.isArrayLiteralExpression(value) || ts.isIdentifier(value)) {
+            const command = gitMutation(tokens(value));
+            if (command) commands.add(command);
+          } else if (ts.isConditionalExpression(value)) { visitArg(value.whenTrue); visitArg(value.whenFalse); }
+        };
+        visitArg(arg);
+      }
+      if (/git/i.test(name) && !hasGit && node.arguments.length && !node.arguments.some(ts.isArrayLiteralExpression) && node.arguments.some(ts.isStringLiteralLike)) {
+        const argv = node.arguments.flatMap(arg => tokens(arg));
+        const command = gitMutation(argv) ?? gitMutation(argv.slice(1));
+        if (command) commands.add(command);
+      }
+      for (const command of commands) findings.push({ file: rel(root, path), command, expression: node.getText(source).replace(/\s+/g, " ").trim(), line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 });
+    });
+  }
+  return findings;
+}
+export function gitWriteViolations(root, allowlist) {
+  return countedViolations(gitWriteFindings(root), allowlist, "git write", () => "route this write through an existing managed Git location with its authorization gate; do not expand the managed-location allowlist");
+}
+const secretPatterns = [
+  ["private-key", /-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/g],
+  ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)/g],
+  ["aws-access-key", /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g],
+  ["google-api-key", /\bAIza[0-9A-Za-z_-]{35}\b/g],
+  ["alibaba-access-key", /\bLTAI[0-9A-Za-z]{12,20}\b/g],
+];
+const machinePathPatterns = [
+  ["machine-path", /(?:\/(?:Users|home)\/[^\s/"'`<>]+\/|\/Volumes\/[^\s/"'`<>]+\/|[A-Z]:\\Users\\[^\s\\"'`<>]+\\)[^\s"'`<>),;\]}]*/g],
+];
+// Scan paths only in executable/published surfaces and root configuration files.
+// docs/ contains historical run evidence: workstation paths are part of that evidence.
+export function machinePathScope(file) {
+  return /^(?:packages\/[^/]+\/src\/|scripts\/|\.github\/|hermes-skill\/|loop-engineering\/)/.test(file)
+    || (!file.includes("/") && (sourceExtensions.has(extname(file)) || /\.(?:json|ya?ml|toml|ini|conf|config)$/.test(file) || file.startsWith(".") || ["Makefile", "Dockerfile"].includes(file)));
+}
+function textFindings(root, files, patterns, inScope = () => true) {
+  const tracked = files ?? execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }).split("\0").filter(Boolean);
+  const findings = [];
+  for (const file of tracked.filter(inScope)) {
+    const path = join(root, file);
+    if (!existsSync(path) || !statSync(path).isFile()) continue;
+    const bytes = readFileSync(path);
+    if (bytes.includes(0)) continue;
+    const content = bytes.toString("utf8");
+    for (const [category, pattern] of patterns) for (const match of content.matchAll(pattern)) findings.push({ file, category, line: content.slice(0, match.index).split("\n").length });
+  }
+  return findings;
+}
+export function secretFindings(root, files) {
+  return textFindings(root, files, secretPatterns);
+}
+export function machinePathFindings(root, files) {
+  return textFindings(root, files, machinePathPatterns, machinePathScope);
+}
+export function secretViolations(root, allowlist, files) {
+  return countedViolations(secretFindings(root, files), allowlist, "secret", () => "remove the secret; use an environment variable; do not expand the allowlist");
+}
+export function machinePathViolations(root, allowlist, files) {
+  return countedViolations(machinePathFindings(root, files), allowlist, "machine path", () => "replace the machine path with an environment variable or a portable example; do not expand the allowlist");
+}
+export function packageContractViolations(root) {
+  const errors = [];
+  const base = join(root, "tsconfig.base.json");
+  function inherits(path, seen = new Set()) {
+    if (!existsSync(path) || seen.has(path)) return false;
+    if (path === base) return true;
+    const parsed = ts.readConfigFile(path, path => readFileSync(path, "utf8"));
+    if (parsed.error) return false;
+    const parent = parsed.config.extends;
+    return (Array.isArray(parent) ? parent : [parent]).some(value => typeof value === "string" && inherits(resolve(dirname(path), value), new Set([...seen, path])));
+  }
+  for (const entry of readdirSync(join(root, "packages"), { withFileTypes: true }).filter(entry => entry.isDirectory())) {
+    const directory = join(root, "packages", entry.name);
+    const file = join(directory, "package.json");
+    let pkg;
+    try { pkg = JSON.parse(readFileSync(file, "utf8")); } catch { errors.push(`packages/${entry.name}: add a valid package.json with typecheck and test scripts`); continue; }
+    if (typeof pkg.scripts?.typecheck !== "string" || !pkg.scripts.typecheck.trim()) errors.push(`packages/${entry.name}/package.json: add a typecheck script (tsc --noEmit)`);
+    if (walk(join(directory, "src"), path => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path)).length && (typeof pkg.scripts?.test !== "string" || !pkg.scripts.test.trim())) errors.push(`packages/${entry.name}/package.json: source tests exist; add a test script (vitest run)`);
+    if (!inherits(join(directory, "tsconfig.json"))) errors.push(`packages/${entry.name}/tsconfig.json: inherit tsconfig.base.json through extends (normally ../../tsconfig.base.json)`);
+  }
+  return errors;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const scratchAllowlist = JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-scratch-allowlist.json"), "utf8"));
   const docsAllowlist = JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-docs-allowlist.json"), "utf8"));
   const results = [
     ...scratchViolations(repoRoot, scratchAllowlist),
     ...vitestConfigViolations(repoRoot),
+    ...gitWriteViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-git-allowlist.json"), "utf8"))),
+    ...secretViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-secret-allowlist.json"), "utf8"))),
+    ...machinePathViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-machine-path-allowlist.json"), "utf8"))),
+    ...packageContractViolations(repoRoot),
     ...docsLinkViolations(repoRoot, docsAllowlist),
     // Baseline: cli-entry.ts 2 files (+1), bin.ts 178 files (+4).
     ...startupGraphViolations(repoRoot, { entry: 3, bin: 182 }).errors,

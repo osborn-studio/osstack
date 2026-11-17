@@ -1,0 +1,72 @@
+[
+  {
+    "file": "packages/agents/src/adapters/autoresearch.ts",
+    "count": 5,
+    "reason": "Legacy autoresearch experiment lifecycle: owns its experiment branch, stages train.py, commits a proposal, and resets rejected trials. Managed compatibility location; not a W13 gate."
+  },
+  {
+    "file": "packages/agents/src/contained-workspace/plumbing.ts",
+    "count": 7,
+    "reason": "W13-C1 local-write boundary: gatedGit registers real-index, worktree and compare-and-swap ref writes; candidate indexes remain private."
+  },
+  {
+    "file": "packages/agents/src/worktree.ts",
+    "count": 9,
+    "reason": "Loop worktree lifecycle and explicit local landing: owns task branches; commit acceptance, pinned fast-forward target, and retention/cleanup checks bound these writes. Not a remote publication gate."
+  },
+  {
+    "file": "packages/autonomy/src/git-candidate.ts",
+    "count": 4,
+    "reason": "Autonomy candidate boundary: fetches the authorized base and creates the checked candidate commit after scope/index validation; hardened mode uses contained plumbing."
+  },
+  {
+    "file": "packages/cli/src/contained-mission-github-ci-publish.ts",
+    "count": 1,
+    "reason": "W13 remote publication boundary: intent-bound gated runner and SHA lease publish the CI revision."
+  },
+  {
+    "file": "packages/cli/src/contained-mission-ports.ts",
+    "count": 7,
+    "reason": "W13 mission ports: private candidate-index writes and journal-gated compare-and-swap real-ref recovery."
+  },
+  {
+    "file": "packages/cli/src/contained-mission-revision-publication.ts",
+    "count": 1,
+    "reason": "W13 revision publication boundary: intent-bound runner, release fence and SHA lease protect the remote push."
+  },
+  {
+    "file": "packages/cli/src/graph-delivery.ts",
+    "count": 2,
+    "reason": "Graph delivery workspace factory: clones a task repository and checks out its pinned detached base in an isolated workspace."
+  },
+  {
+    "file": "packages/cli/src/improvement-candidate-artifacts.ts",
+    "count": 3,
+    "reason": "Improvement artifact builder: initializes a temporary bare object repository and populates its private index; does not mutate the source repository."
+  },
+  {
+    "file": "packages/cli/src/improvement-pr-delivery.ts",
+    "count": 6,
+    "reason": "Improvement delivery boundary: ledger claim, authorization/base verification, isolated bare reconstruction and force-with-lease publication bind these writes."
+  },
+  {
+    "file": "packages/core/src/graph/artifact-git.ts",
+    "count": 3,
+    "reason": "Graph artifact repository plumbing: creates an owned bare repository and private candidate index for content-addressed artifact construction."
+  },
+  {
+    "file": "packages/core/src/graph/artifact-store.ts",
+    "count": 4,
+    "reason": "Graph artifact store: updates candidate refs and materializes a verified candidate tree in an owned artifact repository."
+  },
+  {
+    "file": "packages/github/src/branch-scanner.ts",
+    "count": 1,
+    "reason": "Branch observer refresh: fetch --prune updates remote-tracking refs before scanning. Legacy managed refresh; no publication authority."
+  },
+  {
+    "file": "packages/github/src/delivery.ts",
+    "count": 1,
+    "reason": "GitHub delivery publication boundary: gated runner and delivery-contract checks protect the push."
+  }
+]
