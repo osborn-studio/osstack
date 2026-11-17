@@ -312,6 +312,7 @@ export { FollowUpState, FollowUpCreateParams, FollowUpListParams, FollowUpDraftP
 export { FollowUpDeliveryTarget, FollowUpDeliverySubject, FollowUpDeliveryGrantBody, SignedFollowUpDeliveryGrant,
 export {
 export {
+export { MissionDecideRequest } from "./mission-decide.js";
 ```
 
 ## `@osstack/runtime`

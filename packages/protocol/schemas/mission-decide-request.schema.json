@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack MissionDecideRequest",
+  "$comment": "Shape only. The host authenticates write scope, checks revision and state, and records keyed admission before execution. The key deduplicates admission, not external execution.",
+  "type": "object",
+  "properties": {
+    "credential": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 4096
+    },
+    "mission_id": {
+      "type": "string",
+      "pattern": "^cm_[0-9a-f-]{36}$"
+    },
+    "decision_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991,
+      "exclusiveMinimum": 0
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "abandon",
+        "extra_repair",
+        "approve_publication",
+        "discard_changes",
+        "adopt_worktree",
+        "resume_workspace",
+        "retry_stop_check",
+        "resume_budget",
+        "resume_grant"
+      ]
+    }
+  },
+  "required": [
+    "credential",
+    "mission_id",
+    "decision"
+  ],
+  "additionalProperties": false
+}

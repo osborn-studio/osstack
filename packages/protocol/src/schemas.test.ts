@@ -53,6 +53,7 @@ describe("generated JSON Schemas are committed and fresh", () => {
         "graph-checkpoint-response.schema.json",
         "graph.schema.json",
         "graph-worker.schema.json",
+        "mission-decide-request.schema.json",
         "policy-decision.schema.json",
         "run-summary.schema.json",
         "scoped-approval-decision.schema.json",

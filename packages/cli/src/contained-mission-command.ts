@@ -13,6 +13,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
   approve-ci-repair --mission ID --candidate SHA
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check|resume_budget|resume_grant
+         [--decision-id ID] [--expected-revision N]
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
   merger report [--json]             (shadow merger: classify shadow decisions against real outcomes; read-only, no recommendation)
   chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain; never merges)
@@ -30,7 +31,7 @@ const flagsByCommand: Record<Command, { single: readonly string[]; repeated: rea
   cancel: { single: ["mission"], repeated: [] },
   "publish-check": { single: ["mission"], repeated: [] },
   "approve-ci-repair": { single: ["mission", "candidate"], repeated: [] },
-  decide: { single: ["mission", "decision"], repeated: [] },
+  decide: { single: ["mission", "decision", "decision-id", "expected-revision"], repeated: [] },
   "chain-decide": { single: ["chain", "decision"], repeated: [] },
   "merger-report": { single: [], repeated: [] },
 };
@@ -108,7 +109,9 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       if (!single.has("publish-repository") && [...single.keys(), ...(preauthorized ? ["publish-preauthorized"] : [])].some(k => k.startsWith("publish-"))) throw new Error("required:--publish-repository");
       if (githubCi && !single.has("publish-repository")) throw new Error("required:--publish-repository");
     } else if (command === "decide") {
-      params = { mission_id: required("mission"), decision: required("decision") };
+      params = { mission_id: required("mission"), decision: required("decision"),
+        ...(single.has("decision-id") ? { decision_id: required("decision-id") } : {}),
+        ...(single.has("expected-revision") ? { expected_revision: Number(required("expected-revision")) } : {}) };
     } else if (command === "approve-ci-repair") {
       params = { mission_id: required("mission"), candidate: required("candidate") };
     } else if (command === "chain-decide") {

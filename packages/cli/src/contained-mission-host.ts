@@ -15,7 +15,7 @@ import { containedEvents, eventPayload, lastTransitionTo, type ContainedMissionH
 import { PUBLICATION_RECOVERED, WORKSPACE_RECOVERED, HOST_PROCESS_UNPROVEN_PREFIX, hostOnlyObligation, hostProcessRouteOf, type HostProcessRoute } from './contained-mission-host-process.js';
 
 export type { MissionPublication } from './contained-mission-publication.js';
-export type ContainedHostDecision = ContainedDecision | { kind: 'retry_stop_check' };
+export type ContainedHostDecision = (ContainedDecision | { kind: 'retry_stop_check' }) & { decision_id?: string };
 export interface ContainedMissionHostOptions {
   ports: ContainedMissionHostPorts;
   runner?: ContainedMissionRunner;
@@ -68,6 +68,7 @@ export function validateContainedStart(spec: ContainedMissionSpec, worktreesRoot
 export class ContainedMissionHost {
   readonly store: ContainedMissionStore;
   readonly runner: ContainedMissionRunner;
+  private readonly activeDecisionIds = new Map<string, string>();
   private readonly inFlight = new Map<string, Promise<void>>();
   private readonly groupEmpty: (pgid: number) => boolean;
   private readonly max: number;
@@ -90,6 +91,10 @@ export class ContainedMissionHost {
 
   /** Used by live chain synchronization; includes the synchronous entry of a human decision. */
   isBusy(missionId: string): boolean { return this.inFlight.has(missionId); }
+  retryStopCheckAllowed(mission: ContainedMission): boolean {
+    return mission.state === 'stop_unknown' || mission.state === 'cancel_requested'
+      || (TERMINAL.has(mission.state) && this.hp.hasOpen(mission.mission_id));
+  }
 
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
@@ -171,6 +176,7 @@ export class ContainedMissionHost {
     if (!principal.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
     if (this.inFlight.has(missionId)) throw Error('CONTAINED_MISSION_BUSY');
     let result: ContainedMission | undefined;
+    if (decision.decision_id) this.activeDecisionIds.set(missionId, decision.decision_id);
     await this.track(missionId, async () => {
       if (decision.kind !== 'retry_stop_check') { result = await this.runner.decide(missionId, decision); return; }
       if (mission.state === 'stop_unknown' || mission.state === 'cancel_requested') {
@@ -183,7 +189,7 @@ export class ContainedMissionHost {
         if (this.hp.hasOpen(missionId)) throw Error('CONTAINED_STOP_UNPROVEN');
         result = this.store.get(missionId);
       } else throw Error('CONTAINED_DECISION_NOT_ALLOWED');
-    }, true);
+    }, true).finally(() => { this.activeDecisionIds.delete(missionId); });
     return result!;
   }
 
@@ -398,7 +404,10 @@ export class ContainedMissionHost {
     const opened = lastTransitionTo(events, ['executing', 'verifying']);
     if (opened < 0) return undefined;
     if (eventPayload(events[opened]!).to === 'verifying') {
-      const result = await this.options.ports.verificationStopped(m);
+      const result = await this.options.ports.verificationStopped(m, () => {
+        const decisionId = this.activeDecisionIds.get(m.mission_id);
+        if (decisionId) this.store.record(m.mission_id, 'decision_effect_started', { decision_id: decisionId, effect: 'verification_stop' }, this.options.ports.now());
+      });
       return result.stopped ? { stop_proof: result.proof, evidence: result.evidence } : undefined;
     }
     const started = events.slice(opened + 1).filter(e => e.kind === 'executor_started').at(-1);
