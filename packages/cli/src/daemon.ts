@@ -145,7 +145,7 @@ import {
   type LoopNeatFinalizerResultV1,
 } from "./loop-neat-finalizer.js";
 
-import { localAttentionSender } from "./attention-local-delivery.js";
+import { selectAttentionSender } from "./attention-webhook-delivery.js";
 import { SupervisionService, attentionServiceState, type SupervisionHealth } from "./supervision-service.js";
 
 const DAEMON_VERSION = VERSION;
@@ -4328,7 +4328,7 @@ export async function startDaemon(
   if (process.env["OSSTACK_ATTENTION"] === "1") {
     // Invalid enabled reminder settings refuse startup instead of looping unbounded.
     const reminders = parseAttentionReminderPolicy(process.env);
-    ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, process.env["OSSTACK_ATTENTION_NOTIFY"] === "local" ? localAttentionSender(osstackHome()) : undefined, reminders ? { reminders } : {});
+    ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, selectAttentionSender(process.env, osstackHome()), reminders ? { reminders } : {});
     ctx.supervision.start();
   }
   ctx.collaborator = new SessionCollaborator({
