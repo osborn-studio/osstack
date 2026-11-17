@@ -63,5 +63,18 @@ Top-level `osstack` commands parsed from `--help` (58 total).
 - `version`
 - `worker`
 
+## Mission subcommands
+
+- `mission start`
+- `mission list`
+- `mission status`
+- `mission cancel`
+- `mission publish-check`
+- `mission approve-ci-repair`
+- `mission decide`
+- `mission grant-revisions`
+- `mission merger report`
+- `mission chain-decide`
+
 Doc 15 §2.2 context: this surface is the raw capability layer; the
 task-oriented golden paths (`daily` / `start` / `improve`) compose it.
