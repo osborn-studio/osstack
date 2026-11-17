@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack Decisions Answer Params",
+  "type": "object",
+  "properties": {
+    "credential": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 4096
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "session",
+        "contained_mission",
+        "ci_repair",
+        "revision_chain",
+        "autonomy",
+        "hermes",
+        "loop"
+      ]
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "answer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 16000
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "default": {}
+    },
+    "answer_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "source_revision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "required": [
+    "credential",
+    "source",
+    "source_id",
+    "answer",
+    "answer_id",
+    "source_revision"
+  ],
+  "additionalProperties": false
+}

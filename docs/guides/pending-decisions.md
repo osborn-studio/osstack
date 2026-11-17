@@ -75,3 +75,66 @@ The loop run-event ledger has no human-decision receipt. A later execution or
 escalation for the same task and loop supersedes an earlier escalation; stopping
 a loop alone does not resolve it. Decisions made only outside that ledger cannot
 be inferred by this read-only query.
+
+## 回答 / Answer one decision
+
+Use the listed `source`, `source_id`, and exact `source_revision`. Provision an
+engineering credential out of band. Set `OSSTACK_ENGINEERING_CREDENTIAL` on the
+client. The authority file must be configured on the daemon. All answers require
+a valid credential, including Hermes and Session answers. The daemon reloads the
+authority for each request. Mission and chain answers also require the source's
+read and write scopes. CI approval retains its operator-scope check.
+
+```sh
+osstack decisions answer --source hermes --id approval:APPROVAL_ID \
+  --answer choice --param choice=yes --answer-id chat:REQUEST_ID \
+  --source-revision REVISION_FROM_LIST --json
+```
+
+Keep the same `--answer-id` and content when a response is lost. Use a new key for
+a new answer. Never retry an unknown effect with a replacement key. The RPC is
+`decisions.answer`; its fields are `credential`, `source`, `source_id`, `answer`,
+`params`, `answer_id`, and `source_revision`. Unknown parameters are refused.
+
+| Source | Answer and parameters | Authority and retry guarantee |
+|---|---|---|
+| Contained Mission | Existing `mission.decide` kind; no parameters | Forwards `decision_id` and `expected_revision`. Existing Mission events provide atomic admission. Immediate transitions commit with admission. Asynchronous effects retain the source's receipts and `unknown` recovery rules. This is not an exactly-once external execution guarantee. |
+| CI repair | `approve_ci_repair`, `--param candidate=COMMIT`; or `abandon` without parameters | Uses `mission.approve_ci_repair` or `mission.decide`. Approval and the keyed receipt commit in one transaction in existing Mission events. Candidate and operator checks remain in the source operation. Keys conflict across the two routes. |
+| Session | Listed choice ID without text, or `free_text --param text=TEXT`; optional `--param takeover=true --param takeover_grant_id=GRANT_ID` | Forwards `action_id` to `attention.answer`. List revision carries `revision:content_hash`. The existing action reservation atomically deduplicates the send. Applied, in-flight and uncertain receipts retain their original meaning. Choice labels become the existing answer text. The selected kind is also bound to the receipt. |
+| Hermes approval | `choice --param choice=VALUE` | Only a pending row can enter the existing `approval.resolve`. It still writes status `accepted` for any choice. Resolution and receipt metadata in the original request event payload commit atomically. The adapter event sequence stays unchanged. This does not change the native approval semantics. |
+| Hermes clarify | `free_text --param text=TEXT` | Same pending check and atomic request-event receipt around existing `clarify.resolve`. |
+
+The router records the authenticated actor in the original event actor field or
+forwarded payload. Hermes receipts also bind the client session. Their digest is authenticated with
+HMAC using the supplied credential. Producer-supplied payload fields cannot forge
+a successful answer. Retrying a Hermes key needs the same valid credential;
+credential rotation produces a conflict and returns the current source state.
+The router adds only `decisions_answer` metadata to the original request payload.
+It preserves all source fields and allocates no adapter sequence number. If that
+request event is missing, the router returns `not_answerable` with code
+`idempotency_unsupported` and the native local resolve command. It performs no
+answer write. Answers never
+interpret source summaries or errors as commands. Current pending summaries keep
+the list's redaction and 240-character bound.
+
+The result contains `accepted`, `replay`, `outcome`, `code`, and
+`current: {state, item}`. `code` preserves the source error code. `item` is the
+current pending item, or `null` after it leaves the pending set. `accepted` means
+the source accepted the answer; it does not prove external effects completed.
+An early acknowledgement has outcome `accepted`. An ambiguous receipt has
+outcome `unknown`. Changed content under an accepted key conflicts. A stale
+source revision is refused before a new admission. Missing credentials or scopes
+cause no answer writes. CLI JSON prints the full result; a refused answer exits 1.
+
+These boundaries also apply to callers on the local socket:
+
+| Source or kind | Unified answer result | Local command and reason |
+|---|---|---|
+| Revision chain `abandon`, `takeover`, `reconcile` | `not_answerable`, code `idempotency_unsupported` | `mission chain-decide` (RPC `mission.chain_decide`). Its current revision CAS uses the service's current revision, not a client revision. The interface has no client key. Reconcile and child cancellation await external work. A wrapper cannot atomically commit that work and a receipt. No unsafe check-then-execute route is offered. |
+| `grant_revisions` | `local_only` | `mission grant-revisions`; an external signature is required. |
+| Autonomy approval | `local_only` | `autonomy approve` / `autonomy reject`; use the original signed decision flow. |
+| Loop escalation or blocked background card | `local_only` | Listed `cockpit retry` or `cockpit approve`; use the local terminal flow. No remote retry receipt is available. |
+| Session `risk_approval` / `task_authorization` | `local_only` | `attention answer` (RPC `attention.answer`) is the source command name. The current source rejects unsigned answers; this release adds no signed answer route. |
+
+These refusals never forward to a write command. No table, migration, or index is
+added. Native source commands remain the sole state authorities.

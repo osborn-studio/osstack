@@ -1279,6 +1279,22 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
     }
   }
+  if (req.method === "decisions.answer") {
+    if (ctx.draining) return singleOk(req.id, { accepted: false, replay: false, outcome: "refused", code: "draining", current: { state: "unknown", item: null } });
+    const [{ answerDecision }, { DecisionQueries }, { resolveHermesDecision }] = await Promise.all([
+      import("./decisions/answer.js"), import("@osstack/core"), import("./decisions/hermes-resolve.js"),
+    ]);
+    const access = ctx.engineering?.access;
+    return singleOk(req.id, await answerDecision({ db: ctx.db, queries: new DecisionQueries(ctx.db),
+      authenticate: credential => { if (!access) throw Error("permission_denied"); return access.authenticate(credential); },
+      forward: async (method, params) => {
+        const response = await handleSingle(ctx, { id: req.id, method, params });
+        if (!response?.ok) throw Error(response?.error?.code ?? "decisions_unavailable");
+        return response.result;
+      },
+      resolveHermes: (method, params) => resolveHermesDecision(ctx.db, method, params),
+    }, req.params));
+  }
   if (req.method === "decisions.list") {
     try {
       const [{ listDecisions }, { DecisionQueries }] = await Promise.all([
@@ -1857,17 +1873,9 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     // ── 7 Hermes controls: cancel (above) + approval/clarify/queue/goal ──
 
     case "approval.resolve": {
-      const p = (req.params ?? {}) as { approval_id?: string; choice?: string };
-      if (typeof p.approval_id !== "string" || typeof p.choice !== "string") {
-        return singleErr(req.id, "bad_request", "params.approval_id and params.choice required");
-      }
-      const r = ctx.db.prepare("SELECT status FROM approvals WHERE approval_id = ?").get(p.approval_id) as { status?: string } | undefined;
-      if (!r) return singleErr(req.id, "not_found", `no approval with id=${p.approval_id}`);
-      if (r.status !== "pending") return singleErr(req.id, "already_resolved", `approval status=${r.status}`);
-      ctx.db.prepare(
-        "UPDATE approvals SET status = 'accepted', resolved_at = ?, choice = ? WHERE approval_id = ?",
-      ).run(Date.now() / 1000, p.choice, p.approval_id);
-      return singleOk(req.id, { resolved: true, approval_id: p.approval_id, choice: p.choice });
+      const { resolveHermesDecision } = await import("./decisions/hermes-resolve.js");
+      try { return singleOk(req.id, resolveHermesDecision(ctx.db, "approval.resolve", (req.params ?? {}) as Record<string, unknown>)); }
+      catch (error) { return singleErr(req.id, error instanceof Error ? error.message : "resolve_failed", "Resolve request failed"); }
     }
 
     case "approval.list": {
@@ -1881,17 +1889,9 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
     }
 
     case "clarify.resolve": {
-      const p = (req.params ?? {}) as { clarify_id?: string; answer?: string };
-      if (typeof p.clarify_id !== "string" || typeof p.answer !== "string") {
-        return singleErr(req.id, "bad_request", "params.clarify_id and params.answer required");
-      }
-      const r = ctx.db.prepare("SELECT status FROM clarifies WHERE clarify_id = ?").get(p.clarify_id) as { status?: string } | undefined;
-      if (!r) return singleErr(req.id, "not_found", `no clarify with id=${p.clarify_id}`);
-      if (r.status !== "pending") return singleErr(req.id, "already_resolved", `clarify status=${r.status}`);
-      ctx.db.prepare(
-        "UPDATE clarifies SET status = 'answered', resolved_at = ?, answer = ? WHERE clarify_id = ?",
-      ).run(Date.now() / 1000, p.answer, p.clarify_id);
-      return singleOk(req.id, { resolved: true, clarify_id: p.clarify_id });
+      const { resolveHermesDecision } = await import("./decisions/hermes-resolve.js");
+      try { return singleOk(req.id, resolveHermesDecision(ctx.db, "clarify.resolve", (req.params ?? {}) as Record<string, unknown>)); }
+      catch (error) { return singleErr(req.id, error instanceof Error ? error.message : "resolve_failed", "Resolve request failed"); }
     }
 
     case "clarify.list": {

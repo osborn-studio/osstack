@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 export interface DecisionQuery {
   scope_id?: string;
   after: string;
+  inclusive?: boolean;
   limit: number;
   read_scopes: readonly string[];
 }
@@ -24,9 +25,9 @@ export class DecisionQueries {
   constructor(readonly db: Database.Database) {}
   session(q: DecisionQuery): DecisionRow[] {
     // created_at is projection time, not the time the Session entered the wait.
-    return this.rows(`SELECT item_id id,scope_id,NULL waiting_since,CAST(revision AS TEXT) revision,
+    return this.rows(`SELECT item_id id,scope_id,NULL waiting_since,CAST(revision AS TEXT)||':'||content_hash revision,
       json_extract(decision_json,'$.question') summary,state,NULL reason,'session' kind,decision_json details_json
-      FROM attention_items WHERE state='open' AND item_id>? AND (? IS NULL OR scope_id=?)
+      FROM attention_items WHERE state='open' AND item_id>${q.inclusive ? "=" : ""}? AND (? IS NULL OR scope_id=?)
       ORDER BY item_id LIMIT ?`, q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);
   }
   contained_mission(q: DecisionQuery): DecisionRow[] { return this.missions(q, false); }
@@ -42,7 +43,7 @@ export class DecisionQueries {
         AND json_extract(e.payload_json,'$.from')<>m.state ORDER BY e.seq DESC LIMIT 1) waiting_since
       FROM engineering_contained_missions m WHERE m.state IN ('awaiting_decision','needs_reconciliation','stop_unknown')
       AND m.scope_id IN (${q.read_scopes.map(() => "?").join(",")})
-      AND m.mission_id>? AND (? IS NULL OR m.scope_id=?)
+      AND m.mission_id>${q.inclusive ? "=" : ""}? AND (? IS NULL OR m.scope_id=?)
       AND ${ci ? "" : "NOT "}COALESCE((m.state='awaiting_decision' AND json_type(m.spec_json,'$.ci_repair')='object'
         AND (SELECT json_extract(e.payload_json,'$.reason') FROM engineering_contained_events e
           WHERE e.mission_id=m.mission_id AND e.kind='halted' ORDER BY e.seq DESC LIMIT 1)='publication_pending'),0)
@@ -59,7 +60,7 @@ export class DecisionQueries {
         ORDER BY e.seq DESC LIMIT 1) waiting_since
       FROM engineering_revision_chains c JOIN engineering_contained_missions m ON m.mission_id=c.root_mission_id
       WHERE c.state IN ('ready_for_human','awaiting_decision') AND m.scope_id IN (${q.read_scopes.map(() => "?").join(",")})
-      AND c.chain_id>? AND (? IS NULL OR m.scope_id=?) ORDER BY c.chain_id LIMIT ?`,
+      AND c.chain_id>${q.inclusive ? "=" : ""}? AND (? IS NULL OR m.scope_id=?) ORDER BY c.chain_id LIMIT ?`,
       ...q.read_scopes, q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);
   }
   autonomy(q: DecisionQuery): DecisionRow[] {
@@ -68,17 +69,17 @@ export class DecisionQueries {
       COALESCE(a.approval_json,'{}') details_json,
       (SELECT t.occurred_at*1000 FROM autonomy_run_transitions t WHERE t.autonomy_run_id=a.autonomy_run_id
         AND t.to_state='awaiting_approval' AND t.from_state<>'awaiting_approval' ORDER BY t.seq DESC LIMIT 1) waiting_since
-      FROM autonomy_run_projection a WHERE a.state='awaiting_approval' AND a.autonomy_run_id>?
+      FROM autonomy_run_projection a WHERE a.state='awaiting_approval' AND a.autonomy_run_id>${q.inclusive ? "=" : ""}?
       AND (? IS NULL OR EXISTS(SELECT 1 FROM attention_scopes s WHERE s.task_id=a.task_id AND s.scope_id=?))
       ORDER BY a.autonomy_run_id LIMIT ?`, q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);
   }
   hermes(q: DecisionQuery): DecisionRow[] {
     return this.rows(`SELECT h.*,${this.scopeForTask("r.task_id")} scope_id FROM (
       SELECT 'approval:'||approval_id id,run_id,requested_at*1000 waiting_since,NULL revision,action_summary summary,
-        status state,NULL reason,'approval' kind,'{}' details_json FROM approvals WHERE status='pending'
+        status state,NULL reason,'approval' kind,json_object('run_id',run_id,'risk',risk,'resolved_at',resolved_at,'choice',choice) details_json FROM approvals WHERE status='pending'
       UNION ALL SELECT 'clarify:'||clarify_id id,run_id,requested_at*1000 waiting_since,NULL revision,question summary,
-        status state,NULL reason,'clarify' kind,'{}' details_json FROM clarifies WHERE status='pending'
-      ) h JOIN runs r ON r.run_id=h.run_id WHERE h.id>?
+        status state,NULL reason,'clarify' kind,json_object('run_id',run_id,'resolved_at',resolved_at,'answer',answer) details_json FROM clarifies WHERE status='pending'
+      ) h JOIN runs r ON r.run_id=h.run_id WHERE h.id>${q.inclusive ? "=" : ""}?
       AND (? IS NULL OR EXISTS(SELECT 1 FROM attention_scopes s WHERE s.task_id=r.task_id AND s.scope_id=?))
       ORDER BY h.id LIMIT ?`, q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);
   }
@@ -88,7 +89,7 @@ export class DecisionQueries {
     return this.rows(`SELECT * FROM (SELECT e.event_id id,${this.scopeForTask("r.task_id")} scope_id,e.created_at waiting_since,
       NULL revision,COALESCE(json_extract(e.payload_json,'$.reason'),'Loop escalation') summary,
       'escalated' state,NULL reason,'loop' kind,e.payload_json details_json
-      FROM events e JOIN runs r ON r.run_id=e.run_id WHERE e.type='loop.escalated' AND e.event_id>?
+      FROM events e JOIN runs r ON r.run_id=e.run_id WHERE e.type='loop.escalated' AND e.event_id>${q.inclusive ? "=" : ""}?
       AND NOT EXISTS(SELECT 1 FROM events n WHERE n.session_id=e.session_id
         AND n.type IN ('loop.execute.done','loop.escalated')
         AND json_extract(n.payload_json,'$.task_id')=json_extract(e.payload_json,'$.task_id')
@@ -100,7 +101,7 @@ export class DecisionQueries {
           AND json_extract(k.payload,'$.from')<>'blocked' ORDER BY k.event_id DESC LIMIT 1) waiting_since,
         NULL revision,COALESCE(c.blocked_reason,c.title) summary,'escalated' state,NULL reason,'loop_card' kind,'{}' details_json
       FROM kanban_cards c WHERE c.status='blocked' AND c.assignee='osstack-loop'
-        AND c.card_id GLOB 'card_loop_*' AND c.task_id LIKE 'loop:%' AND 'card:'||c.card_id>?
+        AND c.card_id GLOB 'card_loop_*' AND c.task_id LIKE 'loop:%' AND 'card:'||c.card_id>${q.inclusive ? "=" : ""}?
         AND (? IS NULL OR EXISTS(SELECT 1 FROM attention_scopes s WHERE s.task_id=c.task_id AND s.scope_id=?))
       ) ORDER BY id LIMIT ?`, q.after, q.scope_id ?? null, q.scope_id ?? null,
       q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);

@@ -82,6 +82,8 @@ export interface AttentionAnswer {
   content_hash: string;
   text: string;
   takeover: boolean;
+  actor?: string;
+  answer_kind?: string;
   takeover_grant_id?: string;
 }
 interface Action {
@@ -167,7 +169,7 @@ export class AttentionActions {
           turn_id: item.turn_id,
           direction: "inbound",
           kind: "instruction.send",
-          payload: { text: input.text },
+          payload: { text: input.text, ...(input.actor ? { actor: input.actor } : {}), ...(input.answer_kind ? { answer_kind: input.answer_kind } : {}) },
           state: "accepted",
           created_at: now / 1000,
         },

@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack Decisions Answer Result",
+  "type": "object",
+  "properties": {
+    "accepted": {
+      "type": "boolean"
+    },
+    "replay": {
+      "type": "boolean"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "applied",
+        "accepted",
+        "unknown",
+        "conflict",
+        "stale",
+        "local_only",
+        "not_answerable",
+        "refused"
+      ]
+    },
+    "code": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 128
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "current": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "item": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "session",
+                    "contained_mission",
+                    "ci_repair",
+                    "revision_chain",
+                    "autonomy",
+                    "hermes",
+                    "loop"
+                  ]
+                },
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "scope_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "waiting_since": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "summary": {
+                  "type": "string",
+                  "maxLength": 240
+                },
+                "allowed_answers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "maxItems": 16
+                },
+                "answer_command": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "required_params": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "maxItems": 16
+                    },
+                    "alternatives": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          "required_params": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "maxLength": 128
+                            },
+                            "maxItems": 16
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "required_params"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 4
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "required_params"
+                  ],
+                  "additionalProperties": false
+                },
+                "requires_local_signature": {
+                  "type": "boolean"
+                },
+                "source_revision": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "source",
+                "source_id",
+                "scope_id",
+                "waiting_since",
+                "summary",
+                "allowed_answers",
+                "answer_command",
+                "requires_local_signature",
+                "source_revision"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "item"
+      ],
+      "additionalProperties": false
+    },
+    "local_command": {
+      "type": "string",
+      "maxLength": 128
+    }
+  },
+  "required": [
+    "accepted",
+    "replay",
+    "outcome",
+    "code",
+    "current"
+  ],
+  "additionalProperties": false
+}

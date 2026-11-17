@@ -40,7 +40,7 @@ export const ContainedMissionRpcRequests = {
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
-  'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/) }).strict(),
+  'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/), decision_id: MissionDecideRequest.shape.decision_id, expected_revision: MissionDecideRequest.shape.expected_revision }).strict(),
   'mission.decide': MissionDecideRequest,
   // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
   'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, ...GrantTerms }).strict(),
@@ -221,13 +221,17 @@ export class ContainedMissionService {
         return host.publishCheck(actor, p.mission_id);
       }
       case 'mission.approve_ci_repair': {
-        if (this.options.draining() || !this.options.githubCi) throw Error('github_ci_scope_unavailable');
+        if (!this.options.githubCi) throw Error('github_ci_scope_unavailable');
         const p = ContainedMissionRpcRequests['mission.approve_ci_repair'].parse(params);
-        const { approveSandboxCiRepair } = await import('./contained-mission-github-ci-approval.js');
-        if (this.closed || this.options.draining() || host.isBusy(p.mission_id)) throw Error('github_ci_scope_unavailable');
-        if (parseContainedMissionSpec(this.store.readable(actor, p.mission_id).spec_json).publication?.repository !== GITHUB_CI_SANDBOX) {
-          throw Error('github_ci_scope_unavailable');
-        }
+        const { approveSandboxCiRepair, approveCiRepairOnce } = await import('./contained-mission-github-ci-approval.js');
+        const beforeApprove = () => {
+          if (this.closed || this.options.draining() || host.isBusy(p.mission_id)) throw Error('github_ci_scope_unavailable');
+          if (parseContainedMissionSpec(this.store.readable(actor, p.mission_id).spec_json).publication?.repository !== GITHUB_CI_SANDBOX) {
+            throw Error('github_ci_scope_unavailable');
+          }
+        };
+        if (p.decision_id || p.expected_revision !== undefined) return approveCiRepairOnce(this.store, actor, p, Date.now(), beforeApprove);
+        beforeApprove();
         return view(approveSandboxCiRepair(this.store, actor, p.mission_id, p.candidate, Date.now()));
       }
       case 'mission.revision_grant_preview': case 'mission.revision_grant_renew_preview': case 'mission.grant_revisions': case 'mission.chain_decide': {
@@ -257,6 +261,7 @@ export class ContainedMissionService {
             // The mission index bounds the kind query to this Mission's event history.
             const digest = createHash('sha256').update(JSON.stringify({ kind: p.decision })).digest('hex');
             const admitted = this.store.attention.write(this.store.owner, () => {
+              if (this.store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_repair_answer' AND json_extract(payload_json,'$.decision_id')=?").get(p.mission_id, p.decision_id)) throw Error('decision_id_conflict');
               const rows = this.store.db.prepare("SELECT kind,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind IN ('decision_accepted','decision_effect_started','decision_result','host_decision_failed') ORDER BY seq")
                 .all(p.mission_id) as Array<{ kind: string; payload_json: string }>;
               const matching = rows.map(row => ({ kind: row.kind, payload: JSON.parse(row.payload_json) as Record<string, unknown> }))

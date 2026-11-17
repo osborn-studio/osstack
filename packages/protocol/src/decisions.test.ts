@@ -11,3 +11,12 @@ it("requires the uniform result shape and single line summaries", () => {
   expect(PendingDecision.safeParse({ ...item, summary: "bad\nline" }).success).toBe(false);
   expect(PendingDecision.safeParse({ ...item, source: "unknown" }).success).toBe(false);
 });
+it("requires answer credentials, identity and source revision", async () => {
+  const { DecisionsAnswerParams, DecisionsAnswerResult } = await import("./decisions.js");
+  const request = { credential: "c".repeat(32), source: "hermes", source_id: "approval:a", answer: "choice", params: { choice: "yes" }, answer_id: "client:1", source_revision: "a".repeat(64) };
+  expect(DecisionsAnswerParams.parse(request)).toEqual(request);
+  for (const field of ["credential", "answer_id", "source_revision"]) {
+    expect(DecisionsAnswerParams.safeParse({ ...request, [field]: undefined }).success).toBe(false);
+  }
+  expect(DecisionsAnswerResult.safeParse({ accepted: false, replay: false, outcome: "local_only", code: "local_only", current: { state: "pending", item: null }, local_command: "autonomy approve" }).success).toBe(true);
+});

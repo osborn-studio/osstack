@@ -9,7 +9,7 @@ const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(va
 const summary = (text: string) => redactBridge(text).replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\s]+/gu, " ").trim().slice(0, 240);
 const command = (name: string, ...required_params: string[]) => ({ name, required_params });
 
-function item(source: DecisionSource, row: DecisionRow): PendingDecision {
+export function decisionItem(source: DecisionSource, row: DecisionRow): PendingDecision {
   let allowed_answers: string[] = [];
   let answer_command: PendingDecision["answer_command"] = command("mission.decide", "mission_id", "decision");
   let requires_local_signature = false;
@@ -114,7 +114,7 @@ export async function listDecisions(
         ...(params.scope_id ? { scope_id: params.scope_id } : {}) });
       if (!previous) {
         // A corrupt row fails only its own source. Never return a partial source page.
-        const mapped = rows.map(row => PendingDecision.parse(item(source, row)));
+        const mapped = rows.map(row => PendingDecision.parse(decisionItem(source, row)));
         items.push(...mapped);
       }
     } catch { failures.push({ source, code: "read_failed" }); }

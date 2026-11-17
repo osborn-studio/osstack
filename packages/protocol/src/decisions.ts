@@ -32,3 +32,23 @@ export const DecisionsListResult = z.object({
   next_cursor: z.string().max(2048).nullable(),
 }).strict();
 export type DecisionsListResult = z.infer<typeof DecisionsListResult>;
+
+export const DecisionsAnswerParams = z.object({
+  credential: z.string().min(32).max(4096),
+  source: DecisionSource,
+  source_id: z.string().min(1).max(1024),
+  answer: z.string().min(1).max(256),
+  params: z.record(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/), z.string().max(16000)).refine(value => Object.keys(value).length <= 16).default({}),
+  answer_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
+  source_revision: z.string().min(1).max(128),
+}).strict();
+export type DecisionsAnswerParams = z.infer<typeof DecisionsAnswerParams>;
+export const DecisionsAnswerResult = z.object({
+  accepted: z.boolean(),
+  replay: z.boolean(),
+  outcome: z.enum(["applied", "accepted", "unknown", "conflict", "stale", "local_only", "not_answerable", "refused"]),
+  code: z.string().max(128).nullable(),
+  current: z.object({ state: z.string().max(128), item: PendingDecision.nullable() }).strict(),
+  local_command: z.string().max(128).optional(),
+}).strict();
+export type DecisionsAnswerResult = z.infer<typeof DecisionsAnswerResult>;
