@@ -26,6 +26,9 @@ const server=net.createServer(s=>{let b=Buffer.alloc(0);s.on('data',c=>{b=Buffer
 process.on('SIGTERM',()=>server.close(()=>{db.close();process.exit(0);}));`;
 function bundle(version:string,schema:number):ReleaseBundle { const files=[{path:'bin.mjs',mode:0o600 as const,content_base64:Buffer.from(script+`\n// ${version}\n`).toString('base64')}];return{schema_version:1,target:{version,build_digest:bundleBuildDigest(files),protocol_version:1,database_schema:schema,readable_schema_min:40,readable_schema_max:Math.max(45,schema)},files}; }
 const HOST_PROCESS_TRIGGERS=["engineering_host_process_fixed", "engineering_host_process_flow", "engineering_host_process_proof", "engineering_host_process_no_delete", "engineering_host_process_insert_shape", "engineering_host_process_insert_gate", "engineering_host_process_insert_mission_busy", "engineering_host_process_insert_remote_busy", "engineering_host_process_insert_intent_reused", "engineering_host_process_insert_op_exists", "engineering_claim_replace_host_processes", "engineering_contained_host_process_replace", "engineering_claim_release_host_processes", "engineering_contained_host_process_gate"];
+const LOCAL_FAILURE_INTAKE_TRIGGERS=['engineering_local_failure_no_replace','engineering_local_failure_insert','engineering_local_failure_binding','engineering_local_failure_opt_in','engineering_local_failure_fixed','engineering_local_failure_flow','engineering_local_failure_start','engineering_local_failure_no_delete','engineering_root_exclusion_review','engineering_root_exclusion_actions','engineering_root_exclusion_intake'];
+const LOCAL_FAILURE_INTAKE_INDEXES=['engineering_local_failure_head_profile','engineering_local_failure_active_chain'];
+function addLocalFailureIntakeObjects(db:Database.Database){db.exec('CREATE TABLE engineering_local_failure_intakes(intake_id TEXT)');for(const t of LOCAL_FAILURE_INTAKE_TRIGGERS)db.exec(`CREATE TRIGGER ${t} BEFORE UPDATE ON engineering_local_failure_intakes BEGIN SELECT 1; END`);for(const i of LOCAL_FAILURE_INTAKE_INDEXES)db.exec(`CREATE INDEX ${i} ON engineering_local_failure_intakes(intake_id)`);}
 const VERIFICATION_SOURCE_TRIGGERS=['engineering_verification_sources_no_delete','engineering_verification_sources_no_update'];
 const VERIFICATION_SOURCE_INDEXES=['engineering_verification_sources_pr','engineering_verification_sources_result','engineering_verification_sources_registration'];
 function addVerificationSourceObjects(db:Database.Database){db.exec('CREATE TABLE engineering_verification_sources(result_id TEXT)');for(const t of VERIFICATION_SOURCE_TRIGGERS)db.exec(`CREATE TRIGGER ${t} BEFORE UPDATE ON engineering_verification_sources BEGIN SELECT 1; END`);for(const i of VERIFICATION_SOURCE_INDEXES)db.exec(`CREATE INDEX ${i} ON engineering_verification_sources(result_id)`);}
@@ -39,7 +42,7 @@ async function fixture(oldSchema=40,nextSchema=41) {
   const root=realpathSync(await createScratchDir('tests','native-upgrade'));roots.push(root);await chmod(root,0o700);
   const config:ManagedInstallation={schema_version:1,backend:'launchd',installation_id:'shared',root,node:realpathSync(process.execPath),node_sha256:createHash('sha256').update(readFileSync(realpathSync(process.execPath))).digest('hex'),entry:'bin.mjs',consumers:[]};
   // A short canonical directory is required for AF_UNIX; OSStack's test setup already owns TMPDIR.
-  for(let i=1;i<=2;i++){const home=realpathSync(await createScratchDir('tests',`u${i}`));roots.push(home);await chmod(home,0o700);const db=new Database(join(home,'state.db'));db.pragma(`user_version=${oldSchema}`);db.exec('CREATE TABLE graph_runs(status TEXT);CREATE TABLE graph_action_admissions(released_at INTEGER);CREATE TABLE graph_actions(state TEXT);CREATE TABLE improvement_pr_deliveries(state TEXT);CREATE TABLE improvement_executions(state TEXT);');if(oldSchema>=45)db.exec('CREATE TABLE follow_up_delivery_attempts(state TEXT)');if(oldSchema>=47)db.exec('CREATE TABLE engineering_missions(mission_id TEXT); CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT); CREATE TABLE session_messages(message_id TEXT,state TEXT)');if(oldSchema>=48)db.exec('CREATE TABLE attention_reminders(delivery_id TEXT,state TEXT)');if(oldSchema>=49)db.exec('CREATE TABLE attention_item_settlements(item_id TEXT); CREATE TABLE attention_dead_letters(delivery_id TEXT)');if(oldSchema>=50)db.exec('CREATE TABLE engineering_contained_missions(mission_id TEXT,state TEXT,stop_obligation INTEGER); CREATE TABLE engineering_contained_events(seq INTEGER); CREATE TABLE engineering_workspace_claims(mission_id TEXT,state TEXT)');if(oldSchema>=51)db.exec('CREATE TABLE engineering_revision_chains(chain_id TEXT); CREATE TABLE engineering_revision_reservations(chain_id TEXT,state TEXT); CREATE TABLE engineering_publication_intents(chain_id TEXT,state TEXT); CREATE TABLE engineering_revision_chain_events(seq INTEGER); CREATE TABLE engineering_shadow_decisions(chain_id TEXT)');if(oldSchema>=52)db.exec('CREATE TABLE engineering_merger_shadow_watermarks(repository TEXT); CREATE TABLE engineering_merger_shadow_cycles(seq INTEGER); CREATE TABLE engineering_merger_shadow_decisions(seq INTEGER); CREATE TABLE engineering_merger_shadow_outcomes(seq INTEGER)');if(oldSchema>=53)db.exec('CREATE TRIGGER engineering_chain_grant_monotonic BEFORE UPDATE ON engineering_revision_chains BEGIN SELECT 1; END; CREATE TRIGGER engineering_chain_grant_shadow_fixed BEFORE UPDATE ON engineering_revision_chains BEGIN SELECT 1; END');if(oldSchema>=54){db.exec('CREATE TABLE engineering_host_processes(mission_id TEXT,state TEXT)');for(const t of HOST_PROCESS_TRIGGERS)db.exec(`CREATE TRIGGER ${t} BEFORE UPDATE ON engineering_host_processes BEGIN SELECT 1; END`);}if(oldSchema>=55)addScanObjects(db);if(oldSchema>=56)addLineageObjects(db);if(oldSchema>=57)addVerificationSourceObjects(db);db.close();config.consumers.push({home_id:`home_${String(i).padStart(32,'0')}`,home,socket:join(home,'s'),label:`ai.osstack.managed.test${i}`});}
+  for(let i=1;i<=2;i++){const home=realpathSync(await createScratchDir('tests',`u${i}`));roots.push(home);await chmod(home,0o700);const db=new Database(join(home,'state.db'));db.pragma(`user_version=${oldSchema}`);db.exec('CREATE TABLE graph_runs(status TEXT);CREATE TABLE graph_action_admissions(released_at INTEGER);CREATE TABLE graph_actions(state TEXT);CREATE TABLE improvement_pr_deliveries(state TEXT);CREATE TABLE improvement_executions(state TEXT);');if(oldSchema>=45)db.exec('CREATE TABLE follow_up_delivery_attempts(state TEXT)');if(oldSchema>=47)db.exec('CREATE TABLE engineering_missions(mission_id TEXT); CREATE TABLE attention_dispatch_phases(message_id TEXT,phase TEXT); CREATE TABLE session_messages(message_id TEXT,state TEXT)');if(oldSchema>=48)db.exec('CREATE TABLE attention_reminders(delivery_id TEXT,state TEXT)');if(oldSchema>=49)db.exec('CREATE TABLE attention_item_settlements(item_id TEXT); CREATE TABLE attention_dead_letters(delivery_id TEXT)');if(oldSchema>=50)db.exec('CREATE TABLE engineering_contained_missions(mission_id TEXT,state TEXT,stop_obligation INTEGER); CREATE TABLE engineering_contained_events(seq INTEGER); CREATE TABLE engineering_workspace_claims(mission_id TEXT,state TEXT)');if(oldSchema>=51)db.exec('CREATE TABLE engineering_revision_chains(chain_id TEXT); CREATE TABLE engineering_revision_reservations(chain_id TEXT,state TEXT); CREATE TABLE engineering_publication_intents(chain_id TEXT,state TEXT); CREATE TABLE engineering_revision_chain_events(seq INTEGER); CREATE TABLE engineering_shadow_decisions(chain_id TEXT)');if(oldSchema>=52)db.exec('CREATE TABLE engineering_merger_shadow_watermarks(repository TEXT); CREATE TABLE engineering_merger_shadow_cycles(seq INTEGER); CREATE TABLE engineering_merger_shadow_decisions(seq INTEGER); CREATE TABLE engineering_merger_shadow_outcomes(seq INTEGER)');if(oldSchema>=53)db.exec('CREATE TRIGGER engineering_chain_grant_monotonic BEFORE UPDATE ON engineering_revision_chains BEGIN SELECT 1; END; CREATE TRIGGER engineering_chain_grant_shadow_fixed BEFORE UPDATE ON engineering_revision_chains BEGIN SELECT 1; END');if(oldSchema>=54){db.exec('CREATE TABLE engineering_host_processes(mission_id TEXT,state TEXT)');for(const t of HOST_PROCESS_TRIGGERS)db.exec(`CREATE TRIGGER ${t} BEFORE UPDATE ON engineering_host_processes BEGIN SELECT 1; END`);}if(oldSchema>=55)addScanObjects(db);if(oldSchema>=56)addLineageObjects(db);if(oldSchema>=57)addVerificationSourceObjects(db);if(oldSchema>=58)addLocalFailureIntakeObjects(db);db.close();config.consumers.push({home_id:`home_${String(i).padStart(32,'0')}`,home,socket:join(home,'s'),label:`ai.osstack.managed.test${i}`});}
   await mkdir(join(root,'consumers'),{mode:0o700});await mkdir(join(root,'services'),{mode:0o700});await mkdir(join(root,'journal'),{mode:0o700});
   for(const c of config.consumers){await publishPrivate(join(c.home,'managed-consumer.json'),{schema_version:1,root,home_id:c.home_id});await publishPrivate(join(c.home,'deployment-identity.json'),{schema_version:1,home_id:c.home_id});await publishPrivate(join(root,'consumers',`${c.home_id}.json`),c);await writeFile(join(root,'services',`${c.home_id}.plist`),managedPlist(config,c),{mode:0o600});}
   await publishPrivate(join(root,'installation.json'),config);
@@ -58,12 +61,12 @@ async function fixture(oldSchema=40,nextSchema=41) {
   return{root,config,old,next,plan,input,backend,journal,starts:()=>starts};
 }
 describe('managed native upgrade actual filesystem/process boundaries',()=>{
-  it.each([47,48,49,50,51,52,53,54,55,56,57])('accepts a clean schema%i home',async schema=>{
+  it.each([47,48,49,50,51,52,53,54,55,56,57,58])('accepts a clean schema%i home',async schema=>{
     const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}finally{await port.close();}
   },60000);
-  it('refuses an unqualified schema58 home',async()=>{
-    const f=await fixture(58,58);const port=new ManagedNativeUpgradePort(f.input,f.backend);
+  it('refuses an unqualified schema59 home',async()=>{
+    const f=await fixture(59,59);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
   },30000);
   it('fails closed when a pre55 home already contains the merger scan table',async()=>{
@@ -369,3 +372,37 @@ it.each(['CREATE TABLE engineering_verification_sources(mission_id TEXT)',...VER
   const port=new ManagedNativeUpgradePort(f.input,f.backend);
   try{expect(await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});}finally{await port.close();}
 },30000);
+
+it.each([['TABLE','engineering_local_failure_intakes'],...LOCAL_FAILURE_INTAKE_TRIGGERS.map(n=>['TRIGGER',n]),...LOCAL_FAILURE_INTAKE_INDEXES.map(n=>['INDEX',n])])('refuses schema58 missing %s %s',async(kind,name)=>{
+  const f=await fixture(58,58);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec(`DROP ${kind} ${name}`);db.close();
+  const port=new ManagedNativeUpgradePort(f.input,f.backend);
+  try{expect(await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).toMatchObject({state:'recovery_required',reason:'upgrade_schema_tables_missing'});}finally{await port.close();}
+},30000);
+it.each(['CREATE TABLE engineering_local_failure_intakes(mission_id TEXT)',...LOCAL_FAILURE_INTAKE_TRIGGERS.map(n=>`CREATE TRIGGER ${n} BEFORE UPDATE ON engineering_contained_missions BEGIN SELECT 1; END`),...LOCAL_FAILURE_INTAKE_INDEXES.map(n=>`CREATE INDEX ${n} ON engineering_contained_missions(mission_id)`)])('refuses pre58 local-failure intake object %s',async ddl=>{
+  const f=await fixture(57,57);const db=new Database(join(f.config.consumers[0]!.home,'state.db'));db.exec(ddl);db.close();
+  const port=new ManagedNativeUpgradePort(f.input,f.backend);
+  try{expect(await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port})).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});}finally{await port.close();}
+},30000);
+
+it('keeps the migration58 gate object lists equal to the two DDL constants',()=>{
+  const ddl = [
+    ['engineering-local-failure-intake-ddl.ts','ENGINEERING_LOCAL_FAILURE_INTAKE_DDL'],
+    ['engineering-root-exclusion-ddl.ts','ENGINEERING_ROOT_EXCLUSION_DDL'],
+  ].map(([file,constant])=>{
+    const source=readFileSync(new URL(`../../core/src/state/${file}`,import.meta.url),'utf8');
+    const body=source.match(new RegExp('export const '+constant+' = `([\\s\\S]*?)`;'));
+    expect(body,constant).not.toBeNull();
+    return body![1]!;
+  }).join('\n');
+  const objects=[...ddl.matchAll(/CREATE\s+(TABLE|UNIQUE INDEX|INDEX|TRIGGER)\s+(\w+)/g)];
+  const gate=readFileSync(new URL('./upgrade-native-port.ts',import.meta.url),'utf8');
+  const names=(source:string)=>[...source.matchAll(/'(\w+)'/g)].map(m=>m[1]!).sort();
+  const tableList=gate.match(/if\(schema>=58\)expected\.push\(([^)]*)\)/);
+  expect(tableList).not.toBeNull();
+  expect(names(tableList![1]!)).toEqual(objects.filter(m=>m[1]==='TABLE').map(m=>m[2]!).sort());
+  for(const [kind,list] of [['TRIGGER','localFailureIntakeTriggers'],['INDEX','localFailureIntakeIndexes']]){
+    const gateList=gate.match(new RegExp('const '+list+'=\\[([^\\]]*)\\]'));
+    expect(gateList,list).not.toBeNull();
+    expect(names(gateList![1]!)).toEqual(objects.filter(m=>m[1]!.endsWith(kind!)).map(m=>m[2]!).sort());
+  }
+});

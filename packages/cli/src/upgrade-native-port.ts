@@ -16,7 +16,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 57;
+export const UPGRADE_QUALIFIED_SCHEMA = 58;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -152,6 +152,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // triggers and the columns are required at 55, and a pre-55 home that already has any of them is refused below.
       // 56 adds immutable Mission lineage only; no launch or new upgrade hold. Require all named objects.
       // 57 adds an append-only verification source ledger; no launch or new upgrade hold. Require all named objects.
+      // 58 adds the local-failure intake journal and root-exclusion triggers; no launch path and no new upgrade hold yet.
+      // The node which first launches a diagnosis must add an upgrade hold for intakes that are not stopped.
+      if(schema>=58)expected.push('engineering_local_failure_intakes');
       if(schema>=57)expected.push('engineering_verification_sources');
       if(schema>=56)expected.push('engineering_mission_lineage');
       if(schema>=55)expected.push('engineering_merger_shadow_scans');
@@ -161,6 +164,8 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const triggers = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='trigger'").all() as {name:string}[]).map(r=>r.name));
       const grantTriggers=['engineering_chain_grant_monotonic','engineering_chain_grant_shadow_fixed'];
       const hostProcessTriggers=['engineering_host_process_fixed','engineering_host_process_flow','engineering_host_process_proof','engineering_host_process_no_delete','engineering_host_process_insert_shape','engineering_host_process_insert_gate','engineering_host_process_insert_mission_busy','engineering_host_process_insert_remote_busy','engineering_host_process_insert_intent_reused','engineering_host_process_insert_op_exists','engineering_claim_replace_host_processes','engineering_contained_host_process_replace','engineering_claim_release_host_processes','engineering_contained_host_process_gate'];
+      const localFailureIntakeTriggers=['engineering_local_failure_no_replace','engineering_local_failure_insert','engineering_local_failure_binding','engineering_local_failure_opt_in','engineering_local_failure_fixed','engineering_local_failure_flow','engineering_local_failure_start','engineering_local_failure_no_delete','engineering_root_exclusion_review','engineering_root_exclusion_actions','engineering_root_exclusion_intake'];
+      const localFailureIntakeIndexes=['engineering_local_failure_head_profile','engineering_local_failure_active_chain'];
       const verificationSourceTriggers=['engineering_verification_sources_no_delete','engineering_verification_sources_no_update'];
       const verificationSourceIndexes=['engineering_verification_sources_pr','engineering_verification_sources_result','engineering_verification_sources_registration'];
       const lineageTriggers=['engineering_mission_lineage_no_update','engineering_mission_lineage_no_delete','engineering_mission_lineage_insert_gate'];
@@ -169,6 +174,8 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const indexes = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as {name:string}[]).map(r=>r.name));
       const scanColumns=[['engineering_merger_shadow_cycles','scan_id'],['engineering_merger_shadow_outcomes','scan_id'],['engineering_merger_shadow_watermarks','last_poll_at']] as const;
       const hasColumn=(table:string,column:string)=>tables.has(table)&&(db.prepare(`PRAGMA table_info(${table})`).all() as {name:string}[]).some(r=>r.name===column);
+      if(schema>=58&&(localFailureIntakeTriggers.some(name=>!triggers.has(name))||localFailureIntakeIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
+      if(schema<58&&(tables.has('engineering_local_failure_intakes')||localFailureIntakeTriggers.some(name=>triggers.has(name))||localFailureIntakeIndexes.some(name=>indexes.has(name))))throw Error('upgrade_schema_unqualified');
       if(schema>=57&&(verificationSourceTriggers.some(name=>!triggers.has(name))||verificationSourceIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
       if(schema<57&&(tables.has('engineering_verification_sources')||verificationSourceTriggers.some(name=>triggers.has(name))||verificationSourceIndexes.some(name=>indexes.has(name))))throw Error('upgrade_schema_unqualified');
       if(schema>=56&&(lineageTriggers.some(name=>!triggers.has(name))||lineageIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
