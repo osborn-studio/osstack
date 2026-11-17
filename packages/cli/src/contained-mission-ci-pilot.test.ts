@@ -8,6 +8,7 @@ import { ProductionCiPilot } from './contained-mission-ci-pilot.js';
 import { ALPHA_CI_POLICY, PRODUCTION_CI_POLICY as ciPolicy } from './contained-mission-ci-policy.js';
 import { createSandboxCiObserver, createSandboxCiReader, readSandboxCiJobs } from './contained-mission-github-ci.js';
 import { publishSandboxCiRepair, type SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
+import { readCiScanHealth } from './contained-mission-ci-scan-health.js';
 import { latestCiEvent } from './contained-mission-github-ci-approval.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
 import { SANDBOX_MERGER_POLICY, type CiMergerPolicy, type SandboxAppEPorts } from './contained-mission-sandbox-app-e.js';
@@ -606,14 +607,20 @@ describe('CI repair root writer exclusion', () => {
         writeEnabled: mission => !!f.pilot.assertWrite(f.rig.missions, mission, () => f.actor, 3000) });
       const count = () => (f.rig.db.prepare("SELECT COUNT(*) n FROM engineering_contained_missions WHERE json_extract(spec_json,'$.ci_repair.root')=?").get(root.mission_id) as { n: number }).n;
       await observer.scan();
+      expect(f.rig.missions.events(root.mission_id).filter(event => event.kind.startsWith('ci_scan_'))).toEqual([]);
+      expect(readCiScanHealth(f.rig.db, root.mission_id)).toBeNull();
       expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_failure_observed')).toBeDefined();
       expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_repair_dispatched')).toBeUndefined();
       expect(count()).toBe(0);
       settle();
       await observer.scan();
+      expect(f.rig.missions.events(root.mission_id).filter(event => event.kind.startsWith('ci_scan_'))).toEqual([]);
+      expect(readCiScanHealth(f.rig.db, root.mission_id)).toBeNull();
       expect(count()).toBe(1);
       expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_repair_dispatched')).toBeDefined();
       await observer.scan();
+      expect(f.rig.missions.events(root.mission_id).filter(event => event.kind.startsWith('ci_scan_'))).toEqual([]);
+      expect(readCiScanHealth(f.rig.db, root.mission_id)).toBeNull();
       expect(count()).toBe(1);
     } finally { await observer?.stop(); f.close(); }
   });

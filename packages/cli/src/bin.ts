@@ -113,7 +113,6 @@ import { handlePolicyCommand } from "./policy-command.js";
 import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { renderUpdateCheckStatus, type UpdateCheckCache } from "./update-check.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
-import { handleHermesCommand } from "./hermes-command.js";
 import type { LoopProbeObservationResultV1 } from "./loop-probe-observer.js";
 import type { LoopNeatFinalizerResultV1 } from "./loop-neat-finalizer.js";
 import { runAutonomyHealth } from "./autonomy-health.js";
@@ -1213,6 +1212,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "hermes") {
+    const { handleHermesCommand } = await import("./hermes-command.js");
     return await handleHermesCommand(args.slice(1), { rpc });
   }
 

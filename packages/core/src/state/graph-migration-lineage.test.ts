@@ -67,7 +67,7 @@ it.each(Array.from({ length: 10 }, (_, i) => i + 25))('rejects unreleased Graph 
 
 it('pins deployed main SQL and the integration boundary', () => {
   expect(createHash('sha256').update(MIGRATIONS.filter(m => m.id >= 25 && m.id <= 27).map(m => m.sql).join('\0')).digest('hex')).toBe('55ad736ab2a455b4ac8f8e76b561b6c39931bb2322f16a57414f7cb574e9c090');
-  expect(MIGRATIONS.map(m => m.id)).toEqual(Array.from({ length: CURRENT_SCHEMA_VERSION }, (_, i) => i + 1).filter(id => id !== 56 && id !== 57));
+  expect(MIGRATIONS.map(m => m.id)).toEqual(Array.from({ length: CURRENT_SCHEMA_VERSION }, (_, i) => i + 1).filter(id => id !== 57));
   expect(MIGRATIONS.find(m => m.name === 'improvement_candidate_executions')?.id).toBe(25);
   expect(MIGRATIONS.find(m => m.name === 'graph_run_identity_and_worker_leases')?.id).toBe(28);
 });

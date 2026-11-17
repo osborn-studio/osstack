@@ -9,20 +9,21 @@ import { ContainedMissionStore } from "./engineering-contained-store.js";
 import { RevisionChainStore } from "./engineering-revision-chain-store.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
-it("registers intake migration 58 and leaves exactly the reserved 56 and 57 gaps", () => {
-  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 58]);
+it("registers intake migration 58 and leaves exactly the reserved 57 gap", () => {
+  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 58]);
   expect(MIGRATIONS.find(m => m.id === 58)?.name).toBe("engineering_local_failure_intakes");
 });
 
-it("upgrades schema 55 additively without changing existing objects, rows or active reservations", () => {
+it("upgrades schema 56 additively without changing existing objects, rows or active reservations", () => {
   const root = realpathSync(createScratchDirSync("tests", "intake-ddl"));
   const path = join(root, "state.db");
   let db = new Database(path);
   try {
     db.pragma("foreign_keys=ON"); db.pragma("synchronous=FULL");
-    for (const migration of MIGRATIONS.filter(m => m.id <= 55)) {
+    for (const migration of MIGRATIONS.filter(m => m.id <= 56)) {
       db.exec(migration.sql); db.pragma(`user_version=${migration.id}`);
     }
+    expect(db.pragma("user_version", { simple: true })).toBe(56);
     db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
     const attention = new AttentionStore(db, path), owner = attention.claimOwner("owner");
     const scope = attention.registerScope(owner, "t", root);
@@ -39,7 +40,7 @@ it("upgrades schema 55 additively without changing existing objects, rows or act
     db.prepare("UPDATE engineering_revision_chains SET state='revision_reserved',revision=revision+1 WHERE chain_id=?").run(chain.chain_id);
     const reservedRevision = chains.get(chain.chain_id).revision;
     const objects = () => db.prepare("SELECT type,name,sql FROM sqlite_master ORDER BY type,name").all() as Array<{ type: string; name: string; sql: string | null }>;
-    const tables = ["tasks", "engineering_contained_missions", "engineering_contained_events", "engineering_revision_chains", "engineering_revision_reservations", "engineering_revision_chain_events"];
+    const tables = ["tasks", "engineering_contained_missions", "engineering_contained_events", "engineering_mission_lineage", "engineering_revision_chains", "engineering_revision_reservations", "engineering_revision_chain_events"];
     const dump = () => Object.fromEntries(tables.map(table => [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
     const before = objects(), rows = dump();
     db.close(); db = openDb({ path });
