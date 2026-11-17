@@ -60,7 +60,7 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
   }
   const reason = reminder ? "decision_overdue"
     : message.state === "answer_uncertain" || message.state === "source_missing" ? message.state : "decision_pending";
-  const points = Array.from(message.question.replace(/[\r\n\t]/gu, " ").replace(/[\u0000-\u001f\u007f-\u009f]/gu, ""));
+  const points = Array.from(message.question.replace(/[\r\n\t]/gu, " ").replace(/\p{Cc}/gu, ""));
   const notice: AttentionWebhookNotice = {
     schema_version: 1,
     kind: "attention_decision_notice",

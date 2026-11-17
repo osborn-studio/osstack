@@ -121,7 +121,7 @@ describe("notice", () => {
     expect(Array.from(notice.reference.summary)).toHaveLength(512);
     expect(notice.reference.summary).toBe("  " + "a".repeat(508) + "😀\ud800");
     expect(notice.reference.truncated).toBe(true);
-    expect(notice.reference.summary).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/u);
+    expect(notice.reference.summary).not.toMatch(/\p{Cc}/u);
     expect(Buffer.byteLength(JSON.stringify(notice))).toBeLessThanOrEqual(16384);
     expect(buildAttentionWebhookNotice({ ...message, question: "😀".repeat(513) }).reference.summary).toBe("😀".repeat(512));
   });
