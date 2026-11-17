@@ -373,3 +373,29 @@ jobs:
           OSSTACK_HOME: ${{ runner.temp }}/graph-runtime-home
           TMPDIR: /tmp
         run: node node_modules/vitest/vitest.mjs run packages/graph/src packages/core/src/state/graph-migration-lineage.test.ts packages/core/src/state/graph-checkpoints.test.ts packages/cli/src/graph-worker-manager.test.ts packages/cli/src/graph-rpc.test.ts packages/cli/src/graph-compatibility.integration.test.ts --maxWorkers=1
+
+  verify-portable-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: pnpm
+        uses: pnpm/action-setup@v6
+      - name: setup
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build
+        run: pnpm --filter @osstack/cli... build
+      - name: Portable CLI verification
+        env:
+          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
+        run: node scripts/verify-portable-cli.mjs
