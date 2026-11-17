@@ -31,6 +31,7 @@ export function deriveIterationFeedback(input: DeriveIterationFeedbackInput): It
     attempt: input.attempt,
     verdict_summary: input.verdict.summary,
     blocking_issues: blockingIssues,
+    reporting_issues: input.verdict.issues.filter((issue) => issue.rule === "verify.deviations_invalid"),
     failed_evaluations: failedEvaluations,
     suggested_focus: [...focusFiles, ...focusEvaluations],
     ...(input.diffSummary !== undefined ? { previous_diff_summary: input.diffSummary } : {}),
