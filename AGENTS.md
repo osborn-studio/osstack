@@ -70,6 +70,10 @@ Package source must use `@osstack/core` `createScratchDir` / `scratchPath` for t
 
 ## Security & Configuration Tips
 
+Core state and decision code must not make network calls; `pnpm test:deterministic-rules` runs `scripts/check-deterministic-rules.mjs` to enforce this boundary with a counted allowlist that may only shrink.
+
+Core-like packages must use adapter-exported constants instead of hardcoded agent or model product names; `pnpm test:deterministic-rules` runs `scripts/check-deterministic-rules.mjs` to enforce this boundary with a counted allowlist that may only shrink.
+
 Direct Git ref, index, and remote writes in package source must use an explicitly managed location; `pnpm test:deterministic-rules` enforces the counted Git allowlist, which may only shrink.
 
 Secrets (private-key headers, GitHub token prefixes, and cloud-key shapes) are checked in all Git-tracked text files. Machine-specific absolute paths are checked only in `packages/*/src`, `scripts/`, `.github/`, root configuration files, `hermes-skill/`, and `loop-engineering/`. The path rule excludes `docs/` because historical run records use paths as evidence. Each rule has one counted allowlist entry per file with a specific reason. Entries that disappear or change count fail; remove or reduce stale entries so the allowlists only shrink. `pnpm test:deterministic-rules` enforces both rules.

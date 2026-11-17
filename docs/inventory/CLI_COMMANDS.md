@@ -2,7 +2,7 @@
 
 # CLI Commands
 
-Top-level `osstack` commands parsed from `--help` (58 total).
+Top-level `osstack` commands parsed from `--help` (59 total).
 
 - `agent`
 - `attention`
@@ -16,6 +16,7 @@ Top-level `osstack` commands parsed from `--help` (58 total).
 - `control`
 - `daily`
 - `dashboard`
+- `decisions`
 - `deliver`
 - `doctor`
 - `engineering`

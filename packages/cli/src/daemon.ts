@@ -1279,6 +1279,19 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
     }
   }
+  if (req.method === "decisions.list") {
+    try {
+      const [{ listDecisions }, { DecisionQueries }] = await Promise.all([
+        import("./decisions/list.js"), import("@osstack/core"),
+      ]);
+      const access = ctx.engineering?.access;
+      return singleOk(req.id, await listDecisions(new DecisionQueries(ctx.db), req.params,
+        access ? credential => access.authenticate(credential) : undefined));
+    } catch (error) {
+      const code = error instanceof Error && ["bad_request", "bad_cursor"].includes(error.message) ? error.message : "decisions_unavailable";
+      return singleErr(req.id, code, "Decision list unavailable");
+    }
+  }
   if (req.method.startsWith("engineering.")) {
     if (!ctx.supervision) return singleErr(req.id, "attention_disabled", "Enable OSSTACK_ATTENTION=1 for Session adoption");
     if (!ctx.engineering) return singleErr(req.id, "engineering_disabled", "Enable OSSTACK_ENGINEERING=1 with a private host authority file");

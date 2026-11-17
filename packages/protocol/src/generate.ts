@@ -1,4 +1,5 @@
 import { MissionDecideRequest } from "./mission-decide.js";
+import { DecisionsListParams, DecisionsListResult } from "./decisions.js";
 import { EngineeringDecisionRef, EngineeringAnswer, EngineeringAdoptRequest, EngineeringObserveRequest, EngineeringDecideRequest, EngineeringDeferRequest, EngineeringCancelRequest, EngineeringEndObservationRequest, EngineeringReconcileRequest } from "./engineering.js";
 import { FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams, FollowUpResolveParams, FollowUpObligation, FollowUpMutationResult, FollowUpListResult } from "./follow-up.js";
 // JSON Schema generation — Zod is the source of truth; this module emits the
@@ -54,6 +55,8 @@ interface SchemaEntry {
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   { key: "mission-decide-request", title: "OSStack MissionDecideRequest", schema: MissionDecideRequest, comment: "Shape only. The host authenticates write scope, checks revision and state, and records keyed admission before execution. The key deduplicates admission, not external execution." },
+  { key: "decisions-list-params", title: "OSStack Decisions List Params", schema: DecisionsListParams },
+  { key: "decisions-list-result", title: "OSStack Decisions List Result", schema: DecisionsListResult },
   { key: "engineering-decision-ref", title: "OSStack EngineeringDecisionRef", schema: EngineeringDecisionRef, comment: "Session adoption pilot shape only. Host authentication, current scope grants, immutable owner, exact source binding, transactional CAS and dispatch fences are runtime checks. No field grants authority." },
   { key: "engineering-answer", title: "OSStack EngineeringAnswer", schema: EngineeringAnswer, comment: "Session adoption pilot shape only. Host authentication, current scope grants, immutable owner, exact source binding, transactional CAS and dispatch fences are runtime checks. No field grants authority." },
   { key: "engineering-adopt-request", title: "OSStack EngineeringAdoptRequest", schema: EngineeringAdoptRequest, comment: "Session adoption pilot shape only. Host authentication, current scope grants, immutable owner, exact source binding, transactional CAS and dispatch fences are runtime checks. No field grants authority." },
