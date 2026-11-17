@@ -114,8 +114,6 @@ import { resolveRegistryPath } from "./supervisor-cli-support.js";
 import { renderUpdateCheckStatus, type UpdateCheckCache } from "./update-check.js";
 import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
 import { handleHermesCommand } from "./hermes-command.js";
-import { handleSessionCommand } from "./session-command.js";
-import { handleTaskCommand } from "./task-command.js";
 import type { LoopProbeObservationResultV1 } from "./loop-probe-observer.js";
 import type { LoopNeatFinalizerResultV1 } from "./loop-neat-finalizer.js";
 import { runAutonomyHealth } from "./autonomy-health.js";
@@ -848,6 +846,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "task") {
+    const { handleTaskCommand } = await import("./task-command.js");
     return await handleTaskCommand(args.slice(1), {
       rpc,
       submit: streamTaskSubmit,
@@ -886,6 +885,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "session") {
+    const { handleSessionCommand } = await import("./session-command.js");
     return await handleSessionCommand(args.slice(1), { rpc });
   }
 

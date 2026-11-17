@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { test } from "node:test";
 import {
   docsLinkViolations,
+  instructionBoundaryViolations,
   gitWriteFindings,
   gitWriteViolations,
   secretFindings,
@@ -297,3 +298,29 @@ const fetchResult = input;`,
     assert.match(coreProductViolations(root, [entry]).join("\n"), /stale/);
   });
 });
+
+for (const [name, files] of Object.entries({
+  direct: { "instruction-boundary.ts": 'import "./external-reference.js";', "external-reference.ts": "export {};" },
+  transitive: { "instruction-boundary.ts": 'import "./helper.js";', "helper.ts": 'export * from "./reference-segment.js";', "reference-segment.ts": "export {};" },
+  typeImport: { "instruction-boundary.ts": 'import type { Result } from "./verification-result.js";', "verification-result.ts": "export type Result = {};" },
+  reader: { "instruction-boundary.ts": 'import "./source-reader.js";', "source-reader.ts": "export {};" },
+  any: { "instruction-boundary.ts": "let data: any;" },
+  cast: { "instruction-boundary.ts": "const data = value as unknown as Config;" },
+  ignore: { "instruction-boundary.ts": "// @ts-ignore\nconst a = 1;" },
+  expect: { "instruction-boundary.ts": "// @ts-expect-error\nconst a = 1;" },
+  nocheck: { "instruction-boundary.ts": "// @ts-nocheck\nconst a = 1;" },
+  callAny: { "caller.ts": "buildInstructionSegment(value as any);" },
+  callUnknown: { "caller.ts": "buildInstructionSegment(value as unknown as Config);" },
+  callAs: { "caller.ts": "buildInstructionSegment(value as Config);" },
+  callAngle: { "caller.ts": "buildInstructionSegment(<Config>value);" },
+  callNested: { "caller.ts": "buildInstructionSegment(wrap(value as Config));" },
+})) {
+  test(`instruction boundary rejects ${name}`, () => fixture(Object.fromEntries(Object.entries(files).map(([name, text]) => [`packages/demo/src/${name}`, text])), root => {
+    assert.match(instructionBoundaryViolations(root).join("\n"), /packages\/demo\/src\/.*:\d+/);
+  }));
+}
+test("instruction boundary accepts clean code and excludes test callers", () => fixture({
+  "packages/demo/src/instruction-boundary.ts": 'import { createHash } from "node:crypto"; const text = "any as unknown as @ts-ignore";',
+  "packages/demo/src/caller.ts": "buildInstructionSegment(config);",
+  "packages/demo/src/caller.test.ts": "buildInstructionSegment(value as any);",
+}, root => assert.deepEqual(instructionBoundaryViolations(root), [])));
