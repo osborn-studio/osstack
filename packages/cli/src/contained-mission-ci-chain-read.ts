@@ -29,6 +29,10 @@ export function readCiChain(db: Database.Database, mission: ContainedMission): C
   const childEvents = child ? db.prepare('SELECT kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq')
     .all(child.mission_id) as Event[] : [];
   const childLast = (kind: string) => [...childEvents].reverse().find(event => event.kind === kind);
+  // halt() persists its reason in the halted event, not in the mission row.
+  const childPermissionWaiting = child?.state === 'awaiting_decision'
+    && string(payload(childLast('halted'))['reason']) === 'publication_pending'
+    && !childLast('ci_repair_approval') && !childLast('ci_repair_push_intent');
   const repaired = child ? readMissionPublication({ db }, child.mission_id) : null;
   const headAfter = repaired?.kind === 'github_ci_opened' ? repaired.pushed_commit : null;
   const merged = last('ci_pr_merged_observed');
@@ -58,13 +62,14 @@ export function readCiChain(db: Database.Database, mission: ContainedMission): C
   else if (dispatch || failure) { marker = failure ?? dispatch; state = 'repair_permission_waiting'; }
   else { marker = waiting?.kind === 'ci_initial_verification_waiting' && initialVerified && waiting.created_at > initialVerified.created_at
     ? waiting : last('pr_opened'); state = 'initial_ci_waiting'; }
-  // A failed or held child is an observed stop, even if no later CI event exists.
+  // A child waiting only for push permission can continue when permission arrives.
   if (!merged && !reserved && !released && !held && child && ['cancelled', 'abandoned', 'failed', 'stop_unknown', 'needs_reconciliation', 'awaiting_decision'].includes(child.state)) {
-    state = 'stopped'; marker = childEvents.at(-1) ?? dispatch;
+    state = childPermissionWaiting ? 'repair_permission_waiting' : 'stopped'; marker = childEvents.at(-1) ?? dispatch;
   }
   // Neither CI verification event records approval or handoff observation.
   const reason = state === 'approval_and_handoff_waiting'
     ? 'CI is green; waiting for Watcher approval and Merger handoff. Approval has no separate ledger event.'
+    : state === 'repair_permission_waiting' && childPermissionWaiting ? 'publication_pending'
     : string(payload(marker)['reason']) ?? (state === 'repair_ci_waiting' && waiting?.kind === 'ci_repair_verification_waiting'
     ? string(payload(waiting)['reason']) : null) ?? (state === 'stopped' ? repairFailed ? 'repair_ci_failed' : child?.state ?? 'pr_closed_unmerged' : state === 'result_unknown' ? 'repair_child_missing' : null);
   const spec = JSON.parse(mission.spec_json) as { publication?: { repository?: string } };
