@@ -510,10 +510,62 @@ export function packageContractViolations(root) {
   return errors;
 }
 
+/** Keep host instructions independent of reference-data modules and unchecked assertions. */
+export function instructionBoundaryViolations(root) {
+  const errors = [];
+  const files = walk(join(root, "packages"), path => packageProductionSource(root, path));
+  const forbidden = /(?:^|[\/.-])(?:external-reference|reference-segment|verification-result|reader)(?:[.-]|$)/;
+  const report = (path, source, node, message) => errors.push(`${rel(root, path)}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}: ${message}`);
+  for (const path of files) {
+    const source = sourceFile(path);
+    if (path.endsWith("/instruction-boundary.ts")) {
+      const visited = new Set();
+      function follow(current) {
+        if (visited.has(current)) return;
+        visited.add(current);
+        const module = sourceFile(current);
+        traverse(module, node => {
+          let specifier;
+          if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) specifier = node.moduleSpecifier.text;
+          if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === "require")) && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) specifier = node.arguments[0].text;
+          if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) specifier = node.argument.literal.text;
+          if (!specifier) return;
+          if (forbidden.test(specifier.split("/").at(-1))) report(current, module, node, "instruction boundary imports reference data");
+          if (specifier.startsWith(".")) {
+            const target = resolveSource(root, current, specifier);
+            if (target) follow(target);
+          }
+        });
+      }
+      follow(path);
+      traverse(source, node => {
+        if (node.kind === ts.SyntaxKind.AnyKeyword) report(path, source, node, "instruction boundary contains any type");
+        if (ts.isAsExpression(node) && ts.isAsExpression(node.expression) && node.expression.type.kind === ts.SyntaxKind.UnknownKeyword) report(path, source, node, "instruction boundary contains as unknown as");
+      });
+      const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, source.text);
+      for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+        if ((token === ts.SyntaxKind.SingleLineCommentTrivia || token === ts.SyntaxKind.MultiLineCommentTrivia) && /@ts-(?:ignore|expect-error|nocheck)/.test(scanner.getTokenText())) {
+          errors.push(`${rel(root, path)}:${source.getLineAndCharacterOfPosition(scanner.getTokenPos()).line + 1}: instruction boundary suppresses type checking`);
+        }
+      }
+    }
+    traverse(source, node => {
+      if (!ts.isCallExpression(node)) return;
+      const name = ts.isIdentifier(node.expression) ? node.expression.text : ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : "";
+      if (name !== "buildInstructionSegment") return;
+      for (const argument of node.arguments) traverse(argument, child => {
+        if (ts.isAsExpression(child) || ts.isTypeAssertionExpression(child)) report(path, source, child, "instruction segment argument contains a type assertion");
+      });
+    });
+  }
+  return errors;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const scratchAllowlist = JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-scratch-allowlist.json"), "utf8"));
   const docsAllowlist = JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-docs-allowlist.json"), "utf8"));
   const results = [
+    ...instructionBoundaryViolations(repoRoot),
     ...scratchViolations(repoRoot, scratchAllowlist),
     ...vitestConfigViolations(repoRoot),
     ...gitWriteViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-git-allowlist.json"), "utf8"))),
