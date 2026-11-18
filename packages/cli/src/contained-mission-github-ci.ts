@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { scratchPath, type ContainedMission, type ContainedMissionStore, type HostProcessRecord } from '@osstack/core';
+import { checkRootAdmission, scratchPath, type ContainedMission, type ContainedMissionStore, type HostProcessRecord } from '@osstack/core';
 import { z } from 'zod';
 import { latestCiEvent, type RefreshCiPrincipal } from './contained-mission-github-ci-approval.js';
 import type { SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
@@ -315,6 +315,8 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         if (!previous) store.record(root.mission_id, 'ci_failure_observed', { repository: policy.repository, ...target, job: result.job }, now());
         if (!input.refresh || !spec.publication || (sandbox ? !spec.allowed_paths.includes('PROBE_FAIL') : !input.writeEnabled?.(root))
           || latestCiEvent(store, root.mission_id, 'ci_repair_dispatched')) return;
+        // Actions repair has no grant budget. This transaction checks root exclusion only.
+        if (!checkRootAdmission(store.db, root.mission_id, 'actions_repair').ok) return;
         let actor: ReturnType<RefreshCiPrincipal>;
         try { actor = input.refresh(root.owner_principal_id, root.owner_client_session_id); }
         catch { return; }

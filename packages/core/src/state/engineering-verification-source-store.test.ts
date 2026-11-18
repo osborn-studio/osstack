@@ -30,7 +30,7 @@ function observation(id = 1): VerificationSourceObservation {
 it("registers migration 57 after 56 and upgrades schema 56 without changing existing schema or data", () => {
   expect(MIGRATIONS.find(m => m.id === 57)).toEqual({ id: 57, name: "engineering_verification_sources", sql: ENGINEERING_VERIFICATION_SOURCE_DDL });
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(57);
-  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 55)).toEqual([55, 56, 57]);
+  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 55 && id <= 57)).toEqual([55, 56, 57]);
   const root = createScratchDirSync("tests", "verification-upgrade"); const path = join(root, "state.db");
   let db = new Database(path);
   for (const m of MIGRATIONS.filter(m => m.id <= 56)) db.exec(m.sql);
@@ -41,7 +41,7 @@ it("registers migration 57 after 56 and upgrades schema 56 without changing exis
   cleanups.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   expect(objects().filter(x => before.some(b => b.name === x.name))).toEqual(before);
-  const added = objects().filter(x => !before.some(b => b.name === x.name));
+  const added = objects().filter(x => !before.some(b => b.name === x.name) && x.tbl_name !== "engineering_local_failure_intakes" && !x.name.startsWith("engineering_root_exclusion_"));
   expect(added.length).toBe(7);
   expect(added.every(x => x.tbl_name === "engineering_verification_sources")).toBe(true);
   expect(db.prepare("SELECT title FROM tasks WHERE task_id='fixture'").get()).toEqual({ title: "retained" });

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type Database from "better-sqlite3";
+import { checkRootAdmission, readIntakeContainerDebit } from "./engineering-root-admission.js";
 import type { AttentionOwner, AttentionStore } from "./attention-store.js";
 
 export interface NewLocalFailureIntake {
@@ -29,16 +30,12 @@ export interface LocalFailureIntake extends NewLocalFailureIntake {
 }
 const digest = (s: string): string => createHash("sha256").update(s).digest("hex");
 
-/** Unregistered host journal. No launch, grant verification, child dispatch, receipt consumption or
- * global budget integration. Typed canonical host receipt persistence/consumption requires a separate
- * explicit bound field/table/adapter; this journal must never supply canonical receipt_digest.
+/** Host journal with shared root exclusion and container budget accounting.
+ * No launch, grant verification, child dispatch or receipt consumption.
+ * Signature and trusted profile admission remain required before any runner can use this journal.
+ * Opaque receipt_json must never supply canonical receipt authority.
  * All mutations use the real daemon owner and an immediate transaction.
- *
- * Later admission MUST verify signed v2 authority/profile/lineage and subtract containerDebit from
- * RevisionChainStore.remainingBudget in the SAME immediate transaction as reserve. Both review and
- * local child reservation/allocation must consume activeExclusions and this debit atomically.
- * Chain close, claim cleanup and upgrade recovery must retain all active exclusions until proven stop.
- * Existing V1 writers do not consult this journal. Do not attach a runner before that integration.
+ * Chain close and recovery retain active exclusions until proven stop.
  */
 export class LocalFailureIntakeStore {
   constructor(readonly attention: AttentionStore, readonly owner: AttentionOwner, private readonly clock: () => number = Date.now) {}
@@ -55,13 +52,10 @@ export class LocalFailureIntakeStore {
   }
   /** Across ALL grants/heads/profiles of this chain. Unknown stop retains its whole cap. */
   containerDebit(chainId: string): number {
-    const row = this.db.prepare(`SELECT COALESCE(SUM(CASE WHEN state='stopped' THEN container_used_seconds ELSE container_cap_seconds END),0) debit
-      FROM engineering_local_failure_intakes WHERE chain_id=?`).get(chainId) as { debit: number };
-    if (!Number.isSafeInteger(row.debit) || row.debit < 0) throw Error("intake_debit_overflow");
-    return row.debit;
+    return readIntakeContainerDebit(this.db, chainId);
   }
   /** Reserves journal capacity only. This method is not launch authority. Nested use is permitted
-   * for future shared-budget admission; the caller must hold BEGIN IMMEDIATE and commit before launch. */
+   * for shared admission; the caller must hold BEGIN IMMEDIATE and commit before launch. */
   reserve(input: NewLocalFailureIntake): LocalFailureIntake {
     const now = this.now();
     return this.write(() => {
@@ -69,8 +63,13 @@ export class LocalFailureIntakeStore {
       if (typeof input.intake_id !== "string" || input.intake_id.length !== 40 || !/^lfi_[0-9a-f-]{36}$/.test(input.intake_id)
         || ![input.head_sha, input.tree_sha, input.base_sha].every(value => typeof value === "string"
           && (value.length === 40 || value.length === 64) && /^[0-9a-f]+$/.test(value))) throw Error("intake_identity_invalid");
-      const chain = this.db.prepare("SELECT grant_json FROM engineering_revision_chains WHERE chain_id=?").get(input.chain_id) as { grant_json: string } | undefined;
+      const chain = this.db.prepare("SELECT grant_json,root_mission_id FROM engineering_revision_chains WHERE chain_id=?").get(input.chain_id) as { grant_json: string; root_mission_id: string } | undefined;
       if (!chain || digest(chain.grant_json) !== input.grant_digest) throw Error("intake_grant_mismatch");
+      if (input.root_mission_id !== chain.root_mission_id) throw Error("intake_binding_denied");
+      const admission = checkRootAdmission(this.db, input.root_mission_id, "local_failure", {
+        chain_id: input.chain_id, container_seconds: input.container_cap_seconds,
+      });
+      if (!admission.ok) throw Error(admission.code);
       // Copy only declared input fields: JS callers cannot inject lifecycle or owner columns.
       this.db.prepare(`INSERT INTO engineering_local_failure_intakes (
         intake_id,chain_id,chain_revision,root_mission_id,repository,pr_number,branch,head_sha,tree_sha,base_ref,base_sha,
