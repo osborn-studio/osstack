@@ -1,3 +1,4 @@
+import type Database from "better-sqlite3";
 import { constants, existsSync, readdirSync, realpathSync } from 'node:fs';
 import { copyFile, mkdir, open, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,7 +17,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 58;
+export const UPGRADE_QUALIFIED_SCHEMA = 59;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -122,6 +123,12 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
     const db = new Database(path,{ fileMustExist:true,timeout:0 }); const release=this.stopLocks.get(homeId)!;
     try {
       db.exec('BEGIN EXCLUSIVE');
+      ManagedNativeUpgradePort.assertStoppedDatabaseQualified(db);
+      this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
+    }catch(error){db.close();throw error;}
+  }
+  /** Read the schema and holds under the same exclusive lock used for the stopped home. */
+  static assertStoppedDatabaseQualified(db:Database.Database):void {
       const schema=db.pragma('user_version',{simple:true}) as number;
       if(schema<33||schema>UPGRADE_QUALIFIED_SCHEMA)throw Error('upgrade_schema_unqualified');
       const tables = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {name:string}[]).map(r=>r.name));
@@ -153,7 +160,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // 56 adds immutable Mission lineage only; no launch or new upgrade hold. Require all named objects.
       // 57 adds an append-only verification source ledger; no launch or new upgrade hold. Require all named objects.
       // 58 adds the local-failure intake journal and root-exclusion triggers; no launch path and no new upgrade hold yet.
-      // The node which first launches a diagnosis must add an upgrade hold for intakes that are not stopped.
+      // 59 adds request and receipt metadata. Only the intake can own a process.
+      // Hold once per unsettled intake, including after its request goes to awaiting_decision.
+      if(schema>=59)expected.push('engineering_diagnosis_requests','engineering_host_receipts');
       if(schema>=58)expected.push('engineering_local_failure_intakes');
       if(schema>=57)expected.push('engineering_verification_sources');
       if(schema>=56)expected.push('engineering_mission_lineage');
@@ -174,6 +183,10 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const indexes = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as {name:string}[]).map(r=>r.name));
       const scanColumns=[['engineering_merger_shadow_cycles','scan_id'],['engineering_merger_shadow_outcomes','scan_id'],['engineering_merger_shadow_watermarks','last_poll_at']] as const;
       const hasColumn=(table:string,column:string)=>tables.has(table)&&(db.prepare(`PRAGMA table_info(${table})`).all() as {name:string}[]).some(r=>r.name===column);
+      const diagnosisTriggers=['engineering_diagnosis_no_replace', 'engineering_diagnosis_insert', 'engineering_diagnosis_update', 'engineering_diagnosis_no_delete', 'engineering_host_receipt_no_replace', 'engineering_host_receipt_insert', 'engineering_host_receipt_update', 'engineering_host_receipt_consumed', 'engineering_host_receipt_no_delete'];
+      const diagnosisIndex='engineering_diagnosis_admitted';
+      if(schema>=59&&(diagnosisTriggers.some(name=>!triggers.has(name))||!indexes.has(diagnosisIndex)))throw Error('upgrade_schema_tables_missing');
+      if(schema<59&&(tables.has('engineering_diagnosis_requests')||tables.has('engineering_host_receipts')||diagnosisTriggers.some(name=>triggers.has(name))||indexes.has(diagnosisIndex)))throw Error('upgrade_schema_unqualified');
       if(schema>=58&&(localFailureIntakeTriggers.some(name=>!triggers.has(name))||localFailureIntakeIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
       if(schema<58&&(tables.has('engineering_local_failure_intakes')||localFailureIntakeTriggers.some(name=>triggers.has(name))||localFailureIntakeIndexes.some(name=>indexes.has(name))))throw Error('upgrade_schema_unqualified');
       if(schema>=57&&(verificationSourceTriggers.some(name=>!triggers.has(name))||verificationSourceIndexes.some(name=>!indexes.has(name))))throw Error('upgrade_schema_tables_missing');
@@ -195,9 +208,8 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema<54&&(tables.has('engineering_host_processes')||hostProcessTriggers.some(name=>triggers.has(name))))throw Error('upgrade_schema_unqualified');
       if(schema<53&&grantTriggers.some(name=>triggers.has(name)))throw Error('upgrade_schema_unqualified');
       if(schema<52&&(tables.has('engineering_merger_shadow_watermarks')||tables.has('engineering_merger_shadow_cycles')||tables.has('engineering_merger_shadow_decisions')||tables.has('engineering_merger_shadow_outcomes')))throw Error('upgrade_schema_unqualified');
+      if(schema>=59 && db.prepare("SELECT 1 FROM engineering_local_failure_intakes WHERE state<>'stopped' LIMIT 1").get())throw Error('upgrade_unknown_actions');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
-      this.stopLocks.set(homeId,()=>{try{db.exec('ROLLBACK');}finally{db.close();release();}});
-    }catch(error){db.close();throw error;}
   }
   snapshot(home: UpgradePlanHome, signal: AbortSignal, suffix = '') { return this.track(()=>this.doSnapshot(home,signal,suffix)); }
   private async doSnapshot(home: UpgradePlanHome, signal: AbortSignal, suffix = '') {

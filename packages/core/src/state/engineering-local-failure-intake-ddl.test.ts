@@ -10,7 +10,7 @@ import { RevisionChainStore } from "./engineering-revision-chain-store.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
 it("registers intake migration 58 and leaves exactly the reserved 57 gap", () => {
-  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 57, 58]);
+  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 57, 58, 59]);
   expect(MIGRATIONS.find(m => m.id === 58)?.name).toBe("engineering_local_failure_intakes");
 });
 
@@ -49,7 +49,7 @@ it("upgrades schema 57 additively without changing existing objects, rows or act
     for (const object of before) expect(after.find(o => o.name === object.name && o.type === object.type)).toEqual(object);
     const added = after.filter(o => !before.some(b => b.name === o.name));
     expect(added.some(o => o.name === "engineering_local_failure_intakes")).toBe(true);
-    expect(added.every(o => o.name.startsWith("engineering_local_failure_") || o.name.startsWith("sqlite_autoindex_engineering_local_failure_") || o.name.startsWith("engineering_root_exclusion_"))).toBe(true);
+    expect(added.every(o => o.name.startsWith("engineering_local_failure_") || o.name.startsWith("sqlite_autoindex_engineering_local_failure_") || o.name.startsWith("engineering_root_exclusion_") || /^(sqlite_autoindex_)?engineering_(diagnosis_|host_receipt)/.test(o.name))).toBe(true);
     expect(db.prepare("SELECT count(*) n FROM engineering_local_failure_intakes").get()).toEqual({ n: 0 });
     expect(dump()).toEqual(rows);
     expect(db.pragma("foreign_key_check")).toEqual([]);
