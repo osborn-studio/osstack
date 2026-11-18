@@ -295,3 +295,70 @@ it("returns a stale receipt after ownership changes during send", async () => {
   ux.enqueue(scope);
   expect(await ux.drainBatch(async () => { store.claimOwner("replacement"); }, {maxItems: 1})).toMatchObject({stale: 1, delivered: 0});
 });
+
+it("rechecks external notices and reminders, preserves unreadable claims and schedules the oldest across sources", async () => {
+  const { db, store, owner, scope, ux: disabled } = setup();
+  const item = { scope_id: scope, item_id: "decision:" + "1".repeat(32), waiting_since: 0,
+    source: "hermes", source_id: "approval:x", reference: "Check?", requires_local_signature: false };
+  let pending = [item];
+  let incomplete = false;
+  const ux = new AttentionExperience(store, owner, { reminders: true, externalDecisions: {
+    pending: () => pending, get incompleteSources() { return incomplete ? ["hermes"] : []; },
+  } });
+  const send = vi.fn().mockResolvedValue(undefined);
+  ux.enqueueExternal();
+  await disabled.drain(send);
+  expect(send).not.toHaveBeenCalled();
+  pending = [];
+  incomplete = true;
+  ux.enqueue(scope);
+  await ux.drainBatch(send);
+  expect(send).toHaveBeenCalledTimes(5);
+  const state = () => db.prepare("SELECT state,attempts FROM attention_deliveries WHERE item_id=?").get(item.item_id);
+  expect(state()).toEqual({ state: "pending", attempts: 0 });
+  incomplete = false;
+  await ux.drain(send);
+  expect(state()).toEqual({ state: "superseded", attempts: 0 });
+  const next = { ...item, item_id: "decision:" + "2".repeat(32), waiting_since: 1 };
+  pending = [next];
+  ux.enqueueExternal();
+  ux.posture(scope, "owner", "quiet");
+  const policy = { overdueMs: 10, backoffMaxMs: 40 };
+  expect(ux.scheduleReminders(policy, 11).scheduled).toBeNull();
+  await ux.drain(send);
+  expect(send).toHaveBeenCalledTimes(5);
+  ux.posture(scope, "owner", "attended");
+  await ux.drain(send);
+  expect(ux.scheduleReminders(policy, 11).scheduled?.age_ms).toBe(11);
+  db.exec("UPDATE attention_items SET state='continued_externally'");
+  expect(ux.scheduleReminders(policy, 11).scheduled).toMatchObject({ item_id: next.item_id, sequence: 1 });
+  await ux.drain(send, 11);
+  expect(ux.scheduleReminders(policy, 20).scheduled).toBeNull();
+  expect(ux.scheduleReminders(policy, 21).scheduled?.sequence).toBe(2);
+  pending = [];
+  await ux.drain(send, 21);
+  expect(db.prepare("SELECT state FROM attention_reminders").get()).toEqual({ state: "superseded" });
+  expect(ux.scheduleReminders(policy, 100)).toEqual({ cleared: 1, scheduled: null });
+  expect(send).toHaveBeenCalledTimes(7);
+});
+
+it("keeps one reminder schedule when a host decision acquires a scope and respects its quiet posture", async () => {
+  const { db, store, scope, owner } = setup();
+  db.exec("UPDATE attention_items SET state='continued_externally'");
+  const decision = { item_id: "decision:" + "b".repeat(32), scope_id: "host", source: "hermes", source_id: "approval:x",
+    waiting_since: 1, reference: "Review?", requires_local_signature: false };
+  const ux = new AttentionExperience(store, owner, { reminders: true, externalDecisions: { pending: () => [decision] } });
+  const policy = { overdueMs: 1000, backoffMaxMs: 3000 };
+  ux.enqueueExternal();
+  ux.scheduleReminders(policy, 1001);
+  decision.scope_id = scope;
+  ux.posture(scope, "owner", "quiet");
+  const send = vi.fn().mockResolvedValue(undefined);
+  await ux.drainBatch(send);
+  expect(send).not.toHaveBeenCalled();
+  ux.posture(scope, "owner", "attended");
+  await ux.drainBatch(send);
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(ux.scheduleReminders(policy, 2001).scheduled?.sequence).toBe(2);
+  expect(db.prepare("SELECT COUNT(*) n FROM attention_reminders").get()).toEqual({ n: 1 });
+});

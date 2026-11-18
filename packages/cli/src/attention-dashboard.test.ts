@@ -104,3 +104,12 @@ it("counts every stored decision and excludes released subjects from current wai
   const s = scope("released"); subject(s, "s", 0); item(s, "future", "future_state"); item(s, "closed", "source_closed");
   expect(readAttentionDashboard(db, options()).totals).toMatchObject({ items: 2, other_items: 2, human_waits: 0, system_waits: 0, unknown_waits: 0, unmonitored_subjects: 1 });
 });
+
+it("includes host decision failures only in the local overview, including settled reminder failures", () => {
+  const s = scope("counts");
+  const id = "decision:" + "a".repeat(32);
+  db.prepare("INSERT INTO attention_deliveries(delivery_id,scope_id,item_id,revision,state) VALUES(?,'host',?,1,'dead_letter')").run(id + ":1", id);
+  db.prepare("INSERT INTO attention_dead_letters(delivery_id,scope_id,item_id,revision,kind,sequence,dead_at) VALUES(?,?,?,1,'reminder',1,1)").run(id + ":1:r1", s, id);
+  expect(readAttentionDashboard(db, { service: "running" }).totals?.dead_letters).toBe(2);
+  expect(readAttentionDashboard(db, options()).totals?.dead_letters).toBe(1);
+});

@@ -1,7 +1,7 @@
 import { realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
-import { attentionDigest, createScratchDirSync, openDb } from "@osstack/core";
+import { type AttentionSender, attentionDigest, createScratchDirSync, openDb } from "@osstack/core";
 import { SupervisionService, type SupervisionOptions } from "./supervision-service.js";
 import { readAttentionLoop } from "./attention-loop-source.js";
 
@@ -10,12 +10,12 @@ afterEach(async () => {
   for (const fn of cleanup.splice(0)) await fn();
   vi.useRealTimers();
 });
-function setup(options: SupervisionOptions = {}) {
+function setup(options: SupervisionOptions = {}, sender?: AttentionSender) {
   const root = realpathSync(createScratchDirSync("tests", "supervision-service"));
   const path = join(root, "state.db");
   const db = openDb({ path });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','task','running',1,1)");
-  const service = new SupervisionService(db, path, undefined, options);
+  const service = new SupervisionService(db, path, sender, options);
   const scope = service.store.registerScope(service.observer.owner, "t", root);
   cleanup.push(async () => {
     await service.stop();
@@ -55,6 +55,26 @@ it("starts once and makes stop terminal before any later database access", async
     .rejects.toThrow("supervision_stopped");
   await vi.advanceTimersByTimeAsync(60000);
   expect(tick).toHaveBeenCalledTimes(1);
+});
+it("scans pending external decisions on each of seven 30-second timer ticks", async () => {
+  vi.useFakeTimers();
+  const { service, db, scope } = setup({}, async () => {});
+  db.exec("INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at) VALUES('r','t','s','a','x','x',1)");
+  db.exec("INSERT INTO approvals(approval_id,run_id,status,action_summary,risk,requested_at) VALUES('a','r','pending','Check?','low',1)");
+  service.experience.posture(scope.scope_id, "owner", "quiet");
+  const enqueue = vi.spyOn(service.experience, "enqueueExternal");
+  service.start();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(enqueue).toHaveBeenCalledTimes(1);
+  expect(db.prepare("SELECT state FROM attention_deliveries WHERE scope_id=? AND item_id GLOB 'decision:*'").get(scope.scope_id))
+    .toEqual({ state: "pending" });
+  enqueue.mockClear();
+  for (let tick = 1; tick <= 7; tick++) {
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(enqueue).toHaveBeenCalledTimes(tick - 1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(enqueue).toHaveBeenCalledTimes(tick);
+  }
 });
 it("coalesces dirty passes and times out a stalled source without starving another", async () => {
   vi.useFakeTimers();
@@ -361,4 +381,61 @@ it("answers leaving away with the return brief and previews it read-only", async
   expect(back.return_brief).toMatchObject({ scope_id: s, authority: "none", waiting_on_you: { total: 0, omitted: 0 } });
   await expect(service.handle("attention.return-brief", { scope_id: s, actor: "owner" })).rejects.toThrow("since_required");
   expect(db.prepare("SELECT posture FROM attention_postures").get()).toEqual({ posture: "attended" });
+});
+
+it("keeps a failed source pending while delivering other decisions, reports dead letters and preserves source rows", async () => {
+  vi.useFakeTimers({ toFake: ["Date", "performance"] });
+  const { service: disabled, db, scope, root } = setup();
+  db.exec("INSERT INTO runs(run_id,task_id,session_id,agent_id,capability_id,phase,started_at) VALUES('r','t','s','a','x','x',1)");
+  db.exec("INSERT INTO approvals(approval_id,run_id,status,action_summary,risk,requested_at) VALUES('a','r','pending','Check?','low',1)");
+  db.exec("INSERT INTO kanban_cards(card_id,task_id,title,status,assignee,created_at,updated_at) VALUES('card_loop_dead','loop:t','Review','blocked','osstack-loop',1,1)");
+  const dump = () => JSON.stringify(["approvals","kanban_cards","runs"].map(table => db.prepare("SELECT * FROM " + table).all()));
+  const before = dump();
+  const { DecisionQueries } = await import("@osstack/core");
+  const read = vi.spyOn(DecisionQueries.prototype, "hermes");
+  const sender = vi.fn<import("@osstack/core").AttentionSender>(async message => {
+    if (message.decision?.source === "hermes") throw Error("offline");
+  });
+  let svc: SupervisionService | undefined;
+  try {
+    await disabled.requestScan();
+    expect(read).not.toHaveBeenCalled();
+    expect(db.prepare("SELECT * FROM attention_deliveries").all()).toEqual([]);
+    svc = new SupervisionService(db, join(root, "state.db"), sender);
+    svc.experience.posture(scope.scope_id, "owner", "quiet");
+    await svc.requestScan();
+    await new Promise(resolve => setImmediate(resolve));
+    read.mockImplementation(() => { throw Error("unavailable"); });
+    svc.store.projectDecision(svc.observer.owner, { scopeId: scope.scope_id, sessionId: "s", turnId: "t", sourceVersion: 1, now: 1, decision: { decision_id: "d", question: "Continue?", choices: [] } });
+    svc.experience.posture(scope.scope_id, "owner", "attended");
+    await svc.requestScan();
+    await new Promise(resolve => setImmediate(resolve));
+    expect(db.prepare("SELECT state,attempts FROM attention_deliveries WHERE scope_id=? AND item_id GLOB 'decision:*'").get(scope.scope_id)).toEqual({ state: "pending", attempts: 0 });
+    expect(sender.mock.calls.some(([m]) => !m.decision)).toBe(true);
+    expect(sender.mock.calls.some(([m]) => m.decision?.source === "loop")).toBe(true);
+    expect(svc.health().scan_errors).toBeGreaterThan(0);
+    read.mockRestore();
+    for (let i = 0; i < 5; i++) {
+      db.exec("UPDATE attention_deliveries SET next_at=0 WHERE state='pending'");
+      await svc.requestScan();
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    expect(dump()).toBe(before);
+    // Read the brief one millisecond after the final delivery attempt.
+    vi.advanceTimersByTime(1);
+    const params = { scope_id: scope.scope_id, actor: "owner", since: 0 };
+    expect(await svc.handle("attention.return-brief", params)).toMatchObject({ delivery_problems: { total: 1 } });
+    expect(await svc.handle("attention.deliveries", params)).toEqual(expect.arrayContaining([expect.objectContaining({ state: "dead_letter", attempts: 5 })]));
+    const { readAttentionDashboard } = await import("./attention-dashboard.js");
+    expect(readAttentionDashboard(db, { service: "running" }).totals?.dead_letters).toBe(1);
+  } finally { read.mockRestore(); await svc?.stop(); }
+});
+
+it("shows unscoped decision failures in host delivery reads", async () => {
+  const { service, db } = setup();
+  const item = "decision:" + "a".repeat(32);
+  db.prepare("INSERT INTO attention_deliveries(delivery_id,scope_id,item_id,revision,state) VALUES(?,'host',?,1,'dead_letter')").run(item + ":1", item);
+  const p = { scope_id: "host", actor: "owner", since: 0 };
+  expect(await service.handle("attention.deliveries", p)).toMatchObject([{ item_id: item }]);
+  expect(await service.handle("attention.return-brief", p)).toMatchObject({ delivery_problems: { undated: 1 } });
 });

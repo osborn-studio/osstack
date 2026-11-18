@@ -1,5 +1,5 @@
 import type { AttentionSender } from "@osstack/core";
-import { localAttentionSender } from "./attention-local-delivery.js";
+import { localAttentionSender, validateExternalNoticeIds } from "./attention-local-delivery.js";
 
 /** Host configuration only. Never include this object in diagnostics. */
 export interface AttentionWebhookConfig {
@@ -8,6 +8,8 @@ export interface AttentionWebhookConfig {
 }
 
 const noticeText = {
+  decision_pending_local: "A pending decision needs a signature on the owner's own machine. It cannot be answered remotely or by replying.",
+  decision_overdue_local: "An overdue decision needs a signature on the owner's own machine. It cannot be answered remotely or by replying.",
   decision_pending: "A decision is waiting for the owner in osstack. Replying here does nothing; answer in osstack.",
   decision_overdue: "A decision is overdue in osstack. Replying here does nothing; answer in osstack.",
   answer_uncertain: "An answer needs review in osstack. Replying here does nothing; review it in osstack.",
@@ -21,6 +23,7 @@ export interface AttentionWebhookNotice {
   scope_id: string;
   item_id: string;
   state: string;
+  decision?: { source: string; source_id: string; local_signature_required: boolean };
   reason_code: keyof typeof noticeText;
   reminder: { sequence: number; age_ms: number } | null;
   text: string;
@@ -58,7 +61,14 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
   if (reminder && (!Number.isFinite(reminder.sequence) || !Number.isFinite(reminder.age_ms))) {
     throw new Error("attention_webhook_message_invalid");
   }
-  const reason = reminder ? "decision_overdue"
+  const decision = message.decision;
+  if (decision !== undefined && (!decision || !["session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop"].includes(decision.source)
+    || typeof decision.source_id !== "string" || decision.source_id.length > 256
+    || typeof decision.requires_local_signature !== "boolean" || !/^decision:[a-f0-9]{32}$/.test(message.item_id))) {
+    throw new Error("attention_webhook_message_invalid");
+  }
+  const reason = decision?.requires_local_signature ? (reminder ? "decision_overdue_local" : "decision_pending_local")
+    : reminder ? "decision_overdue"
     : message.state === "answer_uncertain" || message.state === "source_missing" ? message.state : "decision_pending";
   const points = Array.from(message.question.replace(/[\r\n\t]/gu, " ").replace(/\p{Cc}/gu, ""));
   const notice: AttentionWebhookNotice = {
@@ -69,6 +79,7 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
     item_id: message.item_id,
     state: message.state,
     reason_code: reason,
+    ...(decision && { decision: { source: decision.source, source_id: decision.source_id, local_signature_required: decision.requires_local_signature } }),
     reminder: reminder ? { sequence: reminder.sequence, age_ms: reminder.age_ms } : null,
     text: noticeText[reason],
     reference: { usage: "reference_only", kind: "external_reference", truncated: points.length > 512, summary: points.slice(0, 512).join("") },
@@ -83,6 +94,7 @@ export function webhookAttentionSender(
 ): AttentionSender {
   return async (message, signal) => {
     if (signal.aborted) throw new Error("aborted");
+    if (message.decision) await validateExternalNoticeIds(message);
     const body = JSON.stringify(buildAttentionWebhookNotice(message));
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

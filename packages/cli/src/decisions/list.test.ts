@@ -119,6 +119,9 @@ it("filters chain roots before exposing identifiers and reports live grant signa
   const visible = create(f.mission().mission_id, 2);
   const entry = (await f.list()).items.find(i => i.source_id === visible.chain_id)!;
   expect(entry).toMatchObject({ allowed_answers: ["abandon", "takeover", "grant_revisions"], requires_local_signature: true });
+  const { createDecisionNoticeSource } = await import("./notices.js");
+  const notice = createDecisionNoticeSource(f.queries, () => [f.scope], Date.now).pending().find(i => i.source_id === visible.chain_id);
+  expect(notice).toMatchObject({ source: "revision_chain", requires_local_signature: true });
 });
 it("does not replace waiting entry time with later receipt or self-transition timestamps", async () => {
   const f = setup(); const m = f.mission();
@@ -186,4 +189,58 @@ it("includes background loop escalation cards and stops listing them after appro
   expect(entry).toMatchObject({ source: "loop", source_id: "card:card_loop_abcdef123456", waiting_since: 2000, allowed_answers: ["approve"], answer_command: { name: "cockpit approve", required_params: ["card_id"] } });
   f.db.exec("UPDATE kanban_cards SET status='done'");
   expect((await f.list()).items).toEqual([]);
+});
+
+it("delivers each listed decision once across scans, unrelated updates and restart", async () => {
+  const { SupervisionService } = await import("../supervision-service.js");
+  const f = setup();
+  seed(f);
+  const sender = vi.fn<import("@osstack/core").AttentionSender>().mockResolvedValue(undefined);
+  let service = new SupervisionService(f.db, f.path, sender);
+  try {
+    for (let pass = 0; pass < 4; pass++) {
+      if (pass === 3) {
+        await service.stop();
+        service = new SupervisionService(f.db, f.path, sender);
+      }
+      await service.requestScan();
+      await new Promise(resolve => setImmediate(resolve));
+      const { items } = await f.list();
+      expect(sender).toHaveBeenCalledTimes(items.length);
+      for (const decision of items) {
+        const messages = sender.mock.calls.map(([message]) => message);
+        const matches = messages.filter(message => decision.source === "session"
+          ? message.item_id === decision.source_id && !("decision" in message)
+          : message.decision?.source_id === decision.source_id && message.decision.source === decision.source);
+        expect(matches).toHaveLength(1);
+        if (decision.source !== "session") expect(matches[0]?.item_id).toMatch(/^decision:[a-f0-9]{32}$/);
+        expect(matches[0]?.question).toBe(decision.summary);
+      }
+      f.db.exec("UPDATE engineering_contained_missions SET revision=revision+1; UPDATE engineering_revision_chains SET revision=revision+1; UPDATE autonomy_run_projection SET revision=revision+1; UPDATE approvals SET risk='low'");
+    }
+  } finally { await service.stop(); }
+});
+
+it("supersedes a closed readable decision while another source is unavailable, then notifies its next wait", async () => {
+  const f = setup();
+  seed(f);
+  const { AttentionExperience } = await import("@osstack/core");
+  const { createDecisionNoticeSource } = await import("./notices.js");
+  const provider = createDecisionNoticeSource(f.queries, () => [f.scope], Date.now);
+  const ux = new AttentionExperience(f.attention, f.owner, { externalDecisions: provider });
+  const sender = vi.fn<import("@osstack/core").AttentionSender>().mockResolvedValue(undefined);
+  const original = provider.pending().find(i => i.source_id === "approval:approval")!;
+  ux.enqueueExternal();
+  vi.spyOn(f.queries, "loop").mockImplementation(() => { throw Error("offline"); });
+  f.db.exec("UPDATE approvals SET status='accepted'");
+  await ux.drainBatch(sender);
+  expect(f.db.prepare("SELECT state FROM attention_deliveries WHERE item_id=?").get(original.item_id)).toEqual({ state: "superseded" });
+  f.db.exec("UPDATE approvals SET status='pending',requested_at=9");
+  ux.enqueueExternal();
+  await ux.drainBatch(sender);
+  ux.enqueueExternal();
+  await ux.drainBatch(sender);
+  const calls = sender.mock.calls.filter(([msg]) => msg.decision?.source_id === "approval:approval");
+  expect(calls).toHaveLength(1);
+  expect(calls[0]![0].item_id).not.toBe(original.item_id);
 });

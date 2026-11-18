@@ -29,6 +29,20 @@ interface Delivery {
   next_at: number;
   error: string | null;
 }
+export interface ExternalAttentionDecision {
+  item_id: string;
+  scope_id: string;
+  source: string;
+  source_id: string;
+  waiting_since: number;
+  reference: string;
+  requires_local_signature: boolean;
+}
+export interface ExternalAttentionDecisions {
+  pending(): readonly ExternalAttentionDecision[];
+  /** A missing hash cannot prove closure after a failed or truncated source read. */
+  readonly incompleteSources?: readonly string[];
+}
 export type AttentionSender = (
   message: {
     delivery_id: string;
@@ -36,6 +50,7 @@ export type AttentionSender = (
     item_id: string;
     question: string;
     state: string;
+    decision?: Pick<ExternalAttentionDecision, "source" | "source_id" | "requires_local_signature">;
     /** Present only on an overdue-decision reminder, never on the first notice. */
     reminder?: { sequence: number; age_ms: number };
   },
@@ -44,14 +59,41 @@ export type AttentionSender = (
 type DeliveryTable = "attention_deliveries" | "attention_reminders";
 type Claimed = Delivery & { table: DeliveryTable; sequence?: number; opened_at?: number; last_at?: number };
 // Same eligibility for first notices and reminders: due and not in a quiet scope.
-const claimable = (table: DeliveryTable) =>
-  `SELECT d.* FROM ${table} d WHERE d.state='pending' AND d.next_at<=? AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet') ORDER BY d.next_at,d.delivery_id LIMIT 1`;
+const claimable = (table: DeliveryTable, eligible: string) =>
+  `SELECT d.* FROM ${table} d WHERE d.state='pending' AND d.next_at<=? AND ${eligible} AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet') ORDER BY d.next_at,d.delivery_id LIMIT 1`;
 /** Local owner UX state; posture never changes any execution authority. */
 export class AttentionExperience {
+  // The durable key is opaque. Remember source membership while a receipt
+  // needs resolution. A cold-start hash with unknown membership waits for a
+  // complete read before we can prove its absence.
+  private readonly sources = new Map<string, string>();
+  private quietExternal: string[] = [];
+  private eligibleExternal: string[] | null = [];
+
+  private pendingExternal(): readonly ExternalAttentionDecision[] {
+    const provider = this.options.externalDecisions;
+    const pending = provider?.pending() ?? [];
+    const incomplete = new Set(provider?.incompleteSources);
+    this.eligibleExternal = provider ? null : [];
+    if (incomplete.size) {
+      const known = new Set(pending.map(item => item.item_id));
+      for (const [id, source] of this.sources) if (!incomplete.has(source)) known.add(id);
+      this.eligibleExternal = [...known];
+    }
+    // A task can acquire a registered scope after its host notice is queued.
+    // Honor its current posture as well as the scope on the immutable receipt.
+    this.quietExternal = [];
+    if (pending.length) {
+      const quiet = new Set(this.store.db.prepare("SELECT DISTINCT scope_id FROM attention_postures WHERE posture='quiet'").pluck().all());
+      if (quiet.size) this.quietExternal = pending.filter(item => quiet.has(item.scope_id)).map(item => item.item_id);
+    }
+    return pending;
+  }
+
   /** Reminder rows are claimed only while this process has reminders
    * enabled; a disabled process leaves queued rows for a later re-enable. */
   constructor(readonly store: AttentionStore, readonly owner: AttentionOwner,
-    private readonly options: { reminders?: boolean } = {}) {}
+    private readonly options: { reminders?: boolean; externalDecisions?: ExternalAttentionDecisions } = {}) {}
   /** Record a posture. Re-asserting the current posture keeps its start, so a
    * repeated `away` does not shorten the interval. Leaving `away` for
    * `attended` also returns the read-only return brief for that interval,
@@ -107,7 +149,7 @@ export class AttentionExperience {
     now = Date.now()
   ): AttentionReturnBrief {
     this.actor(actor);
-    this.scope(scope);
+    if (scope !== "host") this.scope(scope);
     let since: number | null;
     if (options.since !== undefined) since = options.since;
     else {
@@ -198,6 +240,22 @@ export class AttentionExperience {
         .run(scope);
     });
   }
+  enqueueExternal(): void {
+    if (!this.options.externalDecisions) return;
+    const decisions = this.pendingExternal();
+    this.store.write(this.owner, () => {
+      const insert = this.store.db.prepare(
+        "INSERT OR IGNORE INTO attention_deliveries(delivery_id,scope_id,item_id,revision) VALUES(?,?,?,1)"
+      );
+      for (const item of decisions) insert.run(item.item_id + ":1", item.scope_id, item.item_id);
+      const outstanding = this.store.db.prepare(`
+        SELECT item_id FROM attention_deliveries WHERE item_id GLOB 'decision:*' AND state='pending'
+        UNION SELECT item_id FROM attention_reminders WHERE item_id GLOB 'decision:*'`).pluck().all() as string[];
+      const keep = new Set(outstanding);
+      for (const id of this.sources.keys()) if (!keep.has(id)) this.sources.delete(id);
+      for (const item of decisions) if (keep.has(item.item_id)) this.sources.set(item.item_id, item.source);
+    });
+  }
   recoverDeliveries(now = Date.now()): void {
     this.store.write(this.owner, () => {
       for (const table of ["attention_deliveries", "attention_reminders"] as const) {
@@ -231,15 +289,22 @@ export class AttentionExperience {
       // Keep the schedule while the decision is still waiting on the owner
       // (including an answer that is reserved or uncertain): its count feeds the
       // return brief, and only `open` decisions are ever scheduled.
-      const cleared = db.prepare(`DELETE FROM attention_reminders AS r WHERE r.state<>'sending' AND NOT EXISTS(
-        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','answer_reserved','answer_uncertain','source_missing'))`).run().changes;
+      const external = this.pendingExternal();
+      const candidates = JSON.stringify(external.map(d => [d.item_id, d.scope_id, d.waiting_since]));
+      const cleared = db.prepare(`DELETE FROM attention_reminders AS r WHERE r.state<>'sending'
+        AND (r.item_id NOT GLOB 'decision:*' OR ((? OR r.item_id IN (SELECT value FROM json_each(?))) AND r.item_id NOT IN (SELECT value->>0 FROM json_each(?))))
+        AND NOT EXISTS(
+        SELECT 1 FROM attention_items i WHERE i.item_id=r.item_id AND i.scope_id=r.scope_id AND i.state IN ('open','answer_reserved','answer_uncertain','source_missing'))`).run(Number(this.eligibleExternal === null), JSON.stringify(this.eligibleExternal), candidates).changes;
       // A stored delay from an older policy is clamped into the current bounds.
-      const due = db.prepare(`SELECT i.item_id,i.scope_id,i.revision,i.created_at,r.sequence,r.delay_ms FROM attention_items i
-        LEFT JOIN attention_reminders r ON r.scope_id=i.scope_id AND r.item_id=i.item_id
-        WHERE i.state='open' AND i.created_at<=?
-          AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=i.scope_id AND p.posture='quiet')
+      const due = db.prepare(`WITH candidates AS (
+          SELECT item_id,scope_id,revision,created_at FROM attention_items WHERE state='open'
+          UNION ALL SELECT value->>0,value->>1,1,value->>2 FROM json_each(?)
+        ) SELECT i.item_id,COALESCE(r.scope_id,i.scope_id) scope_id,i.revision,i.created_at,r.sequence,r.delay_ms FROM candidates i
+        LEFT JOIN attention_reminders r ON r.item_id=i.item_id
+        WHERE i.created_at<=?
+          AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id IN (i.scope_id,r.scope_id) AND p.posture='quiet')
           AND (r.item_id IS NULL OR (r.state IN ('delivered','dead_letter','superseded') AND ?-r.last_at>=MIN(MAX(r.delay_ms,?),?)))
-        ORDER BY i.created_at,i.item_id LIMIT 1`).get(now - overdueMs, now, overdueMs, backoffMaxMs) as
+        ORDER BY i.created_at,i.item_id LIMIT 1`).get(candidates, now - overdueMs, now, overdueMs, backoffMaxMs) as
         { item_id: string; scope_id: string; revision: number; created_at: number; sequence: number | null; delay_ms: number | null } | undefined;
       if (!due) return { scheduled: null, cleared };
       const sequence = (due.sequence ?? 0) + 1;
@@ -301,11 +366,13 @@ export class AttentionExperience {
     // Counts use the same eligibility predicate as claim; quiet and delayed
     // retries remain persisted but are not currently deliverable.
     const due = this.store.db.prepare(`SELECT COUNT(*) n, MIN(d.next_at) oldest
-      FROM (SELECT scope_id,state,next_at FROM attention_deliveries${this.options.reminders
-        ? " UNION ALL SELECT scope_id,state,next_at FROM attention_reminders" : ""}) d
+      FROM (SELECT item_id,scope_id,state,next_at FROM attention_deliveries${this.options.reminders
+        ? " UNION ALL SELECT item_id,scope_id,state,next_at FROM attention_reminders" : ""}) d
       WHERE d.state='pending' AND d.next_at<=?
+      AND d.item_id NOT IN (SELECT value FROM json_each(?))
+      AND (? OR d.item_id NOT GLOB 'decision:*' OR d.item_id IN (SELECT value FROM json_each(?)))
       AND NOT EXISTS(SELECT 1 FROM attention_postures p WHERE p.scope_id=d.scope_id AND p.posture='quiet')`
-    ).get(Date.now()) as { n: number; oldest: number | null };
+    ).get(Date.now(), JSON.stringify(this.quietExternal), Number(this.eligibleExternal === null), JSON.stringify(this.eligibleExternal)) as { n: number; oldest: number | null };
     return { ...result, remainingDue: due.n, oldestDueAt: due.oldest };
   }
   private async drainOne(
@@ -317,37 +384,51 @@ export class AttentionExperience {
   ): Promise<"idle" | "superseded" | "delivered" | "retried" | "dead_letter" | "stale" | "cancelled"> {
     const db = this.store.db;
     const row = this.store.write(this.owner, () => {
-      const first = db.prepare(claimable("attention_deliveries")).get(now) as Delivery | undefined;
-      const reminder = this.options.reminders
-        ? db.prepare(claimable("attention_reminders")).get(now) as Claimed | undefined
-        : undefined;
-      const d: Claimed | undefined =
-        reminder && (!first || reminder.next_at < first.next_at ||
+      const next = (eligible: string, ...params: (number | string)[]): Claimed | undefined => {
+        const first = db.prepare(claimable("attention_deliveries", eligible)).get(now, ...params) as Delivery | undefined;
+        const reminder = this.options.reminders
+          ? db.prepare(claimable("attention_reminders", eligible)).get(now, ...params) as Claimed | undefined
+          : undefined;
+        return reminder && (!first || reminder.next_at < first.next_at ||
           (reminder.next_at === first.next_at && reminder.delivery_id < first.delivery_id))
           ? { ...reminder, table: "attention_reminders" }
           : first && { ...first, table: "attention_deliveries" };
-      if (d) {
-        const item = this.store.getItem(d.scope_id, d.item_id);
-        if (
-          !item ||
-          item.revision !== d.revision ||
-          !["open", "answer_uncertain", "source_missing"].includes(item.state)
-        ) {
-          db.prepare(
-            `UPDATE ${d.table} SET state='superseded' WHERE delivery_id=?`
-          ).run(d.delivery_id);
-          return "superseded" as const;
+      };
+      const provider = this.options.externalDecisions;
+      let d = next(provider ? "1" : "d.item_id NOT GLOB 'decision:*'");
+      let decisions: readonly ExternalAttentionDecision[] = [];
+      if (provider && d?.item_id.startsWith("decision:")) {
+        decisions = this.pendingExternal();
+        // A partial read proves presence only. Skip unknown hashes before
+        // LIMIT so neither retries nor session delivery depend on that source.
+        if (this.quietExternal.includes(d.item_id) || (this.eligibleExternal && !this.eligibleExternal.includes(d.item_id))) {
+          d = next(`d.item_id NOT IN (SELECT value FROM json_each(?))
+              AND (? OR d.item_id NOT GLOB 'decision:*' OR d.item_id IN (SELECT value FROM json_each(?)))`,
+            JSON.stringify(this.quietExternal), Number(this.eligibleExternal === null), JSON.stringify(this.eligibleExternal));
         }
       }
-      if (d)
-        db.prepare(
-          `UPDATE ${d.table} SET state='sending',attempts=attempts+1 WHERE delivery_id=? AND state='pending'`
-        ).run(d.delivery_id);
-      return d;
+      if (!d) return undefined;
+      let content: Pick<Parameters<AttentionSender>[0], "question" | "state" | "decision"> | undefined;
+      if (d.item_id.startsWith("decision:")) {
+        const external = decisions.find(item => item.item_id === d.item_id);
+        if (external) {
+          const { source, source_id, requires_local_signature } = external;
+          content = { question: external.reference, state: "open", decision: { source, source_id, requires_local_signature } };
+        }
+      } else {
+        const item = this.store.getItem(d.scope_id, d.item_id);
+        if (item && item.revision === d.revision && ["open", "answer_uncertain", "source_missing"].includes(item.state))
+          content = { question: item.decision.question, state: item.state };
+      }
+      if (!content) {
+        db.prepare(`UPDATE ${d.table} SET state='superseded' WHERE delivery_id=?`).run(d.delivery_id);
+        return "superseded" as const;
+      }
+      db.prepare(`UPDATE ${d.table} SET state='sending',attempts=attempts+1 WHERE delivery_id=? AND state='pending'`).run(d.delivery_id);
+      return { ...d, content };
     });
     if (row === "superseded") return "superseded";
     if (!row) return "idle";
-    const item = this.store.getItem(row.scope_id, row.item_id);
     // Elapsed time on the caller's clock, so a dead letter is dated when the
     // send actually failed, not when it was claimed.
     const sendStarted = performance.now();
@@ -357,7 +438,6 @@ export class AttentionExperience {
     let onAbort: (() => void) | undefined;
     let cancelled = false;
     try {
-      if (!item) throw new Error("source_missing");
       await Promise.race([
         Promise.resolve().then(() => {
           if (controller.signal.aborted) throw new Error("delivery_aborted");
@@ -366,8 +446,7 @@ export class AttentionExperience {
               delivery_id: row.delivery_id,
               scope_id: row.scope_id,
               item_id: row.item_id,
-              question: item.decision.question,
-              state: item.state,
+              ...row.content,
               ...(row.table === "attention_reminders"
                 ? { reminder: { sequence: row.sequence!, age_ms: row.last_at! - row.opened_at! } }
                 : {}),

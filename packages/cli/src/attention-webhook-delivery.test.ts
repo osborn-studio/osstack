@@ -250,3 +250,35 @@ it.each(["http", "injected"])("persists fixed errors and preserves decisions and
   }
   expect(db.prepare("SELECT status FROM tasks WHERE task_id='t'").get()).toEqual({ status: "running" });
 });
+
+it.each(["autonomy", "revision_chain", "session", "hermes"])("formats external %s notices without leaking reference into text", source => {
+  const signed = source !== "hermes";
+  const decision = { source, source_id: "opaque", requires_local_signature: signed };
+  const item_id = "decision:" + "b".repeat(32);
+  for (const reminder of [undefined, { sequence: 1, age_ms: 123 }]) {
+    const notice = buildAttentionWebhookNotice({ ...message, delivery_id: item_id + ":1", item_id, decision, ...(reminder && { reminder }) });
+    expect(Object.keys(notice).sort()).toEqual(["schema_version","kind","delivery_id","scope_id","item_id","state","reason_code","reminder","text","reference","decision"].sort());
+    expect(notice.decision).toEqual({ source, source_id: "opaque", local_signature_required: signed });
+    expect(notice.reason_code).toBe((reminder ? "decision_overdue" : "decision_pending") + (signed ? "_local" : ""));
+    expect(notice.text).not.toContain(message.question);
+    if (signed) expect(notice.text).toMatch(/signature.*own machine.*remotely.*reply/i);
+    expect(Buffer.byteLength(JSON.stringify(notice))).toBeLessThanOrEqual(16384);
+  }
+  for (const invalid of [{ ...decision, source: "unknown" }, { ...decision, source_id: "x".repeat(257) }]) {
+    expect(() => buildAttentionWebhookNotice({ ...message, item_id, decision: invalid })).toThrow("attention_webhook_message_invalid");
+  }
+  expect(JSON.stringify(buildAttentionWebhookNotice(message))).toBe('{"schema_version":1,"kind":"attention_decision_notice","delivery_id":"item:1","scope_id":"scope","item_id":"item","state":"open","reason_code":"decision_pending","reminder":null,"text":"A decision is waiting for the owner in osstack. Replying here does nothing; answer in osstack.","reference":{"usage":"reference_only","kind":"external_reference","truncated":false,"summary":"Choose?"}}');
+});
+
+it("rejects sensitive external identifiers before either transport writes", async () => {
+  const root = await scratch();
+  const item_id = "decision:" + "b".repeat(32);
+  const send = vi.fn<typeof fetch>();
+  for (const source_id of ["/private/folder", "https://host.invalid/x", "ghp_" + "a".repeat(36)]) {
+    const input = { ...message, item_id, delivery_id: item_id + ":1", decision: { source: "autonomy", source_id, requires_local_signature: true } };
+    for (const sender of [localAttentionSender(root), webhookAttentionSender(parseAttentionWebhookConfig(env), { send })])
+      await expect(sender(input, new AbortController().signal)).rejects.toThrow("attention_webhook_message_invalid");
+  }
+  expect(send).not.toHaveBeenCalled();
+  expect(await readdir(root)).toEqual([]);
+});
