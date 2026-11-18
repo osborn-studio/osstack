@@ -639,6 +639,39 @@ export class RevisionChainStore {
     } catch { return fail("chain_grant_unreadable"); }
   }
 
+  confirmLocalRepairPush(input: { child_mission_id: string; new_head: string }, now: number): RevisionChain {
+    const invalid = "local_repair_confirmation_invalid";
+    try {
+      this.clock(now);
+      return this.write(() => {
+        const dispatch = this.db.prepare("SELECT dispatch_id,chain_id FROM engineering_local_failure_dispatches WHERE child_mission_id=?")
+          .get(input.child_mission_id) as { dispatch_id: string; chain_id: string } | undefined;
+        if (!dispatch) return fail(invalid);
+        const chain = this.get(dispatch.chain_id);
+        const proof = this.db.prepare(`SELECT json_extract(payload_json,'$.previous') AS previous,
+          json_extract(payload_json,'$.base') AS base, json_extract(payload_json,'$.branch') AS branch
+          FROM engineering_contained_events WHERE mission_id=? AND kind='verify_repair_push_confirmed'
+          AND json_valid(payload_json) AND json_extract(payload_json,'$.candidate')=? ORDER BY seq DESC LIMIT 1`)
+          .get(input.child_mission_id, input.new_head) as { previous: unknown; base: unknown; branch: unknown } | undefined;
+        if (chain.mode !== "live" || chain.state === "closed" || !proof || proof.base !== chain.published_base || proof.branch !== chain.branch)
+          return fail(invalid);
+        if (chain.published_head === input.new_head && this.db.prepare(`SELECT 1 FROM engineering_revision_chain_events
+          WHERE chain_id=? AND kind='local_repair_push_confirmed' AND json_extract(payload_json,'$.dispatch_id')=?`)
+          .get(chain.chain_id, dispatch.dispatch_id)) return chain;
+        if (proof.previous !== chain.published_head) return fail(invalid);
+        return this.update(chain, { published_head: input.new_head }, "local_repair_push_confirmed",
+          { head: input.new_head, base: chain.published_base }, now, {
+            kind: "local_repair_push_confirmed", payload: {
+              dispatch_id: dispatch.dispatch_id, child_mission_id: input.child_mission_id, old_head: chain.published_head, new_head: input.new_head,
+            },
+          });
+      });
+    } catch (error) {
+      if (error instanceof RevisionChainError || (error instanceof Error && error.message === "stale_owner")) return fail(invalid);
+      throw error;
+    }
+  }
+
   appendEvent(chainId: string, kind: string, payload: unknown, now: number): number {
     this.clock(now);
     return this.write(() => { this.get(chainId); return this.event(chainId, kind, payload, now); });
@@ -740,7 +773,8 @@ export class RevisionChainStore {
       .run(now, intent.chain_id, intent.child_mission_id);
   }
 
-  private update(chain: RevisionChain, patch: Patch, reason: string, at: { head: string; base: string }, now: number): RevisionChain {
+  private update(chain: RevisionChain, patch: Patch, reason: string, at: { head: string; base: string }, now: number,
+    event?: { kind: string; payload: Record<string, unknown> }): RevisionChain {
     const next = { ...chain, ...patch };
     // D1: a stopped chain does not resume while a push receipt may still land (a pending push may be on the remote, an uncertain one is).
     if (chain.state === "awaiting_decision" && next.state !== "awaiting_decision" && next.state !== "closed"
@@ -753,7 +787,7 @@ export class RevisionChainStore {
       ${grant ? "grant_json=?,review_deadline=?," : ""}${spent ? "spent_json=?," : ""}revision=revision+1,updated_at=? WHERE chain_id=? AND revision=?`)
       .run(next.state, stop, next.published_head, next.published_base, next.rounds_used, next.current_mission_id,
         ...(grant ? [patch.grant_json, patch.review_deadline ?? chain.review_deadline] : []), ...(spent ? [patch.spent_json] : []), now, chain.chain_id, chain.revision);
-    this.event(chain.chain_id, "transition", { from: chain.state, to: next.state, reason, head: at.head, base: at.base, ...(stop ? { stop_reason: stop } : {}) }, now);
+    this.event(chain.chain_id, event?.kind ?? "transition", event?.payload ?? { from: chain.state, to: next.state, reason, head: at.head, base: at.base, ...(stop ? { stop_reason: stop } : {}) }, now);
     return this.get(chain.chain_id);
   }
   private shadowDecision(chain: RevisionChain, head: string, base: string, action: ShadowAction, reason: string,

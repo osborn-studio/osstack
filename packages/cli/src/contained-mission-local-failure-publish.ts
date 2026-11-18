@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { ContainedMissionStore } from "@osstack/core";
+import { isDeepStrictEqual } from "node:util";
+import { RevisionChainStore, type ContainedMissionStore } from "@osstack/core";
 import type { DeliveryCommandRunner } from "@osstack/github";
 import { latestCiEvent, type RefreshCiPrincipal } from "./contained-mission-github-ci-approval.js";
 import { unprovenOpId, type HostProcessKit } from "./contained-mission-host-process.js";
@@ -100,10 +101,15 @@ async function readback(
     if (remote !== pr.head.sha) return "unknown";
     if (remote === intent.previous)
       return failed || (process.exit_code != null && process.exit_code !== 0) ? "not_written" : "unknown";
-    deps.store.attention.write(deps.store.owner, () => {
+    deps.store.db.transaction(() => {
+      deps.store.attention.assertOwner(deps.store.owner);
+      const now = deps.now();
       if (latestCiEvent(deps.store, id, "verify_repair_push_confirmed") === undefined)
-        deps.store.record(id, "verify_repair_push_confirmed", { ...intent, op_id: process.op_id }, deps.now());
-    });
+        deps.store.record(id, "verify_repair_push_confirmed", { ...intent, op_id: process.op_id }, now);
+      new RevisionChainStore(deps.store.attention, deps.store.owner).confirmLocalRepairPush(
+        { child_mission_id: id, new_head: intent.candidate }, now,
+      );
+    }).immediate();
     return "confirmed";
   } catch {
     return "unknown";
@@ -133,36 +139,45 @@ export async function publishLocalFailureRepair(
   const facts = intended(spec, permit.head, repository);
   const ref = "refs/heads/" + facts.branch;
   const options = { cwd: spec.worktree_path, timeoutMs: 60_000, signal };
-  function authority() {
-    const now = deps.now();
-    const fence = localPublicationFence(store, id, now);
-    if (!fence.ok) throw Error(fence.reason);
+  function checkPermit() {
     try {
       store.attention.assertOwner(store.owner);
       const current = store.get(id);
       if (
         signal.aborted ||
-        !deps.enabled() ||
         current.state !== "delivering" ||
         permit.mission_id !== id ||
         permit.spec_digest !== current.spec_digest ||
-        current.revision !== permit.revision ||
-        current.candidate_verified !== 1 ||
+        !isDeepStrictEqual(spec, JSON.parse(current.spec_json)) ||
         current.candidate_head !== permit.head ||
         current.candidate_tree !== permit.tree ||
         current.stop_obligation !== 0 ||
         store.claim(id).state !== "active"
       )
         throw Error(invalid);
+      return current;
+    } catch {
+      throw Error(invalid);
+    }
+  }
+  function authority() {
+    const now = deps.now();
+    const fence = localPublicationFence(store, id, now);
+    if (!fence.ok) throw Error(fence.reason);
+    const current = checkPermit();
+    try {
+      if (!deps.enabled() || current.revision !== permit.revision || current.candidate_verified !== 1) throw Error(invalid);
       assertLocalFailureApproval(store, current, spec, deps.refresh, now);
     } catch {
       throw Error(invalid);
     }
   }
-  authority();
   let intent = existing(store, id, facts);
   let failed = false;
-  if (!intent) {
+  if (intent) {
+    checkPermit();
+  } else {
+    authority();
     const pr = await deps.readPr(targetOf(facts), signal).catch(() => null);
     if (pr?.state !== "open" || !sha.test(pr.head.sha) || !sha.test(pr.base.sha)) throw Error(invalid);
     if (pr.base.sha !== facts.base) throw Error("verify_base_changed");
@@ -176,9 +191,12 @@ export async function publishLocalFailureRepair(
     if (parent?.exitCode !== 0 || parent.stdout.trim() !== permit.head + " " + facts.previous) throw Error(invalid);
     const fresh = store.db
       .transaction(() => {
-        authority();
         const prior = existing(store, id, facts);
-        if (prior) return { intent: prior, push: false };
+        if (prior) {
+          checkPermit();
+          return { intent: prior, push: false };
+        }
+        authority();
         const intent = { ...facts, intent_id: "vrp_" + randomUUID() };
         store.record(id, "verify_repair_push_intent", intent, deps.now());
         return { intent, push: true };
