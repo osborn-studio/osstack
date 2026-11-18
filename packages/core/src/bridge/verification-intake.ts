@@ -10,5 +10,5 @@ export { DiagnosisStore, diagnosisCanAdmit, diagnosisProfile, type DiagnosisRequ
 export { classifyDiagnosis, verifyDiagnosisGrant, checkGrantPrincipal, checkGrantWindow, type DiagnosisProfile, type DiagnosisReason, type DiagnosisVerdict, type ExpectedFailure, type DiagnosisGrantInput } from "./diagnosis-admission.js";
 export { buildDiagnosisPrompt, type DiagnosisInput } from "./diagnosis-input.js";
 export { parseLocalFailureRevisionGrant } from "./revision-local-failure-grant.js";
-export { LocalFailureDispatchStore, type DispatchInput, type DispatchReason, type DispatchFault, type RepairBinding } from "../state/engineering-local-failure-dispatch-store.js";
+export { LocalFailureDispatchStore, type DispatchInput, type DispatchReason, type DispatchFault, type PublicationFence, type RepairBinding } from "../state/engineering-local-failure-dispatch-store.js";
 export { buildRepairGoal, createLocalFailureRepairInput, type LocalFailureRepairInput } from "./repair-input.js";

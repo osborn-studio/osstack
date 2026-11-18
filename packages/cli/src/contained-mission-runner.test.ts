@@ -760,3 +760,146 @@ describe("ContainedMissionRunner verify check (bridge)", () => {
     await expect(bare.runner.retryVerifyCheck(bare.mission.mission_id)).rejects.toThrow("bridge_not_configured");
   });
 });
+
+const localRepairSpec = {
+  publication: { remote: "origin", repository: "fixture/repo", base: "main", draft: false, preauthorized: false },
+  local_failure_repair: { root: "cm_" + "a".repeat(36), request_id: "vdr_" + "b".repeat(36), receipt_id: "vhr_" + "c".repeat(36),
+    check_id: "fixture", failure_code: "fixture", pr: 7, branch: "original", base: START },
+};
+
+describe("local failure child", () => {
+  describe.each([true, false])("execution failures with local child = %s", local => {
+    it.each(["patch_invalid:PATCH_MISSING", "patch_apply_failed:CONTAINED_PATCH_MISMATCH"])("halts on %s", async detail => {
+      let launches = 0;
+      const f = setup({
+        execute: async ({ onLaunched }) => {
+          launches++;
+          const result = detail.startsWith("patch_invalid:") ? run({ patch: { ok: false, reason: "PATCH_MISSING" } }) : run();
+          onLaunched(result.launch);
+          return result;
+        },
+        readFile: async () => "different content\n",
+      }, local ? localRepairSpec : {});
+      const m = await drive(f, 2);
+      expect(m.state).toBe("awaiting_decision");
+      const payload = JSON.parse(f.store.events(m.mission_id).at(-1)!.payload_json);
+      expect(payload).toMatchObject(local ? { reason: "verify_repair_failed", detail } : { reason: detail });
+      await f.runner.step(m.mission_id);
+      expect(launches).toBe(1);
+    });
+  });
+
+  it.each(["turn", "cumulative", "adopt"])("protects the %s paths before writes", async route => {
+    const patch = PATCH.replaceAll("src/a.txt", "src/check.ts");
+    const f = setup({ execute: async () => run({ patch: { ok: true, text: route === "turn" ? patch : PATCH, bytes: patch.length } }),
+      worktreeDiff: async () => ({ diff: patch, tree: START, unsafe: [] }),
+      commitWorktree: async () => { throw Error("unexpected commit"); },
+      ...(route === "turn" && { readFile: async () => { throw Error("unexpected read"); } }),
+    }, { ...localRepairSpec, verification_paths: ["src/check.ts"] });
+    f.setCumulative(route === "cumulative" ? patch : PATCH);
+    const id = f.mission.mission_id;
+    if (route === "adopt") {
+      f.store.transition(id, { to: "needs_reconciliation", if_revision: f.mission.revision, event: { kind: "fixture", payload: {} } }, 1002);
+      await f.runner.decide(id, { kind: "adopt_worktree" });
+    } else await drive(f, 2);
+    expect(f.store.get(id).state).toBe("awaiting_decision");
+    expect(JSON.parse(f.store.events(id).at(-1)!.payload_json)).toMatchObject({ reason: "verify_protected_path", operation_id: expect.any(String) });
+    expect(f.calls.commit).toHaveLength(0);
+  });
+
+  it("halts on failed verification and leaves the executor stopped", async () => {
+    const f = setup({}, localRepairSpec);
+    f.setVerifyExit(1);
+    const m = await drive(f, 3);
+    expect(m.state).toBe("awaiting_decision");
+    expect(f.allPayloads()).toContain("verify_repair_failed");
+    await f.runner.step(m.mission_id);
+    expect(f.calls.execute).toHaveLength(1);
+  });
+  it("keeps verification output out of subsequent prompts", async () => {
+    const marker = "fixture-untrusted-output";
+    const f = setup({ verify: async () => ({ exit_code: 1, output: marker, evidence: "fixture", stopped: true, cancelled: false }) }, localRepairSpec);
+    await drive(f, 5);
+    expect(f.calls.execute.join(" ")).not.toContain(marker);
+  });
+  it("refuses an extra repair even at the generic repair limit", async () => {
+    const f = setup({}, localRepairSpec);
+    const m = f.store.transition(f.mission.mission_id, { to: "awaiting_decision", if_revision: f.mission.revision,
+      event: { kind: "halted", payload: { reason: "repair_cycles_exhausted" } } }, 1001);
+    expect(f.runner.decisionAllowed(m, "extra_repair")).toBe(false);
+    await expect(f.runner.decide(m.mission_id, { kind: "extra_repair" })).rejects.toThrow("CONTAINED_DECISION_NOT_ALLOWED");
+  });
+  it("requires a candidate-bound publication decision", async () => {
+    const f = setup({}, localRepairSpec);
+    const m = await drive(f, 4);
+    expect(m.state).toBe("awaiting_decision");
+    expect(f.calls.commit).toHaveLength(1);
+    expect(f.runner.decisionAllowed(m, "approve_publication")).toBe(false);
+    await expect(f.runner.decide(m.mission_id, { kind: "approve_publication" })).rejects.toThrow("local_failure_candidate_approval_required");
+  });
+  it.each([
+    ["missing", false], ["success", true], ["verify_source_revoked", false], ["verify_publish_authority_invalid", false],
+    ["verify_push_uncertain", false], ["verify_stale_head", false], ["verify_base_changed", false], ["verify_push_not_written", false],
+    ["other", false], ["other", true], ["verify_source_revoked", true], ["verify_push_uncertain", true],
+    ["verify_stale_head", true], ["verify_base_changed", true], ["verify_push_not_written", true],
+  ] as const)("routes delivery %s, released=%s", async (stop, released) => {
+    let calls = 0;
+    const publish: ContainedMissionPorts["publish"] = async input => {
+      calls++;
+      if (released) input.beforeRemoteMutation("push");
+      if (stop !== "success") throw Error(stop);
+      return { pushed_commit: input.permit.head, pr: { reused: true, number: 7, url: "fixture" }, base_head: START };
+    };
+    const f = setup({ ...(stop === "missing" ? {} : { localFailurePublication: { publish } }), remoteWriteReleasedSince: () => released }, localRepairSpec);
+    const m = await drive(f, 4);
+    f.store.transition(m.mission_id, { if_revision: m.revision, to: "revalidating", event: { kind: "fixture", payload: {} } }, 1234);
+    const delivered = await f.runner.step(m.mission_id);
+    if (stop === "success") {
+      expect(delivered.state).toBe("pr_opened");
+      expect(JSON.parse(f.store.events(m.mission_id).find(e => e.kind === "delivery_evidence")!.payload_json).branch).toBe("original");
+    } else {
+      expect(delivered.state).toBe("awaiting_decision");
+      const uncertain = released && !["verify_stale_head", "verify_base_changed", "verify_push_not_written"].includes(stop);
+      const reason = uncertain ? "verify_push_uncertain" : stop === "missing" ? "verify_publish_authority_invalid" : stop === "other" ? "publication_failed:other" : stop;
+      expect(JSON.parse(f.store.events(m.mission_id).at(-1)!.payload_json).reason).toBe(reason);
+      expect(f.kinds().includes("delivery_uncertain")).toBe(uncertain);
+      await f.runner.step(m.mission_id);
+    }
+    expect(calls).toBe(stop === "missing" ? 0 : 1);
+    expect(f.kinds().includes("delivery_attempt")).toBe(stop !== "missing");
+    expect(f.calls.publish).toHaveLength(0);
+  });
+});
+
+it("keeps adoption available after a local child commit failure without authorizing a second executor", async () => {
+  const f = setup({ commit: async () => { throw Error("interrupted"); } }, localRepairSpec);
+  const m = await drive(f, 2);
+  expect(m.state).toBe("needs_reconciliation");
+  expect(f.runner.decisionAllowed(m, "adopt_worktree")).toBe(true);
+  expect(f.runner.decisionAllowed(m, "discard_changes")).toBe(false);
+  await expect(f.runner.decide(m.mission_id, { kind: "discard_changes" })).rejects.toThrow("CONTAINED_DECISION_NOT_ALLOWED");
+  expect(f.calls.execute).toHaveLength(1);
+});
+
+it("halts a local child when its inherited CI candidate admission fails", async () => {
+  const f = setup({ assertGithubCiScope: () => {}, admitGithubCiCandidate: async () => { throw Error("invalid candidate"); } }, {
+    ...localRepairSpec, verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0, branch: "osstack/mission/child",
+    publication: { ...localRepairSpec.publication, repository: "osborn-studio/osstack-bridge-sandbox" },
+  });
+  expect((await drive(f, 3)).state).toBe("awaiting_decision");
+  expect(f.allPayloads()).toContain("verify_repair_failed");
+});
+
+it("stops an interrupted local delivery before re-entering the publisher", async () => {
+  let calls = 0;
+  const f = setup({ localFailurePublication: { publish: async () => { calls++; throw Error("unexpected"); } },
+    remoteWriteReleasedSince: () => true }, localRepairSpec);
+  let m = await drive(f, 4);
+  for (const to of ["revalidating", "delivering"] as const)
+    m = f.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: to === "delivering" ? "delivery_intent" : "fixture", payload: {} } }, 2000);
+  f.store.record(m.mission_id, "delivery_attempt", { attempt: 1 }, 2000);
+  f.store.record(m.mission_id, "remote_mutation", { kind: "push", head: m.candidate_head }, 2000);
+  expect((await f.runner.step(m.mission_id)).state).toBe("awaiting_decision");
+  expect(f.allPayloads()).toContain("verify_push_uncertain");
+  expect(calls).toBe(0);
+});

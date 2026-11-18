@@ -10,6 +10,7 @@ import {
   type ContainedDeriveInput,
 } from "./engineering-contained-store.js";
 import type { DiagnosisStore, DiagnosisRequest } from "./engineering-diagnosis-store.js";
+import { checkGrantWindow } from "../bridge/diagnosis-admission.js";
 import { checkRootAdmission } from "./engineering-root-admission.js";
 import { RevisionChainStore, RevisionChainError, type RevisionChain } from "./engineering-revision-chain-store.js";
 import { VerificationSourceStore } from "./engineering-verification-source-store.js";
@@ -23,6 +24,10 @@ export type DispatchReason =
   | "verify_chain_depth_limit"
   | "verify_chain_lineage_unknown"
   | "verify_protected_path";
+export type PublicationFence =
+  | ({ ok: true; dispatch_id: string; grant_digest: string } & Pick<DiagnosisRequest,
+      "root_mission_id" | "request_id" | "result_id" | "source_seq" | "head_sha" | "base_sha">)
+  | { ok: false; reason: "verify_publish_authority_invalid" | "verify_source_revoked" | "verify_stale_head" | "verify_base_changed" };
 export type DispatchFault = "before_consume" | "after_consume" | "after_child" | "before_commit";
 export interface RepairBinding {
   root: string;
@@ -86,6 +91,38 @@ export class LocalFailureDispatchStore {
       .get(requestId) as Omit<Dispatched, "status"> | undefined;
     return row ? { status: "dispatched", ...row } : null;
   }
+  private sourceRevoked(r: DiagnosisRequest): boolean {
+    const s = this.diagnosis;
+    const reg = new VerificationSourceStore(s.attention, s.owner).registration(r.result_id);
+    return !reg || !!reg.withdrawn_by || reg.registered.seq !== r.source_seq || !!s.db.prepare(
+      "SELECT 1 FROM engineering_verification_sources WHERE supersedes_result_id=? AND decision='accepted'",
+    ).get(r.result_id);
+  }
+
+  publicationFence(childMissionId: string, now: number): PublicationFence {
+    const s = this.diagnosis;
+    const row = s.db.prepare(
+      "SELECT dispatch_id, grant_digest, request_id, root_mission_id, chain_id FROM engineering_local_failure_dispatches WHERE child_mission_id=?",
+    ).get(childMissionId) as { dispatch_id: string; grant_digest: string; request_id: string; root_mission_id: string; chain_id: string } | undefined;
+    const invalid = { ok: false, reason: "verify_publish_authority_invalid" } as const;
+    if (!row) return invalid;
+    const chain = s.chain(row.root_mission_id, row.chain_id);
+    if (!chain || createHash("sha256").update(chain.grant_json).digest("hex") !== row.grant_digest) return invalid;
+    try {
+      const grant = parseLocalFailureRevisionGrant(chain.grant_json);
+      if (now < grant.issued_at) return invalid;
+      checkGrantWindow(grant, now, Infinity, chain.budget_json);
+    } catch {
+      return invalid;
+    }
+    const r = s.get(row.request_id);
+    if (this.sourceRevoked(r)) return { ok: false, reason: "verify_source_revoked" };
+    if (chain.published_head !== r.head_sha) return { ok: false, reason: "verify_stale_head" };
+    if (chain.published_base !== r.base_sha) return { ok: false, reason: "verify_base_changed" };
+    return { ok: true, dispatch_id: row.dispatch_id, grant_digest: row.grant_digest, root_mission_id: row.root_mission_id,
+      request_id: r.request_id, result_id: r.result_id, source_seq: r.source_seq, head_sha: r.head_sha, base_sha: r.base_sha };
+  }
+
   dispatch(input: DispatchInput) {
     const s = this.diagnosis;
     if (s.db.inTransaction) throw Error("dispatch_requires_immediate_transaction");
@@ -121,19 +158,7 @@ export class LocalFailureDispatchStore {
         )
           return refuse("verify_grant_invalid");
         if (!s.matchesCandidateTree(r, chain.chain_id, intake.tree_sha)) return refuse("verify_grant_invalid");
-        const reg = new VerificationSourceStore(s.attention, s.owner).registration(r.result_id);
-        if (
-          !reg ||
-          reg.withdrawn_by ||
-          reg.registered.seq !== r.source_seq ||
-          chain.published_head !== r.head_sha ||
-          chain.published_base !== r.base_sha ||
-          s.db
-            .prepare(
-              "SELECT 1 FROM engineering_verification_sources WHERE supersedes_result_id=? AND decision='accepted'",
-            )
-            .get(r.result_id)
-        )
+        if (this.sourceRevoked(r) || chain.published_head !== r.head_sha || chain.published_base !== r.base_sha)
           return refuse("verify_source_revoked");
         const parent = missions.resolveLineage(root.mission_id);
         if (parent.status === "unknown") return refuse(parent.reason);

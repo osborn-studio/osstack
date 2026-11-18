@@ -428,7 +428,7 @@ describe("only the publication fence reaches a remote write (static scan, T13)",
   const text = (f: string) => readFileSync(join(dir, f), "utf8");
   it("push and pr create are named only in the fenced publication paths", () => {
     const naming = sources.filter(f => /args\[[^\]]*\]\s*===\s*["']push["']|\[\s*["']push["']|args\[1\]\s*===\s*["']create["']|["']pr["']\s*,\s*["']create["']/.test(text(f)));
-    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-github-ci-publish.ts", "contained-mission-ports.ts", "contained-mission-revision-publication.ts"]);
+    expect(naming.sort()).toEqual(["contained-mission-bridge.ts", "contained-mission-github-ci-publish.ts", "contained-mission-local-failure-publish.ts", "contained-mission-ports.ts", "contained-mission-revision-publication.ts"]);
     const ci = text("contained-mission-github-ci-publish.ts");
     expect(ci).toContain("const runner = fencedDeliveryRunner");
     expect(ci).toContain("--force-with-lease=");
