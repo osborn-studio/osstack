@@ -528,3 +528,12 @@ describe("contained Mission ports: GitHub Apps bridge (App A)", () => {
     expect(typeof b.ports.publishVerifyCheck).toBe("function");
   });
 });
+
+it("rejects a local failure child at the generic production publisher", async () => {
+  const f = fixture(), mission = f.authorize();
+  const spec = { ...f.spec, local_failure_repair: { root: mission.mission_id, request_id: "request", receipt_id: "receipt",
+    check_id: "check", failure_code: "failure", pr: 1, branch: "original", base: f.start } };
+  await expect(f.ports.publish({ spec, mission, permit: { mission_id: mission.mission_id, revision: mission.revision,
+    head: f.start, tree: f.start, spec_digest: mission.spec_digest }, signal: signal(), body: "", beforeRemoteMutation: () => {} }))
+    .rejects.toThrow("CONTAINED_LOCAL_FAILURE_REQUIRES_PUBLISHER");
+});

@@ -88,6 +88,7 @@ export interface ContainedMissionPorts {
   admitGithubCiCandidate?: (mission: ContainedMission, spec: ContainedMissionSpec) => Promise<void>;
   /** Push the permitted head and open (or reuse) its PR. `beforeRemoteMutation` must run, and may throw, before every push and PR creation. Never merges. */
   publish: (input: { mission: ContainedMission; spec: ContainedMissionSpec; permit: ContainedPublicationPermit; body: string; beforeRemoteMutation: (kind: 'push' | 'pr_create') => void; signal: AbortSignal }) => Promise<ContainedPublicationResult>;
+  localFailurePublication?: { publish: ContainedMissionPorts['publish'] };
   /** Phase 5-C revision publisher. Phase 5-D selects this port for publish_target attempts. */
   revisionPublication?: import('./contained-mission-revision-publication.js').RevisionPublicationPort;
   /** Present only when the GitHub Apps bridge is configured: publish (or refresh) the `osstack/verify` check on the opened PR's head. Idempotent; never touches the branch or PR. */
@@ -207,7 +208,7 @@ export class ContainedMissionRunner {
       case 'authorized': return this.createWorkspace(m, spec);
       case 'workspace_ready': return this.qualifyAndExecute(m, spec, executorPromptFor(spec));
       case 'candidate_ready': return spec.verification_mode ? this.admitGithubCiCandidate(m, spec) : this.verify(m, spec);
-      case 'verify_failed': return this.repair(m, spec);
+      case 'verify_failed': return spec.local_failure_repair ? this.halt(m, 'awaiting_decision', 'verify_repair_failed') : this.repair(m, spec);
       case 'verified': return spec.publication?.preauthorized
         ? this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'revalidating', event: { kind: 'publication_preauthorized', payload: {} } }, this.ports.now())
         : this.halt(m, 'awaiting_decision', 'publication_pending');
@@ -236,7 +237,7 @@ export class ContainedMissionRunner {
     if (current.state !== 'verifying' && current.state !== 'cancel_requested') return current;
     const stopped = this.ports.store.recordStopEvidence(m.mission_id, current.revision, { stop_proof: 'never_launched', evidence: 'git_object_admission' }, this.ports.now());
     if (stopped.state === 'cancel_requested') return this.settleCancel(stopped) ?? stopped;
-    if (failure) return this.halt(stopped, 'awaiting_decision', `github_ci_admission_failed:${failure}`);
+    if (failure) return this.halt(stopped, 'awaiting_decision', spec.local_failure_repair ? 'verify_repair_failed' : `github_ci_admission_failed:${failure}`);
     return this.ports.store.transition(m.mission_id, { if_revision: stopped.revision, to: 'verified',
       event: { kind: 'ci_candidate_admitted', payload: binding } }, this.ports.now());
   }
@@ -245,13 +246,14 @@ export class ContainedMissionRunner {
   decisionAllowed(m: ContainedMission, decision: ContainedDecision['kind']): boolean {
     const reason = this.haltReason(m);
     if (decision === 'abandon') return ['awaiting_decision', 'needs_reconciliation', 'stop_unknown'].includes(m.state);
-    if (decision === 'extra_repair') return m.state === 'awaiting_decision' && reason === 'repair_cycles_exhausted';
+    if (decision === 'extra_repair') return m.state === 'awaiting_decision' && reason === 'repair_cycles_exhausted' && !JSON.parse(m.spec_json).local_failure_repair;
     if (decision === 'resume_budget' || decision === 'resume_grant') return m.state === 'awaiting_decision'
       && (decision === 'resume_budget' ? reason === 'budget_exhausted' : !!reason?.startsWith('grant_stopped:'));
     if (decision === 'approve_publication') return m.state === 'awaiting_decision' && !!reason
       && (reason === 'publication_pending' || reason.startsWith('publication_failed') || reason.startsWith('revalidation_failed'))
-      && !parseContainedMissionSpec(m.spec_json).ci_repair;
+      && !parseContainedMissionSpec(m.spec_json).ci_repair && !JSON.parse(m.spec_json).local_failure_repair;
     if (decision === 'resume_workspace') return m.state === 'awaiting_decision' && reason === WORKSPACE_RECOVERED;
+    if (decision === 'discard_changes' && this.localExecutorRan(m)) return false;
     return m.state === 'needs_reconciliation' && (decision === 'discard_changes' || decision === 'adopt_worktree');
   }
 
@@ -321,6 +323,9 @@ export class ContainedMissionRunner {
 
   private async decideRun(missionId: string, decision: IdentifiedContainedDecision): Promise<ContainedMission> {
     const m = this.ports.store.get(missionId); const reason = this.haltReason(m);
+    if (decision.kind === 'discard_changes' && this.localExecutorRan(m)) throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+    if ((decision.kind === 'approve_publication' || decision.kind === 'extra_repair') && JSON.parse(m.spec_json).local_failure_repair)
+      throw Error(decision.kind === 'approve_publication' ? 'local_failure_candidate_approval_required' : 'CONTAINED_DECISION_NOT_ALLOWED');
     if (decision.kind === 'approve_publication' && parseContainedMissionSpec(m.spec_json).ci_repair) throw Error('ci_repair_candidate_approval_required');
     this.acknowledgeRevision(m, decision.kind);
     const go = (to: ContainedMission['state'], kind: string) => this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind, payload: { reason, ...(decision.decision_id ? { decision_id: decision.decision_id } : {}) } } }, this.ports.now());
@@ -335,6 +340,10 @@ export class ContainedMissionRunner {
     if (decision.kind === 'discard_changes' && m.state === 'needs_reconciliation') return this.discardChanges(m, reason, decision.decision_id);
     if (decision.kind === 'adopt_worktree' && m.state === 'needs_reconciliation') return this.adoptWorktree(m, decision.decision_id);
     throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+  }
+
+  private localExecutorRan(m: ContainedMission): boolean {
+    return !!JSON.parse(m.spec_json).local_failure_repair && this.allEvents(m.mission_id).some(event => event.kind === 'executor_started');
   }
 
   private async extraRepair(m: ContainedMission, reason: string | undefined, decisionId?: string): Promise<ContainedMission> {
@@ -449,6 +458,7 @@ export class ContainedMissionRunner {
     try {
       const snapshot = await this.ports.worktreeDiff({ worktree: spec.worktree_path, startCommit: spec.start_commit });
       const moved = fenced(); if (moved) return moved;
+      if (spec.local_failure_repair && await this.localProtectedPaths(spec, parseMissionPatch(snapshot.diff), snapshot.unsafe)) return this.halt(m, 'awaiting_decision', 'verify_protected_path', { operation_id: operationId });
       if (snapshot.unsafe.length > 0) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, adopted: true, reasons: snapshot.unsafe.slice(0, 32) });
       if (!snapshot.diff) throw Error('CONTAINED_ADOPT_EMPTY');
       const overall = this.classify(spec, snapshot.diff);
@@ -563,7 +573,7 @@ export class ContainedMissionRunner {
       if (launched) return this.halt(current, 'stop_unknown', `executor_failed:${code(error)}`);
       // Nothing was spawned, so there is no executor to prove stopped.
       const settled = this.ports.store.recordStopEvidence(current.mission_id, current.revision, { stop_proof: 'never_launched' }, this.ports.now());
-      return this.halt(settled, 'awaiting_decision', `executor_spawn_failed:${code(error)}`);
+      return this.haltExecutionFailure(settled, spec, `executor_spawn_failed:${code(error)}`);
     }
     this.live.delete(m.mission_id);
     let current = this.ports.store.get(m.mission_id);
@@ -577,20 +587,28 @@ export class ContainedMissionRunner {
       secret_hits: screen.hits.slice(0, MAX_RECORDED_HITS), secret_hit_count: screen.hits.length }, this.ports.now());
     if (!run.stop) return this.halt(current, 'stop_unknown', 'executor_stop_unproven');
     if (current.state === 'cancel_requested') return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
-    if (!run.patch.ok) return this.halt(current, 'awaiting_decision', `patch_invalid:${run.patch.reason}`);
+    if (!run.patch.ok) return this.haltExecutionFailure(current, spec, `patch_invalid:${run.patch.reason}`);
     if (screen.hits.length > 0) return this.halt(current, 'awaiting_decision', 'secret_detected');
     return this.applyPatch(current, spec, patchText);
+  }
+
+  private async localProtectedPaths(spec: ContainedMissionSpec, parsed: ReturnType<typeof parseMissionPatch>, unsafe: string[] = []) {
+    const { checkLocalFailureRepairPaths } = await import('./contained-mission-local-failure-paths.js');
+    const paths = parsed.ok ? parsed.files.map(file => file.path) : [];
+    for (const entry of unsafe) paths.push(entry.slice(entry.indexOf(':') + 1));
+    return checkLocalFailureRepairPaths(paths, spec.verification_paths ?? []);
   }
 
   private async applyPatch(m: ContainedMission, spec: ContainedMissionSpec, patch: string): Promise<ContainedMission> {
     const classify = (text: string) => this.classify(spec, text);
     const operationId = `op_${createHash('sha256').update(`${m.mission_id}:${m.revision}:${patch}`).digest('hex').slice(0, 16)}`;
     // The turn's own patch decides what may be applied; the cumulative diff (below) decides the tier.
+    const parsed = parseMissionPatch(patch);
+    if (spec.local_failure_repair && await this.localProtectedPaths(spec, parsed)) return this.halt(m, 'awaiting_decision', 'verify_protected_path', { operation_id: operationId });
     const incremental = classify(patch);
     if (incremental.tier === 'rejected') return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId, reasons: incremental.reasons });
     if (incremental.tier === 'T2' && !sandboxSentinelRemoval(spec, incremental)) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: incremental.reasons });
     // Apply exactly the files the classifier parsed; the patch text is never parsed a second way.
-    const parsed = parseMissionPatch(patch);
     if (!parsed.ok) return this.halt(m, 'awaiting_decision', 'write_rejected', { operation_id: operationId });
     // Host-write phase: cancel() aborts this controller, and every await is followed by a fence check.
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
@@ -608,9 +626,10 @@ export class ContainedMissionRunner {
       }
       let cumulative: string;
       try { cumulative = await this.ports.cumulativeDiff({ worktree: spec.worktree_path, startCommit: spec.start_commit, expectedHead: m.expected_head!, files }); }
-      catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `cumulative_diff_failed:${code(error)}`, { operation_id: operationId }); }
+      catch (error) { return this.haltExecutionFailure(this.ports.store.get(m.mission_id), spec, `cumulative_diff_failed:${code(error)}`, { operation_id: operationId }); }
       const moved = fenced(); if (moved) return settle(moved);
       // Caps and the protected set apply to everything changed since start_commit, not to one repair turn.
+      if (spec.local_failure_repair && await this.localProtectedPaths(spec, parseMissionPatch(cumulative))) return this.halt(m, 'awaiting_decision', 'verify_protected_path', { operation_id: operationId });
       const overall = classify(cumulative);
       const totals = overall.tier === 'rejected' ? undefined : overall.totals;
       this.ports.store.record(m.mission_id, 't0_intent', { operation_id: operationId, worktree: spec.worktree_path, head_before: m.expected_head, tier: overall.tier, reasons: overall.reasons,
@@ -623,7 +642,7 @@ export class ContainedMissionRunner {
       if (spec.publish_target) {
         let chainDiff: string;
         try { chainDiff = await this.ports.cumulativeDiff({ worktree: spec.worktree_path, startCommit: spec.publish_target.chain_start_commit, expectedHead: m.expected_head!, files }); }
-        catch (error) { return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `cumulative_diff_failed:${code(error)}`, { operation_id: operationId, chain: true }); }
+        catch (error) { return this.haltExecutionFailure(this.ports.store.get(m.mission_id), spec, `cumulative_diff_failed:${code(error)}`, { operation_id: operationId, chain: true }); }
         const chainMoved = fenced(); if (chainMoved) return settle(chainMoved);
         const chain = this.classifyForChain(spec, chainDiff);
         if (!chainTierAllowed(spec, chain.tier)) return this.halt(m, 'awaiting_decision', 'tier_escalated', { operation_id: operationId, reasons: chain.reasons, cumulative: true, chain_cumulative: true });
@@ -648,7 +667,7 @@ export class ContainedMissionRunner {
       const after = fenced(); if (after) { this.ports.store.record(m.mission_id, 'commit_after_cancel', { operation_id: operationId, head: commit.head }, this.ports.now()); return settle(after); }
       return this.commitCandidate(m, operationId, patch, commit, tier, totals, chainTier);
     } catch (error) {
-      return this.halt(this.ports.store.get(m.mission_id), 'awaiting_decision', `patch_apply_failed:${code(error)}`, { operation_id: operationId });
+      return this.haltExecutionFailure(this.ports.store.get(m.mission_id), spec, `patch_apply_failed:${code(error)}`, { operation_id: operationId });
     } finally { this.live.delete(m.mission_id); }
   }
 
@@ -679,6 +698,7 @@ export class ContainedMissionRunner {
     // T0 receipts close only once the candidate holding their write has been verified (§4.5).
     for (const intent of this.openIntents(current)) this.ports.store.record(m.mission_id, 't0_receipt', { ...intent, head_after: current.candidate_head, diff_digest: current.candidate_diff_digest, verify_command: spec.verify.argv, verify_exit: result.exit_code }, this.ports.now());
     if (current.state === 'cancel_requested') return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
+    if (!passed && spec.local_failure_repair) return this.halt(current, 'awaiting_decision', 'verify_repair_failed');
     return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: passed ? 'verified' : 'verify_failed', event: { kind: passed ? 'verified' : 'verify_failed', payload: { exit_code: result.exit_code } } }, this.ports.now());
   }
 
@@ -744,11 +764,23 @@ export class ContainedMissionRunner {
       event: { kind: 'workspace_created', payload: { worktree: ws.worktree, git_dir: ws.gitDir, config_digest: ws.configDigest, resumed: true, ...(decisionId ? { decision_id: decisionId } : {}) } } }, this.ports.now());
   }
 
+  private haltExecutionFailure(m: ContainedMission, spec: ContainedMissionSpec, reason: string, extra: Record<string, unknown> = {}) {
+    if (spec.local_failure_repair) return this.halt(m, 'awaiting_decision', 'verify_repair_failed', { ...extra, detail: reason });
+    return this.halt(m, 'awaiting_decision', reason, extra);
+  }
+
   private halt(m: ContainedMission, to: 'awaiting_decision' | 'needs_reconciliation' | 'stop_unknown', reason: string, extra: Record<string, unknown> = {}) {
     const decisionId = this.activeDecisionIds.get(m.mission_id);
     return this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: 'halted', payload: { reason, ...extra,
       ...(decisionId ? { decision_id: decisionId } : {}) } } }, this.ports.now());
   }
+  private haltLocalUncertain(m: ContainedMission, cause: string) {
+    return this.ports.store.attention.write(this.ports.store.owner, () => {
+      this.ports.store.record(m.mission_id, 'delivery_uncertain', { code: cause }, this.ports.now());
+      return this.halt(m, 'awaiting_decision', 'verify_push_uncertain');
+    });
+  }
+
   private haltReason(m: ContainedMission): string | undefined {
     const halted = this.allEvents(m.mission_id).filter(e => e.kind === 'halted').at(-1);
     return halted ? (JSON.parse(halted.payload_json) as { reason?: string }).reason : undefined;
@@ -791,12 +823,12 @@ export class ContainedMissionRunner {
     return this.deliver(next, spec);
   }
 
-  /** One bounded delivery attempt. An uncertain failure stays in delivering and is retried idempotently by the next step. */
+  /** One bounded delivery attempt. Local repair children stop on an uncertain release. */
   private async deliver(m: ContainedMission, spec: ContainedMissionSpec): Promise<ContainedMission> {
     const events = this.allEvents(m.mission_id);
     const since = events.map(e => e.kind).lastIndexOf('delivery_intent');
     const attempts = events.slice(since + 1).filter(e => e.kind === 'delivery_attempt').length;
-    if (!spec.publish_target && attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
+    if (!spec.publish_target && !spec.local_failure_repair && attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
     if (spec.publish_target && !this.ports.revisionPublication) {
       // Without a publication port there is no authority to release a push.
       return this.halt(m, 'awaiting_decision', 'publication_failed:revision_publisher_unavailable');
@@ -806,6 +838,14 @@ export class ContainedMissionRunner {
     // A record of this Mission that is not proven stopped (an orphaned push, say) must be settled first: never push again over it.
     const unprovenOp = this.ports.openHostProcessId?.(m.mission_id);
     if (unprovenOp !== undefined) return this.haltUnproven(m, unprovenOp);
+    if (spec.local_failure_repair && attempts > 0) {
+      const lastAttempt = events.filter(e => e.kind === 'delivery_attempt').at(-1)!;
+      const released = this.ports.remoteWriteReleasedSince?.(m.mission_id, lastAttempt.created_at)
+        ?? events.some(e => e.seq > lastAttempt.seq && e.kind === 'remote_mutation');
+      if (released && !events.some(e => e.kind === 'verify_repair_push_confirmed')) return this.haltLocalUncertain(m, 'interrupted');
+      if (attempts >= MAX_DELIVERY_ATTEMPTS) return this.halt(m, 'awaiting_decision', 'publication_failed:attempts_exhausted');
+    }
+    if (spec.local_failure_repair && !this.ports.localFailurePublication) return this.halt(m, 'awaiting_decision', 'verify_publish_authority_invalid');
     const permit: ContainedPublicationPermit = Object.freeze({ mission_id: m.mission_id, revision: m.revision, head: m.candidate_head!, tree: m.candidate_tree!, spec_digest: m.spec_digest });
     if (!spec.publish_target) this.ports.store.record(m.mission_id, 'delivery_attempt', { attempt: attempts + 1, head: permit.head }, this.ports.now());
     const attemptAt = this.ports.now();
@@ -843,7 +883,8 @@ export class ContainedMissionRunner {
         }
         return opened;
       }
-      result = await this.ports.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal });
+      const publisher = spec.local_failure_repair ? this.ports.localFailurePublication! : this.ports;
+      result = await publisher.publish({ mission: m, spec, permit, body: this.publicationBody(m, spec), beforeRemoteMutation, signal: controller.signal });
     }
     catch (error) {
       if (spec.publish_target && error instanceof Error && 'retryableReceiptRead' in error) throw error;
@@ -856,7 +897,15 @@ export class ContainedMissionRunner {
       if (current.revision !== m.revision) return current;
       if (spec.ci_repair && error instanceof Error && error.message === 'CI_REPAIR_STOPPED') return this.halt(current, 'awaiting_decision', 'ci_repair_publication_unresolved');
       // The release record decides: the fence ran inside the release transaction, which may have rolled back; no release means git and gh never ran.
-      if (this.ports.remoteWriteReleasedSince ? !this.ports.remoteWriteReleasedSince(m.mission_id, attemptAt) : !mutated) return this.halt(current, 'awaiting_decision', `publication_failed:${code(error)}`);
+      const released = this.ports.remoteWriteReleasedSince ? this.ports.remoteWriteReleasedSince(m.mission_id, attemptAt) : mutated;
+      if (spec.local_failure_repair) {
+        const { LOCAL_FAILURE_PUBLISH_STOPS } = await import('./contained-mission-local-failure-publish.js');
+        const stop = LOCAL_FAILURE_PUBLISH_STOPS.find(s => error instanceof Error && error.message === s);
+        if (!released) return this.halt(current, 'awaiting_decision', stop ?? `publication_failed:${code(error)}`);
+        if (stop === 'verify_stale_head' || stop === 'verify_base_changed' || stop === 'verify_push_not_written') return this.halt(current, 'awaiting_decision', stop);
+        return this.haltLocalUncertain(current, code(error));
+      }
+      if (!released) return this.halt(current, 'awaiting_decision', `publication_failed:${code(error)}`);
       this.ports.store.record(m.mission_id, 'delivery_uncertain', { code: code(error) }, this.ports.now());
       return current;
     } finally { this.live.delete(m.mission_id); }
@@ -919,7 +968,7 @@ export class ContainedMissionRunner {
     const committed = JSON.parse(events.filter(e => e.kind === 'candidate_committed').at(-1)!.payload_json) as { tier: string };
     const p = spec.publication!;
     // The CI fixture's only allowed T2 edit removes its own sentinel. Protected paths never reach delivery.
-    const body = { schema_version: 1, mission_id: m.mission_id, spec_digest: m.spec_digest, repository: p.repository, remote: p.remote, branch: spec.ci_repair?.branch ?? spec.branch,
+    const body = { schema_version: 1, mission_id: m.mission_id, spec_digest: m.spec_digest, repository: p.repository, remote: p.remote, branch: spec.local_failure_repair?.branch ?? spec.ci_repair?.branch ?? spec.branch,
       base: p.base, base_head: result.base_head, start_commit: spec.start_commit, head: permit.head, tree: permit.tree, draft: p.draft, pr: result.pr,
       ...verification(), tier: committed.tier,
       migrations_changed: false, protected_paths_changed: false };

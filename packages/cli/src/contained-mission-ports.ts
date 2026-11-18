@@ -464,6 +464,7 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
     publish: ({ mission, spec, permit, body, beforeRemoteMutation, signal }) => kit.guard(mission.mission_id, async () => {
       // A revision child updates its PR's own branch through the revision publisher (phase 5-C); this path opens PRs and must never serve it.
       if (spec.publish_target) throw Error('CONTAINED_PUBLISH_TARGET_REQUIRES_REVISION');
+      if (spec.local_failure_repair) throw Error('CONTAINED_LOCAL_FAILURE_REQUIRES_PUBLISHER');
       if (pilot && !spec.verification_mode) throw Error('CI_PILOT_NOT_AUTHORIZED');
       const p = spec.publication; if (!p) throw Error('CONTAINED_PUBLICATION_NOT_CONFIGURED');
       // A configured bridge confines publication to its repository: never fall back to host credentials for another one.

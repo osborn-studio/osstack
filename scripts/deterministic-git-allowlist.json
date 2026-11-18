@@ -25,6 +25,11 @@
     "reason": "W13 remote publication boundary: intent-bound gated runner and SHA lease publish the CI revision."
   },
   {
+    "file": "packages/cli/src/contained-mission-local-failure-publish.ts",
+    "count": 1,
+    "reason": "W13 local verification repair: one candidate-bound, intent-gated push to the original PR branch with an exact SHA lease."
+  },
+  {
     "file": "packages/cli/src/contained-mission-ports.ts",
     "count": 7,
     "reason": "W13 mission ports: private candidate-index writes and journal-gated compare-and-swap real-ref recovery."

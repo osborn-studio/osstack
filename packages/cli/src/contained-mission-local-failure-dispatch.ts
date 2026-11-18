@@ -11,10 +11,9 @@ import {
 } from "@osstack/core/verification-intake";
 import {
   compileMissionGlob,
-  matchMissionProtectedPath,
-  missionPathRejection,
   missionProtectedSetDigest,
 } from "@osstack/governance";
+import { checkLocalFailureRepairPaths } from "./contained-mission-local-failure-paths.js";
 import type { DiagnosisPorts } from "./contained-mission-diagnosis.js";
 import { validateContainedStart } from "./contained-mission-host.js";
 import { parseContainedMissionSpec } from "./contained-mission-runner.js";
@@ -33,40 +32,7 @@ export interface LocalFailureDispatchPorts extends Pick<DiagnosisPorts, "store" 
   fault?: DispatchInput["fault"];
 }
 
-export const LOCAL_FAILURE_PROTECTED_GLOBS = Object.freeze([
-  "**/*.test.*",
-  "**/*.spec.*",
-  "**/*_test.*",
-  "**/test_*.py",
-  "**/tests/**",
-  "**/test/**",
-  "**/__tests__/**",
-  "**/SKILL.md",
-  "**/skills/**",
-  "**/*-skill/**",
-  "loop-engineering/**",
-  "**/verification-profiles/**",
-]);
-
-const localProtectedPaths = LOCAL_FAILURE_PROTECTED_GLOBS.map((glob) =>
-  compileMissionGlob(glob, { caseInsensitive: true }),
-);
-
-/** Check inherited scope entries at admission and concrete paths during candidate review. */
-export function checkLocalFailureRepairPaths(
-  paths: readonly string[],
-  verificationPaths: readonly string[] = [],
-): "verify_protected_path" | null {
-  return paths.some(
-    (path) =>
-      missionPathRejection(path) ||
-      matchMissionProtectedPath(path).length ||
-      localProtectedPaths.some((pattern) => pattern.test(path)) ||
-      verificationPaths.some((glob) => compileMissionGlob(glob).test(path)),
-  )
-    ? "verify_protected_path"
-    : null;
-}
+export { LOCAL_FAILURE_PROTECTED_GLOBS, checkLocalFailureRepairPaths } from "./contained-mission-local-failure-paths.js";
 
 export function recoverLocalFailureDispatch(
   p: Pick<LocalFailureDispatchPorts, "store">,

@@ -428,3 +428,29 @@ it.each(["review", "actions_repair"])("enforces the dispatch insert trigger agai
   ).toMatchObject({ status: "refused", reason: "verify_chain_busy" });
   expect(snapshot()).toEqual(before);
 });
+
+it.each(["withdrawn", "superseded", "grant", "head", "base", "expired", "early"] as const)(
+  "rechecks %s at publication without writing", (change) => {
+    const { f, r, input, store } = fixture();
+    const invalid = { ok: false, reason: "verify_publish_authority_invalid" };
+    expect(store.publicationFence("missing", input.now())).toEqual(invalid);
+    const d = store.dispatch(input);
+    if (d.status !== "dispatched") throw Error(d.reason);
+    let now = input.now();
+    const check = () => f.db.transaction(() => store.publicationFence(d.child_mission_id, now))();
+    const writes = () => f.db.prepare("SELECT total_changes() AS n").get();
+    const before = writes();
+    expect(check()).toEqual({ ok: true, dispatch_id: d.dispatch_id, root_mission_id: r.root_mission_id,
+      request_id: r.request_id, result_id: r.result_id, source_seq: r.source_seq, head_sha: r.head_sha,
+      base_sha: r.base_sha, grant_digest: f.facts.grant_digest });
+    expect(writes()).toEqual(before);
+    if (change === "withdrawn") record(f, withdrawalVerificationFixture());
+    if (change === "superseded") record(f, { ...passedVerificationFixture(), result_id: randomUUID(), attempt: 2, supersedes_result_id: r.result_id });
+    if (change === "grant") f.db.exec("UPDATE engineering_revision_chains SET grant_json=grant_json||' ', revision=revision+1");
+    if (change === "head" || change === "base") f.db.prepare("UPDATE engineering_revision_chains SET published_" + change + "=?, revision=revision+1").run("f".repeat(40));
+    if (change === "expired") now = f.facts.grant.expires_at;
+    if (change === "early") now = f.facts.grant.issued_at - 1;
+    expect(check()).toEqual({ ok: false, reason: change === "head" ? "verify_stale_head" : change === "base" ? "verify_base_changed"
+      : change === "withdrawn" || change === "superseded" ? "verify_source_revoked" : invalid.reason });
+  },
+);
