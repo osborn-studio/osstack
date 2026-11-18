@@ -575,8 +575,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     ...coreProductViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-core-product-allowlist.json"), "utf8"))),
     ...packageContractViolations(repoRoot),
     ...docsLinkViolations(repoRoot, docsAllowlist),
-    // Baseline: cli-entry.ts 2 files (+1), bin.ts 178 files (+4).
-    ...startupGraphViolations(repoRoot, { entry: 3, bin: 182 }).errors,
+    // 2026-11-17: bin.ts reaches 6 files. Lazy-load new code at its use site instead of raising
+    // the limit. Lower the limit when the count drops.
+    ...startupGraphViolations(repoRoot, { entry: 3, bin: 21 }).errors,
   ];
   if (results.length) { console.error(results.join("\n")); process.exitCode = 1; }
   else console.log("deterministic repository rules: ok");

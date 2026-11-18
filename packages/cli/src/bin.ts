@@ -21,35 +21,17 @@ type ProofPackModule = typeof import("./proof-pack.js");
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { inflateRawSync } from "node:zlib";
-import { parse as parseYaml } from "yaml";
-import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 // @osstack/agents (~65ms: 11 adapters, zod capability parsing at module
 // scope) is loaded lazily at its single use site in handleLoopCommand.
-import {
-  loadProofEvidence,
-  renderComplianceReport,
-  renderProofViewFromProofDir,
-  validateProofEvidence,
-  type ProofAudience,
-} from "@osstack/compliance";
-import {
-  validateWorkspaceContracts,
-  type ContractValidationReport,
-} from "@osstack/contracts";
-import {
-  getLatestSuccessfulRollbackDrill,
-  getRun,
-  listEventsForRun,
-  listPitfallLessons,
-  type loadRepoConfig,
-  PolicyProfile as PolicyProfileSchema,
-  PIIRedactor,
-  RepoConfig as RepoConfigSchema,
+import type { ProofAudience } from "@osstack/compliance";
+import type { ContractValidationReport } from "@osstack/contracts";
+import type {
+  loadRepoConfig,
+  RecordRollbackDrillInput,
   rollbackDrillEligibilityEvidence,
-  type RecordRollbackDrillInput,
   upsertPitfallLesson,
 } from "@osstack/core";
-import { guardedOpenDb as openDb } from "./guarded-open-db.js";
+import type { guardedOpenDb as openDb } from "./guarded-open-db.js";
 import type { LoopProfileSummary } from "./loop-profile-routing.js";
 // @osstack/governance (~20ms) loads lazily at its three scan/doctor sites.
 import type { GovernanceFinding } from "@osstack/governance";
@@ -66,63 +48,32 @@ import type {
   LoopState,
   ReviewArtifact,
 } from "@osstack/loop";
-import { evaluatePolicyGate, makePolicyGate, OBSERVE_POLICY_DENIED_REASON } from "./policy-gate.js";
-import {
-  cacheKnowledgeFeedback,
-  evaluateKnowledgeRetrieval,
-  ingestKnowledgeSource,
-  importKnowledgeSource,
-  listCachedKnowledgePacks,
-  loadKnowledgePackIndex,
-  loadKnowledgePack,
-  pinKnowledgePack,
-  pruneKnowledgeCache,
+import type {
+  KnowledgePack,
+  KnowledgePackManifest,
+  KnowledgeScope,
+  KnowledgeMode,
+  KnowledgeRetrievalEvalCase,
+  KnowledgeSearchEvidence,
   resolveKnowledgeSearch,
-  syncKnowledgeCache,
-  validateKnowledgePublishGate,
-  type KnowledgePack,
-  type KnowledgePackManifest,
-  type KnowledgeScope,
-  type KnowledgeMode,
-  type KnowledgeRetrievalEvalCase,
-  type KnowledgeSearchEvidence,
 } from "@osstack/knowledge";
-import { initProject } from "@osstack/skills";
 // Command modules that pull heavy dependency trees (@osstack/loop, agents,
 // github, governance, supervisor, the 3.8k-line daemon) are imported lazily
 // at their dispatch sites — see the Performance Budgets section in AGENTS.md.
 // Static imports here are paid by EVERY osstack invocation.
 import type { LoopDoctorCheck, LoopDoctorResult } from "./product-entry-command.js";
 import type { DeliverCommandDeps } from "./deliver-command.js";
-import {
-  cockpitTuiModel,
-  renderCockpitFullscreen,
-  renderCockpitTui,
-  renderCockpitTuiAction,
-  runInteractiveCockpitFullscreen,
-  runInteractiveCockpitTui,
-  selectCockpitTuiAction,
-  type CockpitKnowledgeSummary,
-  type CockpitTuiActionSelection,
+import type {
+  CockpitKnowledgeSummary,
+  CockpitTuiActionSelection,
 } from "./cockpit-tui.js";
 import { applyDeployedEnvDefaults } from "./deployed-home.js";
 import { logsDir, osstackHome, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
-import { handlePolicyCommand } from "./policy-command.js";
-import { resolveRegistryPath } from "./supervisor-cli-support.js";
-import { renderUpdateCheckStatus, type UpdateCheckCache } from "./update-check.js";
-import { handleHubCommand, buildRealHubCliDeps } from "./hub-cli.js";
+import type { UpdateCheckCache } from "./update-check.js";
 import type { LoopProbeObservationResultV1 } from "./loop-probe-observer.js";
 import type { LoopNeatFinalizerResultV1 } from "./loop-neat-finalizer.js";
-import { runAutonomyHealth } from "./autonomy-health.js";
 import type { GuardedGitProofInput, GuardedGitRuntime } from "./guarded-git-runtime.js";
-import {
-  assertGuardedCandidateBase,
-  computeDeployScriptAuthority,
-  loadPrivateRepoOverlay,
-  mergeRepoPolicy,
-  runControlledRollbackDrill,
-} from "@osstack/autonomy";
 // @osstack/supervisor statically chains to loop/governance/agents/github
 // (~177ms combined). Its two consumers load it lazily at their call sites.
 
@@ -357,6 +308,7 @@ interface ServeLaunchdUninstallResult extends ServeLaunchdStatus {
 }
 
 async function rpc(method: string, params?: unknown, timeoutMs = 10_000): Promise<unknown> {
+  const { encodeFrame, FrameDecoder } = await import("@osstack/hermes-adapter");
   return new Promise((resolve, reject) => {
     const sock: Socket = connect(socketPath());
     const decoder = new FrameDecoder();
@@ -770,6 +722,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     try {
       const u = (await rpc("update.status", undefined, 3_000)) as RpcResp;
       const cache = (u.result as { cache?: UpdateCheckCache })?.cache ?? null;
+      const { renderUpdateCheckStatus } = await import("./update-check.js");
       console.log(renderUpdateCheckStatus(cache, VERSION));
     } catch { /* older daemon without update.status */ }
     return 0;
@@ -812,6 +765,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "hub") {
     // Private Hub candidate/publish (Phase 2B). Prints the command's own JSON/
     // text result and returns its exit code. No dashboard routes.
+    const { handleHubCommand, buildRealHubCliDeps } = await import("./hub-cli.js");
     const result = await handleHubCommand(args.slice(1), buildRealHubCliDeps());
     if (result.stdout !== "") process.stdout.write(result.stdout + "\n");
     return result.exitCode;
@@ -918,6 +872,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "autonomy") {
     const dbPath = await ensureLocalStateDbPath();
+    const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
     const db = openDb({ path: dbPath });
     try {
       try {
@@ -935,7 +890,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
           db,
           dbPath,
           trustedApprovalPublicKeys,
-          health: () => runAutonomyHealth({
+          health: async () => (await import("./autonomy-health.js")).runAutonomyHealth({
             db,
             db_path: dbPath,
             home: osstackHome(),
@@ -1019,6 +974,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
 
   if (cmd === "neat") {
     const { handleNeatCommand } = await import("./neat-command.js");
+    const { evaluatePolicyGate } = await import("./policy-gate.js");
     return await handleNeatCommand(args.slice(1), {
       cwd: () => process.cwd(),
       stdout: (value) => console.log(value),
@@ -1198,6 +1154,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "policy") {
+    const { handlePolicyCommand } = await import("./policy-command.js");
     return await handlePolicyCommand(args.slice(1));
   }
 
@@ -1224,6 +1181,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   if (cmd === "init") {
     // S5 V1 shim: V2 equivalent of `osb-init`. Idempotent.
     const target = args[1] ?? process.cwd();
+    const { initProject } = await import("@osstack/skills");
     const result = initProject(target);
     console.log(`osstack init: ${result.project} @ ${target}`);
     for (const p of result.created) console.log(`  created  ${p}`);
@@ -2605,6 +2563,7 @@ async function releaseProofValidationCheck(
   options: { discovered?: boolean } = {},
 ): Promise<ReleaseDoctorCheck> {
   try {
+    const { loadProofEvidence, validateProofEvidence } = await import("@osstack/compliance");
     const evidence = await loadProofEvidence(proofDir);
     const validation = validateProofEvidence({ evidence });
     const fileIntegrity = await validateProofFileIntegrity(proofDir, evidence.manifest);
@@ -5258,6 +5217,7 @@ Env:
     const packPaths = flagValues(args, "--pack");
     const officialRequested = args.includes("--official");
     const explicitSourceRequested = packPaths.length > 0 || officialRequested;
+    const { listCachedKnowledgePacks, loadKnowledgePack } = await import("@osstack/knowledge");
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
       ...await officialKnowledgePacksIfRequested(args),
@@ -5333,6 +5293,7 @@ Env:
     const authToken = resolveKnowledgeAuthToken(args, config);
     const privatePacks = args.includes("--private");
     const tenantId = flagValue(args, "--tenant");
+    const { syncKnowledgeCache } = await import("@osstack/knowledge");
     const evidence = await syncKnowledgeCache({
       cacheDir: knowledgeCacheDir(args),
       cloudUrl,
@@ -5389,6 +5350,7 @@ Env:
       console.error("osstack: --stale-policy must be one of warn, strict");
       return 1;
     }
+    const { listCachedKnowledgePacks, loadKnowledgePack, resolveKnowledgeSearch } = await import("@osstack/knowledge");
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
       ...await officialKnowledgePacksIfRequested(args),
@@ -5444,6 +5406,7 @@ Env:
       return 1;
     }
     const packPaths = flagValues(args, "--pack");
+    const { listCachedKnowledgePacks, loadKnowledgePack } = await import("@osstack/knowledge");
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
       ...await officialKnowledgePacksIfRequested(args),
@@ -5525,6 +5488,7 @@ Env:
       console.error("osstack: --quality-score must be an integer from 0 to 100");
       return 1;
     }
+    const { importKnowledgeSource } = await import("@osstack/knowledge");
     const manifest = await importKnowledgeSource({
       path: sourcePath,
       id,
@@ -5606,6 +5570,7 @@ Env:
       console.error("osstack: knowledge ingest review metadata requires both --reviewer and --review-status");
       return 1;
     }
+    const { ingestKnowledgeSource } = await import("@osstack/knowledge");
     const manifest = await ingestKnowledgeSource({
       path: sourcePath,
       id,
@@ -5649,6 +5614,7 @@ Env:
       console.error("osstack: knowledge validate requires at least one --pack path or --official");
       return 1;
     }
+    const { loadKnowledgePack, validateKnowledgePublishGate } = await import("@osstack/knowledge");
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
       ...await officialKnowledgePacksIfRequested(args),
@@ -5687,6 +5653,7 @@ Env:
     }
     const tenantId = flagValue(args, "--tenant");
     const authToken = resolveKnowledgeAuthToken(args, config);
+    const { loadKnowledgePack } = await import("@osstack/knowledge");
     const pack = await loadKnowledgePack(packPath);
     try {
       const published = await publishKnowledgePack({
@@ -5715,6 +5682,7 @@ Env:
       return 1;
     }
     try {
+      const { pinKnowledgePack } = await import("@osstack/knowledge");
       const pin = await pinKnowledgePack(knowledgeCacheDir(args), spec);
       if (args.includes("--json")) {
         console.log(JSON.stringify({ pin }, null, 2));
@@ -5734,6 +5702,7 @@ Env:
       console.error(`osstack: ${keep.message}`);
       return 1;
     }
+    const { pruneKnowledgeCache } = await import("@osstack/knowledge");
     const result = await pruneKnowledgeCache({
       cacheDir: knowledgeCacheDir(args),
       ...(keep === undefined ? {} : { keepVersions: keep }),
@@ -5767,6 +5736,7 @@ Env:
     const cloudUrl = resolveKnowledgeCloudUrl(args, config);
     const authToken = resolveKnowledgeAuthToken(args, config);
     const tenantId = flagValue(args, "--tenant");
+    const { cacheKnowledgeFeedback } = await import("@osstack/knowledge");
     const feedback = await cacheKnowledgeFeedback({
       cacheDir: knowledgeCacheDir(args),
       chunkId,
@@ -5863,6 +5833,7 @@ Env:
       console.error("osstack: --top-k must be a positive integer");
       return 1;
     }
+    const { loadKnowledgePack, evaluateKnowledgeRetrieval } = await import("@osstack/knowledge");
     const packs = [
       ...await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath))),
       ...await officialKnowledgePacksIfRequested(args),
@@ -5888,6 +5859,7 @@ Env:
       console.error("osstack: knowledge sources requires --internal to show provenance");
       return 1;
     }
+    const { listCachedKnowledgePacks, loadKnowledgePack } = await import("@osstack/knowledge");
     const packs = [
       ...(packPath === undefined ? [] : [await loadKnowledgePack(packPath)]),
       ...await officialKnowledgePacksIfRequested(args),
@@ -5970,6 +5942,7 @@ async function loadOfficialKnowledgePacks(): Promise<KnowledgePack[]> {
   const failures: string[] = [];
   for (const indexPath of candidates) {
     try {
+      const { loadKnowledgePack, loadKnowledgePackIndex } = await import("@osstack/knowledge");
       const index = await loadKnowledgePackIndex(indexPath);
       const indexDir = dirname(indexPath);
       return Promise.all(index.packs.map((pack) => loadKnowledgePack(join(indexDir, pack.path))));
@@ -6268,9 +6241,11 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
       return 1;
     }
     const dbPath = await ensureLocalStateDbPath();
+    const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
     const db = openDb({ path: dbPath });
     try {
       const family = flagValue(args, "--family");
+      const { listPitfallLessons } = await import("@osstack/core");
       const lessons = listPitfallLessons(db, {
         ...(family !== undefined ? { family } : {}),
         ...(limit !== undefined ? { limit } : {}),
@@ -6302,8 +6277,10 @@ async function handleLessonsCommand(args: string[]): Promise<number> {
     }
     const candidates = derivePitfallLessonsFromState(state);
     const dbPath = await ensureLocalStateDbPath();
+    const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
     const db = openDb({ path: dbPath });
     try {
+      const { upsertPitfallLesson } = await import("@osstack/core");
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
       // Related successes do not prove that any lesson was used or effective.
       const verifiedLessons: ReturnType<typeof upsertPitfallLesson>[] = [];
@@ -6374,6 +6351,7 @@ async function observeLoopProbeEvents(
       throw new Error("structured implementation deviations require a Git source revision");
     }
     const repoRoot = realpathSync(workspacePath);
+    const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
     const db = openDb({ path: await ensureLocalStateDbPath() });
     try {
       const { resolveProbeRepositoryId } = await import("./probe-command.js");
@@ -6424,8 +6402,10 @@ async function learnLessonsFromLoopState(state: LoopState): Promise<{
   const candidates = derivePitfallLessonsFromState(state);
   try {
     const dbPath = await ensureLocalStateDbPath();
+    const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
     const db = openDb({ path: dbPath });
     try {
+      const { upsertPitfallLesson } = await import("@osstack/core");
       const lessons = candidates.map((candidate) => upsertPitfallLesson(db, dbPath, candidate));
       // Related successes do not prove that any lesson was used or effective.
       const verifiedLessons: ReturnType<typeof upsertPitfallLesson>[] = [];
@@ -7089,6 +7069,7 @@ async function handleProofValidateCommand(args: string[]): Promise<number> {
   const packId = flagValue(args, "--pack");
   const language = resolveLanguage(flagValue(args, "--lang"));
   try {
+    const { loadProofEvidence, validateProofEvidence } = await import("@osstack/compliance");
     const evidence = await loadProofEvidence(proofDir);
     const validation = validateProofEvidence({
       evidence,
@@ -7148,6 +7129,7 @@ async function handleProofViewCommand(args: string[]): Promise<number> {
   const proofDir = flagValue(args, "--proof-dir") ?? join(workspacePath, "release", `osstack-proof-${safeFileSegment(runId)}`);
   const output = flagValue(args, "--output") ?? join(workspacePath, "reports", `proof-view-${audience}-${safeFileSegment(runId)}.md`);
   const language = resolveLanguage(flagValue(args, "--lang"));
+  const { renderProofViewFromProofDir } = await import("@osstack/compliance");
   const markdown = await renderProofViewFromProofDir({ audience, runId, proofDir, language });
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, markdown, "utf-8");
@@ -7874,8 +7856,10 @@ async function readPersistedLoopRunEvidence(runId: string): Promise<{
   events: LoopEvent[];
 } | Error> {
   const dbPath = await ensureLocalStateDbPath();
+  const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
   const db = openDb({ path: dbPath });
   try {
+    const { getRun, listEventsForRun } = await import("@osstack/core");
     const run = getRun(db, runId);
     if (run === undefined) return new Error(`no persisted run found for run_id=${runId}`);
     const rows = listEventsForRun(db, runId);
@@ -7997,7 +7981,7 @@ async function writeProofPack(
     { path: "governance-results.json", content: `${JSON.stringify(governance, null, 2)}\n` },
     { path: "knowledge-results.json", content: `${JSON.stringify(knowledge, null, 2)}\n` },
     { path: "contract-validation.json", content: `${JSON.stringify(contractValidation, null, 2)}\n` },
-    { path: "logs/events.log", content: renderProofEventsLog(events) },
+    { path: "logs/events.log", content: await renderProofEventsLog(events) },
   ];
   artifacts.push(...createProofStageArtifacts(stageInput));
   artifacts.push(...createVerifierOutputArtifacts(verifyResults));
@@ -8006,6 +7990,7 @@ async function writeProofPack(
   }
   const complianceReports: Array<{ pack_id: string; path: string; certification_claim: "none" }> = [];
   for (const packId of compliancePackIds) {
+    const { renderComplianceReport } = await import("@osstack/compliance");
     const path = `compliance-${safeFileSegment(packId)}.md`;
     complianceReports.push({ pack_id: packId, path, certification_claim: "none" });
     artifacts.push({
@@ -8028,6 +8013,7 @@ async function writeProofPack(
 
   await mkdir(proofDir, { recursive: true });
   const manifestArtifacts: Array<{ path: string; sha256: string; bytes: number }> = [];
+  const { PIIRedactor } = await import("@osstack/core");
   const redactor = new PIIRedactor();
   for (const artifact of artifacts) {
     const artifactPath = join(proofDir, artifact.path);
@@ -8180,6 +8166,7 @@ async function createGitDiffProofArtifact(workspacePath: string): Promise<{ path
       "HEAD",
       "--",
     ], { timeout: 15_000, maxBuffer: 10 * 1024 * 1024 });
+    const { PIIRedactor } = await import("@osstack/core");
     const redacted = new PIIRedactor().redact(stdout).text;
     return {
       path: "git-diff.patch",
@@ -8528,6 +8515,7 @@ async function createContractProofEvidence(workspacePath: string | undefined): P
     };
   }
   try {
+    const { validateWorkspaceContracts } = await import("@osstack/contracts");
     return await validateWorkspaceContracts({ workspacePath: resolvedWorkspace, manifestPath });
   } catch (error) {
     return {
@@ -8852,6 +8840,7 @@ async function createKnowledgeProofEvidence(
   if (packPaths.length === 0 && cloudUrl === undefined && mode !== "cloud") return offKnowledgeEvidence();
   const query = flagValue(args, "--knowledge-query") ?? defaultQuery;
   try {
+    const { loadKnowledgePack, resolveKnowledgeSearch } = await import("@osstack/knowledge");
     const packs = await Promise.all(packPaths.map((packPath) => loadKnowledgePack(packPath)));
     return await resolveKnowledgeSearch(knowledgeSearchOptions({
       mode,
@@ -8929,11 +8918,12 @@ function knowledgeProofFromTrace(trace: LoopKnowledgeTrace): KnowledgeProofEvide
   };
 }
 
-function renderProofEventsLog(events: LoopEvent[]): string {
+async function renderProofEventsLog(events: LoopEvent[]): Promise<string> {
   const lines = events.map((event) => `${event.seq} ${event.type} ${proofEventSummary(event)}`);
   const content = lines.length === 0
     ? "No loop events were provided for this proof pack.\n"
     : `${lines.join("\n")}\n`;
+  const { PIIRedactor } = await import("@osstack/core");
   return new PIIRedactor().redact(content).text;
 }
 
@@ -9426,6 +9416,7 @@ function parseContextJson(value: string | undefined): Record<string, unknown> | 
 // ungated daemon path is the read-only `daily` composition (deferred to R2.3,
 // and read-only work is exactly what observe mode permits).
 async function enforceObservePolicyGate(workspacePath: string): Promise<number | undefined> {
+  const { evaluatePolicyGate, OBSERVE_POLICY_DENIED_REASON } = await import("./policy-gate.js");
   const decision = await evaluatePolicyGate(workspacePath);
   if (decision.allow) return undefined;
   // biome-ignore lint/suspicious/noControlCharactersInRegex: Escape terminal controls in untrusted policy diagnostics.
@@ -9609,6 +9600,7 @@ async function guardedPolicySnapshot(
   let repoValue: unknown;
   let policyValue: unknown;
   try {
+    const { parse: parseYaml } = await import("yaml");
     repoValue = parseYaml(repoRaw);
     policyValue = parseYaml(policyRaw);
   } catch (error) {
@@ -9618,6 +9610,7 @@ async function guardedPolicySnapshot(
       }`,
     );
   }
+  const { PolicyProfile: PolicyProfileSchema, RepoConfig: RepoConfigSchema } = await import("@osstack/core");
   const parsedRepoConfig = RepoConfigSchema.parse(repoValue);
   const policyProfile = PolicyProfileSchema.parse(policyValue);
   if (parsedRepoConfig?.schema_version !== 2) {
@@ -9641,6 +9634,7 @@ async function guardedPolicySnapshot(
     : /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(basename(workspacePath))
       ? basename(workspacePath)
       : `repo-${sha256(workspacePath).slice(0, 16)}`;
+  const { loadPrivateRepoOverlay, mergeRepoPolicy } = await import("@osstack/autonomy");
   const privateOverlay = await loadPrivateRepoOverlay(
     osstackHome(),
     privatePolicyId,
@@ -9726,6 +9720,11 @@ async function executeControlledRollbackDrill(
       "rollback drill registry id does not match the GitHub remote",
     );
   }
+  const {
+    assertGuardedCandidateBase,
+    computeDeployScriptAuthority,
+    runControlledRollbackDrill,
+  } = await import("@osstack/autonomy");
   await assertGuardedCandidateBase({
     workspace_path: workspacePath,
     remote: policy.repoConfig.git.remote,
@@ -10050,6 +10049,7 @@ const startGuardedGitDelivery: NonNullable<
         `guarded-git requires a ${policy.repoConfig.git.branch_prefix}/ feature branch; found ${branch || "(detached)"}`,
       );
     }
+    const { assertGuardedCandidateBase } = await import("@osstack/autonomy");
     const verifiedBase = await assertGuardedCandidateBase({
       workspace_path: input.workspacePath,
       remote: policy.repoConfig.git.remote,
@@ -10072,8 +10072,10 @@ const startGuardedGitDelivery: NonNullable<
       policy.repoConfig.deploy?.production !== undefined
     ) {
       const drillDbPath = await ensureLocalStateDbPath();
+      const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
       const drillDb = openDb({ path: drillDbPath });
       try {
+        const { getLatestSuccessfulRollbackDrill, rollbackDrillEligibilityEvidence } = await import("@osstack/core");
         rollbackDrill = rollbackDrillEligibilityEvidence(
           getLatestSuccessfulRollbackDrill(drillDb, repoId),
         );
@@ -10164,6 +10166,7 @@ const startGuardedGitDelivery: NonNullable<
         }),
       );
     const dbPath = await ensureLocalStateDbPath();
+    const { guardedOpenDb: openDb } = await import("./guarded-open-db.js");
     const db = openDb({ path: dbPath });
     try {
       const trust = await readAutonomyApprovalTrustStore(
@@ -10627,7 +10630,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ? (await import("./loop-self-improvement.js")).buildSelfImprovementConfig({
           repoId: selfImprovementRepoId!,
           proposeImprovements,
-          registryPath: resolveRegistryPath(args),
+          registryPath: (await import("./supervisor-cli-support.js")).resolveRegistryPath(args),
         })
       : undefined;
     const engine = new LoopEngine({
@@ -10660,7 +10663,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(shouldRecordLoopKnowledge(args, knowledge) ? { knowledge } : {}),
       // Kernel gate (R2.2): defense-in-depth over the upfront gate; a mid-run
       // flip to observe stops `--cycles` runs cleanly on the next tick.
-      policyGate: repositoryLease === undefined ? makePolicyGate(workspacePath) : (await import("./repository-policy.js")).makeRepositoryPolicyGate(workspacePath),
+      policyGate: repositoryLease === undefined ? (await import("./policy-gate.js")).makePolicyGate(workspacePath) : (await import("./repository-policy.js")).makeRepositoryPolicyGate(workspacePath),
       ...(repositoryLease === undefined ? {} : { lifecycleLease: async () => ({ release: async () => {}, retain: () => { unconfirmed = true; } }) }),
     });
     const result = runCycles
@@ -11466,6 +11469,7 @@ async function handleDailyScheduleCommand(args: string[]): Promise<number> {
     // Resolve the registry path here (client cwd/OSSTACK_HOME) and hand the
     // daemon an absolute path it stores verbatim — same resolution the manual
     // `daily` run uses, so a scheduled brief reads the same registry.
+    const { resolveRegistryPath } = await import("./supervisor-cli-support.js");
     const registryPath = resolveRegistryPath(args);
     const scheduleExpression = flagValue(args, "--schedule");
     const resp = await rpc("daily.schedule", {
@@ -12119,6 +12123,15 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
   }
   const snapshot = workspaceScopedCockpitSnapshot(snapshotResp.result, args);
   const knowledge = await cockpitKnowledgeSummary(args);
+  const {
+    cockpitTuiModel,
+    renderCockpitFullscreen,
+    renderCockpitTui,
+    renderCockpitTuiAction,
+    runInteractiveCockpitFullscreen,
+    runInteractiveCockpitTui,
+    selectCockpitTuiAction,
+  } = await import("./cockpit-tui.js");
   const model = cockpitTuiModel(healthResp.result, snapshot, knowledge);
   if (args.includes("--interactive")) {
     if (args.includes("--fullscreen")) {
@@ -12154,6 +12167,7 @@ async function handleCockpitTuiCommand(args: string[]): Promise<number> {
 
 async function cockpitKnowledgeSummary(args: string[]): Promise<CockpitKnowledgeSummary> {
   const cacheDir = knowledgeCacheDir(args);
+  const { listCachedKnowledgePacks } = await import("@osstack/knowledge");
   const packs = await listCachedKnowledgePacks(cacheDir);
   const topPack = [...packs].sort((a, b) => (
     b.manifest.quality_score - a.manifest.quality_score
@@ -12200,6 +12214,7 @@ async function executeCockpitTuiAction(
   if (options.json) {
     console.log(JSON.stringify(payload, null, 2));
   } else {
+    const { renderCockpitTuiAction } = await import("./cockpit-tui.js");
     console.log(renderCockpitTuiAction(selection));
     console.log(`exit_code=${result.exit_code}`);
     if (result.stdout.length > 0) {
@@ -12645,7 +12660,8 @@ function printCockpitNextSteps(nextSteps: unknown[], text: ReturnType<typeof coc
   if (nextSteps.length === 0) console.log(`  ${text.none}`);
 }
 
-function streamFrames(method: string, params: unknown): Promise<number> {
+async function streamFrames(method: string, params: unknown): Promise<number> {
+  const { encodeFrame, FrameDecoder } = await import("@osstack/hermes-adapter");
   return new Promise((resolve) => {
     const sock = connect(socketPath());
     const decoder = new FrameDecoder();
