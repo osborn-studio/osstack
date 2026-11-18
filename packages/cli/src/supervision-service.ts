@@ -6,11 +6,14 @@ import {
   AttentionObserver,
   AttentionExperience,
   AttentionActions,
+  DecisionQueries,
   attentionDigest,
   readAttentionRecovery,
   type AttentionReminderPolicy,
   type AttentionSender,
+  type ExternalAttentionDecisions,
 } from "@osstack/core";
+import { createDecisionNoticeSource } from "./decisions/notices.js";
 type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
 export interface SupervisionOptions {
   loopReader?: (input: LoopReadInput) => Promise<unknown>;
@@ -62,6 +65,7 @@ export class SupervisionService {
   readonly store: AttentionStore;
   readonly observer: AttentionObserver;
   readonly experience: AttentionExperience;
+  private readonly experienceOptions: { reminders: boolean; externalDecisions?: ExternalAttentionDecisions };
   private delivering = false;
   private deliveryRecoveryNeeded = false;
   private readonly deliveryAbort = new AbortController();
@@ -96,7 +100,8 @@ export class SupervisionService {
       this.store,
       this.store.claimOwner(randomUUID())
     );
-    this.experience = new AttentionExperience(this.store, this.observer.owner, { reminders: this.options.reminders !== undefined });
+    this.experienceOptions = { reminders: this.options.reminders !== undefined };
+    this.experience = new AttentionExperience(this.store, this.observer.owner, this.experienceOptions);
     this.experience.recoverDeliveries();
     new AttentionActions(this.store, this.observer.owner).recover();
   }
@@ -194,6 +199,15 @@ export class SupervisionService {
     for (const scope of this.store.listScopes()) {
       try { this.experience.enqueue(scope.scope_id); }
       catch (error) { this.noteScanError(error); /* Keep observed items; one unavailable scope must not block other notices. */ }
+    }
+    if (this.sender) {
+      try {
+        this.experienceOptions.externalDecisions ??= createDecisionNoticeSource(
+          new DecisionQueries(this.store.db), () => this.store.listScopes().map(scope => scope.scope_id),
+          Date.now, code => this.noteScanError(code),
+        );
+        this.experience.enqueueExternal();
+      } catch (error) { this.noteScanError(error); }
     }
     if (this.sender && this.options.reminders) {
       try { this.experience.scheduleReminders(this.options.reminders); }
@@ -349,7 +363,8 @@ export class SupervisionService {
       return { limit };
     };
     const scopeId = str("scope_id");
-    if (!this.store.getScope(scopeId)) throw new Error("not_found");
+    const hostDeliveryRead = scopeId === "host" && (method === "attention.deliveries" || method === "attention.return-brief");
+    if (!hostDeliveryRead && !this.store.getScope(scopeId)) throw new Error("not_found");
     if (method === "attention.recovery") {
       if (Array.isArray(p) || Object.keys(p).some(key => !["scope_id","after","limit"].includes(key)) || (p["after"] !== undefined && typeof p["after"] !== "string") || (p["limit"] !== undefined && typeof p["limit"] !== "number")) throw new Error("invalid_recovery_request");
       return readAttentionRecovery(this.store,this.observer.owner,{scope_id:scopeId,...(p["after"] === undefined ? {} : {after:p["after"] as string}),...(p["limit"] === undefined ? {} : {limit:p["limit"] as number})});

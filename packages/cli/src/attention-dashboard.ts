@@ -99,8 +99,12 @@ export function readAttentionDashboard(db: Database.Database, options: Attention
           SUM(state='answer_uncertain') AS uncertain_answers,SUM(state='source_missing') AS missing_source_items,
           SUM(state='answer_applied') AS applied_answers
         FROM attention_items i JOIN filtered f ON f.scope_id=i.scope_id GROUP BY i.scope_id
+      ), failures AS (
+        SELECT scope_id FROM attention_deliveries WHERE state='dead_letter'
+        ${tables.has("attention_dead_letters") ? `UNION ALL
+          SELECT scope_id FROM attention_dead_letters WHERE kind='reminder' AND item_id GLOB 'decision:*'` : ""}
       ), delivery_counts AS (
-        SELECT d.scope_id,SUM(state='dead_letter') AS dead_letters FROM attention_deliveries d JOIN filtered f ON f.scope_id=d.scope_id GROUP BY d.scope_id
+        SELECT d.scope_id,COUNT(*) AS dead_letters FROM failures d JOIN filtered f ON f.scope_id=d.scope_id GROUP BY d.scope_id
       ), stats AS (
         SELECT f.*,${countKeys.map(key => `COALESCE(${key},0) AS ${key}`).join(",")},
           CASE WHEN f.sampled_at>@now THEN 'unknown'
@@ -115,7 +119,7 @@ export function readAttentionDashboard(db: Database.Database, options: Attention
         FROM filtered f LEFT JOIN subject_counts USING(scope_id) LEFT JOIN item_counts USING(scope_id) LEFT JOIN delivery_counts USING(scope_id)
       ) `;
       const params = { repo: result.workspace_path, now, cutoff: now - 65_000, generation: owner.generation };
-      const aggregate = db.prepare(query + `SELECT COUNT(*) AS scopes,${countKeys.map(k => `COALESCE(SUM(${k}),0) AS ${k}`).join(",")},
+      const aggregate = db.prepare(query + `SELECT COUNT(*) AS scopes,${countKeys.map(k => k === "dead_letters" ? `COALESCE(SUM(dead_letters),0) + (SELECT COUNT(*) FROM failures WHERE @repo IS NULL AND scope_id='host') AS dead_letters` : `COALESCE(SUM(${k}),0) AS ${k}`).join(",")},
         COALESCE(SUM(coverage IN ('stale','unknown')),0) AS stale_scopes,COALESCE(SUM(coverage='degraded'),0) AS degraded_scopes FROM stats`).get(params) as AttentionDashboardCounts & { stale_scopes: number; degraded_scopes: number };
       const { stale_scopes, degraded_scopes, ...totals } = aggregate;
       const rows = db.prepare(query + `SELECT scope_id,task_id,task_title,repo_path,sampled_at AS sampled_at_ms,coverage,reason,${countKeys.join(",")} FROM stats WHERE scope_id>@after ORDER BY scope_id LIMIT @limit`).all({ ...params, after, limit: limit + 1 }) as AttentionDashboardScope[];
