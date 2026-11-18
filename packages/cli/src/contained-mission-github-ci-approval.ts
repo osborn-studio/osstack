@@ -27,6 +27,7 @@ export function approveSandboxCiRepair(store: ContainedMissionStore, actor: Engi
     store.attention.assertOwner(store.owner);
     const mission = store.readable(actor, missionId);
     requireOperator(actor, mission.scope_id);
+    store.assertBelowDepthLimit(mission.mission_id);
     const spec = parseContainedMissionSpec(mission.spec_json);
     const facts = binding(mission, spec);
     const halt = latestCiEvent<{ reason: string }>(store, missionId, 'halted');
@@ -57,6 +58,7 @@ export function approveCiRepairOnce(store: ContainedMissionStore, actor: Enginee
   return store.attention.write(store.owner, () => {
     const mission = store.readable(actor, input.mission_id);
     requireOperator(actor, mission.scope_id);
+    store.assertBelowDepthLimit(mission.mission_id);
     if (input.decision_id && store.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='decision_accepted' AND json_extract(payload_json,'$.decision_id')=?").get(input.mission_id, input.decision_id)) throw Error('decision_id_conflict');
     const receipt = input.decision_id ? store.db.prepare("SELECT payload_json FROM engineering_contained_events WHERE mission_id=? AND kind='ci_repair_answer' AND json_extract(payload_json,'$.decision_id')=? LIMIT 1").get(input.mission_id, input.decision_id) as { payload_json: string } | undefined : undefined;
     const prior = receipt ? JSON.parse(receipt.payload_json) as { candidate: string; actor: string; session: string } : undefined;

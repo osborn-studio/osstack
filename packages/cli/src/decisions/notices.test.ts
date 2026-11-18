@@ -60,3 +60,26 @@ it("sends the redacted reference and its opaque identifiers in the webhook body"
     decision: { source: "autonomy", source_id: "run-1", local_signature_required: true },
     reference: { usage: "reference_only", summary: decision!.reference } });
 });
+
+it.each(["contained_mission", "ci_repair", "autonomy", "hermes", "revision_chain", "loop"] as const)("preserves %s delivery identity", async source => {
+  const { createHash } = await import("node:crypto");
+  const queries = new DecisionQueries({ prepare: () => ({ all: () => [] }) } as unknown as Database.Database);
+  vi.spyOn(queries, source).mockReturnValue([{ ...row("item"), waiting_since: 17 }]);
+  const id = createHash("sha256").update(JSON.stringify([source, "item", 17])).digest("hex").slice(0,32);
+  expect(createDecisionNoticeSource(queries, () => ["scope"], Date.now).pending()[0]?.item_id).toBe("decision:" + id);
+});
+
+it.each(["ci_repair","local_failure_repair"])("offers only abandon for a stopped %s candidate", async kind => {
+  const { decisionItem } = await import("./list.js");
+  expect(decisionItem("contained_mission", { ...row("stop"), reason: "verify_chain_depth_limit", state: "awaiting_decision",
+    details_json: JSON.stringify({ [kind]: {} }) }).allowed_answers).toEqual(["abandon"]);
+});
+
+it.each(['{"origin_mission_id":"root","parent_mission_id":"parent","depth":9}', 'broken'])("keeps a legacy or unreadable lineage notice ordinary", lineage_json => {
+  const queries = new DecisionQueries({ prepare: () => ({ all: () => [] }) } as unknown as Database.Database);
+  vi.spyOn(queries, "contained_mission").mockReturnValue([{ ...row("stop"), state: "awaiting_decision", reason: "verify_chain_depth_limit", lineage_json }]);
+  const notice = createDecisionNoticeSource(queries, () => ["scope"], Date.now).pending()[0]!;
+  expect(notice.source_id).toBe("stop");
+  expect(Object.keys(notice)).not.toContain("reason");
+  expect(Object.keys(notice)).not.toContain("chain");
+});

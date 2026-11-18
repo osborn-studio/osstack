@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createScratchDirSync } from "@osstack/core";
+import { MissionDecideRequest } from "@osstack/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { EngineeringAccess } from "./engineering-access.js";
 import type { ContainedMissionHost } from "./contained-mission-host.js";
@@ -11,21 +12,24 @@ import { ContainedMissionService } from "./contained-mission-rpc.js";
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
 const credential = "c".repeat(48);
+const readerCredential = "r".repeat(48);
 const scope = "a".repeat(64); const other = "b".repeat(64);
 const MID = "cm_00000000-0000-4000-8000-000000000000";
 
-function setup(draining = false, decideDelay = 0) {
+function setup(draining = false, decideDelay = 0, stoppedMissionId?: string) {
   const root = realpathSync(createScratchDirSync("tests", "contained-rpc"));
   cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
   const authDir = join(root, "auth"); mkdirSync(authDir, { mode: 0o700 });
   const path = join(authDir, "authority.json");
   writeFileSync(path, JSON.stringify({ version: 1, principals: [{ credential_sha256: createHash("sha256").update(credential).digest("hex"), principal_id: "owner", client_session_id: "console",
-    read_scopes: [scope], write_scopes: [scope], stop_scopes: [scope], operator_scopes: [] }] }), { mode: 0o600 });
+    read_scopes: [scope], write_scopes: [scope], stop_scopes: [scope], operator_scopes: [scope] },
+    { credential_sha256: createHash("sha256").update(readerCredential).digest("hex"), principal_id: "reader", client_session_id: "console",
+      read_scopes: [scope], write_scopes: [], stop_scopes: [], operator_scopes: [scope] }] }), { mode: 0o600 });
   const repo = join(root, "repo"); mkdirSync(repo);
   const calls: Array<[string, unknown]> = []; let ticks = 0; let release: (() => void) | undefined;
-  const mission = { mission_id: MID, state: "authorized", spec_json: "{\"goal\":\"secret-free\"}", revision: 1 };
+  const mission = { mission_id: MID, scope_id: scope, state: "authorized", spec_json: "{\"goal\":\"secret-free\"}", revision: 1 };
   const host = {
-    store: { get: () => mission, record: () => 1 },
+    store: { get: () => mission, readable: () => mission, record: () => 1, atDepthLimit: (id: string) => id === stoppedMissionId },
     start: (_principal: unknown, input: unknown) => { calls.push(["start", input]); return mission; },
     status: (_principal: unknown, id: string) => { calls.push(["status", id]); return { mission, events: [] }; },
     cancel: async (_principal: unknown, id: string) => { calls.push(["cancel", id]); return mission; },
@@ -80,6 +84,22 @@ describe("ContainedMissionService", () => {
     await f.service.handle("mission.decide", { credential, mission_id: MID, decision: "approve_publication" });
     await expect(f.service.handle("mission.decide", { credential, mission_id: MID, decision: "merge" })).rejects.toThrow("bad_request");
     expect(f.calls).toEqual([["cancel", MID], ["decide", { kind: "approve_publication" }]]);
+  });
+
+  it("requires write scope at the depth limit and forwards only abandon to the host", async () => {
+    const f = setup(false, 0, MID);
+    for (const caller of [credential, readerCredential]) {
+      const params = { credential: caller, mission_id: MID };
+      const reason = caller === credential ? "verify_chain_depth_limit" : "permission_denied";
+      for (const decision of MissionDecideRequest.shape.decision.options) {
+        if (decision === "abandon") continue;
+        await expect(f.service.handle("mission.decide", { ...params, decision })).rejects.toThrow(reason);
+      }
+      await expect(f.service.handle("mission.approve_ci_repair", { ...params, candidate: "d".repeat(40) })).rejects.toThrow(reason);
+    }
+    expect(f.calls).toEqual([]);
+    await f.service.handle("mission.decide", { credential, mission_id: MID, decision: "abandon" });
+    expect(f.calls).toEqual([["decide", { kind: "abandon" }]]);
   });
 
   it("refuses work-producing decisions while draining but still allows abandon and cancel", async () => {

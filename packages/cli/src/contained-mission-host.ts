@@ -165,6 +165,7 @@ export class ContainedMissionHost {
   async decide(principal: EngineeringPrincipal, missionId: string, decision: ContainedHostDecision): Promise<ContainedMission> {
     const mission = this.store.readable(principal, missionId);
     if (!principal.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
+    if (decision.kind !== 'abandon') this.store.assertBelowDepthLimit(missionId);
     if (this.inFlight.has(missionId)) throw Error('CONTAINED_MISSION_BUSY');
     let result: ContainedMission | undefined;
     if (decision.decision_id) this.activeDecisionIds.set(missionId, decision.decision_id);
@@ -201,7 +202,7 @@ export class ContainedMissionHost {
         if (this.inFlight.has(row.mission_id)) continue;
         let state: ContainedMission['state'];
         try { state = this.store.get(row.mission_id).state; } catch { continue; }
-        if (STEPPABLE.has(state)) launched.push(this.track(row.mission_id, async () => { await this.runner.step(row.mission_id); }));
+        if (STEPPABLE.has(state) && !this.store.atDepthLimit(row.mission_id)) launched.push(this.track(row.mission_id, async () => { await this.runner.step(row.mission_id); }));
       }
       if (rows.length < this.page) { this.cursor = undefined; break; }
     }
@@ -230,6 +231,7 @@ export class ContainedMissionHost {
 
   private async recoverOne(missionId: string): Promise<void> {
     const m = this.store.get(missionId);
+    if (m.state === 'awaiting_decision' && this.store.atDepthLimit(missionId)) return;
     // Host child processes first (W13 section 5): nothing below may release a claim, clear an obligation or move on while one is unproven.
     const unproven = await this.proveHostProcesses(m);
     if (TERMINAL.has(m.state)) {

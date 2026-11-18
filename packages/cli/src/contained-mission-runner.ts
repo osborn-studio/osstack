@@ -199,6 +199,7 @@ export class ContainedMissionRunner {
 
   /** Advance one state. Returns the Mission after the step; no-op for halted or terminal Missions. */
   async step(missionId: string): Promise<ContainedMission> {
+    this.ports.store.assertBelowDepthLimit(missionId);
     const m = this.ports.store.get(missionId); const spec = parseContainedMissionSpec(m.spec_json);
     if (spec.verification_mode && ['authorized', 'workspace_ready', 'candidate_ready', 'verified', 'revalidating', 'delivering'].includes(m.state)) {
       try { this.assertGithubCiScope(m, spec); }
@@ -263,6 +264,7 @@ export class ContainedMissionRunner {
 
   /** Synchronous admission check. It must not call a port or change either ledger. */
   decisionAllowed(m: ContainedMission, decision: ContainedDecision['kind']): boolean {
+    if (decision !== 'abandon') this.ports.store.assertBelowDepthLimit(m.mission_id);
     const reason = this.haltReason(m);
     if (decision === 'abandon') return ['awaiting_decision', 'needs_reconciliation', 'stop_unknown'].includes(m.state);
     if (decision === 'extra_repair') return m.state === 'awaiting_decision' && reason === 'repair_cycles_exhausted' && !JSON.parse(m.spec_json).local_failure_repair;
@@ -335,6 +337,7 @@ export class ContainedMissionRunner {
   }
 
   async decide(missionId: string, decision: IdentifiedContainedDecision): Promise<ContainedMission> {
+    if (decision.kind !== 'abandon') this.ports.store.assertBelowDepthLimit(missionId);
     if (decision.decision_id) this.activeDecisionIds.set(missionId, decision.decision_id);
     try { return await this.decideRun(missionId, decision); }
     finally { if (decision.decision_id) this.activeDecisionIds.delete(missionId); }

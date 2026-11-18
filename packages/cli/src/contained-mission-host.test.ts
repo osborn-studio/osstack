@@ -161,8 +161,13 @@ describe("ContainedMissionHost recovery", () => {
   it("moves an orphaned executor whose group is empty to needs_reconciliation", async () => {
     const f = fixture();
     const m = await orphanExecuting(f);
+    const { withRootDepth } = await import("./contained-mission-lineage.testkit.js");
+    const stop = withRootDepth(8, () => ciRoot(f, "stop"));
+    const stopEvents = f.store.events(stop.mission_id);
     const seen: number[] = []; f.setEmpty(pgid => { seen.push(pgid); return true; });
     await f.host.recover();
+    expect(f.store.get(stop.mission_id)).toEqual(stop);
+    expect(f.store.events(stop.mission_id)).toEqual(stopEvents);
     expect(seen).toEqual([7777]);
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
     const stopped = f.store.events(m.mission_id, 0, 500).filter(e => e.kind === "executor_stopped").at(-1)!;

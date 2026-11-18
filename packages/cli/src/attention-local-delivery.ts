@@ -8,7 +8,12 @@ export async function validateExternalNoticeIds(message: Parameters<AttentionSen
   const decision = message.decision;
   if (!decision) return;
   const { redactBridge } = await import("./contained-mission-redact.js");
-  for (const id of [decision.source_id, message.scope_id, message.delivery_id, message.item_id]) {
+  const ids = [decision.source_id, message.scope_id, message.delivery_id, message.item_id];
+  if (decision.chain) {
+    ids.push(decision.chain.origin_mission_id, decision.chain.mission_id);
+    if (decision.chain.parent_mission_id !== null) ids.push(decision.chain.parent_mission_id);
+  }
+  for (const id of ids) {
     if (typeof id !== "string" || !id.length || id.length > 256 || /[\\/\p{C}]/u.test(id) || redactBridge(id) !== id)
       throw new Error("attention_webhook_message_invalid");
   }

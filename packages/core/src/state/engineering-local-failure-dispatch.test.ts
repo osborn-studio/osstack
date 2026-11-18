@@ -114,6 +114,7 @@ it.each([
   expect(store.recover(input.request_id)).toBeNull();
 });
 it.each([
+  "below_limit",
   "verify_chain_depth_limit",
   "verify_repair_limit",
   "verify_grant_invalid",
@@ -126,7 +127,7 @@ it.each([
   const { f, r, store, input, snapshot } = fixture({
     derive: (missions, root, principal) => {
       let parent = root;
-      for (let depth = 1; reason === "verify_chain_depth_limit" && depth <= 7; depth++) {
+      for (let depth = 1; depth <= (reason === "verify_chain_depth_limit" ? 7 : reason === "below_limit" ? 6 : 0); depth++) {
         const child = missions.registerDerived(
           principal,
           {
@@ -149,6 +150,23 @@ it.each([
       return parent;
     },
   });
+  if (reason === "below_limit") {
+    expect(store.dispatch(input).status).toBe("dispatched");
+    return;
+  }
+  if (reason === "verify_chain_depth_limit") {
+    const before = snapshot();
+    expect(() => store.dispatch({ ...input, fault(step) { if (step === "after_child") throw Error("crash"); } })).toThrow("crash");
+    expect(snapshot()).toEqual(before);
+    const stop = store.dispatch(input);
+    expect(stop).toMatchObject({ status: "depth_limit", state: "awaiting_decision", reason, stop_mission_id: expect.any(String) });
+    expect(snapshot().slice(2)).toEqual(before.slice(2));
+    const after = snapshot();
+    expect(store.dispatch(input)).toEqual(stop);
+    expect(snapshot()).toEqual(after);
+    expect(f.db.prepare("SELECT seq FROM engineering_contained_events WHERE kind='local_failure_dispatch_refused'").all()).toEqual([]);
+    return;
+  }
   switch (reason) {
     case "verify_grant_invalid":
       input.verify = () => {
@@ -378,7 +396,7 @@ it("preserves populated schema 59 requests, receipts, intakes and missions", () 
   f.db.close();
   const migrated = openDb({ path: f.path });
   try {
-    expect(migrated.pragma("user_version", { simple: true })).toBe(60);
+    expect(migrated.pragma("user_version", { simple: true })).toBeGreaterThanOrEqual(60);
     expect(migrated.prepare("SELECT * FROM engineering_local_failure_dispatches").all()).toEqual([]);
     expect(snapshot(migrated)).toEqual(before);
   } finally {

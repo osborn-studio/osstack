@@ -1,5 +1,6 @@
 import { ENGINEERING_MISSION_LINEAGE_DDL } from "./engineering-mission-lineage-ddl.js";
 import { ENGINEERING_VERIFICATION_SOURCE_DDL } from "./engineering-verification-source-ddl.js";
+import { ENGINEERING_CHAIN_DEPTH_GATE_DDL } from "./engineering-chain-depth-gate-ddl.js";
 import { ENGINEERING_LOCAL_FAILURE_DISPATCH_DDL } from "./engineering-local-failure-dispatch-ddl.js";
 import { ENGINEERING_DIAGNOSIS_DDL } from "./engineering-diagnosis-ddl.js";
 import { ENGINEERING_LOCAL_FAILURE_INTAKE_DDL } from "./engineering-local-failure-intake-ddl.js";
@@ -1899,6 +1900,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 58, name: "engineering_local_failure_intakes", sql: ENGINEERING_LOCAL_FAILURE_INTAKE_DDL + ENGINEERING_ROOT_EXCLUSION_DDL },
   { id: 59, name: "engineering_diagnosis_admission", sql: ENGINEERING_DIAGNOSIS_DDL },
   { id: 60, name: "engineering_local_failure_dispatch", sql: ENGINEERING_LOCAL_FAILURE_DISPATCH_DDL },
+  { id: 61, name: "engineering_chain_depth_gate", sql: ENGINEERING_CHAIN_DEPTH_GATE_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

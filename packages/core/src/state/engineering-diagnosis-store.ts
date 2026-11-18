@@ -361,6 +361,7 @@ export class DiagnosisStore {
       const missions = new ContainedMissionStore(this.attention, this.owner);
       if (!this.matchesCandidateTree(r, chain.chain_id, f.binding.tree_sha) || missions.get(r.root_mission_id).scope_id !== g.scope_id) return refuse("verify_grant_invalid");
       if (missions.resolveLineage(r.root_mission_id).status !== "known") return refuse("verify_chain_lineage_unknown");
+      if (missions.atDepthLimit(r.root_mission_id)) return refuse("verify_chain_depth_limit");
       if (chain.state !== "awaiting_review")
         return refuse(readRootActivity(this.db, r.root_mission_id).review ? "verify_chain_busy" : "verify_grant_invalid");
       let intake: LocalFailureIntake;

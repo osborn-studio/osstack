@@ -294,3 +294,26 @@ it("keeps a stale grant or changed candidate out of the intake journal", () => {
   }
   expect(f.store.intakes.containerDebit(f.facts.chain_id)).toBe(0);
 });
+
+it.each([7, 8])("checks the root at depth %i before reserving an intake", depth => {
+  const f = diagnosisFixture({ derive(missions, root, principal) {
+    let parent = root;
+    for (let i = 1; i <= depth; i++) {
+      const child = missions.registerDerived(principal, { scope_id: root.scope_id, spec: JSON.parse(root.spec_json),
+        claim: { repo_identity: "fixture", branch: String(i), worktree_identity: String(i) },
+        parent_mission_id: parent.mission_id, source: { kind: "verification", id: String(i) }, idempotency_key: String(i) }, root.created_at);
+      if (child.status === "waiting") throw Error(child.reason);
+      parent = child.mission;
+    }
+    return parent;
+  } });
+  cleanup.push(f.close);
+  const r = f.store.register(f.input);
+  const result = f.store.admit(r.request_id, r.revision, f.facts);
+  if (depth === 7) expect(result.status).toBe("admitted");
+  else {
+    expect(result).toMatchObject({ reason: "verify_chain_depth_limit" });
+    expect(f.store.intakes.containerDebit(f.facts.chain_id)).toBe(0);
+    expect(f.source.registration(f.v.result_id)?.registered.intake_id).toBeNull();
+  }
+});

@@ -340,7 +340,8 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
     if (missions.claim(previous.mission_id).state !== 'released') return failure('previous_claim_active');
   }
   const parent = fresh.current_mission_id ?? fresh.root_mission_id;
-  if (missions.resolveLineage(parent).status === 'unknown') {
+  const lineage = missions.resolveLineage(parent);
+  if (lineage.status === 'unknown') {
     chains.stopLive(fresh.chain_id, fresh.revision, 'verify_chain_lineage_unknown', deps.now());
     return { status: 'stopped', reason: 'verify_chain_lineage_unknown' };
   }
@@ -352,6 +353,15 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
     claim = validateContainedStart(spec, deps.worktreesRoot).claim;
   } catch (error) { return failure(error instanceof Error ? error.message.split(':')[0]!.slice(0, 64) : 'spec_failed'); }
 
+  const { MAX_REPAIR_CHAIN_DEPTH } = await import('@osstack/core');
+  const childInput = { parent_mission_id: parent, scope_id: grant.scope_id, spec: spec as unknown as Record<string, unknown>,
+    claim, source: { kind: 'review' as const, id: fresh.chain_id } };
+  if (lineage.lineage.chain_depth + 1 >= MAX_REPAIR_CHAIN_DEPTH) {
+    const stop = missions.registerDerived(principal, { ...childInput, idempotency_key: `revision:${fresh.chain_id}:depth_stop` }, deps.now());
+    if (stop.status !== 'depth_limit') throw Error('lineage_idempotency_conflict');
+    return { status: 'stopped', reason: stop.reason };
+  }
+
   // Step 4: one transaction. Any throw rolls back the reservation, the child and the allocation together.
   try {
     const outcome = chains.transaction(() => {
@@ -361,10 +371,9 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
       assertGrantLive(chains.get(fresh.chain_id), { access: deps.access, keys: deps.keys(), now: at });
       const reserved = chains.reserve(fresh.chain_id, fresh.revision, { head: b.head, review_ids: b.review_ids, feedback_digest: b.feedback_digest }, at);
       fault('reserve');
-      const registered = missions.registerDerived(principal, { parent_mission_id: parent, scope_id: grant.scope_id,
-        spec: spec as unknown as Record<string, unknown>, claim, source: { kind: 'review', id: fresh.chain_id },
+      const registered = missions.registerDerived(principal, { ...childInput,
         idempotency_key: `revision:${fresh.chain_id}:${reserved.chain.rounds_used}` }, at);
-      if (registered.status === 'waiting') throw Error('verify_chain_lineage_unknown');
+      if (registered.status === 'waiting' || registered.status === 'depth_limit') throw Error(registered.reason);
       const child = registered.mission;
       fault('authorize');
       const dispatched = chains.dispatch(fresh.chain_id, reserved.chain.revision, b.head, child.mission_id, at);
@@ -383,6 +392,7 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
       return { status: 'stopped', reason };
     }
     const code = error instanceof Error ? error.message.split(':')[0]!.slice(0, 64) : 'error';
+    if (code === 'verify_chain_depth_limit') return { status: 'stopped', reason: code };
     if (BENIGN.has(code)) return { status: 'conflict', code };
     return failure(code);
   }

@@ -282,3 +282,31 @@ it("rejects sensitive external identifiers before either transport writes", asyn
   expect(send).not.toHaveBeenCalled();
   expect(await readdir(root)).toEqual([]);
 });
+
+it("projects only bounded chain facts and the ledger location", () => {
+  const chain = { origin_mission_id: "root", parent_mission_id: "parent", mission_id: "stop", depth: 8, max_depth: 8 };
+  const decision = { source: "contained_mission", source_id: "stop", requires_local_signature: false, reason: "verify_chain_depth_limit", chain };
+  const msg = { ...message, item_id: "decision:" + "0".repeat(32), decision };
+  const notice = buildAttentionWebhookNotice(msg);
+  expect(Object.keys(notice).sort()).toEqual(["schema_version","kind","delivery_id","scope_id","item_id","state","reason_code","reminder","text","reference","decision"].sort());
+  expect(JSON.stringify(notice)).not.toMatch(/(?:[\\/]|gh[pousr]_)/u);
+  expect(notice.decision).toEqual({ source: decision.source, source_id: "stop", local_signature_required: false,
+    reason: decision.reason, chain, evidence: { ledger: "engineering_contained_events", mission_id: "stop" } });
+  expect(notice.text).not.toContain(message.question);
+  expect(Buffer.byteLength(JSON.stringify(notice))).toBeLessThanOrEqual(16384);
+  for (const invalid of [{ reason: "other" }, { chain: { ...chain, depth: 9 } }, { chain: { ...chain, origin_mission_id: "x".repeat(257) } }])
+    expect(() => buildAttentionWebhookNotice({ ...msg, decision: { ...decision, ...invalid } })).toThrow("attention_webhook_message_invalid");
+});
+
+it("preserves the bytes of an ordinary contained Mission notice", () => {
+  const item_id = "decision:" + "a".repeat(32);
+  const delivery_id = item_id + ":1";
+  const ordinary = { source: "contained_mission", source_id: "mission", requires_local_signature: false };
+  const notice = buildAttentionWebhookNotice({ ...message, item_id, delivery_id, decision: ordinary });
+  expect(JSON.stringify(notice)).toBe(JSON.stringify({
+    schema_version: 1, kind: "attention_decision_notice", delivery_id, scope_id: "scope", item_id, state: "open",
+    reason_code: "decision_pending", decision: { source: "contained_mission", source_id: "mission", local_signature_required: false },
+    reminder: null, text: "A decision is waiting for the owner in osstack. Replying here does nothing; answer in osstack.",
+    reference: { usage: "reference_only", kind: "external_reference", truncated: false, summary: "Choose?" },
+  }));
+});

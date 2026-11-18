@@ -65,9 +65,10 @@ export function approveLocalFailureRepair(
       .transaction(() => {
         store.attention.assertOwner(store.owner);
         const mission = store.readable(actor, missionId);
+        if (!operator(actor, mission.scope_id)) throw Error(refused);
+        store.assertBelowDepthLimit(missionId);
         const spec = parseContainedMissionSpec(mission.spec_json);
         if (
-          !operator(actor, mission.scope_id) ||
           !spec.local_failure_repair ||
           !spec.publication ||
           mission.state !== "awaiting_decision" ||

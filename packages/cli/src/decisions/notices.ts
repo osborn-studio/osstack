@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { DecisionRow, DecisionQueries, ExternalAttentionDecision, ExternalAttentionDecisions } from "@osstack/core";
 import { DecisionSource } from "@osstack/protocol";
 import { decisionItem } from "./list.js";
@@ -7,21 +6,30 @@ const pageSize = 100;
 const sourceLimit = 500;
 const locations = /(?:[a-z][a-z\d+.-]*:\/\/|[A-Za-z]:[\\/]|~?\/|\\\\)[^\s"'<>]*/giu;
 
-function notice(source: DecisionSource, row: DecisionRow, firstSeen: Map<string, number>, now: () => number): ExternalAttentionDecision {
+function chainFacts(source: DecisionSource, row: DecisionRow): Pick<ExternalAttentionDecision, "reason" | "chain"> {
+  if (source !== "contained_mission" || row.state !== "awaiting_decision" || row.reason !== "verify_chain_depth_limit" || !row.lineage_json) return {};
+  try {
+    const { origin_mission_id, parent_mission_id, depth } = JSON.parse(row.lineage_json);
+    if (depth === 8 && typeof origin_mission_id === "string" && (parent_mission_id === null || typeof parent_mission_id === "string"))
+      return { reason: row.reason, chain: { origin_mission_id, parent_mission_id, mission_id: row.id, depth, max_depth: 8 } };
+  } catch { /* The pending decision remains visible without chain facts. */ }
+  return {};
+}
+
+function notice(queries: DecisionQueries, source: DecisionSource, row: DecisionRow, firstSeen: Map<string, number>, now: () => number): ExternalAttentionDecision {
   const item = decisionItem(source, row);
   // Without a transition, revisions on these projections (and the digest
   // of a card's editable title) can change during the same wait.
   const mutableRevision = source === "contained_mission" || source === "ci_repair"
     || source === "revision_chain" || source === "autonomy" || row.kind === "loop_card";
   const identity = item.waiting_since ?? (mutableRevision ? row.state : item.source_revision);
-  const digest = createHash("sha256").update(JSON.stringify([source, item.source_id, identity])).digest("hex");
-  const item_id = "decision:" + digest.slice(0, 32);
+  const item_id = queries.externalDecisionItemId(source, item.source_id, identity);
   const waiting_since = item.waiting_since ?? firstSeen.get(item_id) ?? now();
   if (item.waiting_since === null) firstSeen.set(item_id, waiting_since);
   const reference = item.summary.replace(/\bBearer\s+[^\s,;]+/giu, "Bearer [redacted]")
     .replace(locations, "[redacted]").slice(0, 240);
   return { item_id, scope_id: item.scope_id ?? "host", source, source_id: item.source_id,
-    waiting_since, reference, requires_local_signature: item.requires_local_signature };
+    waiting_since, reference, requires_local_signature: item.requires_local_signature, ...chainFacts(source, row) };
 }
 
 export function createDecisionNoticeSource(
@@ -56,7 +64,7 @@ export function createDecisionNoticeSource(
           while (batch.length < sourceLimit) {
             const limit = Math.min(pageSize, sourceLimit - batch.length);
             const rows = queries[source]({ read_scopes, after, limit });
-            for (const row of rows) batch.push(notice(source, row, firstSeen, now));
+            for (const row of rows) batch.push(notice(queries, source, row, firstSeen, now));
             if (rows.length < limit) break;
             after = rows[rows.length - 1]!.id;
           }

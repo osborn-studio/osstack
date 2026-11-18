@@ -37,6 +37,8 @@ export interface ExternalAttentionDecision {
   waiting_since: number;
   reference: string;
   requires_local_signature: boolean;
+  reason?: string;
+  chain?: { origin_mission_id: string; parent_mission_id: string | null; mission_id: string; depth: number; max_depth: number };
 }
 export interface ExternalAttentionDecisions {
   pending(): readonly ExternalAttentionDecision[];
@@ -50,7 +52,7 @@ export type AttentionSender = (
     item_id: string;
     question: string;
     state: string;
-    decision?: Pick<ExternalAttentionDecision, "source" | "source_id" | "requires_local_signature">;
+    decision?: Pick<ExternalAttentionDecision, "source" | "source_id" | "requires_local_signature" | "reason" | "chain">;
     /** Present only on an overdue-decision reminder, never on the first notice. */
     reminder?: { sequence: number; age_ms: number };
   },
@@ -412,8 +414,8 @@ export class AttentionExperience {
       if (d.item_id.startsWith("decision:")) {
         const external = decisions.find(item => item.item_id === d.item_id);
         if (external) {
-          const { source, source_id, requires_local_signature } = external;
-          content = { question: external.reference, state: "open", decision: { source, source_id, requires_local_signature } };
+          const { source, source_id, requires_local_signature, reason, chain } = external;
+          content = { question: external.reference, state: "open", decision: { source, source_id, requires_local_signature, ...(reason !== undefined && { reason }), ...(chain && { chain }) } };
         }
       } else {
         const item = this.store.getItem(d.scope_id, d.item_id);

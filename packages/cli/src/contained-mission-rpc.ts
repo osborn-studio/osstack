@@ -182,6 +182,13 @@ export class ContainedMissionService {
     return this.closing;
   }
 
+  private guardDecisionDepth(actor: import('@osstack/core').EngineeringPrincipal, missionId: string, operator = false): void {
+    if (!this.store.atDepthLimit(missionId)) return;
+    const mission = this.store.readable(actor, missionId);
+    if (!actor.write_scopes.includes(mission.scope_id) || (operator && !actor.operator_scopes.includes(mission.scope_id))) throw Error('permission_denied');
+    throw Error('verify_chain_depth_limit');
+  }
+
   async handle(method: string, params: unknown): Promise<unknown> {
     if (this.closed) throw new Error('mission_unavailable');
     if (!Object.hasOwn(ContainedMissionRpcRequests, method)) throw new Error('unknown_method');
@@ -226,8 +233,9 @@ export class ContainedMissionService {
         return host.publishCheck(actor, p.mission_id);
       }
       case 'mission.approve_ci_repair': {
-        if (!this.options.githubCi) throw Error('github_ci_scope_unavailable');
         const p = ContainedMissionRpcRequests['mission.approve_ci_repair'].parse(params);
+        this.guardDecisionDepth(actor, p.mission_id, true);
+        if (!this.options.githubCi) throw Error('github_ci_scope_unavailable');
         const { approveSandboxCiRepair, approveCiRepairOnce } = await import('./contained-mission-github-ci-approval.js');
         const beforeApprove = () => {
           if (this.closed || this.options.draining() || host.isBusy(p.mission_id)) throw Error('github_ci_scope_unavailable');
@@ -258,6 +266,7 @@ export class ContainedMissionService {
       }
       case 'mission.decide': {
         const p = ContainedMissionRpcRequests['mission.decide'].parse(params);
+        if (p.decision !== 'abandon') this.guardDecisionDepth(actor, p.mission_id);
         if (p.decision_id || p.expected_revision !== undefined) {
           const mission = this.store.readable(actor, p.mission_id);
           if (!actor.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
@@ -569,7 +578,7 @@ export async function createContainedMissionService(deps: {
       .all(scopeId) as import('@osstack/core').ContainedMission[];
     for (const child of rows) {
       if (deps.draining()) return;
-      if (latestCiEvent(store, child.mission_id, 'ci_repair_approval')) continue;
+      if (store.atDepthLimit(child.mission_id) || latestCiEvent(store, child.mission_id, 'ci_repair_approval')) continue;
       try {
         if (pilot) pilot.assertWrite(store, child, refreshCi, Date.now());
         else autoGrant!.assert(store, child, refreshCi, Date.now());
