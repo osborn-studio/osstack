@@ -1,3 +1,5 @@
+import { LocalFailureRecheckStore } from "./engineering-local-failure-recheck-store.js";
+import { issueHostRecheckProof } from "../bridge/recheck-host-proof.js";
 import Database from "better-sqlite3";
 import { randomUUID, createHash } from "node:crypto";
 import { AttentionStore } from "./attention-store.js";
@@ -240,7 +242,7 @@ it("fences a competing dispatch across SQLite connections and replays after comm
   }
 });
 
-function record(f: ReturnType<typeof diagnosisFixture>, wire: unknown) {
+function record(f: ReturnType<typeof diagnosisFixture>, wire: unknown, objectId = 2) {
   const text = JSON.stringify(wire),
     parsed = parseVerificationResultV1(text);
   if (!parsed.ok) throw Error(parsed.code);
@@ -251,7 +253,7 @@ function record(f: ReturnType<typeof diagnosisFixture>, wire: unknown) {
       [
         {
           source_kind: "check_run",
-          object_id: 2,
+          object_id: objectId,
           repository_id: result.repository_id,
           repository: result.repository,
           pr: result.pr,
@@ -297,6 +299,20 @@ it("retains the one-repair root limit across a new eligible head and grant", () 
   f.db
     .prepare("UPDATE engineering_contained_missions SET state='failed',revision=revision+1 WHERE mission_id=?")
     .run(d.child_mission_id);
+  const ledger = new LocalFailureRecheckStore(f.store);
+  const candidate = "e".repeat(40);
+  const chains = new RevisionChainStore(f.attention, f.owner);
+  new ContainedMissionStore(f.attention, f.owner).record(d.child_mission_id, "verify_repair_push_confirmed",
+    { candidate, previous: r.head_sha, base: r.base_sha, branch: r.branch }, f.facts.now);
+  chains.confirmLocalRepairPush({ child_mission_id: d.child_mission_id, new_head: candidate }, f.facts.now);
+  const row = ledger.open({ child_mission_id: d.child_mission_id, original_contract_text: f.input.contract_text, now: f.facts.now });
+  const failed = { ...f.v, head_sha: candidate, result_id: randomUUID() };
+  failed.dedup_key = verificationDedupKey(failed);
+  const failedText = record(f, failed, 3);
+  const terminal = ledger.evaluate({ recheck_id: row.recheck_id, now: f.facts.now,
+    result: { source_seq: f.source.registration(failed.result_id)!.registered.seq, contract_text: failedText } });
+  expect(terminal).toMatchObject({ state: "awaiting_decision", reason: "verify_recheck_failed" });
+  expect(ledger.evaluate({ recheck_id: row.recheck_id, now: f.facts.now })).toEqual(terminal);
   const head = "c".repeat(40),
     next = { ...f.v, head_sha: head, result_id: randomUUID() };
   next.dedup_key = verificationDedupKey(next);
@@ -529,3 +545,112 @@ it.each(["dispatch", "confirmation", "candidate", "previous", "base", "branch", 
     expect(events()).toEqual(priorEvents);
   },
 );
+
+function publishedRecheck() {
+  const d = dispatchedRepair();
+  const { f, dispatch, payload } = d;
+  const ledger = new LocalFailureRecheckStore(f.store);
+  const now = f.facts.now;
+  const open = () => ledger.open({ child_mission_id: dispatch.child_mission_id, original_contract_text: f.input.contract_text, now });
+  const add = (patch = {}, objectId = 2) => {
+    const wire = { ...passedVerificationFixture(), result_id: randomUUID(), head_sha: payload.candidate, ...patch };
+    wire.dedup_key = verificationDedupKey(wire);
+    const contract_text = record(f, wire, objectId);
+    return { contract_text, source_seq: f.source.registration(wire.result_id)!.registered.seq };
+  };
+  return { ...d, ledger, now, open, add };
+}
+it("opens once only after confirmed chain advance and verified original contract", () => {
+  const { f, dispatch, ledger, open, recordConfirmation, confirm, now } = publishedRecheck();
+  expect(open).toThrow("verify_recheck_binding_invalid");
+  recordConfirmation();
+  expect(open).toThrow("verify_recheck_binding_invalid");
+  confirm();
+  expect(() => ledger.open({ child_mission_id: dispatch.child_mission_id, original_contract_text: "{}", now })).toThrow("verify_recheck_binding_invalid");
+  f.db.prepare("UPDATE engineering_revision_chains SET published_head=?,revision=revision+1").run(f.v.head_sha);
+  expect(open).toThrow("verify_recheck_binding_invalid");
+  f.db.prepare("UPDATE engineering_revision_chains SET published_head=?,revision=revision+1").run("e".repeat(40));
+  const row = open();
+  const writes = f.db.prepare("SELECT total_changes()").pluck();
+  const before = writes.get();
+  expect(open()).toEqual(row);
+  expect(ledger.forDispatch(dispatch.dispatch_id)).toEqual(row);
+  expect(ledger.forChain(row.chain_id)).toEqual([row]);
+  expect(ledger.evaluate({ recheck_id: row.recheck_id, now })).toEqual(row);
+  expect(writes.get()).toBe(before);
+  expect(row).toMatchObject({ state: "reverify_pending", missing_json: '["result","actions","host"]', revision: 1 });
+});
+it("records only current evidence, links the source and seals the passing row", () => {
+  const { f, ledger, now, open, add, recordConfirmation, confirm } = publishedRecheck();
+  recordConfirmation(); confirm();
+  const row = open(), result = add();
+  const evaluate = (more: Partial<Parameters<typeof ledger.evaluate>[0]> = {}) =>
+    ledger.evaluate({ recheck_id: row.recheck_id, now, result, ...more });
+  expect(evaluate()).toMatchObject({ missing_json: '["actions","host"]', recheck_source_seq: result.source_seq });
+  const actions = { head_sha: row.new_head_sha, attempt: 2, complete: true, conclusion: "success" as const, digest: "2".repeat(64) };
+  const fields = { receipt_id: "r", receipt_digest: "3".repeat(64), head_sha: row.new_head_sha, base_sha: row.base_sha,
+    profile_digest: row.profile_digest, trusted_source_digest: row.trusted_source_digest, outcome: "passed" as const };
+  expect(evaluate({ actions })).toMatchObject({ missing_json: '["host"]' });
+  // @ts-expect-error callers cannot issue host proofs
+  expect(evaluate({ actions, host: fields })).toMatchObject({ missing_json: '["host"]' });
+  expect(evaluate({ actions, host: issueHostRecheckProof(fields) })).toMatchObject({ state: "recheck_passed", reason: null,
+    missing_json: "[]", recheck_result_id: JSON.parse(result.contract_text).result_id, recheck_source_seq: result.source_seq,
+    actions_attempt: 2, actions_digest: actions.digest, host_receipt_id: "r", host_receipt_digest: fields.receipt_digest });
+  expect(f.db.prepare("SELECT intake_id FROM engineering_verification_sources WHERE seq=?").pluck().get(result.source_seq)).toBe(row.intake_id);
+  expect(() => f.db.exec("UPDATE engineering_local_failure_rechecks SET revision=revision+1")).toThrow();
+});
+it.each(["withdrawn","superseded","other head","moved","digest","skill","profile","shrink"])("evaluates %s against the current ledger", kind => {
+  const { f, ledger, open, add, recordConfirmation, confirm, now } = publishedRecheck();
+  recordConfirmation(); confirm();
+  const row = open();
+  const result = add(kind === "other head" ? { head_sha: "c".repeat(40) } : kind === "skill" ? { skill_version: "2.0.0" }
+    : kind === "profile" ? { profile_digest: "a".repeat(64) } : kind === "shrink" ? { checks: [] } : {});
+  const id = JSON.parse(result.contract_text).result_id;
+  if (kind === "withdrawn") add({ outcome: "cancelled", attempt: 2, withdraws_result_id: id, withdraw_reason_code: "revoked" }, 3);
+  if (kind === "superseded") add({ supersedes_result_id: id, attempt: 2 }, 3);
+  if (kind === "moved") f.db.exec("UPDATE engineering_revision_chains SET published_head=published_base,revision=revision+1");
+  if (kind === "digest") result.contract_text += " ";
+  const next = ledger.evaluate({ recheck_id: row.recheck_id, now, result });
+  if (["skill","profile","shrink"].includes(kind)) expect(next).toMatchObject({ state: "awaiting_decision", reason: "verify_recheck_binding_changed", recheck_result_id: id });
+  else expect(next).toEqual(row);
+});
+it("protects the original binding, initial state and history against SQL writers", () => {
+  const { f, open, recordConfirmation, confirm } = publishedRecheck();
+  recordConfirmation(); confirm();
+  const row = open();
+  for (const sql of ["DELETE FROM engineering_local_failure_rechecks",
+    "UPDATE engineering_local_failure_rechecks SET profile_digest=trusted_source_digest, revision=revision+1",
+    "REPLACE INTO engineering_local_failure_rechecks SELECT * FROM engineering_local_failure_rechecks"])
+    expect(() => f.db.exec(sql)).toThrow();
+  const insert = f.db.prepare(`INSERT INTO engineering_local_failure_rechecks (${Object.keys(row)}) VALUES (${Object.keys(row).map(k => "@"+k)})`);
+  f.db.exec("SAVEPOINT retry");
+  f.db.exec("DROP TRIGGER engineering_local_failure_recheck_no_delete");
+  f.db.exec("DELETE FROM engineering_local_failure_rechecks");
+  expect(() => insert.run({ ...row, state: "awaiting_decision", reason: "verify_recheck_failed", missing_json: "[]",
+    recheck_source_seq: row.original_source_seq, recheck_result_id: row.original_result_id })).toThrow("verify_recheck_binding_invalid");
+  f.db.exec("ROLLBACK TO retry");
+});
+
+it("migrates a populated dispatch ledger without changing previous rows or objects", () => {
+  const { f, input, store } = fixture({ legacy: 60 });
+  expect(store.dispatch(input).status).toBe("dispatched");
+  const objects = (db: Database.Database) => db.prepare("SELECT type,name,sql FROM sqlite_schema ORDER BY name").all() as { name: string }[];
+  const rows = (db: Database.Database) => ["local_failure_dispatches","local_failure_intakes","diagnosis_requests","host_receipts",
+    "contained_missions","revision_chains","verification_sources"].map(t => db.prepare("SELECT * FROM engineering_"+t).all());
+  const schema = objects(f.db), before = rows(f.db);
+  f.db.close();
+  const migrated = openDb({ path: f.path });
+  try {
+    const after = objects(migrated);
+    expect(migrated.pragma("user_version", { simple: true })).toBe(62);
+    expect(after.filter(o => schema.some(p => p.name === o.name))).toEqual(schema);
+    expect(after.filter(o => !schema.some(p => p.name === o.name)).map(o => o.name)).toEqual([
+      "engineering_local_failure_recheck_chain","engineering_local_failure_recheck_insert","engineering_local_failure_recheck_no_delete",
+      "engineering_local_failure_recheck_no_replace","engineering_local_failure_recheck_update","engineering_local_failure_rechecks",
+      "engineering_mission_depth_stop","engineering_mission_lineage_depth_cap",
+      "sqlite_autoindex_engineering_local_failure_rechecks_2",
+    ]);
+    expect(rows(migrated)).toEqual(before);
+    expect(migrated.pragma("foreign_key_check")).toEqual([]);
+  } finally { migrated.close(); }
+});

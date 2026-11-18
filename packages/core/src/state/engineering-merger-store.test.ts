@@ -574,7 +574,7 @@ it("adds migration 55 additively on a schema-54 database that already holds merg
   cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
   const old = new Database(path); old.pragma("foreign_keys = ON");
   for (const m of MIGRATIONS.filter(x => x.id <= 54)) { old.exec("BEGIN"); old.exec(m.sql); old.pragma(`user_version = ${m.id}`); old.exec("COMMIT"); }
-  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55, 56, 57, 58, 59, 60, 61]);
+  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62]);
   old.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   old.exec("INSERT INTO engineering_merger_shadow_watermarks(repository,pr_number,issued_seq,accepted_seq,updated_at) VALUES('o/r',1,1,0,5)");
   old.exec("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'[]')");

@@ -12,3 +12,6 @@ export { buildDiagnosisPrompt, type DiagnosisInput } from "./diagnosis-input.js"
 export { parseLocalFailureRevisionGrant } from "./revision-local-failure-grant.js";
 export { LocalFailureDispatchStore, type DispatchInput, type DispatchReason, type DispatchFault, type PublicationFence, type RepairBinding } from "../state/engineering-local-failure-dispatch-store.js";
 export { buildRepairGoal, createLocalFailureRepairInput, type LocalFailureRepairInput } from "./repair-input.js";
+export { classifyRecheck, parseRecheckResult, type ActionsAttemptFact, type HostRecheckProof, type RecheckBinding,
+  type RecheckInputs, type RecheckMissing, type RecheckResult, type RecheckVerdict } from "./recheck.js";
+export { LocalFailureRecheckStore, type LocalFailureRecheck, type RecheckEvaluation } from "../state/engineering-local-failure-recheck-store.js";
