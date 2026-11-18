@@ -57,15 +57,16 @@ export class VerificationSourceStore {
       });
     });
   }
-  linkIntake(seq: number, intakeId: string): void {
+  /** Admission links its reserved intake inside the same owner-fenced immediate transaction. */
+  linkIntake(seq: number, intakeId: string, transaction?: "admission"): void {
     this.write(() => {
       const result = this.db.prepare("UPDATE engineering_verification_sources SET intake_id=? WHERE seq=?").run(intakeId, seq);
       if (result.changes !== 1) throw new Error("verification_source_immutable");
-    });
+    }, transaction === "admission");
   }
-  private write<T>(fn: () => T): T {
+  private write<T>(fn: () => T, allowNested = false): T {
     if (this.db.pragma("synchronous", { simple: true }) !== 2) throw new Error("durability_required");
-    if (this.db.inTransaction) throw new Error("verification_source_nested_transaction");
+    if (!allowNested && this.db.inTransaction) throw new Error("verification_source_nested_transaction");
     return this.db.transaction(() => { this.attention.assertOwner(this.owner); return fn(); }).immediate();
   }
 }

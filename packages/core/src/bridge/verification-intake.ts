@@ -6,3 +6,7 @@ export { decideVerificationSources, verificationRegistrationState, type Verifica
 export { VerificationSourceStore } from "../state/engineering-verification-source-store.js";
 export { loadProtectedInstructionConfig, buildInstructionSegment, type ProtectedInstructionConfig } from "./instruction-boundary.js";
 export { serializeReferenceSegment } from "./reference-segment.js";
+export { DiagnosisStore, diagnosisCanAdmit, diagnosisProfile, type DiagnosisRequest, type HostReceipt, type DiagnosisAdmission, type DiagnosisFacts, type DiagnosisRegistration } from "../state/engineering-diagnosis-store.js";
+export { classifyDiagnosis, verifyDiagnosisGrant, checkGrantPrincipal, checkGrantWindow, type DiagnosisProfile, type DiagnosisReason, type DiagnosisVerdict, type ExpectedFailure, type DiagnosisGrantInput } from "./diagnosis-admission.js";
+export { buildDiagnosisPrompt, type DiagnosisInput } from "./diagnosis-input.js";
+export { parseLocalFailureRevisionGrant } from "./revision-local-failure-grant.js";
