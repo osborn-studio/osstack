@@ -99,7 +99,7 @@ export class ContainedMissionHost {
   start(principal: EngineeringPrincipal, input: ContainedStartInput): ContainedMission {
     const spec = parseContainedMissionSpec(JSON.stringify(input.spec));
     // Only the revision dispatcher builds these, and it does not come through here.
-    if (spec.publish_target !== undefined || spec.revision_feedback !== undefined || spec.ci_repair !== undefined) throw Error('CONTAINED_SPEC_INVALID');
+    if (spec.publish_target !== undefined || spec.revision_feedback !== undefined || spec.ci_repair !== undefined || spec.local_failure_repair !== undefined) throw Error('CONTAINED_SPEC_INVALID');
     if (spec.verification_mode && (!this.options.ports.assertStartMode || !principal.operator_scopes.includes(input.scope_id))) throw Error('permission_denied');
     this.options.ports.assertStartMode?.(input.scope_id, spec);
     const { claim } = validateContainedStart(spec, this.options.worktreesRoot);

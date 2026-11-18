@@ -1,3 +1,4 @@
+import { localFailureBindingFromLedger, type LocalVerificationReceipt } from "../bridge/local-failure.js";
 import Database from "better-sqlite3";
 import { MIGRATIONS } from "./migrations.js";
 import { createHash, generateKeyPairSync, randomUUID } from "node:crypto";
@@ -15,13 +16,28 @@ import { VerificationSourceStore } from "./engineering-verification-source-store
 import { DiagnosisStore } from "./engineering-diagnosis-store.js";
 import { openDb } from "./db.js";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
-export function diagnosisFixture(options: { legacy?: boolean; profileDigest?: string; artifactDigest?: string } = {}) {
+export function diagnosisFixture(
+  options: {
+    legacy?: boolean | 59;
+    allowedPaths?: string[];
+    protectedDigest?: string;
+    summary?: string;
+    rounds?: 1 | 2;
+    derive?: (
+      missions: ContainedMissionStore,
+      root: ReturnType<ContainedMissionStore["authorize"]>,
+      principal: Parameters<ContainedMissionStore["authorize"]>[0],
+    ) => ReturnType<ContainedMissionStore["authorize"]>;
+    profileDigest?: string;
+    artifactDigest?: string;
+  } = {},
+) {
   const root = realpathSync(createScratchDirSync("tests", "diagnosis")),
     path = join(root, "state.db");
   const db = options.legacy ? new Database(path) : openDb({ path });
   if (options.legacy) {
-    for (const m of MIGRATIONS.filter((m) => m.id <= 58)) db.exec(m.sql);
-    db.pragma("user_version=58");
+    for (const m of MIGRATIONS.filter((m) => m.id <= (options.legacy === 59 ? 59 : 58))) db.exec(m.sql);
+    db.pragma(`user_version=${options.legacy === 59 ? 59 : 58}`);
   }
   const close = () => {
     if (db.open) db.close();
@@ -40,11 +56,29 @@ export function diagnosisFixture(options: { legacy?: boolean; profileDigest?: st
     stop_scopes: [scope.scope_id],
     operator_scopes: [],
   };
-  const mission = new ContainedMissionStore(attention, owner).authorize(
+  const origin = new ContainedMissionStore(attention, owner).authorize(
     principal,
     {
       scope_id: scope.scope_id,
-      spec: { goal: "fixture" },
+      spec: {
+        goal: "fixture",
+        ...(options.allowedPaths && {
+          allowed_paths: options.allowedPaths,
+          repo_path: root,
+          branch: "fixture-branch",
+          start_commit: "a".repeat(40),
+          base_ref: "main",
+          worktree_path: join(root, "origin"),
+          verify: { argv: ["verify"] },
+          publication: {
+            remote: "origin",
+            repository: "fixture-owner/fixture-repo",
+            base: "main",
+            draft: true,
+            preauthorized: true,
+          },
+        }),
+      },
       claim: {
         repo_identity: "fixture",
         branch: "fixture",
@@ -53,7 +87,9 @@ export function diagnosisFixture(options: { legacy?: boolean; profileDigest?: st
     },
     GRANT_NOW,
   );
+  const mission = options.derive?.(new ContainedMissionStore(attention, owner), origin, principal) ?? origin;
   const v = verificationFixture();
+  if (options.summary !== undefined) v.summary = options.summary;
   if (options.profileDigest) v.profile_digest = options.profileDigest;
   if (options.artifactDigest) v.trusted_source.artifact_digest = options.artifactDigest;
   v.dedup_key = verificationDedupKey(v);
@@ -95,6 +131,10 @@ export function diagnosisFixture(options: { legacy?: boolean; profileDigest?: st
     {
       ...samplePreview({
         root_mission_id: mission.mission_id,
+        ...(options.protectedDigest && {
+          protected_set_digest: options.protectedDigest,
+        }),
+        ...(options.rounds && { rounds: options.rounds }),
         scope_id: scope.scope_id,
         repository: v.repository,
         pr_number: v.pr,
@@ -187,4 +227,42 @@ export function diagnosisFixture(options: { legacy?: boolean; profileDigest?: st
     owner,
     close,
   };
+}
+
+export function eligibleRequest(f: ReturnType<typeof diagnosisFixture>) {
+  const r = f.store.register(f.input);
+  const admission = f.store.admit(r.request_id, r.revision, f.facts);
+  if (admission.status !== "admitted") throw Error(admission.reason);
+  const running = f.store.intakes.start(admission.intake.intake_id, admission.intake.revision);
+  const receipt: LocalVerificationReceipt = {
+    ...localFailureBindingFromLedger(running),
+    version: 1,
+    started_at: GRANT_NOW,
+    finished_at: GRANT_NOW,
+    outcome: "reproducible_failure",
+    checks: [
+      {
+        check_id: "fixture-check",
+        category: "test",
+        exit_code: 1,
+        result_digest: sha("result"),
+      },
+    ],
+    bounded_redacted_summary: "fixture",
+    evidence_digest: sha("evidence"),
+    stop: { proven: true, proof_ref: "proof", proof_digest: sha("proof") },
+  };
+  f.store.intakes.settleStopped(running.intake_id, running.revision, {
+    outcome: receipt.outcome,
+    container_used_seconds: 1,
+    receipt_json: "{}",
+    evidence_digest: receipt.evidence_digest,
+    proof_ref: receipt.stop.proof_ref,
+    proof_digest: receipt.stop.proof_digest,
+  });
+  f.store.recordReceipt(r.request_id, receipt, sha("identity"));
+  return f.store.conclude(r.request_id, f.store.get(r.request_id).revision, {
+    state: "eligible",
+    reason: null,
+  });
 }

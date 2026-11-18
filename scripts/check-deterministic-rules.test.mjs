@@ -300,6 +300,8 @@ const fetchResult = input;`,
 });
 
 for (const [name, files] of Object.entries({
+  repairReader: { "repair-input.ts": 'import "./source-reader.js";', "source-reader.ts": "export {};" },
+  repairCast: { "caller.ts": "buildRepairGoal(config, value as RepairInput);" },
   direct: { "instruction-boundary.ts": 'import "./external-reference.js";', "external-reference.ts": "export {};" },
   transitive: { "instruction-boundary.ts": 'import "./helper.js";', "helper.ts": 'export * from "./reference-segment.js";', "reference-segment.ts": "export {};" },
   typeImport: { "instruction-boundary.ts": 'import type { Result } from "./verification-result.js";', "verification-result.ts": "export type Result = {};" },

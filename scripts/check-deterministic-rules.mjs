@@ -518,7 +518,7 @@ export function instructionBoundaryViolations(root) {
   const report = (path, source, node, message) => errors.push(`${rel(root, path)}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}: ${message}`);
   for (const path of files) {
     const source = sourceFile(path);
-    if (path.endsWith("/instruction-boundary.ts")) {
+    if (path.endsWith("/instruction-boundary.ts") || path.endsWith("/repair-input.ts")) {
       const visited = new Set();
       function follow(current) {
         if (visited.has(current)) return;
@@ -552,7 +552,7 @@ export function instructionBoundaryViolations(root) {
     traverse(source, node => {
       if (!ts.isCallExpression(node)) return;
       const name = ts.isIdentifier(node.expression) ? node.expression.text : ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : "";
-      if (name !== "buildInstructionSegment") return;
+      if (!["buildInstructionSegment", "buildRepairGoal", "createLocalFailureRepairInput"].includes(name)) return;
       for (const argument of node.arguments) traverse(argument, child => {
         if (ts.isAsExpression(child) || ts.isTypeAssertionExpression(child)) report(path, source, child, "instruction segment argument contains a type assertion");
       });

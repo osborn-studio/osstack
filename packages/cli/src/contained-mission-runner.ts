@@ -16,6 +16,8 @@ export interface ContainedMissionSpec {
   verify: { argv: string[] }; max_repair_cycles?: number; verification_paths?: string[];
   /** Explicit scope opt-in. GitHub runs CI after the host admits a candidate for publication. */
   verification_mode?: 'github_actions';
+  /** Host receipt consumed for this local repair. */
+  local_failure_repair?: import("@osstack/core/verification-intake").RepairBinding;
   /** Installed only by the scoped CI observer. The repair uses a different local branch. */
   ci_repair?: { root: string; pr: number; branch: string; base: string; check_run_id: number };
   /** Bounded publication grant (§4.2): one PR on this repository and base. `preauthorized` skips the publication_pending decision. */
@@ -142,6 +144,11 @@ export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
   const p = v.publication;
   if (p !== undefined && (!p || !str(p.remote) || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(p.repository) || !str(p.base) || typeof p.draft !== 'boolean'
     || (p.title !== undefined && (typeof p.title !== 'string' || p.title.length > 200)) || (p.preauthorized !== undefined && typeof p.preauthorized !== 'boolean'))) throw Error('CONTAINED_SPEC_INVALID');
+  const local = v.local_failure_repair;
+  if (local !== undefined && (!local || !/^cm_[0-9a-f-]{36}$/.test(local.root) || !/^vdr_[0-9a-f-]{36}$/.test(local.request_id)
+    || !/^vhr_[0-9a-f-]{36}$/.test(local.receipt_id) || !str(local.check_id) || !str(local.failure_code)
+    || !Number.isSafeInteger(local.pr) || local.pr < 1 || !BRANCH_NAME.test(local.branch) || local.branch === v.branch
+    || !SHA_RE.test(local.base) || p?.preauthorized !== false || v.ci_repair || v.publish_target || v.revision_feedback)) throw Error('CONTAINED_SPEC_INVALID');
   if (v.verification_mode === 'github_actions') {
     const production = p && productionCiPolicy(p.repository);
     if (v.verify.argv.length !== 0 || v.max_repair_cycles !== 0 || v.publish_target || v.revision_feedback

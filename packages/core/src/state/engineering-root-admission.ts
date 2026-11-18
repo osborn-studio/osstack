@@ -4,6 +4,7 @@ export type RootWriterKind = "review" | "actions_repair" | "local_failure";
 export interface RootActivity {
   /** Live-chain reservation or unsettled current child. */
   review: { chain_id: string } | null;
+  local_failure_child: { child_mission_id: string } | null;
   actions_repair: { child_mission_id: string } | null;
   local_failure: { intake_id: string; state: "reserved" | "running" | "stop_unknown" } | null;
 }
@@ -13,6 +14,10 @@ export type RootAdmission = { ok: true } | {
 
 export function readRootActivity(db: Database.Database, rootMissionId: string): RootActivity {
   return {
+    // A pre-60 journal has no local repair children. Schema-upgrade fixtures use the older writer.
+    local_failure_child: Number(db.pragma("user_version", {simple:true})) < 60 ? null : db.prepare(`SELECT d.child_mission_id FROM engineering_local_failure_dispatches d
+      JOIN engineering_contained_missions m ON m.mission_id=d.child_mission_id WHERE d.root_mission_id=?
+      AND NOT (m.state IN ('pr_opened','cancelled','abandoned','failed') AND m.stop_obligation=0)`).get(rootMissionId) as RootActivity["local_failure_child"] ?? null,
     local_failure: db.prepare(`SELECT intake_id,state FROM engineering_local_failure_intakes
       WHERE root_mission_id=? AND state<>'stopped' ORDER BY created_at,intake_id LIMIT 1`).get(rootMissionId) as RootActivity["local_failure"] ?? null,
     review: db.prepare(`SELECT c.chain_id FROM engineering_revision_chains c WHERE c.root_mission_id=? AND c.mode='live'
@@ -57,6 +62,7 @@ export function checkRootAdmission(db: Database.Database, rootMissionId: string,
   need?: { chain_id: string; container_seconds: number }): RootAdmission {
   if (!db.inTransaction) throw Error("root_admission_transaction_required");
   const activity = readRootActivity(db, rootMissionId);
+  if (activity.local_failure_child) return { ok: false, code: "verify_chain_busy", holder: "local_failure" };
   for (const holder of ["local_failure", "review", "actions_repair"] as const) {
     if (kind === "review" && holder === "review") continue;
     if (activity[holder]) return { ok: false, code: "verify_chain_busy", holder };
