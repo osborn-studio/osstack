@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const INSERT_FILES = ['packages/core/src/state/engineering-contained-store.ts'];
 const ROOT_FILES = ['packages/cli/src/contained-mission-host.ts'];
-const DERIVED_FILES = ['packages/cli/src/contained-mission-github-ci.ts', 'packages/cli/src/contained-mission-revision.ts'];
+const DERIVED_FILES = ['packages/cli/src/contained-mission-github-ci.ts', 'packages/cli/src/contained-mission-revision.ts', 'packages/core/src/state/engineering-local-failure-dispatch-store.ts'];
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
     if (['dist', 'node_modules'].includes(e.name)) return [];
@@ -13,7 +13,7 @@ function sources(dir: string): string[] {
     return e.isDirectory() ? sources(path) : path.endsWith('.ts') && !/\.(test|testkit)\.ts$/.test(path) ? [path] : [];
   });
 }
-it('keeps contained Mission and lineage registration behind the store and two derived callers', () => {
+it('keeps contained Mission and lineage registration behind the store and approved derived callers', () => {
   const files = readdirSync(resolve(ROOT, 'packages')).flatMap(pkg => {
     try { return sources(join(ROOT, 'packages', pkg, 'src')); } catch { return []; }
   }).map(path => ({ path: relative(ROOT, path), text: readFileSync(path, 'utf8') }));

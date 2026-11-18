@@ -164,6 +164,13 @@ export class DiagnosisStore {
     if (!row) throw Error("not_found");
     return row;
   }
+  matchesCandidateTree(r: DiagnosisRequest, chainId: string, tree: string): boolean {
+    return !this.db
+      .prepare(`SELECT 1 FROM engineering_contained_missions m
+        WHERE m.candidate_head=? AND m.candidate_tree IS NOT NULL AND m.candidate_tree<>?
+        AND (m.mission_id=? OR EXISTS (SELECT 1 FROM engineering_revision_reservations rr WHERE rr.chain_id=? AND rr.child_mission_id=m.mission_id)) LIMIT 1`)
+      .get(r.head_sha, tree, r.root_mission_id, chainId);
+  }
   withdrawn(r: DiagnosisRequest) {
     return !!this.db
       .prepare(`SELECT 1 FROM engineering_verification_sources WHERE repository_id=? AND pr_number=?
@@ -352,12 +359,7 @@ export class DiagnosisStore {
       for (const k of ["repository", "pr_number", "branch", "head_sha", "base_sha", "base_ref"] as const)
         if (g[k] !== r[k] || f.binding[k] !== r[k]) return refuse("verify_grant_invalid");
       const missions = new ContainedMissionStore(this.attention, this.owner);
-      const sealedMismatch = this.db
-        .prepare(`SELECT 1 FROM engineering_contained_missions m
-        WHERE m.candidate_head=? AND m.candidate_tree IS NOT NULL AND m.candidate_tree<>?
-        AND (m.mission_id=? OR EXISTS (SELECT 1 FROM engineering_revision_reservations rr WHERE rr.chain_id=? AND rr.child_mission_id=m.mission_id)) LIMIT 1`)
-        .get(r.head_sha, f.binding.tree_sha, r.root_mission_id, chain.chain_id);
-      if (sealedMismatch || missions.get(r.root_mission_id).scope_id !== g.scope_id) return refuse("verify_grant_invalid");
+      if (!this.matchesCandidateTree(r, chain.chain_id, f.binding.tree_sha) || missions.get(r.root_mission_id).scope_id !== g.scope_id) return refuse("verify_grant_invalid");
       if (missions.resolveLineage(r.root_mission_id).status !== "known") return refuse("verify_chain_lineage_unknown");
       if (chain.state !== "awaiting_review")
         return refuse(readRootActivity(this.db, r.root_mission_id).review ? "verify_chain_busy" : "verify_grant_invalid");

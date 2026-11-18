@@ -554,22 +554,30 @@ export class RevisionChainStore {
     return { executor_seconds: Math.max(0, executor), container_seconds: Math.max(0, container) };
   }
 
-  /** Give the chain's current child its slice. Part of the dispatch transaction: the child must already be `current_mission_id`, may have only one
-   * slice, and the slice must fit what remains of the grant's budget (`budget_exhausted`). */
-  allocateChild(chainId: string, ifRevision: number, childMissionId: string, slice: { executor_seconds: number; container_seconds: number }, now: number): RevisionChain {
+  /** Reserve one slice from the shared grant. A review identifies its current child by reservation.
+   * Local dispatch instead proves the consumed receipt and derived child within the pending transaction.
+   * Its round is charged here because it does not reserve a review. */
+  allocateChild(chainId: string, ifRevision: number, childMissionId: string, slice: { executor_seconds: number; container_seconds: number }, now: number, localDispatchId?: string): RevisionChain {
+    if (localDispatchId !== undefined && !this.db.inTransaction) fail("allocation_transaction_required");
     this.clock(now);
     for (const v of [slice.executor_seconds, slice.container_seconds]) if (!Number.isSafeInteger(v) || v < 1) fail("invalid_allocation");
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
-      if (chain.current_mission_id !== childMissionId) fail("allocation_child_mismatch");
+      if (localDispatchId === undefined) {
+        if (chain.current_mission_id !== childMissionId) fail("allocation_child_mismatch");
+      } else if (!this.db.prepare(`SELECT 1 FROM engineering_mission_lineage l
+        JOIN engineering_diagnosis_requests r ON r.request_id=l.source_id AND r.root_mission_id=l.parent_mission_id
+        JOIN engineering_host_receipts h ON h.receipt_id=r.receipt_id AND h.request_id=r.request_id
+        WHERE l.mission_id=? AND l.source_kind='local_failure' AND r.chain_id=? AND r.state='eligible' AND h.consumed_by=?`)
+        .get(childMissionId, chainId, localDispatchId)) fail("allocation_child_mismatch");
       const allocations = this.allocationsOf(chain);
       if (allocations[childMissionId]) fail("allocation_exists");
       const left = this.remainingBudget(chainId);
       if (slice.executor_seconds > left.executor_seconds || slice.container_seconds > left.container_seconds) fail("budget_exhausted");
       allocations[childMissionId] = { ...slice, executor_used: 0, container_used: 0 };
       this.event(chainId, "child_allocated", { child: childMissionId, ...slice }, now);
-      return this.update(chain, { spent_json: JSON.stringify({ allocations }) }, "child_allocated", { head: chain.published_head, base: chain.published_base }, now);
+      return this.update(chain, { spent_json: JSON.stringify({ allocations }), ...(localDispatchId !== undefined ? { rounds_used: chain.rounds_used + 1 } : {}) }, "child_allocated", { head: chain.published_head, base: chain.published_base }, now);
     });
   }
 
