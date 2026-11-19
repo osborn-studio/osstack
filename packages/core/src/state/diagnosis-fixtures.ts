@@ -19,6 +19,7 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 export function diagnosisFixture(
   options: {
     legacy?: boolean | 59 | 60 | 62;
+    recheck?: { timeout_seconds: number };
     allowedPaths?: string[];
     protectedDigest?: string;
     summary?: string;
@@ -146,6 +147,7 @@ export function diagnosisFixture(
       local_failure: {
         ...profile,
         enabled: true,
+        ...(options.recheck && { recheck: { enabled: true as const, ...options.recheck } }),
         diagnostic_timeout_seconds: 20,
         max_diagnostics_per_head: 1,
       },

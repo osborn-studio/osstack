@@ -70,29 +70,23 @@ it("keeps published-head writes in the chain store and repair confirmation in th
   expect(callers).toEqual(["cli/contained-mission-local-failure-publish.ts"]);
 });
 
-it("keeps recheck grant verification out of the CLI and daemon or RPC entry points", () => {
+it("keeps the recheck run library unwired and its admission and journal private to the host", () => {
   const packages = fileURLToPath(new URL("../../", import.meta.url));
   for (const pkg of readdirSync(packages)) {
     const root = join(packages, pkg, "src");
     if (!existsSync(root)) continue;
     for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
       if (/\.test\.[^/]+$/.test(file)) continue;
-      if (pkg !== "cli" && !/(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file)) continue;
       const path = join(root, file);
-      if (statSync(path).isFile()) expect(readFileSync(path, "utf8"), path).not.toMatch(/verifyRecheckGrant|recheck-admission/);
-    }
-  }
-});
-
-it("keeps the recheck run store out of CLI and daemon entry points", () => {
-  const packages = fileURLToPath(new URL("../../", import.meta.url));
-  for (const pkg of readdirSync(packages)) {
-    const root = join(packages,pkg,"src");
-    if (!existsSync(root)) continue;
-    for (const file of readdirSync(root,{ recursive: true, encoding: "utf8" })) {
-      if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
-      if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file))
-        expect(readFileSync(join(root,file),"utf8"),pkg+"/"+file).not.toMatch(/LocalFailureRecheckRunStore|recheck-run-store|hostProof/);
+      if (!statSync(path).isFile()) continue;
+      const source = readFileSync(path, "utf8");
+      if (pkg === "cli" && file === "contained-mission-local-failure-recheck-run.ts") {
+        expect(source, path).not.toContain("hostProof");
+        continue;
+      }
+      expect(source, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
+      if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.[cm]?[jt]sx?$/.test(file))
+        expect(source, path).not.toMatch(/verifyRecheckGrant|recheck-admission|LocalFailureRecheckRunStore|recheck-run-store|hostProof/);
     }
   }
 });

@@ -93,6 +93,9 @@ export class LocalFailureRecheckRunStore {
       .prepare(`SELECT * FROM ${table} WHERE recheck_id=? ORDER BY attempt`)
       .all(id) as LocalFailureRecheckRun[];
   }
+  unsettled() {
+    return this.db.prepare(`SELECT * FROM ${table} WHERE state<>'stopped' ORDER BY created_at,run_id`).all() as LocalFailureRecheckRun[];
+  }
   active(id: string) {
     return this.db
       .prepare(`SELECT * FROM ${table} WHERE recheck_id=? AND NOT (state='stopped' AND outcome IS 'not_started')`)
