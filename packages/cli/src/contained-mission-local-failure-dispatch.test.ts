@@ -458,13 +458,25 @@ it.each(["merged", "closed after withdrawal", "closed after supersession"] as co
       return { contract_text, digest, source_seq: f.source.registration(parsed.result.result_id)!.registered.seq };
     }
     const result = register(wire, 2), digest = result.digest;
-    // Issue the fixture proof in the same compiled core instance that evaluates it.
-    const { issueHostRecheckProof } = await import("../../core/dist/bridge/recheck-host-proof.js");
+    // The ledger accepts a host proof only from a settled, passed recheck run (migration 63).
+    const { LocalFailureRecheckRunStore } = await import("@osstack/core/verification-intake");
+    const { localFailureBindingFromLedger } = await import("@osstack/core");
+    f.db.prepare("UPDATE engineering_contained_missions SET state='failed',stop_obligation=0,revision=revision+1 WHERE mission_id=?").run(id);
+    const grantJson = f.db.prepare("SELECT grant_json FROM engineering_revision_chains WHERE chain_id=?").pluck().get(chain.chain_id) as string;
+    const runs = new LocalFailureRecheckRunStore(f.store, () => now);
+    const reserved = runs.reserve({ recheck_id: row.recheck_id, tree_sha: "a".repeat(40), grant_id: JSON.parse(grantJson).grant_id,
+      grant_digest: createHash("sha256").update(grantJson).digest("hex"), invocation_id: randomUUID(), journal_ref: "recheck",
+      container_cap_seconds: 12, now }).run;
+    const running = runs.start(reserved.run_id, reserved.revision);
+    runs.settleStopped(running.run_id, running.revision, { container_used_seconds: 2, run_identity_digest: "4".repeat(64),
+      receipt: { ...localFailureBindingFromLedger(running), version: 1, started_at: running.started_at!, finished_at: running.started_at!,
+        outcome: "passed", checks: [{ check_id: row.failed_check_id, category: "test", exit_code: 0, result_digest: "1".repeat(64) }],
+        bounded_redacted_summary: "fixture", evidence_digest: "2".repeat(64),
+        stop: { proven: true, proof_ref: "stop", proof_digest: "3".repeat(64) } } });
     expect(ledger.evaluate({ recheck_id: row.recheck_id, now,
       result,
       actions: { head_sha: candidate, attempt: 2, complete: true, conclusion: "success", digest },
-      host: issueHostRecheckProof({ receipt_id: "fixture", receipt_digest: digest, head_sha: candidate, base_sha: base,
-        profile_digest: row.profile_digest, trusted_source_digest: row.trusted_source_digest, outcome: "passed" }) }).state).toBe("recheck_passed");
+      host: runs.hostProof(row.recheck_id)! }).state).toBe("recheck_passed");
     let finalCounts = counts();
     before = writes();
     let prior = events().length;

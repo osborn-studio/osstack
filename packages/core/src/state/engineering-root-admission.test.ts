@@ -1,3 +1,4 @@
+import { publishedRecheck, runFixture } from "./local-failure-recheck.testkit.js";
 import { createHash, randomUUID, generateKeyPairSync } from "node:crypto";
 import { realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ import { AttentionStore } from "./attention-store.js";
 import { openDb } from "./db.js";
 import { ContainedMissionStore } from "./engineering-contained-store.js";
 import { RevisionChainStore } from "./engineering-revision-chain-store.js";
-import { checkRootAdmission, readRootActivity, type RootWriterKind } from "./engineering-root-admission.js";
+import { checkRootAdmission, readRecheckContainerDebit, readRootActivity, type RootWriterKind } from "./engineering-root-admission.js";
 import { LocalFailureIntakeStore, type NewLocalFailureIntake, type StoppedDiagnostic } from "./engineering-local-failure-intake-store.js";
 
 const H = "a".repeat(40), B = "b".repeat(40), P = "c".repeat(64), E = "d".repeat(64);
@@ -241,4 +242,18 @@ it("rejects a root binding mismatch before shared admission and leaves no debit"
   const f = setup();
   expect(() => f.store.reserve({ ...f.input, root_mission_id: "wrong" })).toThrow("intake_binding_denied");
   expect(f.store.containerDebit(f.chain.chain_id)).toBe(0);
+});
+
+it("reads recheck activity and debit only on a qualified schema", () => {
+  const d = publishedRecheck({ legacy: 62 });
+  d.recordConfirmation(); d.confirm();
+  const row = d.open();
+  expect(readRootActivity(d.f.db,row.root_mission_id).recheck).toBeNull();
+  expect(readRecheckContainerDebit(d.f.db,row.chain_id)).toBe(0);
+  const current = publishedRecheck();
+  current.recordConfirmation(); current.confirm();
+  const pending = current.open(), { runs,input } = runFixture(current,pending);
+  const { run } = runs.reserve(input);
+  expect(readRootActivity(current.f.db,pending.root_mission_id).recheck).toEqual({ run_id: run.run_id, state: "reserved" });
+  expect(readRecheckContainerDebit(current.f.db,pending.chain_id)).toBe(input.container_cap_seconds);
 });

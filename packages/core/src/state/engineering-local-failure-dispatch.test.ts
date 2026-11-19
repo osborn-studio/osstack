@@ -1,3 +1,4 @@
+import { fixture, record, dispatchedRepair, publishedRecheck, runFixture } from "./local-failure-recheck.testkit.js";
 import { LocalFailureRecheckStore } from "./engineering-local-failure-recheck-store.js";
 import { issueHostRecheckProof } from "../bridge/recheck-host-proof.js";
 import Database from "better-sqlite3";
@@ -5,65 +6,16 @@ import { randomUUID, createHash } from "node:crypto";
 import { AttentionStore } from "./attention-store.js";
 import { DiagnosisStore } from "./engineering-diagnosis-store.js";
 import { openDb } from "./db.js";
-import { parseVerificationResultV1, verificationDedupKey } from "../bridge/verification-result.js";
+import { verificationDedupKey } from "../bridge/verification-result.js";
 import { passedVerificationFixture, withdrawalVerificationFixture } from "../bridge/verification-result-fixtures.js";
 import { signLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
-import { afterEach, expect, it } from "vitest";
-import { diagnosisFixture, eligibleRequest } from "./diagnosis-fixtures.js";
-import { LocalFailureDispatchStore, type DispatchInput } from "./engineering-local-failure-dispatch-store.js";
+import { onTestFinished, expect, it } from "vitest";
+import { diagnosisFixture, eligibleRequest, recheckRunObjects } from "./diagnosis-fixtures.js";
+import { LocalFailureDispatchStore } from "./engineering-local-failure-dispatch-store.js";
 import { checkRootAdmission } from "./engineering-root-admission.js";
 import { RevisionChainStore } from "./engineering-revision-chain-store.js";
 import { ContainedMissionStore } from "./engineering-contained-store.js";
 
-const cleanup: (() => void)[] = [];
-afterEach(() => {
-  for (const close of cleanup.splice(0)) close();
-});
-function fixture(options: Parameters<typeof diagnosisFixture>[0] = {}) {
-  const f = diagnosisFixture({ allowedPaths: ["src/a.ts"], ...options });
-  cleanup.push(f.close);
-  const r = eligibleRequest(f);
-  const store = new LocalFailureDispatchStore(f.store);
-  const input: DispatchInput = {
-    request_id: r.request_id,
-    now: () => f.facts.now,
-    verify: () => {
-      expect(f.db.inTransaction).toBe(true);
-      return {
-        grant_digest: f.facts.grant_digest,
-        principal: f.principal,
-        check_ids: ["fixture-check"],
-      };
-    },
-    launchCaps: { executor_seconds: 3, verify_seconds: 2 },
-    locations: ["src/a.ts"],
-    withinAllowed: (path, allowed) => allowed.includes(path),
-    checkPaths: () => null,
-    buildChild: ({ goal, binding }) => ({
-      spec: {
-        goal,
-        publication: { preauthorized: false },
-        local_failure_repair: binding,
-      },
-      claim: {
-        branch: "child",
-        repo_identity: "fixture",
-        worktree_identity: "child",
-      },
-    }),
-  };
-  const snapshot = () =>
-    [
-      "contained_missions",
-      "mission_lineage",
-      "host_receipts",
-      "revision_chains",
-      "local_failure_dispatches",
-      "diagnosis_requests",
-      "local_failure_intakes",
-    ].map((t) => f.db.prepare("SELECT * FROM engineering_" + t).all());
-  return { f, r, store, input, snapshot };
-}
 it("commits one repair and returns the original dispatch on replay", () => {
   const { f, r, store, input, snapshot } = fixture();
   const d = store.dispatch(input);
@@ -84,7 +36,7 @@ it("commits one repair and returns the original dispatch on replay", () => {
   const state = snapshot();
   expect(store.dispatch(input)).toEqual(d);
   expect(snapshot()).toEqual(state);
-  for (const kind of ["review", "actions_repair", "local_failure"] as const)
+  for (const kind of ["review", "actions_repair", "local_failure", "recheck"] as const)
     expect(f.store.transaction(() => checkRootAdmission(f.db, r.root_mission_id, kind))).toMatchObject({
       ok: false,
       holder: "local_failure",
@@ -242,36 +194,6 @@ it("fences a competing dispatch across SQLite connections and replays after comm
   }
 });
 
-function record(f: ReturnType<typeof diagnosisFixture>, wire: unknown, objectId = 2) {
-  const text = JSON.stringify(wire),
-    parsed = parseVerificationResultV1(text);
-  if (!parsed.ok) throw Error(parsed.code);
-  const result = parsed.result,
-    digest = createHash("sha256").update(text).digest("hex");
-  expect(
-    f.source.record(
-      [
-        {
-          source_kind: "check_run",
-          object_id: objectId,
-          repository_id: result.repository_id,
-          repository: result.repository,
-          pr: result.pr,
-          observed_head_sha: result.head_sha,
-          app_id: 201,
-          check_name: "fixture",
-          response_digest: digest,
-          contract_digest: digest,
-          verdict: { ok: true },
-          result,
-        },
-      ],
-      2,
-      2,
-    )[0]?.outcome.decision,
-  ).toBe("accepted");
-  return text;
-}
 it.each(["withdrawn", "superseded"])("rejects a %s result after eligibility", (action) => {
   const { f, r, input, store, snapshot } = fixture();
   record(
@@ -402,7 +324,7 @@ it("refuses dispatch for an active Actions repair", () => {
 });
 it("preserves populated schema 59 requests, receipts, intakes and missions", () => {
   const f = diagnosisFixture({ legacy: 59 });
-  cleanup.push(f.close);
+  onTestFinished(f.close);
   eligibleRequest(f);
   const snapshot = (db: Database.Database) =>
     ["diagnosis_requests", "host_receipts", "contained_missions", "local_failure_intakes", "revision_chains"].map((t) =>
@@ -489,23 +411,6 @@ it.each(["withdrawn", "superseded", "grant", "head", "base", "expired", "early"]
   },
 );
 
-function dispatchedRepair() {
-  const { f, r, store, input } = fixture();
-  const dispatch = store.dispatch(input);
-  if (dispatch.status !== "dispatched") throw Error(dispatch.reason);
-  const chains = new RevisionChainStore(f.attention, f.owner);
-  const chain = () => chains.get(r.chain_id!);
-  const missions = new ContainedMissionStore(f.attention, f.owner);
-  const payload = {
-    candidate: "e".repeat(40), previous: r.head_sha, base: r.base_sha, branch: chain().branch,
-  };
-  const child = dispatch.child_mission_id;
-  const confirm = (id = child) => chains.confirmLocalRepairPush({ child_mission_id: id, new_head: payload.candidate }, input.now());
-  const recordConfirmation = (data = payload, id = child) => missions.record(id, "verify_repair_push_confirmed", data, input.now());
-  const events = () => chains.events(r.chain_id!);
-  return { f, r, dispatch, chain, payload, confirm, recordConfirmation, events };
-}
-
 it("advances only the published head once inside the Mission confirmation transaction", () => {
   const { f, dispatch, chain, payload, confirm, recordConfirmation, events } = dispatchedRepair();
   const before = chain(), priorEvents = events();
@@ -546,20 +451,6 @@ it.each(["dispatch", "confirmation", "candidate", "previous", "base", "branch", 
   },
 );
 
-function publishedRecheck() {
-  const d = dispatchedRepair();
-  const { f, dispatch, payload } = d;
-  const ledger = new LocalFailureRecheckStore(f.store);
-  const now = f.facts.now;
-  const open = () => ledger.open({ child_mission_id: dispatch.child_mission_id, original_contract_text: f.input.contract_text, now });
-  const add = (patch = {}, objectId = 2) => {
-    const wire = { ...passedVerificationFixture(), result_id: randomUUID(), head_sha: payload.candidate, ...patch };
-    wire.dedup_key = verificationDedupKey(wire);
-    const contract_text = record(f, wire, objectId);
-    return { contract_text, source_seq: f.source.registration(wire.result_id)!.registered.seq };
-  };
-  return { ...d, ledger, now, open, add };
-}
 it("opens once only after confirmed chain advance and verified original contract", () => {
   const { f, dispatch, ledger, open, recordConfirmation, confirm, now } = publishedRecheck();
   expect(open).toThrow("verify_recheck_binding_invalid");
@@ -581,7 +472,8 @@ it("opens once only after confirmed chain advance and verified original contract
   expect(row).toMatchObject({ state: "reverify_pending", missing_json: '["result","actions","host"]', revision: 1 });
 });
 it("records only current evidence, links the source and seals the passing row", () => {
-  const { f, ledger, now, open, add, recordConfirmation, confirm } = publishedRecheck();
+  const d = publishedRecheck();
+  const { f, ledger, now, open, add, recordConfirmation, confirm } = d;
   recordConfirmation(); confirm();
   const row = open(), result = add();
   const evaluate = (more: Partial<Parameters<typeof ledger.evaluate>[0]> = {}) =>
@@ -593,9 +485,16 @@ it("records only current evidence, links the source and seals the passing row", 
   expect(evaluate({ actions })).toMatchObject({ missing_json: '["host"]' });
   // @ts-expect-error callers cannot issue host proofs
   expect(evaluate({ actions, host: fields })).toMatchObject({ missing_json: '["host"]' });
-  expect(evaluate({ actions, host: issueHostRecheckProof(fields) })).toMatchObject({ state: "recheck_passed", reason: null,
+  const before = ledger.get(row.recheck_id);
+  expect(() => evaluate({ actions, host: issueHostRecheckProof(fields) })).toThrow("verify_recheck_host_unproven");
+  expect(ledger.get(row.recheck_id)).toEqual(before);
+  const { runs, input, settle } = runFixture(d,row);
+  const { run } = runs.reserve(input);
+  const stopped = settle(runs.start(run.run_id,run.revision));
+  const host = runs.hostProof(row.recheck_id)!;
+  expect(evaluate({ actions, host })).toMatchObject({ state: "recheck_passed", reason: null,
     missing_json: "[]", recheck_result_id: JSON.parse(result.contract_text).result_id, recheck_source_seq: result.source_seq,
-    actions_attempt: 2, actions_digest: actions.digest, host_receipt_id: "r", host_receipt_digest: fields.receipt_digest });
+    actions_attempt: 2, actions_digest: actions.digest, host_receipt_id: stopped.receipt_id, host_receipt_digest: stopped.receipt_digest });
   expect(f.db.prepare("SELECT intake_id FROM engineering_verification_sources WHERE seq=?").pluck().get(result.source_seq)).toBe(row.intake_id);
   expect(() => f.db.exec("UPDATE engineering_local_failure_rechecks SET revision=revision+1")).toThrow();
 });
@@ -642,14 +541,14 @@ it("migrates a populated dispatch ledger without changing previous rows or objec
   const migrated = openDb({ path: f.path });
   try {
     const after = objects(migrated);
-    expect(migrated.pragma("user_version", { simple: true })).toBe(62);
+    expect(migrated.pragma("user_version", { simple: true })).toBe(63);
     expect(after.filter(o => schema.some(p => p.name === o.name))).toEqual(schema);
     expect(after.filter(o => !schema.some(p => p.name === o.name)).map(o => o.name)).toEqual([
       "engineering_local_failure_recheck_chain","engineering_local_failure_recheck_insert","engineering_local_failure_recheck_no_delete",
       "engineering_local_failure_recheck_no_replace","engineering_local_failure_recheck_update","engineering_local_failure_rechecks",
       "engineering_mission_depth_stop","engineering_mission_lineage_depth_cap",
-      "sqlite_autoindex_engineering_local_failure_rechecks_2",
-    ]);
+      "sqlite_autoindex_engineering_local_failure_rechecks_2", ...recheckRunObjects,
+    ].sort());
     expect(rows(migrated)).toEqual(before);
     expect(migrated.pragma("foreign_key_check")).toEqual([]);
   } finally { migrated.close(); }

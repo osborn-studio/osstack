@@ -1,4 +1,4 @@
-import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit } from "./engineering-root-admission.js";
+import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit, readRecheckContainerDebit } from "./engineering-root-admission.js";
 import { parseLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
@@ -546,7 +546,7 @@ export class RevisionChainStore {
     const limits = this.budgetOf(chain);
     let executor = limits.max_executor_seconds;
     const allocations = this.allocationsOf(chain);
-    const container = limits.max_container_seconds - childContainerDebit(this.db, allocations) - readIntakeContainerDebit(this.db, chainId);
+    const container = limits.max_container_seconds - childContainerDebit(this.db, allocations) - readIntakeContainerDebit(this.db, chainId) - readRecheckContainerDebit(this.db, chainId);
     for (const [child, slice] of Object.entries(allocations)) {
       const settled = this.db.prepare(`SELECT 1 FROM engineering_contained_missions WHERE mission_id=? AND state IN ${TERMINAL_CHILD} AND stop_obligation=0`).get(child);
       executor -= settled ? slice.executor_used : slice.executor_seconds;

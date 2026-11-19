@@ -83,3 +83,16 @@ it("keeps recheck grant verification out of the CLI and daemon or RPC entry poin
     }
   }
 });
+
+it("keeps the recheck run store out of CLI and daemon entry points", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages,pkg,"src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root,{ recursive: true, encoding: "utf8" })) {
+      if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
+      if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file))
+        expect(readFileSync(join(root,file),"utf8"),pkg+"/"+file).not.toMatch(/LocalFailureRecheckRunStore|recheck-run-store|hostProof/);
+    }
+  }
+});

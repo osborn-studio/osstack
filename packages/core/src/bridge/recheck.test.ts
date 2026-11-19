@@ -102,11 +102,13 @@ it("keeps the host proof issuer private in package sources and exports", async (
     for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
       if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
       const source = readFileSync(join(root, file), "utf8");
+      if (!(pkg === "core" && ["bridge/recheck-host-proof.ts","state/engineering-local-failure-recheck-run-store.ts"].includes(file)))
+        expect(source, pkg + "/" + file).not.toContain("issueHostRecheckProof");
       if (pkg === "core" && file === "bridge/recheck.ts") {
         expect(
           source.replace('import { isHostRecheckProof, type HostRecheckProof } from "./recheck-host-proof.js";', "")
         ).not.toContain("recheck-host-proof");
-      } else if (!(pkg === "core" && file === "state/engineering-local-failure-recheck-store.ts")) {
+      } else if (!(pkg === "core" && file === "state/engineering-local-failure-recheck-run-store.ts")) {
         expect(source, pkg + "/" + file).not.toContain("recheck-host-proof");
       }
     }

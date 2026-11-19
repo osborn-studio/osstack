@@ -1,11 +1,12 @@
 import type Database from "better-sqlite3";
 
-export type RootWriterKind = "review" | "actions_repair" | "local_failure";
+export type RootWriterKind = "review" | "actions_repair" | "local_failure" | "recheck";
 export interface RootActivity {
   /** Live-chain reservation or unsettled current child. */
   review: { chain_id: string } | null;
   local_failure_child: { child_mission_id: string } | null;
   actions_repair: { child_mission_id: string } | null;
+  recheck: { run_id: string; state: "reserved" | "running" | "stop_unknown" } | null;
   local_failure: { intake_id: string; state: "reserved" | "running" | "stop_unknown" } | null;
 }
 export type RootAdmission = { ok: true } | {
@@ -13,9 +14,12 @@ export type RootAdmission = { ok: true } | {
 };
 
 export function readRootActivity(db: Database.Database, rootMissionId: string): RootActivity {
+  const schema = Number(db.pragma("user_version", { simple: true }));
   return {
+    recheck: schema < 63 ? null : db.prepare(`SELECT run_id,state FROM engineering_local_failure_recheck_runs
+      WHERE root_mission_id=? AND state<>'stopped'`).get(rootMissionId) as RootActivity["recheck"] ?? null,
     // A pre-60 journal has no local repair children. Schema-upgrade fixtures use the older writer.
-    local_failure_child: Number(db.pragma("user_version", {simple:true})) < 60 ? null : db.prepare(`SELECT d.child_mission_id FROM engineering_local_failure_dispatches d
+    local_failure_child: schema < 60 ? null : db.prepare(`SELECT d.child_mission_id FROM engineering_local_failure_dispatches d
       JOIN engineering_contained_missions m ON m.mission_id=d.child_mission_id WHERE d.root_mission_id=?
       AND NOT (m.state IN ('pr_opened','cancelled','abandoned','failed') AND m.stop_obligation=0)`).get(rootMissionId) as RootActivity["local_failure_child"] ?? null,
     local_failure: db.prepare(`SELECT intake_id,state FROM engineering_local_failure_intakes
@@ -40,6 +44,14 @@ export function readIntakeContainerDebit(db: Database.Database, chainId: string)
   return debit;
 }
 
+export function readRecheckContainerDebit(db: Database.Database, chainId: string): number {
+  if (Number(db.pragma("user_version", { simple: true })) < 63) return 0;
+  const { debit } = db.prepare(`SELECT COALESCE(SUM(CASE WHEN state='stopped' THEN container_used_seconds ELSE container_cap_seconds END),0) debit
+    FROM engineering_local_failure_recheck_runs WHERE chain_id=?`).get(chainId) as { debit: number };
+  if (!Number.isSafeInteger(debit) || debit < 0) throw Error("recheck_debit_overflow");
+  return debit;
+}
+
 /** Shared slice accounting for both the grant budget and intake admission. */
 export function childContainerDebit(db: Database.Database, allocations: Record<string, { container_used: number; container_seconds: number }>): number {
   let debit = 0;
@@ -55,15 +67,14 @@ export function childContainerDebit(db: Database.Database, allocations: Record<s
 
 /** Pure reads. The caller must hold BEGIN IMMEDIATE through its subsequent write and commit.
  * Review callers ignore review activity; the chain store checks and database triggers govern their own in-flight state.
- * Review callers are refused by local_failure and actions_repair activity.
- * Local_failure and actions_repair callers are refused by all three kinds, including their own kind.
+ * Every other holder excludes the caller.
  */
 export function checkRootAdmission(db: Database.Database, rootMissionId: string, kind: RootWriterKind,
   need?: { chain_id: string; container_seconds: number }): RootAdmission {
   if (!db.inTransaction) throw Error("root_admission_transaction_required");
   const activity = readRootActivity(db, rootMissionId);
   if (activity.local_failure_child) return { ok: false, code: "verify_chain_busy", holder: "local_failure" };
-  for (const holder of ["local_failure", "review", "actions_repair"] as const) {
+  for (const holder of ["recheck", "local_failure", "review", "actions_repair"] as const) {
     if (kind === "review" && holder === "review") continue;
     if (activity[holder]) return { ok: false, code: "verify_chain_busy", holder };
   }
@@ -79,7 +90,7 @@ export function checkRootAdmission(db: Database.Database, rootMissionId: string,
       const allocations: unknown = chain.spent_json === null ? {} : JSON.parse(chain.spent_json).allocations;
       if (!allocations || typeof allocations !== "object" || Array.isArray(allocations)) return exhausted;
       const debit = childContainerDebit(db, allocations as Record<string, { container_used: number; container_seconds: number }>);
-      if (need.container_seconds > Math.max(0, cap - debit - readIntakeContainerDebit(db, need.chain_id))) return exhausted;
+      if (need.container_seconds > Math.max(0, cap - debit - readIntakeContainerDebit(db, need.chain_id) - readRecheckContainerDebit(db, need.chain_id))) return exhausted;
     } catch { return exhausted; }
   }
   return { ok: true };
