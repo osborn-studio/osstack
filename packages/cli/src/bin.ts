@@ -847,7 +847,7 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
   }
 
   if (cmd === "loop") {
-    return await handleLoopCommand(args.slice(1));
+    return await handleLoopCommand(args.slice(1), "loop");
   }
 
   if (cmd === "scout") {
@@ -10240,7 +10240,22 @@ function parseLandBranchFlag(args: string[], useDaemon: boolean): string | undef
   return value;
 }
 
-async function handleLoopCommand(args: string[]): Promise<number> {
+async function handleLoopCommand(args: string[], command: "loop" | "cockpit"): Promise<number> {
+  let resetBudget = false;
+  if (args.includes("--reset-budget")) {
+    const { explicitFlags } = await import("./loop-defaults.js");
+    const flags = explicitFlags(args, false);
+    resetBudget = flags.has("--reset-budget");
+    if (resetBudget && (command !== "loop" || args[0] !== "run" || flags.has("--daemon"))) {
+      console.error("osstack: --reset-budget requires a local loop run. For a daemon loop, stop the session, run osstack loop run --reset-budget with a budget flag over the same state file, then start the session again.");
+      return 1;
+    }
+    const budgetFlags = ["--max-runtime-ms", "--max-tokens", "--max-cost-usd", "--no-progress-limit"];
+    if (resetBudget && !budgetFlags.some(flag => flags.has(flag))) {
+      console.error(`osstack: --reset-budget requires at least one budget flag (${budgetFlags.join(", ")})`);
+      return 1;
+    }
+  }
   if (args[0] === "run" || args[0] === "enqueue") {
     const { applyLoopDefaults } = await import("./loop-defaults.js");
     try { args = await applyLoopDefaults(args, osstackHome()); }
@@ -10438,6 +10453,10 @@ async function handleLoopCommand(args: string[]): Promise<number> {
     const budget = await parseLoopBudgetFlags(args);
     if (budget instanceof Error) {
       console.error(`osstack: ${budget.message}`);
+      return 1;
+    }
+    if (resetBudget && !budget) {
+      console.error("osstack: --reset-budget requires at least one budget flag with a value");
       return 1;
     }
     const lessonDrafts = parseLessonDraftFlags(args);
@@ -10649,6 +10668,7 @@ async function handleLoopCommand(args: string[]): Promise<number> {
       ...(artifactVerification !== undefined ? { artifactVerification } : {}),
       ...(discoveryPolicy !== undefined ? { discoveryPolicy } : {}),
       ...(budget !== undefined ? { budget } : {}),
+      ...(resetBudget && { resetBudget }),
       ...(lessonDrafts !== undefined ? { lessonDrafts } : {}),
       ...(goalCommand !== undefined ? { goalCommand } : {}),
       ...(verifyCommands.length > 0 ? { verifyCommands } : {}),
@@ -10898,6 +10918,7 @@ Options:
                      main checkout to the accepted commit; refused unless B is checked out
   --worktree-root P  Directory for temporary isolated worktrees
   --max-iter N        Iterations before escalation (default: 1)
+  --reset-budget      Local loop run only: zero budget usage. Supply a budget flag.
   --max-runtime-ms N  Budget: stop after N ms total runtime (exit code 2)
   --max-tokens N      Budget: stop after N adapter-reported tokens (in+out)
   --max-cost-usd X    Budget: stop after an adapter-reported spend of X USD
@@ -12445,7 +12466,7 @@ async function handleCockpitApproveCommand(args: string[]): Promise<number> {
 
 async function handleCockpitRunCommand(args: string[]): Promise<number> {
   const runArgs = ["run", ...cockpitRunArgs(args)];
-  return await handleLoopCommand(runArgs);
+  return await handleLoopCommand(runArgs, "cockpit");
 }
 
 async function handleCockpitRetryCommand(args: string[]): Promise<number> {

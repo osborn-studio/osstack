@@ -1,12 +1,14 @@
 import { mkdtempSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentAdapter } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoopBudget, checkBudget, clampTaskIterations, type BudgetUsage } from "./budget.js";
 import { LoopEngine } from "./loop-engine.js";
+import { GitDiffScanner } from "./discover.js";
+import * as stateFile from "./state-file.js";
 import { readLoopState } from "./state-file.js";
 import {
   createLoopStateReport,
@@ -74,6 +76,187 @@ describe("clampTaskIterations", () => {
 });
 
 describe("LoopEngine budget enforcement", () => {
+  it.each(["max_cycles", "max_runtime_ms", "max_tokens", "max_estimated_cost_usd", "no_progress_limit"] as const)(
+    "refuses discovery at persisted %s and continues after a raise", async limit => {
+      await enqueue("retry");
+      let now = 100;
+      const scan = vi.spyOn(GitDiffScanner.prototype, "scan").mockImplementation(async () => { now++; return []; });
+      vi.spyOn(Date, "now").mockImplementation(() => now);
+      const adapter = usageAdapter({ tokensIn: 1, tokensOut: 0, cost: 1 });
+      const engine = (cap: number) => new LoopEngine({ workspacePath: workspace, sources: ["git_diff", "task_queue"],
+        adapters: [adapter], agentId: adapter.id, skipCompletedTasks: false, verifyCommands: ["exit 1"], budget: { [limit]: cap } });
+      try {
+        const first = await engine(1).runOnce();
+        const unit = { cycles: 1, runtime_ms: 1, tokens: 1, estimated_cost_usd: 1, no_progress_cycles: 1 };
+        expect(first.budget).toMatchObject({ exceeded: true, limit, usage: unit });
+        now += 1000;
+        const refused = await engine(1).runCycles({ cycles: 2 });
+        expect(refused.budget).toEqual(first.budget);
+        expect(refused.cycles).toEqual([]);
+        expect(refused.events.map(e => e.type)).toEqual(["loop.budget.exceeded", "loop.stopped"]);
+        expect(scan).toHaveBeenCalledTimes(1);
+        const resumed = await engine(3).runOnce();
+        expect(resumed.budget).toMatchObject({ exceeded: false, usage: {
+          cycles: 2, runtime_ms: 2, tokens: 2, estimated_cost_usd: 2, no_progress_cycles: 2,
+        } });
+        expect((await readLoopState(resumed.jsonPath))?.budget_status).toEqual(resumed.budget);
+      } finally { vi.restoreAllMocks(); }
+    });
+
+  it.each(["max_cycles", "max_runtime_ms", "max_tokens", "max_estimated_cost_usd"] as const)(
+    "explicitly resets exhausted %s once and counts only new work", async limit => {
+      await enqueue("repeat");
+      let now = 100;
+      const scan = vi.spyOn(GitDiffScanner.prototype, "scan").mockImplementation(async () => { now++; return []; });
+      vi.spyOn(Date, "now").mockImplementation(() => now);
+      const adapter = usageAdapter({ tokensIn: 2, tokensOut: 1, cost: 1 });
+      const invoke = vi.spyOn(adapter, "invoke");
+      const engine = (resetBudget = false) => new LoopEngine({
+        workspacePath: workspace, sources: ["git_diff", "task_queue"], adapters: [adapter], agentId: adapter.id,
+        skipCompletedTasks: false, budget: { [limit]: 1 }, resetBudget,
+      });
+      try {
+        const first = await engine().runOnce();
+        expect(first.budget).not.toHaveProperty("baseline");
+        expect(first.events.map(e => e.type)).not.toContain("loop.budget.reset");
+        const refused = await engine().runOnce();
+        expect(refused.budget).toEqual(first.budget);
+        expect(refused.budget?.exceeded).toBe(true);
+        expect(scan).toHaveBeenCalledTimes(1);
+        expect(invoke).toHaveBeenCalledTimes(1);
+        for (const n of [1, 2]) {
+          const resetting = engine(true);
+          const result = await resetting.runOnce();
+          const baseline = { tokens: n * 3, estimated_cost_usd: n };
+          expect(result.events.slice(0, 3).map(e => e.type)).toEqual([
+            "loop.state.written", "loop.budget.reset", "loop.state.written",
+          ]);
+          expect(result.events.filter(e => e.type === "loop.budget.reset").map(e => e.payload))
+            .toEqual([{ usage_before: first.budget!.usage, baseline }]);
+          expect(result.budget).toEqual({ ...first.budget, baseline });
+          expect(result.state.key_metrics?.tokens_consumed).toBe(3 * (n + 1));
+          expect((await resetting.runOnce()).executedTaskCount).toBe(0);
+        }
+      } finally { vi.restoreAllMocks(); }
+    });
+
+  it("persists only the reset before a crash and resumes from zero", async () => {
+    await enqueue("metered");
+    const adapter = usageAdapter({ tokensIn: 8, tokensOut: 2, cost: 3 });
+    const options = { workspacePath: workspace, sources: [], budget: { max_tokens: 1 } };
+    const first = await new LoopEngine({ ...options, sources: ["task_queue"], adapters: [adapter], agentId: adapter.id }).runOnce();
+    const previous = (await readLoopState(first.jsonPath))!;
+    // Admission reconciles an older budget snapshot with lifetime metrics.
+    previous.budget_status!.usage.tokens = 1;
+    previous.budget_status!.usage.no_progress_cycles = 4;
+    await stateFile.writeLoopState(first.jsonPath, previous);
+    const write = stateFile.writeLoopState;
+    const spy = vi.spyOn(stateFile, "writeLoopState").mockImplementationOnce(write)
+      .mockRejectedValueOnce(Error("crash before debit"));
+    try { await expect(new LoopEngine({ ...options, resetBudget: true }).runOnce()).rejects.toThrow("crash before debit"); }
+    finally { spy.mockRestore(); }
+    const status = { exceeded: false, usage: usage(), baseline: { tokens: 10, estimated_cost_usd: 3 } };
+    expect(await readLoopState(first.jsonPath)).toEqual({ ...previous, budget_status: status });
+    expect((await new LoopEngine(options).runOnce()).budget).toMatchObject({ ...status, usage: { cycles: 1, tokens: 0, estimated_cost_usd: 0 } });
+  });
+
+  it("records reconciled usage and persists the reset even when containment refuses work", async () => {
+    await enqueue("unconfirmed");
+    const adapter = usageAdapter({ tokensIn: 5, tokensOut: 3, cost: 2 });
+    const options = { workspacePath: workspace, budget: { max_tokens: 4 } };
+    const first = await new LoopEngine({ ...options, sources: ["task_queue"], agentId: adapter.id, adapters: [adapter] }).runOnce();
+    const previous = (await readLoopState(first.jsonPath))!;
+    previous.completed_tasks[0]!.implementation_unconfirmed = true;
+    const prior = previous.budget_status!;
+    prior.baseline = { tokens: 2, estimated_cost_usd: 0.5 };
+    prior.usage.tokens = 1;
+    prior.usage.estimated_cost_usd = 4;
+    await stateFile.writeLoopState(first.jsonPath, previous);
+    const reset = await new LoopEngine({ ...options, resetBudget: true }).runOnce();
+    const baseline = { tokens: 8, estimated_cost_usd: 2 };
+    expect(reset.events.map(e => e.type)).toEqual(["loop.state.written", "loop.budget.reset", "loop.stopped"]);
+    expect(reset.events[1]?.payload).toEqual({ usage_before: { ...prior.usage, tokens: 6 }, baseline });
+    expect(await readLoopState(first.jsonPath)).toEqual({ ...previous, budget_status: { exceeded: false, usage: usage(), baseline } });
+  });
+
+  it("resets once across multiple cycles", async () => {
+    const result = await new LoopEngine({ workspacePath: workspace, sources: [], budget: {}, resetBudget: true }).runCycles({ cycles: 3 });
+    expect(result.events.filter(e => e.type === "loop.budget.reset").map(e => e.payload))
+      .toEqual([{ usage_before: usage(), baseline: { tokens: 0, estimated_cost_usd: 0 } }]);
+    expect(result.budget?.usage.cycles).toBe(3);
+  });
+
+  it("rejects reset without a budget before state access", async () => {
+    const read = vi.spyOn(stateFile, "readLoopState");
+    const write = vi.spyOn(stateFile, "writeLoopState");
+    try {
+      await expect(new LoopEngine({ workspacePath: workspace, sources: [], resetBudget: true }).runOnce()).rejects.toThrow(/resetBudget requires.*budget/);
+      expect(read).not.toHaveBeenCalled();
+      expect(write).not.toHaveBeenCalled();
+    } finally { vi.restoreAllMocks(); }
+  });
+
+  it("resets a legacy no-progress streak after raising the limit and succeeding", async () => {
+    const path = join(workspace, "LOOP-STATE.json");
+    await writeFile(path, JSON.stringify({
+      ...stateFile.createInitialLoopState("legacy"),
+      budget_status: { exceeded: true, limit: "no_progress_limit", reason: "legacy stop",
+        usage: usage({ cycles: 2, runtime_ms: 50, no_progress_cycles: 2 }) },
+    }));
+    await enqueue("retry");
+    const run = (command: string) => new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      executeCommand: command, skipCompletedTasks: false, budget: { no_progress_limit: 3 } }).runOnce();
+    const success = await run("exit 0");
+    expect(success.completedTasks[0]?.outcome).toBe("success");
+    expect(success.budget).toMatchObject({ exceeded: false, usage: { cycles: 3, no_progress_cycles: 0 } });
+    expect(success.budget!.usage.runtime_ms).toBeGreaterThanOrEqual(50);
+    expect((await run("exit 1")).budget).toMatchObject({ exceeded: false, usage: { cycles: 4, no_progress_cycles: 1 } });
+  });
+
+  it.each([
+    { command: "exit 1", streak: 2, exceeded: true },
+    { command: "exit 0", streak: 0, exceeded: false },
+  ])("after a failure and restart, $command leaves streak $streak", async ({ command, streak, exceeded }) => {
+    await enqueue("retry");
+    const run = (executeCommand: string) => new LoopEngine({
+      workspacePath: workspace, sources: ["task_queue"], executeCommand,
+      skipCompletedTasks: false, budget: { no_progress_limit: 2 },
+    }).runOnce();
+    expect((await run("exit 1")).budget).toMatchObject({ exceeded: false, usage: { no_progress_cycles: 1 } });
+    const result = await run(command);
+    expect(result.budget).toMatchObject({
+      exceeded, ...(exceeded && { limit: "no_progress_limit" }), usage: { cycles: 2, no_progress_cycles: streak },
+    });
+    expect((await readLoopState(result.jsonPath))?.budget_status).toEqual(result.budget);
+  });
+
+  it("keeps the admission debit when the cycle result cannot be written", async () => {
+    const engine = () => new LoopEngine({ workspacePath: workspace, sources: [], budget: { max_cycles: 2 } });
+    const write = stateFile.writeLoopState;
+    const spy = vi.spyOn(stateFile, "writeLoopState").mockImplementationOnce(write).mockRejectedValueOnce(Error("crash"));
+    try { await expect(engine().runOnce()).rejects.toThrow("crash"); }
+    finally { spy.mockRestore(); }
+    expect((await readLoopState(join(workspace, "LOOP-STATE.json")))?.budget_status?.usage).toEqual(usage({ cycles: 1 }));
+    expect((await engine().runOnce()).budget).toMatchObject({ exceeded: true, usage: { cycles: 2 } });
+  });
+
+  it("preserves unbudgeted two-cycle state and events before enabling a budget", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(1000);
+    try {
+      const options = { workspacePath: workspace, loopId: "legacy", sources: [] };
+      const result = await new LoopEngine(options).runCycles({ cycles: 2 });
+      expect(JSON.parse(await readFile(result.jsonPath, "utf8"))).not.toHaveProperty("budget_status");
+      expect(result.events.map(event => event.type)).toEqual([
+        "loop.started",
+        "loop.cycle.started", "loop.discover.done", "loop.state.written", "loop.cycle.completed",
+        "loop.cycle.started", "loop.discover.done", "loop.state.written", "loop.cycle.completed",
+        "loop.stopped",
+      ]);
+      expect((await new LoopEngine({ ...options, budget: {} }).runOnce()).budget?.usage).toEqual(usage({ cycles: 1 }));
+    } finally { vi.useRealTimers(); }
+  });
+
   it("stops after consecutive no-progress cycles and emits loop.budget.exceeded", async () => {
     await enqueue("stuck-task");
 

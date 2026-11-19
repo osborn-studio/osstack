@@ -61,6 +61,7 @@ import {
 } from "./types.js";
 import { truncateUnicodeSafe } from "./unicode.js";
 import { CandidatePolicy, validateCandidateBatch, openCandidateRecord, freezeCandidate, assertCandidateFrozen, assertCandidateScope, assertCandidateStateDirectory, assertCandidateStateFile, assertCandidateIndexVisible } from "./candidate-policy.js";
+import { isDeepStrictEqual } from "node:util";
 import { chmod } from "node:fs/promises";
 
 export interface LocalLandingOptions {
@@ -121,6 +122,7 @@ export interface LoopRunOptions {
   discoveryPolicy?: DiscoveryPolicy;
   /** Cost and stop controls. When absent, no budget is enforced (legacy behavior). */
   budget?: LoopBudget;
+  resetBudget?: boolean;
   /** SOP flywheel: draft lessons after successes that recovered from failed attempts. Default on. */
   lessonDrafts?: Partial<LessonDraftConfig>;
   adapters?: readonly AgentAdapter[];
@@ -250,6 +252,7 @@ export class LoopEngine {
   private reportInvalid = false;
   private lastBudgetReading = 0;
   private budgetElapsedMs = 0;
+  private budgetResetApplied = false;
   private implementationUnconfirmed = false;
   private containmentPending = false;
   private candidateContaminated = false;
@@ -308,7 +311,7 @@ export class LoopEngine {
 
     const results: LoopRunResult[] = [];
     this.resetBudgetClock();
-    let noProgressCycles = 0;
+    let last: (LoopRunResult & { budgetRefused?: true }) | undefined;
     let budgetStatus: LoopBudgetStatus | undefined;
     let policyReason: string | undefined;
 
@@ -327,31 +330,24 @@ export class LoopEngine {
         emitStarted: cycle === 1,
         emitStopped: false,
       });
-      results.push(result);
-      noProgressCycles = nextNoProgressCycles(noProgressCycles, result);
-      budgetStatus = this.checkLoopBudget(result.loop_id, {
-        cycles: results.length,
-        runtime_ms: this.readBudgetElapsedMs(),
-        tokens: result.state.key_metrics?.tokens_consumed ?? 0,
-        estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
-        no_progress_cycles: noProgressCycles,
-      });
+      last = result;
+      budgetStatus = result.budget;
+      if (!result.budgetRefused) results.push(result);
       if (budgetStatus?.exceeded === true || this.reportInvalid || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) break;
       if (result.goal?.pass === true) break;
       if (options.stopWhenIdle === true && result.executedTaskCount === 0) break;
       if (cycle < cycles && intervalMs > 0) await sleep(intervalMs);
     }
 
-    const last = results.at(-1);
     if (last === undefined) {
       throw new Error("runCycles requires at least one cycle");
     }
-    const finalState = await this.persistBudgetStatus(last, budgetStatus);
-    if (this.candidateRecheck) await this.candidateRecheck(finalState);
+    const finalState = last.state;
+    if (this.candidateRecheck && !last.budgetRefused) await this.candidateRecheck(finalState);
     this.emit(last.loop_id, "loop.stopped", {
       ...(policyReason !== undefined
         ? { reason_code: "policy_denied", reason: policyStopReason(policyReason) }
-        : this.reportInvalid ? this.stopPayload(finalState, last.executedTaskCount) : budgetStatus?.exceeded === true
+        : this.reportInvalid && !last.budgetRefused ? this.stopPayload(finalState, last.executedTaskCount) : budgetStatus?.exceeded === true
           ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
           : this.stopPayload(last.state, last.executedTaskCount, last.goal)),
       cycles: results.length,
@@ -374,6 +370,7 @@ export class LoopEngine {
   }
 
   private async withLifecycleLease<T>(run: () => Promise<T>): Promise<T> {
+    if (this.options.resetBudget && !this.options.budget) throw new Error("resetBudget requires a configured budget");
     const lease = await this.options.lifecycleLease?.({ workspacePath: this.options.workspacePath ?? process.cwd() });
     this.lifecycleEffectsStarted = false;
     let settled = false;
@@ -398,21 +395,15 @@ export class LoopEngine {
       return this.policyDeniedRunResult(entryGate.reason, eventStartIndex);
     }
     this.resetBudgetClock();
-    const result = await this.runCycle(1, { emitStarted: true, emitStopped: false });
-    const budgetStatus = this.checkLoopBudget(result.loop_id, {
-      cycles: 1,
-      runtime_ms: this.readBudgetElapsedMs(),
-      tokens: result.state.key_metrics?.tokens_consumed ?? 0,
-      estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
-      no_progress_cycles: nextNoProgressCycles(0, result),
-    });
-    const finalState = await this.persistBudgetStatus(result, budgetStatus);
+    const { budgetRefused, ...result } = await this.runCycle(1, { emitStarted: true, emitStopped: false });
+    const budgetStatus = result.budget;
+    const finalState = result.state;
     this.emit(result.loop_id, "loop.stopped", {
-      ...(this.reportInvalid ? this.stopPayload(result.state, result.executedTaskCount) : budgetStatus?.exceeded === true
+      ...(this.reportInvalid && !budgetRefused ? this.stopPayload(result.state, result.executedTaskCount) : budgetStatus?.exceeded === true
         ? { reason_code: "budget_exceeded", reason: `budget exceeded: ${budgetStatus.reason}` }
         : this.stopPayload(result.state, result.executedTaskCount, result.goal)),
     });
-    if (this.candidateRecheck) await this.candidateRecheck(finalState);
+    if (this.candidateRecheck && !budgetRefused) await this.candidateRecheck(finalState);
     return {
       ...result,
       state: finalState,
@@ -448,7 +439,7 @@ export class LoopEngine {
    */
   private async policyDeniedRunResult(reason: string, eventStartIndex: number): Promise<LoopRunResult> {
     const workspacePath = this.options.workspacePath ?? process.cwd();
-    const jsonPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".json") : resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+    const jsonPath = this.statePath(workspacePath);
     const markdownPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".md") : this.options.markdownPath !== undefined
       ? resolvePath(this.options.markdownPath, workspacePath)
       : join(dirname(jsonPath), "STATE.md");
@@ -485,39 +476,7 @@ export class LoopEngine {
     };
   }
 
-  /**
-   * When a budget is configured, fold its latest status back into the durable
-   * state so `loop status`, reports, and scorecards can explain budget stops.
-   */
-  private async persistBudgetStatus(
-    result: LoopRunResult,
-    budgetStatus: LoopBudgetStatus | undefined,
-  ): Promise<LoopState> {
-    // Only re-persist when the budget actually stops the loop. A within-limits
-    // check every cycle would double-write LOOP-STATE.json and double-emit
-    // loop.state.written for no state change; the in-memory result.budget still
-    // carries the current status for the immediate CLI print.
-    if (budgetStatus === undefined || !budgetStatus.exceeded) return result.state;
-    const decisions = [...(result.state.decisions ?? [])];
-    if (budgetStatus.reason !== undefined) {
-      decisions.push(`budget: ${budgetStatus.reason}`);
-    }
-    const nextState = LoopState.parse({
-      ...result.state,
-      updated_at: new Date().toISOString(),
-      budget_status: budgetStatus,
-      decisions,
-    });
-    if (this.candidatePolicy) { await assertCandidateStateFile(result.jsonPath); await assertCandidateStateFile(result.markdownPath); }
-    const paths = await writeLoopState(result.jsonPath, nextState, { markdownPath: result.markdownPath });
-    if (this.candidatePolicy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
-    this.emit(result.loop_id, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
-    return nextState;
-  }
-
-  private checkLoopBudget(loopId: string, usage: BudgetUsage): LoopBudgetStatus | undefined {
-    const budget = this.options.budget;
-    if (budget === undefined) return undefined;
+  private checkLoopBudget(loopId: string, budget: LoopBudget, usage: BudgetUsage, baseline: LoopBudgetStatus["baseline"]): LoopBudgetStatus {
     const check = checkBudget(budget, usage);
     if (check.exceeded) {
       this.emit(loopId, "loop.budget.exceeded", {
@@ -530,17 +489,23 @@ export class LoopEngine {
         no_progress_cycles: usage.no_progress_cycles,
       });
     }
-    return { ...check, usage };
+    return { ...check, usage, ...(baseline && { baseline }) };
+  }
+
+  private statePath(workspacePath: string): string {
+    return this.candidatePolicy
+      ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".json")
+      : resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
   }
 
   private async runCycle(
     cycle: number,
     lifecycle: { emitStarted: boolean; emitStopped: boolean },
-  ): Promise<LoopRunResult> {
+  ): Promise<LoopRunResult & { budgetRefused?: true }> {
     const eventStartIndex = this.events.length;
     const workspacePath = this.options.workspacePath ?? process.cwd();
     if (this.candidatePolicy) await assertCandidateStateDirectory(this.candidatePolicy.stateDirectory);
-    const jsonPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".json") : resolvePath(this.options.stateFilePath ?? "LOOP-STATE.json", workspacePath);
+    const jsonPath = this.statePath(workspacePath);
     const markdownPath = this.candidatePolicy ? join(this.candidatePolicy.stateDirectory, "loop-" + this.candidatePolicy.batchId + ".md") : this.options.markdownPath !== undefined
       ? resolvePath(this.options.markdownPath, workspacePath)
       : undefined;
@@ -555,15 +520,54 @@ export class LoopEngine {
     this.implementationUnconfirmed ||= state.completed_tasks.some((task) =>
       task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
-    if (this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) {
+    const budget = this.options.budget;
+    let baseline = state.budget_status?.baseline;
+    const prior = state.budget_status?.usage;
+    if (budget && cycle === 1) this.budgetElapsedMs = prior?.runtime_ms ?? 0;
+    let usage = budget && {
+      cycles: prior?.cycles ?? 0,
+      runtime_ms: cycle === 1 ? this.budgetElapsedMs : this.readBudgetElapsedMs(),
+      tokens: Math.max(0, prior?.tokens ?? 0, (state.key_metrics?.tokens_consumed ?? 0) - (baseline?.tokens ?? 0)),
+      estimated_cost_usd: Math.max(0, prior?.estimated_cost_usd ?? 0, (state.key_metrics?.cost_consumed ?? 0) - (baseline?.estimated_cost_usd ?? 0)),
+      no_progress_cycles: prior?.no_progress_cycles ?? 0,
+    };
+    const writeState = async (next: LoopState) => {
+      if (this.candidatePolicy) { await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
+      const paths = await writeLoopState(jsonPath, next, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
+      if (this.candidatePolicy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
+      return paths;
+    };
+    if (usage && cycle === 1 && this.options.resetBudget && !this.budgetResetApplied) {
+      const usageBefore = usage;
+      baseline = { tokens: state.key_metrics?.tokens_consumed ?? 0, estimated_cost_usd: state.key_metrics?.cost_consumed ?? 0 };
+      usage = { cycles: 0, runtime_ms: 0, tokens: 0, estimated_cost_usd: 0, no_progress_cycles: 0 };
+      this.resetBudgetClock();
+      state.budget_status = { exceeded: false, usage, baseline };
+      const paths = await writeState(state);
+      this.budgetResetApplied = true;
+      this.emit(loopId, "loop.state.written", { ...paths });
+      this.emit(loopId, "loop.budget.reset", { usage_before: usageBefore, baseline });
+    }
+    const admission = budget && usage && this.checkLoopBudget(loopId, budget, usage, baseline);
+    if (admission?.exceeded || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) {
+      if (admission?.exceeded && !isDeepStrictEqual(state.budget_status, admission)) {
+        state.budget_status = admission;
+        this.emit(loopId, "loop.state.written", { ...await writeState(state) });
+      }
       if (lifecycle.emitStopped) this.emit(loopId, "loop.stopped", this.stopPayload(state, 0));
       return {
         loop_id: loopId, state, completedTasks: [], events: this.events.slice(eventStartIndex),
         jsonPath, markdownPath: markdownPath ?? join(dirname(jsonPath), "STATE.md"),
         discoveredTaskCount: 0, executedTaskCount: 0, skippedTaskCount: 0,
+        ...(admission && { budget: admission }), ...(admission?.exceeded && { budgetRefused: true }),
       };
     }
 
+    if (budget && usage) {
+      usage.cycles++;
+      state.budget_status = { ...checkBudget(budget, usage), usage, ...(baseline && { baseline }) };
+      this.emit(loopId, "loop.state.written", { ...await writeState(state) });
+    }
     if (lifecycle.emitStarted) this.emit(loopId, "loop.started", { workspace_path: workspacePath });
     if (this.options.knowledge !== undefined) {
       this.emit(loopId, "loop.knowledge.used", {
@@ -629,7 +633,7 @@ export class LoopEngine {
       pending.shift();
       this.lifecycleEffectsStarted = true;
       let taskResult: { completedTask: CompletedTask; decisions: string[] };
-      try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath)); }
+      try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath), baseline); }
       catch (error) {
         if (candidateRecord) await candidateRecord.record("final_preflight_failed", { ...knownCandidate!, taskOrdinal: tasks.indexOf(task) });
         throw error; // Preserve lifecycle containment and the original failure; no ready receipt.
@@ -675,8 +679,8 @@ export class LoopEngine {
               reportRepair: {
                 remainingMs: () => {
                   const remaining = (this.options.budget?.max_runtime_ms ?? Infinity) - this.readBudgetElapsedMs();
-                  const tokens = completed.reduce((sum, item) => sum + (item.tokens_in ?? 0) + (item.tokens_out ?? 0), 0);
-                  const cost = completed.reduce((sum, item) => sum + (item.cost_usd ?? 0), 0);
+                  const tokens = completed.reduce((sum, item) => sum + (item.tokens_in ?? 0) + (item.tokens_out ?? 0), 0) - (baseline?.tokens ?? 0);
+                  const cost = completed.reduce((sum, item) => sum + (item.cost_usd ?? 0), 0) - (baseline?.estimated_cost_usd ?? 0);
                   if (remaining <= 0 || (this.options.budget?.max_tokens !== undefined && tokens >= this.options.budget.max_tokens)
                     || (this.options.budget?.max_estimated_cost_usd !== undefined && cost >= this.options.budget.max_estimated_cost_usd)) return undefined;
                   return Math.min(this.options.commandTimeoutMs ?? 120_000, remaining);
@@ -776,9 +780,19 @@ export class LoopEngine {
     });
 
     const executedTaskCount = completed.length - previousCompletedCount;
-    if (policy) { await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
-    const paths = await writeLoopState(jsonPath, nextState, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
-    if (policy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
+    const completedTasks = nextState.completed_tasks.slice(previousCompletedCount);
+    const budgetStatus = budget && usage && this.checkLoopBudget(loopId, budget, {
+      cycles: usage.cycles,
+      runtime_ms: this.readBudgetElapsedMs(),
+      tokens: Math.max(usage.tokens, (nextState.key_metrics?.tokens_consumed ?? 0) - (baseline?.tokens ?? 0)),
+      estimated_cost_usd: Math.max(usage.estimated_cost_usd, (nextState.key_metrics?.cost_consumed ?? 0) - (baseline?.estimated_cost_usd ?? 0)),
+      no_progress_cycles: nextNoProgressCycles(usage.no_progress_cycles, completedTasks),
+    }, baseline);
+    if (budgetStatus) {
+      nextState.budget_status = budgetStatus;
+      if (budgetStatus.reason) nextState.decisions?.push(`budget: ${budgetStatus.reason}`);
+    }
+    const paths = await writeState(nextState);
     if (containmentArmed && !this.implementationUnconfirmed && !this.candidateContaminated) releaseLoopContainment(containmentPath);
     this.emit(loopId, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     this.emit(loopId, "loop.cycle.completed", {
@@ -812,6 +826,7 @@ export class LoopEngine {
       loop_id: loopId,
       state: nextState,
       completedTasks: nextState.completed_tasks.slice(previousCompletedCount),
+      ...(budgetStatus && { budget: budgetStatus }),
       events: this.events.slice(eventStartIndex),
       jsonPath: paths.jsonPath,
       markdownPath: paths.markdownPath,
@@ -955,6 +970,7 @@ export class LoopEngine {
     task: Task,
     historyTasks: readonly CompletedTask[],
     containmentRoot: string,
+    baseline: LoopBudgetStatus["baseline"],
   ): Promise<{ completedTask: CompletedTask; decisions: string[] }> {
     const started = Date.now();
     const maxIterations = clampTaskIterations(this.options.maxIterations ?? 1, this.options.budget);
@@ -969,8 +985,8 @@ export class LoopEngine {
     const repairHooks: ReportRepairHooks = {
       remainingMs: () => {
         const budget = this.options.budget;
-        const tokens = historyTasks.reduce((sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0), 0) + taskUsage.tokensIn + taskUsage.tokensOut;
-        const cost = historyTasks.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0) + taskUsage.cost;
+        const tokens = historyTasks.reduce((sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0), 0) + taskUsage.tokensIn + taskUsage.tokensOut - (baseline?.tokens ?? 0);
+        const cost = historyTasks.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0) + taskUsage.cost - (baseline?.estimated_cost_usd ?? 0);
         const remaining = (budget?.max_runtime_ms ?? Infinity) - this.readBudgetElapsedMs();
         if (remaining <= 0 || (budget?.max_tokens !== undefined && tokens >= budget.max_tokens)
           || (budget?.max_estimated_cost_usd !== undefined && cost >= budget.max_estimated_cost_usd)) return undefined;
@@ -1779,12 +1795,11 @@ interface AgentSelection {
 
 /**
  * A cycle counts against the no-progress budget only when it executed tasks
- * and none succeeded. Idle cycles (nothing executed) leave the streak
- * unchanged — stop-when-idle and cycle caps govern those.
+ * and none succeeded. Idle cycles and invalid reports preserve the streak.
  */
-function nextNoProgressCycles(current: number, result: LoopRunResult): number {
-  if (result.executedTaskCount === 0 || result.completedTasks.some(task => task.report_invalid !== undefined)) return current;
-  const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
+function nextNoProgressCycles(current: number, tasks: CompletedTask[]): number {
+  if (tasks.length === 0 || tasks.some(task => task.report_invalid !== undefined)) return current;
+  const madeProgress = tasks.some((task) => task.outcome === "success");
   return madeProgress ? 0 : current + 1;
 }
 

@@ -145,7 +145,32 @@ silently becomes a stalled-cycle stop. Token/cost caps enforce against
 adapter-reported usage (`usage.final` events) and stay at 0 for adapters that
 don't report it. Daemon sessions persist the stop reason and expose limits +
 usage in `loop list` and `osstack stats`. `STATE.md` gains a Budget section
-when a budget stop fires.
+after each budgeted cycle.
+
+Usage belongs to the loop state file and carries across restarts. Runtime adds
+monotonic elapsed time inside budgeted runs. The no-progress streak carries across restarts.
+Idle cycles and cycles with an invalid report preserve the streak. For other
+executed cycles, a success resets the streak to zero and a failure adds one. When a limit is reached, the same budget
+stops before discovery. Raise each exhausted limit to continue. Use a new state
+file (for example, `--state fresh/LOOP-STATE.json`) to start a fresh loop.
+
+To reset usage on the same state file, explicitly pass `--reset-budget` to
+`osstack loop run` with at least one budget flag. Before admission, the engine
+zeros cycles, runtime, the no-progress streak, tokens, and estimated cost. It
+keeps lifetime metrics and completed tasks. The reset runs once. For a daemon
+session, stop the session, run the local reset over the same state file, then
+start the session again.
+
+The engine records one cycle before discovery. It records runtime, tokens, cost
+and no-progress with the results. A mid-cycle crash keeps the cycle debit and
+loses the unfinished cycle's other usage. A runtime, token or cost cap alone
+adds no bound on repeated mid-cycle crashes.
+
+`osstack loop run --cycles N` schedules up to N cycles per invocation. It does
+not set the cumulative `budget.max_cycles` available through the API, so
+repeating the command can run again. Repeating a command with an exhausted
+budget flag stops immediately with exit code 2. Daemon checks use the larger of loop runtime and session wall time and
+retain the highest runtime already reported in that session.
 
 ## Lesson Drafts (SOP Flywheel)
 

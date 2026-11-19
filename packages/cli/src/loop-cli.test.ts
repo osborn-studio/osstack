@@ -309,6 +309,32 @@ required_surfaces:
     ]);
   });
 
+  it.each([
+    [["run"], "--reset-budget requires at least one budget flag ("],
+    [["start"], "stop the session"],
+    [["run", "--daemon", "--max-tokens", "10"], "stop the session"],
+  ] as const)("rejects reset for %j", async (args, message) => {
+    expect(await main(["loop", ...args, "--workspace", tmp, "--reset-budget"])).toBe(1);
+    expect(errors.join(" ")).toContain(message);
+    if (message === "stop the session") expect(errors.join(" ")).toMatch(/stop the session.*osstack loop run --reset-budget.*budget flag.*same state file.*start the session again/);
+  });
+
+  it("requires an explicit budget flag even with a budget default", async () => {
+    process.env["OSSTACK_HOME"] = tmp;
+    const config = join(tmp, "loop-defaults");
+    await mkdir(config, { mode: 0o700 });
+    await writeFile(join(config, "config.json"), JSON.stringify({
+      schemaVersion: 1, enabled: true, run: [{ flag: "--max-tokens", value: "10" }], enqueue: [],
+    }), { mode: 0o600 });
+    expect(await main(["loop", "run", "--workspace", tmp, "--reset-budget"])).toBe(1);
+    expect(errors.join(" ")).toContain("--reset-budget requires at least one budget flag");
+  });
+
+  it("refuses a reset forwarded by cockpit run", async () => {
+    expect(await main(["cockpit", "run", "--workspace", tmp, "--reset-budget", "--max-tokens", "10"])).toBe(1);
+    expect(errors.join(" ")).toContain("--reset-budget");
+  });
+
   it("stops with exit code 2 when the loop budget is exceeded", async () => {
     await mkdir(join(tmp, "tasks"));
     await writeFile(join(tmp, "tasks", "task.json"), JSON.stringify({
@@ -343,6 +369,11 @@ required_surfaces:
     expect(summary.completed_tasks).toEqual([
       expect.objectContaining({ task_id: "cli-budget-task", outcome: "success" }),
     ]);
+    const args = ["loop", "run", "--workspace", tmp, "--source", "task_queue", "--json"];
+    expect(await main([...args, "--max-runtime-ms", "1"])).toBe(2);
+    expect(await main([...args, "--reset-budget", "--max-tokens", "1"])).toBe(0);
+    const persisted = JSON.parse(await readFile(join(tmp, "LOOP-STATE.json"), "utf8"));
+    expect(persisted.budget_status).toMatchObject({ baseline: { tokens: 0, estimated_cost_usd: 0 }, usage: { cycles: 1 } });
   });
 
   it("lists, promotes, and discards lesson drafts", async () => {

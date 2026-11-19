@@ -83,6 +83,7 @@ export function renderLoopStateMarkdown(state: LoopState): string {
       "## Budget",
       `- Status: ${status.exceeded ? `exceeded (${status.limit ?? "unknown limit"})` : "within limits"}`,
       ...(status.reason !== undefined ? [`- Reason: ${status.reason}`] : []),
+      ...(status.baseline ? [`- Reset baseline: ${status.baseline.tokens} tokens, $${status.baseline.estimated_cost_usd.toFixed(4)}`] : []),
       `- Usage: ${status.usage.cycles} cycle(s), ${status.usage.runtime_ms} ms, ${status.usage.tokens} tokens, $${status.usage.estimated_cost_usd.toFixed(4)}, ${status.usage.no_progress_cycles} no-progress cycle(s)`,
     );
   }

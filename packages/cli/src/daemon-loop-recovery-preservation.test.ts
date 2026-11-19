@@ -65,7 +65,7 @@ describe("daemon interrupted Loop recovery", () => {
       task_id: "interrupted-task", capability: "code.test", prompt: "Do not replay after an unproven interruption",
     }));
     const runOptions = {
-      workspacePath: workspace, useWorktree: true, worktreeRoot, sources: ["task_queue"],
+      resetBudget: true, workspacePath: workspace, useWorktree: true, worktreeRoot, sources: ["task_queue"],
       executeCommand: `${JSON.stringify(process.execPath)} -e ${JSON.stringify(`require('fs').writeFileSync(${JSON.stringify(replayMarker)}, 'replayed')`)}`,
     };
     writeFileSync(join(fixture, "home", "loop-sessions.json"), JSON.stringify({
@@ -87,6 +87,7 @@ describe("daemon interrupted Loop recovery", () => {
     await daemon.close();
     daemon = undefined;
     const persisted = JSON.parse(readFileSync(join(fixture, "home", "loop-sessions.json"), "utf8")) as { sessions: Array<{ stopReason?: string }> };
+    expect(persisted.sessions[0]).not.toHaveProperty("runOptions.resetBudget");
     expect(persisted.sessions[0]?.stopReason).toContain("recovery_required");
   }, 15_000);
 });

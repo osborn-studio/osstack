@@ -274,7 +274,7 @@ interface LoopSession {
   costConsumed: number;
   totalCycleDurationMs: number;
   failureStreaks: Record<string, LoopFailureStreak>;
-  /** Consecutive cycles that executed tasks without a success (budget input). */
+  /** Session-local streak of cycles that executed tasks without a success. */
   noProgressCycles: number;
   abort: AbortController;
   maxCycles?: number;
@@ -2409,7 +2409,9 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
         return;
       }
       const cycleDurationMs = Date.now() - cycleStartedAt;
-      session.cycleCount += 1;
+      if (!result.budget || result.events.some(event => event.type === "loop.cycle.started")) {
+        session.cycleCount += 1;
+      }
       session.discoveredTaskCount += result.discoveredTaskCount;
       session.executedTaskCount += result.executedTaskCount;
       session.skippedTaskCount += result.skippedTaskCount;
@@ -2432,29 +2434,26 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
       if (result.state.wait_reason === undefined) delete session.waitReason;
       else session.waitReason = result.state.wait_reason;
       session.updatedAt = Date.now();
-      await persistLoopSessions(ctx);
 
-      if (budget !== undefined) {
+      if (budget !== undefined && result.budget !== undefined) {
+        const cumulative = result.budget.usage;
         if (result.executedTaskCount > 0) {
-          const madeProgress = result.completedTasks.some((task) => task.outcome === "success");
+          const madeProgress = result.completedTasks.some(task => task.outcome === "success");
           session.noProgressCycles = madeProgress ? 0 : session.noProgressCycles + 1;
         }
         const usage = {
-          cycles: session.cycleCount,
-          runtime_ms: Date.now() - session.startedAt,
-          tokens: session.tokensConsumed,
-          estimated_cost_usd: session.costConsumed,
-          no_progress_cycles: session.noProgressCycles,
+          ...cumulative,
+          runtime_ms: Math.max(cumulative.runtime_ms, Date.now() - session.startedAt, session.lastBudgetCheck?.usage.runtime_ms ?? 0),
         };
         const check = checkBudget(budget, usage);
         session.lastBudgetCheck = { ...check, usage };
-        await persistLoopSessions(ctx);
         if (check.exceeded) {
           await markLoopSessionStopped(ctx, session, `budget exceeded: ${check.reason}`);
           return;
         }
       }
 
+      await persistLoopSessions(ctx);
       if (result.goal?.pass === true) {
         await markLoopSessionStopped(ctx, session, "goal command passed");
         return;
@@ -3020,6 +3019,8 @@ function parseLoopRunParams(
   const p = objectParams(params);
   if (p instanceof Error) return p;
 
+  if ("resetBudget" in p) return new Error("resetBudget is only available for local loop runs");
+
   const workspacePath = optionalString(p, "workspacePath") ?? process.cwd();
   const stateFilePath = optionalString(p, "stateFilePath") ?? "LOOP-STATE.json";
   const markdownPath = optionalString(p, "markdownPath");
@@ -3155,6 +3156,7 @@ function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions, signal
 
 function withoutRuntimeAdapters(runOptions: LoopRunOptions): LoopRunOptions {
   const copy: LoopRunOptions = { ...runOptions };
+  delete copy.resetBudget;
   delete copy.adapters;
   delete copy.policyEngine;
   delete copy.policyHistory;

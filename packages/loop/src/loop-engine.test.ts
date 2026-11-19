@@ -50,7 +50,7 @@ describe("LoopEngine budget clock", () => {
       expect.soft(readings).toEqual(remaining);
       expect.soft(result.completedTasks[0]?.duration_ms).toBe(duration);
       expect.soft(result.events.find(e => e.type === "loop.cycle.completed")?.payload?.["duration_ms"]).toBe(duration);
-      expect((await engine.runOnce()).budget?.usage.runtime_ms).toBe(0);
+      expect((await engine.runOnce()).budget?.usage.runtime_ms).toBe(elapsed);
     } finally {
       probe.mockRestore();
       clock.mockRestore();
