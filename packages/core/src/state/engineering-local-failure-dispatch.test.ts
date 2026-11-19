@@ -454,3 +454,60 @@ it.each(["withdrawn", "superseded", "grant", "head", "base", "expired", "early"]
       : change === "withdrawn" || change === "superseded" ? "verify_source_revoked" : invalid.reason });
   },
 );
+
+function dispatchedRepair() {
+  const { f, r, store, input } = fixture();
+  const dispatch = store.dispatch(input);
+  if (dispatch.status !== "dispatched") throw Error(dispatch.reason);
+  const chains = new RevisionChainStore(f.attention, f.owner);
+  const chain = () => chains.get(r.chain_id!);
+  const missions = new ContainedMissionStore(f.attention, f.owner);
+  const payload = {
+    candidate: "e".repeat(40), previous: r.head_sha, base: r.base_sha, branch: chain().branch,
+  };
+  const child = dispatch.child_mission_id;
+  const confirm = (id = child) => chains.confirmLocalRepairPush({ child_mission_id: id, new_head: payload.candidate }, input.now());
+  const recordConfirmation = (data = payload, id = child) => missions.record(id, "verify_repair_push_confirmed", data, input.now());
+  const events = () => chains.events(r.chain_id!);
+  return { f, r, dispatch, chain, payload, confirm, recordConfirmation, events };
+}
+
+it("advances only the published head once inside the Mission confirmation transaction", () => {
+  const { f, dispatch, chain, payload, confirm, recordConfirmation, events } = dispatchedRepair();
+  const before = chain(), priorEvents = events();
+  const updated = f.db.transaction(() => {
+    recordConfirmation();
+    return confirm();
+  })();
+  expect(updated).toEqual({ ...before, revision: before.revision + 1, published_head: payload.candidate, updated_at: f.facts.now });
+  const appended = events().slice(priorEvents.length);
+  expect(appended).toHaveLength(1);
+  expect(appended[0]?.kind).toBe("local_repair_push_confirmed");
+  expect(JSON.parse(appended[0]!.payload_json)).toMatchObject({
+    dispatch_id: dispatch.dispatch_id, child_mission_id: dispatch.child_mission_id,
+    old_head: before.published_head, new_head: payload.candidate,
+  });
+  const writes = f.db.prepare("SELECT total_changes() AS n");
+  const previousWrites = writes.get();
+  expect(confirm()).toEqual(updated);
+  expect(writes.get()).toEqual(previousWrites);
+});
+
+it.each(["dispatch", "confirmation", "candidate", "previous", "base", "branch", "closed"] as const)(
+  "refuses an invalid local repair %s without changing the ledger", (invalid) => {
+    const { f, r, chain, payload, confirm, recordConfirmation, events } = dispatchedRepair();
+    const child = invalid === "dispatch" ? r.root_mission_id : undefined;
+    if (invalid !== "confirmation") {
+      // The latest matching event controls the read, even after an earlier valid one.
+      if (invalid === "base" || invalid === "previous") recordConfirmation();
+      recordConfirmation({ ...payload, [invalid]: "mismatch" }, child);
+    }
+    if (invalid === "closed") f.db.exec("UPDATE engineering_revision_chains SET state='closed',revision=revision+1");
+    const before = chain(), priorEvents = events();
+    expect(() => confirm(child)).toThrowError(expect.objectContaining({
+      name: "RevisionChainError", code: "local_repair_confirmation_invalid",
+    }));
+    expect(chain()).toEqual(before);
+    expect(events()).toEqual(priorEvents);
+  },
+);

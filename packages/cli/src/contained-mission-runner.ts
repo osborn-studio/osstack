@@ -242,6 +242,25 @@ export class ContainedMissionRunner {
       event: { kind: 'ci_candidate_admitted', payload: binding } }, this.ports.now());
   }
 
+  async resumeConfirmedLocalPublication(missionId: string): Promise<ContainedMission> {
+    const { store } = this.ports;
+    const { HostProcessStore } = await import('@osstack/core');
+    try {
+      store.attention.write(store.owner, () => {
+        const m = store.get(missionId);
+        const openProcess = this.ports.hasOpenHostProcess?.(missionId)
+          ?? (this.ports.openHostProcessId?.(missionId) !== undefined || new HostProcessStore(store.attention, store.owner).hasOpen(missionId));
+        if (openProcess || m.state !== 'awaiting_decision' || !parseContainedMissionSpec(m.spec_json).local_failure_repair
+          || this.haltReason(m) !== 'verify_push_uncertain' || m.stop_obligation !== 0 || m.candidate_verified !== 1
+          || !m.candidate_head || store.claim(missionId).state !== 'active'
+          || !this.allEvents(missionId).some(e => e.kind === 'verify_repair_push_confirmed' && JSON.parse(e.payload_json)?.candidate === m.candidate_head)) throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+        store.transition(missionId, { if_revision: m.revision, to: 'revalidating',
+          event: { kind: 'verify_repair_publication_resumed', payload: { candidate: m.candidate_head } } }, this.ports.now());
+      });
+    } catch { throw Error('CONTAINED_DECISION_NOT_ALLOWED'); }
+    return this.step(missionId);
+  }
+
   /** Synchronous admission check. It must not call a port or change either ledger. */
   decisionAllowed(m: ContainedMission, decision: ContainedDecision['kind']): boolean {
     const reason = this.haltReason(m);
@@ -838,6 +857,9 @@ export class ContainedMissionRunner {
     // A record of this Mission that is not proven stopped (an orphaned push, say) must be settled first: never push again over it.
     const unprovenOp = this.ports.openHostProcessId?.(m.mission_id);
     if (unprovenOp !== undefined) return this.haltUnproven(m, unprovenOp);
+    const resumedLocal = !!spec.local_failure_repair && events.some(e => e.kind === 'verify_repair_publication_resumed');
+    // The publisher validates the stored intent. Without one it would take its fresh-push path.
+    if (resumedLocal && !events.some(e => e.kind === 'verify_repair_push_intent')) return this.haltLocalUncertain(m, 'missing_intent');
     if (spec.local_failure_repair && attempts > 0) {
       const lastAttempt = events.filter(e => e.kind === 'delivery_attempt').at(-1)!;
       const released = this.ports.remoteWriteReleasedSince?.(m.mission_id, lastAttempt.created_at)
@@ -852,6 +874,7 @@ export class ContainedMissionRunner {
     let mutated = false;
     // Journals each remote mutation under the owner fence, and refuses it once anything about the permit changed.
     const beforeRemoteMutation = (kind: 'push' | 'pr_create') => {
+      if (resumedLocal) throw Error('verify_push_uncertain');
       const now = this.ports.store.get(m.mission_id);
       if (spec.publish_target && now.state === 'cancel_requested') throw Error('CONTAINED_REVISION_FENCE:child_cancelled');
       if (now.state !== 'delivering' || now.revision !== permit.revision || now.candidate_head !== permit.head || now.stop_obligation === 1 || now.candidate_verified !== 1) throw Error('CONTAINED_PUBLICATION_FENCE');
@@ -899,6 +922,7 @@ export class ContainedMissionRunner {
       // The release record decides: the fence ran inside the release transaction, which may have rolled back; no release means git and gh never ran.
       const released = this.ports.remoteWriteReleasedSince ? this.ports.remoteWriteReleasedSince(m.mission_id, attemptAt) : mutated;
       if (spec.local_failure_repair) {
+        if (resumedLocal) return this.haltLocalUncertain(current, code(error));
         const { LOCAL_FAILURE_PUBLISH_STOPS } = await import('./contained-mission-local-failure-publish.js');
         const stop = LOCAL_FAILURE_PUBLISH_STOPS.find(s => error instanceof Error && error.message === s);
         if (!released) return this.halt(current, 'awaiting_decision', stop ?? `publication_failed:${code(error)}`);

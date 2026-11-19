@@ -14,6 +14,8 @@ it("keeps diagnosis offline and single-writer", () => {
     }
     for (const file of files.filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))) {
       const source = readFileSync(join(root, file), "utf8");
+      expect(source.replace(file === "contained-mission-runner.ts" ? "async resumeConfirmedLocalPublication(" : "", ""), file)
+        .not.toContain("resumeConfirmedLocalPublication");
       if (!file.endsWith("engineering-diagnosis-store.ts"))
         expect(source, file).not.toMatch(/INSERT\s+INTO\s+engineering_(host_receipts|diagnosis_requests)/i);
       if (!file.endsWith("engineering-local-failure-dispatch-store.ts"))
@@ -42,4 +44,24 @@ it("keeps local failure publication closed outside its library", () => {
     if (!modules.includes(file)) expect(source, file).not.toMatch(/contained-mission-local-failure-(?:approval|publish)\b/);
     expect(source, file).not.toContain("localFailurePublication");
   }
+});
+
+it("keeps published-head writes in the chain store and repair confirmation in the publisher", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  const callers: string[] = [];
+  for (const pkg of ["cli", "core"]) {
+    const root = join(packages, pkg, "src");
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      if (!file.endsWith(".ts") || /\.(?:test|testkit)\.ts$/.test(file)) continue;
+      const source = readFileSync(join(root, file), "utf8");
+      if (pkg === "core" && file === "state/engineering-revision-chain-store.ts") {
+        expect(source.replace(/^\s*confirmLocalRepairPush\(/m, ""), file).not.toMatch(/\bconfirmLocalRepairPush\b/);
+        continue;
+      }
+      expect(source, file).not.toMatch(/UPDATE\s+engineering_revision_chains\s+SET\b(?:(?!\bWHERE\b)[^;`])*?\bpublished_head\s*=/i);
+      expect(source, file).not.toMatch(/\b(?:patch\.published_head\s*=(?!=)|update\s*\([^,]+,\s*\{[^}]*\bpublished_head\s*:)/);
+      if (/\bconfirmLocalRepairPush\b/.test(source)) callers.push(pkg + "/" + file);
+    }
+  }
+  expect(callers).toEqual(["cli/contained-mission-local-failure-publish.ts"]);
 });

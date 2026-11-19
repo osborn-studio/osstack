@@ -235,22 +235,30 @@ it.each(["published_head", "published_base", "grant_json", "withdrawal"] as cons
   } finally { f.close(); }
 });
 
-it.each(["success", "withdraw", "expired", "disabled", "stale", "base", "merge", "chained", "lease", "not-written", "missing", "intent", "malformed", "concurrent", "null-intent", "post-base", "host-missing", "host-target", "closed", "ref-stale", "ref-missing", "lost-status"] as const)(
+it.each(["success", "changed-ledger", "withdraw", "expired", "disabled", "stale", "base", "merge", "chained", "lease", "not-written", "missing", "intent", "malformed", "concurrent", "null-intent", "post-base", "host-missing", "host-target", "closed", "ref-stale", "ref-missing", "lost-status"] as const)(
   "publishes or reconciles one local repair: %s", async scenario => {
     const { publishLocalFailureRepair, reconcileLocalFailurePush } = await import("./contained-mission-local-failure-publish.js");
     const { f, id, store, spec, candidate, tree, now, actor, approve } = await publicationFixture();
     try {
+      const { RevisionChainStore } = await import("@osstack/core");
+      const chains = new RevisionChainStore(f.attention, f.owner);
+      const confirmations = () => chains.events(f.facts.chain_id).filter(e => e.kind === "local_repair_push_confirmed");
+      const assertChainConfirmed = () => {
+        expect(chains.get(f.facts.chain_id).published_head).toBe(candidate);
+        expect(confirmations()).toHaveLength(1);
+      };
       const approved = approve();
       const mission = store.transition(id, { if_revision: approved.revision, to: "delivering", event: { kind: "delivery_intent", payload: {} } }, now);
       const permit = { mission_id: id, revision: mission.revision, spec_digest: mission.spec_digest, head: candidate, tree };
       const input = { mission, permit, spec, body: "", signal: new AbortController().signal, beforeRemoteMutation: () => {} };
       const { branch, base } = spec.local_failure_repair!, repository = spec.publication!.repository;
       const old = spec.start_commit, third = "f".repeat(40), ref = "refs/heads/" + branch;
+      let clock = now + (scenario === "expired" ? 900000 : 0);
       let pushes = 0, remote = scenario === "stale" || scenario === "ref-stale" ? third : old, missing = false;
       let process: import("@osstack/core").HostProcessRecord | undefined;
       const commands: string[][] = [];
       const deps: Parameters<typeof publishLocalFailureRepair>[1] = {
-        store, now: () => now + (scenario === "expired" ? 900000 : 0), enabled: () => scenario !== "disabled",
+        store, now: () => clock, enabled: () => scenario !== "disabled",
         repository, refresh: () => actor, host: { recordForIntent: () => scenario === "host-missing" ? undefined : process },
         readPr: async () => missing ? null : { state: scenario === "closed" ? "closed" : "open", head: { sha: scenario === "ref-stale" ? old : scenario === "malformed" && pushes ? "" : remote }, base: { sha: scenario === "base" || (pushes && scenario === "post-base") ? third : base } },
         runner: { gated: true, run: async (command, args, options) => {
@@ -269,6 +277,9 @@ it.each(["success", "withdraw", "expired", "disabled", "stale", "base", "merge",
             }
             f.db.transaction(() => options.gate!.fence()).immediate();
             pushes++;
+            if (scenario === "changed-ledger") {
+              f.db.prepare("UPDATE engineering_revision_chains SET revision=revision+1,published_head=? WHERE chain_id=?").run(third, f.facts.chain_id);
+            }
             remote = scenario === "lease" ? third : (scenario === "not-written" || scenario === "lost-status") ? old : candidate;
             exitCode = remote === candidate ? 0 : 1;
             missing = scenario === "missing";
@@ -291,7 +302,7 @@ it.each(["success", "withdraw", "expired", "disabled", "stale", "base", "merge",
         const unused = async (): Promise<never> => { throw Error("unexpected port"); };
         store.record(id, "candidate_committed", { head_commit: candidate, tier: "T0" }, now);
         store.record(id, "verify_intent", { candidate }, now);
-        store.record(id, "verify_receipt", { exit_code: 0, cancelled: false }, now);
+        store.record(id, "verify_receipt", { exit_code: 0, cancelled: false, evidence: "fixture" }, now);
         const runner = new ContainedMissionRunner({ store, now: deps.now, createWorkspace: unused, resumeWorkspace: unused,
           qualify: unused, execute: unused, readFile: unused, commit: unused, cumulativeDiff: unused, restoreWorkspace: unused,
           worktreeDiff: unused, commitWorktree: unused, verify: unused, publish: unused,
@@ -300,15 +311,40 @@ it.each(["success", "withdraw", "expired", "disabled", "stale", "base", "merge",
         expect(halted.state).toBe("awaiting_decision");
         expect(JSON.parse(store.events(id).at(-1)!.payload_json).reason).toBe("verify_push_uncertain");
         expect(await runner.step(id)).toEqual(halted);
+        expect(await reconcileLocalFailurePush(id, deps)).toBe("unknown");
+        expect(confirmations()).toHaveLength(0);
+        missing = false;
+        const afterPush = commands.length;
+        expect(await reconcileLocalFailurePush(id, deps)).toBe("confirmed");
+        assertChainConfirmed();
+        expect(store.get(id).state).toBe("awaiting_decision");
+        expect(await runner.resumeConfirmedLocalPublication(id)).toMatchObject({ state: "pr_opened" });
+        const evidence = store.events(id).find(e => e.kind === "delivery_evidence");
+        expect(JSON.parse(evidence!.payload_json)).toMatchObject({ branch, head: candidate });
+        expect(commands.slice(afterPush).every(args => args.includes("ls-remote"))).toBe(true);
+        expect(commands.filter(args => args.includes("push"))).toHaveLength(1);
+        assertChainConfirmed();
       } else if (scenario === "success") {
         expect(await publish()).toMatchObject({ pushed_commit: candidate, pr: { reused: true }, stop_proof_scope: "app_isolated" });
-        await publish();
+        assertChainConfirmed();
+        clock = now + 900000;
+        await withdraw(f);
+        const afterPush = commands.length;
+        expect(await publish()).toMatchObject({ pushed_commit: candidate });
+        expect(commands.slice(afterPush).map(args => args[0])).toEqual(["ls-remote"]);
+        assertChainConfirmed();
       } else {
-        const errors: Record<string, string> = { withdraw: "verify_source_revoked", base: "verify_base_changed", lease: "verify_stale_head",
+        const errors: Record<string, string> = { "changed-ledger": "verify_push_uncertain", withdraw: "verify_source_revoked", base: "verify_base_changed", lease: "verify_stale_head",
           stale: "verify_stale_head", "not-written": "verify_push_not_written", missing: "verify_push_uncertain", malformed: "verify_push_uncertain", "post-base": "verify_base_changed", "ref-stale": "verify_stale_head",
           "host-missing": "verify_push_uncertain", "host-target": "verify_push_uncertain", "ref-missing": "verify_stale_head", "lost-status": "verify_push_uncertain" };
         await expect(publish()).rejects.toThrow(errors[scenario] ?? "verify_publish_authority_invalid");
         if (scenario === "lease") await expect(publish()).rejects.toThrow("verify_stale_head");
+      }
+      if (scenario === "changed-ledger") {
+        expect(await reconcileLocalFailurePush(id, deps)).toBe("unknown");
+        expect(chains.get(f.facts.chain_id).published_head).toBe(third);
+        expect(confirmations()).toHaveLength(0);
+        expect(store.events(id).filter(e => e.kind === "verify_repair_push_confirmed")).toHaveLength(0);
       }
       if (scenario === "merge" || scenario === "chained") expect(store.events(id).some(e => e.kind === "verify_repair_push_intent")).toBe(false);
       if (scenario === "intent") expect(await reconcileLocalFailurePush(id, deps)).toBe("unknown");
@@ -316,15 +352,52 @@ it.each(["success", "withdraw", "expired", "disabled", "stale", "base", "merge",
       if (scenario === "lease" || scenario === "not-written") expect(await reconcileLocalFailurePush(id, deps)).toBe(scenario === "lease" ? "stale_head" : "not_written");
       if (scenario === "missing" || scenario === "success") {
         commands.length = 0;
-        if (missing) expect(await reconcileLocalFailurePush(id, deps)).toBe("unknown");
-        missing = false;
         expect(await reconcileLocalFailurePush(id, deps)).toBe("confirmed");
+        assertChainConfirmed();
         expect(commands.every(args => args.includes("ls-remote"))).toBe(true);
         expect(store.events(id).filter(e => e.kind === "verify_repair_push_confirmed")).toHaveLength(1);
       }
-      if (scenario === "missing") expect(store.get(id).state).toBe("awaiting_decision");
-      const released = ["success", "lease", "not-written", "missing", "malformed", "concurrent", "post-base", "host-missing", "host-target", "lost-status"];
+      const released = ["success", "changed-ledger", "lease", "not-written", "missing", "malformed", "concurrent", "post-base", "host-missing", "host-target", "lost-status"];
       expect(pushes).toBe(released.includes(scenario) ? 1 : 0);
+    } finally { f.close(); }
+  },
+);
+
+it.each(["aborted", "owner", "claim", "state", "mission-id", "spec-digest", "worktree", "candidate-head", "candidate-tree", "stop"] as const)(
+  "checks %s before reading back an existing local repair push", async condition => {
+    const { publishLocalFailureRepair } = await import("./contained-mission-local-failure-publish.js");
+    const { f, id, store, spec, candidate, tree, now, actor, approve } = await publicationFixture();
+    try {
+      const approved = approve();
+      const mission = store.transition(id, { if_revision: approved.revision, to: "delivering", event: { kind: "delivery_intent", payload: {} } }, now);
+      const { pr, branch, base } = spec.local_failure_repair!;
+      store.record(id, "verify_repair_push_intent", {
+        intent_id: "vrp_12345678-1234-1234-1234-123456789abc", pr, branch, base, previous: spec.start_commit, candidate,
+      }, now);
+      const permit = { mission_id: id, revision: mission.revision, spec_digest: mission.spec_digest, head: candidate, tree };
+      const controller = new AbortController();
+      if (condition === "aborted") controller.abort();
+      if (condition === "owner") f.attention.claimOwner("replacement");
+      if (condition === "claim") vi.spyOn(store, "claim").mockReturnValue({ ...store.claim(id), state: "released" });
+      if (condition === "state") vi.spyOn(store, "get").mockReturnValue({ ...mission, state: "awaiting_decision" });
+      if (condition === "mission-id") permit.mission_id = "other";
+      if (condition === "spec-digest") permit.spec_digest = "other";
+      if (condition === "worktree") spec.worktree_path += "-other";
+      if (condition === "candidate-head") vi.spyOn(store, "get").mockReturnValue({ ...mission, candidate_head: "a".repeat(40) });
+      if (condition === "candidate-tree") permit.tree = "a".repeat(40);
+      if (condition === "stop") vi.spyOn(store, "get").mockReturnValue({ ...mission, stop_obligation: 1 });
+      const readPr = vi.fn(async () => null);
+      const run = vi.fn(async () => ({ exitCode: 1, stdout: "", stderr: "" }));
+      const recordForIntent = vi.fn(() => undefined);
+      const before = store.events(id);
+      await expect(publishLocalFailureRepair(
+        { mission, permit, spec, body: "", signal: controller.signal, beforeRemoteMutation: () => {} },
+        { store, now: () => now, enabled: () => true, refresh: () => actor, repository: spec.publication!.repository, host: { recordForIntent }, readPr, runner: { gated: true, run } },
+      )).rejects.toThrow("verify_publish_authority_invalid");
+      expect(recordForIntent).not.toHaveBeenCalled();
+      expect(readPr).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+      expect(store.events(id)).toEqual(before);
     } finally { f.close(); }
   },
 );

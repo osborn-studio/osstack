@@ -903,3 +903,60 @@ it("stops an interrupted local delivery before re-entering the publisher", async
   expect(f.allPayloads()).toContain("verify_push_uncertain");
   expect(calls).toBe(0);
 });
+
+describe("resumeConfirmedLocalPublication", () => {
+  it.each(["confirmed", "stale", "missing intent"] as const)("revalidates a released push once on %s readback", async result => {
+    let pushes = 0;
+    let calls = 0;
+    const publish: ContainedMissionPorts["publish"] = async ({ mission, permit, beforeRemoteMutation }) => {
+      calls++;
+      if (calls === 1) {
+        if (result !== "missing intent") f.store.record(mission.mission_id, "verify_repair_push_intent", { candidate: permit.head }, 2000);
+        beforeRemoteMutation("push");
+        pushes++;
+        throw Error("verify_push_uncertain");
+      }
+      if (result === "stale") throw Error("verify_stale_head");
+      return { pushed_commit: permit.head, pr: { reused: true, number: 7, url: "fixture" }, base_head: START };
+    };
+    const f = setup({ localFailurePublication: { publish } }, localRepairSpec);
+    let m = await drive(f, 4);
+    const id = m.mission_id;
+    f.store.transition(id, { if_revision: m.revision, to: "revalidating", event: { kind: "fixture", payload: {} } }, 2000);
+    m = await f.runner.step(id);
+    expect(JSON.parse(f.store.events(id).at(-1)!.payload_json).reason).toBe("verify_push_uncertain");
+    f.store.record(id, "verify_repair_push_confirmed", { candidate: m.candidate_head }, 2001);
+    m = await f.runner.resumeConfirmedLocalPublication(id);
+    expect(f.kinds().filter(kind => kind === "verify_repair_publication_resumed")).toHaveLength(1);
+    if (result === "confirmed") {
+      expect(m.state).toBe("pr_opened");
+      expect(JSON.parse(f.store.events(id).find(e => e.kind === "delivery_evidence")!.payload_json).branch).toBe("original");
+      const events = f.store.events(id);
+      await expect(f.runner.resumeConfirmedLocalPublication(id)).rejects.toThrow("CONTAINED_DECISION_NOT_ALLOWED");
+      expect(f.store.events(id)).toEqual(events);
+    } else {
+      expect(m.state).toBe("awaiting_decision");
+      expect(JSON.parse(f.store.events(id).at(-1)!.payload_json).reason).toBe("verify_push_uncertain");
+      await f.runner.step(id);
+    }
+    expect(calls).toBe(result === "missing intent" ? 1 : 2);
+    expect(pushes).toBe(1);
+  });
+
+  it.each(["no confirmation", "wrong candidate", "wrong state", "wrong reason", "non-local", "open process", "open process id"])(
+    "refuses %s without writing", async refusal => {
+      const f = setup(refusal === "open process id" ? { openHostProcessId: () => "push" } : { hasOpenHostProcess: () => refusal === "open process" },
+        refusal === "non-local" ? { publication: localRepairSpec.publication } : localRepairSpec);
+      const m = await drive(f, 4);
+      const id = m.mission_id;
+      if (refusal !== "no confirmation")
+        f.store.record(id, "verify_repair_push_confirmed", { candidate: refusal === "wrong candidate" ? START : m.candidate_head }, 2000);
+      if (refusal !== "wrong reason") f.store.record(id, "halted", { reason: "verify_push_uncertain" }, 2000);
+      if (refusal === "wrong state") f.store.transition(id, { if_revision: m.revision, to: "revalidating", event: { kind: "fixture", payload: {} } }, 2000);
+      const before = f.store.get(id);
+      const events = f.store.events(id);
+      await expect(f.runner.resumeConfirmedLocalPublication(id)).rejects.toThrow("CONTAINED_DECISION_NOT_ALLOWED");
+      expect(f.store.get(id)).toEqual(before);
+      expect(f.store.events(id)).toEqual(events);
+    });
+});
