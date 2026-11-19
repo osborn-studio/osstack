@@ -316,7 +316,15 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         if (!input.refresh || !spec.publication || (sandbox ? !spec.allowed_paths.includes('PROBE_FAIL') : !input.writeEnabled?.(root))
           || latestCiEvent(store, root.mission_id, 'ci_repair_dispatched')) return;
         // Actions repair has no grant budget. This transaction checks root exclusion only.
-        if (!checkRootAdmission(store.db, root.mission_id, 'actions_repair').ok) return;
+        const admission = checkRootAdmission(store.db, root.mission_id, 'actions_repair');
+        if (!admission.ok) {
+          const recorded = store.db.prepare(`SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_repair_dispatch_refused'
+            AND json_extract(payload_json,'$.check_run_id')=? AND json_extract(payload_json,'$.reason')=?
+            AND json_extract(payload_json,'$.holder')=? LIMIT 1`).get(root.mission_id, result.job.check_run_id, admission.code, admission.holder);
+          if (!recorded) store.record(root.mission_id, 'ci_repair_dispatch_refused', { reason: admission.code, holder: admission.holder,
+            pr: target.pr, head: target.head, check_run_id: result.job.check_run_id }, now());
+          return;
+        }
         let actor: ReturnType<RefreshCiPrincipal>;
         try { actor = input.refresh(root.owner_principal_id, root.owner_client_session_id); }
         catch { return; }

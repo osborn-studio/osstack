@@ -6,8 +6,9 @@ import { createRig, oid } from './contained-mission-bridge-shadow.testkit.js';
 import { reserveFixtureIntake } from './contained-mission-revision.testkit.js';
 import { ProductionCiPilot } from './contained-mission-ci-pilot.js';
 import { ALPHA_CI_POLICY, PRODUCTION_CI_POLICY as ciPolicy } from './contained-mission-ci-policy.js';
-import { createSandboxCiObserver, createSandboxCiReader, readSandboxCiJobs } from './contained-mission-github-ci.js';
+import { createSandboxCiObserver, type createSandboxCiReader, readSandboxCiJobs } from './contained-mission-github-ci.js';
 import { publishSandboxCiRepair, type SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
+import { readCiChain } from './contained-mission-ci-chain-read.js';
 import { readCiScanHealth } from './contained-mission-ci-scan-health.js';
 import { latestCiEvent } from './contained-mission-github-ci-approval.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
@@ -561,57 +562,71 @@ describe('durable CI scan failures', () => {
   });
 });
 describe('CI repair root writer exclusion', () => {
+  function setup(f: ReturnType<typeof fixture>) {
+    f.writeRelease();
+    const root = f.seed();
+    const app = { id: ciPolicy.actionsAppId };
+    const repo = { id: ciPolicy.repositoryId, full_name: ciPolicy.repository };
+    const failing = { id: 19, name: 'graph-macos-fixtures (22)', app, head_sha: head, check_suite: { id: 11 },
+      status: 'completed', conclusion: 'failure' };
+    const ci: ReturnType<typeof createSandboxCiReader> = {
+      latestAttempt: async query => ({ ...query, complete: true, requests_used: 1,
+        latest: { check_suite_id: 11, check_run_id: 19, status: 'completed', conclusion: 'failure' } }),
+      observeLatestJob: async (q, job) => ({ outcome: q.name === failing.name ? 'failure' : 'success',
+        run_id: job.workflowId, workflow_id: job.workflowId, attempt: 1, ...(job.workflowSet ? { runSnapshot: 'same' } : {}),
+        check_run_id: q.name === failing.name ? 19 : 20, check_suite_id: 11, job_id: 12, job_name: q.name,
+        runner_labels: job.runnerLabels, matrix: job.matrix, workflow_path: job.workflowPath, head, base, app_id: app.id }),
+      rest: async path => {
+        if (path.endsWith('/pulls/17')) return { ok: true, body: { number: 17, state: 'open', merged: false,
+          head: { sha: head, ref: branch, repo }, base: { sha: base, ref: 'main', repo }, user: { id: ciPolicy.publisherActorId, type: 'Bot' } } };
+        if (path.includes('/contents/')) {
+          const workflow = ciPolicy.jobs.map(job => job.workflow ?? ciPolicy).find(item => path.includes(`/${item.workflowPath}?`));
+          return { ok: !!workflow, body: { sha: workflow?.workflowBlob, type: 'file' } };
+        }
+        if (path.includes('/check-suites?')) return { ok: true, body: { total_count: 1, check_suites: [{ id: 11, app, head_sha: head }] } };
+        if (path.includes('/check-runs?')) return { ok: true, body: { total_count: 1, check_runs: [failing] } };
+        return { ok: false };
+      },
+    };
+    const worktreesRoot = join(f.home, 'worktrees'); mkdirSync(worktreesRoot);
+    const observer = createSandboxCiObserver({ store: f.rig.missions, scopeId: root.scope_id, enabled: () => true,
+      now: () => 3000, log: () => {}, refresh: () => f.actor, ci, policy: ciPolicy, worktreesRoot,
+      writeEnabled: mission => !!f.pilot.assertWrite(f.rig.missions, mission, () => f.actor, 3000) });
+    const count = () => (f.rig.db.prepare("SELECT COUNT(*) n FROM engineering_contained_missions WHERE json_extract(spec_json,'$.ci_repair.root')=?").get(root.mission_id) as { n: number }).n;
+    const refusals = () => f.rig.missions.events(root.mission_id).filter(event => event.kind === 'ci_repair_dispatch_refused')
+      .map(event => JSON.parse(event.payload_json) as unknown);
+    return { root, observer, count, refusals };
+  }
+
+  function hold(f: ReturnType<typeof fixture>, root: ReturnType<typeof setup>['root'], holder: 'local_failure' | 'review') {
+    const chain = f.rig.chains.createLiveChain({ root_mission_id: root.mission_id, repository: ciPolicy.repository,
+      pr_number: target.pr, branch, base_ref: 'main', published_head: head, published_base: base, trace_id: 'exclusive',
+      grant: { kind: 'live', version: 1, grant_id: 'fixture', rounds: 1, expires_at: Number.MAX_SAFE_INTEGER,
+        budget: { max_container_seconds: 100, max_executor_seconds: 100, max_wall_clock_hours: 1 } } }, 2200);
+    if (holder === 'local_failure') {
+      return reserveFixtureIntake(f.rig, chain.chain_id, 2300).settle;
+    }
+    const reserved = f.rig.chains.reserve(chain.chain_id, chain.revision, { head, review_ids: [1], feedback_digest: 'f'.repeat(64) }, 2300);
+    return () => f.rig.chains.voidReservation(chain.chain_id, reserved.chain.revision, head, 'test_settled', 2400);
+  }
+
   it.each(['local_failure', 'review'] as const)('records failure but waits for %s, then dispatches once', async holder => {
     const f = fixture();
-    let observer: ReturnType<typeof createSandboxCiObserver> | undefined;
+    const { root, observer, count, refusals } = setup(f);
     try {
-      f.writeRelease();
-      const root = f.seed();
-      const chain = f.rig.chains.createLiveChain({ root_mission_id: root.mission_id, repository: ciPolicy.repository,
-        pr_number: target.pr, branch, base_ref: 'main', published_head: head, published_base: base, trace_id: 'exclusive',
-        grant: { kind: 'live', version: 1, grant_id: 'fixture', rounds: 1, expires_at: Number.MAX_SAFE_INTEGER,
-          budget: { max_container_seconds: 100, max_executor_seconds: 100, max_wall_clock_hours: 1 } } }, 2200);
-      let settle: () => unknown;
-      if (holder === 'local_failure') {
-        settle = reserveFixtureIntake(f.rig, chain.chain_id, 2300).settle;
-      } else {
-        const reserved = f.rig.chains.reserve(chain.chain_id, chain.revision, { head, review_ids: [1], feedback_digest: 'f'.repeat(64) }, 2300);
-        settle = () => f.rig.chains.voidReservation(chain.chain_id, reserved.chain.revision, head, 'test_settled', 2400);
-      }
-      const app = { id: ciPolicy.actionsAppId };
-      const repo = { id: ciPolicy.repositoryId, full_name: ciPolicy.repository };
-      const failing = { id: 19, name: 'graph-macos-fixtures (22)', app, head_sha: head, check_suite: { id: 11 },
-        status: 'completed', conclusion: 'failure' };
-      const ci: ReturnType<typeof createSandboxCiReader> = {
-        latestAttempt: async query => ({ ...query, complete: true, requests_used: 1,
-          latest: { check_suite_id: 11, check_run_id: 19, status: 'completed', conclusion: 'failure' } }),
-        observeLatestJob: async (q, job) => ({ outcome: q.name === failing.name ? 'failure' : 'success',
-          run_id: job.workflowId, workflow_id: job.workflowId, attempt: 1, ...(job.workflowSet ? { runSnapshot: 'same' } : {}),
-          check_run_id: q.name === failing.name ? 19 : 20, check_suite_id: 11, job_id: 12, job_name: q.name,
-          runner_labels: job.runnerLabels, matrix: job.matrix, workflow_path: job.workflowPath, head, base, app_id: app.id }),
-        rest: async path => {
-          if (path.endsWith('/pulls/17')) return { ok: true, body: { number: 17, state: 'open', merged: false,
-            head: { sha: head, ref: branch, repo }, base: { sha: base, ref: 'main', repo }, user: { id: ciPolicy.publisherActorId, type: 'Bot' } } };
-          if (path.includes('/contents/')) {
-            const workflow = ciPolicy.jobs.map(job => job.workflow ?? ciPolicy).find(item => path.includes(`/${item.workflowPath}?`));
-            return { ok: !!workflow, body: { sha: workflow?.workflowBlob, type: 'file' } };
-          }
-          if (path.includes('/check-suites?')) return { ok: true, body: { total_count: 1, check_suites: [{ id: 11, app, head_sha: head }] } };
-          if (path.includes('/check-runs?')) return { ok: true, body: { total_count: 1, check_runs: [failing] } };
-          return { ok: false };
-        },
-      };
-      const worktreesRoot = join(f.home, 'worktrees'); mkdirSync(worktreesRoot);
-      observer = createSandboxCiObserver({ store: f.rig.missions, scopeId: root.scope_id, enabled: () => true,
-        now: () => 3000, log: () => {}, refresh: () => f.actor, ci, policy: ciPolicy, worktreesRoot,
-        writeEnabled: mission => !!f.pilot.assertWrite(f.rig.missions, mission, () => f.actor, 3000) });
-      const count = () => (f.rig.db.prepare("SELECT COUNT(*) n FROM engineering_contained_missions WHERE json_extract(spec_json,'$.ci_repair.root')=?").get(root.mission_id) as { n: number }).n;
+      const settle = hold(f, root, holder);
       await observer.scan();
       expect(f.rig.missions.events(root.mission_id).filter(event => event.kind.startsWith('ci_scan_'))).toEqual([]);
       expect(readCiScanHealth(f.rig.db, root.mission_id)).toBeNull();
       expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_failure_observed')).toBeDefined();
       expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_repair_dispatched')).toBeUndefined();
       expect(count()).toBe(0);
+      const expected = { reason: 'verify_chain_busy', holder, pr: target.pr, head, check_run_id: 19 };
+      expect(refusals()).toEqual([expected]);
+      expect(readCiChain(f.rig.db, root)).toMatchObject({ state: 'repair_permission_waiting',
+        repair_refused: { reason: 'verify_chain_busy', holder, since: 3000 } });
+      await observer.scan();
+      expect(refusals()).toEqual([expected]);
       settle();
       await observer.scan();
       expect(f.rig.missions.events(root.mission_id).filter(event => event.kind.startsWith('ci_scan_'))).toEqual([]);
@@ -622,6 +637,43 @@ describe('CI repair root writer exclusion', () => {
       expect(f.rig.missions.events(root.mission_id).filter(event => event.kind.startsWith('ci_scan_'))).toEqual([]);
       expect(readCiScanHealth(f.rig.db, root.mission_id)).toBeNull();
       expect(count()).toBe(1);
-    } finally { await observer?.stop(); f.close(); }
+      expect(refusals()).toEqual([expected]);
+      expect(readCiChain(f.rig.db, root)).not.toHaveProperty('repair_refused');
+    } finally { await observer.stop(); f.close(); }
+  });
+
+  it('dispatches on first admission without a refusal', async () => {
+    const f = fixture();
+    const { observer, root, count, refusals } = setup(f);
+    try {
+      await observer.scan();
+      expect(count()).toBe(1);
+      expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_repair_dispatched')).toBeDefined();
+      expect(refusals()).toEqual([]);
+    } finally { await observer.stop(); f.close(); }
+  });
+
+  it('rolls back the failure observation when recording the refusal throws, then retries', async () => {
+    const f = fixture();
+    const { root, observer, count, refusals } = setup(f);
+    try {
+      hold(f, root, 'review');
+      const record = f.rig.missions.record.bind(f.rig.missions);
+      let fail = true;
+      const spy = vi.spyOn(f.rig.missions, 'record').mockImplementation((...args) => {
+        if (fail && args[1] === 'ci_repair_dispatch_refused') { fail = false; throw Error('refusal write failed'); }
+        return record(...args);
+      });
+      try {
+        await observer.scan();
+        expect(fail).toBe(false);
+        expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_failure_observed')).toBeUndefined();
+        expect(refusals()).toEqual([]);
+        expect(count()).toBe(0);
+        await observer.scan();
+        expect(latestCiEvent(f.rig.missions, root.mission_id, 'ci_failure_observed')).toBeDefined();
+        expect(refusals()).toHaveLength(1);
+      } finally { spy.mockRestore(); }
+    } finally { await observer.stop(); f.close(); }
   });
 });

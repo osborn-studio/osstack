@@ -66,16 +66,23 @@ describe.each(entries)('$name lineage contract', ({ setup }) => {
     const f = withRootDepth(7, setup);
     const chains = () => f.store.db.prepare('SELECT * FROM engineering_revision_chains').all();
     const before = chains();
-    const events = () => f.store.db.prepare('SELECT * FROM engineering_contained_events ORDER BY seq').all();
-    let first: unknown[] | undefined;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const scan = async () => {
       expect(await f.dispatch()).toBeUndefined();
       expect(chains()).toEqual(before);
-      if (first) expect(events()).toEqual(first);
-      first = events();
       expect(f.store.db.prepare("SELECT state FROM engineering_contained_missions JOIN engineering_mission_lineage USING(mission_id) WHERE chain_depth=8").all())
         .toEqual([{ state: 'awaiting_decision' }]);
-    }
+      return f.store.db.prepare('SELECT * FROM engineering_contained_events ORDER BY seq').all() as { kind: string; mission_id: string; payload_json: string }[];
+    };
+    const first = await scan();
+    expect(first.map(e => e.kind)).not.toContain('ci_repair_dispatch_refused');
+    const second = await scan();
+    if (f.source === 'github_actions') {
+      expect(second.slice(0, -1)).toEqual(first);
+      const refusal = second.at(-1)!;
+      expect(refusal).toMatchObject({ kind: 'ci_repair_dispatch_refused', mission_id: f.parent });
+      expect(JSON.parse(refusal.payload_json)).toMatchObject({ reason: 'verify_chain_busy', holder: 'actions_repair', check_run_id: 41 });
+    } else expect(second).toEqual(first);
+    expect(await scan()).toEqual(second);
   });
   it('creates nothing for unknown parent lineage and reports the waiting reason', async () => {
     const f = withLegacyRoot(() => setup());

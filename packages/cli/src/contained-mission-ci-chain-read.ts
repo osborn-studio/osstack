@@ -5,11 +5,12 @@ import { readCiScanHealth, type CiScanStep } from './contained-mission-ci-scan-h
 import type { CiReadFailureReason } from './contained-mission-local-failure-reader.js';
 import { readMissionPublication } from './contained-mission-publication.js';
 
-type Event = { kind: string; created_at: number; payload_json: string };
+type Event = { seq: number; kind: string; created_at: number; payload_json: string };
 export type CiChainState = 'initial_ci_waiting' | 'repair_permission_waiting' | 'repair_in_progress' | 'repair_ci_waiting' | 'approval_and_handoff_waiting' | 'merge_reserved' | 'merge_reconciling' | 'merge_held' | 'closed' | 'stopped' | 'result_unknown';
 export interface CiChainRow {
   mission_id: string; scope_id: string; repository: string; pr: number; state: CiChainState; since: number;
   head_before: string | null; head_after: string | null; merge_commit_sha: string | null; stop_reason: string | null;
+  repair_refused?: { reason: string; holder: string; since: number };
   scan?: { failing: true; reason: CiReadFailureReason; step: CiScanStep; since: number; consecutive: number };
   reason?: string; head?: string; app_id?: number; handoff_comment_id?: number;
 }
@@ -23,13 +24,13 @@ const number = (value: unknown): number | null => typeof value === 'number' && N
 export function readCiChain(db: Database.Database, mission: ContainedMission): CiChainRow | null {
   const publication = readMissionPublication({ db }, mission.mission_id);
   if (publication?.kind !== 'github_ci_opened') return null;
-  const events = db.prepare('SELECT kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq')
+  const events = db.prepare('SELECT seq,kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq')
     .all(mission.mission_id) as Event[];
   const last = (kind: string) => [...events].reverse().find(event => event.kind === kind);
   const dispatch = last('ci_repair_dispatched');
   const childId = string(payload(dispatch)['child']);
   const child = childId ? db.prepare('SELECT * FROM engineering_contained_missions WHERE mission_id=?').get(childId) as ContainedMission | undefined : undefined;
-  const childEvents = child ? db.prepare('SELECT kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq')
+  const childEvents = child ? db.prepare('SELECT seq,kind,created_at,payload_json FROM engineering_contained_events WHERE mission_id=? ORDER BY seq')
     .all(child.mission_id) as Event[] : [];
   const childLast = (kind: string) => [...childEvents].reverse().find(event => event.kind === kind);
   // halt() persists its reason in the halted event, not in the mission row.
@@ -82,7 +83,11 @@ export function readCiChain(db: Database.Database, mission: ContainedMission): C
   const binding = reservedFacts['binding'] as Record<string, unknown> | undefined;
   const health = readCiScanHealth(db, mission.mission_id);
   const scan = health ? { failing: true as const, reason: health.reason, step: health.step, since: health.since, consecutive: health.consecutive } : undefined;
+  const refused = state === 'repair_permission_waiting' && !dispatch ? last('ci_repair_dispatch_refused') : undefined;
+  const refusal = payload(refused);
   return {
+    ...(refused && failure && refused.seq >= failure.seq && typeof refusal?.['reason'] === 'string' && typeof refusal['holder'] === 'string'
+      ? { repair_refused: { reason: refusal['reason'], holder: refusal['holder'], since: refused.created_at } } : {}),
     ...(scan ? { scan } : {}),
     mission_id: mission.mission_id, scope_id: mission.scope_id, repository: spec.publication?.repository ?? '',
     pr: state === 'closed' ? number(mergedFacts['pr']) ?? publication.pr.number
