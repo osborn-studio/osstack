@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { command, generate, simulate, Violation, type Command, type Rule } from "./loop-random.simulation.testkit.js";
+import { command, generate, simulate, Violation, type Command, type Mutant, type Rule } from "./loop-random.simulation.testkit.js";
 import { simulationConfig } from "./seeded-simulation.testkit.js";
 
 // Artifact verification reads the candidate path set. Process creation on
@@ -37,7 +37,7 @@ function configuration() {
   return { seeds, steps };
 }
 
-async function checked(seed: number, list: Command[], mutant?: Rule) {
+async function checked(seed: number, list: Command[], mutant?: Mutant) {
   async function replay(candidate: Command[]) {
     const first = await simulate(seed, candidate, mutant);
     const second = await simulate(seed, candidate, mutant);
@@ -128,14 +128,21 @@ describe("runtime is monotonic under clock rewind", () => {
   });
 });
 
-// Open design question: loop-engine.ts:298-325,391-396 counts cycles and measures runtime per run.
-describe("open design question: is a loop budget shared across restarts? (R4)", () => {
-  expectedR4Failures([
-    ["elapsed budget usage resets at restart", [submit, { ...pass, tick: 1 }, pass], "runtime decreased to 0"],
-    ["budget cycle usage resets at restart", [{ op: "cycles", key: 0, cycleLimit: 4 }, { ...pass, cycleLimit: 4 }], "cycle accounting regressed"],
-    ["single passes exceed a shared cycle cap", Array.from({ length: 3 }, () => ({ ...pass, cycleLimit: 2 })), "persistent cycles exceed"],
-    ["restart admits work after a durable budget stop", [{ op: "cycles", key: 0 }, submit, { ...pass, cycleLimit: 2 }], "dispatch after budget stop"],
-  ]);
+describe("a loop budget is cumulative across restarts (R4)", () => {
+  it("detects a cycle reset on restart as R4", async () => {
+    await expect(checked(0, [pass, pass], "reset-on-restart")).rejects.toThrow(/seed=0 R4 step=/);
+  });
+
+  it.each<[string, Command[]]>([
+    ["retains elapsed usage", [submit, { ...pass, tick: 1 }, pass]],
+    ["retains cycle usage", [{ op: "cycles", key: 0, cycleLimit: 4 }, { ...pass, cycleLimit: 4 }]],
+    ["caps single passes", Array.from({ length: 3 }, () => ({ ...pass, cycleLimit: 2 }))],
+    ["refuses work after a stop", [{ op: "cycles", key: 0 }, submit, { ...pass, cycleLimit: 2 }]],
+    ["charges a crash, refuses a duplicate and resumes after a raise", [
+      { op: "crash_after_debit", key: 0, cycleLimit: 1 }, submit, pass,
+      { op: "duplicate_submission", key: 0 }, pass, { op: "raise_budget", key: 0 }, pass,
+    ]],
+  ])("%s", async (_name, commands) => { await checked(0, commands); });
 });
 
 // Documented limit: budget.ts:3-5 specifies a post-cycle check, so one cycle can exceed either cap.

@@ -1,7 +1,7 @@
 // LoopBudget — first-class cost and stop controls.
 //
 // Budgets are opt-in: without one, the loop behaves exactly as before. With
-// one, the engine (and daemon sessions) check usage after every cycle and
+// one, the engine (and daemon sessions) check usage before admission and after every cycle and
 // stop with a structured `loop.budget.exceeded` event instead of running on.
 // Budget stops are task/loop failures (exit code 2), not CLI crashes.
 

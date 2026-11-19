@@ -1047,6 +1047,16 @@ echo review ok
       prompt: "Exercise session budget stop",
     }));
 
+    // A previous run spent more active time than this short-lived session.
+    const timestamp = new Date().toISOString();
+    await writeFile(join(workspace, "LOOP-STATE.json"), JSON.stringify({
+      loop_id: "persistent-budget", started_at: timestamp, updated_at: timestamp,
+      completed_tasks: [], in_progress: [], pending: [],
+      budget_status: { exceeded: false, usage: {
+        cycles: 0, runtime_ms: 60_000, tokens: 0, estimated_cost_usd: 0, no_progress_cycles: 0,
+      } },
+    }));
+
     daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
     const startResp = await daemonRpc(daemon.socketPath, "loop.start", {
       workspacePath: workspace,
@@ -1092,7 +1102,36 @@ echo review ok
       (session) => session.stopReason !== undefined,
     );
     expect(savedSession?.stopReason).toContain("budget exceeded");
-    expect(savedSession?.lastBudgetCheck).toMatchObject({ exceeded: true, limit: "max_cycles" });
+    expect(savedSession.lastBudgetCheck).toMatchObject({ exceeded: true, limit: "max_cycles", usage: { cycles: 1 } });
+    expect(savedSession.lastBudgetCheck?.usage.runtime_ms).toBeGreaterThanOrEqual(60_000);
+
+    await daemon.close();
+    daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
+    expect(await waitForLoop(daemon.socketPath, loopSessionId, candidate => candidate.status === "stopped")).toMatchObject({
+      stop_reason: expect.stringContaining("budget exceeded"), budget: { usage: { cycles: 1 } },
+    });
+    await writeFile(join(workspace, "tasks", "next.json"), JSON.stringify({
+      task_id: "next-budget-task", capability: "code.test", prompt: "Record admission",
+    }));
+    for (const cap of [1, 2]) {
+      const started = await daemonRpc(daemon.socketPath, "loop.start", {
+        workspacePath: workspace, sources: ["task_queue"], intervalMs: 20,
+        executeCommand: "echo invoked >> admissions.txt", budget: { max_cycles: cap },
+      });
+      expect(started.ok).toBe(true);
+      const id = (started.result as { loop_session_id: string }).loop_session_id;
+      expect(await waitForLoop(daemon.socketPath, id, candidate => candidate.status === "stopped")).toMatchObject({
+        executed_task_count: cap - 1, cycle_count: cap - 1, stop_reason: expect.stringContaining("budget exceeded"),
+        budget: { exceeded: true, usage: { cycles: cap } },
+      });
+      const persisted = await waitForPersistedSession(join(tmp, "home", "loop-sessions.json"), id,
+        session => session.stopReason !== undefined);
+      const state = JSON.parse(await readFile(join(workspace, "LOOP-STATE.json"), "utf8"));
+      expect(persisted.lastBudgetCheck?.usage).toEqual(state.budget_status.usage);
+      const marker = readFile(join(workspace, "admissions.txt"), "utf8");
+      if (cap === 1) await expect(marker).rejects.toMatchObject({ code: "ENOENT" });
+      else expect(await marker).toBe("invoked\n");
+    }
   });
 
   it("starts a cron-scheduled background loop", async () => {
@@ -1485,7 +1524,7 @@ async function waitForLoop(
 interface PersistedSessionSummary {
   loopSessionId: string;
   stopReason?: string;
-  lastBudgetCheck?: { exceeded: boolean; limit?: string };
+  lastBudgetCheck?: { exceeded: boolean; limit?: string; usage: { cycles: number; runtime_ms: number } };
 }
 
 /**
