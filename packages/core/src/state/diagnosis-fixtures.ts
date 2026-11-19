@@ -18,7 +18,7 @@ import { openDb } from "./db.js";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 export function diagnosisFixture(
   options: {
-    legacy?: boolean | 59 | 60;
+    legacy?: boolean | 59 | 60 | 62;
     allowedPaths?: string[];
     protectedDigest?: string;
     summary?: string;
@@ -267,3 +267,11 @@ export function eligibleRequest(f: ReturnType<typeof diagnosisFixture>) {
     reason: null,
   });
 }
+
+export const recheckRunObjects = [
+  "engineering_local_failure_recheck_runs", "engineering_local_failure_recheck_host_proof",
+  ...["active","root","chain","insert","binding","budget","exclusion","no_delete","no_replace","fixed","flow","start"]
+    .map(name => "engineering_local_failure_recheck_run_"+name),
+  ...["review","actions","intake","dispatch"].map(name=>"engineering_root_exclusion_recheck_"+name),
+  ...[2,3,4].map(n=>"sqlite_autoindex_engineering_local_failure_recheck_runs_"+n),
+];

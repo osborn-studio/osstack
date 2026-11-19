@@ -17,3 +17,4 @@ export { classifyRecheck, parseRecheckResult, type ActionsAttemptFact, type Host
   type RecheckInputs, type RecheckMissing, type RecheckResult, type RecheckVerdict } from "./recheck.js";
 export { LocalFailureRecheckStore, type LocalFailureRecheck, type RecheckEvaluation } from "../state/engineering-local-failure-recheck-store.js";
 export { evaluateVerificationGate, type VerificationGateInput, type VerificationGateVerdict } from "./verification-gate.js";
+export { LocalFailureRecheckRunStore, type LocalFailureRecheckRun, type ReserveRecheckRun, type SettleRecheckRun } from "../state/engineering-local-failure-recheck-run-store.js";

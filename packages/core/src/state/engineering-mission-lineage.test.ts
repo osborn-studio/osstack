@@ -1,3 +1,4 @@
+import { recheckRunObjects } from "./diagnosis-fixtures.js";
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
@@ -157,8 +158,8 @@ it('freezes existing deep rows without rewriting the ledger and converts retries
   expect(objects().filter(n => !before.includes(n))).toEqual([
     'engineering_local_failure_recheck_chain','engineering_local_failure_recheck_insert','engineering_local_failure_recheck_no_delete',
     'engineering_local_failure_recheck_no_replace','engineering_local_failure_recheck_update','engineering_local_failure_rechecks',
-    'engineering_mission_depth_stop','engineering_mission_lineage_depth_cap','sqlite_autoindex_engineering_local_failure_rechecks_2',
-  ]);
+    'engineering_mission_depth_stop','engineering_mission_lineage_depth_cap','sqlite_autoindex_engineering_local_failure_rechecks_2', ...recheckRunObjects,
+  ].sort());
   expect(rows()).toEqual(original);
   for (const depth of [8,9]) {
     const id = 'legacy-' + depth;

@@ -17,7 +17,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 62;
+export const UPGRADE_QUALIFIED_SCHEMA = 63;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -163,6 +163,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // 59 adds request and receipt metadata. Only the intake can own a process.
       // Hold once per unsettled intake, including after its request goes to awaiting_decision.
       // 60 registers a contained child. containedUpgradeHolds already counts its state, stop obligation and claim.
+      if(schema>=63)expected.push('engineering_local_failure_recheck_runs');
       if(schema>=62)expected.push('engineering_local_failure_rechecks');
       if(schema>=60)expected.push('engineering_local_failure_dispatches');
       if(schema>=59)expected.push('engineering_diagnosis_requests','engineering_host_receipts');
@@ -191,6 +192,11 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const depthTriggers=['engineering_mission_lineage_depth_cap','engineering_mission_depth_stop'];
       if(schema>=61&&depthTriggers.some(name=>!triggers.has(name)))throw Error('upgrade_schema_tables_missing');
       if(schema<61&&depthTriggers.some(name=>triggers.has(name)))throw Error('upgrade_schema_unqualified');
+      const runTriggers=['no_delete','no_replace','insert','binding','budget','exclusion','fixed','flow','start'].map(s=>'engineering_local_failure_recheck_run_'+s)
+        .concat(['review','actions','intake','dispatch'].map(s=>'engineering_root_exclusion_recheck_'+s),'engineering_local_failure_recheck_host_proof');
+      const runIndexes=['active','root','chain'].map(s=>'engineering_local_failure_recheck_run_'+s);
+      if(schema>=63&&(runTriggers.some(n=>!triggers.has(n))||runIndexes.some(n=>!indexes.has(n))))throw Error('upgrade_schema_tables_missing');
+      if(schema<63&&(tables.has('engineering_local_failure_recheck_runs')||runTriggers.some(n=>triggers.has(n))||runIndexes.some(n=>indexes.has(n))))throw Error('upgrade_schema_unqualified');
       const recheckTriggers=['no_delete','no_replace','insert','update'].map(s=>'engineering_local_failure_recheck_'+s);
       const recheckIndex='engineering_local_failure_recheck_chain';
       if(schema>=62&&(recheckTriggers.some(name=>!triggers.has(name))||!indexes.has(recheckIndex)))throw Error('upgrade_schema_tables_missing');
@@ -222,6 +228,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       if(schema<54&&(tables.has('engineering_host_processes')||hostProcessTriggers.some(name=>triggers.has(name))))throw Error('upgrade_schema_unqualified');
       if(schema<53&&grantTriggers.some(name=>triggers.has(name)))throw Error('upgrade_schema_unqualified');
       if(schema<52&&(tables.has('engineering_merger_shadow_watermarks')||tables.has('engineering_merger_shadow_cycles')||tables.has('engineering_merger_shadow_decisions')||tables.has('engineering_merger_shadow_outcomes')))throw Error('upgrade_schema_unqualified');
+      if(schema>=63 && db.prepare("SELECT 1 FROM engineering_local_failure_recheck_runs WHERE state<>'stopped' LIMIT 1").get())throw Error('upgrade_unknown_actions');
       if(schema>=59 && db.prepare("SELECT 1 FROM engineering_local_failure_intakes WHERE state<>'stopped' LIMIT 1").get())throw Error('upgrade_unknown_actions');
       if(engineeringUpgradeHolds(db)>0)throw Error('upgrade_unknown_actions');
   }
