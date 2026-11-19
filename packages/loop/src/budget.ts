@@ -12,9 +12,8 @@ export const LoopBudget = z.object({
   max_task_iterations: z.number().int().positive().optional(),
   max_runtime_ms: z.number().int().positive().optional(),
   /**
-   * Enforced against adapter-reported usage (usage.final / done.usage events).
-   * Usage stays 0 for adapters that don't report it (e.g. local-command runs),
-   * so these caps trip only when there is real token/cost data to measure.
+   * Token and cost caps count only reported usage. Missing usage produces one
+   * warning per execution adapter and configured cap. The loop keeps running.
    */
   max_tokens: z.number().int().positive().optional(),
   max_estimated_cost_usd: z.number().positive().optional(),
@@ -53,6 +52,10 @@ export const LoopBudgetStatus = z.object({
   reason: z.string().optional(),
   usage: BudgetUsage,
   baseline: BudgetUsage.pick({ tokens: true, estimated_cost_usd: true }).optional(),
+  unenforced: z.array(z.object({
+    adapter: z.string(),
+    limit: z.enum(["max_tokens", "max_estimated_cost_usd"]),
+  })).optional(),
 });
 export type LoopBudgetStatus = z.infer<typeof LoopBudgetStatus>;
 

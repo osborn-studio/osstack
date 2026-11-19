@@ -141,9 +141,13 @@ the flag, behavior is unchanged.
 `--max-runtime-ms`, `--max-tokens`, `--max-cost-usd`, and (opt-in)
 `--no-progress-limit` stop the loop with a `loop.budget.exceeded` event and
 exit code `2` (not a CLI crash). No-progress is opt-in so a runtime cap never
-silently becomes a stalled-cycle stop. Token/cost caps enforce against
-adapter-reported usage (`usage.final` events) and stay at 0 for adapters that
-don't report it. Daemon sessions persist the stop reason and expose limits +
+silently becomes a stalled-cycle stop. Token and cost caps count only the
+usage the adapter reports. If an execution adapter omits usage for a configured
+cap, the loop emits `loop.budget.unenforceable` once per adapter and cap and
+keeps running. `LOOP-STATE.json` records the pair in `budget_status.unenforced`
+across restarts. The run result and loop report include it in `budget.unenforced`.
+The status and report Markdown show it in the Budget section.
+Daemon sessions persist the stop reason and expose limits +
 usage in `loop list` and `osstack stats`. `STATE.md` gains a Budget section
 after each budgeted cycle.
 

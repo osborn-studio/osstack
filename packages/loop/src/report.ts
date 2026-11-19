@@ -432,6 +432,9 @@ function deriveRisks(
   if (budget?.exceeded === true) {
     risks.push(`Loop stopped on budget: ${budget.reason ?? budget.limit ?? "limit exceeded"}.`);
   }
+  for (const pair of budget?.unenforced ?? []) {
+    risks.push(`Missing usage from ${pair.adapter} left ${pair.limit} unenforced for at least one task.`);
+  }
   const needsApproval = deferredTasks.filter((entry) => entry.authorization === "needs_approval").length;
   if (needsApproval > 0) {
     risks.push(`${needsApproval} discovered task${plural(needsApproval)} waiting for human approval.`);
@@ -549,6 +552,7 @@ function renderBudgetStatus(budget: LoopBudgetStatus): string[] {
   return [
     `- Status: ${budget.exceeded ? `exceeded (${budget.limit ?? "unknown limit"})` : "within limits"}`,
     ...(budget.reason !== undefined ? [`- Reason: ${budget.reason}`] : []),
+    ...(budget.unenforced ?? []).map(pair => `- Missing usage from ${pair.adapter} left ${pair.limit} unenforced for at least one task.`),
     `- Cycles: ${budget.usage.cycles}`,
     `- Runtime: ${budget.usage.runtime_ms} ms`,
     `- Tokens: ${budget.usage.tokens}`,
