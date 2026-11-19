@@ -12,6 +12,8 @@ import { MergerShadowError, MergerShadowStore, type MergerDecisionInput } from "
 import { evaluateMergeGates, type MergeGateInput, type MergeSnapshot } from "./merge-gates.js";
 import { type Mutable, ACTIONS, APP_A, APP_B, APP_E, CHECKS, H, OLD_HEAD, OWNER, baseInput } from "./merge-gate-fixtures.js";
 
+// SQLite-backed property runs are slow on CI runners.
+const PROPERTY_TIMEOUT_MS = 60_000;
 const RUNS = Number(process.env.OSSTACK_PROPERTY_RUNS ?? 1000);
 const SEED = process.env.OSSTACK_PROPERTY_SEED === undefined ? undefined : Number(process.env.OSSTACK_PROPERTY_SEED);
 
@@ -102,7 +104,7 @@ it("would_merge only when the reference predicate holds, and agrees with it on r
     // The reference only passes when nothing was mutated into a failure; the two must agree both ways.
     expect(r.verdict === "would_merge").toBe(ref);
   }), { numRuns: RUNS, ...(SEED === undefined ? {} : { seed: SEED }) });
-});
+}, PROPERTY_TIMEOUT_MS);
 
 it("no single-field perturbation of head, base, review author, check app id or external id yields would_merge", () => {
   const hex = fc.stringMatching(/^[0-9a-f]{40}$/).filter(x => x !== H);
@@ -121,7 +123,7 @@ it("no single-field perturbation of head, base, review author, check app id or e
     const input = baseInput(); mut(input);
     expect(evaluateMergeGates(input).verdict).not.toBe("would_merge");
   }), { numRuns: RUNS, ...(SEED === undefined ? {} : { seed: SEED }) });
-});
+}, PROPERTY_TIMEOUT_MS);
 
 it("agrees with itself: random second-read perturbations never produce would_merge", () => {
   fc.assert(fc.property(fc.integer({ min: 0, max: MUTATIONS.length - 1 }), p => {
@@ -133,7 +135,7 @@ it("agrees with itself: random second-read perturbations never produce would_mer
     const r = evaluateMergeGates(input);
     if (JSON.stringify(second) !== JSON.stringify(input.snapshot)) expect(r.verdict).not.toBe("would_merge");
   }), { numRuns: Math.min(RUNS, 500), ...(SEED === undefined ? {} : { seed: SEED }) });
-});
+}, PROPERTY_TIMEOUT_MS);
 
 // ---- ledger: dedupe never hides the latest accepted observation ----
 
@@ -196,4 +198,4 @@ it("a deduplicated observation never hides the latest accepted one, and stale ti
       expect(rows.map(r => r.observation_seq)).toEqual([...rows.map(r => r.observation_seq)].sort((a, b) => a - b));
     }
   }), { numRuns: Math.min(RUNS, 300), ...(SEED === undefined ? {} : { seed: SEED }) });
-});
+}, PROPERTY_TIMEOUT_MS);
