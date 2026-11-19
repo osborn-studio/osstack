@@ -159,11 +159,10 @@ and no-progress with the results. A mid-cycle crash keeps the cycle debit and
 loses the unfinished cycle's other usage. A runtime, token or cost cap alone
 adds no bound on repeated mid-cycle crashes.
 
-`osstack loop run --cycles N` schedules up to N cycles per invocation.
-`--max-cycles` is ignored. Neither sets the cumulative `budget.max_cycles`
-available through the API. Repeating either command can run again. Repeating
-a command with an exhausted supported budget flag stops immediately with exit
-code 2. Daemon checks use the larger of loop runtime and session wall time and
+`osstack loop run --cycles N` schedules up to N cycles per invocation. It does
+not set the cumulative `budget.max_cycles` available through the API, so
+repeating the command can run again. Repeating a command with an exhausted
+budget flag stops immediately with exit code 2. Daemon checks use the larger of loop runtime and session wall time and
 retain the highest runtime already reported in that session.
 
 ## Lesson Drafts (SOP Flywheel)
