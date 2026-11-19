@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -64,4 +64,18 @@ it("keeps published-head writes in the chain store and repair confirmation in th
     }
   }
   expect(callers).toEqual(["cli/contained-mission-local-failure-publish.ts"]);
+});
+
+it("keeps recheck grant verification out of the CLI and daemon or RPC entry points", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      if (/\.test\.[^/]+$/.test(file)) continue;
+      if (pkg !== "cli" && !/(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file)) continue;
+      const path = join(root, file);
+      if (statSync(path).isFile()) expect(readFileSync(path, "utf8"), path).not.toMatch(/verifyRecheckGrant|recheck-admission/);
+    }
+  }
 });

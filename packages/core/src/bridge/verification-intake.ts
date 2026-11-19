@@ -9,6 +9,7 @@ export { serializeReferenceSegment } from "./reference-segment.js";
 export { DiagnosisStore, diagnosisCanAdmit, diagnosisProfile, type DiagnosisRequest, type HostReceipt, type DiagnosisAdmission, type DiagnosisFacts, type DiagnosisRegistration } from "../state/engineering-diagnosis-store.js";
 export { classifyDiagnosis, verifyDiagnosisGrant, checkGrantPrincipal, checkGrantWindow, type DiagnosisProfile, type DiagnosisReason, type DiagnosisVerdict, type ExpectedFailure, type DiagnosisGrantInput } from "./diagnosis-admission.js";
 export { buildDiagnosisPrompt, type DiagnosisInput } from "./diagnosis-input.js";
-export { parseLocalFailureRevisionGrant } from "./revision-local-failure-grant.js";
+export { verifyRecheckGrant, type RecheckGrantInput, type RecheckGrantVerdict } from "./recheck-admission.js";
+export { parseLocalFailureRevisionGrant, RECHECK_MAX_TIMEOUT_SECONDS } from "./revision-local-failure-grant.js";
 export { LocalFailureDispatchStore, type DispatchInput, type DispatchReason, type DispatchFault, type PublicationFence, type RepairBinding } from "../state/engineering-local-failure-dispatch-store.js";
 export { buildRepairGoal, createLocalFailureRepairInput, type LocalFailureRepairInput } from "./repair-input.js";

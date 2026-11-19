@@ -11,9 +11,13 @@ import {
  */
 export const LOCAL_FAILURE_SIGNING_DOMAIN = "osstack.revision-grant.v2";
 
+// The profile runtime accepts at most 120 seconds.
+export const RECHECK_MAX_TIMEOUT_SECONDS = 120;
+
 const v1Fields = RevisionGrantPreviewSchema.innerType().shape;
 
 /** Required explicit opt-in. Trusted source identifies an artifact; it never supplies commands.
+ * The optional recheck authorizes the same profile on a repaired head within the signed timeout.
  * Profile IDs use the installed-profile ASCII identity grammar (1–128 characters). Digests are lowercase SHA-256.
  */
 export const LocalFailureOptInSchema = z.object({
@@ -27,6 +31,10 @@ export const LocalFailureOptInSchema = z.object({
   }).strict(),
   diagnostic_timeout_seconds: z.number().int().min(1).max(GRANT_LIMITS.max_budget.max_container_seconds),
   max_diagnostics_per_head: z.literal(1),
+  recheck: z.object({
+    enabled: z.literal(true),
+    timeout_seconds: z.number().int().min(1).max(RECHECK_MAX_TIMEOUT_SECONDS),
+  }).strict().optional(),
 }).strict();
 export type LocalFailureOptIn = z.infer<typeof LocalFailureOptInSchema>;
 
@@ -43,6 +51,12 @@ function validatePreview(value: z.infer<typeof previewObject>, ctx: z.Refinement
   if (local_failure.diagnostic_timeout_seconds > value.budget.max_container_seconds
     || local_failure.diagnostic_timeout_seconds > value.budget.max_wall_clock_hours * 3600) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["local_failure", "diagnostic_timeout_seconds"], message: "diagnostic_budget" });
+  }
+  const { recheck, diagnostic_timeout_seconds } = local_failure;
+  if (recheck && (recheck.timeout_seconds > value.budget.max_container_seconds
+    || recheck.timeout_seconds > value.budget.max_wall_clock_hours * 3600
+    || diagnostic_timeout_seconds + recheck.timeout_seconds > value.budget.max_container_seconds)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["local_failure", "recheck", "timeout_seconds"], message: "recheck_budget" });
   }
 }
 
