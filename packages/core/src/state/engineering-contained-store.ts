@@ -318,7 +318,9 @@ export class ContainedMissionStore {
         repair += 1; pending = 0;
       }
       const attempts = to === "verifying" ? mission.verify_attempts + 1 : mission.verify_attempts;
-      const candidate = candidateFor(mission, from, to, step.candidate);
+      // A verification can still need its candidate binding to prove the container stopped after abandonment.
+      const retainStopBinding = to === "abandoned" && mission.stop_obligation === 1 && this.atDepthLimit(missionId);
+      const candidate = candidateFor(mission, from, to, step.candidate, retainStopBinding);
       const verified = to === "verified" ? 1 : candidate && candidate.head === mission.candidate_head && to !== "candidate_ready" && to !== "verify_failed" && to !== "verifying" ? mission.candidate_verified : 0;
       if (step.expected_head !== undefined && !SHA.test(step.expected_head)) throw Error("invalid_head");
       const expectedHead = step.expected_head ?? mission.expected_head;
@@ -404,7 +406,7 @@ function specRepairLimit(specJson: string): number {
 }
 // A candidate is fixed on entering candidate_ready and survives only along the
 // verify/deliver path; every other move drops it, so stale evidence cannot carry over.
-function candidateFor(mission: ContainedMission, from: ContainedMissionState, to: ContainedMissionState, next: ContainedTransition["candidate"]) {
+function candidateFor(mission: ContainedMission, from: ContainedMissionState, to: ContainedMissionState, next: ContainedTransition["candidate"], retainStopBinding: boolean) {
   if (to === "candidate_ready") {
     if (!next || !SHA.test(next.head) || !SHA.test(next.tree) || !DIGEST.test(next.diff_digest)) throw Error("candidate_required");
     return next;
@@ -417,7 +419,7 @@ function candidateFor(mission: ContainedMission, from: ContainedMissionState, to
     if (!current) throw Error("candidate_required");
     return current;
   }
-  return HALTS.includes(to) && from !== "executing" ? current : null;
+  return retainStopBinding || (HALTS.includes(to) && from !== "executing") ? current : null;
 }
 function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : { value };
