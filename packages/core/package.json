@@ -57,6 +57,11 @@
       "import": "./dist/bridge/verification-intake.js",
       "default": "./dist/bridge/verification-intake.js"
     },
+    "./verification-publish": {
+      "types": "./dist/bridge/verification-publish.d.ts",
+      "import": "./dist/bridge/verification-publish.js",
+      "default": "./dist/bridge/verification-publish.js"
+    },
     "./graph-recovery": {
       "types": "./dist/state/graph-recovery.d.ts",
       "import": "./dist/state/graph-recovery.js",
