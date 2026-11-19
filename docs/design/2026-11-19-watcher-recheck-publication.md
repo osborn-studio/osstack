@@ -1,6 +1,6 @@
 # U4b B8: Watcher recheck publication
 
-Date: 2026-11-19. Status: proposed, waiting for the owner's decisions in §8. Design only: no code, test, migration, GitHub write or App setting is part of this change.
+Date: 2026-11-19. Status: approved by the owner on 2026-11-19; all eleven decisions in §8 were accepted as recommended. Design only: no code, test, migration, GitHub write or App setting is part of this change.
 
 Baseline: `origin/main` at `0546cc36`. Every `file:line` below refers to that commit. Three pieces of related work are not on main and were not read as code: B7c (merge interlock, PR #482), D2 (run journal, migration 63) and D4 (collector). Statements about them come from their hand-over notes and are marked **[note]**.
 
@@ -304,9 +304,11 @@ Order: B8-1 first. B8-2 needs B8-1. B8-3 is independent of both. B8-4 needs B8-3
 - the trigger itself: a push to a sandbox PR leading to a published result without a host signal, with the measured delay;
 - the whole recheck chain of intake design §8.1 step 5.
 
-## 8. Decisions for the owner
+## 8. Owner decisions (accepted 2026-11-19)
 
-| # | Decision | Recommendation | Blocks |
+The owner accepted all eleven decisions as recommended on 2026-11-19.
+
+| # | Decision | Decided | Blocks |
 |---|---|---|---|
 | 1 | How the Watcher learns of the new head | Option 1: its existing new-push listener and patrol. Operator trigger as fallback. No host signal. | Cloud setup; no repository node |
 | 2 | Where the private key lives | K1: a second key for the cloud publisher; the host key is used for the JWT installation read only, enforced by a static test | B8-3, cloud setup |
@@ -320,7 +322,7 @@ Order: B8-1 first. B8-2 needs B8-1. B8-3 is independent of both. B8-4 needs B8-3
 | 10 | The incomplete-read correction in the merged reader (§3.4) | Accept: an unavailable installation proof makes the read incomplete; it is not a permanent rejection | B8-3 |
 | 11 | Which identity the host uses to read check runs and the PR | An existing host read identity for that Mission; never a token of the verification App | B8-3 |
 
-Decision 5 is the only one that blocks the first implementation node. Decisions 2, 10 and 11 block B8-3, which can start in parallel.
+With these decisions recorded, B8-1 is unblocked, and B8-3 can start in parallel. The owner's manual actions in §3.6 remain open.
 
 ## 9. What could not be verified
 
