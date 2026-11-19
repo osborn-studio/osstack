@@ -18,3 +18,19 @@ export function withLegacyRoot<T>(setup: () => T): T {
   });
   try { return setup(); } finally { stub.mockRestore(); }
 }
+
+export function withRootDepth<T>(depth: number, setup: () => T): T {
+  const authorize = ContainedMissionStore.prototype.authorize;
+  const stub = vi.spyOn(ContainedMissionStore.prototype, 'authorize').mockImplementation(function (this: ContainedMissionStore, principal, input, now) {
+    const claim = (hop: number) => ({ ...input.claim, branch: input.claim.branch + hop, worktree_identity: input.claim.worktree_identity + hop });
+    let mission = authorize.call(this, principal, { ...input, claim: claim(0) }, now);
+    for (let hop = 1; hop <= depth; hop++) {
+      const child = this.registerDerived(principal, { ...input, claim: hop === depth ? input.claim : claim(hop),
+        parent_mission_id: mission.mission_id, source: { kind: 'verification', id: String(hop) }, idempotency_key: mission.mission_id }, now);
+      if (child.status === 'waiting') throw Error(child.reason);
+      mission = child.mission;
+    }
+    return mission;
+  });
+  try { return setup(); } finally { stub.mockRestore(); }
+}

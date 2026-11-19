@@ -1,3 +1,4 @@
+import { externalDecisionItemId } from "./external-decision-id.js";
 import type Database from "better-sqlite3";
 
 export interface DecisionQuery {
@@ -17,11 +18,13 @@ export interface DecisionRow {
   reason: string | null;
   kind: string;
   details_json: string;
+  lineage_json?: string | null;
 }
 /** Bounded SELECT-only supplements to stores whose existing lists are single-scope,
  * capped without a cursor, or recovery-specific. Construction does not claim an owner,
  * migrate, refresh a projection, or read a repository. */
 export class DecisionQueries {
+  readonly externalDecisionItemId = externalDecisionItemId;
   constructor(readonly db: Database.Database) {}
   session(q: DecisionQuery): DecisionRow[] {
     // created_at is projection time, not the time the Session entered the wait.
@@ -36,6 +39,8 @@ export class DecisionQueries {
     if (q.read_scopes.length === 0) return [];
     return this.rows(`SELECT m.mission_id id,m.scope_id,CAST(m.revision AS TEXT) revision,m.state,
       json_extract(m.spec_json,'$.goal') summary,m.spec_json details_json,'mission' kind,
+      ${ci ? "NULL" : `(SELECT json_object('origin_mission_id',origin_mission_id,'parent_mission_id',parent_mission_id,'depth',chain_depth)
+        FROM engineering_mission_lineage WHERE mission_id=m.mission_id)`} lineage_json,
       (SELECT json_extract(e.payload_json,'$.reason') FROM engineering_contained_events e
         WHERE e.mission_id=m.mission_id AND e.kind='halted' ORDER BY e.seq DESC LIMIT 1) reason,
       (SELECT e.created_at FROM engineering_contained_events e WHERE e.mission_id=m.mission_id

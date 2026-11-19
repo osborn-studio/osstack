@@ -1,4 +1,4 @@
-import type { AttentionSender } from "@osstack/core";
+import type { AttentionSender, ExternalAttentionDecision } from "@osstack/core";
 import { localAttentionSender, validateExternalNoticeIds } from "./attention-local-delivery.js";
 
 /** Host configuration only. Never include this object in diagnostics. */
@@ -23,7 +23,9 @@ export interface AttentionWebhookNotice {
   scope_id: string;
   item_id: string;
   state: string;
-  decision?: { source: string; source_id: string; local_signature_required: boolean };
+  decision?: { source: string; source_id: string; local_signature_required: boolean;
+    reason?: string; chain?: NonNullable<ExternalAttentionDecision["chain"]>;
+    evidence?: { ledger: "engineering_contained_events"; mission_id: string } };
   reason_code: keyof typeof noticeText;
   reminder: { sequence: number; age_ms: number } | null;
   text: string;
@@ -67,6 +69,18 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
     || typeof decision.requires_local_signature !== "boolean" || !/^decision:[a-f0-9]{32}$/.test(message.item_id))) {
     throw new Error("attention_webhook_message_invalid");
   }
+  let facts: Pick<NonNullable<AttentionWebhookNotice["decision"]>, "reason" | "chain" | "evidence"> = {};
+  if (decision && (decision.reason !== undefined || decision.chain !== undefined)) {
+    const c = decision.chain;
+    const validId = (id: unknown) => typeof id === "string" && /^[A-Za-z0-9_:-]{1,256}$/u.test(id);
+    if (decision.source !== "contained_mission" || decision.reason !== "verify_chain_depth_limit" || !c
+      || !validId(c.origin_mission_id) || !(c.parent_mission_id === null || validId(c.parent_mission_id))
+      || !validId(c.mission_id) || c.mission_id !== decision.source_id || !Number.isInteger(c.depth) || c.depth < 0 || c.depth > 8 || c.max_depth !== 8)
+      throw new Error("attention_webhook_message_invalid");
+    const { origin_mission_id, parent_mission_id, mission_id, depth, max_depth } = c;
+    facts = { reason: decision.reason, chain: { origin_mission_id, parent_mission_id, mission_id, depth, max_depth },
+      evidence: { ledger: "engineering_contained_events", mission_id } };
+  }
   const reason = decision?.requires_local_signature ? (reminder ? "decision_overdue_local" : "decision_pending_local")
     : reminder ? "decision_overdue"
     : message.state === "answer_uncertain" || message.state === "source_missing" ? message.state : "decision_pending";
@@ -79,7 +93,7 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
     item_id: message.item_id,
     state: message.state,
     reason_code: reason,
-    ...(decision && { decision: { source: decision.source, source_id: decision.source_id, local_signature_required: decision.requires_local_signature } }),
+    ...(decision && { decision: { source: decision.source, source_id: decision.source_id, local_signature_required: decision.requires_local_signature, ...facts } }),
     reminder: reminder ? { sequence: reminder.sequence, age_ms: reminder.age_ms } : null,
     text: noticeText[reason],
     reference: { usage: "reference_only", kind: "external_reference", truncated: points.length > 512, summary: points.slice(0, 512).join("") },

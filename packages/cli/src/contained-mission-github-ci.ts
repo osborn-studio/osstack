@@ -338,7 +338,7 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         const registered = store.registerDerived(actor, { parent_mission_id: root.mission_id, scope_id: scopeId, claim,
           spec: child as unknown as Record<string, unknown>, source: { kind: 'github_actions', id: String(result.job.check_run_id) },
           idempotency_key: `ci_repair:${root.mission_id}` }, now());
-        if (registered.status === 'waiting') return;
+        if (registered.status === 'waiting' || registered.status === 'depth_limit') return;
         const mission = registered.mission;
         store.record(root.mission_id, 'ci_repair_dispatched', { child: mission.mission_id, head: target.head, check_run_id: result.job.check_run_id }, now());
       }).immediate();

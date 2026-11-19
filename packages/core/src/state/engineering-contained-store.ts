@@ -1,3 +1,5 @@
+import { preflightDiskSpace } from "./db.js";
+import { externalDecisionItemId } from "./external-decision-id.js";
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import { attentionDigest, type AttentionOwner, type AttentionStore } from "./attention-store.js";
@@ -27,6 +29,7 @@ export interface ContainedAuthorizeInput {
   claim: { repo_identity: string; branch: string; worktree_identity: string };
 }
 export const MAX_REPAIR_CHAIN_DEPTH = 8;
+export const CHAIN_DEPTH_LIMIT_REASON = "verify_chain_depth_limit";
 export const LINEAGE_UNKNOWN_REASON = "verify_chain_lineage_unknown";
 export type MissionLineageSourceKind = "local_root" | "supersede" | "review" | "github_actions" | "local_failure" | "verification" | "patrol";
 export type DerivedSourceKind = Exclude<MissionLineageSourceKind, "local_root" | "supersede">;
@@ -42,6 +45,7 @@ export interface ContainedDeriveInput {
   source: { kind: DerivedSourceKind; id: string }; idempotency_key: string;
 }
 export type ContainedDeriveResult =
+  | { status: "depth_limit"; reason: typeof CHAIN_DEPTH_LIMIT_REASON; mission: ContainedMission; lineage: MissionLineage; registered: boolean; linked: boolean }
   | { status: "registered" | "duplicate"; mission: ContainedMission; lineage: MissionLineage }
   | { status: "waiting"; reason: typeof LINEAGE_UNKNOWN_REASON; parent_mission_id: string };
 
@@ -121,6 +125,14 @@ export class ContainedMissionStore {
     return this.db.prepare("SELECT * FROM engineering_mission_lineage WHERE mission_id=?").get(missionId) as MissionLineage | undefined ?? null;
   }
 
+  atDepthLimit(missionId: string): boolean {
+    return (this.lineage(missionId)?.chain_depth ?? 0) >= MAX_REPAIR_CHAIN_DEPTH;
+  }
+
+  assertBelowDepthLimit(missionId: string): void {
+    if (this.atDepthLimit(missionId)) throw Error(CHAIN_DEPTH_LIMIT_REASON);
+  }
+
   resolveLineage(missionId: string): LineageResolution {
     const unknown = (detail: string): LineageResolution => ({ status: "unknown", reason: LINEAGE_UNKNOWN_REASON, detail });
     const seen = new Set<string>();
@@ -159,6 +171,7 @@ export class ContainedMissionStore {
       if (input.supersedes) {
         const prior = this.get(input.supersedes);
         if (prior.scope_id !== input.scope_id) throw Error("permission_denied");
+        this.assertBelowDepthLimit(prior.mission_id);
         if (!TERMINAL.has(prior.state)) throw Error("supersedes_active_mission");
         repairCycles = prior.repair_cycles; repairPending = prior.repair_pending;
         priorLineage = this.resolveLineage(prior.mission_id);
@@ -186,15 +199,25 @@ export class ContainedMissionStore {
     const bounded = (value: unknown) => typeof value === "string" && value.length > 0 && value.length <= 256;
     if (!input.source || !["review", "github_actions", "local_failure", "verification", "patrol"].includes(input.source.kind)
       || !bounded(input.source.id) || !bounded(input.idempotency_key)) throw Error("invalid_lineage_input");
-    return this.write(() => {
+    const register = (): ContainedDeriveResult => {
       const parent = this.get(input.parent_mission_id);
       if (parent.scope_id !== input.scope_id) throw Error("permission_denied");
       const prior = this.db.prepare("SELECT * FROM engineering_mission_lineage WHERE idempotency_key=?").get(input.idempotency_key) as MissionLineage | undefined;
       if (prior) {
         const mission = this.get(prior.mission_id);
-        if (prior.parent_mission_id !== parent.mission_id || prior.source_kind !== input.source.kind || prior.source_id !== input.source.id
+        if (prior.parent_mission_id !== parent.mission_id || prior.source_kind !== input.source.kind) throw Error("lineage_idempotency_conflict");
+        if (prior.chain_depth >= MAX_REPAIR_CHAIN_DEPTH) return this.depthStop(mission, prior, false, now);
+        if (prior.source_id !== input.source.id
           || mission.spec_digest !== attentionDigest(input.spec)) throw Error("lineage_idempotency_conflict");
         return { status: "duplicate", mission, lineage: prior };
+      }
+      const parentLineage = this.lineage(parent.mission_id);
+      if (parentLineage && parentLineage.chain_depth >= MAX_REPAIR_CHAIN_DEPTH) {
+        const linked = !this.db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='chain_depth_stop_linked' AND json_extract(payload_json,'$.idempotency_key')=?")
+          .get(parent.mission_id, input.idempotency_key);
+        if (linked) this.event(parent.mission_id, "chain_depth_stop_linked", null,
+          { reason: CHAIN_DEPTH_LIMIT_REASON, source: input.source, idempotency_key: input.idempotency_key }, now);
+        return { status: "depth_limit", reason: CHAIN_DEPTH_LIMIT_REASON, mission: parent, lineage: parentLineage, registered: false, linked };
       }
       const resolved = this.resolveLineage(parent.mission_id);
       if (resolved.status === "unknown") {
@@ -209,8 +232,25 @@ export class ContainedMissionStore {
         parent_mission_id: parent.mission_id, chain_depth: resolved.lineage.chain_depth + 1, source_kind: input.source.kind,
         source_id: input.source.id, idempotency_key: input.idempotency_key, created_at: now };
       this.insertLineage(lineage);
+      if (lineage.chain_depth === MAX_REPAIR_CHAIN_DEPTH) return this.depthStop(mission, lineage, true, now);
       return { status: "registered", mission, lineage };
-    });
+    };
+    // Serialize the key lookup with the insert, including a review stop registered outside a reservation.
+    if (!this.db.inTransaction) preflightDiskSpace(this.attention.path);
+    return this.db.transaction(() => this.write(register)).immediate();
+  }
+
+  private depthStop(mission: ContainedMission, lineage: MissionLineage, registered: boolean, now: number): ContainedDeriveResult {
+    if (mission.state === "authorized" && mission.revision === 1) {
+      const { origin_mission_id, parent_mission_id, chain_depth, source_kind, source_id, idempotency_key } = lineage;
+      mission = this.transition(mission.mission_id, { if_revision: 1, to: "awaiting_decision", event: { kind: "halted",
+        payload: { reason: CHAIN_DEPTH_LIMIT_REASON, origin_mission_id, parent_mission_id, chain_depth, max_depth: MAX_REPAIR_CHAIN_DEPTH,
+          source: { kind: source_kind, id: source_id }, idempotency_key } } }, now);
+      const item = externalDecisionItemId("contained_mission", mission.mission_id, now);
+      this.db.prepare("INSERT OR IGNORE INTO attention_deliveries(delivery_id,scope_id,item_id,revision) VALUES(?,?,?,1)")
+        .run(item + ":1", mission.scope_id, item);
+    }
+    return { status: "depth_limit", reason: CHAIN_DEPTH_LIMIT_REASON, mission, lineage, registered, linked: false };
   }
 
   private rejectLineageInput(input: ContainedAuthorizeInput | ContainedDeriveInput, root: boolean): void {
@@ -260,6 +300,7 @@ export class ContainedMissionStore {
       if (mission.revision !== step.if_revision) throw Error("version_conflict");
       if (TERMINAL.has(mission.state)) throw Error("mission_terminal");
       const from = mission.state; const to = step.to;
+      if (to !== "abandoned" && to !== "awaiting_decision" && this.atDepthLimit(missionId)) throw Error(CHAIN_DEPTH_LIMIT_REASON);
       if (!NEXT[from].includes(to) && !HALTS.includes(to)) throw Error("transition_denied");
       // A halted Mission may re-enter candidate_ready only with the very candidate it halted on; it can never swap in another.
       if (from === "awaiting_decision" && to === "candidate_ready" && (mission.candidate_head === null || step.candidate?.head !== mission.candidate_head
@@ -277,7 +318,9 @@ export class ContainedMissionStore {
         repair += 1; pending = 0;
       }
       const attempts = to === "verifying" ? mission.verify_attempts + 1 : mission.verify_attempts;
-      const candidate = candidateFor(mission, from, to, step.candidate);
+      // A verification can still need its candidate binding to prove the container stopped after abandonment.
+      const retainStopBinding = to === "abandoned" && mission.stop_obligation === 1 && this.atDepthLimit(missionId);
+      const candidate = candidateFor(mission, from, to, step.candidate, retainStopBinding);
       const verified = to === "verified" ? 1 : candidate && candidate.head === mission.candidate_head && to !== "candidate_ready" && to !== "verify_failed" && to !== "verifying" ? mission.candidate_verified : 0;
       if (step.expected_head !== undefined && !SHA.test(step.expected_head)) throw Error("invalid_head");
       const expectedHead = step.expected_head ?? mission.expected_head;
@@ -290,6 +333,10 @@ export class ContainedMissionStore {
         .run(to, now, expectedHead, candidate?.head ?? null, candidate?.tree ?? null, candidate?.diff_digest ?? null, attempts, repair, obligation,
           verified, pending, missionId);
       this.event(missionId, step.event.kind, step.actor ?? null, { ...asObject(step.event.payload), from, to }, now);
+      // A legacy Mission can still own a host process. Recovery releases its claim after stop proof.
+      if (to === "abandoned" && obligation === 0 && this.atDepthLimit(missionId) && this.claim(missionId).state === "active"
+        && !this.db.prepare("SELECT 1 FROM engineering_host_processes WHERE mission_id=? AND state<>'stopped'").get(missionId))
+        this.releaseClaim(missionId, "terminal", now);
       return this.get(missionId);
     });
   }
@@ -359,7 +406,7 @@ function specRepairLimit(specJson: string): number {
 }
 // A candidate is fixed on entering candidate_ready and survives only along the
 // verify/deliver path; every other move drops it, so stale evidence cannot carry over.
-function candidateFor(mission: ContainedMission, from: ContainedMissionState, to: ContainedMissionState, next: ContainedTransition["candidate"]) {
+function candidateFor(mission: ContainedMission, from: ContainedMissionState, to: ContainedMissionState, next: ContainedTransition["candidate"], retainStopBinding: boolean) {
   if (to === "candidate_ready") {
     if (!next || !SHA.test(next.head) || !SHA.test(next.tree) || !DIGEST.test(next.diff_digest)) throw Error("candidate_required");
     return next;
@@ -372,7 +419,7 @@ function candidateFor(mission: ContainedMission, from: ContainedMissionState, to
     if (!current) throw Error("candidate_required");
     return current;
   }
-  return HALTS.includes(to) && from !== "executing" ? current : null;
+  return retainStopBinding || (HALTS.includes(to) && from !== "executing") ? current : null;
 }
 function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : { value };

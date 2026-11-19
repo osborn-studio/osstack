@@ -41,6 +41,7 @@ export function recoverLocalFailureDispatch(
   return new LocalFailureDispatchStore(p.store).recover(requestId);
 }
 
+/** Returns the committed stop or dispatch. Only a dispatched result identifies runnable work. */
 export function dispatchLocalFailureRepair(
   p: LocalFailureDispatchPorts,
   requestId: string,

@@ -1,4 +1,4 @@
-import { withLegacyRoot } from './contained-mission-lineage.testkit.js';
+import { withRootDepth, withLegacyRoot } from './contained-mission-lineage.testkit.js';
 import { createHash } from "node:crypto";
 import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -82,6 +82,29 @@ async function drive(f: ReturnType<typeof setup>, steps: number): Promise<Contai
 }
 
 describe("ContainedMissionRunner", () => {
+  it("blocks work and allows the owner to abandon the stop without a worktree", async () => {
+    const f = withRootDepth(8, setup);
+    for (const kind of ['extra_repair', 'resume_grant', 'resume_budget', 'resume_workspace', 'approve_publication', 'discard_changes', 'adopt_worktree'] as const) {
+      await expect(f.runner.decide(f.mission.mission_id, { kind })).rejects.toThrow('verify_chain_depth_limit');
+      expect(f.store.get(f.mission.mission_id)).toEqual(f.mission);
+    }
+    const actor = { principal_id: 'human', client_session_id: 'cli', read_scopes: [f.mission.scope_id], write_scopes: [f.mission.scope_id], operator_scopes: [f.mission.scope_id], stop_scopes: [] };
+    const credential = "c".repeat(32);
+    const accessPath = join(dirname(f.store.attention.path), "authority.json");
+    writeFileSync(accessPath, JSON.stringify({ version: 1, principals: [{ ...actor,
+      credential_sha256: createHash("sha256").update(credential).digest("hex") }] }), { mode: 0o600 });
+    const service = new ContainedMissionService({ host: { store: f.store } as ContainedMissionHost,
+      access: new EngineeringAccess(accessPath), draining: () => false });
+    const args = { credential, mission_id: f.mission.mission_id, decision_id: "stop:decision", expected_revision: f.mission.revision };
+    const events = f.store.events(f.mission.mission_id);
+    await expect(service.handle("mission.approve_ci_repair", { ...args, candidate: START })).rejects.toThrow("verify_chain_depth_limit");
+    await expect(service.handle("mission.decide", { ...args, decision: "retry_stop_check" })).rejects.toThrow("verify_chain_depth_limit");
+    expect(() => approveCiRepairOnce(f.store, actor, { mission_id: f.mission.mission_id, candidate: START, decision_id: 'stop-approval' }, 2000)).toThrow('verify_chain_depth_limit');
+    await expect(f.runner.step(f.mission.mission_id)).rejects.toThrow('verify_chain_depth_limit');
+    expect(f.store.events(f.mission.mission_id)).toEqual(events);
+    expect((await f.runner.decide(f.mission.mission_id, { kind: 'abandon' })).state).toBe('abandoned');
+    expect(f.store.claim(f.mission.mission_id).state).toBe('released');
+  });
   it.each([false, true])("dispatches one repair and rechecks CI, or waits on unknown lineage (%s)", async unknownLineage => {
     const repository = "osborn-studio/osstack-bridge-sandbox";
     const branch = "osstack/mission/ci-seed";
@@ -959,4 +982,36 @@ describe("resumeConfirmedLocalPublication", () => {
       expect(f.store.get(id)).toEqual(before);
       expect(f.store.events(id)).toEqual(events);
     });
+});
+
+it.each(['deliver','reject','abandon'])('settles the registered stop delivery across scans and restart (%s)', async mode => {
+  const { AttentionExperience } = await import('@osstack/core');
+  const { createDecisionNoticeSource } = await import('./decisions/notices.js');
+  const f = withRootDepth(8, setup);
+  const id = f.mission.mission_id;
+  const source = () => createDecisionNoticeSource(new DecisionQueries(f.store.db), () => [f.mission.scope_id], Date.now);
+  const experience = () => new AttentionExperience(f.store.attention, f.store.owner, { externalDecisions: source(), reminders: true });
+  const rows = () => f.store.db.prepare("SELECT item_id,state FROM attention_deliveries").all();
+  const pending = source().pending()[0]!;
+  expect(rows()).toEqual([{ item_id: pending.item_id, state: "pending" }]);
+  let ex = experience();
+  ex.enqueueExternal();
+  expect(rows()).toHaveLength(1);
+  const calls: Parameters<import('@osstack/core').AttentionSender>[0][] = [];
+  const send: import('@osstack/core').AttentionSender = async msg => { calls.push(msg); if (mode === 'reject') throw Error('offline'); };
+  if (mode === 'abandon') await f.runner.decide(id,{kind:'abandon'});
+  for (let i = 0; i < 8; i++) {
+    if (i === 1) ex = experience();
+    ex.enqueueExternal();
+    await ex.drain(send, Date.now() + i * 3600000);
+  }
+  expect(calls).toHaveLength(mode === 'abandon' ? 0 : mode === 'reject' ? 5 : 1);
+  if (mode === 'abandon') expect(ex.scheduleReminders({overdueMs:1,backoffMaxMs:2}).scheduled).toBeNull();
+  else {
+    expect(f.store.get(id)).toEqual(f.mission);
+    const lineage = f.store.lineage(id)!;
+    expect(calls[0]?.decision).toMatchObject({source:'contained_mission', source_id:id, reason:'verify_chain_depth_limit',
+      chain:{mission_id:id, parent_mission_id:lineage.parent_mission_id, origin_mission_id:lineage.origin_mission_id, depth:8, max_depth:8}});
+  }
+  expect(rows()).toEqual([{item_id:pending.item_id,state:mode==='abandon'?'superseded':mode==='reject'?'dead_letter':'delivered'}]);
 });

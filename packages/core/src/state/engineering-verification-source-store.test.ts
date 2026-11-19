@@ -41,7 +41,7 @@ it("registers migration 57 after 56 and upgrades schema 56 without changing exis
   cleanups.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   expect(objects().filter(x => before.some(b => b.name === x.name))).toEqual(before);
-  const added = objects().filter(x => !before.some(b => b.name === x.name) && !x.name.startsWith("engineering_local_failure_dispatch_") && !["engineering_local_failure_dispatches","engineering_diagnosis_requests","engineering_host_receipts","engineering_local_failure_intakes"].includes(x.tbl_name) && !x.name.startsWith("engineering_root_exclusion_"));
+  const added = objects().filter(x => !before.some(b => b.name === x.name) && !["engineering_mission_lineage_depth_cap","engineering_mission_depth_stop"].includes(x.name) && !x.name.startsWith("engineering_local_failure_dispatch_") && !["engineering_local_failure_dispatches","engineering_diagnosis_requests","engineering_host_receipts","engineering_local_failure_intakes"].includes(x.tbl_name) && !x.name.startsWith("engineering_root_exclusion_"));
   expect(added.length).toBe(7);
   expect(added.every(x => x.tbl_name === "engineering_verification_sources")).toBe(true);
   expect(db.prepare("SELECT title FROM tasks WHERE task_id='fixture'").get()).toEqual({ title: "retained" });

@@ -6,7 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, lstatSync, readdirSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { classifyHostProcess, processGroupEmpty, runHardenedGit, type AgentHostProcessRecord, type HardenedGitContext } from '@osstack/agents';
-import { scratchPath, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal, type HostProcessRecord } from '@osstack/core';
+import { CHAIN_DEPTH_LIMIT_REASON, scratchPath, type ContainedMission, type ContainedMissionStore, type EngineeringPrincipal, type HostProcessRecord } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { ContainedMissionRunner, parseContainedMissionSpec, type ContainedDecision, type ContainedMissionSpec } from './contained-mission-runner.js';
 import { readCiChain, listCiChains } from './contained-mission-ci-chain-read.js';
@@ -165,6 +165,7 @@ export class ContainedMissionHost {
   async decide(principal: EngineeringPrincipal, missionId: string, decision: ContainedHostDecision): Promise<ContainedMission> {
     const mission = this.store.readable(principal, missionId);
     if (!principal.write_scopes.includes(mission.scope_id)) throw Error('permission_denied');
+    if (decision.kind !== 'abandon') this.store.assertBelowDepthLimit(missionId);
     if (this.inFlight.has(missionId)) throw Error('CONTAINED_MISSION_BUSY');
     let result: ContainedMission | undefined;
     if (decision.decision_id) this.activeDecisionIds.set(missionId, decision.decision_id);
@@ -201,7 +202,7 @@ export class ContainedMissionHost {
         if (this.inFlight.has(row.mission_id)) continue;
         let state: ContainedMission['state'];
         try { state = this.store.get(row.mission_id).state; } catch { continue; }
-        if (STEPPABLE.has(state)) launched.push(this.track(row.mission_id, async () => { await this.runner.step(row.mission_id); }));
+        if (STEPPABLE.has(state) && !this.store.atDepthLimit(row.mission_id)) launched.push(this.track(row.mission_id, async () => { await this.runner.step(row.mission_id); }));
       }
       if (rows.length < this.page) { this.cursor = undefined; break; }
     }
@@ -230,19 +231,23 @@ export class ContainedMissionHost {
 
   private async recoverOne(missionId: string): Promise<void> {
     const m = this.store.get(missionId);
-    // Host child processes first (W13 section 5): nothing below may release a claim, clear an obligation or move on while one is unproven.
-    const unproven = await this.proveHostProcesses(m);
-    if (TERMINAL.has(m.state)) {
-      if (unproven.length > 0) return;
+    const deep = this.store.atDepthLimit(missionId);
+    const terminal = TERMINAL.has(m.state);
+    // Keep probing waiting and abandoned deep Missions, without journaling the same missing proof on each pass.
+    const recordUnproven = !(deep && (m.state === 'awaiting_decision' || terminal));
+    const unproven = await this.proveHostProcesses(m, recordUnproven);
+    if (terminal || deep) {
       let current = m;
-      if (current.stop_obligation === 1) {
-        // An obligation only a host process caused (abandon from a host-only stop_unknown) needs no executor proof, only the host proofs above.
-        const hostOnly = hostOnlyObligation(containedEvents(this.store, missionId));
-        const proof = hostOnly ? { recovered_by: 'host_process_proofs' } : await this.stopProof(current);
-        if (!proof) return;
-        current = this.store.recordStopEvidence(missionId, current.revision, { ...proof, recovered: true, ...this.hostEvidence(missionId) }, this.options.ports.now());
+      if (unproven.length === 0 && m.stop_obligation === 1) {
+        // The depth halt adds no effect. Preserve the original halt when checking for a host-only obligation.
+        const events = containedEvents(this.store, missionId);
+        const hostOnly = hostOnlyObligation(deep ? events.filter(e => e.kind !== 'halted' || eventPayload(e).reason !== CHAIN_DEPTH_LIMIT_REASON) : events);
+        const proof = hostOnly ? { recovered_by: 'host_process_proofs' } : await this.stopProof(m);
+        if (proof) current = this.store.recordStopEvidence(missionId, m.revision, { ...proof, recovered: true, ...this.hostEvidence(missionId) }, this.options.ports.now());
       }
-      if (this.store.claim(missionId).state === 'active') this.store.releaseClaim(missionId, 'terminal', this.options.ports.now());
+      if (!terminal) this.haltAtDepthLimit(current, unproven.length > 0);
+      else if (unproven.length === 0 && current.stop_obligation === 0 && this.store.claim(missionId).state === 'active')
+        this.store.releaseClaim(missionId, 'terminal', this.options.ports.now());
       return;
     }
     if (unproven.length > 0) {
@@ -261,6 +266,12 @@ export class ContainedMissionHost {
       this.hp.settleStopped(missionId, m.revision, { recovered: true, ...this.hostEvidence(missionId) },
         { to: 'awaiting_decision', event: { kind: 'halted', payload: { reason: WORKSPACE_RECOVERED } } });
     }
+  }
+
+  private haltAtDepthLimit(m: ContainedMission, hostUnproven: boolean): void {
+    if (m.state === 'awaiting_decision') return;
+    this.store.transition(m.mission_id, { if_revision: m.revision, to: 'awaiting_decision', event: { kind: 'halted',
+      payload: { reason: CHAIN_DEPTH_LIMIT_REASON, stop_proof_owed: hostUnproven || m.stop_obligation === 1 } } }, this.options.ports.now());
   }
 
   /**
@@ -303,20 +314,20 @@ export class ContainedMissionHost {
    * Prove, or fail to prove, that each open host child process of the Mission is gone (design W13 section 5.2). Observation only:
    * nothing here signals a process. Returns the records still unproven.
    */
-  private async proveHostProcesses(m: ContainedMission): Promise<HostProcessRecord[]> {
+  private async proveHostProcesses(m: ContainedMission, recordUnproven = true): Promise<HostProcessRecord[]> {
     const unproven: HostProcessRecord[] = [];
     const waitMs = this.options.hostProcessWaitMs;
     for (const row of this.hp.open(m.mission_id)) {
       const verdict = await classifyHostProcess(classifiable(row), this.kit.probe, waitMs === undefined ? {} : { waitMs, pollMs: Math.max(1, Math.min(250, waitMs)) });
       if (verdict.kind !== 'stopped') {
         unproven.push(row);
-        this.hp.recordUnproven(row.op_id, verdict.reason);
+        if (recordUnproven) this.hp.recordUnproven(row.op_id, verdict.reason);
         continue;
       }
       // Cleanup first (against the moment of proof), so a crash or a failed removal leaves the row open and the next recovery cleans again.
       if (row.kind === 'git_index_write' && !(await this.clearStaleIndexLock(m, row, Date.now()))) {
         unproven.push(row);
-        this.hp.recordUnproven(row.op_id, 'index_lock_remove_failed');
+        if (recordUnproven) this.hp.recordUnproven(row.op_id, 'index_lock_remove_failed');
         continue;
       }
       this.hp.stopped(row.op_id, { proof: verdict.proof, detail: verdict.detail });

@@ -458,3 +458,10 @@ describe('root writer exclusion before the review budget pre-check', () => {
     expect(f.missionCount()).toBe(2);
   });
 });
+
+it('returns the registered depth stop before reserving a review round', async () => {
+  const { withRootDepth } = await import('./contained-mission-lineage.testkit.js');
+  const f = withRootDepth(7, setup);
+  expect(await f.dispatch()).toEqual({ status: 'stopped', reason: 'verify_chain_depth_limit' });
+  expect(f.rig.chains.get(f.chain.chain_id)).toEqual(f.chain);
+});

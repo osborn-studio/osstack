@@ -2,12 +2,18 @@ import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { hardenedGitEnvironment, type CodexProxyRun, type CodexQualification } from "@osstack/agents";
-import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { AttentionStore, ContainedMissionStore, DecisionQueries, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ensureHostProcessLedger, hostProcessOptions } from "./contained-mission-host-process.testkit.js";
 import { computeCiChainStats, listCiChains, readCiChain } from "./contained-mission-ci-chain-read.js";
 import { ContainedMissionHost, resolveContainedMissionStart } from "./contained-mission-host.js";
 import { createContainedMissionPorts, type ContainedMissionHostPorts } from "./contained-mission-ports.js";
+
+import Database from "better-sqlite3";
+import { MIGRATIONS } from "@osstack/core/dist/state/migrations.js";
+import { missionVerificationBinding } from "./contained-verification.js";
+import { decisionItem } from "./decisions/list.js";
+import { withLegacyRoot } from "./contained-mission-lineage.testkit.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
@@ -21,12 +27,17 @@ const run = (patch = PATCH): CodexProxyRun => ({ launch: { pid: 4242, pgid: 4242
   stop: { stop_proof: "group_empty+sandbox_inherited", pgid: 4242, signals: [], confirmed_at: 2 }, patch: { ok: true, text: patch, bytes: patch.length },
   stdout: "", stderr: "", stdout_truncated: false, stderr_truncated: false });
 
-function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { maxConcurrent?: number; empty?: (pgid: number) => boolean; scan?: { pageSize: number; maxPages: number } } = {}) {
+function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { schema60?: boolean; maxConcurrent?: number; empty?: (pgid: number) => boolean; scan?: { pageSize: number; maxPages: number } } = {}) {
   const root = realpathSync(createScratchDirSync("tests", "contained-host"));
   const repo = join(root, "repo"); mkdirSync(repo);
   for (const [path, content] of Object.entries({ "src/a.txt": "hi\n", "src/b.txt": "bye\n", "package.json": "{}\n" })) { mkdirSync(dirname(join(repo, path)), { recursive: true }); writeFileSync(join(repo, path), content); }
   sh(repo, "init", "-q", "-b", "main"); sh(repo, "add", "-A"); sh(repo, "commit", "-q", "-m", "initial");
-  const path = join(root, "state.db"); const db = openDb({ path }); db.pragma("synchronous=FULL"); ensureHostProcessLedger(db);
+  const path = join(root, "state.db"); const db = hostOver.schema60 ? new Database(path) : openDb({ path });
+  if (hostOver.schema60) {
+    for (const migration of MIGRATIONS.filter(m => m.id <= 60)) db.exec(migration.sql);
+    db.pragma("user_version=60");
+  }
+  db.pragma("synchronous=FULL"); ensureHostProcessLedger(db);
   cleanup.push(() => { db.close(); rmSync(root, { recursive: true, force: true }); });
   db.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   const attention = new AttentionStore(db, path); const owner = attention.claimOwner("owner");
@@ -50,7 +61,7 @@ function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { maxC
   const principal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [], operator_scopes: [] };
   const start = async () => host.start(principal, { scope_id: scope.scope_id, spec: await resolveContainedMissionStart({ goal: "say hello", repo_path: repo, base_ref: "main", allowed_paths: ["src/**"], verify: { argv: ["true"] } }, { worktreesRoot }) });
   const reason = (id: string) => { const e = store.events(id, 0, 500).filter(x => x.kind === "halted").at(-1); return e ? (JSON.parse(e.payload_json) as { reason: string }).reason : undefined; };
-  return { root, repo, store, host, principal, start, calls, reason, now: () => ++clock,
+  return { root, repo, store, host, ports, principal, start, calls, reason, now: () => ++clock,
     setPatch: (p: string) => { patch = p; }, setGate: (g: Promise<void> | undefined) => { gate = g; }, setEmpty: (fn: (pgid: number) => boolean) => { empty = fn; }, setNamed: (pids: number[]) => { named = pids; } };
 }
 type Fixture = ReturnType<typeof fixture>;
@@ -158,11 +169,126 @@ describe("ContainedMissionHost", () => {
 });
 
 describe("ContainedMissionHost recovery", () => {
+  it("recovers schema-60 deep orphans and retains their claims until every stop is proven", async () => {
+    let executorStopped = false;
+    let hostStopped = false;
+    let containerStopped = false;
+    const verificationStopped = vi.fn<ContainedMissionHostPorts["verificationStopped"]>(async mission => {
+      if (!containerStopped) return { stopped: false };
+      const binding = missionVerificationBinding({ ...mission, state: "verifying" }, { argv: ["true"] });
+      expect(binding).toEqual(originalBinding);
+      return { stopped: true, proof: "container_removed", evidence: "test container gone" };
+    });
+    const makeFixture = () => fixture({ verificationStopped }, { schema60: true, empty: () => executorStopped });
+    const control = makeFixture();
+    const f = makeFixture();
+    const db = f.store.db;
+    const effects = (["execute", "verify", "publish"] as const).map(port => vi.spyOn(f.ports, port));
+    const step = vi.spyOn(f.host.runner, "step");
+    const probe = f.ports.hostProcesses.probe;
+    vi.spyOn(probe, "bootSession").mockReturnValue("test-boot");
+    vi.spyOn(probe, "markerIdentity").mockImplementation(() => hostStopped ? "ok" : "lost");
+    vi.spyOn(probe, "markerHeld").mockReturnValue(false);
+
+    function openEffect(target: Fixture, id: string, state: "executing" | "verifying") {
+      target.store.db.prepare("UPDATE engineering_contained_missions SET state=?,stop_obligation=1,revision=revision+1 WHERE mission_id=?").run(state, id);
+      if (state === "verifying") target.store.db.prepare(`UPDATE engineering_contained_missions
+        SET candidate_head=?,candidate_tree=?,candidate_diff_digest=?,verify_attempts=1,revision=revision+1 WHERE mission_id=?`)
+        .run("b".repeat(40), "c".repeat(40), "d".repeat(64), id);
+      target.store.record(id, state === "executing" ? "executor_launch_intent" : "verification_started", { to: state }, target.now());
+      if (state === "executing") target.store.record(id, "executor_started", { pgid: 7777 }, target.now());
+    }
+    let parent = ciRoot(f, "root").mission_id;
+    const origin = parent;
+    const deep: string[] = [];
+    for (let depth = 1; depth <= 9; depth++) {
+      const id = withLegacyRoot(() => ciRoot(f, String(depth))).mission_id;
+      db.prepare("INSERT INTO engineering_mission_lineage VALUES(?,?,?,?,'review',?,?,1)").run(id, origin, parent, depth, id, id);
+      parent = id;
+      if (depth < 8) continue;
+      deep.push(id);
+      if (depth === 9) f.ports.hostProcesses.hp.launching({ op_id: "hp_legacy", mission_id: id, kind: "git_update_ref",
+        local_target: "branch", argv_digest: "a".repeat(64), boot_id: "test-boot", marker: { path: join(f.root, "legacy.hold"), dev: "1", ino: "2" } });
+      openEffect(f, id, depth === 8 ? "executing" : "verifying");
+    }
+    function upgrade(target: Fixture) {
+      const ordinary = ciRoot(target, "ordinary").mission_id;
+      openEffect(target, ordinary, "executing");
+      target.store.db.exec(MIGRATIONS.find(m => m.id === 61)!.sql);
+      target.store.db.pragma("user_version=61");
+      return ordinary;
+    }
+    const lineage = () => db.prepare("SELECT * FROM engineering_mission_lineage ORDER BY mission_id").all();
+    const [executing, verifying] = deep as [string, string];
+    const originalBinding = missionVerificationBinding(f.store.get(verifying), { argv: ["true"] });
+    const baseline = upgrade(control);
+    const ordinary = upgrade(f);
+    const originalLineage = lineage();
+    await control.host.recover();
+    await f.host.recover();
+    expect(control.store.get(baseline).state).toBe("stop_unknown");
+    expect(f.store.get(ordinary).state).toBe(control.store.get(baseline).state);
+    const allEvents = () => deep.map(id => f.store.events(id));
+    const decisions = new DecisionQueries(db).contained_mission({ read_scopes: f.principal.read_scopes, after: "", limit: 50 });
+    expect(deep.map(id => ({ state: f.store.get(id).state, errors: f.store.events(id)
+      .filter(e => e.kind === "host_step_failed").map(e => JSON.parse(e.payload_json)) })))
+      .toEqual(deep.map(() => ({ state: "awaiting_decision", errors: [] })));
+    for (const id of deep) {
+      expect(f.store.get(id).stop_obligation).toBe(1);
+      expect(f.store.claim(id).state).toBe("active");
+      const halts = f.store.events(id).filter(e => e.kind === "halted");
+      expect(halts).toHaveLength(1);
+      expect(JSON.parse(halts[0]!.payload_json)).toMatchObject({ reason: "verify_chain_depth_limit",
+        from: id === executing ? "executing" : "verifying", stop_proof_owed: true });
+      expect(decisionItem("contained_mission", decisions.find(row => row.id === id)!).allowed_answers).toEqual(["abandon"]);
+    }
+    const waitingEvents = allEvents();
+    await f.host.recover();
+    await f.host.recover();
+    expect(allEvents()).toEqual(waitingEvents);
+    expect((await f.host.decide(f.principal, verifying, { kind: "abandon" })).state).toBe("abandoned");
+    expect(f.store.claim(verifying).state).toBe("active");
+
+    executorStopped = true;
+    await f.host.recover();
+    expect(f.store.get(executing)).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
+    expect(f.store.claim(executing).state).toBe("active");
+    expect((await f.host.decide(f.principal, executing, { kind: "abandon" })).state).toBe("abandoned");
+    expect(f.store.claim(executing).state).toBe("released");
+    expect(verificationStopped).not.toHaveBeenCalled();
+    hostStopped = true;
+    await f.host.recover();
+    expect(f.ports.hostProcesses.hp.get("hp_legacy").state).toBe("stopped");
+    expect(f.store.get(verifying)).toMatchObject({ state: "abandoned", stop_obligation: 1 });
+    expect(f.store.claim(verifying).state).toBe("active");
+    containerStopped = true;
+    await f.host.recover();
+    expect(f.store.get(verifying)).toMatchObject({ state: "abandoned", stop_obligation: 0 });
+    expect(f.store.claim(verifying).state).toBe("released");
+    expect(step).not.toHaveBeenCalled();
+    for (const id of deep) await expect(f.host.runner.step(id)).rejects.toThrow("verify_chain_depth_limit");
+    for (const effect of effects) expect(effect).not.toHaveBeenCalled();
+    expect(lineage()).toEqual(originalLineage);
+    const stopEvidence = (id: string) => JSON.parse(f.store.events(id).find(e => e.kind === "executor_stopped")!.payload_json);
+    expect(stopEvidence(executing)).toMatchObject({ stop_proof: "group_empty_after_restart", pgid: 7777 });
+    expect(stopEvidence(verifying)).toMatchObject({ stop_proof: "container_removed", host_processes: [
+      { op_id: "hp_legacy", proof: "never_registered+marker_unheld" },
+    ] });
+    for (const table of ["engineering_local_failure_dispatches", "engineering_diagnosis_requests"])
+      expect(db.prepare(`SELECT * FROM ${table}`).all()).toEqual([]);
+    expect(db.prepare("SELECT * FROM engineering_contained_events WHERE kind='host_step_failed'").all()).toEqual([]);
+  });
+
   it("moves an orphaned executor whose group is empty to needs_reconciliation", async () => {
     const f = fixture();
     const m = await orphanExecuting(f);
+    const { withRootDepth } = await import("./contained-mission-lineage.testkit.js");
+    const stop = withRootDepth(8, () => ciRoot(f, "stop"));
+    const stopEvents = f.store.events(stop.mission_id);
     const seen: number[] = []; f.setEmpty(pgid => { seen.push(pgid); return true; });
     await f.host.recover();
+    expect(f.store.get(stop.mission_id)).toEqual(stop);
+    expect(f.store.events(stop.mission_id)).toEqual(stopEvents);
     expect(seen).toEqual([7777]);
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
     const stopped = f.store.events(m.mission_id, 0, 500).filter(e => e.kind === "executor_stopped").at(-1)!;

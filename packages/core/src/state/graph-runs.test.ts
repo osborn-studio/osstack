@@ -201,7 +201,7 @@ describe("graph run storage", () => {
     // Transpile the three storage files with the workspace's existing compiler.
     const ts = await import("typescript");
     const { symlinkSync, readFileSync, writeFileSync } = await import("node:fs");
-    for (const name of ["graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl", "source-observations-ddl", "engineering-ddl", "attention-reminders-ddl", "attention-return-ddl", "engineering-contained-ddl", "engineering-revision-chain-ddl", "engineering-merger-ddl", "engineering-revision-grant-ddl", "engineering-host-process-ddl", "engineering-merger-scan-ddl", "engineering-mission-lineage-ddl", "engineering-verification-source-ddl", "engineering-local-failure-intake-ddl", "engineering-root-exclusion-ddl", "engineering-diagnosis-ddl", "engineering-local-failure-dispatch-ddl"]) {
+    for (const name of ["graph-runs", "db", "migrations", "follow-up-obligations-ddl", "follow-up-delivery-ddl", "source-observations-ddl", "engineering-ddl", "attention-reminders-ddl", "attention-return-ddl", "engineering-contained-ddl", "engineering-revision-chain-ddl", "engineering-merger-ddl", "engineering-revision-grant-ddl", "engineering-host-process-ddl", "engineering-merger-scan-ddl", "engineering-mission-lineage-ddl", "engineering-verification-source-ddl", "engineering-local-failure-intake-ddl", "engineering-root-exclusion-ddl", "engineering-diagnosis-ddl", "engineering-local-failure-dispatch-ddl", "engineering-chain-depth-gate-ddl"]) {
       writeFileSync(join(dir, `${name}.js`), ts.transpileModule(
         readFileSync(join(process.cwd(), `src/state/${name}.ts`), "utf8"),
         { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },

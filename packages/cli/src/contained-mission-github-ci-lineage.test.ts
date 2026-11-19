@@ -1,4 +1,4 @@
-import { withLegacyRoot } from './contained-mission-lineage.testkit.js';
+import { withRootDepth, withLegacyRoot } from './contained-mission-lineage.testkit.js';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -61,6 +61,21 @@ describe.each(entries)('$name lineage contract', ({ setup }) => {
     expect(f.store.lineage(child!)).toMatchObject({ parent_mission_id: f.parent, origin_mission_id: parent.origin_mission_id, chain_depth: parent.chain_depth + 1, source_kind: f.source });
     const counts = () => ['engineering_contained_missions', 'engineering_workspace_claims', 'engineering_mission_lineage', 'engineering_contained_events'].map(t => f.store.db.prepare(`SELECT count(*) n FROM ${t}`).get());
     const before = counts(); expect(await f.dispatch()).toBe(child); expect(counts()).toEqual(before);
+  });
+  it('registers one stop without consuming the dispatch on repeat scans', async () => {
+    const f = withRootDepth(7, setup);
+    const chains = () => f.store.db.prepare('SELECT * FROM engineering_revision_chains').all();
+    const before = chains();
+    const events = () => f.store.db.prepare('SELECT * FROM engineering_contained_events ORDER BY seq').all();
+    let first: unknown[] | undefined;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect(await f.dispatch()).toBeUndefined();
+      expect(chains()).toEqual(before);
+      if (first) expect(events()).toEqual(first);
+      first = events();
+      expect(f.store.db.prepare("SELECT state FROM engineering_contained_missions JOIN engineering_mission_lineage USING(mission_id) WHERE chain_depth=8").all())
+        .toEqual([{ state: 'awaiting_decision' }]);
+    }
   });
   it('creates nothing for unknown parent lineage and reports the waiting reason', async () => {
     const f = withLegacyRoot(() => setup());

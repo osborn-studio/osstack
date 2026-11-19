@@ -162,7 +162,6 @@ export class LocalFailureDispatchStore {
           return refuse("verify_source_revoked");
         const parent = missions.resolveLineage(root.mission_id);
         if (parent.status === "unknown") return refuse(parent.reason);
-        if (parent.lineage.chain_depth + 1 >= MAX_REPAIR_CHAIN_DEPTH) return refuse("verify_chain_depth_limit");
         if (
           s.db
             .prepare("SELECT 1 FROM engineering_local_failure_dispatches WHERE root_mission_id=?")
@@ -258,10 +257,7 @@ export class LocalFailureDispatchStore {
         const dispatch_id = `vld_${randomUUID()}`,
           idempotency_key = `local_failure:${root.mission_id}`,
           now = input.now();
-        input.fault?.("before_consume");
-        s.consumeReceipt(receipt.receipt_id, receipt.receipt_digest, dispatch_id);
-        input.fault?.("after_consume");
-        const registered = missions.registerDerived(
+        const register = () => missions.registerDerived(
           verified.principal,
           {
             ...child,
@@ -272,7 +268,17 @@ export class LocalFailureDispatchStore {
           },
           now,
         );
-        if (registered.status === "waiting") return refuse(registered.reason);
+        if (parent.lineage.chain_depth + 1 >= MAX_REPAIR_CHAIN_DEPTH) {
+          const stop = register();
+          if (stop.status !== "depth_limit") throw Error("lineage_idempotency_conflict");
+          input.fault?.("after_child");
+          return { status: "depth_limit" as const, state: "awaiting_decision" as const, reason: stop.reason, stop_mission_id: stop.mission.mission_id };
+        }
+        input.fault?.("before_consume");
+        s.consumeReceipt(receipt.receipt_id, receipt.receipt_digest, dispatch_id);
+        input.fault?.("after_consume");
+        const registered = register();
+        if (registered.status === "waiting" || registered.status === "depth_limit") return refuse(registered.reason);
         if (registered.status === "duplicate") return refuse("verify_repair_limit");
         input.fault?.("after_child");
         const child_mission_id = registered.mission.mission_id;

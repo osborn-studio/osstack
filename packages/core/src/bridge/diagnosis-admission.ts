@@ -101,6 +101,7 @@ export type DiagnosisReason =
   | "verify_grant_missing"
   | "verify_budget_exhausted"
   | "verify_chain_busy"
+  | "verify_chain_depth_limit"
   | "verify_chain_lineage_unknown"
   | "verify_duplicate"
   | "verify_withdrawn"
