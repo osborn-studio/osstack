@@ -1,6 +1,6 @@
 # U4b B7d: host recheck run on the new head
 
-Date: 2026-11-19. Status: design for owner approval. No code, test or migration is part of this change.
+Date: 2026-11-19. Status: approved by the owner on 2026-11-19; all nine decisions in §8 were accepted as recommended. No code, test or migration is part of this change.
 
 Baseline: branch `feat/local-failure-recheck-ledger` at `0b5bd10b` (B7b, PR #478, on main `556d7ccb`). Every `file:line` below refers to that commit unless it is marked **[B7c]**, which means branch `feat/local-failure-merge-interlock` at `46737965` (local only, not merged).
 
@@ -230,9 +230,11 @@ Each node is one PR against `main`. B7b (#478) must be merged before D2. B7c mus
 
 D1 and D2 are independent. D3 needs D1 and D2. D4 needs only B7b and can be built in parallel with D2 and D3. D5 needs D3, D4 and B7c. If D2 is too large for one review, split the root admission change from the table; the migration stays with the table.
 
-## 8. Decisions for the owner
+## 8. Owner decisions (accepted 2026-11-19)
 
-| # | Decision | Recommendation | If not chosen |
+The owner accepted all nine decisions as recommended on 2026-11-19. The last column keeps the reason the alternative was not taken.
+
+| # | Decision | Decided | Why not the alternative |
 |---|---|---|---|
 | 1 | Authority for the run: existing grant (Reading 1) or explicit recheck opt-in in the signed grant (Reading 2) | Reading 2 | Reading 1 saves node D1 but stretches "one diagnostic per head" to a second head without a signature that says so. |
 | 2 | Automatic first start, or operator command for every run | Automatic first start, behind a host switch that defaults to off | Operator-only is safer by one step but every repaired PR then waits for a person before it can become mergeable. |
@@ -242,9 +244,9 @@ D1 and D2 are independent. D3 needs D1 and D2. D4 needs only B7b and can be buil
 | 6 | Attempts that never launched | Do not count as the launched run; at most 3 reservation attempts; the second and third only by operator command | Counting them makes a restart at the wrong moment a permanent dead end for the PR. |
 | 7 | Where a host failure is recorded | In the run row; the ledger row stays pending and the gate holds | Sealing the ledger row needs a rebuild of the migration-62 table. |
 | 8 | Reading A for input (a): the Watcher's new result, never the host run | Reading A | Reading B contradicts the intake design's producer rules. |
-| 9 | New reason codes `verify_recheck_host_failed` and `verify_recheck_not_started` | Accept both | Reusing `verify_recheck_failed` would mix a host failure with a Watcher failure. |
+| 9 | New reason codes `verify_recheck_host_failed` and `verify_recheck_not_started` | Both accepted | Reusing `verify_recheck_failed` would mix a host failure with a Watcher failure. |
 
-Decisions 1, 2 and 9 block D1 to D3. The others can be confirmed before D5.
+With these decisions recorded, nodes D1 to D5 are unblocked in the order given in §7.
 
 ## 9. What could not be verified
 
