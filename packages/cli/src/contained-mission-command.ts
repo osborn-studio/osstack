@@ -140,7 +140,9 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     if (command === "list" && !json) {
       for (const row of response.result as Array<Record<string, unknown>>) {
         const scan = row["scan"] as { failing: true; reason: string; step: string; consecutive: number; since: number } | undefined;
-        out([row["mission_id"], row["scope_id"], row["repository"], row["pr"], row["state"], row["since"], row["head_before"], row["head_after"], row["merge_commit_sha"], row["stop_reason"]].map(v => v ?? "-").join("\t") + (scan?.failing ? ` scan_failing=${scan.reason}@${scan.step} x${scan.consecutive} since=${new Date(scan.since).toISOString()}` : ""));
+        const refused = row["repair_refused"] as { reason: string; holder: string } | undefined;
+        out([row["mission_id"], row["scope_id"], row["repository"], row["pr"], row["state"], row["since"], row["head_before"], row["head_after"], row["merge_commit_sha"], row["stop_reason"]].map(v => v ?? "-").join("\t") + (scan?.failing ? ` scan_failing=${scan.reason}@${scan.step} x${scan.consecutive} since=${new Date(scan.since).toISOString()}` : "")
+          + (refused ? ` repair_refused=${refused.reason}@${refused.holder}` : ""));
       }
       return 0;
     }
