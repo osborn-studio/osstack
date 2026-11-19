@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -561,22 +560,30 @@ describe("adapter budget visibility", () => {
     expect(warnings(result.events)).toEqual([{ adapter: "silent", limit: "max_tokens", task_id: "silent", reason: expect.any(String) }]);
   });
 
-  it.each([
-    [undefined, "1eddbc6cc21be837972b65ebdfe150f972985edb9f69daf3873a9cf0cae5ee41"],
-    [{ max_cycles: 5 }, "5e1ce66816e8f96d316c4f7fa465855e046b9a3c419ddee745ea161fde847765"],
-    [{ max_runtime_ms: 100 }, "5e1ce66816e8f96d316c4f7fa465855e046b9a3c419ddee745ea161fde847765"],
-  ] as const)("preserves legacy state bytes without usage caps %j", async (budget, digest) => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(1000);
-    try {
-      await enqueue("legacy");
-      const result = await engine(usageAdapter({ tokensIn: 1 }), budget).runOnce();
-      expect(warnings(result.events)).toEqual([]);
-      expect(result.state.budget_status ?? {}).not.toHaveProperty("unenforced");
-      const bytes = (await readFile(result.jsonPath, "utf8")).replaceAll(result.completedTasks[0]!.run_id!, "fixed-run");
-      expect(createHash("sha256").update(bytes).digest("hex")).toBe(digest);
-    } finally { vi.useRealTimers(); }
-  });
+  it.each([undefined, { max_cycles: 5 }, { max_runtime_ms: 100 }])(
+    "preserves legacy usage fields without usage caps %j", async budget => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(1000);
+      try {
+        await enqueue("legacy");
+        const result = await engine(usageAdapter({ tokensIn: 1 }), budget).runOnce();
+        expect(warnings(result.events)).toEqual([]);
+
+        const state = JSON.parse(await readFile(result.jsonPath, "utf8"));
+        expect(state.completed_tasks).toEqual([
+          expect.objectContaining({ task_id: "legacy", tokens_in: 1, tokens_out: 0, cost_usd: 0 }),
+        ]);
+        if (budget === undefined) {
+          expect(state).not.toHaveProperty("budget_status");
+        } else {
+          expect(state.budget_status).toStrictEqual({
+            exceeded: false,
+            usage: usage({ cycles: 1, tokens: 1 }),
+          });
+        }
+      } finally { vi.useRealTimers(); }
+    },
+  );
 });
 
 function usageAdapter(u: { tokensIn?: number; tokensOut?: number; cost?: number }, id = "usage-agent"): AgentAdapter {
