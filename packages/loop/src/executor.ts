@@ -80,6 +80,8 @@ export interface LocalExecutorOptions {
   command?: string;
   adapters?: readonly AgentAdapter[];
   sessionId?: string;
+  /** Observe each usage snapshot before a later snapshot supersedes it. */
+  observeUsage?: (usage: AgentUsage) => void;
   /** Trusted report-only continuation of this exact adapter run. */
   reportRunId?: string;
   /** Invalid durations (nonfinite, negative, > 2^31-1) use defaults: timeout 120s, grace 1s. */
@@ -251,6 +253,7 @@ async function executeAdapterPlan(
           // usage events report running/final totals; the latest authoritative
           // value wins (final supersedes updated, both supersede nothing).
           usage = usagePayload(event.payload);
+          options.observeUsage?.(usage);
           continue;
         }
         if (event.type === "done") {
@@ -268,7 +271,10 @@ async function executeAdapterPlan(
           terminalState = "done";
           outcome = payload.status === "expired" ? "failed" : payload.status;
           summary = payload.result_summary ?? summary;
-          if (payload.usage !== undefined) usage = usagePayload(payload.usage);
+          if (payload.usage !== undefined) {
+            usage = usagePayload(payload.usage);
+            options.observeUsage?.(usage);
+          }
           continue;
         }
         if (terminalState !== "running") {

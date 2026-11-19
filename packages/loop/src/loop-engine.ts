@@ -476,7 +476,7 @@ export class LoopEngine {
     };
   }
 
-  private checkLoopBudget(loopId: string, budget: LoopBudget, usage: BudgetUsage, baseline: LoopBudgetStatus["baseline"]): LoopBudgetStatus {
+  private checkLoopBudget(loopId: string, budget: LoopBudget, usage: BudgetUsage, baseline: LoopBudgetStatus["baseline"], unenforced: LoopBudgetStatus["unenforced"]): LoopBudgetStatus {
     const check = checkBudget(budget, usage);
     if (check.exceeded) {
       this.emit(loopId, "loop.budget.exceeded", {
@@ -489,7 +489,7 @@ export class LoopEngine {
         no_progress_cycles: usage.no_progress_cycles,
       });
     }
-    return { ...check, usage, ...(baseline && { baseline }) };
+    return { ...check, usage, ...(baseline && { baseline }), ...(unenforced?.length && { unenforced }) };
   }
 
   private statePath(workspacePath: string): string {
@@ -522,6 +522,8 @@ export class LoopEngine {
     const decisions = [...(state.decisions ?? [])];
     const budget = this.options.budget;
     let baseline = state.budget_status?.baseline;
+    const unenforced = [...(state.budget_status?.unenforced ?? [])];
+    const warnings: Array<(typeof unenforced)[number] & { task_id: string; reason: string }> = [];
     const prior = state.budget_status?.usage;
     if (budget && cycle === 1) this.budgetElapsedMs = prior?.runtime_ms ?? 0;
     let usage = budget && {
@@ -542,13 +544,13 @@ export class LoopEngine {
       baseline = { tokens: state.key_metrics?.tokens_consumed ?? 0, estimated_cost_usd: state.key_metrics?.cost_consumed ?? 0 };
       usage = { cycles: 0, runtime_ms: 0, tokens: 0, estimated_cost_usd: 0, no_progress_cycles: 0 };
       this.resetBudgetClock();
-      state.budget_status = { exceeded: false, usage, baseline };
+      state.budget_status = { exceeded: false, usage, baseline, ...(unenforced.length && { unenforced }) };
       const paths = await writeState(state);
       this.budgetResetApplied = true;
       this.emit(loopId, "loop.state.written", { ...paths });
       this.emit(loopId, "loop.budget.reset", { usage_before: usageBefore, baseline });
     }
-    const admission = budget && usage && this.checkLoopBudget(loopId, budget, usage, baseline);
+    const admission = budget && usage && this.checkLoopBudget(loopId, budget, usage, baseline, unenforced);
     if (admission?.exceeded || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) {
       if (admission?.exceeded && !isDeepStrictEqual(state.budget_status, admission)) {
         state.budget_status = admission;
@@ -565,7 +567,7 @@ export class LoopEngine {
 
     if (budget && usage) {
       usage.cycles++;
-      state.budget_status = { ...checkBudget(budget, usage), usage, ...(baseline && { baseline }) };
+      state.budget_status = { ...checkBudget(budget, usage), usage, ...(baseline && { baseline }), ...(unenforced.length && { unenforced }) };
       this.emit(loopId, "loop.state.written", { ...await writeState(state) });
     }
     if (lifecycle.emitStarted) this.emit(loopId, "loop.started", { workspace_path: workspacePath });
@@ -632,11 +634,20 @@ export class LoopEngine {
     for (const task of tasks) {
       pending.shift();
       this.lifecycleEffectsStarted = true;
-      let taskResult: { completedTask: CompletedTask; decisions: string[] };
+      let taskResult: Awaited<ReturnType<LoopEngine["runTask"]>>;
       try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath), baseline); }
       catch (error) {
         if (candidateRecord) await candidateRecord.record("final_preflight_failed", { ...knownCandidate!, taskOrdinal: tasks.indexOf(task) });
         throw error; // Preserve lifecycle containment and the original failure; no ready receipt.
+      }
+      for (const [adapter, reported] of taskResult.reportedByAdapter) {
+        for (const limit of ["max_tokens", "max_estimated_cost_usd"] as const) {
+          if (budget?.[limit] === undefined || reported[limit]) continue;
+          if (unenforced.some(pair => pair.adapter === adapter && pair.limit === limit)) continue;
+          unenforced.push({ adapter, limit });
+          const missing = limit === "max_tokens" ? "token usage" : "cost";
+          warnings.push({ adapter, limit, task_id: task.task_id, reason: `Execution adapter did not report ${missing} for this task.` });
+        }
       }
       completed.push(taskResult.completedTask);
       decisions.push(...taskResult.decisions);
@@ -787,12 +798,13 @@ export class LoopEngine {
       tokens: Math.max(usage.tokens, (nextState.key_metrics?.tokens_consumed ?? 0) - (baseline?.tokens ?? 0)),
       estimated_cost_usd: Math.max(usage.estimated_cost_usd, (nextState.key_metrics?.cost_consumed ?? 0) - (baseline?.estimated_cost_usd ?? 0)),
       no_progress_cycles: nextNoProgressCycles(usage.no_progress_cycles, completedTasks),
-    }, baseline);
+    }, baseline, unenforced);
     if (budgetStatus) {
       nextState.budget_status = budgetStatus;
       if (budgetStatus.reason) nextState.decisions?.push(`budget: ${budgetStatus.reason}`);
     }
     const paths = await writeState(nextState);
+    for (const warning of warnings) this.emit(loopId, "loop.budget.unenforceable", warning);
     if (containmentArmed && !this.implementationUnconfirmed && !this.candidateContaminated) releaseLoopContainment(containmentPath);
     this.emit(loopId, "loop.state.written", { jsonPath: paths.jsonPath, markdownPath: paths.markdownPath });
     this.emit(loopId, "loop.cycle.completed", {
@@ -971,7 +983,7 @@ export class LoopEngine {
     historyTasks: readonly CompletedTask[],
     containmentRoot: string,
     baseline: LoopBudgetStatus["baseline"],
-  ): Promise<{ completedTask: CompletedTask; decisions: string[] }> {
+  ) {
     const started = Date.now();
     const maxIterations = clampTaskIterations(this.options.maxIterations ?? 1, this.options.budget);
     const decisions: string[] = [];
@@ -981,7 +993,15 @@ export class LoopEngine {
     let outcome: CompletedTask["outcome"] = "failed";
     let iterations = 0;
     // Usage accrues across every iteration of this task, not just the last run.
-    const taskUsage = { tokensIn: 0, tokensOut: 0, cost: 0, reported: false };
+    const taskUsage = { tokensIn: 0, tokensOut: 0, cost: 0, tokensReported: false, costReported: false };
+    const reportedByAdapter = new Map<string, { max_tokens: boolean; max_estimated_cost_usd: boolean }>();
+    const observeExecutionUsage = (adapter: string, usage: Pick<AgentRun, "tokens_in" | "tokens_out" | "cost_usd">) => {
+      if (this.options.budget?.max_tokens === undefined && this.options.budget?.max_estimated_cost_usd === undefined) return;
+      const reported = reportedByAdapter.get(adapter) ?? { max_tokens: false, max_estimated_cost_usd: false };
+      reported.max_tokens ||= usage.tokens_in !== undefined || usage.tokens_out !== undefined;
+      reported.max_estimated_cost_usd ||= usage.cost_usd !== undefined;
+      reportedByAdapter.set(adapter, reported);
+    };
     const repairHooks: ReportRepairHooks = {
       remainingMs: () => {
         const budget = this.options.budget;
@@ -993,7 +1013,8 @@ export class LoopEngine {
         return Math.min(this.options.commandTimeoutMs ?? 120_000, remaining);
       },
       usage: usage => {
-        if (usage.tokens_in !== undefined || usage.tokens_out !== undefined || usage.cost_usd !== undefined) taskUsage.reported = true;
+        taskUsage.tokensReported ||= usage.tokens_in !== undefined || usage.tokens_out !== undefined;
+        taskUsage.costReported ||= usage.cost_usd !== undefined;
         taskUsage.tokensIn += usage.tokens_in ?? 0;
         taskUsage.tokensOut += usage.tokens_out ?? 0;
         taskUsage.cost += usage.cost_usd ?? 0;
@@ -1070,6 +1091,7 @@ export class LoopEngine {
         const beforeImplementation = (this.options.adapters ?? []).some(adapter => adapter.id === plan.agent_id)
           ? await snapshotReviewerWorkspace(runWorkspacePath).catch(() => undefined) : undefined;
         finalRun = await this.awaitStopSensitive(() => executeLegacyImplementation(plan, {
+          observeUsage: usage => observeExecutionUsage(plan.agent_id, usage),
           workspacePath: runWorkspacePath,
           sessionId: loopId,
           ...(this.options.adapters !== undefined ? { adapters: this.options.adapters } : {}),
@@ -1077,12 +1099,8 @@ export class LoopEngine {
           ...(this.options.commandTimeoutMs !== undefined ? { timeoutMs: this.options.commandTimeoutMs } : {}),
           ...(this.options.outputLimit !== undefined ? { outputLimit: this.options.outputLimit } : {}),
         }));
-        if (finalRun.tokens_in !== undefined || finalRun.tokens_out !== undefined || finalRun.cost_usd !== undefined) {
-          taskUsage.reported = true;
-          taskUsage.tokensIn += finalRun.tokens_in ?? 0;
-          taskUsage.tokensOut += finalRun.tokens_out ?? 0;
-          taskUsage.cost += finalRun.cost_usd ?? 0;
-        }
+        observeExecutionUsage(finalRun.agent_id, finalRun);
+        repairHooks.usage(finalRun);
         this.emit(loopId, "loop.execute.done", {
           task_id: task.task_id,
           run_id: finalRun.run_id,
@@ -1163,7 +1181,9 @@ export class LoopEngine {
                 repairHooks.event("loop.report_repair.attempt", { role: "builder", agent_id: adapter.id, attempt, original_run_id: originalRunId });
                 const repaired = await executePlan({ ...plan, task: { ...plan.task, prompt: REPORT_REPAIR_PROMPT } }, {
                   workspacePath: runWorkspacePath, adapters: [adapter], sessionId: loopId, reportRunId: originalRunId, timeoutMs,
+                  observeUsage: usage => observeExecutionUsage(adapter.id, usage),
                 });
+                observeExecutionUsage(adapter.id, repaired);
                 repairHooks.usage(repaired);
                 const afterRepair = await snapshotReviewerWorkspace(runWorkspacePath).catch(() => undefined);
                 repairHooks.event("loop.report_repair.result", { role: "builder", agent_id: adapter.id, attempt,
@@ -1518,7 +1538,7 @@ export class LoopEngine {
         ...(feedbackHistory.length > 0 ? { iteration_feedback: feedbackHistory } : {}),
         ...(lessonDraftPath !== undefined ? { lesson_draft_path: lessonDraftPath } : {}),
         ...(publishedAsset !== undefined ? { published_asset: publishedAsset } : {}),
-        ...(taskUsage.reported ? {
+        ...(taskUsage.tokensReported || taskUsage.costReported ? {
           tokens_in: taskUsage.tokensIn,
           tokens_out: taskUsage.tokensOut,
           cost_usd: taskUsage.cost,
@@ -1536,6 +1556,7 @@ export class LoopEngine {
       });
 
     return {
+      reportedByAdapter,
       completedTask: this.implementationUnconfirmed || this.candidateContaminated ? completedTask : await this.applySelfImprovement(loopId, completedTask, decisions),
       decisions,
     };

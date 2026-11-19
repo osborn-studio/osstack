@@ -5,7 +5,8 @@ import { join } from "node:path";
 import type { AgentAdapter } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LoopBudget, checkBudget, clampTaskIterations, type BudgetUsage } from "./budget.js";
+import { LoopBudgetStatus, LoopBudget, checkBudget, clampTaskIterations, type BudgetUsage } from "./budget.js";
+import { LoopState } from "./types.js";
 import { LoopEngine } from "./loop-engine.js";
 import { GitDiffScanner } from "./discover.js";
 import * as stateFile from "./state-file.js";
@@ -453,18 +454,147 @@ describe("LoopEngine budget enforcement", () => {
 
     expect(result.budget?.exceeded).toBe(false);
     expect(result.state.key_metrics?.tokens_consumed).toBe(0);
+    expect(result.budget).toHaveProperty("unenforced", [{ adapter: "local-command", limit: "max_tokens" }]);
   });
 });
 
-function usageAdapter(u: { tokensIn: number; tokensOut: number; cost: number }): AgentAdapter {
+describe("adapter budget visibility", () => {
+  const token = { max_tokens: 100 };
+  const cost = { max_estimated_cost_usd: 1 };
+  const both = { ...token, ...cost };
+  const tokenPair = { adapter: "usage-agent", limit: "max_tokens" };
+  const costPair = { adapter: "usage-agent", limit: "max_estimated_cost_usd" };
+  const engine = (adapter: AgentAdapter, budget?: LoopBudget) => new LoopEngine({
+    workspacePath: workspace, loopId: "visibility", sources: ["task_queue"],
+    agentId: adapter.id, adapters: [adapter], skipCompletedTasks: false, ...(budget && { budget }),
+  });
+  const warnings = (events: { type: string; payload?: Record<string, unknown> | undefined }[]) =>
+    events.filter(event => event.type === "loop.budget.unenforceable").map(event => event.payload);
+
+  it("persists the first silent task and keeps the normal completion and score", async () => {
+    await enqueue("one");
+    await enqueue("two");
+    const result = await engine(usageAdapter({}), token).runCycles({ cycles: 2 });
+    expect(result.cycles.map(cycle => cycle.executedTaskCount)).toEqual([2, 2]);
+    expect(result.state.completed_tasks.every(task => task.outcome === "success")).toBe(true);
+    expect(result.events.at(-1)?.payload).toMatchObject({ reason_code: "completed" });
+    expect(warnings(result.events)).toEqual([{ ...tokenPair, task_id: result.state.completed_tasks[0]!.task_id, reason: expect.any(String) }]);
+    const state = (await readLoopState(result.jsonPath))!;
+    for (const status of [result.budget, ...result.cycles.map(cycle => cycle.budget), state.budget_status, createLoopStateReport(state).budget]) {
+      expect(status).toMatchObject({ exceeded: false, unenforced: [tokenPair] });
+    }
+    for (const text of [renderLoopStateReportFromState(state), await readFile(result.markdownPath, "utf8"), createLoopStateReport(state).risks.join(" ")]) {
+      expect(text).toContain(tokenPair.adapter);
+      expect(text).toContain(tokenPair.limit);
+    }
+    const oldShape = LoopBudgetStatus.pick({ exceeded: true, limit: true, reason: true, usage: true });
+    const oldStatus = LoopState.extend({ budget_status: oldShape.optional() }).parse(state).budget_status!;
+    expect(oldStatus).not.toHaveProperty("unenforced");
+    const legacyState = { ...state, budget_status: oldStatus };
+    expect(createLoopStateScorecardFromState(state)).toEqual(createLoopStateScorecardFromState(legacyState));
+    await writeFile(result.jsonPath, JSON.stringify(legacyState));
+    expect((await readLoopState(result.jsonPath))?.budget_status).toEqual(oldStatus);
+  });
+
+  it.each([
+    [token, { tokensOut: 0 }, []],
+    [cost, { tokensIn: 1 }, [costPair]],
+    [both, { tokensIn: 1 }, [costPair]],
+    [both, { cost: 0 }, [tokenPair]],
+    [both, {}, [tokenPair, costPair]],
+  ] as const)("checks only configured caps %j against reported fields %j", async (budget, reported, pairs) => {
+    await enqueue("task");
+    const result = await engine(usageAdapter(reported), budget).runOnce();
+    expect(warnings(result.events)).toEqual(pairs.map(pair => ({ ...pair, task_id: "task", reason: expect.any(String) })));
+    if (pairs.length) expect(result.budget).toHaveProperty("unenforced", pairs);
+    else expect(result.state.budget_status).not.toHaveProperty("unenforced");
+  });
+
+  it("remembers cost from an earlier snapshot when done.usage supplies only tokens", async () => {
+    await enqueue("partial");
+    const adapter = usageAdapter({ cost: 0 });
+    const invoke = adapter.invoke.bind(adapter);
+    adapter.invoke = async function* (task, signal) {
+      for await (const event of invoke(task, signal)) {
+        if (event.type === "done") {
+          yield { ...event, payload: { status: "completed", last_seq: event.seq, usage: { tokens_in: 1, tokens_out: 0, duration_ms: 1 } } };
+        } else yield event;
+      }
+    };
+    const result = await engine(adapter, both).runOnce();
+    expect(result.budget?.usage.tokens).toBe(1);
+    expect(warnings(result.events)).toEqual([]);
+    expect(result.budget).not.toHaveProperty("unenforced");
+  });
+
+  it("remembers a pair across restarts, later usage, and cap removal", async () => {
+    await enqueue("repeat");
+    const silent = usageAdapter({});
+    const first = await engine(silent, token).runCycles({ cycles: 3 });
+    expect(warnings(first.events)).toHaveLength(1);
+    for (const next of [engine(silent, token), engine(usageAdapter({ tokensIn: 1 }), token), engine(silent, { max_cycles: 20 }), engine(silent, token)]) {
+      const result = await next.runOnce();
+      expect(result.executedTaskCount).toBe(1);
+      expect(warnings(result.events)).toEqual([]);
+      expect(result.budget).toHaveProperty("unenforced", [tokenPair]);
+    }
+  });
+
+  it("carries warning history through a real stop and an admission refusal", async () => {
+    await enqueue("repeat");
+    const run = () => engine(usageAdapter({}), { ...both, max_cycles: 1 }).runOnce();
+    const first = await run();
+    const refused = await run();
+    expect(first.budget).toMatchObject({ exceeded: true, limit: "max_cycles", unenforced: [tokenPair, costPair] });
+    expect(refused.budget).toEqual(first.budget);
+    expect(refused.executedTaskCount).toBe(0);
+    expect(warnings(refused.events)).toEqual([]);
+  });
+
+  it("attributes missing tokens to the silent adapter in a mixed cycle", async () => {
+    const adapters = [usageAdapter({}, "silent"), usageAdapter({ tokensIn: 1 }, "metered")];
+    const result = await new LoopEngine({ workspacePath: workspace, sources: [], adapters, budget: token,
+      inputTasks: adapters.map(adapter => ({ task_id: adapter.id, capability: adapter.id + ".code.test", prompt: "test", source: "task_queue", priority: 1 })),
+    }).runOnce();
+    expect(result.completedTasks.map(task => task.agent_id)).toEqual(["silent", "metered"]);
+    expect(warnings(result.events)).toEqual([{ adapter: "silent", limit: "max_tokens", task_id: "silent", reason: expect.any(String) }]);
+  });
+
+  it.each([undefined, { max_cycles: 5 }, { max_runtime_ms: 100 }])(
+    "preserves legacy usage fields without usage caps %j", async budget => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(1000);
+      try {
+        await enqueue("legacy");
+        const result = await engine(usageAdapter({ tokensIn: 1 }), budget).runOnce();
+        expect(warnings(result.events)).toEqual([]);
+
+        const state = JSON.parse(await readFile(result.jsonPath, "utf8"));
+        expect(state.completed_tasks).toEqual([
+          expect.objectContaining({ task_id: "legacy", tokens_in: 1, tokens_out: 0, cost_usd: 0 }),
+        ]);
+        if (budget === undefined) {
+          expect(state).not.toHaveProperty("budget_status");
+        } else {
+          expect(state.budget_status).toStrictEqual({
+            exceeded: false,
+            usage: usage({ cycles: 1, tokens: 1 }),
+          });
+        }
+      } finally { vi.useRealTimers(); }
+    },
+  );
+});
+
+function usageAdapter(u: { tokensIn?: number; tokensOut?: number; cost?: number }, id = "usage-agent"): AgentAdapter {
   return {
-    id: "usage-agent",
+    id,
     display_name: "Usage Agent",
     cost_tier: "low",
     capabilities: () => [{
-      id: "usage.code.test",
+      id: id + ".code.test",
       kind: "code.test",
-      agent_id: "usage-agent",
+      agent_id: id,
       description: "reports usage",
       cost_tier: "low",
       hints: {},
@@ -472,7 +602,7 @@ function usageAdapter(u: { tokensIn: number; tokensOut: number; cost: number }):
     }],
     isAvailable: async () => ({ available: true, last_checked_at: 0 }),
     async *invoke(task) {
-      yield {
+      if (Object.keys(u).length > 0) yield {
         event_id: `${task.run_id}:u`,
         seq: 1,
         run_id: task.run_id,

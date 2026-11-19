@@ -106,7 +106,7 @@ describe("LoopEngine", () => {
           repairs++;
           expect(originalRunId).toBeTruthy();
           expect(task.prompt).toContain("Do not use tools");
-          yield fakeEvent(task, 0, "usage.final", { tokens_in: 2, tokens_out: 1 });
+          yield fakeEvent(task, 0, "usage.final", { tokens_in: 2, tokens_out: 1, cost_usd: 0 });
           if (mode === "success" || mode === "committed") yield fakeEvent(task, 1, "done", { status: "completed", last_seq: 0 }, true);
         },
       }),
@@ -114,13 +114,14 @@ describe("LoopEngine", () => {
     const engine = new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
       agentId: adapter.id, adapters: [adapter], maxIterations: 3,
       verifyCommands: [mode === "failed_check" ? "node -e \"process.exit(1)\"" : "node -e \"process.exit(require('fs').existsSync('output.txt') ? 0 : 1)\""],
-      ...(mode === "budget" ? { budget: { max_tokens: 11 } } : mode === "runtime" ? { budget: { max_runtime_ms: 1 } } : mode === "budget_after_one" ? { budget: { max_tokens: 12 } } : mode === "exhausted" ? { budget: { no_progress_limit: 1 } } : {}),
+      ...(mode === "success" ? { budget: { max_estimated_cost_usd: 1 } } : mode === "budget" ? { budget: { max_tokens: 11 } } : mode === "runtime" ? { budget: { max_runtime_ms: 1 } } : mode === "budget_after_one" ? { budget: { max_tokens: 12 } } : mode === "exhausted" ? { budget: { no_progress_limit: 1 } } : {}),
     });
     const result = mode === "exhausted" ? await engine.runCycles({ cycles: 3 }) : await engine.runOnce();
     if ("cycles" in result) {
       expect(result.cycles).toHaveLength(1);
       expect(result.budget?.usage.no_progress_cycles).toBe(0);
     }
+    if (mode === "success") expect(result.budget).not.toHaveProperty("unenforced");
     expect(builds).toBe(1);
     expect(repairs).toBe(mode === "success" || mode === "committed" || mode === "budget_after_one" ? 1 : mode === "exhausted" ? 2 : 0);
     const completed = result.state.completed_tasks[0]!;
@@ -357,6 +358,7 @@ describe("LoopEngine", () => {
       verifierAgentIds: [reviewer.id], adapters: [reviewer], maxIterations: 3,
       ...(mode === "budget" ? { budget: { max_tokens: 11 } } : {}),
     }).runOnce();
+    if (mode === "budget") expect(result.budget?.unenforced).toEqual([{ adapter: "local-command", limit: "max_tokens" }]);
     expect(reviews).toBe(1);
     expect(repairs).toBe(mode === "success" ? 1 : mode === "exhausted" ? 2 : 0);
     expect(result.state.completed_tasks[0]).toMatchObject({ iterations: 1,

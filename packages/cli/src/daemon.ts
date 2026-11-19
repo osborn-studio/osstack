@@ -2113,6 +2113,7 @@ interface LoopBudgetStat {
   limit?: string;
   reason?: string;
   usage?: LoopBudgetStatus["usage"];
+  unenforced?: LoopBudgetStatus["unenforced"];
 }
 
 function loopBudgetStat(session: LoopSession): LoopBudgetStat | undefined {
@@ -2125,6 +2126,7 @@ function loopBudgetStat(session: LoopSession): LoopBudgetStat | undefined {
     ...(check?.limit !== undefined ? { limit: check.limit } : {}),
     ...(check?.reason !== undefined ? { reason: check.reason } : {}),
     ...(check !== undefined ? { usage: check.usage } : {}),
+    ...(check?.unenforced && { unenforced: check.unenforced }),
   };
 }
 
@@ -2446,7 +2448,7 @@ async function runLoopSession(ctx: DaemonContext, session: LoopSession): Promise
           runtime_ms: Math.max(cumulative.runtime_ms, Date.now() - session.startedAt, session.lastBudgetCheck?.usage.runtime_ms ?? 0),
         };
         const check = checkBudget(budget, usage);
-        session.lastBudgetCheck = { ...check, usage };
+        session.lastBudgetCheck = { ...check, usage, ...(result.budget.unenforced && { unenforced: result.budget.unenforced }) };
         if (check.exceeded) {
           await markLoopSessionStopped(ctx, session, `budget exceeded: ${check.reason}`);
           return;
