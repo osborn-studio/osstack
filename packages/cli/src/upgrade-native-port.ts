@@ -17,7 +17,7 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 61;
+export const UPGRADE_QUALIFIED_SCHEMA = 62;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -163,6 +163,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // 59 adds request and receipt metadata. Only the intake can own a process.
       // Hold once per unsettled intake, including after its request goes to awaiting_decision.
       // 60 registers a contained child. containedUpgradeHolds already counts its state, stop obligation and claim.
+      if(schema>=62)expected.push('engineering_local_failure_rechecks');
       if(schema>=60)expected.push('engineering_local_failure_dispatches');
       if(schema>=59)expected.push('engineering_diagnosis_requests','engineering_host_receipts');
       if(schema>=58)expected.push('engineering_local_failure_intakes');
@@ -190,6 +191,10 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const depthTriggers=['engineering_mission_lineage_depth_cap','engineering_mission_depth_stop'];
       if(schema>=61&&depthTriggers.some(name=>!triggers.has(name)))throw Error('upgrade_schema_tables_missing');
       if(schema<61&&depthTriggers.some(name=>triggers.has(name)))throw Error('upgrade_schema_unqualified');
+      const recheckTriggers=['no_delete','no_replace','insert','update'].map(s=>'engineering_local_failure_recheck_'+s);
+      const recheckIndex='engineering_local_failure_recheck_chain';
+      if(schema>=62&&(recheckTriggers.some(name=>!triggers.has(name))||!indexes.has(recheckIndex)))throw Error('upgrade_schema_tables_missing');
+      if(schema<62&&(tables.has('engineering_local_failure_rechecks')||recheckTriggers.some(name=>triggers.has(name))||indexes.has(recheckIndex)))throw Error('upgrade_schema_unqualified');
       if(schema>=60&&(dispatchTriggers.some(name=>!triggers.has(name))||!indexes.has(dispatchIndex)))throw Error('upgrade_schema_tables_missing');
       if(schema<60&&(tables.has('engineering_local_failure_dispatches')||dispatchTriggers.some(name=>triggers.has(name))||indexes.has(dispatchIndex)))throw Error('upgrade_schema_unqualified');
       const diagnosisTriggers=['engineering_diagnosis_no_replace', 'engineering_diagnosis_insert', 'engineering_diagnosis_update', 'engineering_diagnosis_no_delete', 'engineering_host_receipt_no_replace', 'engineering_host_receipt_insert', 'engineering_host_receipt_update', 'engineering_host_receipt_consumed', 'engineering_host_receipt_no_delete'];

@@ -18,7 +18,7 @@ import { openDb } from "./db.js";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 export function diagnosisFixture(
   options: {
-    legacy?: boolean | 59;
+    legacy?: boolean | 59 | 60;
     allowedPaths?: string[];
     protectedDigest?: string;
     summary?: string;
@@ -36,8 +36,9 @@ export function diagnosisFixture(
     path = join(root, "state.db");
   const db = options.legacy ? new Database(path) : openDb({ path });
   if (options.legacy) {
-    for (const m of MIGRATIONS.filter((m) => m.id <= (options.legacy === 59 ? 59 : 58))) db.exec(m.sql);
-    db.pragma(`user_version=${options.legacy === 59 ? 59 : 58}`);
+    const version = options.legacy === true ? 58 : options.legacy;
+    for (const m of MIGRATIONS.filter((m) => m.id <= version)) db.exec(m.sql);
+    db.pragma(`user_version=${version}`);
   }
   const close = () => {
     if (db.open) db.close();

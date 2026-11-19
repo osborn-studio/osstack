@@ -10,7 +10,7 @@ import { RevisionChainStore } from "./engineering-revision-chain-store.js";
 import { CURRENT_SCHEMA_VERSION, MIGRATIONS } from "./migrations.js";
 
 it("registers intake migration 58 and leaves exactly the reserved 57 gap", () => {
-  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 57, 58, 59, 60, 61]);
+  expect(MIGRATIONS.filter(m => m.id >= 52).map(m => m.id)).toEqual([52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62]);
   expect(MIGRATIONS.find(m => m.id === 58)?.name).toBe("engineering_local_failure_intakes");
 });
 

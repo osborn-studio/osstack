@@ -67,6 +67,8 @@
       "import": "./dist/graph/artifact-store.js",
       "default": "./dist/graph/artifact-store.js"
     },
+    "./dist/bridge/recheck-host-proof*": null,
+    "./src/bridge/recheck-host-proof*": null,
     "./*": "./*",
     "./graph-verification": {
       "types": "./dist/state/graph-verification.d.ts",
