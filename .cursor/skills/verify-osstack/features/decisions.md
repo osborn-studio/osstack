@@ -30,5 +30,6 @@ Preconditions:
 ## Gotchas
 
 - A non-empty list needs real pending sources: a Hermes approval/clarify, an Autonomy run in `awaiting_approval`, a daemon-side `loop.escalated` event, or a blocked background-loop card (`card_loop_*`, assignee `osstack-loop`). A manually created kanban card in `blocked` does not appear, and local `deliver` escalations do not reach the daemon DB. Mission / CI repair / revision-chain items need a configured engineering authority and credential. None of these are seeded by this map; report the non-empty list and an accepted answer as not covered.
+- With `OSSTACK_ATTENTION=1` and a configured notify sender, the daemon also sends each pending decision as an attention notice (`decision:*` items, scope `host` when the decision has none; failed reminders count as dead letters in the cockpit attention panel). The default run has no sender and no pending decisions, so notices are not covered.
 - The credential must be 32–4096 characters or the CLI refuses it client-side; credentials are never echoed in output. Do not use a real credential here.
 - All client-side errors share one fixed stderr line; distinguish flag errors from daemon errors by whether `$OSSTACK_SOCKET` answered (`$V doctor`).
