@@ -16,3 +16,4 @@ export { buildRepairGoal, createLocalFailureRepairInput, type LocalFailureRepair
 export { classifyRecheck, parseRecheckResult, type ActionsAttemptFact, type HostRecheckProof, type RecheckBinding,
   type RecheckInputs, type RecheckMissing, type RecheckResult, type RecheckVerdict } from "./recheck.js";
 export { LocalFailureRecheckStore, type LocalFailureRecheck, type RecheckEvaluation } from "../state/engineering-local-failure-recheck-store.js";
+export { evaluateVerificationGate, type VerificationGateInput, type VerificationGateVerdict } from "./verification-gate.js";

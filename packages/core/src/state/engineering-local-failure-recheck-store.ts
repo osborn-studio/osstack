@@ -169,25 +169,30 @@ export class LocalFailureRecheckStore {
       return row;
     });
   }
+  private currentSource(resultId: string, seq: number | null) {
+    const registration = this.sources.registration(resultId);
+    if (!registration || registration.withdrawn_by || registration.registered.seq !== seq ||
+      this.db.prepare("SELECT 1 FROM engineering_verification_sources WHERE supersedes_result_id=? AND decision='accepted'").get(resultId))
+      return null;
+    return registration.registered;
+  }
+  resultCurrent(recheckId: string): boolean {
+    const row = this.get(recheckId);
+    return row.recheck_result_id !== null && this.currentSource(row.recheck_result_id, row.recheck_source_seq) !== null;
+  }
   private currentResult(input: NonNullable<RecheckEvaluation["result"]>) {
     const result = parseRecheckResult(input.contract_text);
     if (!result) return null;
-    const registration = this.sources.registration(result.result_id);
-    const source = registration?.registered;
+    const source = this.currentSource(result.result_id, input.source_seq);
     if (
       !source ||
-      registration?.withdrawn_by ||
-      source.seq !== input.source_seq ||
       source.contract_digest !== digest(input.contract_text) ||
       source.repository_id !== result.repository_id ||
       source.pr_number !== result.pr ||
       source.head_sha !== result.head_sha ||
       source.base_sha !== result.base_sha ||
       source.outcome !== result.outcome ||
-      source.skill_id !== result.skill_id ||
-      this.db
-        .prepare("SELECT 1 FROM engineering_verification_sources WHERE supersedes_result_id=? AND decision='accepted'")
-        .get(result.result_id)
+      source.skill_id !== result.skill_id
     )
       return null;
     return { result, source };

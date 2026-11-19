@@ -16,6 +16,10 @@ it("keeps diagnosis offline and single-writer", () => {
       const source = readFileSync(join(root, file), "utf8");
       expect(source.replace(file === "contained-mission-runner.ts" ? "async resumeConfirmedLocalPublication(" : "", ""), file)
         .not.toContain("resumeConfirmedLocalPublication");
+      const reader = pkg === "cli" && file === "contained-mission-local-failure-closeout.ts";
+      if (!reader) expect(source, file).not.toMatch(/\breadLocalFailureCloseout\b|contained-mission-local-failure-closeout/);
+      if (!reader && !(pkg === "core" && ["bridge/verification-intake.ts", "bridge/verification-gate.ts"].includes(file)))
+        expect(source, file).not.toMatch(/\bevaluateVerificationGate\b|["'][^"']*verification-gate(?:\.js)?["']/);
       if (!file.endsWith("engineering-diagnosis-store.ts"))
         expect(source, file).not.toMatch(/INSERT\s+INTO\s+engineering_(host_receipts|diagnosis_requests)/i);
       if (!file.endsWith("engineering-local-failure-dispatch-store.ts"))

@@ -401,3 +401,117 @@ it.each(["aborted", "owner", "claim", "state", "mission-id", "spec-digest", "wor
     } finally { f.close(); }
   },
 );
+
+it.each(["merged", "closed after withdrawal", "closed after supersession"] as const)(
+  "projects local repair close-out until %s, then replays it", async terminal => {
+  const { readLocalFailureCloseout } = await import("./contained-mission-local-failure-closeout.js");
+  const { RevisionChainStore } = await import("@osstack/core");
+  const { LocalFailureRecheckStore, parseVerificationResultV1, verificationDedupKey } = await import("@osstack/core/verification-intake");
+  const { passedVerificationFixture } = await import("@osstack/core/dist/bridge/verification-result-fixtures.js");
+  const { createHash, randomUUID } = await import("node:crypto");
+  const { f, id, store, candidate, now } = await publicationFixture();
+  try {
+    const chains = new RevisionChainStore(f.attention, f.owner);
+    const ledger = new LocalFailureRecheckStore(f.store);
+    const { base_sha: base, branch, pr, repository } = f.v;
+    store.record(id, "verify_repair_push_confirmed", { previous: f.v.head_sha, base, candidate, branch, pr }, now);
+    const chain = chains.confirmLocalRepairPush({ child_mission_id: id, new_head: candidate }, now);
+    const events = () => chains.events(chain.chain_id).filter(e => e.kind === "local_repair_closeout");
+    const tables = ["contained_missions", "local_failure_dispatches", "local_failure_rechecks", "verification_sources"];
+    const counts = () => tables.map(t => f.db.prepare("SELECT COUNT(*) FROM engineering_" + t).pluck().get());
+    const snapshot: Pick<import("@osstack/core/verification-intake").VerificationGateInput, "pr" | "reviews" | "threads"> = {
+      pr: { complete: true, state: "OPEN", head_oid: candidate, base_ref_name: chain.base_ref, base_tip_oid: base,
+        merged_head_oid: null, merge_commit_oid: null, merge_base_oid: null, merged_by: null },
+      threads: { complete: true, unresolved: 0 }, reviews: { complete: true, items: [] },
+    };
+    const readPr = vi.fn(async (target: {repository: string; pr: number}, signal: AbortSignal) => {
+      expect(target).toEqual({ repository, pr }); expect(signal).toBeInstanceOf(AbortSignal);
+      return snapshot;
+    });
+    const deps = { store, now: () => now, countedApprovers: [1], readPr };
+    const read = () => readLocalFailureCloseout(deps, id);
+    const writes = () => Number(f.db.prepare("SELECT total_changes()").pluck().get());
+    let before = writes();
+    await expect(readLocalFailureCloseout(deps, "absent")).rejects.toThrow("verify_closeout_unknown_child");
+    expect(writes()).toBe(before); expect(readPr).not.toHaveBeenCalled();
+    const initial = counts();
+    const first = await read();
+    expect(first).toMatchObject({ chain_id: chain.chain_id, pr, recheck_id: null, state: "reverify_pending", hold: true });
+    expect(await read()).toEqual(first);
+    expect(events()).toHaveLength(1); expect(writes()).toBe(before + 1); expect(counts()).toEqual(initial);
+    readPr.mockRejectedValueOnce(Error("unreadable"));
+    expect(await read()).toMatchObject({ state: "awaiting_decision", reason: "verify_merge_unverified" });
+    const row = ledger.open({ child_mission_id: id, original_contract_text: f.input.contract_text, now });
+    Object.assign(snapshot.pr, { state: "MERGED", merged_head_oid: candidate, merge_commit_oid: "e".repeat(40),
+      merge_base_oid: base, merged_by: { type: "User", id: 2 } });
+    expect(await read()).toMatchObject({ reason: "verify_merge_unverified", recheck_id: row.recheck_id });
+    const wire = { ...passedVerificationFixture(), head_sha: candidate, result_id: randomUUID() };
+    wire.dedup_key = verificationDedupKey(wire);
+    function register(value: unknown, object_id: number) {
+      const contract_text = JSON.stringify(value);
+      const parsed = parseVerificationResultV1(contract_text);
+      if (!parsed.ok) throw Error(parsed.code);
+      const digest = createHash("sha256").update(contract_text).digest("hex");
+      f.source.record([{ source_kind: "check_run", object_id, repository_id: f.v.repository_id, repository, pr,
+        observed_head_sha: candidate, app_id: 201, check_name: "fixture", response_digest: digest, contract_digest: digest,
+        verdict: { ok: true }, result: parsed.result }], now, now);
+      return { contract_text, digest, source_seq: f.source.registration(parsed.result.result_id)!.registered.seq };
+    }
+    const result = register(wire, 2), digest = result.digest;
+    // Issue the fixture proof in the same compiled core instance that evaluates it.
+    const { issueHostRecheckProof } = await import("../../core/dist/bridge/recheck-host-proof.js");
+    expect(ledger.evaluate({ recheck_id: row.recheck_id, now,
+      result,
+      actions: { head_sha: candidate, attempt: 2, complete: true, conclusion: "success", digest },
+      host: issueHostRecheckProof({ receipt_id: "fixture", receipt_digest: digest, head_sha: candidate, base_sha: base,
+        profile_digest: row.profile_digest, trusted_source_digest: row.trusted_source_digest, outcome: "passed" }) }).state).toBe("recheck_passed");
+    let finalCounts = counts();
+    before = writes();
+    let prior = events().length;
+    snapshot.pr.base_ref_name = "retargeted";
+    expect(await read()).toMatchObject({ state: "awaiting_decision", reason: "verify_merge_unverified", hold: true,
+      verified_base_sha: base, merged_onto_oid: base });
+    snapshot.pr.base_ref_name = chain.base_ref;
+    snapshot.pr.state = "OPEN";
+    expect(await read()).toMatchObject({ reason: "verify_approval_required", hold: true,
+      verified_base_sha: null, merged_onto_oid: null });
+    snapshot.reviews.items = [{ review_id: 3, state: "APPROVED", submitted_at_ms: 1, commit_oid: candidate,
+      author_type: "User", author_id: 1, author_can_push: true }];
+    expect(await read()).toMatchObject({ state: "ready_for_human", reason: null, hold: false });
+    if (terminal !== "merged") {
+      expect(writes() - before).toBe(events().length - prior);
+      expect(counts()).toEqual(finalCounts);
+      // Revoke the accepted result during readPr. Projection must reload the ledger under the fence.
+      readPr.mockImplementationOnce(async () => {
+        const change = terminal === "closed after withdrawal"
+          ? { outcome: "cancelled", checks: [], withdraws_result_id: wire.result_id, withdraw_reason_code: "revoked" }
+          : { supersedes_result_id: wire.result_id };
+        register({ ...wire, result_id: randomUUID(), attempt: 2, ...change }, 3);
+        before = writes();
+        prior = events().length;
+        finalCounts = counts();
+        return snapshot;
+      });
+      expect(await read()).toMatchObject({ state: "reverify_pending", reason: "verify_recheck_missing", hold: true });
+    }
+    snapshot.pr.state = terminal === "merged" ? "MERGED" : "CLOSED";
+    snapshot.pr.merge_base_oid = "d".repeat(40);
+    const last = await read();
+    expect(last).toMatchObject({ state: terminal === "merged" ? "merged" : "closed_unmerged", reason: null, hold: true });
+    const terminalBases = terminal === "merged" ? { verified_base_sha: base, merged_onto_oid: snapshot.pr.merge_base_oid } : { verified_base_sha: null, merged_onto_oid: null };
+    if (terminal === "merged") expect(terminalBases.merged_onto_oid).not.toBe(base);
+    expect(last).toMatchObject(terminalBases);
+    expect(JSON.parse(events().at(-1)!.payload_json)).toMatchObject(terminalBases);
+    const calls = readPr.mock.calls.length;
+    expect(await read()).toEqual(last); expect(readPr).toHaveBeenCalledTimes(calls);
+    expect(events().filter(e => JSON.parse(e.payload_json).state === last.state)).toHaveLength(1);
+    expect(writes() - before).toBe(events().length - prior);
+    expect(counts()).toEqual(finalCounts); expect(chains.get(chain.chain_id)).toEqual(chain);
+    const legacy = JSON.parse(events().at(-1)!.payload_json);
+    delete legacy.verified_base_sha;
+    delete legacy.merged_onto_oid;
+    chains.appendEvent(chain.chain_id, "local_repair_closeout", legacy, now);
+    expect(await read()).toMatchObject({ state: last.state, verified_base_sha: null, merged_onto_oid: null });
+    expect(readPr).toHaveBeenCalledTimes(calls);
+  } finally { f.close(); }
+});
