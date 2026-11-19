@@ -85,8 +85,31 @@ it("keeps the recheck run library unwired and its admission and journal private 
         continue;
       }
       expect(source, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
-      if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.[cm]?[jt]sx?$/.test(file))
-        expect(source, path).not.toMatch(/verifyRecheckGrant|recheck-admission|LocalFailureRecheckRunStore|recheck-run-store|hostProof/);
+      if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.[cm]?[jt]sx?$/.test(file)) {
+        expect(source, path).not.toMatch(/verifyRecheckGrant|recheck-admission|LocalFailureRecheckRunStore|recheck-run-store/);
+        // The collector is the designed consumer of the host proof port (docs/design/2026-11-19-host-recheck-run.md §7, row D4).
+        if (pkg !== "cli" || file !== "contained-mission-local-failure-recheck-collect.ts")
+          expect(source, path).not.toContain("hostProof");
+      }
+    }
+  }
+});
+
+it("keeps the recheck collector and Actions adapter unwired", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  const modules = ["contained-mission-actions-attempt", "contained-mission-local-failure-recheck-collect"];
+  const names = ["readActionsAttemptFact", "collectLocalFailureRecheck"];
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, {recursive:true, encoding:"utf8"})) {
+      if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
+      const source = readFileSync(join(root, file), "utf8");
+      for (const [i, module] of modules.entries()) {
+        if (pkg === "cli" && file === module + ".ts") continue;
+        expect(source, pkg + "/" + file).not.toContain(names[i]!);
+        expect(source, pkg + "/" + file).not.toContain(module);
+      }
     }
   }
 });
