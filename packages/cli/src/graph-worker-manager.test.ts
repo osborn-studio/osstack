@@ -169,6 +169,24 @@ it('does not apply a checkpoint RPC timeout to a healthy long-running governed a
   } });
   expect(await h.result).toMatchObject({ outcome: { state: 'confirmed' } });
 });
+it('observes an exit already delivered by the OS when a host stall outlasts the final stop deadline', async () => {
+  const f = fixture(undefined, { programs: [], shutdownTimeoutMs: 10, terminationTimeoutMs: 10,
+    workerEntry: rawWorker("process.on('SIGTERM',()=>{});setInterval(()=>{},1000);send({kind:'ready',binding:init.binding});") });
+  const h = f.launch(); await h.ready;
+  const original = ChildProcess.prototype.kill;
+  const kill = vi.spyOn(ChildProcess.prototype, 'kill').mockImplementation(function (this: ChildProcess, signal) {
+    const sent = original.call(this, signal);
+    if (signal === 'SIGKILL') {
+      setImmediate(() => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300));
+    }
+    return sent;
+  });
+  try {
+    const evidence = await h.stop();
+    expect(evidence).toMatchObject({ kind: 'exited', signal: 'SIGKILL' });
+    expect(await h.finalExit).toEqual(evidence);
+  } finally { kill.mockRestore(); }
+});
 it('preserves actual late OS exit evidence after the bounded stop result was unconfirmed', async () => {
   const f = fixture(undefined, { programs: [], shutdownTimeoutMs: 10, terminationTimeoutMs: 10,
     workerEntry: rawWorker("process.on('SIGTERM',()=>{});setInterval(()=>{},1000);send({kind:'ready',binding:init.binding});") });

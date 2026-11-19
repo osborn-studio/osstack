@@ -174,7 +174,13 @@ export class GraphWorkerManager {
     const pending = new Set<string>(); const timers: ReturnType<typeof setTimeout>[] = [];
     let monitor: ReturnType<typeof setInterval> | undefined;
     let heartbeatCheck: ReturnType<typeof setImmediate> | undefined;
-    const clear = () => { timers.forEach(clearTimeout); if (monitor) clearInterval(monitor); if (heartbeatCheck) clearImmediate(heartbeatCheck); };
+    let exitCheck: ReturnType<typeof setImmediate> | undefined;
+    const clear = () => {
+      timers.forEach(clearTimeout);
+      if (monitor) clearInterval(monitor);
+      if (heartbeatCheck) clearImmediate(heartbeatCheck);
+      if (exitCheck) clearImmediate(exitCheck);
+    };
     const append = (prior: Buffer, chunk: Buffer): Buffer => chunk.length >= maxLogBytes
       ? Buffer.from(chunk.subarray(chunk.length - maxLogBytes))
       : Buffer.concat([prior.subarray(Math.max(0, prior.length + chunk.length - maxLogBytes)), chunk]);
@@ -188,9 +194,15 @@ export class GraphWorkerManager {
         timers.push(setTimeout(() => {
           kill('SIGKILL');
           timers.push(setTimeout(() => {
-            if (!observedExit) { transport?.close(); child?.stdout?.destroy(); child?.stderr?.destroy();
+            // After a host stall, the timer can run before poll delivers a queued exit.
+            // Let poll deliver it before reporting the exit as unconfirmed.
+            exitCheck = setImmediate(() => {
+              exitCheck = undefined;
+              if (observedExit) return;
+              transport?.close(); child?.stdout?.destroy(); child?.stderr?.destroy();
               const evidence = { kind: 'exit_unconfirmed' as const, pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' };
-              exit.resolve(observe(evidence)); clear(); }
+              exit.resolve(observe(evidence)); clear();
+            });
           }, terminationMs));
         }, terminationMs));
       }, shutdownMs));
