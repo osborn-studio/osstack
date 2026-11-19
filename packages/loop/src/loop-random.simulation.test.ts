@@ -129,11 +129,18 @@ describe("runtime is monotonic under clock rewind", () => {
 });
 
 describe("a loop budget is cumulative across restarts (R4)", () => {
+  it("detects a lost token and cost baseline on the next pass", async () => {
+    await expect(checked(0, [submit, pass, { op: "reset", key: 0 }, pass], "forget-baseline")).rejects.toThrow(/seed=0 R4 step=/);
+  });
+
   it("detects a cycle reset on restart as R4", async () => {
     await expect(checked(0, [pass, pass], "reset-on-restart")).rejects.toThrow(/seed=0 R4 step=/);
   });
 
   it.each<[string, Command[]]>([
+    ["resets token, cost and cycle usage before resuming", [
+      submit, { ...pass, tokenLimit: 2, costLimit: .125, cycleLimit: 1 }, submit, { op: "reset", key: 0 }, pass,
+    ]],
     ["retains elapsed usage", [submit, { ...pass, tick: 1 }, pass]],
     ["retains cycle usage", [{ op: "cycles", key: 0, cycleLimit: 4 }, { ...pass, cycleLimit: 4 }]],
     ["caps single passes", Array.from({ length: 3 }, () => ({ ...pass, cycleLimit: 2 }))],

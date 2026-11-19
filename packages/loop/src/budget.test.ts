@@ -103,6 +103,99 @@ describe("LoopEngine budget enforcement", () => {
       } finally { vi.restoreAllMocks(); }
     });
 
+  it.each(["max_cycles", "max_runtime_ms", "max_tokens", "max_estimated_cost_usd"] as const)(
+    "explicitly resets exhausted %s once and counts only new work", async limit => {
+      await enqueue("repeat");
+      let now = 100;
+      const scan = vi.spyOn(GitDiffScanner.prototype, "scan").mockImplementation(async () => { now++; return []; });
+      vi.spyOn(Date, "now").mockImplementation(() => now);
+      const adapter = usageAdapter({ tokensIn: 2, tokensOut: 1, cost: 1 });
+      const invoke = vi.spyOn(adapter, "invoke");
+      const engine = (resetBudget = false) => new LoopEngine({
+        workspacePath: workspace, sources: ["git_diff", "task_queue"], adapters: [adapter], agentId: adapter.id,
+        skipCompletedTasks: false, budget: { [limit]: 1 }, resetBudget,
+      });
+      try {
+        const first = await engine().runOnce();
+        expect(first.budget).not.toHaveProperty("baseline");
+        expect(first.events.map(e => e.type)).not.toContain("loop.budget.reset");
+        const refused = await engine().runOnce();
+        expect(refused.budget).toEqual(first.budget);
+        expect(refused.budget?.exceeded).toBe(true);
+        expect(scan).toHaveBeenCalledTimes(1);
+        expect(invoke).toHaveBeenCalledTimes(1);
+        for (const n of [1, 2]) {
+          const resetting = engine(true);
+          const result = await resetting.runOnce();
+          const baseline = { tokens: n * 3, estimated_cost_usd: n };
+          expect(result.events.slice(0, 3).map(e => e.type)).toEqual([
+            "loop.state.written", "loop.budget.reset", "loop.state.written",
+          ]);
+          expect(result.events.filter(e => e.type === "loop.budget.reset").map(e => e.payload))
+            .toEqual([{ usage_before: first.budget!.usage, baseline }]);
+          expect(result.budget).toEqual({ ...first.budget, baseline });
+          expect(result.state.key_metrics?.tokens_consumed).toBe(3 * (n + 1));
+          expect((await resetting.runOnce()).executedTaskCount).toBe(0);
+        }
+      } finally { vi.restoreAllMocks(); }
+    });
+
+  it("persists only the reset before a crash and resumes from zero", async () => {
+    await enqueue("metered");
+    const adapter = usageAdapter({ tokensIn: 8, tokensOut: 2, cost: 3 });
+    const options = { workspacePath: workspace, sources: [], budget: { max_tokens: 1 } };
+    const first = await new LoopEngine({ ...options, sources: ["task_queue"], adapters: [adapter], agentId: adapter.id }).runOnce();
+    const previous = (await readLoopState(first.jsonPath))!;
+    // Admission reconciles an older budget snapshot with lifetime metrics.
+    previous.budget_status!.usage.tokens = 1;
+    previous.budget_status!.usage.no_progress_cycles = 4;
+    await stateFile.writeLoopState(first.jsonPath, previous);
+    const write = stateFile.writeLoopState;
+    const spy = vi.spyOn(stateFile, "writeLoopState").mockImplementationOnce(write)
+      .mockRejectedValueOnce(Error("crash before debit"));
+    try { await expect(new LoopEngine({ ...options, resetBudget: true }).runOnce()).rejects.toThrow("crash before debit"); }
+    finally { spy.mockRestore(); }
+    const status = { exceeded: false, usage: usage(), baseline: { tokens: 10, estimated_cost_usd: 3 } };
+    expect(await readLoopState(first.jsonPath)).toEqual({ ...previous, budget_status: status });
+    expect((await new LoopEngine(options).runOnce()).budget).toMatchObject({ ...status, usage: { cycles: 1, tokens: 0, estimated_cost_usd: 0 } });
+  });
+
+  it("records reconciled usage and persists the reset even when containment refuses work", async () => {
+    await enqueue("unconfirmed");
+    const adapter = usageAdapter({ tokensIn: 5, tokensOut: 3, cost: 2 });
+    const options = { workspacePath: workspace, budget: { max_tokens: 4 } };
+    const first = await new LoopEngine({ ...options, sources: ["task_queue"], agentId: adapter.id, adapters: [adapter] }).runOnce();
+    const previous = (await readLoopState(first.jsonPath))!;
+    previous.completed_tasks[0]!.implementation_unconfirmed = true;
+    const prior = previous.budget_status!;
+    prior.baseline = { tokens: 2, estimated_cost_usd: 0.5 };
+    prior.usage.tokens = 1;
+    prior.usage.estimated_cost_usd = 4;
+    await stateFile.writeLoopState(first.jsonPath, previous);
+    const reset = await new LoopEngine({ ...options, resetBudget: true }).runOnce();
+    const baseline = { tokens: 8, estimated_cost_usd: 2 };
+    expect(reset.events.map(e => e.type)).toEqual(["loop.state.written", "loop.budget.reset", "loop.stopped"]);
+    expect(reset.events[1]?.payload).toEqual({ usage_before: { ...prior.usage, tokens: 6 }, baseline });
+    expect(await readLoopState(first.jsonPath)).toEqual({ ...previous, budget_status: { exceeded: false, usage: usage(), baseline } });
+  });
+
+  it("resets once across multiple cycles", async () => {
+    const result = await new LoopEngine({ workspacePath: workspace, sources: [], budget: {}, resetBudget: true }).runCycles({ cycles: 3 });
+    expect(result.events.filter(e => e.type === "loop.budget.reset").map(e => e.payload))
+      .toEqual([{ usage_before: usage(), baseline: { tokens: 0, estimated_cost_usd: 0 } }]);
+    expect(result.budget?.usage.cycles).toBe(3);
+  });
+
+  it("rejects reset without a budget before state access", async () => {
+    const read = vi.spyOn(stateFile, "readLoopState");
+    const write = vi.spyOn(stateFile, "writeLoopState");
+    try {
+      await expect(new LoopEngine({ workspacePath: workspace, sources: [], resetBudget: true }).runOnce()).rejects.toThrow(/resetBudget requires.*budget/);
+      expect(read).not.toHaveBeenCalled();
+      expect(write).not.toHaveBeenCalled();
+    } finally { vi.restoreAllMocks(); }
+  });
+
   it("resets a legacy no-progress streak after raising the limit and succeeding", async () => {
     const path = join(workspace, "LOOP-STATE.json");
     await writeFile(path, JSON.stringify({

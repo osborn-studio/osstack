@@ -48,6 +48,15 @@ afterEach(async () => {
 });
 
 describe("daemon loop RPC", () => {
+  it("rejects resetBudget for both loop RPCs before creating a session", async () => {
+    daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock` });
+    for (const method of ["loop.run", "loop.start"]) {
+      const result = await daemonRpc(daemon.socketPath, method, { workspacePath: tmp, resetBudget: true, budget: { max_tokens: 10 } });
+      expect(result).toMatchObject({ ok: false, error: { message: expect.stringContaining("resetBudget") } });
+    }
+    expect(await daemonRpc(daemon.socketPath, "loop.list", {})).toMatchObject({ result: { loops: [] } });
+  });
+
   it("persists deferred-work reasons across daemon restart instead of reporting idle", async () => {
     const workspace = join(tmp, "waiting-workspace");
     await mkdir(join(workspace, "tasks"), { recursive: true });

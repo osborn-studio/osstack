@@ -154,6 +154,13 @@ executed cycles, a success resets the streak to zero and a failure adds one. Whe
 stops before discovery. Raise each exhausted limit to continue. Use a new state
 file (for example, `--state fresh/LOOP-STATE.json`) to start a fresh loop.
 
+To reset usage on the same state file, explicitly pass `--reset-budget` to
+`osstack loop run` with at least one budget flag. Before admission, the engine
+zeros cycles, runtime, the no-progress streak, tokens, and estimated cost. It
+keeps lifetime metrics and completed tasks. The reset runs once. For a daemon
+session, stop the session, run the local reset over the same state file, then
+start the session again.
+
 The engine records one cycle before discovery. It records runtime, tokens, cost
 and no-progress with the results. A mid-cycle crash keeps the cycle debit and
 loses the unfinished cycle's other usage. A runtime, token or cost cap alone

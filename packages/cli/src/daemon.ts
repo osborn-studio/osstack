@@ -3019,6 +3019,8 @@ function parseLoopRunParams(
   const p = objectParams(params);
   if (p instanceof Error) return p;
 
+  if ("resetBudget" in p) return new Error("resetBudget is only available for local loop runs");
+
   const workspacePath = optionalString(p, "workspacePath") ?? process.cwd();
   const stateFilePath = optionalString(p, "stateFilePath") ?? "LOOP-STATE.json";
   const markdownPath = optionalString(p, "markdownPath");
@@ -3154,6 +3156,7 @@ function withLoopAdapters(ctx: DaemonContext, runOptions: LoopRunOptions, signal
 
 function withoutRuntimeAdapters(runOptions: LoopRunOptions): LoopRunOptions {
   const copy: LoopRunOptions = { ...runOptions };
+  delete copy.resetBudget;
   delete copy.adapters;
   delete copy.policyEngine;
   delete copy.policyHistory;

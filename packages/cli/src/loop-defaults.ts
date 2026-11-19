@@ -238,7 +238,7 @@ async function read(home: string): Promise<Defaults | undefined> {
   }
 }
 
-function explicitFlags(args: string[], strict = true): Set<string> {
+export function explicitFlags(args: string[], strict = true): Set<string> {
   const valueFlags =
     args[0] === "enqueue"
       ? new Set([
@@ -260,6 +260,7 @@ function explicitFlags(args: string[], strict = true): Set<string> {
           "--markdown",
           "--worktree-root",
           "--land-branch",
+          "--candidate-policy",
           "--cycles",
           "--interval-ms",
           "--lessons-dir",

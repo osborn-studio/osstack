@@ -36,6 +36,7 @@ const ENQUEUE_VALUES = new Set([
   "--candidate-policy",
 ]);
 const BOOLEANS = new Set([
+  "--reset-budget",
   "--worktree",
   "--auto-agent",
   "--artifact-verification",

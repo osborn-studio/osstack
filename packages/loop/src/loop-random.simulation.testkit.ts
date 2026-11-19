@@ -20,7 +20,7 @@ import type { LoopEvent, Task } from "./types.js";
 import * as verifier from "./verifier.js";
 
 const ops = ["submit", "duplicate_submission", "pass", "cycles", "restart_mid_step",
-  "clock", "duplicate_answer", "late_result", "raise_budget", "crash_after_debit"] as const;
+  "clock", "duplicate_answer", "late_result", "raise_budget", "crash_after_debit", "reset"] as const;
 export const command = z.object({
   op: z.enum(ops), key: z.number().int().min(0).max(0xffffffff),
   // Explicit boundary values also work in hand-written replays.
@@ -30,7 +30,7 @@ export const command = z.object({
 }).strict();
 export type Command = z.infer<typeof command>;
 export type Rule = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7";
-export type Mutant = Rule | "reset-on-restart";
+export type Mutant = Rule | "reset-on-restart" | "forget-baseline";
 export class Violation extends Error {
   constructor(readonly rule: Rule, readonly step: number, readonly detail: string) {
     super(`${rule} step=${step} ${detail}`);
@@ -50,7 +50,8 @@ export function generate(seed: number, steps: number): Command[] {
     const op = pick(next, i >= openUntil ? [...ordinary, "restart_mid_step"] as const : ordinary);
     const key = next();
     const magnitude = 1 + key % 5;
-    commands.push({ op, key,
+    // Finish each generated history with a reset against the accumulated state.
+    commands.push({ op: i === steps - 1 ? "reset" : op, key,
       ...(op === "pass" ? { tick: key % 2 ? magnitude : -magnitude } : {}),
       ...(op === "cycles" ? { cycleTicks: [-magnitude - 1, magnitude] } : {}),
       ...(i >= openUntil ? {} : { allowContainment: false }),
@@ -99,6 +100,8 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
   let now = 1_000_000, passes = 0, cycles = 0, usageReports = 0, serial = 0;
   let cycleLimit = 2, tokenLimit = Number.MAX_SAFE_INTEGER, costLimit = Number.MAX_SAFE_INTEGER;
   let crashDebits = 0;
+  let cycleBaseline = 0, reportBaseline = 0;
+  const budgetReports = () => usageReports - reportBaseline;
   let crashAfterDebit = false;
   const crash = Error("simulated process exit after cycle debit");
   let budgetStart = now, lastSample = now, expectedRuntime = 0, reportedRuntime = 0;
@@ -247,11 +250,12 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
     vi.spyOn(stateFile, "readLoopState").mockImplementation(async path => {
       const state = await readState(path);
       if (mutant === "reset-on-restart" && state?.budget_status) state.budget_status.usage.cycles = 0;
+      if (mutant === "forget-baseline" && state?.budget_status) delete state.budget_status.baseline;
       return state;
     });
     const write = stateFile.writeLoopState;
     vi.spyOn(stateFile, "writeLoopState").mockImplementation(async (path, state, options) => {
-      const debit = (state.budget_status?.usage.cycles ?? 0) > (state.key_metrics?.total_cycles ?? 0) + crashDebits;
+      const debit = (state.budget_status?.usage.cycles ?? 0) > (state.key_metrics?.total_cycles ?? 0) + crashDebits - cycleBaseline;
       const prior = state.completed_tasks.find(row => settled.has(row.task_id));
       if (mutant === "R3" && prior && !debit) prior.outcome = prior.outcome === "success" ? "failed" : "success";
       if (mutant === "R4" && state.key_metrics) state.key_metrics.tokens_consumed++;
@@ -277,8 +281,8 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
       coverage.add("cmd-" + cmd.op);
       if (cmd.op === "raise_budget") {
         cycleLimit += 1 + cmd.key % 5;
-        if (usageReports * 2 >= tokenLimit) tokenLimit = usageReports * 2 + 2;
-        if (usageReports / 8 >= costLimit) costLimit = usageReports / 8 + .125;
+        if (budgetReports() * 2 >= tokenLimit) tokenLimit = budgetReports() * 2 + 2;
+        if (budgetReports() / 8 >= costLimit) costLimit = budgetReports() / 8 + .125;
       } else if (cmd.op === "clock") {
         now += (cmd.key % 2 ? -1 : 1) * (1 + cmd.key % 100);
         vi.setSystemTime(now);
@@ -301,12 +305,17 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
         cycleLimit = cmd.cycleLimit ?? cycleLimit;
         tokenLimit = cmd.tokenLimit ?? tokenLimit;
         costLimit = cmd.costLimit ?? costLimit;
-        budgetStopped = previousBudgetCycles >= cycleLimit || usageReports * 2 >= tokenLimit || usageReports / 8 >= costLimit;
+        if (cmd.op === "reset") {
+          cycleBaseline = cycles + crashDebits;
+          reportBaseline = usageReports;
+          previousRuntime = previousBudgetCycles = expectedStreak = 0;
+        }
+        budgetStopped = previousBudgetCycles >= cycleLimit || budgetReports() * 2 >= tokenLimit || budgetReports() / 8 >= costLimit;
         const budget = { max_task_iterations: 2, max_cycles: cycleLimit,
           max_runtime_ms: 60_000, max_tokens: tokenLimit,
           max_estimated_cost_usd: costLimit };
         const options = { loopId: "persistent", workspacePath: workspace, sources: [], inputTasks: tasks,
-          adapters: [adapter], agentId: adapter.id, useWorktree: false, maxIterations: 3, budget,
+          adapters: [adapter], agentId: adapter.id, useWorktree: false, maxIterations: 3, budget, resetBudget: cmd.op === "reset",
           artifactVerification: { requireGitDiff: true, targetPaths: ["output.ts"] }, lessonDrafts: { enabled: false } };
         const run = async (multi: boolean) => {
           budgetStart = lastSample = now;
@@ -336,7 +345,7 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
           const admittedCycles = result.events.filter(e => e.type === "loop.cycle.started").length;
           check("R4", !budgetStopped || !admittedCycles, "cycle admitted after budget stop");
           const interrupted = calls.slice(offset).some(c => uncertain.has(c.task) || c.invalid)
-            || usageReports * 2 >= budget.max_tokens || usageReports / 8 >= budget.max_estimated_cost_usd;
+            || budgetReports() * 2 >= budget.max_tokens || budgetReports() / 8 >= budget.max_estimated_cost_usd;
           const expectedCycles = wasContained || budgetStopped ? 0 : !multi || interrupted ? 1 : Math.min(cycleLimit - previousBudgetCycles, 3);
           check("R4", admittedCycles === expectedCycles, "cycle count differs from adapter history");
           cycles += expectedCycles;
@@ -354,9 +363,9 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
           if (now < budgetStart) coverage.add("net-rewind-" + cmd.op);
           check("R4", usage.runtime_ms <= budget.max_runtime_ms && usage.runtime_ms >= previousRuntime,
             "runtime decreased to " + usage.runtime_ms);
-          check("R4", usage.cycles === cycles + crashDebits && usage.cycles >= previousBudgetCycles && usage.cycles <= cycleLimit, "cycle accounting regressed or exceeded cap");
-          check("R4", usage.tokens === usageReports * 2 && usage.tokens <= budget.max_tokens
-            && usage.estimated_cost_usd === usageReports / 8 && usage.estimated_cost_usd <= budget.max_estimated_cost_usd,
+          check("R4", usage.cycles === cycles + crashDebits - cycleBaseline && usage.cycles >= previousBudgetCycles && usage.cycles <= cycleLimit, "cycle accounting regressed or exceeded cap");
+          check("R4", usage.tokens === budgetReports() * 2 && usage.tokens <= budget.max_tokens
+            && usage.estimated_cost_usd === budgetReports() / 8 && usage.estimated_cost_usd <= budget.max_estimated_cost_usd,
             "budget usage differs from adapter or exceeds cap");
           previousBudgetCycles = usage.cycles;
           previousRuntime = usage.runtime_ms;
@@ -382,7 +391,7 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
       const persisted = state?.budget_status?.usage;
       check("R4", (persisted?.cycles ?? 0) === previousBudgetCycles, "durable cycle debit differs");
       check("R4", (persisted?.no_progress_cycles ?? 0) === expectedStreak, "durable no-progress streak differs");
-      if (previousUsage) {
+      if (previousUsage && cmd.op !== "reset") {
         for (const key of ["cycles", "runtime_ms", "tokens", "estimated_cost_usd"] as const) {
           check("R4", persisted && persisted[key] >= previousUsage[key], "persisted " + key + " decreased");
         }
@@ -411,7 +420,7 @@ export async function simulate(seed: number, commands: Command[], mutant?: Mutan
       let resultIndex = 0;
       for (const c of fresh) {
         const canRepair = (attempt: number) => {
-          const reports = c.reportOrdinal + attempt - 1;
+          const reports = c.reportOrdinal + attempt - 1 - reportBaseline;
           return reports * 2 < tokenLimit && reports / 8 < costLimit && c.elapsed < 60_000;
         };
         if (c.answer === "missing" || c.terminals.length === 2) {

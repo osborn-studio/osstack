@@ -52,6 +52,7 @@ export const LoopBudgetStatus = z.object({
   limit: z.string().optional(),
   reason: z.string().optional(),
   usage: BudgetUsage,
+  baseline: BudgetUsage.pick({ tokens: true, estimated_cost_usd: true }).optional(),
 });
 export type LoopBudgetStatus = z.infer<typeof LoopBudgetStatus>;
 

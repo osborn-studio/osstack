@@ -122,6 +122,7 @@ export interface LoopRunOptions {
   discoveryPolicy?: DiscoveryPolicy;
   /** Cost and stop controls. When absent, no budget is enforced (legacy behavior). */
   budget?: LoopBudget;
+  resetBudget?: boolean;
   /** SOP flywheel: draft lessons after successes that recovered from failed attempts. Default on. */
   lessonDrafts?: Partial<LessonDraftConfig>;
   adapters?: readonly AgentAdapter[];
@@ -251,6 +252,7 @@ export class LoopEngine {
   private reportInvalid = false;
   private lastBudgetReading = 0;
   private budgetElapsedMs = 0;
+  private budgetResetApplied = false;
   private implementationUnconfirmed = false;
   private containmentPending = false;
   private candidateContaminated = false;
@@ -368,6 +370,7 @@ export class LoopEngine {
   }
 
   private async withLifecycleLease<T>(run: () => Promise<T>): Promise<T> {
+    if (this.options.resetBudget && !this.options.budget) throw new Error("resetBudget requires a configured budget");
     const lease = await this.options.lifecycleLease?.({ workspacePath: this.options.workspacePath ?? process.cwd() });
     this.lifecycleEffectsStarted = false;
     let settled = false;
@@ -473,7 +476,7 @@ export class LoopEngine {
     };
   }
 
-  private checkLoopBudget(loopId: string, budget: LoopBudget, usage: BudgetUsage): LoopBudgetStatus {
+  private checkLoopBudget(loopId: string, budget: LoopBudget, usage: BudgetUsage, baseline: LoopBudgetStatus["baseline"]): LoopBudgetStatus {
     const check = checkBudget(budget, usage);
     if (check.exceeded) {
       this.emit(loopId, "loop.budget.exceeded", {
@@ -486,7 +489,7 @@ export class LoopEngine {
         no_progress_cycles: usage.no_progress_cycles,
       });
     }
-    return { ...check, usage };
+    return { ...check, usage, ...(baseline && { baseline }) };
   }
 
   private statePath(workspacePath: string): string {
@@ -518,22 +521,34 @@ export class LoopEngine {
       task.implementation_unconfirmed === true);
     const decisions = [...(state.decisions ?? [])];
     const budget = this.options.budget;
+    let baseline = state.budget_status?.baseline;
     const prior = state.budget_status?.usage;
     if (budget && cycle === 1) this.budgetElapsedMs = prior?.runtime_ms ?? 0;
-    const usage = budget && {
+    let usage = budget && {
       cycles: prior?.cycles ?? 0,
       runtime_ms: cycle === 1 ? this.budgetElapsedMs : this.readBudgetElapsedMs(),
-      tokens: Math.max(prior?.tokens ?? 0, state.key_metrics?.tokens_consumed ?? 0),
-      estimated_cost_usd: Math.max(prior?.estimated_cost_usd ?? 0, state.key_metrics?.cost_consumed ?? 0),
+      tokens: Math.max(0, prior?.tokens ?? 0, (state.key_metrics?.tokens_consumed ?? 0) - (baseline?.tokens ?? 0)),
+      estimated_cost_usd: Math.max(0, prior?.estimated_cost_usd ?? 0, (state.key_metrics?.cost_consumed ?? 0) - (baseline?.estimated_cost_usd ?? 0)),
       no_progress_cycles: prior?.no_progress_cycles ?? 0,
     };
-    const admission = budget && usage && this.checkLoopBudget(loopId, budget, usage);
     const writeState = async (next: LoopState) => {
       if (this.candidatePolicy) { await assertCandidateStateFile(jsonPath); await assertCandidateStateFile(markdownPath!); }
       const paths = await writeLoopState(jsonPath, next, { ...(markdownPath !== undefined ? { markdownPath } : {}) });
       if (this.candidatePolicy) { await chmod(paths.jsonPath, 0o600); await chmod(paths.markdownPath, 0o600); }
       return paths;
     };
+    if (usage && cycle === 1 && this.options.resetBudget && !this.budgetResetApplied) {
+      const usageBefore = usage;
+      baseline = { tokens: state.key_metrics?.tokens_consumed ?? 0, estimated_cost_usd: state.key_metrics?.cost_consumed ?? 0 };
+      usage = { cycles: 0, runtime_ms: 0, tokens: 0, estimated_cost_usd: 0, no_progress_cycles: 0 };
+      this.resetBudgetClock();
+      state.budget_status = { exceeded: false, usage, baseline };
+      const paths = await writeState(state);
+      this.budgetResetApplied = true;
+      this.emit(loopId, "loop.state.written", { ...paths });
+      this.emit(loopId, "loop.budget.reset", { usage_before: usageBefore, baseline });
+    }
+    const admission = budget && usage && this.checkLoopBudget(loopId, budget, usage, baseline);
     if (admission?.exceeded || this.implementationUnconfirmed || this.containmentPending || this.candidateContaminated) {
       if (admission?.exceeded && !isDeepStrictEqual(state.budget_status, admission)) {
         state.budget_status = admission;
@@ -550,7 +565,7 @@ export class LoopEngine {
 
     if (budget && usage) {
       usage.cycles++;
-      state.budget_status = { ...checkBudget(budget, usage), usage };
+      state.budget_status = { ...checkBudget(budget, usage), usage, ...(baseline && { baseline }) };
       this.emit(loopId, "loop.state.written", { ...await writeState(state) });
     }
     if (lifecycle.emitStarted) this.emit(loopId, "loop.started", { workspace_path: workspacePath });
@@ -618,7 +633,7 @@ export class LoopEngine {
       pending.shift();
       this.lifecycleEffectsStarted = true;
       let taskResult: { completedTask: CompletedTask; decisions: string[] };
-      try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath)); }
+      try { taskResult = await this.runTask(loopId, workspacePath, task, completed, dirname(containmentPath), baseline); }
       catch (error) {
         if (candidateRecord) await candidateRecord.record("final_preflight_failed", { ...knownCandidate!, taskOrdinal: tasks.indexOf(task) });
         throw error; // Preserve lifecycle containment and the original failure; no ready receipt.
@@ -664,8 +679,8 @@ export class LoopEngine {
               reportRepair: {
                 remainingMs: () => {
                   const remaining = (this.options.budget?.max_runtime_ms ?? Infinity) - this.readBudgetElapsedMs();
-                  const tokens = completed.reduce((sum, item) => sum + (item.tokens_in ?? 0) + (item.tokens_out ?? 0), 0);
-                  const cost = completed.reduce((sum, item) => sum + (item.cost_usd ?? 0), 0);
+                  const tokens = completed.reduce((sum, item) => sum + (item.tokens_in ?? 0) + (item.tokens_out ?? 0), 0) - (baseline?.tokens ?? 0);
+                  const cost = completed.reduce((sum, item) => sum + (item.cost_usd ?? 0), 0) - (baseline?.estimated_cost_usd ?? 0);
                   if (remaining <= 0 || (this.options.budget?.max_tokens !== undefined && tokens >= this.options.budget.max_tokens)
                     || (this.options.budget?.max_estimated_cost_usd !== undefined && cost >= this.options.budget.max_estimated_cost_usd)) return undefined;
                   return Math.min(this.options.commandTimeoutMs ?? 120_000, remaining);
@@ -769,10 +784,10 @@ export class LoopEngine {
     const budgetStatus = budget && usage && this.checkLoopBudget(loopId, budget, {
       cycles: usage.cycles,
       runtime_ms: this.readBudgetElapsedMs(),
-      tokens: Math.max(usage.tokens, nextState.key_metrics?.tokens_consumed ?? 0),
-      estimated_cost_usd: Math.max(usage.estimated_cost_usd, nextState.key_metrics?.cost_consumed ?? 0),
+      tokens: Math.max(usage.tokens, (nextState.key_metrics?.tokens_consumed ?? 0) - (baseline?.tokens ?? 0)),
+      estimated_cost_usd: Math.max(usage.estimated_cost_usd, (nextState.key_metrics?.cost_consumed ?? 0) - (baseline?.estimated_cost_usd ?? 0)),
       no_progress_cycles: nextNoProgressCycles(usage.no_progress_cycles, completedTasks),
-    });
+    }, baseline);
     if (budgetStatus) {
       nextState.budget_status = budgetStatus;
       if (budgetStatus.reason) nextState.decisions?.push(`budget: ${budgetStatus.reason}`);
@@ -955,6 +970,7 @@ export class LoopEngine {
     task: Task,
     historyTasks: readonly CompletedTask[],
     containmentRoot: string,
+    baseline: LoopBudgetStatus["baseline"],
   ): Promise<{ completedTask: CompletedTask; decisions: string[] }> {
     const started = Date.now();
     const maxIterations = clampTaskIterations(this.options.maxIterations ?? 1, this.options.budget);
@@ -969,8 +985,8 @@ export class LoopEngine {
     const repairHooks: ReportRepairHooks = {
       remainingMs: () => {
         const budget = this.options.budget;
-        const tokens = historyTasks.reduce((sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0), 0) + taskUsage.tokensIn + taskUsage.tokensOut;
-        const cost = historyTasks.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0) + taskUsage.cost;
+        const tokens = historyTasks.reduce((sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0), 0) + taskUsage.tokensIn + taskUsage.tokensOut - (baseline?.tokens ?? 0);
+        const cost = historyTasks.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0) + taskUsage.cost - (baseline?.estimated_cost_usd ?? 0);
         const remaining = (budget?.max_runtime_ms ?? Infinity) - this.readBudgetElapsedMs();
         if (remaining <= 0 || (budget?.max_tokens !== undefined && tokens >= budget.max_tokens)
           || (budget?.max_estimated_cost_usd !== undefined && cost >= budget.max_estimated_cost_usd)) return undefined;

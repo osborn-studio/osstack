@@ -8,6 +8,8 @@ import {
   renderLoopStateMarkdown,
   writeLoopState,
 } from "./state-file.js";
+import { z } from "zod";
+import { BudgetUsage } from "./budget.js";
 import type { LoopState } from "./types.js";
 
 describe("loop state file", () => {
@@ -22,6 +24,22 @@ describe("loop state file", () => {
       in_progress: [],
       decisions: [],
     });
+  });
+
+  it("round-trips old and reset budgets and renders the baseline only after a reset", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "osstack-budget-schema-"));
+    const path = join(dir, "state.json");
+    const legacy = z.object({ exceeded: z.boolean(), limit: z.string().optional(), reason: z.string().optional(), usage: BudgetUsage });
+    const status = { exceeded: false, usage: { cycles: 0, runtime_ms: 0, tokens: 0, estimated_cost_usd: 0, no_progress_cycles: 0 } };
+    const baseline = { tokens: 123, estimated_cost_usd: 1.25 };
+    for (const budget_status of [status, { ...status, baseline }]) {
+      const paths = await writeLoopState(path, { ...createInitialLoopState("compat"), budget_status });
+      expect((await readLoopState(path))?.budget_status).toEqual(budget_status);
+      expect(legacy.parse(JSON.parse(await readFile(path, "utf8")).budget_status)).toEqual(status);
+      const markdown = await readFile(paths.markdownPath, "utf8");
+      if ("baseline" in budget_status) expect(markdown).toContain("- Reset baseline: 123 tokens, $1.2500");
+      else expect(markdown).not.toContain("Reset baseline");
+    }
   });
 
   it("writes JSON and Markdown representations", async () => {
