@@ -1,4 +1,4 @@
-import { createHash, generateKeyPairSync, sign } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   GRANT_LIMITS, canonicalJson, parseRevisionGrantPreview, parseStoredGrant, signRevisionGrant, verifyRevisionGrantSignature,
@@ -231,4 +231,79 @@ it.each(['bridge profile', 'bridge:profile', 'bridge/profile', '_bridge', '.brid
 it.each(['o/.', 'o/..', './r', '../r', 'o/r/extra', 'o/r\n'])('refuses invalid new-V2 trusted repository identity %s', repository => {
   const p = preview();
   expect(() => signLocalFailureRevisionGrant({ ...p, local_failure: { ...p.local_failure, trusted_source: { ...p.local_failure.trusted_source, repository } } }, keys().privateKey)).toThrow('grant_invalid');
+});
+
+describe("signed recheck opt-in", () => {
+  const withRecheck = (timeout_seconds: number): LocalFailureGrantPreview => {
+    const p = preview();
+    return { ...p, local_failure: { ...p.local_failure, recheck: { enabled: true, timeout_seconds } } };
+  };
+
+  it("preserves the original V2 wire bytes and verifies a stored grant without recheck", () => {
+    const key = createPrivateKey({
+      key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), Buffer.alloc(32, 7)]),
+      format: "der", type: "pkcs8",
+    });
+    const preview_sha256 = "0a7071bc1e57778d96b920899f4d3e33225f4afa1b8694131523488ddad48e5b";
+    const signature = "MssGl00+UCvZww7CBYH7s1A9tGHu/HLq5WMBlOdqM69Rkmivl1cbII5DGKtADBsvOF3Dcnnud1RhCf/B3qPrDA==";
+    const p = preview();
+    const bytes = localFailureRevisionGrantSigningInput(p);
+    expect(bytes.byteLength).toBe(1317);
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe("b3239db0dae6b9c20829bb9820067f7bd08b97d51b8b39e9f7f7a35b9f9b821e");
+    const grant = signLocalFailureRevisionGrant(p, key);
+    expect(grant.preview_sha256).toBe(preview_sha256);
+    expect(grant.signature).toBe(signature);
+    expect(createHash("sha256").update(JSON.stringify(grant)).digest("hex")).toBe("a5123fc43aa2bb2b18827c9a00fd9d7cddbfd1407bd035da68a10fda4f3100cc");
+    expect(verifyLocalFailureRevisionGrantSignature(grant, createPublicKey(key))).toBe(true);
+    const stored = parseLocalFailureRevisionGrant(JSON.stringify({ ...p, preview_sha256, signature }));
+    expect(Object.hasOwn(stored.local_failure, "recheck")).toBe(false);
+    expect(verifyLocalFailureRevisionGrantSignature(stored, createPublicKey(key))).toBe(true);
+  });
+
+  it("signs the recheck timeout and rejects removed or changed opt-ins", () => {
+    const p = withRecheck(60);
+    const k = keys();
+    expect(parseLocalFailureGrantPreview(p)).toEqual(p);
+    const grant = signLocalFailureRevisionGrant(p, k.privateKey);
+    const json = JSON.stringify(grant);
+    expect(Buffer.byteLength(json)).toBeLessThanOrEqual(GRANT_LIMITS.max_json_bytes);
+    const stored = parseLocalFailureRevisionGrant(json);
+    expect(stored).toEqual(grant);
+    expect(verifyLocalFailureRevisionGrantSignature(stored, k.publicKey)).toBe(true);
+    for (const changed of [preview(), withRecheck(59)]) {
+      const preview_sha256 = localFailurePreviewDigest(changed);
+      expect(preview_sha256).not.toBe(grant.preview_sha256);
+      const tampered = { ...grant, ...changed };
+      expect(verifyLocalFailureRevisionGrantSignature(tampered, k.publicKey)).toBe(false);
+      expect(verifyLocalFailureRevisionGrantSignature({ ...tampered, preview_sha256 }, k.publicKey)).toBe(false);
+    }
+    const v1 = signRevisionGrant(samplePreview(), k.privateKey);
+    expect(() => parseRevisionGrantPreview({ ...samplePreview(), local_failure: p.local_failure })).toThrow("grant_invalid");
+    expect(() => parseStoredGrant(JSON.stringify({ ...v1, local_failure: p.local_failure }))).toThrow("grant_invalid");
+    expect(() => parseStoredGrant(json)).toThrow("grant_invalid");
+  });
+
+  it("requires a strict enabled opt-in with an integral timeout from 1 through 120", () => {
+    for (const seconds of [1, 120]) expect(parseLocalFailureGrantPreview(withRecheck(seconds))).toEqual(withRecheck(seconds));
+    const p = preview();
+    for (const recheck of [
+      null, {}, { enabled: false, timeout_seconds: 60 }, { enabled: true, timeout_seconds: 60, extra: true },
+      ...[0, 121, 1.5].map(timeout_seconds => ({ enabled: true, timeout_seconds })),
+    ]) expect(() => parseLocalFailureGrantPreview({ ...p, local_failure: { ...p.local_failure, recheck } })).toThrow("grant_invalid");
+  });
+
+  it.each([
+    { max_container_seconds: 59, max_wall_clock_hours: 1, diagnostic_timeout_seconds: 1 },
+    // A valid whole-hour budget exceeds the runtime cap. Exercise the wall-clock refinement with a shorter window.
+    { max_container_seconds: 120, max_wall_clock_hours: 59 / 3600, diagnostic_timeout_seconds: 1 },
+    { max_container_seconds: 119, max_wall_clock_hours: 1, diagnostic_timeout_seconds: 60 },
+  ])("reports recheck_budget at the recheck timeout for %o", ({ diagnostic_timeout_seconds, ...caps }) => {
+    const p = withRecheck(60);
+    const candidate = { ...p, budget: { ...p.budget, ...caps }, local_failure: { ...p.local_failure, diagnostic_timeout_seconds } };
+    const result = LocalFailureGrantPreviewSchema.safeParse(candidate);
+    expect(result.error?.issues).toContainEqual(expect.objectContaining({
+      path: ["local_failure", "recheck", "timeout_seconds"], message: "recheck_budget",
+    }));
+    expect(() => parseLocalFailureGrantPreview(candidate)).toThrow("grant_invalid");
+  });
 });
