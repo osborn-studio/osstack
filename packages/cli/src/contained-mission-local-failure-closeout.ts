@@ -13,6 +13,7 @@ interface Dependencies {
 }
 type Audit = Pick<VerificationGateVerdict, "state" | "reason" | "hold"> & {
   dispatch_id: string; recheck_id: string | null; head: string | null; merge_commit_oid: string | null;
+  verified_base_sha: string | null; merged_onto_oid: string | null;
 };
 const unreadable: Snapshot = {
   pr: { complete: false, state: "OPEN", head_oid: "", base_ref_name: "", base_tip_oid: null, merge_commit_oid: null,
@@ -39,9 +40,16 @@ export async function readLocalFailureCloseout(deps: Dependencies, childMissionI
   const ids = { dispatch_id, chain_id, pr: target.pr_number };
   const terminal = (row: Audit | null) => {
     if (row?.state !== "merged" && row?.state !== "closed_unmerged") return null;
+    const verified_base_sha = row.verified_base_sha ?? null;
+    const merged_onto_oid = row.merged_onto_oid ?? null;
+    const facts: VerificationGateVerdict["facts"] = { head: row.head, review_id: null };
+    if (row.state === "merged") {
+      facts.base_sha = verified_base_sha;
+      facts.merge_base_oid = merged_onto_oid;
+    }
     return { ...ids, recheck_id: row.recheck_id, state: row.state, reason: null, hold: true,
       published_head: target.published_head, recheck_head: row.recheck_id ? ledger.get(row.recheck_id).new_head_sha : null,
-      head: row.head, merge_commit_oid: row.merge_commit_oid, facts: { head: row.head, review_id: null } };
+      head: row.head, merge_commit_oid: row.merge_commit_oid, verified_base_sha, merged_onto_oid, facts };
   };
   const recorded = terminal(latest());
   if (recorded) return recorded;
@@ -77,14 +85,16 @@ export async function readLocalFailureCloseout(deps: Dependencies, childMissionI
     });
     const { state, reason, hold } = verdict;
     const head = verdict.facts.head;
+    const verified_base_sha = verdict.facts.base_sha ?? null;
+    const merged_onto_oid = verdict.facts.merge_base_oid ?? null;
     const oid = snapshot.pr?.merge_commit_oid;
     const merge_commit_oid = typeof oid === "string" && /^[a-f0-9]{40}$/.test(oid) ? oid : null;
     const recheck_id = recheck?.recheck_id ?? null;
     if (prior?.state !== state || prior.reason !== reason || prior.head !== head) {
-      const payload: Audit = { dispatch_id, recheck_id, state, reason, hold, head, merge_commit_oid };
+      const payload: Audit = { dispatch_id, recheck_id, state, reason, hold, head, merge_commit_oid, verified_base_sha, merged_onto_oid };
       chains.appendEvent(chain_id, "local_repair_closeout", payload, deps.now());
     }
     return { ...ids, recheck_id, published_head: chain.published_head, recheck_head: recheck?.new_head_sha ?? null,
-      head, merge_commit_oid, ...verdict };
+      head, merge_commit_oid, verified_base_sha, merged_onto_oid, ...verdict };
   });
 }

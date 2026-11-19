@@ -65,6 +65,10 @@ export function evaluateVerificationGate(input: VerificationGateInput): Verifica
   const { pr, recheck, chain, confirmed_push: push } = input;
   const observed = pr?.state === "MERGED" ? pr.merged_head_oid : pr?.head_oid;
   const facts: VerificationGateVerdict["facts"] = { head: sha(observed) ? observed : null, review_id: null };
+  if (pr?.state === "MERGED") {
+    facts.base_sha = sha(recheck?.base_sha) ? recheck.base_sha : null;
+    facts.merge_base_oid = sha(pr.merge_base_oid) ? pr.merge_base_oid : null;
+  }
   const held = (state: VerificationGateVerdict["state"], reason: VerificationGateVerdict["reason"]) => ({ state, reason, hold: true, facts });
   if (pr?.complete !== true || !["OPEN", "MERGED", "CLOSED"].includes(pr.state))
     return held("awaiting_decision", "verify_merge_unverified");
@@ -76,12 +80,10 @@ export function evaluateVerificationGate(input: VerificationGateInput): Verifica
     && ref(chain.base_ref) && ref(chain.branch) && id(chain.pr_number);
   if (pr.state === "MERGED") {
     if (current && sha(pr.merge_commit_oid) && pr.merged_head_oid === recheck.new_head_sha
-      && pr.base_ref_name === chain.base_ref && pr.merge_base_oid === recheck.base_sha
+      && pr.base_ref_name === chain.base_ref
       && pr.merged_by && ["User", "Bot"].includes(pr.merged_by.type) && id(pr.merged_by.id)
       && push?.candidate === recheck.new_head_sha && push.branch === chain.branch && push.pr === chain.pr_number)
       return held("merged", null);
-    facts.base_sha = sha(recheck?.base_sha) ? recheck.base_sha : null;
-    facts.merge_base_oid = sha(pr.merge_base_oid) ? pr.merge_base_oid : null;
     return held("awaiting_decision", "verify_merge_unverified");
   }
 

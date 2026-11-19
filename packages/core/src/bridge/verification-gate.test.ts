@@ -28,11 +28,21 @@ it("requires a complete known PR before recognizing closure", () => {
 it("recognizes a fully bound merge without releasing", () => {
   expect(gate(merged)).toMatchObject({ state: "merged", reason: null, hold: true });
 });
+it.each([[other, other], [null, null], ["unreadable", null]])("recognizes a merge onto %s", (merge_base_oid, expected) => {
+  expect(gate({ ...merged, pr: { ...merged.pr, merge_base_oid } })).toMatchObject({
+    state: "merged", reason: null, hold: true, facts: { base_sha: base, merge_base_oid: expected },
+  });
+});
+it("records available base evidence from an incomplete merged PR", () => {
+  expect(gate({ ...merged, recheck: null, pr: { ...merged.pr, complete: false } })).toMatchObject({
+    state: "awaiting_decision", reason: "verify_merge_unverified", facts: { base_sha: null, merge_base_oid: base },
+  });
+});
 const mergeFailures: Record<string, Partial<VerificationGateInput>> = {
   pending: { recheck: pending }, failed: { recheck: { ...passed, state: "awaiting_decision", reason: "verify_recheck_failed" } },
   withdrawn: { recheck_result_current: false }, "other merged head": { pr: { ...merged.pr, merged_head_oid: other } },
   "missing commit": { pr: { ...merged.pr, merge_commit_oid: null } }, retargeted: { pr: { ...merged.pr, base_ref_name: "next" } },
-  "advanced base": { pr: { ...merged.pr, merge_base_oid: other } }, anonymous: { pr: { ...merged.pr, merged_by: null } },
+  anonymous: { pr: { ...merged.pr, merged_by: null } },
   "invalid actor": { pr: { ...merged.pr, merged_by: { type: "User", id: 0 } } },
   "missing push": { confirmed_push: null }, "other candidate": { confirmed_push: { candidate: other, branch: "fix", pr: 9 } },
   "other branch": { confirmed_push: { candidate: head, branch: "next", pr: 9 } },

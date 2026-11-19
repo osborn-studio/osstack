@@ -469,10 +469,12 @@ it.each(["merged", "closed after withdrawal", "closed after supersession"] as co
     before = writes();
     let prior = events().length;
     snapshot.pr.base_ref_name = "retargeted";
-    expect(await read()).toMatchObject({ reason: "verify_merge_unverified", hold: true });
+    expect(await read()).toMatchObject({ state: "awaiting_decision", reason: "verify_merge_unverified", hold: true,
+      verified_base_sha: base, merged_onto_oid: base });
     snapshot.pr.base_ref_name = chain.base_ref;
     snapshot.pr.state = "OPEN";
-    expect(await read()).toMatchObject({ reason: "verify_approval_required", hold: true });
+    expect(await read()).toMatchObject({ reason: "verify_approval_required", hold: true,
+      verified_base_sha: null, merged_onto_oid: null });
     snapshot.reviews.items = [{ review_id: 3, state: "APPROVED", submitted_at_ms: 1, commit_oid: candidate,
       author_type: "User", author_id: 1, author_can_push: true }];
     expect(await read()).toMatchObject({ state: "ready_for_human", reason: null, hold: false });
@@ -493,12 +495,23 @@ it.each(["merged", "closed after withdrawal", "closed after supersession"] as co
       expect(await read()).toMatchObject({ state: "reverify_pending", reason: "verify_recheck_missing", hold: true });
     }
     snapshot.pr.state = terminal === "merged" ? "MERGED" : "CLOSED";
+    snapshot.pr.merge_base_oid = "d".repeat(40);
     const last = await read();
     expect(last).toMatchObject({ state: terminal === "merged" ? "merged" : "closed_unmerged", reason: null, hold: true });
+    const terminalBases = terminal === "merged" ? { verified_base_sha: base, merged_onto_oid: snapshot.pr.merge_base_oid } : { verified_base_sha: null, merged_onto_oid: null };
+    if (terminal === "merged") expect(terminalBases.merged_onto_oid).not.toBe(base);
+    expect(last).toMatchObject(terminalBases);
+    expect(JSON.parse(events().at(-1)!.payload_json)).toMatchObject(terminalBases);
     const calls = readPr.mock.calls.length;
     expect(await read()).toEqual(last); expect(readPr).toHaveBeenCalledTimes(calls);
     expect(events().filter(e => JSON.parse(e.payload_json).state === last.state)).toHaveLength(1);
     expect(writes() - before).toBe(events().length - prior);
     expect(counts()).toEqual(finalCounts); expect(chains.get(chain.chain_id)).toEqual(chain);
+    const legacy = JSON.parse(events().at(-1)!.payload_json);
+    delete legacy.verified_base_sha;
+    delete legacy.merged_onto_oid;
+    chains.appendEvent(chain.chain_id, "local_repair_closeout", legacy, now);
+    expect(await read()).toMatchObject({ state: last.state, verified_base_sha: null, merged_onto_oid: null });
+    expect(readPr).toHaveBeenCalledTimes(calls);
   } finally { f.close(); }
 });
