@@ -8,6 +8,7 @@ import { createScratchDirSync } from "@osstack/core";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { vi } from "vitest";
 import { z } from "zod";
+import * as budgeting from "./budget.js";
 import * as executor from "./executor.js";
 import * as iterator from "./iterator.js";
 import * as stateFile from "./state-file.js";
@@ -16,6 +17,7 @@ import * as isolation from "./reviewer-isolation.js";
 import { pick, random, Trace } from "./seeded-simulation.testkit.js";
 import { readLoopState } from "./state-file.js";
 import type { LoopEvent, Task } from "./types.js";
+import * as verifier from "./verifier.js";
 
 const ops = ["submit", "duplicate_submission", "pass", "cycles", "restart_mid_step",
   "clock", "duplicate_answer", "late_result"] as const;
@@ -23,10 +25,11 @@ export const command = z.object({
   op: z.enum(ops), key: z.number().int().min(0).max(0xffffffff),
   // Explicit boundary values also work in hand-written replays.
   allowContainment: z.boolean().optional(), tick: z.number().int().safe().optional(), cycleLimit: z.number().int().positive().optional(),
+  cycleTicks: z.array(z.number().int().safe()).optional(),
   tokenLimit: z.number().int().positive().optional(), costLimit: z.number().finite().positive().optional(),
 }).strict();
 export type Command = z.infer<typeof command>;
-export type Rule = "R1" | "R2" | "R3" | "R4" | "R5" | "R6";
+export type Rule = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7";
 export class Violation extends Error {
   constructor(readonly rule: Rule, readonly step: number, readonly detail: string) {
     super(`${rule} step=${step} ${detail}`);
@@ -37,9 +40,9 @@ export function generate(seed: number, steps: number): Command[] {
   const next = random(seed);
   const commands: Command[] = [];
   // Fixed R4 replays cover boundaries that would interrupt default histories.
-  // Zero net ticks avoid the negative-runtime candidate and elapsed resets.
-  // Only the final engine command can hit a cycle cap, leaving budget sharing
-  // across restarts open. High token and cost caps avoid documented cycle overshoot.
+  // Elapsed and cycle budgets reset at restart. Use nonpositive pass ticks
+  // before the final cycles command, which can accrue time and hit a cycle cap.
+  // High token and cost caps avoid post-cycle overshoot.
   const budgetStep = Math.floor(steps * .85) + next() % Math.max(1, Math.ceil(steps * .15));
   // Unconfirmed work permanently contains this workspace. Draw those faults
   // late enough to stress a growing ledger before exercising containment.
@@ -49,7 +52,13 @@ export function generate(seed: number, steps: number): Command[] {
     const ordinary = [...passive, "submit", "submit", "pass", "pass", "duplicate_answer", "late_result"] as const;
     const op = i === budgetStep ? "cycles" : i > budgetStep ? pick(next, passive)
       : pick(next, i >= openUntil ? [...ordinary, "restart_mid_step"] as const : ordinary);
-    commands.push({ op, key: next(), ...(i >= openUntil ? {} : { allowContainment: false }) });
+    const key = next();
+    const magnitude = 1 + key % 5;
+    commands.push({ op, key,
+      ...(op === "pass" ? { tick: -magnitude } : {}),
+      ...(op === "cycles" ? { cycleTicks: [-magnitude - 1, magnitude] } : {}),
+      ...(i >= openUntil ? {} : { allowContainment: false }),
+    });
   }
   return commands;
 }
@@ -93,7 +102,15 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
   const trace = new Trace(seed);
   let now = 1_000_000, passes = 0, cycles = 0, usageReports = 0, serial = 0;
   let cycleLimit: number | undefined, usedAtLimit = 0;
-  let budgetStart = now;
+  let budgetStart = now, lastSample = now, expectedRuntime = 0, reportedRuntime = 0;
+  let rewound = false;
+  function sampleBudgetClock() {
+    const delta = now - lastSample;
+    if (delta < 0) rewound = true;
+    if (delta > 0 && rewound) coverage.add("forward-after-rewind");
+    expectedRuntime += Math.max(0, delta);
+    lastSample = now;
+  }
   let previousBudgetCycles = 0, previousRuntime = 0, budgetStopped = false;
   let next = random(seed), restart = false, tick = 0, allowContainment = true;
   let oldAnswer: HermesEvent | undefined;
@@ -127,20 +144,18 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
       const answer = restart ? "restart_mid_step" : response(next, allowContainment);
       restart = false;
       const call: Call = { task: input.task_id, iteration, run: input.run_id, answer, terminals: [],
-        reportOrdinal: usageReports + 1, elapsed: now + tick - budgetStart, repairs: [], pass: false, invalid: false };
+        reportOrdinal: usageReports + 1, elapsed: 0, repairs: [], pass: false, invalid: false };
       calls.push(call);
       coverage.add(answer);
       trace.record([input.task_id, iteration, answer]);
       writeFileSync(artifact, "implementation " + calls.length);
       if (answer === "duplicate_submission") tasks.push(tasks.find(task => task.task_id === input.task_id)!);
-      // Rewind inside a pass to its start. A negative net tick is independently
-      // replayable (and pinned below): the engine reports negative runtime.
       if (answer === "clock_backwards") {
-        now++;
-        yield { ...envelope(input, 0, now), type: "usage.updated" } as HermesEvent;
         now--;
+        yield { ...envelope(input, 0, now), type: "usage.updated" } as HermesEvent;
       }
       now += tick;
+      call.elapsed = expectedRuntime + Math.max(0, now - lastSample);
       usageReports++;
       yield envelope(input, 1, now);
       if (answer === "lost_response" || answer === "restart_mid_step") {
@@ -203,6 +218,35 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
         throw Error("Unexpected shell command: " + command);
       return { command, exitCode: 0, stdout: command.includes(" status ") ? " M output.ts" : "", stderr: "", durationMs: 0 };
     });
+    const verify = verifier.verifyRun;
+    vi.spyOn(verifier, "verifyRun").mockImplementation((run, options) => {
+      const hooks = options.reportRepair;
+      if (hooks && !vi.isMockFunction(hooks.remainingMs)) {
+        const remaining = hooks.remainingMs;
+        vi.spyOn(hooks, "remainingMs").mockImplementation(() => {
+          sampleBudgetClock();
+          return remaining();
+        });
+      }
+      return verify(run, options);
+    });
+    const checkBudget = budgeting.checkBudget;
+    vi.spyOn(budgeting, "checkBudget").mockImplementation((budget, usage) => {
+      sampleBudgetClock();
+      if (mutant === "R7") usage.runtime_ms = now - budgetStart;
+      check("R7", usage.runtime_ms >= 0 && usage.runtime_ms >= reportedRuntime && usage.runtime_ms === expectedRuntime,
+        `runtime ${usage.runtime_ms}, expected ${expectedRuntime}, previous ${reportedRuntime}`);
+      reportedRuntime = usage.runtime_ms;
+      trace.record(["runtime", reportedRuntime]);
+      return checkBudget(budget, usage);
+    });
+    // runCycle reads its state once at entry, including for idle cycles.
+    let cycleTicks: number[] = [];
+    const readState = stateFile.readLoopState;
+    vi.spyOn(stateFile, "readLoopState").mockImplementation((...args) => {
+      now += cycleTicks.shift() ?? 0;
+      return readState(...args);
+    });
     if (mutant === "R3" || mutant === "R4") {
       const write = stateFile.writeLoopState;
       vi.spyOn(stateFile, "writeLoopState").mockImplementation((path, state, options) => {
@@ -249,12 +293,15 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
           adapters: [adapter], agentId: adapter.id, useWorktree: false, maxIterations: 3, budget,
           artifactVerification: { requireGitDiff: true, targetPaths: ["output.ts"] }, lessonDrafts: { enabled: false } };
         const run = async (multi: boolean) => {
-          const started = now;
-          budgetStart = started;
+          budgetStart = lastSample = now;
+          expectedRuntime = reportedRuntime = 0;
+          rewound = false;
+          cycleTicks = multi ? [...(cmd.cycleTicks ?? [])] : [];
           const offset = calls.length;
           const wasContained = uncertain.size > 0 || calls.some(c => c.repairs.some(r => r.answer === "mutation"));
           const engine = new LoopEngine(options);
           const result = multi ? await engine.runCycles({ cycles: 3 }) : await engine.runOnce();
+          cycleTicks = [];
           if (boundaryViolation) throw boundaryViolation;
           check("R1", new Set(calls.map(c => c.task + "/" + c.iteration)).size === calls.length, "repeated task/iteration");
           const count = "cycles" in result ? result.cycles.length : 1;
@@ -271,7 +318,8 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
           check("R4", admittedCycles === expectedCycles, "cycle count differs from adapter history");
           cycles += expectedCycles;
           const usage = result.budget!.usage;
-          check("R4", usage.runtime_ms >= 0 && usage.runtime_ms <= budget.max_runtime_ms && usage.runtime_ms >= previousRuntime && usage.runtime_ms === now - started,
+          if (now < budgetStart) coverage.add("net-rewind-" + cmd.op);
+          check("R4", usage.runtime_ms <= budget.max_runtime_ms && usage.runtime_ms >= previousRuntime,
             "runtime decreased to " + usage.runtime_ms);
           check("R4", usage.cycles === count && count >= previousBudgetCycles && count <= budget.max_cycles, "cycle accounting regressed or exceeded cap");
           check("R4", usage.tokens === usageReports * 2 && usage.tokens <= budget.max_tokens
@@ -296,6 +344,7 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
           if (boundaryViolation) throw boundaryViolation;
         }
       }
+      check("R7", previousRuntime === expectedRuntime, "returned runtime differs from ledger");
       const state = await readLoopState(path);
       const rows = state?.completed_tasks ?? [];
       const metrics = state?.key_metrics;
@@ -383,7 +432,7 @@ export async function simulate(seed: number, commands: Command[], mutant?: Rule)
         fresh.map(c => [c.task, c.iteration, c.terminals.length, c.pass]), [...settled], cycles, usageReports]);
       step++;
     }
-    return { digest: trace.digest(), passes, coverage };
+    return { digest: trace.digest(), passes, coverage, runtime: previousRuntime };
   } finally {
     vi.restoreAllMocks();
     vi.useRealTimers();
