@@ -91,7 +91,7 @@ it("replays persistent random loop histories", async () => {
   if (!list && selected === defaults && steps === defaultSteps) {
     for (const op of command.shape.op.options) expect(coverage).toContain("cmd-" + op);
     for (const observed of ["lost_response", "duplicate_submission", "restart_mid_step", "late_result",
-      "clock_backwards", "duplicate_answer", "delivered-duplicate_answer", "delivered-late_result",
+      "clock_backwards", "net-rewind-pass", "net-rewind-cycles", "forward-after-rewind", "duplicate_answer", "delivered-duplicate_answer", "delivered-late_result",
       "repair-ok-1", "repair-ok-2", "repair-missing-2", "repair-mutation-1", "repair-unknown-1"]) {
       expect(coverage, observed).toContain(observed);
     }
@@ -106,6 +106,7 @@ it.each([
   ["R1", [submit, pass]], ["R2", [submit, { op: "restart_mid_step", key: 0 }, pass]],
   ["R3", [submit, pass, pass]], ["R4", [submit, pass]],
   ["R5", [submit, { op: "pass", key: 17 }]], ["R6", [submit, { ...pass, key: 1 }]],
+  ["R7", [{ op: "cycles", key: 0, cycleTicks: [-5, 3] }]],
 ] satisfies [Rule, Command[]][])("kills the %s mutant", async (rule, list) => {
   await expect(checked(0, list, rule)).rejects.toThrow(new RegExp("seed=0 " + rule + " step="));
 });
@@ -121,11 +122,10 @@ function expectedR4Failures(cases: [string, Command[], string][]) {
   });
 }
 
-// Defect candidate: loop-engine.ts:322,393 subtract wall-clock times, so a rewind can yield negative usage.
-describe("defect candidate (R4)", () => {
-  expectedR4Failures([
-    ["clock rewind produces negative runtime", [submit, { ...pass, tick: -1 }], "runtime decreased to -1"],
-  ]);
+describe("runtime is monotonic under clock rewind", () => {
+  it("reports zero elapsed for the seed-0 rewind", async () => {
+    expect((await checked(0, [submit, { ...pass, tick: -1 }])).runtime).toBe(0);
+  });
 });
 
 // Open design question: loop-engine.ts:298-325,391-396 counts cycles and measures runtime per run.

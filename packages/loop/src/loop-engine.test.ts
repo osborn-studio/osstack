@@ -8,6 +8,7 @@ import { CapabilitySchema, type Capability, type CostTier } from "@osstack/core"
 import { DeepSeekVerifyAdapter, type AgentAdapter, type AgentAvailability, type AgentTask } from "@osstack/agents";
 import type { HermesEvent } from "@osstack/hermes-adapter";
 import { describe, expect, it, vi } from "vitest";
+import * as verifier from "./verifier.js";
 import { LoopEngine } from "./loop-engine.js";
 import { GitDiffScanner } from "./discover.js";
 import { PublishConfig, type RunPublishDeps } from "./publisher.js";
@@ -23,6 +24,59 @@ async function makeQueuedWorkspace(): Promise<string> {
   }));
   return workspace;
 }
+
+describe("LoopEngine budget clock", () => {
+  it.each([
+    { name: "rewind", steps: [-4], remaining: [8], elapsed: 0, duration: 0 },
+    { name: "forward, rewind, forward", steps: [5, -10, 3], remaining: [3, 3, undefined], elapsed: 8, duration: 0 },
+    { name: "forward only", steps: [2, 3], remaining: [6, 3], elapsed: 5, duration: 5 },
+  ])("samples $name during report repair", async ({ steps, remaining, elapsed, duration }) => {
+    let now = 100;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const readings: (number | undefined)[] = [];
+    const verify = verifier.verifyRun;
+    const probe = vi.spyOn(verifier, "verifyRun").mockImplementationOnce(async (run, options) => {
+      for (const step of steps) {
+        now += step;
+        readings.push(options.reportRepair!.remainingMs());
+      }
+      return verify(run, options);
+    });
+    try {
+      const engine = new LoopEngine({ workspacePath: await makeQueuedWorkspace(),
+        sources: ["task_queue"], budget: { max_runtime_ms: 8 } });
+      const result = await engine.runOnce();
+      expect.soft(result.budget?.usage.runtime_ms).toBe(elapsed);
+      expect.soft(readings).toEqual(remaining);
+      expect.soft(result.completedTasks[0]?.duration_ms).toBe(duration);
+      expect.soft(result.events.find(e => e.type === "loop.cycle.completed")?.payload?.["duration_ms"]).toBe(duration);
+      expect((await engine.runOnce()).budget?.usage.runtime_ms).toBe(0);
+    } finally {
+      probe.mockRestore();
+      clock.mockRestore();
+    }
+  });
+
+  it("stops at the runtime cap after a rewind across cycles", async () => {
+    let now = 100;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const steps = [5, -10, 3];
+    const scanner = vi.spyOn(GitDiffScanner.prototype, "scan").mockImplementation(async () => {
+      now += steps.shift() ?? 0;
+      return [];
+    });
+    try {
+      const engine = new LoopEngine({ workspacePath: await makeQueuedWorkspace(),
+        sources: ["git_diff"], budget: { max_runtime_ms: 8 } });
+      const result = await engine.runCycles({ cycles: 4 });
+      expect(result.cycles).toHaveLength(3);
+      expect(result.budget).toMatchObject({ exceeded: true, limit: "max_runtime_ms", usage: { runtime_ms: 8 } });
+    } finally {
+      scanner.mockRestore();
+      clock.mockRestore();
+    }
+  });
+});
 
 describe("LoopEngine", () => {
   it.each(["success", "exhausted", "unsupported", "budget", "runtime", "budget_after_one", "no_changes", "failed_check", "no_session", "committed"])("repairs builder report only: %s", async (mode) => {

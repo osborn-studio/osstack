@@ -248,7 +248,8 @@ export interface LoopRunCyclesResult {
 export class LoopEngine {
   private seq = 0;
   private reportInvalid = false;
-  private budgetStartedAt = Date.now();
+  private lastBudgetReading = 0;
+  private budgetElapsedMs = 0;
   private implementationUnconfirmed = false;
   private containmentPending = false;
   private candidateContaminated = false;
@@ -269,6 +270,18 @@ export class LoopEngine {
     if (options.useWorktree === true && options.goalCommand !== undefined && this.localLanding === undefined)
       throw new Error("WORKTREE_GOAL_REQUIRES_LOCAL_LANDING");
     if (this.candidatePolicy && (options.goalCommand !== undefined || options.selfImprovement !== undefined || options.stateFilePath !== undefined || options.markdownPath !== undefined)) throw Error("CANDIDATE_POST_HOOK_FORBIDDEN");
+  }
+
+  private resetBudgetClock(): void {
+    this.lastBudgetReading = Date.now();
+    this.budgetElapsedMs = 0;
+  }
+
+  private readBudgetElapsedMs(): number {
+    const now = Date.now();
+    this.budgetElapsedMs += Math.max(0, now - this.lastBudgetReading);
+    this.lastBudgetReading = now;
+    return this.budgetElapsedMs;
   }
 
   async runCycles(options: LoopRunCyclesOptions = {}): Promise<LoopRunCyclesResult> {
@@ -294,8 +307,7 @@ export class LoopEngine {
     }
 
     const results: LoopRunResult[] = [];
-    const runStartedAt = Date.now();
-    this.budgetStartedAt = runStartedAt;
+    this.resetBudgetClock();
     let noProgressCycles = 0;
     let budgetStatus: LoopBudgetStatus | undefined;
     let policyReason: string | undefined;
@@ -319,7 +331,7 @@ export class LoopEngine {
       noProgressCycles = nextNoProgressCycles(noProgressCycles, result);
       budgetStatus = this.checkLoopBudget(result.loop_id, {
         cycles: results.length,
-        runtime_ms: Date.now() - runStartedAt,
+        runtime_ms: this.readBudgetElapsedMs(),
         tokens: result.state.key_metrics?.tokens_consumed ?? 0,
         estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
         no_progress_cycles: noProgressCycles,
@@ -385,12 +397,11 @@ export class LoopEngine {
     if (entryGate.allow === false) {
       return this.policyDeniedRunResult(entryGate.reason, eventStartIndex);
     }
-    const runStartedAt = Date.now();
-    this.budgetStartedAt = runStartedAt;
+    this.resetBudgetClock();
     const result = await this.runCycle(1, { emitStarted: true, emitStopped: false });
     const budgetStatus = this.checkLoopBudget(result.loop_id, {
       cycles: 1,
-      runtime_ms: Date.now() - runStartedAt,
+      runtime_ms: this.readBudgetElapsedMs(),
       tokens: result.state.key_metrics?.tokens_consumed ?? 0,
       estimated_cost_usd: result.state.key_metrics?.cost_consumed ?? 0,
       no_progress_cycles: nextNoProgressCycles(0, result),
@@ -663,7 +674,7 @@ export class LoopEngine {
             const verdict = await this.awaitStopSensitive(() => verifyRun(run, {
               reportRepair: {
                 remainingMs: () => {
-                  const remaining = (this.options.budget?.max_runtime_ms ?? Infinity) - (Date.now() - this.budgetStartedAt);
+                  const remaining = (this.options.budget?.max_runtime_ms ?? Infinity) - this.readBudgetElapsedMs();
                   const tokens = completed.reduce((sum, item) => sum + (item.tokens_in ?? 0) + (item.tokens_out ?? 0), 0);
                   const cost = completed.reduce((sum, item) => sum + (item.cost_usd ?? 0), 0);
                   if (remaining <= 0 || (this.options.budget?.max_tokens !== undefined && tokens >= this.options.budget.max_tokens)
@@ -775,7 +786,7 @@ export class LoopEngine {
       task_count: executedTaskCount,
       discovered_task_count: discoveredTasks.length,
       skipped_task_count: skippedTaskCount,
-      duration_ms: Date.now() - startedAt,
+      duration_ms: Math.max(0, Date.now() - startedAt),
     });
     if (lifecycle.emitStopped) {
       this.emit(loopId, "loop.stopped", this.stopPayload(nextState, executedTaskCount, goal));
@@ -960,7 +971,7 @@ export class LoopEngine {
         const budget = this.options.budget;
         const tokens = historyTasks.reduce((sum, task) => sum + (task.tokens_in ?? 0) + (task.tokens_out ?? 0), 0) + taskUsage.tokensIn + taskUsage.tokensOut;
         const cost = historyTasks.reduce((sum, task) => sum + (task.cost_usd ?? 0), 0) + taskUsage.cost;
-        const remaining = (budget?.max_runtime_ms ?? Infinity) - (Date.now() - this.budgetStartedAt);
+        const remaining = (budget?.max_runtime_ms ?? Infinity) - this.readBudgetElapsedMs();
         if (remaining <= 0 || (budget?.max_tokens !== undefined && tokens >= budget.max_tokens)
           || (budget?.max_estimated_cost_usd !== undefined && cost >= budget.max_estimated_cost_usd)) return undefined;
         return Math.min(this.options.commandTimeoutMs ?? 120_000, remaining);
@@ -1464,7 +1475,7 @@ export class LoopEngine {
         ...(finalRun?.outcome === "report_invalid" ? { report_invalid: "builder" } : {}),
         ...(this.implementationUnconfirmed ? { implementation_unconfirmed: true } : {}),
         agent_id: finalRun?.agent_id ?? "local-noop",
-        duration_ms: Date.now() - started,
+        duration_ms: Math.max(0, Date.now() - started),
         ...(finalRun !== null ? {
           run_id: finalRun.run_id,
           started_at: finalRun.started_at,
