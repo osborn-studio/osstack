@@ -29,7 +29,9 @@ jobs:
     # The integrated full suite takes ~14 minutes before the existing package
     # install / release smokes. Keep their verification, and budget the whole
     # job separately from unchanged per-test and startup latency limits.
-    timeout-minutes: 35
+    # Successful runs took 30-33 minutes in November 2026 and two were
+    # cancelled at the former 35-minute limit, so leave real headroom.
+    timeout-minutes: 50
     steps:
       - name: Require macOS Graph fixture success
         env:
