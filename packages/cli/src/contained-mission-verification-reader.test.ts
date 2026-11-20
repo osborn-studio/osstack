@@ -56,7 +56,7 @@ function harness(rows = [run()], edit?: ResponseEdit) {
     body = structuredClone(body);
     return { ok: true, body: edit ? edit(path, body, calls.length, occurrence) : body };
   });
-  const installationFor = vi.fn(async () => ({ installation_id: 301 }));
+  const installationFor = vi.fn<NonNullable<VerificationReadDeps['installationFor']>>(async () => ({ status: 'installed', installation_id: 301 }));
   const deps: VerificationReadDeps = { rest, installationFor, now: () => new Date(now) };
   return { deps, calls, installationFor, read: (limits?: Partial<VerificationReadLimits>) => readVerificationResults(deps, policy(), target, { signal: new AbortController().signal, ...(limits ? { limits } : {}) }) };
 }
@@ -142,11 +142,26 @@ it.each(['before', 'during'] as const)('honors abort %s including an uncooperati
   const result = readVerificationResults({ ...h.deps, rest: async () => { controller.abort(); return new Promise(() => {}); } }, policy(), target, { signal: controller.signal });
   expect(await result).toEqual(incomplete);
 });
-it.each(['absent', 'null', 'throws', 'wrong', 'unsafe'] as const)('requires independent installation proof: %s', async kind => {
+it.each(['absent', 'not_installed', 'wrong'] as const)('requires independent installation proof: %s', async kind => {
   const h = harness(); const { installationFor: _ignored, ...deps } = h.deps;
-  const proof = kind === 'absent' ? {} : { installationFor: async () => { if (kind === 'throws') throw new Error('fixture'); return kind === 'null' ? null : { installation_id: kind === 'wrong' ? 999 : 0 }; } };
-  const r = await readVerificationResults({ ...deps, ...proof }, policy(), target, { signal: new AbortController().signal });
-  expect(r.status).toBe('read'); if (r.status === 'read') expect(r.observations[0]).toMatchObject({ verdict: { ok: false, code: 'verify_producer_untrusted' }, result: null });
+  const proof = kind === 'wrong' ? { status: 'installed', installation_id: 999 } as const : { status: 'not_installed' } as const;
+  const r = await readVerificationResults(kind === 'absent' ? deps : { ...deps, installationFor: async () => proof }, policy(), target, { signal: new AbortController().signal });
+  expect(r).toMatchObject({ status: 'read', observations: [{ verdict: { ok: false, code: 'verify_producer_untrusted' }, result: null }] });
+});
+it.each([null, { installation_id: 301 }, { status: 'installed', installation_id: 0 },
+  { status: 'installed', installation_id: 301, extra: 1 }, { status: 'unavailable' }])('discards incomplete proof %j', async value => {
+  const h = harness(); h.installationFor.mockResolvedValueOnce(value as never);
+  expect(await h.read()).toEqual(incomplete);
+});
+it('discards a rejected proof', async () => {
+  const h = harness(); h.installationFor.mockRejectedValueOnce(new Error('fixture'));
+  expect(await h.read()).toEqual(incomplete);
+});
+it('accepts the same check run after proof recovers', async () => {
+  const h = harness(); h.installationFor.mockResolvedValueOnce({ status: 'unavailable' });
+  expect(await h.read()).toEqual(incomplete);
+  const r = await h.read(); if (r.status !== 'read') throw new Error('read expected');
+  expect(decideVerificationSources([], r.observations)[0]?.outcome.decision).toBe('accepted');
 });
 it('rejects unregistered Apps before payload parsing and caches proof once per App', async () => {
   const h = harness([run(3, { app: { id: 999 } }), run(2), run(1)]); const r = await h.read();
