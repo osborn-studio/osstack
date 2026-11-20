@@ -11,6 +11,7 @@ import { GITHUB_CI_SANDBOX, parseContainedMissionSpec } from './contained-missio
 import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
 import { LocalFailureGrantTerms } from './contained-mission-grant-terms.js';
+import { assertLocalFailureRouteStartable, parseLocalFailureRouteSwitch } from './contained-mission-local-failure-switch.js';
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: request text must not carry control characters into the ledger.
 const Text = (max: number) => z.string().min(1).max(max).refine(v => !/[\u0000-\u001f\u007f]/.test(v), 'control');
@@ -68,6 +69,8 @@ export interface ContainedMissionServiceOptions {
   shadow?: import('./contained-mission-bridge-shadow.js').ShadowHandle;
   /** Read-only receipt recovery. Runs in every mode, after host recovery and before any timer. */
   revisionRecovery?: (signal: AbortSignal) => Promise<void>;
+  /** OSSTACK_LOCAL_FAILURE_REPAIR=1: recover after receipts and before any timer. Never on the tick path. */
+  localFailure?: import('./contained-mission-local-failure-service.js').LocalFailureRouteHandle;
   /** Independent live observation timer; no scan runs on the Mission tick path. */
   live?: Pick<import('./contained-mission-bridge-live.js').LiveReconciler, 'start' | 'stop'>;
   /** D7 stopped live-chain scan; starts after recovery and stops before the host closes. */
@@ -145,12 +148,15 @@ export class ContainedMissionService {
       if (this.closed) return;
       await this.options.revisionRecovery?.(this.recoveryAbort.signal);
       if (this.closed) return;
+      await this.options.localFailure?.recover(this.recoveryAbort.signal);
+      if (this.closed) return;
       this.options.shadow?.start();
       this.options.live?.start();
       this.options.stoppedScan?.start();
       this.options.checkRetry?.start();
       this.options.githubCi?.start();
       this.options.merger?.start();
+      this.options.localFailure?.start();
       this.timer = setInterval(() => { void this.tick(); }, this.options.tickMs ?? 1000);
       this.timer.unref();
     });
@@ -174,7 +180,7 @@ export class ContainedMissionService {
       if (this.timer) clearInterval(this.timer);
       await this.starting?.catch(() => undefined);
       // Stop all readers before closing the host ledger, even when one stop rejects.
-      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.checkRetry, this.options.githubCi, this.options.merger]
+      const stopped = await Promise.allSettled([this.options.shadow, this.options.live, this.options.stoppedScan, this.options.checkRetry, this.options.githubCi, this.options.merger, this.options.localFailure]
         .map(service => Promise.resolve().then(() => service?.stop())));
       await this.ticking; await Promise.allSettled([...this.background]); await this.options.host.close();
       const failure = stopped.find(result => result.status === 'rejected');
@@ -381,6 +387,10 @@ export async function createContainedMissionService(deps: {
   // Fail before anything is built: live is not implemented in phase 4, and an unknown value never degrades to off.
   const bridgeMode = parseBridgeMode(env['OSSTACK_BRIDGE']);
   const mergerMode = parseMergerMode(env['OSSTACK_MERGER']);
+  const localFailureOn = parseLocalFailureRouteSwitch(env['OSSTACK_LOCAL_FAILURE_REPAIR']);
+  if (localFailureOn && bridgeMode !== 'live') {
+    assertLocalFailureRouteStartable({ enabled: localFailureOn, bridgeMode, automaticMerge: false });
+  }
   let registry: import('./contained-mission-bridge-registry.js').ProducerRegistryConfig | undefined;
   if (bridgeMode === 'shadow') {
     // Present but invalid -> BRIDGE_CONFIG_INVALID:producers.json:* stops the service; missing -> shadow stays off.
@@ -414,6 +424,10 @@ export async function createContainedMissionService(deps: {
   const bridgeKilled = env['OSSTACK_BRIDGE'] === '0';
   const githubCiSandboxScope = env['OSSTACK_CONTAINED_SANDBOX_CI_SCOPE'];
   const pilotMode = env['OSSTACK_CONTAINED_CI_PILOT'];
+  if (localFailureOn) {
+    assertLocalFailureRouteStartable({ enabled: localFailureOn, bridgeMode,
+      automaticMerge: env['OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY'] !== undefined || pilotMode === 'live' });
+  }
   if (pilotMode !== undefined && pilotMode !== 'shadow' && pilotMode !== 'live') throw Error('CI_PILOT_MODE_INVALID');
   if (pilotMode && (githubCiSandboxScope !== undefined || env['OSSTACK_CONTAINED_SANDBOX_CI_AUTO_GRANT'] !== undefined
     || env['OSSTACK_CONTAINED_SANDBOX_CI_MERGE_KEY'] !== undefined)) throw Error('CI_PILOT_MIXED_SCOPE');
@@ -592,7 +606,13 @@ export async function createContainedMissionService(deps: {
       } catch { /* Missing, expired, revoked or mismatched authority leaves the owner decision pending. */ }
     }
   };
+  let localFailure: ContainedMissionServiceOptions['localFailure'];
+  if (localFailureOn) {
+    const { createLocalFailureRouteService } = await import('./contained-mission-local-failure-service.js');
+    localFailure = createLocalFailureRouteService({ log });
+  }
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,
+    ...(localFailure ? { localFailure } : {}),
     ...(autoApproveCiRepair ? { autoApproveCiRepair } : {}), ...(githubCi ? { githubCi } : {}),
     revisionRecovery: live?.revisionRecovery ?? revisionRecovery, ...(shadow ? { shadow } : {}),
     ...(live ? { live: live.live, stoppedScan: live.stoppedScan, grants: live.grants,
