@@ -1,5 +1,5 @@
 // Testable phase 5-E assembly. This does not open the production live-mode gate.
-import { parseStoredGrant, type ContainedMissionStore, type RevisionChainStore } from '@osstack/core';
+import { parseStoredRevisionGrant, type ContainedMissionStore, type RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import type { ContainedMissionHost } from './contained-mission-host.js';
 import type { ContainedMissionHostPorts } from './contained-mission-ports.js';
@@ -67,7 +67,7 @@ export async function assembleLiveBridge(deps: {
     cancelChild: async id => {
       const chain = deps.chains.chainForMission(id, 'live');
       if (!chain) throw Error('revision_chain_missing');
-      const signed = parseStoredGrant(chain.grant_json);
+      const signed = parseStoredRevisionGrant(chain.grant_json);
       await cancel(id, signed.principal_id, signed.client_session_id);
     },
   });
@@ -78,7 +78,7 @@ export async function assembleLiveBridge(deps: {
     compare: deps.ledgerCompare ?? deps.publication.compare };
   const cancelChain = async (chain: import('@osstack/core').RevisionChain) => {
     if (!chain.current_mission_id) return;
-    const signed = parseStoredGrant(chain.grant_json);
+    const signed = parseStoredRevisionGrant(chain.grant_json);
     await cancel(chain.current_mission_id, signed.principal_id, signed.client_session_id);
   };
   const revisionRecovery = async (signal: AbortSignal) => {
@@ -101,7 +101,7 @@ export async function assembleLiveBridge(deps: {
     verifyLedger: (chain, signal) => ledger.verifyBridgeLedger(ledgerDeps, chain, signal),
     cancelChild: async chain => {
       if (!chain.current_mission_id) return;
-      const signed = parseStoredGrant(chain.grant_json);
+      const signed = parseStoredRevisionGrant(chain.grant_json);
       await cancel(chain.current_mission_id, signed.principal_id, signed.client_session_id);
     },
   });

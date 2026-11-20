@@ -1,3 +1,4 @@
+import { setup as revisionSetup, dispatched } from './contained-mission-revision.testkit.js';
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { chmodSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -321,3 +322,76 @@ describe("production receipt recovery remains active with publication off", () =
     });
   }
 });
+
+it.each(['live', 'recovery', 'publication', 'stopped-write', 'stopped-stop', 'stopped-revoked'] as const)(
+  'cancels the current child of a signed V2 chain through %s', async route => {
+    const wiring = setup();
+    liveConfiguration(wiring);
+    const { grantPreviewOf, signLocalFailureRevisionGrant } = await import('@osstack/core');
+    const { assembleLiveBridge } = await import('./contained-mission-bridge-assembly.js');
+    const f = revisionSetup();
+    // V1 can launch the child. Persist a separately signed V2 grant to exercise cancellation of existing work.
+    const { child_mission_id: id } = await dispatched(f);
+    const signed = signLocalFailureRevisionGrant({ ...grantPreviewOf(f.grant), version: 2,
+      principal_id: 'grant-owner', client_session_id: 'grant-session',
+      local_failure: { enabled: true, max_diagnostics_per_head: 1, diagnostic_timeout_seconds: 60,
+        profile_id: 'unit-test', profile_digest: 'f'.repeat(64),
+        trusted_source: { repository: 'o/trusted', commit: 'b'.repeat(40), artifact_digest: 'c'.repeat(64) } },
+    }, f.privateKey);
+    f.rig.db.prepare('UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?')
+      .run(JSON.stringify(signed), f.chain.chain_id);
+    const mission = f.rig.missions.get(id);
+    const actor = { ...f.principal, principal_id: signed.principal_id, client_session_id: signed.client_session_id,
+      write_scopes: route === 'stopped-stop' ? [] : [signed.scope_id], stop_scopes: route === 'stopped-stop' ? [signed.scope_id] : [] };
+    const refresh = vi.spyOn(wiring.deps.access, 'refresh').mockImplementation(() => {
+      if (route === 'stopped-revoked') throw Error('permission_denied');
+      return actor;
+    });
+    const cancel = vi.fn(async () => mission);
+    const cancelFromBridge = vi.fn(async () => mission);
+    const service = await wiring.create();
+    const ports = wiring.portsOf(service) as unknown as import('./contained-mission-ports.js').ContainedMissionHostPorts;
+    const head = '2'.repeat(40);
+    const unexpected = async () => { throw Error('unexpected_io'); };
+    const assembly = await assembleLiveBridge({ home: wiring.home, chains: f.rig.chains, missions: f.rig.missions,
+      ports, host: { isBusy: () => true, cancel, cancelFromBridge }, access: wiring.deps.access,
+      enabled: () => true, now: f.deps.now, log: () => {}, launchCaps: f.deps.launchCaps,
+      protectedSetDigest: f.deps.protectedSetDigest, readPr: f.deps.readPr, headIsDescendant: unexpected,
+      stoppedRead: async () => ({ complete: true, pr_state: 'CLOSED', head: f.pr.head, head_repository: 'o/r',
+        head_ref: 'topic', base_ref: 'main', base_sha: f.pr.base_sha }),
+      publication: { checkEnabled: false, runner: { run: unexpected }, preflight: async () => {}, remoteHead: async () => head, compare: unexpected,
+        localGit: async () => ({ exitCode: 0, stdout: head, stderr: '' }), readPr: async () => ({
+          state: 'CLOSED', repository: 'o/r', headRefName: 'topic', headRefOid: head,
+          baseRefName: 'main', baseRefOid: f.pr.base_sha, url: 'https://example.invalid/pr/7' }) } });
+    try {
+      if (route === 'live') {
+        f.pr.base_sha = 'b'.repeat(40);
+        await assembly.live.scan();
+      } else if (route === 'recovery') {
+        await assembly.revisionRecovery(new AbortController().signal);
+      } else if (route === 'publication') {
+        // The publication callback looks up a child ID through a root-only store method.
+        const lookup = vi.spyOn(f.rig.chains, 'chainForMission').mockReturnValueOnce(f.rig.chains.get(f.chain.chain_id));
+        await expect(assembly.publication.publishRevision({ mission, spec: f.childSpec(id),
+          permit: { mission_id: id, revision: mission.revision, head, tree: head, spec_digest: mission.spec_digest },
+          signal: new AbortController().signal, beforeRemoteMutation: unexpected })).rejects.toThrow('CONTAINED_REVISION_REFUSED:pr_closed');
+        expect(lookup).toHaveBeenCalledWith(id, 'live');
+      } else {
+        const chain = f.rig.chains.get(f.chain.chain_id);
+        f.rig.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', f.clock.now);
+        await assembly.stoppedScan.scan();
+      }
+      expect(refresh).toHaveBeenCalledWith(signed.principal_id, signed.client_session_id);
+      if (route === 'stopped-revoked') {
+        expect(cancelFromBridge).toHaveBeenCalledWith(id);
+        expect(cancel).not.toHaveBeenCalled();
+      } else {
+        expect(cancel).toHaveBeenCalledWith(actor, id);
+        expect(cancelFromBridge).not.toHaveBeenCalled();
+      }
+    } finally {
+      await assembly.live.stop();
+      await assembly.stoppedScan.stop();
+      await service.close();
+    }
+  });

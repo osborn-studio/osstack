@@ -1,5 +1,5 @@
 // Phase 5-E live observation service. Production wiring is a separate gate; this module does not enable live mode.
-import { decideChainStep, parseStoredGrant, SAME_CHILD_RESUMABLE, type RevisionChain } from '@osstack/core';
+import { decideChainStep, parseStoredRevisionGrant, SAME_CHILD_RESUMABLE, type RevisionChain } from '@osstack/core';
 import { normalizeSnapshot, type PullRequestRead, type PullRequestRef } from './contained-mission-bridge-reader.js';
 import { BridgeReadLimiter } from './contained-mission-bridge-read-limiter.js';
 import { dispatchRevision, type DispatchRevisionDeps } from './contained-mission-revision.js';
@@ -193,7 +193,7 @@ export class LiveReconciler {
       const reason = read.pr.headRefName !== chain.branch || read.pr.headRepository?.toLowerCase() !== chain.repository.toLowerCase()
         ? 'publish_refused:pr_head_ref_changed'
         : snapshot.base_ref !== chain.base_ref || snapshot.base_sha !== chain.published_base ? 'base_changed'
-          : parseStoredGrant(chain.grant_json).protected_set_digest !== deps.protectedSetDigest() ? 'protected_set_changed' : undefined;
+          : parseStoredRevisionGrant(chain.grant_json).protected_set_digest !== deps.protectedSetDigest() ? 'protected_set_changed' : undefined;
       if (reason) {
         chain = chains.stopLive(chain.chain_id, chain.revision, reason, deps.now());
         if (chain.current_mission_id) await this.cancel(chain, reason);
@@ -218,7 +218,7 @@ export class LiveReconciler {
     if (!this.active() || chains.get(chain.chain_id).revision !== chain.revision) return;
     const view = {
       mode: chain.mode, state: chain.state, published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref,
-      rounds_used: chain.rounds_used, grant_rounds: parseStoredGrant(chain.grant_json).rounds, review_deadline: chain.review_deadline,
+      rounds_used: chain.rounds_used, grant_rounds: parseStoredRevisionGrant(chain.grant_json).rounds, review_deadline: chain.review_deadline,
       reserved_heads: chains.reservations(chain.chain_id).map(r => r.head_sha),
     };
     const decision = decideChainStep(view, snapshot, registry, deps.now(), {
