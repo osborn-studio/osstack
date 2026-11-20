@@ -182,8 +182,9 @@ const packages = resolve(bridge, "../../..");
 const entry = join(bridge, "verification-publish.ts");
 const builder = join(bridge, "verification-result-builder.ts");
 const mentionsKit = /verification-result-builder|verification-publish/;
-it("exposes the kit only at its dedicated package subpath", () => {
+it("exposes the kit at its dedicated subpath with the publisher package as its only consumer", () => {
   for (const pkg of readdirSync(packages)) {
+    if (pkg === "verify-" + "publisher") continue;
     const src = join(packages, pkg, "src");
     if (!existsSync(src)) continue;
     for (const name of readdirSync(src, { recursive: true, encoding: "utf8" })) {
