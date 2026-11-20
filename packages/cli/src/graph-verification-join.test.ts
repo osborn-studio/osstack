@@ -222,7 +222,7 @@ function workerRuntime(f: Awaited<ReturnType<typeof fixture>>) {
   const checkpoints = new GraphCheckpointService({ runs: f.runs, checkpoints: new GraphCheckpointStore(f.db), bindings: new Map() });
   const runtime = new GraphRuntime({ db: f.db, broker: f.broker, checkpoints,
     programs: [{ id: 'verification-phase', modulePath: f.modulePath, digest: f.version.compiledProgramDigest }],
-    workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30 }, drainTimeoutMs: 2000 });
+    workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30, exitConfirmTimeoutMs: 5000 }, drainTimeoutMs: 2000 });
   cleanup.push(() => runtime.close());
   const start = (resume = false) => runtime.start({ request: f.request, run: f.current(), programId: 'verification-phase', registration: f.registration(), authorize: f.authorize, ...(resume ? { resume: { kind: 'continue' as const } } : {}) });
   return { runtime, checkpoints, start };

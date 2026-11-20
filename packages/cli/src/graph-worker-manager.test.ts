@@ -187,6 +187,42 @@ it('observes an exit already delivered by the OS when a host stall outlasts the 
     expect(await h.finalExit).toEqual(evidence);
   } finally { kill.mockRestore(); }
 });
+it.each([
+  { name: 'confirms a slow OS exit within exitConfirmTimeoutMs without lengthening SIGTERM escalation', options: { exitConfirmTimeoutMs: 5000 }, confirmed: true },
+  { name: 'uses terminationTimeoutMs to confirm a slow OS exit by default', options: {}, confirmed: false },
+])('$name', async ({ options, confirmed }) => {
+  const f = fixture(undefined, { programs: [], shutdownTimeoutMs: 10, terminationTimeoutMs: 10, ...options,
+    workerEntry: rawWorker("process.on('SIGTERM',()=>{});setInterval(()=>{},1000);send({kind:'ready',binding:init.binding});") });
+  const h = f.launch(); await h.ready;
+  const original = ChildProcess.prototype.kill;
+  const kill = vi.spyOn(ChildProcess.prototype, 'kill').mockImplementation(function (this: ChildProcess, signal) {
+    if (signal !== 'SIGKILL') return original.call(this, signal);
+    setTimeout(() => original.call(this, 'SIGKILL'), 80);
+    return true;
+  });
+  try {
+    const bounded = await h.stop();
+    const actual = await h.finalExit;
+    expect(actual).toMatchObject({ kind: 'exited', signal: 'SIGKILL' });
+    if (confirmed) expect(bounded).toEqual(actual);
+    else expect(bounded.kind).toBe('exit_unconfirmed');
+  } finally { kill.mockRestore(); }
+});
+it.each([0, 1.5])('rejects invalid exitConfirmTimeoutMs %s when starting', exitConfirmTimeoutMs => {
+  const f = fixture(undefined, { programs: [], exitConfirmTimeoutMs });
+  expect(() => f.launch()).toThrow('WORKER_OPTION_INVALID');
+});
+it('reports the authority error, not STALE_GENERATION, when a request path notices expiry first', async () => {
+  const f = fixture(undefined, { programs: [],
+    workerEntry: rawWorker("send({kind:'ready',binding:init.binding});send(request(1));") });
+  let expiry = Date.now() + 5000;
+  const h = f.launch({ ...f.start, authorize: () => ({ leaseExpiresAt: expiry }), checkpoint: async () => {
+    expiry = Date.now() - 1;
+    return { kind: 'get', tuple: null };
+  } });
+  await expect(h.result).rejects.toThrow(/LEASE_EXPIRED/);
+  await h.exit;
+});
 it('preserves actual late OS exit evidence after the bounded stop result was unconfirmed', async () => {
   const f = fixture(undefined, { programs: [], shutdownTimeoutMs: 10, terminationTimeoutMs: 10,
     workerEntry: rawWorker("process.on('SIGTERM',()=>{});setInterval(()=>{},1000);send({kind:'ready',binding:init.binding});") });
