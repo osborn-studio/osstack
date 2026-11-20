@@ -159,7 +159,7 @@ export { LocalFailureRepositorySchema } from "./bridge/local-failure-repository.
 export { CiCheckNameSchema } from "./bridge/ci-check-name.js";
 export { VerificationProfileIdSchema } from "./bridge/verification-profile-id.js";
 export { LocalFailureIntakeIdSchema, parseCiFailureHint, parseLocalFailureBinding, localFailureBindingFromLedger, localFailureEligibility, localVerificationReceiptDigest, type CiFailureHint, type LocalFailureBinding, type LocalFailureLedgerBinding, type LocalFailureProfileCheck, type LocalVerificationReceipt } from "./bridge/local-failure.js";
-export { signLocalFailureRevisionGrant, type LocalFailureRevisionGrant, type LocalFailureGrantPreview } from "./bridge/revision-local-failure-grant.js";
+export { LocalFailureOptInSchema, localFailurePreviewDigest, parseLocalFailureGrantPreview, parseLocalFailureRevisionGrant, verifyLocalFailureRevisionGrantSignature, signLocalFailureRevisionGrant, type LocalFailureRevisionGrant, type LocalFailureGrantPreview } from "./bridge/revision-local-failure-grant.js";
 export { parseStoredRevisionGrant, verifyStoredRevisionGrantSignature, type StoredRevisionGrant } from "./bridge/stored-revision-grant.js";
 export { MergerShadowStore, MergerShadowError, mergerShadowWriter, EMPTY_CODES_DIGEST, type MergerShadowWriter, type MergerCycleEntry, type MergerWatermark, type MergerDecisionRow, type MergerOutcomeRow, type MergerPrRef, type MergerDecisionInput, type MergerDecisionResult, type MergerOutcomeInput, type MergerVerdictKind, type MergerOutcomeKind } from "./state/engineering-merger-store.js";
 export { ENGINEERING_MERGER_DDL } from "./state/engineering-merger-ddl.js";

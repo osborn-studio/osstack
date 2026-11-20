@@ -1,93 +1,12 @@
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { RevisionGrantError, signRevisionGrant, type EngineeringPrincipal, type RevisionGrant } from '@osstack/core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readPullRequest } from './contained-mission-bridge-reader.js';
-import { createRig, oid, scriptedTransport, type ScriptedPr } from './contained-mission-bridge-shadow.testkit.js';
-import {
-  RevisionGrantService, assertGrantLive, createGrantMissionView, enforceGrantLive, generateRevisionIssuerKey, issuerConfigPath, issuerKeyPath, loadRevisionIssuer,
-  readIssuerPrivateKey, type GrantLiveContext,
-} from './contained-mission-grant.js';
-import { EngineeringAccess } from './engineering-access.js';
-import { handleContainedMissionCommand } from './contained-mission-command.js';
-import type { ContainedMissionHost } from './contained-mission-host.js';
-import { ContainedMissionService, createContainedMissionService } from './contained-mission-rpc.js';
-
-const cleanup: Array<() => void> = [];
-afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
-const T0 = 1_800_000_000_000;
-const H = 3_600_000;
-const PUBLISHER = { actor_id: 501, app_id: 11 };
-const cred = (who: string) => who.repeat(48).slice(0, 48);
-const sha = (c: string) => createHash('sha256').update(c).digest('hex');
-const prWith = (over: Partial<ScriptedPr> = {}): ScriptedPr => ({ state: 'OPEN', head: oid('1'), base_sha: oid('a'), base_ref: 'main', author: PUBLISHER, reviews: [], ...over });
-const code = async (p: Promise<unknown> | (() => unknown)): Promise<string> => {
-  try { await (typeof p === 'function' ? p() : p); } catch (e) { return e instanceof Error ? e.message : String(e); }
-  return 'no_error';
-};
-
-const codeSync = (fn: () => unknown): string => { try { fn(); } catch (e) { return e instanceof Error ? e.message : String(e); } return 'no_error'; };
-
-async function setup(opts: { issuer?: boolean; enabled?: boolean; maxValidity?: number } = {}) {
-  const rig = createRig();
-  cleanup.push(() => { rig.close(); });
-  const scope = rig.scope.scope_id;
-  const authDir = join(rig.root, 'auth'); mkdirSync(authDir, { mode: 0o700 });
-  const authFile = join(authDir, 'authority.json');
-  const principals: Array<Record<string, unknown>> = [
-    { credential_sha256: sha(cred('a')), principal_id: 'human', client_session_id: 'cli', read_scopes: [scope], write_scopes: [scope], stop_scopes: [], operator_scopes: [] },
-    { credential_sha256: sha(cred('b')), principal_id: 'reader', client_session_id: 'cli', read_scopes: [scope], write_scopes: [], stop_scopes: [], operator_scopes: [] },
-    { credential_sha256: sha(cred('c')), principal_id: 'other', client_session_id: 'cli', read_scopes: [scope], write_scopes: [scope], stop_scopes: [], operator_scopes: [] },
-    { credential_sha256: sha(cred('d')), principal_id: 'elsewhere', client_session_id: 'cli', read_scopes: ['9'.repeat(64)], write_scopes: ['9'.repeat(64)], stop_scopes: [], operator_scopes: [] },
-  ];
-  const writeAuthority = (list = principals) => { writeFileSync(authFile, JSON.stringify({ version: 1, principals: list }), { mode: 0o600 }); };
-  writeAuthority();
-  const access = new EngineeringAccess(authFile);
-  const home = join(rig.root, 'home'); mkdirSync(home, { mode: 0o700 });
-  chmodSync(home, 0o700);
-  if (opts.issuer !== false) await generateRevisionIssuerKey(home, 'k1', opts.maxValidity);
-  const pr = prWith();
-  const scripted = scriptedTransport(() => pr);
-  const clock = { now: T0 };
-  const cancelled: string[] = [];
-  const flags = { enabled: opts.enabled !== false };
-  const compare = vi.fn(async (_repository: string, _start: string, head: string): Promise<readonly string[]> => [head]);
-  const service = new RevisionGrantService({
-    chains: rig.chains, missions: await createGrantMissionView(rig.missions), access,
-    registry: { repository: 'o/r', publisher: [PUBLISHER] }, readPr: ref => readPullRequest(scripted.transport, ref),
-    loadIssuer: () => loadRevisionIssuer(home), protectedSetDigest: () => 'd'.repeat(64), now: () => clock.now, enabled: () => flags.enabled,
-    compare,
-    cancelChild: async (_actor, id) => { cancelled.push(id); },
-  });
-  const actor = (who: string): EngineeringPrincipal => access.authenticate(cred(who));
-  let nextPr = 7;
-  const mission = (over: Record<string, unknown> = {}) => rig.seedMission({ pr_number: nextPr++, head: oid('1'), base_head: oid('a'), branch: 'topic', spec: { start_commit: oid('0') }, ...over } as never);
-  /** What `grant-revisions` does on the operator's side, minus the terminal. */
-  const issue = async (who: string, missionId: string, terms: Record<string, unknown> = {}, signWith?: ReturnType<typeof generateKeyPairSync>['privateKey']) => {
-    const issuer = (await loadRevisionIssuer(home))!;
-    const reply = await service.preview(actor(who), { mission_id: missionId, ...terms } as never);
-    const key = signWith ?? await readIssuerPrivateKey(home, issuer.keys.get('k1')!);
-    const signed = signRevisionGrant(reply.preview, key);
-    return { reply, signed, grant: () => service.grant(actor(who), { nonce: reply.nonce, preview_sha256: reply.preview_sha256, signature: signed.signature }) };
-  };
-  const renew = async (who: string, chainId: string, terms: Record<string, unknown> = {}) => {
-    const issuer = (await loadRevisionIssuer(home))!;
-    const reply = await service.renewPreview(actor(who), { chain_id: chainId, ...terms } as never);
-    const signed = signRevisionGrant(reply.preview, await readIssuerPrivateKey(home, issuer.keys.get('k1')!));
-    return { reply, signed, grant: () => service.grant(actor(who), { nonce: reply.nonce, preview_sha256: reply.preview_sha256, signature: signed.signature }) };
-  };
-  const ctx = async (): Promise<GrantLiveContext> => ({ access, keys: (await loadRevisionIssuer(home))!.keys, now: clock.now });
-  return { rig, scope, home, access, pr, clock, flags, service, cancelled, actor, mission, issue, renew, ctx, writeAuthority, principals, scripted, compare };
-}
-type Fixture = Awaited<ReturnType<typeof setup>>;
-const liveChainOf = (f: Fixture, missionId: string) => f.rig.chains.chainForMission(missionId, 'live');
-async function granted(f: Fixture, terms: Record<string, unknown> = {}) {
-  const missionId = f.mission();
-  const { grant } = await f.issue('a', missionId, terms);
-  const result = await grant();
-  return { missionId, result, chain: f.rig.chains.get(result.chain_id) };
-}
+import { RevisionGrantError, signRevisionGrant, type RevisionGrant } from '@osstack/core';
+import { describe, expect, it, vi } from 'vitest';
+import { oid, type ScriptedPr } from './contained-mission-bridge-shadow.testkit.js';
+import { assertGrantLive, enforceGrantLive, generateRevisionIssuerKey, issuerConfigPath, issuerKeyPath, loadRevisionIssuer, readIssuerPrivateKey, type GrantLiveContext } from './contained-mission-grant.js';
+import { createContainedMissionService } from './contained-mission-rpc.js';
+import { setup, runCommand, serviceFor, cred, liveChainOf, cleanup, code, codeSync, T0, H, PUBLISHER, prWith, granted, type Fixture } from './contained-mission-grant.testkit.js';
 
 describe('issuer key handling', () => {
   it('generates a 0600 private key and a public-only config, and refuses to overwrite a key id', async () => {
@@ -580,36 +499,6 @@ describe('chain-decide', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 // RPC surface, operator command, status
 
-function rpcOf(service: ContainedMissionService, tamper?: (method: string, result: Record<string, unknown>) => Record<string, unknown>) {
-  const calls: string[] = [];
-  const rpc = async (method: string, params?: unknown) => {
-    calls.push(method);
-    try {
-      const result = await service.handle(method, params) as Record<string, unknown>;
-      return { ok: true, result: tamper ? tamper(method, result) : result };
-    } catch (e) { return { ok: false, error: { code: (e instanceof Error ? e.message : String(e)).split(':')[0] } }; }
-  };
-  return { rpc, calls };
-}
-const stubHost = { recover: async () => undefined, close: async () => undefined, tick: async () => undefined } as unknown as ContainedMissionHost;
-function serviceFor(f: Fixture, over: { grants?: RevisionGrantService | null; draining?: boolean } = {}) {
-  const service = new ContainedMissionService({ host: stubHost, access: f.access, draining: () => over.draining === true, tickMs: 60_000,
-    ...(over.grants === null ? {} : { grants: over.grants ?? f.service }) });
-  cleanup.push(() => { void service.close(); });
-  return service;
-}
-const base = (f: Fixture) => ({ rpc: undefined as never, home: f.home, readCredential: () => cred('a') });
-async function runCommand(f: Fixture, args: string[], opts: { interactive?: boolean; confirm?: (preview: string, phrase: string) => Promise<boolean>; tamper?: Parameters<typeof rpcOf>[1]; service?: ContainedMissionService; credential?: () => string } = {}) {
-  const service = opts.service ?? serviceFor(f);
-  const { rpc, calls } = rpcOf(service, opts.tamper);
-  const out: string[] = []; const errs: string[] = []; const credentialReads: number[] = [];
-  const code = await handleContainedMissionCommand(args, {
-    ...base(f), rpc, readCredential: () => { credentialReads.push(1); return (opts.credential ?? (() => cred('a')))(); }, stdout: l => { out.push(l); }, stderr: l => { errs.push(l); },
-    grant: { ...(opts.interactive === undefined ? {} : { interactive: () => opts.interactive! }), ...(opts.confirm ? { confirm: opts.confirm } : {}) },
-  });
-  return { code, calls, out: out.join('\n'), err: errs.join('\n'), credentialReads: credentialReads.length };
-}
-
 describe('mission RPC for grants', () => {
   it('answers bridge_live_disabled until live is wired, after authentication and schema checks', async () => {
     const f = await setup();
@@ -799,4 +688,45 @@ describe('mission status for live chains', () => {
     for (const secret of [stored.signature, stored.preview_sha256, stored.nonce, 'human', f.scope, stored.protected_set_digest]) expect(text).not.toContain(secret);
     await service.close();
   });
+});
+
+it.each([false, true])('pins the V1 wire, ledger and confirmation with the switch %s', async enabled => {
+  const localFailureEnabled = vi.fn(() => enabled);
+  const f = await setup({ grantOptions: { localFailureEnabled } });
+  const id = f.mission();
+  const issued = await f.issue('a', id);
+  expect(Object.keys(issued.reply).sort()).toEqual(['nonce', 'preview', 'preview_sha256', 'valid_for_ms']);
+  expect(issued.reply.preview.version).toBe(1);
+  expect(issued.reply.preview).not.toHaveProperty('local_failure');
+  const result = await issued.grant();
+  expect(f.rig.chains.get(result.chain_id).grant_json).toBe(JSON.stringify({ ...issued.signed, kind: 'live' }));
+  const event = f.rig.chains.events(result.chain_id).find(e => e.kind === 'grant_issued')!;
+  expect(Object.keys(JSON.parse(event.payload_json)).sort()).toEqual(['expires_at', 'grant_id', 'key_id', 'rounds']);
+  const mission = f.mission();
+  let digest = '';
+  const run = await runCommand(f, ['grant-revisions', '--mission', mission], {
+    interactive: true, tamper: (_, r) => { digest = String(r['preview_sha256']); return r; },
+    confirm: async (text, phrase) => {
+      expect(phrase).toBe(`GRANT ${digest}`);
+      expect(text).toBe(`Grant same-PR revisions
+  repository      o/r  PR #8
+  branch          topic  (base main @ ${oid('a')})
+  published head  ${oid('1')}
+  root mission    ${mission}
+  scope           ${f.scope}
+  granted by      human / cli
+  revision rounds 1
+  valid           2027-01-15T08:00:00.000Z -> 2027-01-16T08:00:00.000Z
+  review deadline 1440 min after each confirmed push
+  budget          executor 3600s, container 3600s, wall clock 48h
+  protected set   ${'d'.repeat(64)}
+  signing key     k1
+  preview sha256  ${digest}
+The daemon will, within these limits only, push fast-forward revision commits to this PR branch. It will never merge.
+`);
+      return true;
+    },
+  });
+  expect(run.code, run.err).toBe(0);
+  expect(localFailureEnabled).not.toHaveBeenCalled();
 });

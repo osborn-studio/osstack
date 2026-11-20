@@ -59,7 +59,7 @@ export class DecisionQueries {
     return this.rows(`SELECT c.chain_id id,m.scope_id,CAST(c.revision AS TEXT) revision,c.state,
       c.state summary,c.stop_reason reason,c.mode kind,
       json_object('uncertain',EXISTS(SELECT 1 FROM engineering_publication_intents i WHERE i.chain_id=c.chain_id AND i.kind='push' AND i.state='uncertain'),
-        'unsettled',EXISTS(SELECT 1 FROM engineering_publication_intents i WHERE i.chain_id=c.chain_id AND i.kind='push' AND i.state IN ('pending','uncertain'))) details_json,
+        'grant_version',json_extract(c.grant_json,'$.version'), 'unsettled',EXISTS(SELECT 1 FROM engineering_publication_intents i WHERE i.chain_id=c.chain_id AND i.kind='push' AND i.state IN ('pending','uncertain'))) details_json,
       (SELECT e.created_at FROM engineering_revision_chain_events e WHERE e.chain_id=c.chain_id AND e.kind='transition'
         AND json_extract(e.payload_json,'$.to')=c.state AND json_extract(e.payload_json,'$.from')<>c.state
         ORDER BY e.seq DESC LIMIT 1) waiting_since

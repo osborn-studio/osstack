@@ -232,3 +232,19 @@ it("refuses producer-supplied answer receipts instead of trusting their actor or
   expect(await f.answer(req)).toMatchObject({ accepted: false, outcome: "conflict", current: { state: "pending" } });
   expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before); expect(f.resolveHermes).not.toHaveBeenCalled();
 });
+
+it("keeps both revision grant answers local across engineering sources", async () => {
+  const f = fixture();
+  const store = new ContainedMissionStore(f.store, f.owner);
+  const m = store.authorize(f.principal, { scope_id: f.scope, spec: { goal: "test" }, claim: { repo_identity: "r", branch: "b", worktree_identity: "w" } }, 1000);
+  const chain = new RevisionChainStore(f.store, f.owner).createLiveChain({ root_mission_id: m.mission_id, repository: "o/r", pr_number: 1, branch: "b", base_ref: "main", published_head: "a".repeat(40), published_base: "b".repeat(40), trace_id: "trace", grant: { version: 2, rounds: 1 } }, 1000);
+  for (const source of ["contained_mission", "ci_repair", "revision_chain"]) {
+    for (const answer of ["grant_revisions", "grant_local_failure_repair"]) {
+      for (const params of [{}, { signature: "sig", nonce: "nonce", preview_sha256: "digest" }]) {
+        expect(await f.answer({ credential: "c".repeat(32), source, source_id: source === "revision_chain" ? chain.chain_id : m.mission_id,
+          source_revision: "1", answer_id: "grant:1", answer, params })).toMatchObject({ accepted: false, code: "local_only", local_command: "mission grant-revisions" });
+      }
+    }
+  }
+  expect(f.forward).not.toHaveBeenCalled();
+});

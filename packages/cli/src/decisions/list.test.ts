@@ -244,3 +244,13 @@ it("supersedes a closed readable decision while another source is unavailable, t
   expect(calls).toHaveLength(1);
   expect(calls[0]![0].item_id).not.toBe(original.item_id);
 });
+
+it.each([1, 2])("offers renewal only for renewable grant versions (v%s)", async version => {
+  const f = setup();
+  const chains = new RevisionChainStore(f.attention, f.owner);
+  const chain = chains.createLiveChain({ root_mission_id: f.mission().mission_id, repository: "o/r", pr_number: 1, branch: "b", base_ref: "main", published_head: "a".repeat(40), published_base: "b".repeat(40), trace_id: "trace", grant: { version, rounds: 1 } }, 1000);
+  chains.applyDecision(chain.chain_id, chain.revision, { kind: "transition", to: "ready_for_human", reason: "all_participating_approved", from_head: chain.published_head, from_base: chain.published_base, head: chain.published_head, base: chain.published_base, review_ids: [], discards: [] }, 3000);
+  const item = (await f.list()).items.find(i => i.source_id === chain.chain_id)!;
+  expect(item.allowed_answers).toEqual(version === 2 ? ["abandon", "takeover"] : ["abandon", "takeover", "grant_revisions"]);
+  expect(item.answer_command.alternatives).toEqual(version === 2 ? undefined : [{ name: "mission grant-revisions", required_params: ["--chain"] }]);
+});

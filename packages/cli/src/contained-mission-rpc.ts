@@ -10,6 +10,7 @@ import { SANDBOX_CI_POLICY } from './contained-mission-ci-policy.js';
 import { GITHUB_CI_SANDBOX, parseContainedMissionSpec } from './contained-mission-runner.js';
 import { chainEventsView } from './bridge-chain-events.js';
 import type { RevisionGrantService } from './contained-mission-grant.js';
+import { LocalFailureGrantTerms } from './contained-mission-grant-terms.js';
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: request text must not carry control characters into the ledger.
 const Text = (max: number) => z.string().min(1).max(max).refine(v => !/[\u0000-\u001f\u007f]/.test(v), 'control');
@@ -44,7 +45,7 @@ export const ContainedMissionRpcRequests = {
   'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/), decision_id: MissionDecideRequest.shape.decision_id, expected_revision: MissionDecideRequest.shape.expected_revision }).strict(),
   'mission.decide': MissionDecideRequest,
   // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
-  'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, ...GrantTerms }).strict(),
+  'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, local_failure: LocalFailureGrantTerms.optional(), ...GrantTerms }).strict(),
   'mission.revision_grant_renew_preview': z.object({ credential: Credential, chain_id: ChainId, ...GrantTerms }).strict(),
   'mission.grant_revisions': z.object({ credential: Credential, nonce: z.string().regex(/^[0-9a-f]{32}$/), preview_sha256: z.string().regex(/^[0-9a-f]{64}$/),
     signature: z.string().regex(/^[A-Za-z0-9+/]{86}==$/) }).strict(),
