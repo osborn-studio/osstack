@@ -1,6 +1,6 @@
 # U4b W: production wiring of the local-failure route
 
-Date: 2026-11-20. Status: proposal, waiting for the owner's decisions in §7. No code, test or migration is part of this change.
+Date: 2026-11-20. Status: approved by the owner on 2026-11-20; all nine decisions in §7 were accepted as recommended (§7.1). No code, test or migration is part of this change.
 
 Baseline: `main` at `bb360e92`. Every `file:line` below refers to that commit. Two local branches are mentioned and marked: **[D4]** is `feat/recheck-collector` at `7b00a75c` (PR #496, not merged) and **[D5a]** is `feat/recheck-wiring` at `cce3e24c` (local only).
 
@@ -173,6 +173,26 @@ W1 and W2 are independent. W3 needs W1 and W2. W4 needs W3 and **[D5a]**. W5 nee
 | 9 | The switch name and form | Confirm `OSSTACK_LOCAL_FAILURE_REPAIR=1`, anything else off (chosen by the orchestrating session) | A config-file field would be the alternative; behaviour is the same |
 
 Decisions already taken and not reopened here: the upstream wiring is its own node before D5b (owner, 2026-11-20); one switch for W and D5b (orchestrating session).
+
+### 7.1 Decision record (2026-11-20)
+
+The owner accepted all nine decisions on 2026-11-20, each as recommended in the table above. The owner's words: "我都同意".
+
+| # | Decided |
+|---|---|
+| 1 | Issuing the V2 grant is node W2. Preview over RPC, signature only by the host command with the issuer key, never answerable through `decisions.answer` |
+| 2 | The candidate approval is a new method `mission.approve_local_failure_repair` with read, write and operator scope; `decisions.answer` returns `local_only` for it |
+| 3 | The steps of §5.1 run as listed: everything up to the candidate is automatic under a valid V2 grant, the approval is always a person |
+| 4 | With the switch on and the bridge not live, the service refuses to start |
+| 5 | Only PRs of live, open chains that carry a valid V2 grant are read |
+| 6 | The merge hold is its own node, W8, after D5b. Until it is merged the service refuses to start with the switch on when an automatic merge path is also configured |
+| 7 | The contract text comes from a digest-checked re-read of one check run, held in memory only |
+| 8 | The installed-profile host settings live in a protected file in the daemon home |
+| 9 | The switch is `OSSTACK_LOCAL_FAILURE_REPAIR=1`; anything else is off |
+
+Still open, and not decided by this record: the transport of the operator re-arm for the recheck run (D5c). The recheck design says no RPC reaches the run (its §3.4), and every operator action that exists today is an RPC method. D5c stays parked until the owner answers.
+
+With these decisions recorded, nodes W1 to W7 are unblocked in the order of §6.
 
 ## 8. What could not be verified
 
