@@ -36,7 +36,7 @@ const ubuntu = ['ubuntu-latest'];
 export const PRODUCTION_CI_POLICY: GithubCiPolicy = {
   repository: GITHUB_CI_PILOT_REPOSITORY, repositoryId: 1255570742, publisherActorId: PUBLISHER_ACTOR,
   actionsAppId: ACTIONS_APP, workflowId: 294875045, workflowPath: '.github/workflows/ci.yml',
-  workflowBlob: '622fd4127c777b46d655ab89023c1094ba79b0ba',
+  workflowBlob: 'ce71337221241b66f6f7caacd859c60bc48311ed',
   // Read macOS first. The Ubuntu check depends on both macOS cells. Its prerequisite
   // failure is never repairable: only a failure in its own exact Test step is.
   jobs: [
