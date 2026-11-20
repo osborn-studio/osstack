@@ -42,11 +42,32 @@ export function parseContainedVerificationBinding(value: unknown): ContainedVeri
 export const containedBindingCanonical = (binding: ContainedVerificationBinding) => canonicalJson(parseContainedVerificationBinding(binding));
 export const containedBindingDigest = (binding: ContainedVerificationBinding) => sha(containedBindingCanonical(binding));
 
+function containedGit(workspace: string) {
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  return (...args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], { cwd: workspace, timeout: 10000, maxBuffer: 33 * 1024 * 1024,
+    env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1' } });
+}
+
+/** Resolve once and export the exact tree recorded by the installed repository's commit. */
+export function exportContainedCommit(workspace: string, head: string) {
+  if (!isAbsolute(workspace) || typeof head !== 'string' || !/^[0-9a-f]{40}$/.test(head)) throw Error('CONTAINED_COMMIT_INVALID');
+  try {
+    const git = containedGit(workspace);
+    const replacement = 'refs/replace/' + head;
+    if (git('rev-parse', '--verify', head + '^{commit}').toString().trim() !== head ||
+        git('for-each-ref', '--format=%(refname)', replacement).toString().split('\n').includes(replacement))
+      throw Error('CONTAINED_COMMIT_INVALID');
+    const tree = git('rev-parse', '--verify', head + '^{tree}').toString().trim();
+    if (!/^[0-9a-f]{40}$/.test(tree)) throw Error('CONTAINED_COMMIT_INVALID');
+    return { tree, files: exportContainedCandidate(workspace, tree) };
+  } catch {
+    throw Error('CONTAINED_COMMIT_EXPORT_FAILED');
+  }
+}
+
 /** Export immutable Git objects, not files the candidate can change during upload. */
 export function exportContainedCandidate(workspace: string, revision: string): ContainedCandidateFile[] {
-  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
-  const git = (...args: string[]) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], { cwd: workspace, timeout: 10000, maxBuffer: 33 * 1024 * 1024,
-    env: { ...env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1' } });
+  const git = containedGit(workspace);
   const files: ContainedCandidateFile[] = []; let size = 0;
   const listing = git('ls-tree', '-rz', '--full-tree', revision);
   if (!Buffer.from(listing.toString()).equals(listing)) throw Error('CONTAINED_CANDIDATE_UTF8_PATH_REQUIRED');

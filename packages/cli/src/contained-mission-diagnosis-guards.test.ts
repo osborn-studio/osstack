@@ -84,12 +84,17 @@ it("keeps the recheck run library unwired and its admission and journal private 
         expect(source, path).not.toContain("hostProof");
         continue;
       }
-      expect(source, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
+      const ports = pkg === "cli" && file === "contained-mission-local-failure-recheck-ports.ts";
+      // The factory imports only the run port type.
+      const runSource = ports ? source.replace('import type { RecheckRunPorts } from "./contained-mission-local-failure-recheck-run.js";', "") : source;
+      expect(runSource, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
       if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.[cm]?[jt]sx?$/.test(file)) {
-        expect(source, path).not.toMatch(/verifyRecheckGrant|recheck-admission|LocalFailureRecheckRunStore|recheck-run-store/);
+        // The factory supplies the run store's hostProof method to the collector.
+        const journalSource = ports ? source.replaceAll(/\b(?:LocalFailureRecheckRunStore|hostProof)\b/g, "") : source;
+        expect(journalSource, path).not.toMatch(/verifyRecheckGrant|recheck-admission|LocalFailureRecheckRunStore|recheck-run-store/);
         // The collector is the designed consumer of the host proof port (docs/design/2026-11-19-host-recheck-run.md §7, row D4).
         if (pkg !== "cli" || file !== "contained-mission-local-failure-recheck-collect.ts")
-          expect(source, path).not.toContain("hostProof");
+          expect(journalSource, path).not.toContain("hostProof");
       }
     }
   }
@@ -105,11 +110,28 @@ it("keeps the recheck collector and Actions adapter unwired", () => {
     for (const file of readdirSync(root, {recursive:true, encoding:"utf8"})) {
       if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
       const source = readFileSync(join(root, file), "utf8");
+      const ports = pkg === "cli" && file === "contained-mission-local-failure-recheck-ports.ts";
+      // The factory calls the Actions adapter and imports only the collector deps type.
+      const consumer = ports ? source.replace('import type { RecheckCollectorDeps } from "./contained-mission-local-failure-recheck-collect.js";', "") : source;
       for (const [i, module] of modules.entries()) {
-        if (pkg === "cli" && file === module + ".ts") continue;
-        expect(source, pkg + "/" + file).not.toContain(names[i]!);
-        expect(source, pkg + "/" + file).not.toContain(module);
+        if (pkg === "cli" && (file === module + ".ts" || (ports && i === 0))) continue;
+        expect(consumer, pkg + "/" + file).not.toContain(names[i]!);
+        expect(consumer, pkg + "/" + file).not.toContain(module);
       }
+    }
+  }
+});
+
+it("keeps the recheck ports factories unwired across packages", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      if (/\.test\.[^/]+$/.test(file) || (pkg === "cli" && file === "contained-mission-local-failure-recheck-ports.ts")) continue;
+      const path = join(root, file);
+      if (statSync(path).isFile())
+        expect(readFileSync(path, "utf8"), path).not.toMatch(/contained-mission-local-failure-recheck-ports|createRecheckRunPorts|createRecheckCollectorPorts/);
     }
   }
 });

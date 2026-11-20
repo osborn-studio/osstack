@@ -12,7 +12,7 @@ import {
 } from "@osstack/core/verification-intake";
 
 type Target = { repository: string; repository_id: number; pr: number; head: string };
-interface CollectorDeps {
+export interface RecheckCollectorDeps {
   store: ContainedMissionStore;
   now(): number;
   signal?: AbortSignal;
@@ -54,7 +54,7 @@ function newestResult(texts: readonly string[] | null, row: LocalFailureRecheck,
   return newest;
 }
 
-export async function collectLocalFailureRecheck(deps: CollectorDeps, childMissionId: string) {
+export async function collectLocalFailureRecheck(deps: RecheckCollectorDeps, childMissionId: string) {
   const { store } = deps;
   const dispatch = store.db
     .prepare("SELECT dispatch_id, request_id FROM engineering_local_failure_dispatches WHERE child_mission_id=?")
