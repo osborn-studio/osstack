@@ -48,7 +48,10 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
       current = { state, item }; return item;
     };
     const item = refresh();
-    if (p.source === "loop" || p.source === "autonomy" || (p.source === "session" && item?.requires_local_signature) || (p.source === "revision_chain" && p.answer === "grant_revisions")) {
+    if (engineering && (p.answer === "grant_revisions" || p.answer === "grant_local_failure_repair")) {
+      return result("local_only", "local_only", false, false, "mission grant-revisions");
+    }
+    if (p.source === "loop" || p.source === "autonomy" || (p.source === "session" && item?.requires_local_signature)) {
       return result("local_only", "local_only", false, false, p.answer === "grant_revisions" ? "mission grant-revisions" : p.source === "session" ? "attention answer" : p.source === "autonomy" ? (p.answer === "reject" ? "autonomy reject" : "autonomy approve") : item?.answer_command.name ?? "cockpit retry");
     }
     if (p.source === "revision_chain") {

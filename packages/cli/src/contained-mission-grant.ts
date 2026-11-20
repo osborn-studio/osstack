@@ -15,6 +15,13 @@ import { z } from 'zod';
 import { recordChildCancelFailure } from './contained-mission-bridge-cancel-failure.js';
 import {
   GRANT_LIMITS,
+  LocalFailureRepositorySchema,
+  localFailurePreviewDigest,
+  parseLocalFailureGrantPreview,
+  parseLocalFailureRevisionGrant,
+  verifyLocalFailureRevisionGrantSignature,
+  type LocalFailureGrantPreview,
+  type LocalFailureRevisionGrant,
   REFRESHABLE_STOP_REASONS,
   RevisionGrantError,
   assembleGrant,
@@ -37,6 +44,7 @@ import {
   type RevisionGrant,
   type RevisionGrantPreview,
 } from '@osstack/core';
+import { LocalFailureGrantTerms, localFailureOptIn, type LocalFailureGrantInput } from './contained-mission-grant-terms.js';
 import type { EngineeringAccess } from './engineering-access.js';
 import { readPrivateDeliveryFile } from './follow-up-delivery-host.js';
 import { reviewerOf, type PullRequestRead, type PullRequestRef } from './contained-mission-bridge-reader.js';
@@ -184,7 +192,7 @@ const Terms = {
   key_id: z.string().regex(KEY_ID).optional(),
 };
 export const RevisionGrantRpc = {
-  'mission.revision_grant_preview': z.object({ mission_id: MissionId, ...Terms }).strict(),
+  'mission.revision_grant_preview': z.object({ mission_id: MissionId, local_failure: LocalFailureGrantTerms.optional(), ...Terms }).strict(),
   'mission.revision_grant_renew_preview': z.object({ chain_id: ChainId, ...Terms }).strict(),
   'mission.grant_revisions': z.object({
     nonce: z.string().regex(/^[0-9a-f]{32}$/), preview_sha256: z.string().regex(/^[0-9a-f]{64}$/), signature: z.string().regex(/^[A-Za-z0-9+/]{86}==$/),
@@ -215,12 +223,24 @@ export interface RevisionGrantServiceOptions {
   readonly now: () => number;
   /** `OSSTACK_BRIDGE=1` (live). Grants are refused with `bridge_live_disabled` otherwise. */
   readonly enabled: () => boolean;
+  /** The local-failure route switch, injected by the service that reads it. Absent or false: every version 2 preview and grant is
+   * refused with `local_failure_repair_disabled`. Never consulted for version 1. */
+  readonly localFailureEnabled?: () => boolean;
   /** Requests cancellation of a child Mission after a chain is closed. */
   readonly cancelChild?: (actor: EngineeringPrincipal, missionId: string) => Promise<void>;
   /** Read-only receipt reconciliation of an uncertain push (5-E). Absent in 5-A: `chain-decide reconcile` is then `reconcile_unavailable`. */
   readonly reconcileReceipt?: (chain: RevisionChain) => Promise<{ settled: boolean }>;
 }
-interface Pending { principal_id: string; client_session_id: string; preview: RevisionGrantPreview; request: { mission_id: string } | { chain_id: string }; terms: TermsInput; created_at: number }
+type Preview = RevisionGrantPreview | LocalFailureGrantPreview;
+type PreviewReply<P extends Preview> = { preview: P; preview_sha256: string; nonce: string; valid_for_ms: number };
+type FirstInput = { mission_id: string } & TermsInput;
+function digestOf(preview: Preview): string {
+  return preview.version === 2 ? localFailurePreviewDigest(preview) : previewDigest(preview);
+}
+function verified(grant: RevisionGrant | LocalFailureRevisionGrant, key: IssuerKey): boolean {
+  return grant.version === 2 ? verifyLocalFailureRevisionGrantSignature(grant, key.public_key) : verifyRevisionGrantSignature(grant, key.public_key);
+}
+interface Pending { principal_id: string; client_session_id: string; preview: Preview; request: { mission_id: string; local_failure?: LocalFailureGrantInput } | { chain_id: string }; terms: TermsInput; created_at: number }
 
 const REPOSITORY = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/u;
 const MAX_PENDING = 32;
@@ -232,8 +252,20 @@ export class RevisionGrantService {
   private readonly pending = new Map<string, Pending>();
   constructor(private readonly options: RevisionGrantServiceOptions) {}
 
-  async preview(actor: EngineeringPrincipal, input: { mission_id: string } & TermsInput): Promise<{ preview: RevisionGrantPreview; preview_sha256: string; nonce: string; valid_for_ms: number }> {
+  preview(actor: EngineeringPrincipal, input: FirstInput & { local_failure?: undefined }): Promise<PreviewReply<RevisionGrantPreview>>;
+  preview(actor: EngineeringPrincipal, input: FirstInput & { local_failure: LocalFailureGrantInput }): Promise<PreviewReply<LocalFailureGrantPreview>>;
+  async preview(actor: EngineeringPrincipal, input: FirstInput & { local_failure?: LocalFailureGrantInput | undefined }): Promise<PreviewReply<Preview>> {
     this.live();
+    if (input.local_failure !== undefined) {
+      this.requireLocalFailure();
+      const { mission_id, local_failure, ...terms } = input;
+      const parsed = LocalFailureGrantTerms.safeParse(local_failure);
+      if (!parsed.success) return err('grant_terms_invalid');
+      const now = this.options.now();
+      const fixed = { grant_id: `rg_${randomUUID()}`, issued_at: now, nonce: randomBytes(16).toString('hex') };
+      const preview = await this.buildLocalFailure(actor, mission_id, terms, fixed, parsed.data);
+      return this.remember(actor, preview, { mission_id, local_failure: parsed.data }, terms, now);
+    }
     const now = this.options.now();
     const { mission_id: _mission, ...terms } = input;
     const preview = await this.buildFirst(actor, input.mission_id, terms, { grant_id: `rg_${randomUUID()}`, issued_at: now, nonce: randomBytes(16).toString('hex') });
@@ -258,18 +290,28 @@ export class RevisionGrantService {
     if (!record || record.principal_id !== actor.principal_id || record.client_session_id !== actor.client_session_id) return refused();
     this.pending.delete(input.nonce);
     const { preview } = record;
-    if (now > record.created_at + GRANT_LIMITS.nonce_ttl_ms || input.preview_sha256 !== previewDigest(preview)) return refused();
-    let grant: RevisionGrant;
+    if (preview.version === 2) {
+      this.requireLocalFailure();
+      if (preview.renews || !('mission_id' in record.request) || !record.request.local_failure) return refused();
+    }
+    if (now > record.created_at + GRANT_LIMITS.nonce_ttl_ms || input.preview_sha256 !== digestOf(preview)) return refused();
+    let grant: RevisionGrant | LocalFailureRevisionGrant;
     const issuer = await this.options.loadIssuer();
     const key = issuer?.keys.get(preview.key_id);
     if (!key) return refused();
-    try { grant = assembleGrant(preview, input.signature); } catch { return refused(); }
-    if (!verifyRevisionGrantSignature(grant, key.public_key) || grant.expires_at - grant.issued_at > key.max_validity_ms) return refused();
+    try {
+      grant = preview.version === 2
+        ? parseLocalFailureRevisionGrant(JSON.stringify({ ...preview, preview_sha256: input.preview_sha256, signature: input.signature }))
+        : assembleGrant(preview, input.signature);
+    } catch { return refused(); }
+    if (!verified(grant, key) || grant.expires_at - grant.issued_at > key.max_validity_ms) return refused();
     // The signer authorised exactly this preview; the facts it described must still hold.
     const fixed = { grant_id: preview.grant_id, issued_at: preview.issued_at, nonce: preview.nonce };
-    let fresh: RevisionGrantPreview;
+    let fresh: Preview;
     try {
-      fresh = 'mission_id' in record.request ? await this.buildFirst(actor, record.request.mission_id, record.terms, fixed) : await this.buildRenew(actor, record.request.chain_id, record.terms, fixed);
+      if ('mission_id' in record.request && record.request.local_failure) {
+        fresh = await this.buildLocalFailure(actor, record.request.mission_id, record.terms, fixed, record.request.local_failure);
+      } else fresh = 'mission_id' in record.request ? await this.buildFirst(actor, record.request.mission_id, record.terms, fixed) : await this.buildRenew(actor, record.request.chain_id, record.terms, fixed);
     } catch { return refused(); }
     if (canonicalJson(fresh) !== canonicalJson(preview)) return refused();
     // Import the root's already-published range as a receipt, never as a new remote write.
@@ -284,7 +326,8 @@ export class RevisionGrantService {
     // Everything above awaited; authority and time are judged again here, right before the write, and the write uses this clock.
     // The issuer file is read again by the rebuild above; the signature must hold under what is trusted now, not at the first read.
     const finalKey = (await this.options.loadIssuer())?.keys.get(preview.key_id);
-    if (!finalKey || !verifyRevisionGrantSignature(grant, finalKey.public_key)) return refused();
+    if (!finalKey || !verified(grant, finalKey)
+      || (grant.version === 2 && grant.expires_at - grant.issued_at > finalKey.max_validity_ms)) return refused();
     const at = this.options.now();
     if (at > record.created_at + GRANT_LIMITS.nonce_ttl_ms || at < preview.issued_at || at >= preview.expires_at) return refused();
     let current: EngineeringPrincipal;
@@ -292,6 +335,7 @@ export class RevisionGrantService {
     this.assertWrite(current, preview.scope_id);
     const { chains } = this.options;
     if (preview.renews) {
+      if (grant.version !== 1) return refused();
       const { chain, head_consumed } = chains.replaceGrant(preview.renews.chain_id, preview.renews.revision, grant, at);
       // A head that already has a reservation is never revised again; only a new head from this chain's own push can be.
       return { chain_id: chain.chain_id, state: chain.state, rounds: grant.rounds, expires_at: grant.expires_at, renewed: true, head_consumed };
@@ -299,6 +343,7 @@ export class RevisionGrantService {
     try {
       const chain = chains.transaction(() => {
         this.live();
+        if (grant.version === 2) this.requireLocalFailure();
         const created = chains.createLiveChain({
           root_mission_id: grant.root_mission_id, repository: grant.repository, pr_number: grant.pr_number, branch: grant.branch, base_ref: grant.base_ref,
           published_head: grant.head_sha, published_base: grant.base_sha, trace_id: `bridge-live:${grant.root_mission_id}`,
@@ -311,7 +356,9 @@ export class RevisionGrantService {
           binding: { commit_count: baseline.commits.length, range_sha256: createHash('sha256').update(JSON.stringify(baseline.commits)).digest('hex') } }, at);
         chains.appendEvent(created.chain_id, 'push_range', { intent_id: initial.intent.intent_id, commits: baseline.commits }, at);
         chains.settleIntent(initial.intent.intent_id, 'confirmed', at);
-        chains.appendEvent(created.chain_id, 'grant_issued', { grant_id: grant.grant_id, rounds: grant.rounds, expires_at: grant.expires_at, key_id: grant.key_id }, at);
+        chains.appendEvent(created.chain_id, 'grant_issued', { grant_id: grant.grant_id, rounds: grant.rounds, expires_at: grant.expires_at, key_id: grant.key_id,
+          ...(grant.version === 2 ? { version: 2, local_failure: { profile_id: grant.local_failure.profile_id,
+            profile_digest: grant.local_failure.profile_digest, recheck: !!grant.local_failure.recheck } } : {}) }, at);
         return created;
       });
       return { chain_id: chain.chain_id, state: chain.state, rounds: grant.rounds, expires_at: grant.expires_at, renewed: false };
@@ -347,7 +394,17 @@ export class RevisionGrantService {
 
   // -------------------------------------------------------------- previews
 
-  private async buildFirst(actor: EngineeringPrincipal, missionId: string, terms: TermsInput, fixed: Fixed): Promise<RevisionGrantPreview> {
+  private requireLocalFailure(): void {
+    if (!this.options.localFailureEnabled?.()) err('local_failure_repair_disabled');
+  }
+
+  private async buildLocalFailure(actor: EngineeringPrincipal, missionId: string, terms: TermsInput, fixed: Fixed, input: LocalFailureGrantInput): Promise<LocalFailureGrantPreview> {
+    const preview = await this.buildFirst(actor, missionId, terms, fixed, true);
+    try { return parseLocalFailureGrantPreview({ ...preview, version: 2, local_failure: localFailureOptIn(input) }); }
+    catch { return err('grant_terms_invalid'); }
+  }
+
+  private async buildFirst(actor: EngineeringPrincipal, missionId: string, terms: TermsInput, fixed: Fixed, localFailure = false): Promise<RevisionGrantPreview> {
     const { missions, chains, registry } = this.options;
     const mission = missions.readable(actor, missionId);
     this.assertWrite(actor, mission.scope_id);
@@ -356,6 +413,7 @@ export class RevisionGrantService {
     const resolved = this.resolve(terms, key);
     const publication = missions.publication(missionId);
     if (!publication) return err('grant_mission_not_opened');
+    if (localFailure && !LocalFailureRepositorySchema.safeParse(publication.repository).success) return err('grant_terms_invalid');
     if (publication.repository !== registry.repository) return err('grant_repository_not_registered');
     if (publication.base_head === null) return err('grant_base_missing');
     if (chains.chainForMission(missionId, 'live') || chains.chainForPr(publication.repository, publication.pr_number, 'live')) return err('chain_exists');
@@ -444,11 +502,11 @@ export class RevisionGrantService {
     if (issuer.keys.size !== 1) return err('grant_key_required');
     return [...issuer.keys.values()][0]!;
   }
-  private remember(actor: EngineeringPrincipal, preview: RevisionGrantPreview, request: Pending['request'], terms: TermsInput, now: number) {
+  private remember<P extends Preview>(actor: EngineeringPrincipal, preview: P, request: Pending['request'], terms: TermsInput, now: number) {
     this.purge(now);
     while (this.pending.size >= MAX_PENDING) this.pending.delete(this.pending.keys().next().value as string);
     this.pending.set(preview.nonce, { principal_id: actor.principal_id, client_session_id: actor.client_session_id, preview, request, terms, created_at: now });
-    return { preview, preview_sha256: previewDigest(preview), nonce: preview.nonce, valid_for_ms: GRANT_LIMITS.nonce_ttl_ms };
+    return { preview, preview_sha256: digestOf(preview), nonce: preview.nonce, valid_for_ms: GRANT_LIMITS.nonce_ttl_ms };
   }
   private purge(now: number): void {
     for (const [nonce, p] of this.pending) if (now > p.created_at + GRANT_LIMITS.nonce_ttl_ms) this.pending.delete(nonce);

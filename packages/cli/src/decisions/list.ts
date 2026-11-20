@@ -46,9 +46,9 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
       // Shadow chains have no answering surface. The live service rejects them.
       if (row.kind === "live") {
         allowed_answers = ["abandon", "takeover"];
-        const facts = JSON.parse(row.details_json) as { uncertain?: number; unsettled?: number };
+        const facts = JSON.parse(row.details_json) as { grant_version?: number; uncertain?: number; unsettled?: number };
         if (facts.uncertain) allowed_answers.push("reconcile");
-        if (!facts.unsettled && (row.state === "ready_for_human" || REFRESHABLE_STOP_REASONS.has(row.reason ?? ""))) {
+        if (facts.grant_version !== 2 && !facts.unsettled && (row.state === "ready_for_human" || REFRESHABLE_STOP_REASONS.has(row.reason ?? ""))) {
           allowed_answers.push("grant_revisions"); requires_local_signature = true;
         }
       }

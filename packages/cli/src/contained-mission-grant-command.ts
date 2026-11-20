@@ -9,18 +9,29 @@ import {
   parseRevisionGrantPreview,
   previewDigest,
   signRevisionGrant,
+  localFailurePreviewDigest,
+  parseLocalFailureGrantPreview,
+  signLocalFailureRevisionGrant,
+  type LocalFailureGrantPreview,
   type RevisionGrantPreview,
 } from '@osstack/core';
 import { generateRevisionIssuerKey, loadRevisionIssuer, readIssuerPrivateKey, type IssuerConfig } from './contained-mission-grant.js';
 
+import { LocalFailureGrantTerms, localFailureOptIn } from './contained-mission-grant-terms.js';
+
 export const GRANT_REVISIONS_HELP = `Usage: osstack mission grant-revisions (--mission ROOT_MISSION | --chain CHAIN) [--rounds 1|2] [--expires 24h]
          [--review-deadline 24h] [--max-executor-seconds N] [--max-container-seconds N] [--max-wall-clock-hours N] [--key ID] [--json]
+       With --mission, add --local-failure-profile ID --profile-digest SHA256 --trusted-source-repository OWNER/NAME
+         --trusted-source-commit SHA --trusted-source-artifact SHA256 --diagnostic-timeout-seconds N [--recheck-timeout-seconds N]
        osstack mission grant-keygen --key ID [--max-validity 7d]
 Local operator only: needs an interactive terminal on stdin and stderr, prints the exact grant (repository, PR, head, base, scope,
 principal, rounds, expiry, budget) and requires typing GRANT plus the whole preview digest. There is no --yes and no way to answer
 through RPC. The grant is signed with the host-private issuer key (bridge/revision-issuer-<key>.pem, mode 0600); the daemon only verifies.
 Defaults: 1 round (--rounds 2 is explicit; two is the cap), valid 24h (at most 7d), review deadline 24h after every confirmed push,
 budget 3600s executor, 3600s container, 48h wall clock. --chain extends a chain: rounds and budget can only grow.
+Type GRANT LOCAL-FAILURE <digest> to authorise one diagnosis per PR head after a trusted verification failure, one automatic repair
+Mission for this PR, and the optional recheck on the repaired head. Pushing the exact candidate needs separate operator approval.
+The daemon refuses this grant unless the local-failure switch is on.
 grant-keygen creates the issuer key pair on this host (private key never leaves it) and registers the public key.\n`;
 
 export interface GrantCommandDeps {
@@ -51,10 +62,10 @@ export function parseDuration(value: string): number {
 }
 
 /** Human-readable preview. Every signed field is shown. */
-export function renderGrantPreview(p: RevisionGrantPreview, digest: string): string {
+export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPreview, digest: string): string {
   const iso = (ms: number) => new Date(ms).toISOString();
   const lines = [
-    p.renews ? `Extend revision grant on chain ${p.renews.chain_id} (chain revision ${p.renews.revision})` : 'Grant same-PR revisions',
+    p.version === 2 ? 'Grant same-PR revisions AND local-failure repair' : p.renews ? `Extend revision grant on chain ${p.renews.chain_id} (chain revision ${p.renews.revision})` : 'Grant same-PR revisions',
     `  repository      ${p.repository}  PR #${p.pr_number}`,
     `  branch          ${p.branch}  (base ${p.base_ref} @ ${p.base_sha})`,
     `  published head  ${p.head_sha}`,
@@ -68,12 +79,26 @@ export function renderGrantPreview(p: RevisionGrantPreview, digest: string): str
     `  protected set   ${p.protected_set_digest}`,
     `  signing key     ${p.key_id}`,
     `  preview sha256  ${digest}`,
+    ...(p.version === 2 ? [
+      `  grant           ${p.kind}, version ${p.version}, ${p.grant_id}`,
+      `  nonce           ${p.nonce}`,
+      ...(p.review_deadline_ms % 60_000 ? [`  exact deadline  ${p.review_deadline_ms} ms after each confirmed push`] : []),
+      'This signature authorises the following actions without another signature.',
+      `Diagnosis permits one host run of verification profile ${p.local_failure.profile_id} (digest ${p.local_failure.profile_digest}) per PR head, at most ${p.local_failure.diagnostic_timeout_seconds} s, after a trusted verification failure is recorded for this PR.`,
+      'Repair permits one automatic repair Mission for this PR. Pushing its result needs separate operator approval of the exact candidate.',
+      p.local_failure.recheck
+        ? `Recheck permits one host run of the same profile on the repaired head, at most ${p.local_failure.recheck.timeout_seconds} s.`
+        : 'A recheck is NOT authorised by this grant.',
+      `Trusted source repository ${p.local_failure.trusted_source.repository}, commit ${p.local_failure.trusted_source.commit}, artifact digest ${p.local_failure.trusted_source.artifact_digest}.`,
+    ] : []),
     'The daemon will, within these limits only, push fast-forward revision commits to this PR branch. It will never merge.',
   ];
   return `${lines.join('\n')}\n`;
 }
 
-const FLAGS = ['mission', 'chain', 'rounds', 'expires', 'review-deadline', 'max-executor-seconds', 'max-container-seconds', 'max-wall-clock-hours', 'key'];
+const REQUIRED_LOCAL_FLAGS = ['local-failure-profile', 'profile-digest', 'trusted-source-repository', 'trusted-source-commit', 'trusted-source-artifact', 'diagnostic-timeout-seconds'];
+const LOCAL_FLAGS = [...REQUIRED_LOCAL_FLAGS, 'recheck-timeout-seconds'];
+const FLAGS = ['mission', 'chain', 'rounds', 'expires', 'review-deadline', 'max-executor-seconds', 'max-container-seconds', 'max-wall-clock-hours', 'key', ...LOCAL_FLAGS];
 
 export async function handleGrantRevisionsCommand(args: string[], deps: GrantCommandDeps): Promise<number> {
   const out = deps.stdout ?? ((t: string) => { process.stdout.write(t); });
@@ -91,10 +116,13 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
       if (flags.has(arg.slice(2))) throw new Error(`duplicate_flag:${arg}`);
       flags.set(arg.slice(2), value);
     }
+    const wantsLocal = LOCAL_FLAGS.some(flag => flags.has(flag));
+    if (wantsLocal && flags.has('chain')) throw new Error('invalid:local_failure_requires_--mission');
+    if (wantsLocal && !REQUIRED_LOCAL_FLAGS.every(flag => flags.has(flag))) throw new Error('required:local_failure_flags');
     if (flags.has('mission') === flags.has('chain')) throw new Error('required:exactly_one_of_--mission_--chain');
     // Step 1: refuse before any RPC or secret when there is no interactive terminal.
     if (!(deps.interactive ?? (() => Boolean(process.stdin.isTTY && process.stderr.isTTY)))()) throw new Error('mission_terminal_required');
-    const num = (key: string, max: number): number | undefined => {
+    const num = (key: string, max = Number.MAX_SAFE_INTEGER): number | undefined => {
       const v = flags.get(key); if (v === undefined) return undefined;
       if (!/^[1-9][0-9]{0,8}$/.test(v) || Number(v) > max) throw new Error(`invalid:--${key}`);
       return Number(v);
@@ -106,6 +134,13 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
       ...(num('max-container-seconds', GRANT_LIMITS.max_budget.max_container_seconds) !== undefined ? { max_container_seconds: num('max-container-seconds', GRANT_LIMITS.max_budget.max_container_seconds)! } : {}),
       ...(num('max-wall-clock-hours', GRANT_LIMITS.max_budget.max_wall_clock_hours) !== undefined ? { max_wall_clock_hours: num('max-wall-clock-hours', GRANT_LIMITS.max_budget.max_wall_clock_hours)! } : {}),
     };
+    const localTerms = wantsLocal ? LocalFailureGrantTerms.safeParse({
+      profile_id: flags.get('local-failure-profile'), profile_digest: flags.get('profile-digest'),
+      trusted_source: { repository: flags.get('trusted-source-repository'), commit: flags.get('trusted-source-commit'), artifact_digest: flags.get('trusted-source-artifact') },
+      diagnostic_timeout_seconds: num('diagnostic-timeout-seconds', GRANT_LIMITS.max_budget.max_container_seconds),
+      ...(flags.has('recheck-timeout-seconds') ? { recheck_timeout_seconds: num('recheck-timeout-seconds') } : {}),
+    }) : undefined;
+    if (localTerms && !localTerms.success) throw new Error('invalid:local_failure_flags');
     const issuer: IssuerConfig | undefined = await loadRevisionIssuer(deps.home);
     if (!issuer) throw new Error('bridge_grant_not_configured');
     const keyId = flags.get('key') ?? (issuer.keys.size === 1 ? [...issuer.keys.keys()][0]! : undefined);
@@ -116,6 +151,7 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
     // biome-ignore lint/suspicious/noControlCharactersInRegex: reject bearer transport control bytes before RPC.
     if (credential.length < 32 || credential.length > 4096 || /[\u0000\r\n]/u.test(credential)) throw new Error('engineering_credential_required');
     const terms = {
+      ...(localTerms ? { local_failure: localTerms.data } : {}),
       ...(rounds ? { rounds: Number(rounds) } : {}), ...(flags.has('expires') ? { expires_ms: parseDuration(flags.get('expires')!) } : {}),
       ...(flags.has('review-deadline') ? { review_deadline_ms: parseDuration(flags.get('review-deadline')!) } : {}),
       ...(Object.keys(budget).length ? { budget } : {}), key_id: keyId,
@@ -129,13 +165,23 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
     const reply = await call(flags.has('chain') ? 'mission.revision_grant_renew_preview' : 'mission.revision_grant_preview',
       flags.has('chain') ? { chain_id: flags.get('chain'), ...terms } : { mission_id: flags.get('mission'), ...terms });
     // The daemon is trusted, but the operator signs what this process computes, not what it was told.
-    const preview = parseRevisionGrantPreview(reply['preview']);
-    const digest = previewDigest(preview);
+    const raw = reply['preview'];
+    let preview: RevisionGrantPreview | LocalFailureGrantPreview;
+    if (localTerms) {
+      try { preview = parseLocalFailureGrantPreview(raw); } catch { throw new Error('grant_preview_mismatch'); }
+      if (preview.renews || preview.root_mission_id !== flags.get('mission')
+        || canonicalJson(preview.local_failure) !== canonicalJson(localFailureOptIn(localTerms.data))) throw new Error('grant_preview_mismatch');
+    } else {
+      if (raw && typeof raw === 'object' && 'version' in raw && raw.version === 2) throw new Error('grant_preview_mismatch');
+      preview = parseRevisionGrantPreview(raw);
+    }
+    const digest = preview.version === 2 ? localFailurePreviewDigest(preview) : previewDigest(preview);
     if (digest !== reply['preview_sha256'] || preview.nonce !== reply['nonce'] || preview.key_id !== keyId || canonicalJson(preview) !== canonicalJson(reply['preview'])) throw new Error('grant_preview_mismatch');
     // Step 4: exact typed confirmation.
-    if (!(await (deps.confirm ?? terminalConfirm)(renderGrantPreview(preview, digest), `GRANT ${digest}`))) throw new Error('grant_not_confirmed');
+    if (!(await (deps.confirm ?? terminalConfirm)(renderGrantPreview(preview, digest), preview.version === 2 ? `GRANT LOCAL-FAILURE ${digest}` : `GRANT ${digest}`))) throw new Error('grant_not_confirmed');
     // Step 5: only now is the private key read.
-    const grant = signRevisionGrant(preview, await readIssuerPrivateKey(deps.home, key));
+    const privateKey = await readIssuerPrivateKey(deps.home, key);
+    const grant = preview.version === 2 ? signLocalFailureRevisionGrant(preview, privateKey) : signRevisionGrant(preview, privateKey);
     // Steps 6-7.
     const result = await call('mission.grant_revisions', { nonce: preview.nonce, preview_sha256: digest, signature: grant.signature });
     const text = JSON.stringify(result, null, 2);
