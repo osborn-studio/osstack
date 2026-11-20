@@ -6,12 +6,23 @@ export function resolveHermesDecision(db: Database.Database, method: "approval.r
   const table = approval ? "approvals" : "clarifies";
   const key = approval ? "approval_id" : "clarify_id";
   const field = approval ? "choice" : "answer";
-  const id = params[key]; const value = params[field];
+  const id = params[key];
+  const value = params[field];
   if (typeof id !== "string" || typeof value !== "string") throw Error("bad_request");
-  const row = db.prepare(`SELECT status FROM ${table} WHERE ${key}=?`).get(id) as { status: string } | undefined;
+  const status = approval ? "accepted" : "answered";
+  const result = { resolved: true, [key]: id, ...(approval ? { choice: value } : {}) };
+  const lookup = db.prepare<[string], { status: string; value: string | null }>(
+    `SELECT status, ${field} AS value FROM ${table} WHERE ${key}=?`,
+  );
+  let row = lookup.get(id);
   if (!row) throw Error("not_found");
-  if (row.status !== "pending") throw Error("already_resolved");
-  db.prepare(`UPDATE ${table} SET status=?,resolved_at=?,${field}=? WHERE ${key}=? AND status='pending'`)
-    .run(approval ? "accepted" : "answered", Date.now() / 1000, value, id);
-  return { resolved: true, [key]: id, ...(approval ? { choice: value } : {}) };
+  if (row.status === "pending") {
+    const { changes } = db.prepare(`UPDATE ${table} SET status=?,resolved_at=?,${field}=? WHERE ${key}=? AND status='pending'`)
+      .run(status, Date.now() / 1000, value, id);
+    if (changes === 1) return result;
+    row = lookup.get(id);
+    if (!row) throw Error("not_found");
+  }
+  if (row.status !== status || row.value !== value) throw Error("already_resolved");
+  return result;
 }
