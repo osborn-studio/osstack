@@ -1,7 +1,7 @@
 // Phase 5-C: revision push receipts and their Mission/chain commit boundary.
 // This module has no scheduler. Phase 5-D selects it for publish_target attempts.
 import { createHash } from 'node:crypto';
-import { parseStoredGrant, SAME_CHILD_RESUMABLE, type ContainedMission, type ContainedMissionStore, type PublicationIntent, type RevisionChainStore } from '@osstack/core';
+import { parseStoredRevisionGrant, SAME_CHILD_RESUMABLE, type ContainedMission, type ContainedMissionStore, type PublicationIntent, type RevisionChainStore } from '@osstack/core';
 import type { DeliveryCommandRunner } from '@osstack/github';
 import { z } from 'zod';
 import { fencedDeliveryRunner } from './contained-mission-ports.js';
@@ -443,7 +443,7 @@ export function confirmRevisionPublication(deps: ReceiptLedgerDeps, input: Confi
     let chain = input.variant === 'landed'
       ? deps.chains.resumeLanded(input.chain_id, deps.chains.get(input.chain_id).revision, input.intent_id, deps.now())
       : deps.chains.settleIntent(input.intent_id, 'confirmed', deps.now()).chain; fault('settle');
-    const grant = parseStoredGrant(chain.grant_json);
+    const grant = parseStoredRevisionGrant(chain.grant_json);
     chain = deps.chains.resetReviewDeadline(chain.chain_id, chain.revision, deps.now() + grant.review_deadline_ms, deps.now()); fault('deadline');
     chain = deps.chains.voidReservation(chain.chain_id, chain.revision, intent.expected_old_head!, 'published', deps.now()).chain; fault('void');
     deps.missions.record(input.child_mission_id, 'delivery_evidence', { ...input.evidence, intent_id: input.intent_id, range_sha256: input.range_sha256 }, deps.now()); fault('evidence');
