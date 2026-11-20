@@ -13,11 +13,15 @@ export interface VerificationReadTarget {
   readonly head: string; readonly base_sha: string; readonly base_ref: string; readonly branch: string;
 }
 export interface VerificationReadLimits { readonly maxPages: number; readonly maxRequests: number; readonly maxResults: number }
+export type VerificationInstallationProof =
+  | { readonly status: 'installed'; readonly installation_id: number }
+  | { readonly status: 'not_installed' }
+  | { readonly status: 'unavailable' };
 export interface VerificationReadDeps {
   /** Authenticated GET only. The transport must bound response bytes and time. */
   readonly rest: (path: string, options: { signal: AbortSignal }) => Promise<{ readonly ok: true; readonly body: unknown } | { readonly ok: false }>;
-  /** Independent authenticated proof from the App's own installation context, never the payload. */
-  readonly installationFor?: (query: { app_id: number; repository_id: number }, options: { signal: AbortSignal }) => Promise<{ readonly installation_id: number } | null>;
+  /** Independent authenticated proof from the App's own installation context, never the payload. An unavailable proof makes the read incomplete. */
+  readonly installationFor?: (query: { app_id: number; repository_id: number }, options: { signal: AbortSignal }) => Promise<VerificationInstallationProof>;
   readonly now?: () => Date;
 }
 export type VerificationReadResult =
@@ -27,6 +31,11 @@ export type VerificationReadResult =
   | { readonly status: 'read'; readonly observed_at: number; readonly pending: number; readonly observations: readonly VerificationSourceObservation[] };
 
 const id = z.number().int().positive().safe();
+const proofSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('installed'), installation_id: id }).strict(),
+  z.object({ status: z.literal('not_installed') }).strict(),
+  z.object({ status: z.literal('unavailable') }).strict(),
+]);
 const sha = z.string().regex(/^[a-f0-9]{40}$/u);
 const repository = z.string().max(200).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\/[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/u);
 const ref = z.string().min(1).max(255).regex(/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/u).refine(v =>
@@ -188,10 +197,10 @@ export async function readVerificationResults(
       let installation: number | null = null;
       if (deps.installationFor) {
         take();
-        try {
-          const proof = await wait(() => deps.installationFor!({ app_id: run.app.id, repository_id: target.repository_id }, { signal }));
-          if (proof && id.safeParse(proof.installation_id).success) installation = proof.installation_id;
-        } catch { checkAbort(); } // Unavailable independent proof rejects this producer; budget and abort fail the read.
+        const proof = proofSchema.safeParse(await wait(() => deps.installationFor!({ app_id: run.app.id, repository_id: target.repository_id }, { signal })));
+        // Only a definitive answer allows this read to produce observations.
+        requireRead(proof.success && proof.data.status !== 'unavailable');
+        if (proof.data.status === 'installed') installation = proof.data.installation_id;
       }
       installations.set(run.app.id, installation);
     }

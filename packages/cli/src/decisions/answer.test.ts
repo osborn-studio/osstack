@@ -81,6 +81,17 @@ for (const kind of ["approval", "clarify", "session"] as const) {
     expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
   });
 }
+it("requires the original Hermes answer_id to replay the same answer", async () => {
+  const f = fixture();
+  f.hermes("approval");
+  const req = { ...await f.request("hermes"), params: { choice: "yes" } };
+  expect(await f.answer(req)).toMatchObject({ accepted: true });
+  const before = f.db.prepare("SELECT total_changes() n").get();
+  expect(await f.answer(req)).toMatchObject({ accepted: true, replay: true });
+  expect(await f.answer({ ...req, answer_id: "key:2" })).toMatchObject({ accepted: false, code: "already_resolved" });
+  expect(f.resolveHermes).toHaveBeenCalledTimes(1);
+  expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
+});
 it.each(["risk_approval", "task_authorization"])("%s stays local with zero writes", async gate => {
   const f = fixture(); f.session(gate); const item = await f.pending("session");
   const before = f.db.prepare("SELECT total_changes() n").get();
