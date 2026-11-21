@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { canonicalJson } from '@osstack/protocol/source';
 import {
   checkFreshness, checkTransportConclusion, matchVerificationProducer, parseVerificationResultV1,
-  type VerificationProducerPolicyV1, type VerificationReasonCode, type VerificationSourceObservation,
+  type VerificationProducerPolicyV1, type VerificationReasonCode, type VerificationSourceObservation, type VerificationSourceRecord,
 } from '@osstack/core/verification-intake';
 import { z } from 'zod';
 
@@ -214,4 +214,36 @@ export async function readVerificationResults(
     checkAbort();
     return { status: 'read', observed_at: observedAt, pending, observations: observations.sort((a, b) => a.app_id - b.app_id || a.object_id - b.object_id) };
   } catch { return { status: 'waiting_source', code: 'verify_read_incomplete' }; }
+}
+
+/** Re-read the accepted bytes. The caller decides whether an old result may still be used.
+ * This read does not check freshness, producer TTL or the PR's current head. */
+export async function readVerificationContractText(
+  deps: Pick<VerificationReadDeps, 'rest'>, policy: VerificationProducerPolicyV1,
+  row: Pick<VerificationSourceRecord, 'source_kind' | 'decision' | 'object_id' | 'repository' | 'repository_id' | 'app_id' | 'check_name' | 'observed_head_sha' | 'contract_digest'>,
+  { signal }: { signal: AbortSignal },
+): Promise<{ readonly ok: true; readonly text: string } | { readonly ok: false; readonly code: 'verify_read_incomplete' | 'verify_contract_invalid' }> {
+  const invalid = { ok: false, code: 'verify_contract_invalid' } as const;
+  const incomplete = { ok: false, code: 'verify_read_incomplete' } as const;
+  try {
+    if (row.source_kind !== 'check_run' || row.decision !== 'accepted' || typeof row.contract_digest !== 'string'
+      || !/^[a-f0-9]{64}$/iu.test(row.contract_digest) || !repository.safeParse(row.repository).success || !id.safeParse(row.object_id).success
+      || !policy.producers.some(p => p.type === 'App' && p.carrier === 'check-run' && p.app_id === row.app_id && p.repository_id === row.repository_id)) return invalid;
+    if (signal.aborted) return incomplete;
+    let abort!: () => void;
+    const cancelled = new Promise<never>((_, reject) => { abort = () => reject(Error('verify_read_incomplete')); });
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      const response = await Promise.race([deps.rest(`repos/${row.repository}/check-runs/${row.object_id}`, { signal }), cancelled]);
+      if (signal.aborted || !response.ok) return incomplete;
+      const parsed = runSchema.safeParse(response.body);
+      if (!parsed.success) return incomplete;
+      const run = parsed.data;
+      if (run.id !== row.object_id || run.name !== row.check_name || run.app.id !== row.app_id
+        || run.head_sha !== row.observed_head_sha || run.status !== 'completed') return invalid;
+      const body = z.object({ output: z.object({ text: z.string() }) }).safeParse(response.body);
+      if (!body.success || digest(body.data.output.text) !== row.contract_digest) return invalid;
+      return { ok: true, text: body.data.output.text };
+    } finally { signal.removeEventListener('abort', abort); }
+  } catch { return incomplete; }
 }

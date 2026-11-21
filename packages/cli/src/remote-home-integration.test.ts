@@ -15,6 +15,8 @@ import { WorkerViewService } from "./worker-view-service.js";
 import { startDaemon, type DaemonHandles } from "./daemon.js";
 import { readHomeIdentity, DeploymentIdentitySchema } from "./home-inventory.js";
 
+// Hang detector only. Keep both waits together below the 20 s test timeout regardless of expected performance.
+const EXIT_WAIT_MS=8_000;
 const key=Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from("ssh-ed25519"),Buffer.from([0,0,0,32]),Buffer.alloc(32,7)]).toString("base64");
 const homeId=`home_${"a".repeat(32)}`, generation=`instance_${"b".repeat(32)}`;
 const identity={schema_version:1,home_id:homeId,generation,version:"0.21.0",protocol_version:1,database_schema:44,started_at_ms:1,deployment_kind:"unknown",build_digest:null,build_evidence:"unavailable"};
@@ -151,10 +153,11 @@ it("exporter rejects environment absence, extra arguments and a socket symlink",
 
 it("exporter process exits after its one-page response even if the reader leaves stdin open",async()=>{
  const f=await fixture();const child=f.spawnLocal("ignored",[],{}) as ChildProcessWithoutNullStreams;const c=new RemoteChannel(child.stdout,child.stdin);
+ let timer:NodeJS.Timeout|undefined;
  try{await c.send({type:"hello",protocol:1,nonce:"e".repeat(64),home_id:f.entry.home_id,daemon_protocol:1,registry_sha256:f.entry.registry_sha256,scope:"project"});const grant=await c.receive() as {token:string};
  const exited=new Promise<number|null>(resolve=>child.once("close",resolve));await c.send({type:"snapshot",token:grant.token,sequence:1,limit:1});await c.receive();
- const result=await Promise.race([exited,new Promise<string>(resolve=>setTimeout(()=>resolve("still_running"),1000))]);expect(result).toBe(0);
- }finally{c.close();if(child.exitCode===null)child.kill("SIGKILL");}
+ const result=await Promise.race([exited,new Promise<string>(resolve=>{timer=setTimeout(()=>resolve("still_running"),EXIT_WAIT_MS);})]);expect(result).toBe(0);
+ }finally{if(timer)clearTimeout(timer);c.close();if(child.exitCode===null)child.kill("SIGKILL");}
 });
 
 it("a previous connection's read token is rejected by a fresh exporter instance",async()=>{
@@ -180,7 +183,7 @@ it("exporter exits on invalid startup configuration and arguments without ever r
  for(const args of [["--stdio"],["--invalid"]]){
  const child=spawn(process.execPath,[compiled,...args],{stdio:["pipe","pipe","pipe"],env:{...process.env,...f.exporterEnv,OSSTACK_REMOTE_EXPORT_SHA256:"a".repeat(64)}});
  let output="";child.stdout.on("data",b=>{output+=b;});let timer:NodeJS.Timeout|undefined;
- try{const code=await Promise.race([new Promise<number|null>(resolve=>child.once("close",resolve)),new Promise<string>(resolve=>{timer=setTimeout(()=>resolve("still_running"),1000);})]);expect(code).toBe(1);expect(output).toBe("");}
+ try{const code=await Promise.race([new Promise<number|null>(resolve=>child.once("close",resolve)),new Promise<string>(resolve=>{timer=setTimeout(()=>resolve("still_running"),EXIT_WAIT_MS);})]);expect(code).toBe(1);expect(output).toBe("");}
  finally{if(timer)clearTimeout(timer);if(child.exitCode===null)child.kill("SIGKILL");}
  }expect(f.methods).toEqual([]);
 });

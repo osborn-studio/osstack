@@ -6,8 +6,8 @@
 import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import {
-  RevisionChainError, RevisionGrantError, SAME_CHILD_RESUMABLE, combineFeedbackDigests, decideChainStep, readRootActivity, parseStoredGrant, reduceReviewers, scratchPath,
-  type ChainDecision, type ChainView, type ContainedMissionStore, type PrSnapshot, type ProducerRegistry, type RevisionChain, type RevisionChainStore, type RevisionGrant,
+  RevisionChainError, RevisionGrantError, SAME_CHILD_RESUMABLE, combineFeedbackDigests, decideChainStep, readRootActivity, parseStoredRevisionGrant, reduceReviewers, scratchPath,
+  type ChainDecision, type ChainView, type ContainedMissionStore, type PrSnapshot, type ProducerRegistry, type RevisionChain, type RevisionChainStore, type StoredRevisionGrant,
 } from '@osstack/core';
 import { redactSecrets } from '@osstack/governance';
 import { normalizeSnapshot, reviewFeedbackOf, type PullRequestRead, type PullRequestRef } from './contained-mission-bridge-reader.js';
@@ -138,7 +138,7 @@ export function createRevisionLaunchPort(deps: RevisionLaunchDeps): ContainedRev
     return chain;
   };
   /** `enforce` stops the chain on failure (a real launch); a resume check only looks. */
-  const live = (chain: RevisionChain, enforce: boolean): RevisionGrant => {
+  const live = (chain: RevisionChain, enforce: boolean): StoredRevisionGrant => {
     const ctx = { access: deps.access, keys: deps.keys(), now: deps.now() };
     try { return enforce ? enforceGrantLive(deps.chains, chain, ctx) : assertGrantLive(chain, ctx); }
     catch (error) { throw new RevisionLaunchRefused(error instanceof RevisionGrantError ? error.code : 'grant_invalid'); }
@@ -261,7 +261,7 @@ export type DispatchOutcome =
 /** Errors that only mean someone else moved the chain first. They are not dispatch failures and are never counted. */
 const BENIGN = new Set(['version_conflict', 'chain_busy', 'head_already_reserved', 'state_denied', 'head_mismatch']);
 const MAX_DISPATCH_FAILURES = 3;
-const asView = (chain: RevisionChain, chains: RevisionChainStore, grant: RevisionGrant): ChainView => ({
+const asView = (chain: RevisionChain, chains: RevisionChainStore, grant: StoredRevisionGrant): ChainView => ({
   mode: chain.mode, state: chain.state, published_head: chain.published_head, published_base: chain.published_base, base_ref: chain.base_ref, rounds_used: chain.rounds_used,
   grant_rounds: grant.rounds, review_deadline: chain.review_deadline, reserved_heads: chains.reservations(chain.chain_id).map(r => r.head_sha),
 });
@@ -274,8 +274,8 @@ export async function dispatchRevision(deps: DispatchRevisionDeps, chainId: stri
   const chain = chains.get(chainId);
   if (chain.mode !== 'live') return { status: 'no_reserve', reason: 'not_live' };
   if (chain.state !== 'awaiting_review' && chain.state !== 'ready_for_human') return { status: 'no_reserve', reason: `state_${chain.state}` };
-  let grant: RevisionGrant;
-  try { grant = parseStoredGrant(chain.grant_json); } catch { return { status: 'no_reserve', reason: 'grant_unreadable' }; }
+  let grant: StoredRevisionGrant;
+  try { grant = parseStoredRevisionGrant(chain.grant_json); } catch { return { status: 'no_reserve', reason: 'grant_unreadable' }; }
   const ref = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(chain.repository);
   if (!ref) return { status: 'no_reserve', reason: 'repository_invalid' };
   const prRef: PullRequestRef = { owner: ref[1]!, name: ref[2]!, number: chain.pr_number };

@@ -24,9 +24,9 @@ const flags = ['--local-failure-profile', pins.profile_id, '--profile-digest', p
 const enabled = { grantOptions: { localFailureEnabled: () => true } };
 const keyFor = async (f: Fixture) => readIssuerPrivateKey(f.home, (await loadRevisionIssuer(f.home))!.keys.get('k1')!);
 const counts = (f: Fixture) => f.rig.db.prepare('SELECT (SELECT count(*) FROM engineering_revision_chains) chains, (SELECT count(*) FROM engineering_revision_chain_events) events').get();
-async function issue(f: Fixture, recheck?: number) {
+async function issue(f: Fixture, recheck?: number, mission = f.mission()) {
   const local_failure = { ...pins, ...(recheck === undefined ? {} : { recheck_timeout_seconds: recheck }) };
-  const reply = await f.service.preview(f.actor('a'), { mission_id: f.mission(), local_failure });
+  const reply = await f.service.preview(f.actor('a'), { mission_id: mission, local_failure });
   expect(reply.preview.version).toBe(2);
   const key = await keyFor(f);
   const signed = signLocalFailureRevisionGrant(reply.preview, key);
@@ -57,7 +57,7 @@ it.each([undefined, 30])('stores the exact signed V2 grant, baseline and event (
   expect(f.rig.chains.events(chain.chain_id)).toEqual(events);
   await expect(f.service.renewPreview(f.actor('a'), { chain_id: chain.chain_id })).rejects.toThrow('chain_grant_unreadable');
   const ctx = await f.ctx();
-  expect(() => assertGrantLive(chain, ctx)).toThrow('grant_invalid');
+  expect(assertGrantLive(chain, ctx)).toEqual(stored);
 });
 
 it.each(['random', 'untrusted', 'domain', 'v1 digest', 'other digest', 'expired', 'rotated', 'head', 'protected', 'write scope'])('refuses V2 %s and burns the nonce', async reason => {
@@ -264,13 +264,17 @@ it('uses the validity ceiling of the final issuer read', async () => {
 });
 
 async function issuedReaderFixture() {
-  const f = await setup(enabled);
-  const { signed, grant } = await issue(f);
+  let localEnabled = true;
+  const f = await setup({ grantOptions: { localFailureEnabled: () => localEnabled } });
+  const mission = f.mission({ spec: { start_commit: '0'.repeat(40), repo_path: f.rig.root,
+    base_ref: 'main', worktree_path: join(f.rig.root, 'origin'), allowed_paths: ['src/**'], verify: { argv: ['verify'] } } });
+  const { signed, grant } = await issue(f, undefined, mission);
   const { chain_id } = await grant();
+  localEnabled = false;
   const ctx = await f.ctx();
   const dispatch: revision.DispatchRevisionDeps = {
     chains: f.rig.chains, missions: f.rig.missions, access: f.access, keys: () => ctx.keys, now: () => f.clock.now,
-    enabled: () => true, protectedSetDigest: () => signed.protected_set_digest,
+    enabled: () => true, protectedSetDigest: () => signed.protected_set_digest, worktreesRoot: f.rig.root,
     registry: { publisher: [PUBLISHER], reviewers: [REVIEWER] }, launchCaps: { executor_seconds: 600, verify_seconds: 120 },
     readPr: ref => readPullRequest(f.scripted.transport, ref),
   };
@@ -280,7 +284,7 @@ async function issuedReaderFixture() {
 it.each([
   ['open', 'awaiting_review', null], ['protected', 'awaiting_decision', 'protected_set_changed'],
   ['base', 'awaiting_decision', 'base_changed'], ['MERGED', 'closed', 'pr_merged'], ['CLOSED', 'closed', 'pr_closed'],
-  ['deadline', 'awaiting_decision', 'review_deadline'], ['changes_requested', 'awaiting_review', null],
+  ['deadline', 'awaiting_decision', 'review_deadline'], ['changes_requested', 'revising', null],
 ] as const)('reconciles a signed V2 grant for %s', async (scenario, state, stop_reason) => {
   const { f, chain, dispatch } = await issuedReaderFixture();
   if (scenario === 'protected') dispatch.protectedSetDigest = () => '0'.repeat(64);
@@ -295,29 +299,84 @@ it.each([
     headIsDescendant: async () => true, log });
   for (let cycle = 1; cycle <= (scenario === 'changes_requested' ? 2 : 1); cycle++) {
     await live.scan();
-    expect(readPr).toHaveBeenCalledTimes(cycle);
+    expect(readPr).toHaveBeenCalledTimes(cycle + Number(scenario === 'changes_requested'));
     if (scenario === 'changes_requested') {
-      expect(launch).toHaveBeenCalledTimes(cycle);
-      await expect(launch.mock.results.at(-1)!.value).resolves.toEqual({ status: 'no_reserve', reason: 'grant_unreadable' });
+      expect(launch).toHaveBeenCalledTimes(1);
+      await expect(launch.mock.results.at(-1)!.value).resolves.toMatchObject({ status: 'dispatched', round: 1 });
     }
     expect(log).not.toHaveBeenCalled();
     expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state, stop_reason });
-    expect(f.rig.chains.reservations(chain.chain_id)).toEqual([]);
-    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_contained_missions').get()).toEqual({ n: 1 });
+    expect(f.rig.chains.reservations(chain.chain_id)).toHaveLength(Number(scenario === 'changes_requested'));
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_contained_missions').get()).toEqual({ n: scenario === 'changes_requested' ? 2 : 1 });
     f.clock.now += 60_000;
   }
   launch.mockRestore();
   await live.stop();
 });
 
-it('refuses review dispatch without writes and enforces grant_invalid on a signed V2 grant', async () => {
+it.each(['valid', 'grant_expired', 'grant_invalid'])('dispatches or stops a signed V2 review: %s', async reason => {
   const { f, chain, dispatch, ctx } = await issuedReaderFixture();
+  if (reason === 'grant_expired') f.clock.now = parseLocalFailureRevisionGrant(chain.grant_json).expires_at;
+  f.pr.reviews = [{ ...changesRequested(77, f.pr.head), submitted_at: f.clock.now - 1000 }];
+  if (reason === 'grant_invalid') f.writeAuthority(f.principals.map(p => ({ ...p, write_scopes: [] })));
+  const outcome = await revision.dispatchRevision(dispatch, chain.chain_id);
+  if (reason === 'valid') {
+    expect(outcome).toMatchObject({ status: 'dispatched', round: 1 });
+    expect(enforceGrantLive(f.rig.chains, chain, ctx).version).toBe(2);
+  } else {
+    expect(outcome).toEqual({ status: 'stopped', reason });
+    expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: reason });
+    expect(f.rig.chains.reservations(chain.chain_id)).toEqual([]);
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_contained_missions').get()).toEqual({ n: 1 });
+  }
+});
+
+it.each([1, 2, 3])('refuses unreadable version %i before PR reads or writes', async version => {
+  const { f, chain, dispatch } = await issuedReaderFixture();
+  vi.spyOn(f.rig.chains, 'get').mockReturnValue({ ...chain, grant_json: JSON.stringify({ version }) });
+  const readPr = vi.fn(dispatch.readPr);
   const changes = () => f.rig.db.prepare('SELECT total_changes() AS n').get();
   const before = changes();
-  expect(await revision.dispatchRevision(dispatch, chain.chain_id)).toEqual({ status: 'no_reserve', reason: 'grant_unreadable' });
+  expect(await revision.dispatchRevision({ ...dispatch, readPr }, chain.chain_id)).toEqual({ status: 'no_reserve', reason: 'grant_unreadable' });
+  expect(readPr).not.toHaveBeenCalled();
   expect(changes()).toEqual(before);
-  expect(() => enforceGrantLive(f.rig.chains, chain, ctx)).toThrow('grant_invalid');
-  expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'grant_invalid' });
+});
+
+it('checks V2 signatures, grant binding, key policy and live scope on each assertion', async () => {
+  const { f, chain, ctx } = await issuedReaderFixture();
+  const stored = parseLocalFailureRevisionGrant(chain.grant_json);
+  const { signature: _signature, preview_sha256, ...preview } = stored;
+  expect(assertGrantLive(chain, { ...ctx, now: stored.expires_at - 1 })).toEqual(stored);
+  expect(() => assertGrantLive(chain, { ...ctx, now: stored.expires_at })).toThrow('grant_expired');
+  const invalid = (body: unknown) => expect(() => assertGrantLive({ ...chain, grant_json: JSON.stringify(body) }, ctx)).toThrow('grant_invalid');
+  invalid(signLocalFailureRevisionGrant(preview, generateKeyPairSync('ed25519').privateKey));
+  invalid({ ...stored, rounds: 2 });
+  invalid({ ...stored, expires_at: stored.expires_at + 1 });
+  invalid({ ...stored, local_failure: { ...stored.local_failure, diagnostic_timeout_seconds: 59 } });
+  invalid({ ...stored, version: 1 });
+  invalid({ ...(await f.issue('a', f.mission())).signed, version: 2 });
+  invalid({ ...stored, signature: sign(null, Buffer.from(canonicalJson({ domain: 'osstack.revision-grant.v1', preview, preview_sha256 })), await keyFor(f)).toString('base64') });
+  for (const changed of [{ repository: 'o/another' }, { root_mission_id: 'another' }, { branch: 'other' }, { base_ref: 'other' },
+    { pr_number: 99 }, { mode: 'shadow' as const }, { grant_json: '{}' }, { budget_json: '{"origin":"x"}' }]) {
+    expect(() => assertGrantLive({ ...chain, ...changed }, ctx)).toThrow('grant_invalid');
+  }
+  const key = ctx.keys.get(stored.key_id)!;
+  for (const keys of [new Map(), new Map([[key.key_id, { ...key, max_validity_ms: 1 }]]),
+    new Map([[key.key_id, { ...key, public_key: generateKeyPairSync('ed25519').publicKey }]])]) {
+    expect(() => assertGrantLive(chain, { ...ctx, keys })).toThrow('grant_invalid');
+  }
+  f.writeAuthority(f.principals.filter(p => p['principal_id'] !== stored.principal_id));
+  expect(() => assertGrantLive(chain, ctx)).toThrow('grant_invalid');
+});
+
+it('stops at the V2 wall-clock limit measured from the chain budget origin', async () => {
+  const { f, chain, ctx } = await issuedReaderFixture();
+  const grant = parseLocalFailureRevisionGrant(chain.grant_json);
+  const origin = ctx.now - grant.budget.max_wall_clock_hours * 3_600_000;
+  const row = { ...chain, budget_json: JSON.stringify({ origin }) };
+  expect(assertGrantLive(row, { ...ctx, now: ctx.now - 1 })).toEqual(grant);
+  expect(() => enforceGrantLive(f.rig.chains, row, ctx)).toThrow('budget_exhausted');
+  expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'budget_exhausted' });
 });
 
 it('limits the V1-only grant parser to its CLI owners', () => {
@@ -325,6 +384,5 @@ it('limits the V1-only grant parser to its CLI owners', () => {
   const readers = readdirSync(root, { recursive: true, encoding: 'utf8' })
     .filter(file => file.endsWith('.ts') && !/\.(test|testkit)\.ts$/.test(file))
     .filter(file => /\bparseStoredGrant\b/.test(readFileSync(join(root, file), 'utf8')));
-  expect(readers.sort()).toEqual(['contained-mission-diagnosis.ts', 'contained-mission-grant.ts',
-    'contained-mission-revision-publication.ts', 'contained-mission-revision.ts']);
+  expect(readers.sort()).toEqual(['contained-mission-diagnosis.ts', 'contained-mission-grant.ts']);
 });
