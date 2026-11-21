@@ -16,8 +16,9 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
 /** Highest schema reviewed for stopped-home upgrade compatibility. Deliberately
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
- * effect it can hold) and bumps this. */
-export const UPGRADE_QUALIFIED_SCHEMA = 63;
+ * effect it can hold) and bumps this. Migration 64 adds one chain trigger, no table, column or row,
+ * and holds no unsettled side effect. */
+export const UPGRADE_QUALIFIED_SCHEMA = 64;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */

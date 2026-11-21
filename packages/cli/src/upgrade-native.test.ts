@@ -69,12 +69,12 @@ async function fixture(oldSchema=40,nextSchema=41) {
   return{root,config,old,next,plan,input,backend,journal,starts:()=>starts};
 }
 describe('managed native upgrade actual filesystem/process boundaries',()=>{
-  it.each([47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63])('accepts a clean schema%i home',async schema=>{
+  it.each([47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64])('accepts a clean schema%i home',async schema=>{
     const f=await fixture(schema,schema);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result.state).toBe('verified');expect(f.starts()).toBe(4);}finally{await port.close();}
   },60000);
-  it('refuses an unqualified schema64 home',async()=>{
-    const f=await fixture(64,64);const port=new ManagedNativeUpgradePort(f.input,f.backend);
+  it('refuses an unqualified schema65 home',async()=>{
+    const f=await fixture(65,65);const port=new ManagedNativeUpgradePort(f.input,f.backend);
     try{const result=await coordinateUpgrade({journal:f.journal,plan:f.plan,groupId:'first',port});expect(result).toMatchObject({state:'recovery_required',reason:'upgrade_schema_unqualified'});expect(f.starts()).toBe(2);}finally{await port.close();}
   },30000);
   it('fails closed when a pre55 home already contains the merger scan table',async()=>{
@@ -442,7 +442,7 @@ describe('diagnosis upgrade database gate',()=>{
     db.exec(MIGRATIONS.find(m=>m.id===61)!.sql);
     db.exec(recheckDdl);db.pragma('user_version=62');expect(qualify).not.toThrow();
     db.exec(runDdl);db.pragma('user_version=63');expect(qualify).not.toThrow();
-    db.pragma('user_version=64');expect(qualify).toThrow('upgrade_schema_unqualified');
+    db.pragma('user_version=65');expect(qualify).toThrow('upgrade_schema_unqualified');
   });
   const dispatchObjects=[...dispatchDdl.matchAll(/CREATE (TABLE|TRIGGER|INDEX) (\w+)/g)].map(m=>[m[1]!,m[2]!] as const);
   it.each(dispatchObjects)('refuses pre60 and missing schema60 %s %s',(kind,name)=>{

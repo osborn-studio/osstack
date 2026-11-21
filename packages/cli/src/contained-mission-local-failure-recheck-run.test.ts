@@ -303,8 +303,11 @@ it.each([
   const d = fixture(mode);
   const { f, ports, row } = d;
   const grant = structuredClone(f.facts.grant);
-  const setGrant = (value: unknown) => f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1")
-    .run(JSON.stringify(value));
+  const setGrant = (value: unknown) => {
+    // Simulate a database without the schema 64 guard to keep the inner defence covered.
+    f.db.exec("DROP TRIGGER IF EXISTS engineering_local_failure_grant_monotonic");
+    f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1").run(JSON.stringify(value));
+  };
   const refreshTransactions: boolean[] = [];
   const load = ports.loadInstalledProfile;
   switch (mode) {

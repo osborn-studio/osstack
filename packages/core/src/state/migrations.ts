@@ -2,6 +2,7 @@ import { ENGINEERING_MISSION_LINEAGE_DDL } from "./engineering-mission-lineage-d
 import { ENGINEERING_VERIFICATION_SOURCE_DDL } from "./engineering-verification-source-ddl.js";
 import { ENGINEERING_CHAIN_DEPTH_GATE_DDL } from "./engineering-chain-depth-gate-ddl.js";
 import { ENGINEERING_LOCAL_FAILURE_RECHECK_DDL } from "./engineering-local-failure-recheck-ddl.js";
+import { ENGINEERING_LOCAL_FAILURE_GRANT_DDL } from "./engineering-local-failure-grant-ddl.js";
 import { ENGINEERING_LOCAL_FAILURE_RECHECK_RUN_DDL } from "./engineering-local-failure-recheck-run-ddl.js";
 import { ENGINEERING_LOCAL_FAILURE_DISPATCH_DDL } from "./engineering-local-failure-dispatch-ddl.js";
 import { ENGINEERING_DIAGNOSIS_DDL } from "./engineering-diagnosis-ddl.js";
@@ -1905,6 +1906,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { id: 61, name: "engineering_chain_depth_gate", sql: ENGINEERING_CHAIN_DEPTH_GATE_DDL },
   { id: 62, name: "engineering_local_failure_recheck", sql: ENGINEERING_LOCAL_FAILURE_RECHECK_DDL },
   { id: 63, name: "engineering_local_failure_recheck_run", sql: ENGINEERING_LOCAL_FAILURE_RECHECK_RUN_DDL },
+  { id: 64, name: "engineering_local_failure_grant_monotonic", sql: ENGINEERING_LOCAL_FAILURE_GRANT_DDL },
 ];
 
 export const CURRENT_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.id;

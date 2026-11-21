@@ -1,10 +1,11 @@
-import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit, readRecheckContainerDebit } from "./engineering-root-admission.js";
-import { parseLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
+import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit, readRecheckContainerDebit, readRootActivity } from "./engineering-root-admission.js";
+import { parseStoredRevisionGrant, type StoredRevisionGrant } from "../bridge/stored-revision-grant.js";
+import { checkLocalFailureRenewal, parseLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
 import { randomUUID } from "node:crypto";
 import type Database from "better-sqlite3";
 import type { AttentionOwner, AttentionStore } from "./attention-store.js";
 import type { ChainDecision, ChainMode, ChainState, ShadowAction } from "../bridge/revision-chain.js";
-import { LIVE_STOP_REASONS, REFRESHABLE_STOP_REASONS, SAME_CHILD_RESUMABLE, grantBindsChain, parseStoredGrant, type RevisionGrant } from "../bridge/revision-grant.js";
+import { LIVE_STOP_REASONS, REFRESHABLE_STOP_REASONS, SAME_CHILD_RESUMABLE, grantBindsChain, parseStoredGrant } from "../bridge/revision-grant.js";
 
 export type ReservationState = "reserved" | "dispatched" | "void";
 export type IntentKind = "push" | "open_pr" | "check";
@@ -363,14 +364,15 @@ export class RevisionChainStore {
    * stopped by a reason in `REFRESHABLE_STOP_REASONS`, with no unsettled push intent. The new grant
    * keeps the binding and scope, never lowers the allowance or a budget limit, and must carry `renews = {chain, ifRevision}`.
    * Authenticity (signature, live PR facts, principal) is the caller's; the store enforces monotonicity and the state contract. */
-  replaceGrant(chainId: string, ifRevision: number, grant: RevisionGrant, now: number): ReplaceGrantResult {
+  replaceGrant(chainId: string, ifRevision: number, grant: StoredRevisionGrant, now: number): ReplaceGrantResult {
     this.clock(now);
     return this.write(() => {
       const chain = this.checked(chainId, ifRevision);
       if (chain.mode !== "live") fail("bridge_shadow_write_denied");
       if (chain.state === "closed") fail("chain_terminal");
-      const next = (() => { try { return parseStoredGrant(JSON.stringify(grant)); } catch { return fail("grant_invalid"); } })();
-      const old = (() => { try { return parseStoredGrant(chain.grant_json); } catch { return fail("chain_grant_unreadable"); } })();
+      const next = (() => { try { return parseStoredRevisionGrant(JSON.stringify(grant)); } catch { return fail("grant_invalid"); } })();
+      const old = (() => { try { return parseStoredRevisionGrant(chain.grant_json); } catch { return fail("chain_grant_unreadable"); } })();
+      if (old.version !== next.version) fail(old.version === 2 ? "grant_not_monotonic" : "grant_upgrade_unsupported");
       const reason = chain.stop_reason ?? "";
       const stopped = chain.state === "awaiting_decision" && REFRESHABLE_STOP_REASONS.has(reason);
       if (!stopped && chain.state !== "awaiting_review" && chain.state !== "ready_for_human") fail("state_denied");
@@ -412,12 +414,29 @@ export class RevisionChainStore {
           }
         }
       }
+      let localFailure: { profile_id: string; profile_digest: string; recheck: boolean; changed: string[] } | undefined;
+      if (old.version === 2 && next.version === 2) {
+        const hasIntake = Boolean(this.db.prepare("SELECT 1 FROM engineering_local_failure_intakes WHERE chain_id=? LIMIT 1").get(chainId));
+        const opt = next.local_failure;
+        const terms = checkLocalFailureRenewal(old.local_failure, opt, hasIntake);
+        if (!terms.ok) return fail(terms.code);
+        const activity = readRootActivity(this.db, chain.root_mission_id);
+        if (activity.local_failure || activity.recheck) fail("grant_renewal_busy");
+        if (activity.local_failure_child && !this.db.prepare(`SELECT 1 FROM engineering_contained_missions m
+          WHERE m.mission_id=? AND m.state='awaiting_decision' AND m.stop_obligation=0
+          AND (SELECT CASE WHEN json_valid(e.payload_json) THEN json_extract(e.payload_json,'$.reason') END FROM engineering_contained_events e
+            WHERE e.mission_id=m.mission_id AND e.kind='halted' ORDER BY e.seq DESC LIMIT 1)='publication_pending'
+          AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=m.mission_id AND e.kind='verify_repair_approval')`)
+          .get(activity.local_failure_child.child_mission_id)) fail("grant_renewal_busy");
+        localFailure = { profile_id: opt.profile_id, profile_digest: opt.profile_digest, recheck: Boolean(opt.recheck), changed: terms.changed };
+      }
       const headConsumed = Boolean(this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, chain.published_head));
       const updated = this.update(chain, { state: to, ...(to === "awaiting_decision" && stopped ? { stop_reason: "child_halted" } : {}), grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms, ...(spentJson !== undefined ? { spent_json: spentJson } : {}) }, "grant_replaced",
         { head: chain.published_head, base: chain.published_base }, now);
       this.event(chainId, "grant_replaced", {
         grant_id: next.grant_id, from_grant_id: old.grant_id, rounds: { from: old.rounds, to: next.rounds }, expires_at: next.expires_at, budget: next.budget,
         restored_state: to, head_consumed: headConsumed, ...(topUp ? { top_up: topUp } : {}),
+        ...(localFailure ? { version: 2, local_failure: localFailure } : {}),
       }, now);
       return { chain: updated, head_consumed: headConsumed };
     });

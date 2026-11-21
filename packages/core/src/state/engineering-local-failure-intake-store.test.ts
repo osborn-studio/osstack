@@ -170,6 +170,8 @@ it("cannot erase a launched obligation as never-started or roll back a partial s
 it("fails closed on V1, opt-out, malformed opt-in, expired grants, unavailable rounds and deadlines", () => {
   const f = setup(), grant = JSON.parse(f.chain.grant_json) as Record<string, unknown>;
   const local = grant.local_failure as Record<string, unknown>;
+  // Simulate a database without the schema 64 guard to keep the inner defence covered.
+  f.db.exec("DROP TRIGGER engineering_local_failure_grant_monotonic");
   for (const patch of [{ version: 1 }, { local_failure: undefined }, { local_failure: { ...local, enabled: false } },
     { local_failure: { ...local, enabled: 1 } }, { local_failure: { ...local, max_diagnostics_per_head: null } },
     { expires_at: 1000 }, { budget: { max_container_seconds: 19 } }]) {
@@ -191,6 +193,8 @@ it("keeps one active intake across a profile regrant and rejects a moved launch 
   const f = setup(); f.store.reserve(f.input);
   const grant = JSON.parse(f.chain.grant_json) as { local_failure: { profile_digest: string } };
   grant.local_failure.profile_digest = E;
+  // Simulate a database without the schema 64 guard to keep the inner defence covered.
+  f.db.exec("DROP TRIGGER engineering_local_failure_grant_monotonic");
   f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?").run(JSON.stringify(grant), f.chain.chain_id);
   const chain = f.chains.get(f.chain.chain_id);
   expect(() => f.store.reserve({ ...f.input, intake_id: `lfi_${randomUUID()}`, invocation_id: "new-profile", chain_revision: chain.revision,
@@ -225,6 +229,8 @@ it("rejects REPLACE through the partial active-chain index after a profile regra
   const f = setup(), original = f.store.reserve(f.input);
   const grant = JSON.parse(f.chain.grant_json) as { local_failure: { profile_digest: string } };
   grant.local_failure.profile_digest = E;
+  // Simulate a database without the schema 64 guard to keep the inner defence covered.
+  f.db.exec("DROP TRIGGER engineering_local_failure_grant_monotonic");
   f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?").run(JSON.stringify(grant), f.chain.chain_id);
   const chain = f.chains.get(f.chain.chain_id);
   const replacement = { ...original, intake_id: `lfi_${randomUUID()}`, invocation_id: "replace", profile_digest: E,

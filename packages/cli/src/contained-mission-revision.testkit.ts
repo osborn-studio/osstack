@@ -116,6 +116,8 @@ export function reserveFixtureIntake(rig: ReturnType<typeof createRig>, chainId:
     profile_id: 'fixture', profile_digest: PD, trusted_source_digest: PD, grant_id: grant.grant_id,
     grant_digest: createHash('sha256').update(chain.grant_json).digest('hex'), invocation_id: randomUUID(),
     journal_ref: 'fixture', container_cap_seconds: cap, ci_hint_json: '{}' });
+  // Simulate a database without the schema 64 guard to keep the inner defence covered.
+  rig.db.exec('DROP TRIGGER IF EXISTS engineering_local_failure_grant_monotonic');
   rig.db.prepare('UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?').run(original.grant_json, chainId);
   return { intake, store, settle: () => store.settleNotStarted(intake.intake_id, intake.revision) };
 }

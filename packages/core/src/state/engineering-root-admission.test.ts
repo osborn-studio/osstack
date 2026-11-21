@@ -158,6 +158,8 @@ for (const state of ["running", "stop_unknown"] as const) it(`keeps ${state} exc
 
 it("preserves V1 review authority without granting intake authority", () => {
   const f = setup(), grant = { ...JSON.parse(f.chain.grant_json), version: 1 };
+  // Simulate a database without the schema 64 guard to keep the inner defence covered.
+  f.db.exec("DROP TRIGGER engineering_local_failure_grant_monotonic");
   f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?").run(JSON.stringify(grant), f.chain.chain_id);
   const chain = f.chains.get(f.chain.chain_id);
   expect(() => f.store.reserve({ ...f.input, chain_revision: chain.revision, grant_digest: sha(chain.grant_json) })).toThrow("intake_opt_in_denied");

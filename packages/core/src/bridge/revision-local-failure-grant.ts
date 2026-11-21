@@ -6,6 +6,8 @@ import {
   GRANT_LIMITS, RevisionGrantError, RevisionGrantPreviewSchema, RevisionGrantSchema, canonicalJson,
 } from "./revision-grant.js";
 
+export { checkLocalFailureRenewal } from "./revision-local-failure-renewal.js";
+
 /** Offline V2 contract only. No admission, clock, profile loading, store or scanner wiring.
  * V1 grants remain review-only. Adding this capability requires a newly signed V2 preview.
  */
