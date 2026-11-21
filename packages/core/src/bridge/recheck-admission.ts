@@ -16,8 +16,8 @@ export interface RecheckGrantInput {
   run: DiagnosisBinding & DiagnosisProfile;
   /** The chain's currently published head and base. */
   chain: { published_head: string; published_base: string };
-  /** The recheck ledger row's pinned head and base. */
-  ledger: { new_head_sha: string; base_sha: string };
+  /** The recheck ledger row's chain and pinned head and base. */
+  ledger: { chain_id: string; new_head_sha: string; base_sha: string };
   /** The profile installed on the host. */
   installed: DiagnosisProfile;
   /** The installed profile's own timeout. */
@@ -58,7 +58,8 @@ export function verifyRecheckGrant(input: RecheckGrantInput): RecheckGrantVerdic
       !/^[a-f0-9]{40}$/.test(run.head_sha) ||
       chain.published_head !== run.head_sha || ledger.new_head_sha !== run.head_sha ||
       chain.published_base !== run.base_sha || ledger.base_sha !== run.base_sha ||
-      run.head_sha === grant.head_sha
+      (run.head_sha === grant.head_sha && (typeof ledger.chain_id !== "string" ||
+        ledger.chain_id === "" || grant.renews?.chain_id !== ledger.chain_id))
     ) return invalid;
     for (const pin of [run, input.installed])
       if (

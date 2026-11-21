@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
-import { canonicalJson } from "@osstack/core";
+import { canonicalJson, signLocalFailureRevisionGrant } from "@osstack/core";
 import { LocalFailureRecheckRunStore } from "@osstack/core/verification-intake";
 import { publishedRecheck, record, runFixture } from "@osstack/core/dist/state/local-failure-recheck.testkit.js";
 import { withdrawalVerificationFixture } from "@osstack/core/dist/bridge/verification-result-fixtures.js";
@@ -190,6 +190,32 @@ function fixture(mode = "passed") {
   const writes = () => f.db.prepare("SELECT total_changes()").pluck().get();
   return { ...d, row, runs, start, audit, writes, ports, run, prepare };
 }
+
+function setRunHeadGrant(d: ReturnType<typeof fixture>, renewed: boolean) {
+  const { preview_sha256: _digest, signature: _signature, ...preview } = d.f.facts.grant;
+  const grant = signLocalFailureRevisionGrant({
+    ...preview, grant_id: `rg_${randomUUID()}`, head_sha: d.row.new_head_sha,
+    ...(renewed ? { renews: { chain_id: d.row.chain_id, revision: d.chain().revision } } : {}),
+  }, d.f.keys.privateKey);
+  d.f.db.prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?")
+    .run(JSON.stringify(grant), d.row.chain_id);
+  return grant;
+}
+
+it("starts a recheck under the chain's renewed grant on the published head", async () => {
+  const d = fixture();
+  const grant = setRunHeadGrant(d, true);
+  expect(await d.start()).toMatchObject({ status: "concluded", run: { grant_id: grant.grant_id, conclusion_state: "host_passed" } });
+  expect(d.run).toHaveBeenCalledTimes(1);
+});
+
+it("refuses a first-issued grant on the published head before reservation", async () => {
+  const d = fixture();
+  setRunHeadGrant(d, false);
+  expect(await d.start()).toEqual({ status: "refused", state: "awaiting_decision", reason: "verify_grant_invalid", run: null });
+  expect(d.runs.forRecheck(d.row.recheck_id)).toEqual([]);
+  expect(d.run).not.toHaveBeenCalled();
+});
 
 it.each([
   ["passed", "passed", "host_passed", null],
