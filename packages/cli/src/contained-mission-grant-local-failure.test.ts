@@ -55,7 +55,7 @@ it.each([undefined, 30])('stores the exact signed V2 grant, baseline and event (
   });
   await expect(grant()).rejects.toThrow('grant_refused');
   expect(f.rig.chains.events(chain.chain_id)).toEqual(events);
-  await expect(f.service.renewPreview(f.actor('a'), { chain_id: chain.chain_id })).rejects.toThrow('chain_grant_unreadable');
+  await expect(f.service.renewPreview(f.actor('a'), { chain_id: chain.chain_id })).resolves.toMatchObject({ preview: { version: 2 }, previous_local_failure: stored.local_failure });
   const ctx = await f.ctx();
   expect(assertGrantLive(chain, ctx)).toEqual(stored);
 });
@@ -126,7 +126,7 @@ it.each([{ diagnostic_timeout_seconds: 101 }, { recheck_timeout_seconds: 121 }, 
   expect(f.service['pending'].size).toBe(0);
   expect(counts(f)).toEqual({ chains: 0, events: 0 });
 });
-it('accepts V2 only on first preview and keeps the RPC surface fixed', async () => {
+it('accepts V2 terms on both previews and keeps the RPC surface fixed', async () => {
   const f = await setup(enabled);
   const rpc = serviceFor(f);
   const params = { credential: cred('a'), mission_id: f.mission(), local_failure: pins };
@@ -135,7 +135,8 @@ it('accepts V2 only on first preview and keeps the RPC surface fixed', async () 
     'mission.grant_revisions', 'mission.chain_decide', 'mission.merger_report'].sort());
   await expect(rpc.handle('mission.revision_grant_preview', params)).resolves.toMatchObject({ preview: { version: 2 } });
   await expect(rpc.handle('mission.revision_grant_preview', { ...params, local_failure: { ...pins, extra: true } })).rejects.toThrow('bad_request');
-  await expect(rpc.handle('mission.revision_grant_renew_preview', { credential: params.credential, chain_id: 'rc_' + '0'.repeat(36), local_failure: pins })).rejects.toThrow('bad_request');
+  await expect(rpc.handle('mission.revision_grant_renew_preview', { credential: params.credential, chain_id: 'rc_' + '0'.repeat(36), local_failure: { ...pins, extra: true } })).rejects.toThrow('bad_request');
+  await expect(rpc.handle('mission.revision_grant_renew_preview', { credential: params.credential, chain_id: 'rc_' + '0'.repeat(36), local_failure: pins })).rejects.toThrow(/^not_found$/);
   await expect(rpc.handle('mission.grant_revisions', { credential: params.credential, nonce: '0'.repeat(32), preview_sha256: '0'.repeat(64) })).rejects.toThrow('bad_request');
 });
 
@@ -164,7 +165,6 @@ it('refuses partial, chain and malformed flags before credential or RPC', async 
   const mission = ['--mission', f.mission()];
   for (const [args, expected] of [
     [[...mission, '--recheck-timeout-seconds', '12'], 'required:local_failure_flags'],
-    [['--chain', 'rc_x', ...flags], 'invalid:local_failure_requires_--mission'],
     ...[1, 3, 5, 7, 9, 11].map(i => [[...mission, ...flags.map((v, j) => j === i ? '!invalid' : v)], 'invalid:']),
     [[...mission, ...flags, '--recheck-timeout-seconds', '121'], 'invalid:'],
   ] as Array<[string[], string]>) {
@@ -384,5 +384,5 @@ it('limits the V1-only grant parser to its CLI owners', () => {
   const readers = readdirSync(root, { recursive: true, encoding: 'utf8' })
     .filter(file => file.endsWith('.ts') && !/\.(test|testkit)\.ts$/.test(file))
     .filter(file => /\bparseStoredGrant\b/.test(readFileSync(join(root, file), 'utf8')));
-  expect(readers.sort()).toEqual(['contained-mission-diagnosis.ts', 'contained-mission-grant.ts']);
+  expect(readers.sort()).toEqual(['contained-mission-diagnosis.ts']);
 });
