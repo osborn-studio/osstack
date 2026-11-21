@@ -1,6 +1,6 @@
 # U4b R: renewal and upgrade of a version 2 grant, and the recheck re-arm transport
 
-Date: 2026-11-20. Status: proposed; waiting for the owner's answers to the nine decisions in §8. No code, test or migration is part of this change.
+Date: 2026-11-20. Status: accepted; the owner accepted the nine decisions of §8 on 2026-11-20 (record in §8.1). No code, test or migration is part of this change.
 
 Baseline: `main` at `b4d11955`. Every `file:line` below refers to that commit. Two local branches are named without line numbers: **[W2]** is `feat/local-failure-grant-issuing` at `73c0bc54` (first issuance of a version 2 grant, not merged) and **[W2b]** is `feat/local-failure-grant-readers` at `73a3079a` (version-aware readers, not merged).
 
@@ -66,7 +66,7 @@ The V1 conditions of §1 apply. A V2 renewal and an upgrade add one condition, c
 - no recheck run in `reserved`, `running` or `stop_unknown`;
 - no local-failure child that is executing, and none whose publication process was released and is not yet confirmed or proven unwritten.
 
-A local-failure child that is waiting for a person at the publication gate does not block a renewal if decision 5 is accepted; otherwise any unsettled local-failure child blocks it. Refusal code: `grant_renewal_busy` (new).
+A local-failure child that is waiting for a person at the publication gate does not block a renewal (decision 5, accepted); any other unsettled local-failure child blocks it. Refusal code: `grant_renewal_busy` (new).
 
 Why: the intake triggers compare the chain's grant text with the row's at insert and again at start (`engineering-local-failure-intake-ddl.ts:80`, `:126`). A renewal between the two refuses the start, and the head has then used its one diagnosis. A renewal under a running container would leave a run that started under one signature and settles under another.
 
@@ -106,7 +106,7 @@ Two waits in the table above end in a dead end exactly when the owner does what 
 - an eligible diagnosis that could not be dispatched because the budget or the rounds were too low, or the grant had expired; the owner renews with more, and the dispatch then refuses the digest;
 - a repair child waiting for the candidate approval while the grant expires; the approval window is 15 minutes but the wait for a person is not bounded, and the default grant lives 24 hours.
 
-Rule proposed: in these two places the exact-digest test becomes a succession test. A row bound to an earlier grant of a chain is honoured under the chain's current grant when the row's chain is this chain, the current grant is V2 and carries `renews` for this chain, and its pin equals the pin stored in the intake row. A chain's grant changes only through `replaceGrant`, so every earlier grant of a chain is an ancestor of the current one. All other checks at both places stay as they are and are made against the current grant: signature, principal, scope, validity window, wall clock, head, base, source not revoked.
+Rule (accepted with decision 5): in these two places the exact-digest test becomes a succession test. A row bound to an earlier grant of a chain is honoured under the chain's current grant when the row's chain is this chain, the current grant is V2 and carries `renews` for this chain, and its pin equals the pin stored in the intake row. A chain's grant changes only through `replaceGrant`, so every earlier grant of a chain is an ancestor of the current one. All other checks at both places stay as they are and are made against the current grant: signature, principal, scope, validity window, wall clock, head, base, source not revoked.
 
 What the owner sees before signing: the host command lists the work the renewal carries forward (an eligible diagnosis, a child waiting for approval, a pending recheck with its attempts). This list is displayed, not signed. The signed `renews.revision` pins the chain row, which changes on dispatch, on a confirmed push and on every chain transition, but not when an intake or a run row is written; §2.3 is therefore checked again inside the write.
 
@@ -165,8 +165,8 @@ A re-arm grants nothing. The signed grant already authorises the recheck, its pr
 |---|---|
 | Diagnosis refused: grant expired, or principal or session gone | Renew (no rows are bound yet) |
 | Diagnosis refused: head was moved by a review revision | Renew; the new grant binds the current head |
-| Eligible diagnosis not dispatched: budget, rounds or expiry | Renew with the missing term; needs decision 5 |
-| Child waiting for approval, grant expired | Renew, then the approval; needs decision 5 |
+| Eligible diagnosis not dispatched: budget, rounds or expiry | Renew with the missing term (decision 5, node R4) |
+| Child waiting for approval, grant expired | Renew, then the approval (decision 5, node R4) |
 | Recheck `verify_grant_missing` | Renew adding `recheck`, then re-arm |
 | Recheck `verify_grant_invalid` | Renew, then re-arm |
 | Recheck `verify_budget_exhausted` | Renew with more container seconds, then re-arm |
@@ -188,11 +188,11 @@ One PR per node against `main`. **[W2]** and **[W2b]** must be merged before R1.
 
 | Node | Content | Main files | Migration | Acceptance |
 |---|---|---|---|---|
-| R1 | Core rules: version-aware `replaceGrant` for V2 → V2, the opt-in rules of §2.2, the activity rule of §2.3, the database guard of decision 6, `grant_replaced` payload | `engineering-revision-chain-store.ts`, new pure rules module beside `revision-local-failure-grant.ts`, `engineering-revision-grant-ddl.ts`, schema constants | next free number, one trigger, only if decision 6 is yes | V1 renewal results, codes and writes are unchanged. V2 → V2 with identical opt-in passes. Each of: pin change after an intake row, lowered timeout, removed recheck, V2 → V1, wrong `renews`, same `grant_id`, lowered rounds or budget is refused with its code. Pin change with no intake row passes. Each unsettled intake, run and executing child refuses with `grant_renewal_busy`. The trigger refuses the same cases when the store is bypassed. Upgrade of the schema launches nothing |
+| R1 | Core rules: version-aware `replaceGrant` for V2 → V2, the opt-in rules of §2.2, the activity rule of §2.3, the database guard of decision 6, `grant_replaced` payload | `engineering-revision-chain-store.ts`, new pure rules module beside `revision-local-failure-grant.ts`, `engineering-revision-grant-ddl.ts`, schema constants | next free number, one trigger, decision 6 | V1 renewal results, codes and writes are unchanged. V2 → V2 with identical opt-in passes. Each of: pin change after an intake row, lowered timeout, removed recheck, V2 → V1, wrong `renews`, same `grant_id`, lowered rounds or budget is refused with its code. Pin change with no intake row passes. Each unsettled intake, run and executing child refuses with `grant_renewal_busy`. The trigger refuses the same cases when the store is bypassed. Upgrade of the schema launches nothing |
 | R2 | Service and host command: V2 renewal preview, typed phrase, acceptance, decision list and `decisions.answer` | `contained-mission-grant.ts`, `contained-mission-grant-command.ts`, `contained-mission-grant-terms.ts`, `decisions/list.ts`, `decisions/answer.ts` | no | A V2 renewal without a valid host signature is refused. A request without opt-in terms keeps the opt-in byte for byte. The preview shows old and new opt-in. Switch off: `local_failure_repair_disabled`, nothing stored. `decisions.answer` never forwards it. A V2 preview for a V1 chain answers `grant_upgrade_unsupported`. The V1 renewal flow is unchanged |
 | R3 | Recheck head rule for a renewed grant (§2.4) | `recheck-admission.ts`, its caller in the run library | no | A first-issued grant behaves exactly as today, including refusal when its head is the run head. A renewed grant on the run head passes only with `renews` for this chain. A renewed grant for another chain is refused. Every other refusal of D1's test list still holds |
-| R4 | Carrying work forward (§2.6), only if decision 5 is yes | `engineering-local-failure-dispatch-store.ts` (dispatch and publication fence), host command list | no | First: trace whether a child halted at `verify_publish_authority_invalid` can resume; if not, the rule covers only a child still at the gate. Then: an eligible diagnosis dispatches after a renewal that raises the missing term; a child at the gate publishes after a renewal and a fresh approval; a grant of another chain, a V1 grant, a changed pin, an expired renewed grant are each refused; without a renewal both places behave as today |
-| R5 | Upgrade V1 → V2, only if decision 3 is yes | as R1 and R2 | no | A V1 chain becomes V2 only with a signed V2 preview that names the chain and with the switch on. Rounds used, budget origin, allocations and published head are kept. A chain with a review reservation or an unsettled review child follows the V1 renewal rules. After the upgrade a failure on the bound head can be diagnosed once |
+| R4 | Carrying work forward (§2.6), decision 5 | `engineering-local-failure-dispatch-store.ts` (dispatch and publication fence), host command list | no | First: trace whether a child halted at `verify_publish_authority_invalid` can resume; if not, the rule covers only a child still at the gate. Then: an eligible diagnosis dispatches after a renewal that raises the missing term; a child at the gate publishes after a renewal and a fresh approval; a grant of another chain, a V1 grant, a changed pin, an expired renewed grant are each refused; without a renewal both places behave as today |
+| R5 | Upgrade V1 → V2, decision 3 | as R1 and R2 | no | A V1 chain becomes V2 only with a signed V2 preview that names the chain and with the switch on. Rounds used, budget origin, allocations and published head are kept. A chain with a review reservation or an unsettled review child follows the V1 renewal rules. After the upgrade a failure on the bound head can be diagnosed once |
 | D5c | Re-arm method and host command (§4.3), close-out view, notices | `contained-mission-rpc.ts` (one method), the route assembly, new host command, `decisions/list.ts`, `decisions/answer.ts`, guards | no | Switch off: the method is absent. Without operator scope: refused. Wrong `expected_attempt`, a launched run, three attempts, an unsettled run, a row that is not pending: each refused, nothing armed. An armed request runs once with the trigger `operator`, is void after 15 minutes and after a restart. `decisions.answer` answers `local_only`. No other RPC or decision kind reaches the run or the proof |
 
 R1 and R3 are independent. R2 needs R1. R4 and R5 need R2. D5c needs R2, R3 and D5b.
@@ -211,7 +211,25 @@ R1 and R3 are independent. R2 needs R1. R4 and R5 need R2. D5c needs R2, R3 and 
 | 8 | The re-arm transport | Option A of §4: `mission.rearm_local_failure_recheck` with operator scope, `local_only` in `decisions.answer`, arming only, void after 15 minutes or a restart; the recheck design's sentence is amended as in §4.3 | A signed ticket (B) is stronger than the action needs and stronger than the candidate approval. Re-arm by renewal (C) costs a signature per retry |
 | 9 | The switch is off and a V2 chain expires | Keep the **[W2]** rule: no V2 grant is stored with the switch off, so the chain cannot be renewed until the switch is on | Allowing a renewal with an unchanged opt-in while the switch is off keeps review revisions alive on such chains, but breaks the accepted W2 statement "no path stores a V2 grant with the switch off" |
 
-Already decided and not reopened: a V2 grant is a V1 grant plus the opt-in; a V2 chain carries review revisions with shared rounds; one switch for the route; the candidate approval is a `mission.*` method refused by `decisions.answer`.
+### 8.1 Decision record (2026-11-20)
+
+The owner accepted all nine decisions on 2026-11-20, each as recommended in the table above. The owner's words: "九项都按建议来，文档开 PR，继续跑".
+
+| # | Decided |
+|---|---|
+| 1 | A V2 chain may be renewed as V2 by the V1 path: preview over RPC, signature only by the host command, `local_only` in `decisions.answer` |
+| 2 | On renewal the opt-in follows §2.2: the pin may change only before the first intake row; timeouts only upwards; recheck may be added, never removed |
+| 3 | A V1 chain may be upgraded to V2, as node R5 after R1 to R3, with a signed V2 preview |
+| 4 | A V2 chain is never downgraded to V1 |
+| 5 | A renewal carries waiting work forward (§2.6) for the eligible diagnosis and the child at the publication gate, as node R4 |
+| 6 | The opt-in rules are guarded by one database trigger in a new migration |
+| 7 | The recheck accepts a grant on the run head only when it carries `renews` for this chain (§2.4) |
+| 8 | The re-arm transport is option A of §4: `mission.rearm_local_failure_recheck` with operator scope, `local_only` in `decisions.answer`, arming only, void after 15 minutes or a restart; the recheck design's sentence is amended as in §4.3 |
+| 9 | With the switch off the **[W2]** rule stays: no V2 grant is stored, so a V2 chain cannot be renewed until the switch is on |
+
+With these decisions recorded, nodes R1 to R5 and D5c are unblocked in the order of §7. The record does not settle the points of §9; R4 still starts with the trace named in its row.
+
+Already decided before this note and not reopened: a V2 grant is a V1 grant plus the opt-in; a V2 chain carries review revisions with shared rounds; one switch for the route; the candidate approval is a `mission.*` method refused by `decisions.answer`.
 
 Choices I made that the owner may overrule without a decision row: the three new refusal codes, the typed phrase `RENEW LOCAL-FAILURE <digest>`, the method and command names, the 15 minutes.
 
@@ -230,4 +248,4 @@ Choices I made that the owner may overrule without a decision row: the three new
 
 ## 10. Gates for this document
 
-`pnpm test:deterministic-rules` passes. In `packages/governance`, `vitest run` passes. The three relative links in this document point to existing files. Nothing else was run; this document claims no implementation, container run or sandbox result.
+`pnpm test:deterministic-rules` passes. In `packages/governance`, `vitest run` passes. After the decision record was added and the branch rebased onto `28c8cf16`: `pnpm lint`, the inventory check and `pnpm test:deterministic-rules` pass. The three relative links in this document point to existing files. Nothing else was run; this document claims no implementation, container run or sandbox result.
