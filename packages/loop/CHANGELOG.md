@@ -1,5 +1,89 @@
 # @osstack/loop
 
+## 0.24.0
+
+### Minor Changes
+
+- 382b4a4: Carry loop budget usage and the consecutive no-progress streak across restarts. A successful cycle resets the streak. Debit each admitted cycle before work and stop before discovery when a limit is already reached. Daemon sessions report cumulative loop usage. Use `osstack loop run --reset-budget` with a budget flag to reset usage while keeping lifetime metrics and task history.
+- 4c55006: Warn once per loop, execution adapter, and configured token or cost cap when a task lacks the corresponding usage. Persist the warning in budget status and include it in loop reports and daemon sessions.
+
+### Patch Changes
+
+- 3f0335d: Preserve invalid implementation deviation declarations as a distinct verifier report issue. Keep valid entries, count invalid entries, and carry the report issue into iteration feedback without treating it as work failure.
+
+  Do not change code-fence handling for echoed declaration examples (review item 6).
+  Do not change mixed-kind problem merging or severity filtering (review item 8).
+
+- 54242af: Add explicit foreground command-loop recovery with durable run and process receipts, preserved workspace evidence, and guarded exact-owner release. Allow contained descendants to drain before classifying a leader-exit failure. Recovery refuses absent or ambiguous producer evidence and does not use graph recovery authority.
+- f82e9bb: Count forward clock steps toward each loop run's runtime budget. Clamp cycle and task durations to zero when the clock moves backwards.
+- 7cb74a2: Derive git diff discovery IDs from the relative path, index blob, and worktree blob. Moving HEAD, changing diff settings, or moving the clone no longer changes an unchanged task ID. Queue items without an explicit ID now derive one from their relative file path and normalized content. Duplicate IDs within a cycle keep the first input task or source item and appear in discovery counts.
+
+  Completed IDs, including escalated tasks, remain skipped while their content is unchanged. The discovery report counts skipped escalated IDs. Change the content or run with `skipCompletedTasks: false` to retry them. Stale `in_progress` entries no longer block discovery and are cleared after a cycle.
+
+  Old random IDs do not match the new IDs, so currently dirty files are each discovered once after upgrading. Partial staging changes the unstaged content and creates a new ID. Fully staged changes remain outside `git_diff` discovery.
+
+- f705734: Separate invalid reports from failed work. Repair builder and reviewer reports in the original adapter session up to twice, with budget accounting and repair events. Retain the candidate and deterministic evidence when a report cannot be repaired. Add report continuations for Claude Code and Codex CLI.
+- Updated dependencies [fe93099]
+- Updated dependencies [0f006ea]
+- Updated dependencies [4b9bef0]
+- Updated dependencies [4c1cd4f]
+- Updated dependencies [4845be0]
+- Updated dependencies [0329eb8]
+- Updated dependencies [fb32543]
+- Updated dependencies [8f5d406]
+- Updated dependencies [21a14a2]
+- Updated dependencies [e4c33d0]
+- Updated dependencies [cafadc1]
+- Updated dependencies [ccef9bb]
+- Updated dependencies [64013bc]
+- Updated dependencies [5ccc9a9]
+- Updated dependencies [441d2a4]
+- Updated dependencies [bb2b974]
+- Updated dependencies [5872af0]
+- Updated dependencies [3f0335d]
+- Updated dependencies [56bbe00]
+- Updated dependencies [2e1aafe]
+- Updated dependencies [11de269]
+- Updated dependencies [20054f1]
+- Updated dependencies [bf56422]
+- Updated dependencies [739ec15]
+- Updated dependencies [02ca6fa]
+- Updated dependencies [02c924c]
+- Updated dependencies [0a33332]
+- Updated dependencies [51fe843]
+- Updated dependencies [eb83ad2]
+- Updated dependencies [f7300e2]
+- Updated dependencies [51cb414]
+- Updated dependencies [4e166b0]
+- Updated dependencies [20b68a5]
+- Updated dependencies [54242af]
+- Updated dependencies [32726b6]
+- Updated dependencies [ffad736]
+- Updated dependencies [05588bd]
+- Updated dependencies [2f38dae]
+- Updated dependencies [f705734]
+- Updated dependencies [24db9db]
+- Updated dependencies [f4bb7a8]
+- Updated dependencies [d31adac]
+- Updated dependencies [868c4a4]
+- Updated dependencies [203df2d]
+- Updated dependencies [4827af6]
+- Updated dependencies [e77f4b6]
+- Updated dependencies [1b768b8]
+- Updated dependencies [8e8a8fc]
+- Updated dependencies [fbabc02]
+- Updated dependencies [1316b35]
+- Updated dependencies [32bd440]
+- Updated dependencies [8dc4976]
+- Updated dependencies [49d9a17]
+- Updated dependencies [bf14202]
+  - @osstack/core@0.24.0
+  - @osstack/github@0.24.0
+  - @osstack/agents@0.24.0
+  - @osstack/hermes-adapter@0.24.0
+  - @osstack/autonomy@0.24.0
+  - @osstack/protocol@0.24.0
+
 ## 0.23.0
 
 ### Minor Changes

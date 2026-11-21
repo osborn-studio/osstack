@@ -1,5 +1,19 @@
 # @osstack/protocol
 
+## 0.24.0
+
+### Minor Changes
+
+- ffad736: Accept `mission.decide` with an optional decision ID and expected revision. Record acceptance before execution and bind each ID to its principal and decision content. Commit budget charges with effect markers, return unknown after an interrupted effect, and retry effect-free refusals under the same ID. Replays include the current Mission view beside the recorded result.
+
+  A keyed decision scans Mission history inside the write transaction. Long Missions may exceed the RPC budget; use kind-specific queries or an index later.
+
+- 1b768b8: Add authenticated decisions.answer RPC and CLI routing to existing source commands, with stale-source checks, keyed receipts, and explicit local-only boundaries. Keep revision-chain answers unsupported where atomic retry admission cannot be provided.
+
+### Patch Changes
+
+- e77f4b6: Add a bounded, read-only decisions.list RPC and decisions list CLI across seven pending-decision sources. Preserve source read boundaries, filter Mission and chain scopes through engineering principals, and report isolated source failures.
+
 ## 0.23.0
 
 ### Minor Changes

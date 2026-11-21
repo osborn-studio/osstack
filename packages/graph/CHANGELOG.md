@@ -1,5 +1,14 @@
 # @osstack/graph
 
+## 0.24.0
+
+### Patch Changes
+
+- Updated dependencies [ffad736]
+- Updated dependencies [e77f4b6]
+- Updated dependencies [1b768b8]
+  - @osstack/protocol@0.24.0
+
 ## 0.23.0
 
 ### Patch Changes
