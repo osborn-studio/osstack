@@ -395,3 +395,44 @@ it.each(['live', 'recovery', 'publication', 'stopped-write', 'stopped-stop', 'st
       await service.close();
     }
   });
+
+describe("local-failure factory boundary", () => {
+  const loads = vi.hoisted(() => [] as string[]);
+  vi.mock("./contained-mission-local-failure-service.js", () => {
+    loads.push("assembly");
+    return {};
+  });
+
+  it.each([undefined, "", "0", "true", "on"])("leaves the route absent for %j", async value => {
+    const f = setup();
+    const service = await f.create(value === undefined ? {} : { OSSTACK_LOCAL_FAILURE_REPAIR: value });
+    try {
+      expect(Object.hasOwn((service as unknown as { options: object }).options, "localFailure")).toBe(false);
+      await service.start();
+    } finally {
+      await service.close();
+    }
+    expect(loads).toEqual([]);
+    expect(f.logs.join("\n")).not.toMatch(/local.failure/i);
+  });
+
+  it.each([
+    [undefined, "LOCAL_FAILURE_ROUTE_REQUIRES_LIVE_BRIDGE"],
+    ["0", "LOCAL_FAILURE_ROUTE_REQUIRES_LIVE_BRIDGE"],
+    ["shadow", "LOCAL_FAILURE_ROUTE_REQUIRES_LIVE_BRIDGE"],
+    ["1", "BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G"],
+    ["invalid", "BRIDGE_MODE_INVALID"],
+  ] as const)("refuses bridge %j before config access or writes", async (bridge, error) => {
+    const f = setup();
+    const changes = () => f.deps.attention.db.prepare("SELECT total_changes() AS changes").get();
+    const before = changes();
+    const readHome = vi.fn(() => f.home);
+    await expect(createContainedMissionService({
+      ...f.deps, get home() { return readHome(); },
+      env: { ...f.deps.env, OSSTACK_LOCAL_FAILURE_REPAIR: "1", ...(bridge === undefined ? {} : { OSSTACK_BRIDGE: bridge }) },
+    })).rejects.toThrow(new Error(error));
+    expect(readHome).not.toHaveBeenCalled();
+    expect(changes()).toEqual(before);
+    expect(loads).toEqual([]);
+  });
+});
