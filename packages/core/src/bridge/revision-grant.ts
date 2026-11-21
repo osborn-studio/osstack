@@ -182,7 +182,7 @@ export function resolveGrantTerms(input: {
 
 /** The chain columns a grant binds to. */
 export interface GrantBinding { root_mission_id: string; repository: string; pr_number: number; branch: string; base_ref: string }
-export function grantBindsChain(grant: RevisionGrant, chain: GrantBinding): boolean {
+export function grantBindsChain(grant: GrantBinding, chain: GrantBinding): boolean {
   return grant.root_mission_id === chain.root_mission_id && grant.repository === chain.repository && grant.pr_number === chain.pr_number
     && grant.branch === chain.branch && grant.base_ref === chain.base_ref;
 }

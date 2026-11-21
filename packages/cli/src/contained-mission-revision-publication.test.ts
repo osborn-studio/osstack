@@ -1,10 +1,11 @@
+import { createRevisionLaunchPort } from './contained-mission-revision.js';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSync } from 'esbuild';
-import { HostProcessStore, SAME_CHILD_RESUMABLE, AttentionStore, ContainedMissionStore, RevisionChainStore, openDb, createScratchDirSync } from '@osstack/core';
+import { grantPreviewOf, signLocalFailureRevisionGrant, HostProcessStore, SAME_CHILD_RESUMABLE, AttentionStore, ContainedMissionStore, RevisionChainStore, openDb, createScratchDirSync } from '@osstack/core';
 import { runHardenedGit } from '@osstack/agents';
 import { describe, expect, it, vi } from 'vitest';
 import { H, T0, changesRequested, dispatched, setup } from './contained-mission-revision.testkit.js';
@@ -37,10 +38,10 @@ it('reads a PR by number and a bounded compare range through read-only GitHub ca
   })).toEqual([next]);
 });
 
-async function fixture(options: { oldHead?: string; newHead?: string; intent?: boolean; expiresIn?: number; rounds?: 1 | 2; journalStopped?: boolean } = {}) {
+async function fixture(options: { oldHead?: string; newHead?: string; intent?: boolean; expiresIn?: number; rounds?: 1 | 2; journalStopped?: boolean } = {}, dispatch = dispatched) {
   const previousHead = options.oldHead ?? old; const candidateHead = options.newHead ?? next;
   const f = setup({ head: previousHead, ...(options.expiresIn ? { expiresIn: options.expiresIn } : {}), ...(options.rounds ? { rounds: options.rounds } : {}) });
-  const out = await dispatched(f);
+  const out = await dispatch(f);
   const id = out.child_mission_id;
   const missions = f.rig.missions;
   let m = missions.get(id);
@@ -79,11 +80,39 @@ async function fixture(options: { oldHead?: string; newHead?: string; intent?: b
     evidence: { evidence_digest: '6'.repeat(64), head: candidateHead, repository: 'o/r' }, pr: { number: 7, url: 'https://example.invalid/pull/7', reused: true as const }, range_sha256: '7'.repeat(64) };
   return { f, deps, input, id, intent, journal };
 }
-async function fullFixture(options: { rounds?: 1 | 2; oldHead?: string; newHead?: string; journalStopped?: boolean } = {}) {
-  const result = await fixture(options);
+async function fullFixture(options: { rounds?: 1 | 2; oldHead?: string; newHead?: string; journalStopped?: boolean } = {}, dispatch = dispatched) {
+  const result = await fixture(options, dispatch);
   if (!result.deps || !result.input || !result.intent) throw Error('fixture_incomplete');
   return { ...result, deps: result.deps, input: result.input, intent: result.intent };
 }
+
+it('dispatches, charges, fences and confirms one signed V2 review revision', async () => {
+  const deadlineMs = 75_000;
+  const { f, deps, input, id, intent } = await fullFixture({}, async fixture => {
+    const grant = signLocalFailureRevisionGrant({ ...grantPreviewOf(fixture.grant), version: 2, review_deadline_ms: deadlineMs,
+      local_failure: { enabled: true, profile_id: 'fixture', profile_digest: 'd'.repeat(64), diagnostic_timeout_seconds: 20,
+        max_diagnostics_per_head: 1, trusted_source: { repository: 'o/trusted', commit: old, artifact_digest: 'e'.repeat(64) } } }, fixture.privateKey);
+    fixture.rig.db.prepare('UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?')
+      .run(JSON.stringify(grant), fixture.chain.chain_id);
+    const out = await dispatched(fixture);
+    const mission = fixture.rig.missions.get(out.child_mission_id);
+    const spec = fixture.childSpec(mission.mission_id);
+    expect(fixture.children()).toEqual([mission.mission_id]);
+    expect(spec.publish_target).toMatchObject({ chain_id: fixture.chain.chain_id, round: 1 });
+    const port = createRevisionLaunchPort(fixture.deps);
+    port.assertActive(mission, spec);
+    for (const kind of ['executor', 'verify'] as const) port.chargeLaunch(mission, spec, kind).settle(1000);
+    expect(fixture.rig.chains.allocations(fixture.chain.chain_id)[mission.mission_id]).toMatchObject({ executor_used: 1, container_used: 1 });
+    return out;
+  });
+  const mission = deps.missions.get(id);
+  const permit = { mission_id: id, revision: mission.revision, head: next, tree: mission.candidate_tree!, spec_digest: mission.spec_digest };
+  deps.now = () => f.clock.now;
+  deps.fenceAuthority = () => ({ access: f.deps.access, keys: f.keys, enabled: true, now: f.clock.now });
+  assertRevisionPublishable(deps, { mission, spec: f.childSpec(id), permit, beforeRemoteMutation: () => {}, signal: new AbortController().signal }, intent.intent_id);
+  expect(confirmRevisionPublication(deps, input).state).toBe('pr_opened');
+  expect(deps.chains.get(input.chain_id)).toMatchObject({ review_deadline: f.clock.now + deadlineMs, rounds_used: 1 });
+});
 
 it.each(['matching', 'missing', 'error'] as const)('ignores a stale explicit receipt reconciliation after concurrent confirmation: %s', async result => {
   const f = await fullFixture();

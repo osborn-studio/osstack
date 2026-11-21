@@ -1,3 +1,8 @@
+import { RevisionChainStore, ContainedMissionStore } from "@osstack/core";
+import { dispatchRevision } from "./contained-mission-revision.js";
+import { readPullRequest } from "./contained-mission-bridge-reader.js";
+import { scriptedTransport } from "./contained-mission-bridge-shadow.testkit.js";
+import { changesRequested, PUBLISHER, REVIEWER } from "./contained-mission-revision.testkit.js";
 import { expect, it, vi } from "vitest";
 import {
   checkLocalFailureRepairPaths,
@@ -525,5 +530,69 @@ it.each(["merged", "closed after withdrawal", "closed after supersession"] as co
     chains.appendEvent(chain.chain_id, "local_repair_closeout", legacy, now);
     expect(await read()).toMatchObject({ state: last.state, verified_base_sha: null, merged_onto_oid: null });
     expect(readPr).toHaveBeenCalledTimes(calls);
+  } finally { f.close(); }
+});
+
+it.each([
+  { first: "review", rounds: 1 }, { first: "local", rounds: 1 }, { first: "local", rounds: 2 },
+] as const)("shares $rounds round(s) with $first first on one signed V2 chain", async ({ first, rounds }) => {
+  const f = diagnosisFixture({ rounds, allowedPaths: ["src/**"], protectedDigest: missionProtectedSetDigest() });
+  try {
+    const p = portsFor(f);
+    const chains = new RevisionChainStore(f.attention, f.owner);
+    const missions = new ContainedMissionStore(f.attention, f.owner);
+    const chain = () => chains.get(f.facts.chain_id);
+    const count = () => f.db.prepare("SELECT COUNT(*) AS n FROM engineering_contained_missions").get();
+    const r = eligibleRequest(f);
+    const local = () => dispatchLocalFailureRepair(p, r.request_id);
+    const review = () => dispatchRevision({
+      chains, missions, access: p.access, keys: p.keys, now: p.now, launchCaps: p.launchCaps,
+      worktreesRoot: f.root, enabled: () => true, protectedSetDigest: missionProtectedSetDigest,
+      registry: { publisher: [PUBLISHER], reviewers: [REVIEWER] },
+      readPr: async ref => {
+        const head = chain().published_head;
+        const pr = await readPullRequest(scriptedTransport(() => ({ state: "OPEN", head, base_ref: f.v.base_ref,
+          base_sha: f.v.base_sha, author: PUBLISHER, reviews: [changesRequested(77, head)] })).transport, ref);
+        if (pr.complete) Object.assign(pr.pr, { headRefName: f.v.branch, headRepository: f.v.repository });
+        return pr;
+      },
+    }, f.facts.chain_id);
+    // As in the revision rig's finishRound, settle the child without touching the shared counter.
+    const finish = (id: string) => {
+      f.db.prepare("UPDATE engineering_contained_missions SET state='failed',revision=revision+1 WHERE mission_id=?").run(id);
+      missions.releaseClaim(id, "revision_settled", f.facts.now);
+    };
+    if (first === "review") {
+      const child = await review();
+      if (child.status !== "dispatched") throw Error(JSON.stringify(child));
+      expect(chain().rounds_used).toBe(1);
+      expect(local()).toMatchObject({ status: "refused", reason: "verify_chain_busy" });
+      finish(child.child_mission_id);
+      chains.voidReservation(f.facts.chain_id, chain().revision, r.head_sha, "child_halted", f.facts.now);
+      f.db.prepare("UPDATE engineering_revision_chains SET state='awaiting_review',stop_reason=NULL,revision=revision+1 WHERE chain_id=?").run(f.facts.chain_id);
+      expect(local()).toMatchObject({ status: "refused", reason: "verify_repair_limit" });
+      expect(count()).toEqual({ n: 2 });
+      return;
+    }
+    const child = local();
+    if (child.status !== "dispatched") throw Error(child.reason);
+    expect(chain().rounds_used).toBe(1);
+    if (rounds === 2) expect(await review()).toEqual({ status: "conflict", code: "chain_busy" });
+    finish(child.child_mission_id);
+    if (rounds === 1) {
+      expect(await review()).toEqual({ status: "no_reserve", reason: "stop" });
+      expect(count()).toEqual({ n: 2 });
+    } else {
+      const second = await review();
+      expect(second).toMatchObject({ status: "dispatched", round: 2 });
+      expect(chain().rounds_used).toBe(2);
+      if (second.status !== "dispatched") throw Error(JSON.stringify(second));
+      finish(second.child_mission_id);
+      chains.voidReservation(f.facts.chain_id, chain().revision, r.head_sha, "published", f.facts.now);
+      f.db.prepare("UPDATE engineering_revision_chains SET state='awaiting_review',published_head=?,stop_reason=NULL,revision=revision+1 WHERE chain_id=?")
+        .run("d".repeat(40), f.facts.chain_id);
+      expect(await review()).toEqual({ status: "no_reserve", reason: "stop" });
+      expect(count()).toEqual({ n: 3 });
+    }
   } finally { f.close(); }
 });

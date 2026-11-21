@@ -29,6 +29,9 @@ import {
   grantBindsChain,
   parseRevisionGrantPreview,
   parseStoredGrant,
+  parseStoredRevisionGrant,
+  verifyStoredRevisionGrantSignature,
+  type StoredRevisionGrant,
   previewDigest,
   publicKeyFromSpkiB64,
   resolveGrantTerms,
@@ -140,12 +143,12 @@ export interface GrantLiveContext {
  * `grant_invalid` (unparsable, wrong binding, bad or unknown-key signature, principal or write scope gone),
  * `grant_expired` (`now >= expires_at`), `budget_exhausted` (the chain's wall-clock allowance since its budget origin is spent).
  * It checks the signature every time, so a grant rewritten in the database fails here even if the triggers let the row through. */
-export function assertGrantLive(chain: RevisionChain, ctx: GrantLiveContext): RevisionGrant {
+export function assertGrantLive(chain: RevisionChain, ctx: GrantLiveContext): StoredRevisionGrant {
   if (chain.mode !== 'live') throw new RevisionGrantError('grant_invalid');
-  let grant: RevisionGrant;
-  try { grant = parseStoredGrant(chain.grant_json); } catch { throw new RevisionGrantError('grant_invalid'); }
+  let grant: StoredRevisionGrant;
+  try { grant = parseStoredRevisionGrant(chain.grant_json); } catch { throw new RevisionGrantError('grant_invalid'); }
   const key = ctx.keys.get(grant.key_id);
-  if (!key || !grantBindsChain(grant, chain) || !verifyRevisionGrantSignature(grant, key.public_key)) throw new RevisionGrantError('grant_invalid');
+  if (!key || !grantBindsChain(grant, chain) || !verifyStoredRevisionGrantSignature(grant, key.public_key)) throw new RevisionGrantError('grant_invalid');
   if (grant.expires_at - grant.issued_at > key.max_validity_ms) throw new RevisionGrantError('grant_invalid');
   if (ctx.now >= grant.expires_at) throw new RevisionGrantError('grant_expired');
   const origin = budgetOrigin(chain, grant);
@@ -155,7 +158,7 @@ export function assertGrantLive(chain: RevisionChain, ctx: GrantLiveContext): Re
   if (!principal.write_scopes.includes(grant.scope_id)) throw new RevisionGrantError('grant_invalid');
   return grant;
 }
-function budgetOrigin(chain: RevisionChain, grant: RevisionGrant): number {
+function budgetOrigin(chain: RevisionChain, grant: StoredRevisionGrant): number {
   if (chain.budget_json === null) return grant.issued_at;
   try {
     const origin = (JSON.parse(chain.budget_json) as { origin?: unknown }).origin;
@@ -166,7 +169,7 @@ function budgetOrigin(chain: RevisionChain, grant: RevisionGrant): number {
 
 /** `assertGrantLive`, and on failure stop the chain for a human (`grant_expired` / `grant_invalid` / `budget_exhausted`) before rethrowing.
  * Callers that already hold a newer chain row get `version_conflict` from the store and should re-read. */
-export function enforceGrantLive(chains: Pick<RevisionChainStore, 'stopLive'>, chain: RevisionChain, ctx: GrantLiveContext): RevisionGrant {
+export function enforceGrantLive(chains: Pick<RevisionChainStore, 'stopLive'>, chain: RevisionChain, ctx: GrantLiveContext): StoredRevisionGrant {
   try { return assertGrantLive(chain, ctx); }
   catch (error) {
     if (error instanceof RevisionGrantError && chain.state !== 'closed' && chain.state !== 'awaiting_decision') {
