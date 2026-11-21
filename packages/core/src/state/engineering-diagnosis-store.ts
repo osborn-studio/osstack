@@ -177,6 +177,13 @@ export class DiagnosisStore {
       AND decision='accepted' AND withdraws_seq=? LIMIT 1`)
       .get(r.repository_id, r.pr_number, r.source_seq);
   }
+  /** Requests that were registered and never admitted, oldest first. Read only. */
+  registered(limit = 10, after?: { created_at: number; request_id: string }): DiagnosisRequest[] {
+    const size = Math.max(1, Math.min(100, Math.trunc(limit) || 1));
+    return this.db.prepare(`SELECT * FROM engineering_diagnosis_requests WHERE state='registered' AND intake_id IS NULL
+      AND (created_at, request_id) > (?, ?) ORDER BY created_at, request_id LIMIT ?`)
+      .all(after?.created_at ?? -1, after?.request_id ?? "", size) as DiagnosisRequest[];
+  }
   admitted() {
     return this.db
       .prepare("SELECT * FROM engineering_diagnosis_requests WHERE state='admitted' ORDER BY request_id")

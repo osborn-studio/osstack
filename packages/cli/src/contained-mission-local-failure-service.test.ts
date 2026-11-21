@@ -33,10 +33,14 @@ it('logs only at assembly, including when stopped before start or twice', async 
   const scan = { start: vi.fn(), stop: vi.fn(async () => {}) };
   const module = await import('./contained-mission-local-failure-scan.js');
   const factory = vi.spyOn(module, 'createLocalFailureScan').mockResolvedValue(scan as unknown as Awaited<ReturnType<typeof module.createLocalFailureScan>>);
+  const diagnosis = { start: vi.fn(), stop: vi.fn(async () => {}), recover: vi.fn() };
+  const diagnose = await import('./contained-mission-local-failure-diagnose.js');
+  const diagnosisFactory = vi.spyOn(diagnose, 'createLocalFailureDiagnosis').mockResolvedValue(diagnosis as unknown as Awaited<ReturnType<typeof diagnose.createLocalFailureDiagnosis>>);
   try {
     const route = await createLocalFailureRouteService({ log } as unknown as Parameters<typeof createLocalFailureRouteService>[0]);
-    expect(log.mock.calls).toEqual([['osstack: local-failure route: on (read, record, register)']]);
+    expect(log.mock.calls).toEqual([['osstack: local-failure route: on (read, record, register, diagnose)']]);
     await route.recover(new AbortController().signal);
+    expect(diagnosis.recover).toHaveBeenCalledOnce();
     expect(scan.start).not.toHaveBeenCalled();
     expect(scan.stop).not.toHaveBeenCalled();
     await route.stop();
@@ -45,7 +49,20 @@ it('logs only at assembly, including when stopped before start or twice', async 
     await route.stop();
     expect(scan.start).toHaveBeenCalledOnce();
     expect(scan.stop).toHaveBeenCalledTimes(3);
-  } finally { factory.mockRestore(); }
+    expect(diagnosis.start).toHaveBeenCalledOnce();
+    expect(diagnosis.stop).toHaveBeenCalledTimes(3);
+    let finish!: () => void;
+    diagnosis.stop.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    scan.stop.mockRejectedValueOnce(Error('scan'));
+    let settled = false;
+    const stopping = route.stop().finally(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    finish();
+    await expect(stopping).rejects.toThrow('scan');
+    diagnosis.stop.mockRejectedValueOnce(Error('diagnosis'));
+    await expect(route.stop()).rejects.toThrow('diagnosis');
+  } finally { factory.mockRestore(); diagnosisFactory.mockRestore(); }
   expect(log).toHaveBeenCalledTimes(1);
 });
 

@@ -212,6 +212,19 @@ Two further points settled for W3, also by the orchestrating session:
 - The digest-checked re-read of §3.1 checks the run's identity and the text digest against the accepted ledger row, and that the App is still a registered producer for that repository. It does not check freshness, the TTL or the PR's current head, because the same function must later serve the recheck collector for an old result. The caller must check those: for registration that is the scan pass, which re-reads only results it has just read as fresh on the chain's current head, and `DiagnosisStore.register`; for the collector it is D5b.
 - The "valid V2 grant" check of decision 5 is made inside the scan module from the core functions (parse, signature, window, principal, chain binding), without a change to the grant service.
 
+### 7.3 Addendum (2026-11-20): the diagnosis run (W4)
+
+Six points were open when the W4 brief was drafted. The owner accepted all six as recommended on 2026-11-20.
+
+1. **Finding the requests to run.** `DiagnosisStore` gets one read-only method, `registered(limit)`: requests in state `registered` that were never admitted, oldest first. No schema change. The diagnosis is not run inside the W3 scan, because a request registered just before a crash would be lost once its result expired.
+2. **Which checkout holds the head.** The repository path is the `repo_path` of the root Mission's own specification in the host ledger. It never comes from GitHub or from the verification result. A missing Mission, an unreadable specification, a relative path or a path that is not a directory leaves the request `registered`. A head that is not in that object store is not caught earlier: the library holds the request for a person, as it does today.
+3. **Profile host settings.** A new protected host file `bridge/verification-profile-host.json` (`version`, `installed_root`, `allowed_argv`) with the same file checks as the producer file. Missing file: the route starts and recovers, but launches no diagnosis. Invalid file: start is refused. The owner creates the file by hand.
+4. **Docker settings.** With the switch on, `OSSTACK_CONTAINED_DOCKER_SOCKET`, `OSSTACK_CONTAINED_DOCKER_DAEMON_ID` and `OSSTACK_CONTAINED_BASE_IMAGE_ID` are required; a missing one refuses start. The journal root is `local-failure-diagnosis` under the daemon home.
+5. **Pace.** Its own timer, one minute, one request per tick, never two diagnoses at once, never on the Mission tick or in the scan.
+6. **What runs without a person.** Only `registered` requests. A request in `awaiting_decision` is never run again by the service, whatever its reason. An entry for a person to release one does not exist yet.
+
+One rule was added by the session that wrote the brief, not by the owner: a service instance hands a request to the library at most once, whatever the library answers. The library's own admission rule still applies.
+
 ## 8. What could not be verified
 
 - Nothing was built or run for this document beyond the gates in §9. Every statement about behaviour comes from reading the source at `bb360e92`.
