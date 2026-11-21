@@ -28,6 +28,7 @@ Workspace packages, publish status, and internal (workspace) dependencies.
 | `@osstack/skill-registry` | 0.23.0 | public | `core`, `protocol` |
 | `@osstack/skills` | 0.23.0 | public | `core` |
 | `@osstack/supervisor` | 0.23.0 | **private** | `core`, `governance`, `loop` |
+| `@osstack/verify-publisher` | 0.1.0 | **private** | `core` |
 
 ## Edge list
 
@@ -46,6 +47,7 @@ plugins -> core
 skill-registry -> core, protocol
 skills -> core
 supervisor -> core, governance, loop
+verify-publisher -> core
 ```
 
 Leaves (no internal deps): `compliance`, `contracts`, `github`, `governance`, `knowledge`, `neat-eval`, `protocol`, `runtime`
