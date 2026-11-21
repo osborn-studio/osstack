@@ -72,6 +72,7 @@ async function setup(opts: { issuer?: boolean; enabled?: boolean; maxValidity?: 
   const renew = async (who: string, chainId: string, terms: Record<string, unknown> = {}) => {
     const issuer = (await loadRevisionIssuer(home))!;
     const reply = await service.renewPreview(actor(who), { chain_id: chainId, ...terms } as never);
+    if (reply.preview.version !== 1) throw new Error('expected V1 renewal');
     const signed = signRevisionGrant(reply.preview, await readIssuerPrivateKey(home, issuer.keys.get('k1')!));
     return { reply, signed, grant: () => service.grant(actor(who), { nonce: reply.nonce, preview_sha256: reply.preview_sha256, signature: signed.signature }) };
   };
