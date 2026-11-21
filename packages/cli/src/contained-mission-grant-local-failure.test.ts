@@ -1,3 +1,7 @@
+import { LiveReconciler } from './contained-mission-bridge-live.js';
+import { readPullRequest } from './contained-mission-bridge-reader.js';
+import { changesRequested, PUBLISHER, REVIEWER } from './contained-mission-revision.testkit.js';
+import * as revision from './contained-mission-revision.js';
 import { generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { chmodSync, writeFileSync, readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -5,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { canonicalJson, parseLocalFailureRevisionGrant, verifyLocalFailureRevisionGrantSignature, localFailurePreviewDigest,
   previewDigest, parseRevisionGrantPreview, signLocalFailureRevisionGrant, type LocalFailureGrantPreview } from '@osstack/core';
 import { expect, it, vi } from 'vitest';
-import { assertGrantLive, issuerConfigPath, issuerKeyPath, loadRevisionIssuer, readIssuerPrivateKey } from './contained-mission-grant.js';
+import { assertGrantLive, enforceGrantLive, issuerConfigPath, issuerKeyPath, loadRevisionIssuer, readIssuerPrivateKey } from './contained-mission-grant.js';
 import { ContainedMissionRpcRequests } from './contained-mission-rpc.js';
 import { setup, cred, runCommand, serviceFor, type Fixture } from './contained-mission-grant.testkit.js';
 
@@ -257,4 +261,70 @@ it('uses the validity ceiling of the final issuer read', async () => {
   });
   await expect(grant()).rejects.toThrow('grant_refused');
   expect(counts(f)).toEqual({ chains: 0, events: 0 });
+});
+
+async function issuedReaderFixture() {
+  const f = await setup(enabled);
+  const { signed, grant } = await issue(f);
+  const { chain_id } = await grant();
+  const ctx = await f.ctx();
+  const dispatch: revision.DispatchRevisionDeps = {
+    chains: f.rig.chains, missions: f.rig.missions, access: f.access, keys: () => ctx.keys, now: () => f.clock.now,
+    enabled: () => true, protectedSetDigest: () => signed.protected_set_digest,
+    registry: { publisher: [PUBLISHER], reviewers: [REVIEWER] }, launchCaps: { executor_seconds: 600, verify_seconds: 120 },
+    readPr: ref => readPullRequest(f.scripted.transport, ref),
+  };
+  return { f, chain: f.rig.chains.get(chain_id), dispatch, ctx };
+}
+
+it.each([
+  ['open', 'awaiting_review', null], ['protected', 'awaiting_decision', 'protected_set_changed'],
+  ['base', 'awaiting_decision', 'base_changed'], ['MERGED', 'closed', 'pr_merged'], ['CLOSED', 'closed', 'pr_closed'],
+  ['deadline', 'awaiting_decision', 'review_deadline'], ['changes_requested', 'awaiting_review', null],
+] as const)('reconciles a signed V2 grant for %s', async (scenario, state, stop_reason) => {
+  const { f, chain, dispatch } = await issuedReaderFixture();
+  if (scenario === 'protected') dispatch.protectedSetDigest = () => '0'.repeat(64);
+  if (scenario === 'base') f.pr.base_sha = 'b'.repeat(40);
+  if (scenario === 'MERGED' || scenario === 'CLOSED') f.pr.state = scenario;
+  if (scenario === 'deadline') f.clock.now = chain.review_deadline!;
+  if (scenario === 'changes_requested') f.pr.reviews = [changesRequested(77, f.pr.head)];
+  const log = vi.fn();
+  const launch = vi.spyOn(revision, 'dispatchRevision');
+  const readPr = vi.fn(dispatch.readPr);
+  const live = new LiveReconciler({ dispatch: { ...dispatch, readPr }, isBusy: () => false, cancelChild: async () => {},
+    headIsDescendant: async () => true, log });
+  for (let cycle = 1; cycle <= (scenario === 'changes_requested' ? 2 : 1); cycle++) {
+    await live.scan();
+    expect(readPr).toHaveBeenCalledTimes(cycle);
+    if (scenario === 'changes_requested') {
+      expect(launch).toHaveBeenCalledTimes(cycle);
+      await expect(launch.mock.results.at(-1)!.value).resolves.toEqual({ status: 'no_reserve', reason: 'grant_unreadable' });
+    }
+    expect(log).not.toHaveBeenCalled();
+    expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state, stop_reason });
+    expect(f.rig.chains.reservations(chain.chain_id)).toEqual([]);
+    expect(f.rig.db.prepare('SELECT count(*) n FROM engineering_contained_missions').get()).toEqual({ n: 1 });
+    f.clock.now += 60_000;
+  }
+  launch.mockRestore();
+  await live.stop();
+});
+
+it('refuses review dispatch without writes and enforces grant_invalid on a signed V2 grant', async () => {
+  const { f, chain, dispatch, ctx } = await issuedReaderFixture();
+  const changes = () => f.rig.db.prepare('SELECT total_changes() AS n').get();
+  const before = changes();
+  expect(await revision.dispatchRevision(dispatch, chain.chain_id)).toEqual({ status: 'no_reserve', reason: 'grant_unreadable' });
+  expect(changes()).toEqual(before);
+  expect(() => enforceGrantLive(f.rig.chains, chain, ctx)).toThrow('grant_invalid');
+  expect(f.rig.chains.get(chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'grant_invalid' });
+});
+
+it('limits the V1-only grant parser to its CLI owners', () => {
+  const root = fileURLToPath(new URL('.', import.meta.url));
+  const readers = readdirSync(root, { recursive: true, encoding: 'utf8' })
+    .filter(file => file.endsWith('.ts') && !/\.(test|testkit)\.ts$/.test(file))
+    .filter(file => /\bparseStoredGrant\b/.test(readFileSync(join(root, file), 'utf8')));
+  expect(readers.sort()).toEqual(['contained-mission-diagnosis.ts', 'contained-mission-grant.ts',
+    'contained-mission-revision-publication.ts', 'contained-mission-revision.ts']);
 });

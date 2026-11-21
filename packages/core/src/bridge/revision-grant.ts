@@ -180,17 +180,6 @@ export function resolveGrantTerms(input: {
   return { rounds, validity_ms: validity, review_deadline_ms: review, budget: budget as GrantBudget };
 }
 
-/** What `mission status --json` reports about a grant. No signature, digest, nonce or identity. */
-export interface GrantSummary {
-  grant_id: string; rounds: number; issued_at: number; expires_at: number; review_deadline_ms: number; budget: GrantBudget; key_id: string;
-}
-export function grantSummary(grantJson: string): GrantSummary | null {
-  try {
-    const g = parseStoredGrant(grantJson);
-    return { grant_id: g.grant_id, rounds: g.rounds, issued_at: g.issued_at, expires_at: g.expires_at, review_deadline_ms: g.review_deadline_ms, budget: g.budget, key_id: g.key_id };
-  } catch { return null; }
-}
-
 /** The chain columns a grant binds to. */
 export interface GrantBinding { root_mission_id: string; repository: string; pr_number: number; branch: string; base_ref: string }
 export function grantBindsChain(grant: RevisionGrant, chain: GrantBinding): boolean {

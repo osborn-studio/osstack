@@ -1,3 +1,4 @@
+import { grantSummary } from "../index.js";
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { samplePreview } from "./revision-grant-fixtures.js";
@@ -50,4 +51,25 @@ describe("version-aware stored revision grant contract", () => {
 it("does not let JSON serialization replace the object whose signature is checked", () => {
   const grant = v2();
   expect(verifyStoredRevisionGrantSignature({ ...grant, branch: "changed", toJSON: () => grant }, key.publicKey)).toBe(false);
+});
+
+it.each([1, 2])("projects only mission status fields for V%i", version => {
+  const grant = version === 1 ? v1() : v2();
+  const summary = grantSummary(JSON.stringify(grant));
+  const expected = { grant_id: grant.grant_id, rounds: grant.rounds, issued_at: grant.issued_at,
+    expires_at: grant.expires_at, review_deadline_ms: grant.review_deadline_ms, budget: grant.budget, key_id: grant.key_id };
+  expect(summary).toStrictEqual(version === 1 ? expected : { ...expected, version: 2 });
+  if (grant.version === 2) {
+    for (const secret of [grant.signature, grant.preview_sha256, grant.nonce, grant.principal_id, grant.client_session_id,
+      grant.scope_id, grant.local_failure.profile_digest, ...Object.values(grant.local_failure.trusted_source)]) {
+      expect(JSON.stringify(summary)).not.toContain(secret);
+    }
+  }
+});
+
+it("omits unreadable grants from mission status", () => {
+  const grant = v2();
+  for (const json of ["{", JSON.stringify({ ...grant, local_failure: {} }), JSON.stringify({ ...grant, version: 3 })]) {
+    expect(grantSummary(json)).toBeNull();
+  }
 });

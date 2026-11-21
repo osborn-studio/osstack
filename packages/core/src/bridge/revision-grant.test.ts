@@ -1,7 +1,8 @@
+import { grantSummary } from "./stored-revision-grant.js";
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
-  GRANT_LIMITS, RevisionGrantError, assembleGrant, canonicalJson, grantBindsChain, grantPreviewOf, grantSummary, parseRevisionGrantPreview, parseStoredGrant,
+  GRANT_LIMITS, RevisionGrantError, assembleGrant, canonicalJson, grantBindsChain, grantPreviewOf, parseRevisionGrantPreview, parseStoredGrant,
   previewDigest, publicKeyFromSpkiB64, resolveGrantTerms, revisionGrantSigningInput, signRevisionGrant, verifyRevisionGrantSignature,
 } from "./revision-grant.js";
 import { GRANT_NOW, samplePreview } from "./revision-grant-fixtures.js";

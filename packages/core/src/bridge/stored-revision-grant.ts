@@ -1,5 +1,5 @@
 import type { KeyObject } from "node:crypto";
-import { GRANT_LIMITS, RevisionGrantError, RevisionGrantSchema, parseStoredGrant, verifyRevisionGrantSignature, type RevisionGrant } from "./revision-grant.js";
+import { GRANT_LIMITS, RevisionGrantError, RevisionGrantSchema, parseStoredGrant, verifyRevisionGrantSignature, type GrantBudget, type RevisionGrant } from "./revision-grant.js";
 import { LocalFailureRevisionGrantSchema, parseLocalFailureRevisionGrant, verifyLocalFailureRevisionGrantSignature, type LocalFailureRevisionGrant } from "./revision-local-failure-grant.js";
 
 /** Version-aware data contract only. Existing authority fences remain V1-only until explicitly integrated. */
@@ -29,4 +29,16 @@ export function verifyStoredRevisionGrantSignature(value: unknown, publicKey: Ke
     const grant = parsed.data;
     return grant.version === 1 ? verifyRevisionGrantSignature(grant, publicKey) : verifyLocalFailureRevisionGrantSignature(grant, publicKey);
   } catch { return false; }
+}
+
+/** What `mission status --json` reports about a grant. No signature, digest, nonce or identity. */
+export interface GrantSummary {
+  version?: 2; grant_id: string; rounds: number; issued_at: number; expires_at: number; review_deadline_ms: number; budget: GrantBudget; key_id: string;
+}
+export function grantSummary(grantJson: string): GrantSummary | null {
+  try {
+    const g = parseStoredRevisionGrant(grantJson);
+    return { grant_id: g.grant_id, rounds: g.rounds, issued_at: g.issued_at, expires_at: g.expires_at, review_deadline_ms: g.review_deadline_ms, budget: g.budget, key_id: g.key_id,
+      ...(g.version === 2 ? { version: g.version } : {}) };
+  } catch { return null; }
 }

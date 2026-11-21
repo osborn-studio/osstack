@@ -1,5 +1,5 @@
 // D7: bounded, low-frequency observation of stopped live revision chains.
-import { parseStoredGrant, scanStoppedChains, type EngineeringPrincipal, type RevisionChain, type RevisionChainStore, type StoppedPrFacts } from '@osstack/core';
+import { parseStoredRevisionGrant, scanStoppedChains, type EngineeringPrincipal, type RevisionChain, type RevisionChainStore, type StoppedPrFacts } from '@osstack/core';
 import { ghGraphqlTransport, type GraphqlTransport } from './contained-mission-bridge-reader.js';
 import { readRevisionPr } from './contained-mission-revision-publication.js';
 import { BridgeReadLimiter } from './contained-mission-bridge-read-limiter.js';
@@ -89,7 +89,7 @@ export class StoppedChainScanService {
     if (!child || TERMINAL.has(this.options.missionState(child))) return;
     let principal: EngineeringPrincipal | null = null;
     try {
-      const grant = parseStoredGrant(chain.grant_json);
+      const grant = parseStoredRevisionGrant(chain.grant_json);
       const current = this.options.refreshPrincipal(grant.principal_id, grant.client_session_id);
       if (current.stop_scopes.includes(grant.scope_id) || current.write_scopes.includes(grant.scope_id)) principal = current;
     } catch { /* Lost or invalid grant authority uses the daemon stop path. */ }
