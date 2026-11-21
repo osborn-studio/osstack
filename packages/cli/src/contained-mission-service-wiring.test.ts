@@ -1,6 +1,6 @@
 import { setup as revisionSetup, dispatched } from './contained-mission-revision.testkit.js';
 import { createHash, generateKeyPairSync } from "node:crypto";
-import { chmodSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AttentionStore, createScratchDirSync, openDb } from "@osstack/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -401,6 +401,51 @@ describe("local-failure factory boundary", () => {
   vi.mock("./contained-mission-local-failure-service.js", () => {
     loads.push("assembly");
     return {};
+  });
+
+  it.each([
+    [{}, "local_failure_repair_disabled"],
+    [{ localFailureRoute: false }, "local_failure_repair_disabled"],
+    [{ localFailureRoute: true }, "permission_denied"],
+  ] as const)("checks the first grant preview with route options %j", async (route, v2Error) => {
+    const f = setup();
+    liveConfiguration(f);
+    const { ContainedMissionStore, RevisionChainStore } = await import("@osstack/core");
+    const { assembleLiveBridge } = await import("./contained-mission-bridge-assembly.js");
+    const service = await f.create();
+    try {
+      const ports = f.portsOf(service) as unknown as import("./contained-mission-ports.js").ContainedMissionHostPorts;
+      const unexpected = async () => { throw Error("unexpected_io"); };
+      const assembly = await assembleLiveBridge({ ...route, home: f.home, ports, access: f.deps.access,
+        chains: new RevisionChainStore(f.deps.attention, f.deps.owner), missions: new ContainedMissionStore(f.deps.attention, f.deps.owner),
+        host: { isBusy: () => false, cancel: unexpected, cancelFromBridge: unexpected }, enabled: () => true, now: Date.now, log: f.deps.log,
+        launchCaps: { executor_seconds: 60, verify_seconds: 60 }, protectedSetDigest: () => "a".repeat(64),
+        readPr: unexpected, headIsDescendant: unexpected, stoppedRead: unexpected,
+        publication: { runner: { run: unexpected }, readPr: unexpected, localGit: unexpected, remoteHead: unexpected,
+          compare: unexpected, preflight: unexpected, checkEnabled: false } });
+      const actor = f.deps.access.refresh("owner", "console");
+      const mission_id = "cm_00000000-0000-4000-8000-000000000001";
+      const local_failure = { profile_id: "unit-test", profile_digest: "f".repeat(64), diagnostic_timeout_seconds: 60,
+        trusted_source: { repository: "o/trusted", commit: "b".repeat(40), artifact_digest: "c".repeat(64) } };
+      await expect(assembly.grants.preview(actor, { mission_id, local_failure })).rejects.toThrow(new Error(v2Error));
+      await expect(assembly.grants.preview(actor, { mission_id })).rejects.toThrow(new Error("permission_denied"));
+    } finally {
+      await service.close();
+    }
+  });
+
+  it("forwards the local-failure grant route only from the parsed switch", () => {
+    const src = new URL("./", import.meta.url);
+    const owners = [];
+    for (const file of readdirSync(src, { recursive: true, encoding: "utf8" })) {
+      if (!file.endsWith(".ts") || file.endsWith(".test.ts")) continue;
+      const lines = readFileSync(new URL(file, src), "utf8").split("\n").filter(line => line.includes("localFailureRoute"));
+      if (lines.length) owners.push(file);
+      if (file === "contained-mission-rpc.ts") {
+        for (const line of lines) expect(line).toContain("localFailureOn ?");
+      }
+    }
+    expect(owners.sort()).toEqual(["contained-mission-bridge-assembly.ts", "contained-mission-bridge-production.ts", "contained-mission-rpc.ts"]);
   });
 
   it.each([undefined, "", "0", "true", "on"])("leaves the route absent for %j", async value => {

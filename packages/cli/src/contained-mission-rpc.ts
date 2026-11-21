@@ -518,6 +518,7 @@ export async function createContainedMissionService(deps: {
   const live = bridgeMode === 'live' ? await (await import('./contained-mission-bridge-production.js')).createProductionLiveBridge({
     home: deps.home, chains: chainStore, missions: store, ports, host, access: deps.access,
     enabled: () => env['OSSTACK_BRIDGE'] === '1' && !deps.draining(), now: Date.now, log,
+    ...(localFailureOn ? { localFailureRoute: true } : {}),
     launchCaps: ports.revisionLaunchCaps!,
   }) : undefined;
   // Shadow merger (design §5.3): its own factory, nothing shared with loadBridgeConfig above or with the bridge reconciler.

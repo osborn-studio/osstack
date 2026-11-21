@@ -31,7 +31,7 @@ export async function readBridgeAncestry(chain: Pick<RevisionChain, 'repository'
 }
 
 type AssemblyDeps = Parameters<typeof assembleLiveBridge>[0];
-export type ProductionLiveBridgeDeps = Pick<AssemblyDeps, 'home' | 'chains' | 'missions' | 'ports' | 'host' | 'access' | 'enabled' | 'now' | 'log' | 'launchCaps'>;
+export type ProductionLiveBridgeDeps = Pick<AssemblyDeps, 'home' | 'chains' | 'missions' | 'ports' | 'host' | 'access' | 'enabled' | 'localFailureRoute' | 'now' | 'log' | 'launchCaps'>;
 
 /** All mutating effects use the host's W13 ledger and App A; all GitHub reads use host credentials. */
 export async function createProductionLiveBridge(deps: ProductionLiveBridgeDeps) {

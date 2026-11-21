@@ -225,7 +225,7 @@ it('limits the V2 signer, switch and forwarded methods to their owners', () => {
     }
   }
   expect(signers.sort()).toEqual(['cli/contained-mission-grant-command.ts', 'core/bridge/revision-local-failure-grant.ts', 'core/index.ts', 'core/state/diagnosis-fixtures.ts']);
-  expect(switches).toEqual(['cli/contained-mission-grant.ts']);
+  expect(switches).toEqual(['cli/contained-mission-bridge-assembly.ts', 'cli/contained-mission-grant.ts']);
 });
 
 it('requires a canonical root repository before the V2 PR read', async () => {
