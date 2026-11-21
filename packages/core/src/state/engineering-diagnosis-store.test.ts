@@ -1,5 +1,7 @@
 import { afterEach, expect, it } from "vitest";
-import { createHash } from "node:crypto";
+import { DiagnosisStore } from "./engineering-diagnosis-store.js";
+import { verificationDedupKey } from "../bridge/verification-result.js";
+import { createHash, randomUUID } from "node:crypto";
 import { GRANT_NOW } from "../bridge/revision-grant-fixtures.js";
 import { localFailureBindingFromLedger, type LocalVerificationReceipt } from "../bridge/local-failure.js";
 import { diagnosisFixture } from "./diagnosis-fixtures.js";
@@ -316,4 +318,26 @@ it.each([7, 8])("checks the root at depth %i before reserving an intake", depth 
     expect(f.store.intakes.containerDebit(f.facts.chain_id)).toBe(0);
     expect(f.source.registration(f.v.result_id)?.registered.intake_id).toBeNull();
   }
+});
+
+it("pages only never-admitted registered requests in creation and id order", () => {
+  const f = fixture();
+  const admitted = f.store.register(f.input);
+  expect(f.store.admit(admitted.request_id, 1, f.facts).status).toBe("admitted");
+  const rows = [];
+  for (let i = 1; i <= 104; i++) {
+    const wire = { ...f.v, pr: i + 20, result_id: randomUUID() };
+    wire.dedup_key = verificationDedupKey(wire);
+    record(f, wire);
+    const store = new DiagnosisStore(f.attention, f.owner, () => f.facts.now + (i % 3));
+    const row = store.register({ ...f.input, result_id: wire.result_id, contract_text: JSON.stringify(wire),
+      chain_id: i === 1 ? null : f.input.chain_id });
+    if (i > 1) rows.push(row);
+  }
+  rows.sort((a,b) => a.created_at - b.created_at || a.request_id.localeCompare(b.request_id));
+  expect(f.store.registered(0)).toEqual(rows.slice(0, 1));
+  expect(f.store.registered(NaN)).toEqual(rows.slice(0, 1));
+  expect(f.store.registered()).toEqual(rows.slice(0, 10));
+  expect(f.store.registered(200)).toEqual(rows.slice(0, 100));
+  expect(f.store.registered(100, rows[99])).toEqual(rows.slice(100));
 });

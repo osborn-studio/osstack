@@ -609,7 +609,9 @@ export async function createContainedMissionService(deps: {
   let localFailure: ContainedMissionServiceOptions['localFailure'];
   if (localFailureOn) {
     const { createLocalFailureRouteService } = await import('./contained-mission-local-failure-service.js');
-    localFailure = await createLocalFailureRouteService({ log, home: deps.home, attention: deps.attention, owner: deps.owner,
+    localFailure = await createLocalFailureRouteService({ missions: store,
+      docker: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
+        baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID') }, log, home: deps.home, attention: deps.attention, owner: deps.owner,
       chains: chainStore, access: deps.access, enabled: () => env['OSSTACK_BRIDGE'] === '1' && !deps.draining(), now: Date.now });
   }
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,

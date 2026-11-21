@@ -72,7 +72,7 @@ export async function registerDiagnosis(p: Pick<DiagnosisPorts, "store" | "regis
     }),
   );
 }
-export async function runDiagnosis(p: DiagnosisPorts, id: string, signal: AbortSignal): Promise<DiagnosisOutcome> {
+export async function runDiagnosis(p: Omit<DiagnosisPorts, "registration">, id: string, signal: AbortSignal): Promise<DiagnosisOutcome> {
   const store = p.store,
     r = store.get(id);
   if (!diagnosisCanAdmit(r)) return outcome(r);
@@ -314,7 +314,7 @@ export async function runDiagnosis(p: DiagnosisPorts, id: string, signal: AbortS
     );
   });
 }
-export function recoverDiagnoses(p: DiagnosisPorts): RecoveryReport {
+export function recoverDiagnoses(p: Pick<DiagnosisPorts, "store">): RecoveryReport {
   const s = p.store;
   return s.transaction(() => ({
     recovered: s.admitted().map((r) => {
