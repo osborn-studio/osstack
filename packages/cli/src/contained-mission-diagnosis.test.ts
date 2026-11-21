@@ -373,6 +373,8 @@ it.each([
   if (mode === "bad-signature" || mode === "v1") {
     const { local_failure: _pin, ...shared } = f.facts.grant;
     const grant = mode === "v1" ? { ...shared, version: 1 } : { ...f.facts.grant, signature: "A".repeat(86) + "==" };
+    // Simulate a database without the schema 64 guard to keep the inner defence covered.
+    f.db.exec("DROP TRIGGER IF EXISTS engineering_local_failure_grant_monotonic");
     f.db
       .prepare("UPDATE engineering_revision_chains SET grant_json=?,revision=revision+1 WHERE chain_id=?")
       .run(JSON.stringify(grant), f.facts.chain_id);
