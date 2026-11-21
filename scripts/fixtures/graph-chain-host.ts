@@ -80,7 +80,7 @@ const db = openDb({ path: daemon?.dbPath ?? join(root, 'state.db') });
 const runs = new GraphRunStore(db); const artifacts = new GraphArtifactStore(join(root, 'artifacts'));
 const admission = new GovernedExecution({ reads: new FifoSemaphore(2), writes: new FifoSemaphore(1), repositories: new Map(), checkHealth: async () => {} });
 const broker = daemon ? await daemon.graphActionBroker() : new GraphActionBroker(db, { acquire: admission.acquire.bind(admission) });
-const configuration = { programs, workerOptions: { workerEntry: resolve('packages/graph/dist/worker-entry.js'), shutdownTimeoutMs: 30, terminationTimeoutMs: 30 }, drainTimeoutMs: 1000 };
+const configuration = { programs, workerOptions: { workerEntry: resolve('packages/graph/dist/worker-entry.js'), shutdownTimeoutMs: 30, terminationTimeoutMs: 30, exitConfirmTimeoutMs: 5000 }, drainTimeoutMs: 1000 };
 const runtime = daemon ? await daemon.graphRuntime(configuration) : new GraphRuntime({ ...configuration, db, broker,
   checkpoints: new GraphCheckpointService({ runs, checkpoints: new GraphCheckpointStore(db), bindings: new Map() }) });
 let run = runtime.prepare(request, version);

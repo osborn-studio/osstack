@@ -63,6 +63,8 @@ export interface GraphWorkerManagerOptions {
   startupTimeoutMs?: number;
   shutdownTimeoutMs?: number;
   terminationTimeoutMs?: number;
+  /** Time to wait for the OS to report exit after SIGKILL. Defaults to terminationTimeoutMs. */
+  exitConfirmTimeoutMs?: number;
   requestTimeoutMs?: number;
   maxInFlight?: number;
   maxLogBytes?: number;
@@ -138,6 +140,7 @@ export class GraphWorkerManager {
     const startupMs = boundedOption(this.options.startupTimeoutMs, 10000, 60000);
     const shutdownMs = boundedOption(this.options.shutdownTimeoutMs, 1000, 60000);
     const terminationMs = boundedOption(this.options.terminationTimeoutMs, 1000, 60000);
+    const exitConfirmMs = boundedOption(this.options.exitConfirmTimeoutMs, terminationMs, 60000);
     const maxInFlight = boundedOption(this.options.maxInFlight, 16, 64);
     const maxLogBytes = boundedOption(this.options.maxLogBytes, 16384, 1048576);
     const requestTimeoutMs = boundedOption(this.options.requestTimeoutMs, 30000, 300000);
@@ -203,7 +206,7 @@ export class GraphWorkerManager {
               const evidence = { kind: 'exit_unconfirmed' as const, pid: child?.pid, error: 'WORKER_EXIT_UNCONFIRMED' };
               exit.resolve(observe(evidence)); clear();
             });
-          }, terminationMs));
+          }, exitConfirmMs));
         }, terminationMs));
       }, shutdownMs));
     };
@@ -228,7 +231,7 @@ export class GraphWorkerManager {
         assertActive(); transport!.send({ kind: 'response', binding, id: message.id, ok: true, payload });
       } catch (error) {
         try { assertActive(); transport!.send({ kind: 'response', binding, id: message.id, ok: false, error: String(error).slice(0, 4096) }); }
-        catch { cancel('STALE_GENERATION'); }
+        catch (inactive) { cancel(String(inactive)); }
       } finally { pending.delete(message.id); }
     };
     const receive = (raw: unknown) => {

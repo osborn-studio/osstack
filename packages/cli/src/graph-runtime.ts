@@ -179,10 +179,18 @@ export class GraphRuntime {
     // cancel synchronously aborts the same signal passed to each actual broker call.
     const worker = record.handle.stop(reason);
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let drainCheck: ReturnType<typeof setImmediate> | undefined;
     const drained = Promise.allSettled([...record.pending]).then(() => true);
-    const bounded = Promise.race([drained, new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), this.drainTimeoutMs); })]);
+    const bounded = Promise.race([drained, new Promise<boolean>(resolve => {
+      timer = setTimeout(() => {
+        // Let poll deliver queued action completions before reporting pending work.
+        drainCheck = setImmediate(() => resolve(false));
+      }, this.drainTimeoutMs);
+    })]).finally(() => {
+      if (timer) clearTimeout(timer);
+      if (drainCheck) clearImmediate(drainCheck);
+    });
     const [exit, actionsSettled] = await Promise.all([worker, bounded]);
-    if (timer) clearTimeout(timer);
     return { worker: exit, actionsSettled };
   }
   /** Database lifetime barrier, separate from bounded physical-stop observations.

@@ -11,8 +11,8 @@ import { GraphRecoveryStore } from '@osstack/core/graph-recovery';
 
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close(); });
-function fixture(source?: string) {
-  const root = mkdtempSync(join(tmpdir(), 'g25-journal-')); const f = processFixture(root, source);
+function fixture(source?: string, exitConfirmTimeoutMs?: number) {
+  const root = mkdtempSync(join(tmpdir(), 'g25-journal-')); const f = processFixture(root, source, exitConfirmTimeoutMs);
   cleanup.push(async () => { await f.runtime.close(); await f.runtime.drainDatabaseUsers(); if (f.db.open) f.db.close(); rmSync(root, { recursive: true, force: true }); });
   return f;
 }
@@ -80,7 +80,7 @@ it('round-trips an unconfirmed observation without an assigned PID as valid JSON
   expect(report).toMatchObject({ leader: { state: 'unknown' }, executors: { state: 'unknown' }, recovery: 'held' });
 });
 it('persists timeout separately from actual late exit and keeps DB drainage pending', async () => {
-  const f = fixture('export async function run(){process.on("SIGTERM",()=>{});console.log("running");while(true){}}');
+  const f = fixture('export async function run(){process.on("SIGTERM",()=>{});console.log("running");while(true){}}', 30);
   const handle = f.runtime.start(f.start); await handle.ready;
   await expect.poll(() => handle.logs().stdout).toContain('running');
   const ignoredKill = vi.spyOn(ChildProcess.prototype, 'kill').mockReturnValue(true);

@@ -18,7 +18,7 @@ interface ProcessFixture {
   binding: GraphWorkerBinding;
   start: GraphRuntimeStart;
 }
-export function processFixture(root: string, source = 'export async function run() { return 42; }'): ProcessFixture {
+export function processFixture(root: string, source = 'export async function run() { return 42; }', exitConfirmTimeoutMs = 5000): ProcessFixture {
   const db: Database.Database = openDb({ path: join(root, 'state.db') });
   const modulePath = join(root, 'program.mjs'); writeFileSync(modulePath, source);
   const programs = [{ id: 'process', modulePath, digest: createHash('sha256').update(source).digest('hex') }];
@@ -27,7 +27,7 @@ export function processFixture(root: string, source = 'export async function run
     spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: 'a'.repeat(40), acceptanceRef: 'accept' }, limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 10, deadlineSeconds: 300, tokenReservationLimit: 100 } } };
   const broker = new GraphActionBroker(db, { acquire: async () => { throw new Error('no executor'); } });
   const checkpoints = new GraphCheckpointService({ runs: new GraphRunStore(db), checkpoints: new GraphCheckpointStore(db), bindings: new Map() });
-  const options = { db, broker, checkpoints, programs, workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30, heartbeatTimeoutMs: 60000 } };
+  const options = { db, broker, checkpoints, programs, workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30, exitConfirmTimeoutMs, heartbeatTimeoutMs: 60000 } };
   const runtime = new GraphRuntime(options);
   const prepared = runtime.prepare(request, version);
   const run = prepared.generation === 0 ? runtime.claim(prepared, 'owner', Date.now() + 30000) : prepared;
