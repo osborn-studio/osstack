@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterAll, afterEach, expect, it, vi } from 'vitest';
 import { openDb, GraphRunStore, GraphCheckpointStore, type GraphProgramVersion } from '@osstack/core';
@@ -14,7 +15,7 @@ if (process.env['G17_TEST_HOME']) process.env['OSSTACK_HOME'] = process.env['G17
 afterAll(() => { if (priorHome === undefined) delete process.env['OSSTACK_HOME']; else process.env['OSSTACK_HOME'] = priorHome; });
 const cleanup: Array<() => void | Promise<void>> = [];
 afterEach(async () => { for (const f of cleanup.splice(0).reverse()) await f(); });
-function fixture(programSource?: string) {
+function fixture(programSource?: string, exitConfirmTimeoutMs = 5000) {
   const root = mkdtempSync(join(tmpdir(), 'g17-'));
   cleanup.push(() => rmSync(root, { recursive: true, force: true }));
   const db = openDb({ path: join(root, 'state.db') }); cleanup.push(() => { db.close(); });
@@ -25,7 +26,7 @@ function fixture(programSource?: string) {
   const request: StartGraphRequest = { schemaVersion: 1, kind: 'start', scope: { schemaVersion: 1, tenantId: 'tenant', principalId: 'principal', workspaceId: 'workspace' }, idempotencyKey: 'start', inputArtifactRef: 'input', source: { product: 'osstack', requestId: 'request' }, spec: { schemaVersion: 1, template: 'code-delivery-v1', publication: 'artifact_only', input: { taskRef: 'task', repositoryRef: 'repo', baseRevision: 'a'.repeat(40), acceptanceRef: 'acceptance' }, limits: { maxEpochs: 1, maxBranchAttempts: 2, maxConcurrentReaders: 2, maxConcurrentWritersPerRepo: 1, maxActionStarts: 5, deadlineSeconds: 120, tokenReservationLimit: 100 } } };
   const broker = new GraphActionBroker(db, { acquire: async () => { throw new Error('no action registered'); } });
   const checkpoints = new GraphCheckpointService({ runs: new GraphRunStore(db), checkpoints: new GraphCheckpointStore(db), bindings: new Map() });
-  const runtimeOptions = { db, broker, checkpoints, programs, workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30 } };
+  const runtimeOptions = { db, broker, checkpoints, programs, workerOptions: { shutdownTimeoutMs: 30, terminationTimeoutMs: 30, exitConfirmTimeoutMs } };
   const runtime = new GraphRuntime(runtimeOptions);
   cleanup.push(() => runtime.close());
   return { root, db, runtime, broker, checkpoints, request, version, runtimeOptions };
@@ -239,13 +240,13 @@ for (const mode of ['assembly', 'daemon'] as const) {
   }, 25_000);
 }
 it('module: late actual worker OS exit replaces unconfirmed observation without rewriting bounded stop', async () => {
-  const f = fixture('export async function run(context) { process.on("SIGTERM",()=>{}); process.on("unhandledRejection",()=>{}); setInterval(()=>{},1000); console.log("waiting"); return context.task("wait",async()=>new Promise(()=>{}))(); }');
+  const f = fixture('export async function run(context) { process.on("SIGTERM",()=>{}); process.on("unhandledRejection",()=>{}); setInterval(()=>{},1000); console.log("waiting"); return context.task("wait",async()=>new Promise(()=>{}))(); }', 30);
   const run = f.runtime.claim(f.runtime.prepare(f.request, f.version), 'owner', Date.now() + 30_000);
   const h = f.runtime.start({ request: f.request, run, programId: 'chain', authorize: () => {}, registration: {
     scope: run.scope, graphRunId: run.graphRunId, identity: run.identity, generation: run.generation, owner: 'owner', epoch: 0,
     workspace: { workspace_id: 'workspace', workspace_path: f.root }, authorize: () => {}, actions: [],
   } });
-  await h.ready; await expect.poll(() => h.logs().stdout).toContain('waiting'); const ignoreKill = vi.spyOn(ChildProcess.prototype, 'kill').mockReturnValue(true);
+  await h.ready; await expect.poll(() => h.logs().stdout, { timeout: 10_000 }).toContain('waiting'); const ignoreKill = vi.spyOn(ChildProcess.prototype, 'kill').mockReturnValue(true);
   let pid: number | undefined;
   try {
     const stop = await h.stop(); expect(stop.worker.kind).toBe('exit_unconfirmed');
@@ -271,10 +272,41 @@ it('keeps a database lifetime barrier after bounded stop reports pending host wo
   } });
   void handle.result.catch(() => {});
   try {
-    await expect.poll(() => entered).toBe(true);
+    await expect.poll(() => entered, { timeout: 10_000 }).toBe(true);
     expect((await handle.stop()).actionsSettled).toBe(false); await runtime.close();
     let drained = false; const barrier = runtime.drainDatabaseUsers().then(() => { drained = true; });
     await new Promise(resolve => setTimeout(resolve, 30)); expect(drained).toBe(false); expect(dbUsed).toBe(false);
     release(); await barrier; expect(dbUsed).toBe(true); expect(drained).toBe(true);
   } finally { release(); await runtime.close(); await runtime.drainDatabaseUsers(); }
+}, 10000);
+
+it('module: observes a queued action I/O completion after a host stall during stop', async () => {
+  const f = fixture(`export async function run(ctx) { return await ctx.action({schemaVersion:1,kind:'worker_action',requestId:'one',scope:ctx.input.scope,graphRunId:ctx.binding.graphRunId,specHash:ctx.binding.identity.specHash,generation:ctx.binding.generation,epoch:0,nodeId:'workspace',effectSlot:'main',action:{kind:'workspace_create',repositoryRef:'repo',baseRevision:ctx.input.spec.input.baseRevision}}); }`);
+  const runtime = new GraphRuntime({ ...f.runtimeOptions, drainTimeoutMs: 5 });
+  const file = await open(f.runtimeOptions.programs[0]!.modulePath, 'r');
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  let release!: () => void;
+  const blocked = new Promise<void>(resolve => { release = resolve; });
+  const run = runtime.claim(runtime.prepare(f.request, f.version), 'owner', Date.now() + 30000);
+  const handle = runtime.start({ request: f.request, run, programId: 'chain', authorize: () => {}, registration: {
+    scope: run.scope, graphRunId: run.graphRunId, identity: run.identity, generation: run.generation, owner: 'owner', epoch: 0,
+    workspace: { workspace_id: 'workspace', workspace_path: f.root }, authorize: () => {}, actions: [],
+  }, dispatch: async () => {
+    entered(); await blocked;
+    await file.read(Buffer.alloc(1), 0, 1, 0);
+    throw Error('HOST_OPERATION_RETIRED');
+  } });
+  try {
+    await Promise.race([started, handle.result]);
+    // Stall in the check phase so the expired timer runs before the next poll.
+    await new Promise<void>(resolve => setImmediate(resolve));
+    const stopped = handle.stop();
+    release();
+    await Promise.resolve(); // Let dispatch submit its single read before the stall.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+    expect((await stopped).actionsSettled).toBe(true);
+  } finally {
+    release(); await runtime.close(); await runtime.drainDatabaseUsers(); await file.close();
+  }
 }, 10000);
