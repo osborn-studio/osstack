@@ -1,0 +1,34 @@
+{
+  "name": "@osstack/verify-publisher",
+  "version": "0.1.0",
+  "description": "Cloud-side publisher of verification results as check runs for osstack. Run from a pinned commit, never imported by host packages, never published.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "prepack": "node ../../scripts/prepare-npm-package.mjs",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@osstack/core": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/osborn-studio/osstack.git",
+    "directory": "packages/verify-publisher"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

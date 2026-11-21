@@ -367,3 +367,12 @@ export { AttentionDeliveryContract, deliveryContract, promoteScout, verifyDelive
 export { evaluateRoutingGolden } from "./routing-evaluation.js";
 export type { RoutingGoldenDataset, RoutingGoldenCase, ProfileRoutingGoldenCase, ProfileRoutingGoldenRunner, ProfileRoutingGoldenOutcome, RoutingEvaluationAdapter, RoutingGoldenReport } from "./routing-evaluation.js";
 ```
+
+## `@osstack/verify-publisher` (private)
+
+```ts
+export { parsePublisherAllowlist, parsePublishRequest, type PublisherAllowlist, type PublishRequest } from "./config.js";
+export { createFileAttemptLedger, type AttemptLedger, type AttemptLedgerEntry, type AttemptLedgerSession } from "./attempt-ledger.js";
+export { publishVerification, abandonVerification, type PublisherDeps, type PublisherGithub, type PublishOutcome, type PublishRefusal } from "./publish.js";
+export { runCli, type CliDeps } from "./cli.js";
+```

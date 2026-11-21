@@ -135,3 +135,30 @@ it("keeps the recheck ports factories unwired across packages", () => {
     }
   }
 });
+
+it("confines the local-failure assembly and switch to the contained Mission factory", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      const path = join(root, file);
+      if (/\.test\.[^/]+$/.test(file) || !statSync(path).isFile()) continue;
+      const source = readFileSync(path, "utf8");
+      if (pkg === "cli" && file === "contained-mission-rpc.ts") {
+        const runtime = /await\s+import\(\s*['"]\.\/contained-mission-local-failure-service\.js['"]\s*\)/g;
+        const type = /localFailure\?:\s*import\(\s*['"]\.\/contained-mission-local-failure-service\.js['"]\s*\)\.LocalFailureRouteHandle/g;
+        expect(source.match(runtime)).toHaveLength(1);
+        expect(source.match(type)).toHaveLength(1);
+        expect(source.replace(runtime, "").replace(type, "")).not.toContain("contained-mission-local-failure-service.js");
+        continue;
+      }
+      if (pkg === "cli" && file === "contained-mission-local-failure-service.ts") {
+        // W1 only. The next node relaxes this check for the one module it wires.
+        expect(source).not.toMatch(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"](?:\.\/|@osstack\/)/);
+      } else expect(source, path).not.toMatch(/contained-mission-local-failure-service|createLocalFailureRouteService/);
+      if (pkg !== "cli" || file !== "contained-mission-local-failure-switch.ts")
+        expect(source, path).not.toMatch(/contained-mission-local-failure-switch|parseLocalFailureRouteSwitch|assertLocalFailureRouteStartable/);
+    }
+  }
+});
