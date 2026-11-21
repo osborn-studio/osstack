@@ -42,3 +42,24 @@ it.each(['mode', 'symlink', 'size', 'json'])('rejects %s', async kind => {
   if (kind === 'mode') await chmod(path, 0o644);
   await fails(kind === 'mode' ? 'file_mode' : kind === 'size' ? 'too_large' : 'json');
 });
+
+const repo = { repository: 'fixture-owner/fixture-repo', repository_id: 101 };
+it('preserves the absent repositories key', async () => {
+  await write(config);
+  const loaded = await loadVerificationProducerConfig(home);
+  expect(loaded).toStrictEqual({ app, policy });
+  expect(Object.hasOwn(loaded, 'repositories')).toBe(false);
+});
+it('loads the registered repository list', async () => {
+  await write({ ...config, repositories: [repo] });
+  expect(await loadVerificationProducerConfig(home)).toStrictEqual({ app, policy, repositories: [repo] });
+});
+it.each([
+  [repo, { ...repo, repository_id: 9001 }], [repo, { ...repo, repository: 'fixture/other' }],
+  [{ ...repo, repository_id: 9002 }], [{ ...repo, extra: true }], [{ ...repo, repository: 'Owner/name' }],
+  [{ ...repo, repository_id: 0 }], [{ ...repo, repository_id: Number.MAX_SAFE_INTEGER + 1 }],
+  Array(129).fill(repo),
+].map(repositories => ({ repositories })))('rejects invalid repositories', async ({ repositories }) => {
+  await write({ ...config, policy: { ...policy, producers: [producer, { ...producer, repository_id: 9001 }] }, repositories });
+  await fails('repositories');
+});

@@ -154,11 +154,40 @@ it("confines the local-failure assembly and switch to the contained Mission fact
         continue;
       }
       if (pkg === "cli" && file === "contained-mission-local-failure-service.ts") {
-        // W1 only. The next node relaxes this check for the one module it wires.
-        expect(source).not.toMatch(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"](?:\.\/|@osstack\/)/);
+        // The next node adds its one module here.
+        expect(source.match(/\bimport\b/g)).toHaveLength(1);
+        expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-scan\.js['"];?$/m);
       } else expect(source, path).not.toMatch(/contained-mission-local-failure-service|createLocalFailureRouteService/);
       if (pkg !== "cli" || file !== "contained-mission-local-failure-switch.ts")
         expect(source, path).not.toMatch(/contained-mission-local-failure-switch|parseLocalFailureRouteSwitch|assertLocalFailureRouteStartable/);
+    }
+  }
+});
+
+it("gives the read, record and register steps one caller", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  const definitions = [
+    ["contained-mission-verification-reader.ts", /\b(?:readVerificationResults|readVerificationContractText)\b/],
+    ["contained-mission-verification-read-transport.ts", /\bcreateVerificationRest\b/],
+    ["contained-mission-verification-installation.ts", /\bcreateVerificationInstallationProof\b/],
+    ["contained-mission-verification-producer-config.ts", /\bloadVerificationProducerConfig\b/],
+  ] as const;
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
+      const path = join(root, file), source = readFileSync(path, "utf8");
+      if (pkg === "cli" && file === "contained-mission-local-failure-scan.ts") {
+        expect(source, path).not.toMatch(/\b(?:runDiagnosis|recoverDiagnoses|dispatchLocalFailureRepair|recoverLocalFailureDispatch|approveLocalFailureRepair|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runRecheck|recoverRecheckRuns|collectLocalFailureRecheck|prepareContainedProfileImage|runPreparedContainedProfile)\b/);
+        continue;
+      }
+      if (pkg !== "cli" || file !== "contained-mission-local-failure-service.ts")
+        expect(source, path).not.toMatch(/contained-mission-local-failure-scan|\b(?:scanLocalFailureChain|LocalFailureScanService|createLocalFailureScan)\b/);
+      for (const [definition, names] of definitions)
+        if (pkg !== "cli" || file !== definition) expect(source, path).not.toMatch(names);
+      if (pkg === "cli" && file !== "contained-mission-diagnosis.ts") expect(source, path).not.toMatch(/\bregisterDiagnosis\b/);
+      if (pkg === "cli" && /\bVerificationSourceStore\b/.test(source)) expect(source, path).not.toMatch(/\.record\s*\(/);
     }
   }
 });

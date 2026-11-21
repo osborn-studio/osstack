@@ -41,7 +41,7 @@ it('isolates verification credentials and keeps the identity libraries unwired',
       if (source.includes('access_tokens')) expect(file).toBe('cli/src/contained-mission-github-app.ts');
       if (file !== proof && file !== transport && !libraries.some(name => source.includes(name))) continue;
       const imports = specifiers(file, source);
-      for (const spec of imports) expect(libraries, file).not.toContain(spec.split('/').pop()!.replace(/\.(?:js|ts)$/, ''));
+      if (file !== 'cli/src/contained-mission-local-failure-scan.ts') for (const spec of imports) expect(libraries, file).not.toContain(spec.split('/').pop()!.replace(/\.(?:js|ts)$/, ''));
       if (file === proof) {
         seen.add(file);
         for (const spec of imports) expect(['node:crypto', 'node:fs/promises', 'node:path', 'zod']).toContain(spec);

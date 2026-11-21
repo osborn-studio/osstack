@@ -4,11 +4,16 @@ import { parseVerificationProducerPolicyV1, type VerificationProducerPolicyV1 } 
 import { z } from 'zod';
 
 export interface VerificationAppIdentity { readonly app_id: number; readonly installation_id: number; readonly verification_private_key_path: string }
-export interface VerificationProducerConfig { readonly policy: VerificationProducerPolicyV1; readonly app: VerificationAppIdentity | null }
+export interface VerificationProducerConfig { readonly policy: VerificationProducerPolicyV1; readonly app: VerificationAppIdentity | null;
+  readonly repositories?: readonly { readonly repository: string; readonly repository_id: number }[] }
 
 const id = z.number().int().positive().safe();
 const configSchema = z.object({
   version: z.literal(1),
+  repositories: z.array(z.object({
+    repository: z.string().max(200).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\/[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/u),
+    repository_id: id,
+  }).strict()).max(128).optional(),
   verification_app: z.object({ app_id: id, installation_id: id, verification_private_key_path: z.string().refine(isAbsolute) }).strict(),
   // Preserve the complete policy for the core parser, including unknown keys.
   policy: z.custom<Record<string, unknown>>(p => p !== null && typeof p === 'object' && !Array.isArray(p) && Object.hasOwn(p, 'schema_version')),
@@ -39,11 +44,17 @@ export async function loadVerificationProducerConfig(home: string): Promise<Veri
   let json: unknown;
   try { json = JSON.parse(bytes.toString('utf8')); } catch { throw invalid('json'); }
   const parsed = configSchema.safeParse(json);
-  if (!parsed.success) throw invalid('schema');
+  if (!parsed.success) throw invalid(parsed.error.issues.some(issue => issue.path[0] === 'repositories') ? 'repositories' : 'schema');
   const { verification_app: app, policy } = parsed.data;
   const result = parseVerificationProducerPolicyV1(policy);
   if (!result.ok) throw invalid('policy');
   if (result.policy.producers.some(p => p.type !== 'App' || p.carrier !== 'check-run'
     || p.app_id !== app.app_id || p.installation_id !== app.installation_id)) throw invalid('producer_mismatch');
-  return { app, policy: result.policy };
+  const { repositories } = parsed.data;
+  if (repositories === undefined) return { app, policy: result.policy };
+  const producerIds = new Set(result.policy.producers.map(p => p.repository_id));
+  if (new Set(repositories.map(r => r.repository)).size !== repositories.length
+    || new Set(repositories.map(r => r.repository_id)).size !== repositories.length
+    || repositories.some(r => !producerIds.has(r.repository_id))) throw invalid('repositories');
+  return { app, policy: result.policy, repositories };
 }
