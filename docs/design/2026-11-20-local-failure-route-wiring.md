@@ -194,6 +194,24 @@ Still open, and not decided by this record: the transport of the operator re-arm
 
 With these decisions recorded, nodes W1 to W7 are unblocked in the order of §6.
 
+### 7.2 Addendum (2026-11-20): where the numeric repository id comes from
+
+Found while preparing W3; this document missed it. The reader's target needs a numeric `repository_id` (`contained-mission-verification-reader.ts`, `VerificationReadTarget`). A live chain and its version 2 grant carry only the repository name. The producer policy in `bridge/verification-producers.json` carries `repository_id` but no name. No host file held the pair.
+
+Two sources were possible:
+
+- (a) An optional list `repositories: [{ repository, repository_id }]` in `bridge/verification-producers.json`, the same protected file with the same checks. A chain whose repository is not listed is not read.
+- (b) Take the ids from the policy's producer entries and let the reader's own name and id check against GitHub's PR answer confirm the pair.
+
+Chosen: (a). It is explicit and fails closed like the rest of the route, it costs no extra GitHub read, and the reader's name and id check stays a second check instead of becoming the source. **This was decided by the orchestrating session, not by the owner.** Changing to (b) later is a small change in the scan module.
+
+Rules that follow from (a): the list is optional; an absent list or an unlisted repository means "not read" and is never a start error; a duplicate name, a duplicate id, or an id that no producer entry in the same file names makes the file invalid; a file without the field loads exactly as before. The owner adds the pair for each repository to the host file by hand. No real id is written in this repository.
+
+Two further points settled for W3, also by the orchestrating session:
+
+- The digest-checked re-read of §3.1 checks the run's identity and the text digest against the accepted ledger row, and that the App is still a registered producer for that repository. It does not check freshness, the TTL or the PR's current head, because the same function must later serve the recheck collector for an old result. The caller must check those: for registration that is the scan pass, which re-reads only results it has just read as fresh on the chain's current head, and `DiagnosisStore.register`; for the collector it is D5b.
+- The "valid V2 grant" check of decision 5 is made inside the scan module from the core functions (parse, signature, window, principal, chain binding), without a change to the grant service.
+
 ## 8. What could not be verified
 
 - Nothing was built or run for this document beyond the gates in §9. Every statement about behaviour comes from reading the source at `bb360e92`.

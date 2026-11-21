@@ -58,7 +58,7 @@ function receiptOutcome(result: Extract<ContainedProfileRunResult, { status: "st
   if (result.oomKilled || result.termination !== "exited" || !result.started) return "infrastructure_error";
   return result.exitCode === 0 ? "passed" : "reproducible_failure";
 }
-export async function registerDiagnosis(p: DiagnosisPorts, resultId: string, policy: unknown) {
+export async function registerDiagnosis(p: Pick<DiagnosisPorts, "store" | "registration">, resultId: string, policy: unknown) {
   const config = parseVerificationProducerPolicyV1(policy);
   if (!config.ok) throw Error(config.code);
   if (!config.policy.producers.length) return { status: "closed" } as const;

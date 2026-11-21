@@ -30,13 +30,22 @@ it('preserves the contained Mission RPC surface', () => {
 
 it('logs only at assembly, including when stopped before start or twice', async () => {
   const log = vi.fn();
-  const route = createLocalFailureRouteService({ log });
-  expect(log.mock.calls).toEqual([['osstack: local-failure route: on (no steps wired)']]);
-  await route.stop();
-  await route.recover(new AbortController().signal);
-  route.start();
-  await route.stop();
-  await route.stop();
+  const scan = { start: vi.fn(), stop: vi.fn(async () => {}) };
+  const module = await import('./contained-mission-local-failure-scan.js');
+  const factory = vi.spyOn(module, 'createLocalFailureScan').mockResolvedValue(scan as unknown as Awaited<ReturnType<typeof module.createLocalFailureScan>>);
+  try {
+    const route = await createLocalFailureRouteService({ log } as unknown as Parameters<typeof createLocalFailureRouteService>[0]);
+    expect(log.mock.calls).toEqual([['osstack: local-failure route: on (read, record, register)']]);
+    await route.recover(new AbortController().signal);
+    expect(scan.start).not.toHaveBeenCalled();
+    expect(scan.stop).not.toHaveBeenCalled();
+    await route.stop();
+    route.start();
+    await route.stop();
+    await route.stop();
+    expect(scan.start).toHaveBeenCalledOnce();
+    expect(scan.stop).toHaveBeenCalledTimes(3);
+  } finally { factory.mockRestore(); }
   expect(log).toHaveBeenCalledTimes(1);
 });
 

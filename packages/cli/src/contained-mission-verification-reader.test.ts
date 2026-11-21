@@ -223,7 +223,7 @@ it('has only allowed imports and stays unwired', () => {
   const imports = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(m => m[1]);
   expect(imports.sort()).toEqual(['@osstack/core/verification-intake', '@osstack/protocol/source', 'node:crypto', 'zod'].sort());
   for (const name of readdirSync(new URL('.', import.meta.url))) {
-    if (!name.endsWith('.ts') || name.startsWith('contained-mission-verification-reader.')) continue;
+    if (!name.endsWith('.ts') || name === 'contained-mission-local-failure-scan.ts' || name.startsWith('contained-mission-verification-reader.')) continue;
     expect(readFileSync(new URL(name, import.meta.url), 'utf8'), name).not.toMatch(/from\s+['"].*contained-mission-verification-reader|import\s*\(['"].*contained-mission-verification-reader/);
   }
 });
