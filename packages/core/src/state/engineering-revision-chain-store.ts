@@ -1,4 +1,5 @@
-import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit, readRecheckContainerDebit, readRootActivity } from "./engineering-root-admission.js";
+import { chainHasLocalFailureIntake, localFailureRenewalBusy } from "./engineering-local-failure-renewal-facts.js";
+import { checkRootAdmission, childContainerDebit, readIntakeContainerDebit, readRecheckContainerDebit } from "./engineering-root-admission.js";
 import { parseStoredRevisionGrant, type StoredRevisionGrant } from "../bridge/stored-revision-grant.js";
 import { checkLocalFailureRenewal, parseLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
 import { randomUUID } from "node:crypto";
@@ -416,18 +417,11 @@ export class RevisionChainStore {
       }
       let localFailure: { profile_id: string; profile_digest: string; recheck: boolean; changed: string[] } | undefined;
       if (old.version === 2 && next.version === 2) {
-        const hasIntake = Boolean(this.db.prepare("SELECT 1 FROM engineering_local_failure_intakes WHERE chain_id=? LIMIT 1").get(chainId));
+        const hasIntake = chainHasLocalFailureIntake(this.db, chainId);
         const opt = next.local_failure;
         const terms = checkLocalFailureRenewal(old.local_failure, opt, hasIntake);
         if (!terms.ok) return fail(terms.code);
-        const activity = readRootActivity(this.db, chain.root_mission_id);
-        if (activity.local_failure || activity.recheck) fail("grant_renewal_busy");
-        if (activity.local_failure_child && !this.db.prepare(`SELECT 1 FROM engineering_contained_missions m
-          WHERE m.mission_id=? AND m.state='awaiting_decision' AND m.stop_obligation=0
-          AND (SELECT CASE WHEN json_valid(e.payload_json) THEN json_extract(e.payload_json,'$.reason') END FROM engineering_contained_events e
-            WHERE e.mission_id=m.mission_id AND e.kind='halted' ORDER BY e.seq DESC LIMIT 1)='publication_pending'
-          AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=m.mission_id AND e.kind='verify_repair_approval')`)
-          .get(activity.local_failure_child.child_mission_id)) fail("grant_renewal_busy");
+        if (localFailureRenewalBusy(this.db, chain.root_mission_id)) fail("grant_renewal_busy");
         localFailure = { profile_id: opt.profile_id, profile_digest: opt.profile_digest, recheck: Boolean(opt.recheck), changed: terms.changed };
       }
       const headConsumed = Boolean(this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, chain.published_head));

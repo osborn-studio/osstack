@@ -10,7 +10,7 @@ import {
   recoverLocalFailureDispatch,
   type LocalFailureDispatchPorts,
 } from "./contained-mission-local-failure-dispatch.js";
-import { diagnosisFixture, eligibleRequest } from "@osstack/core/dist/state/diagnosis-fixtures.js";
+import { diagnosisFixture, diagnosisRenewal, eligibleRequest } from "@osstack/core/dist/state/diagnosis-fixtures.js";
 import { matchMissionProtectedPath, missionProtectedSetDigest } from "@osstack/governance";
 
 function portsFor(f: ReturnType<typeof diagnosisFixture>): LocalFailureDispatchPorts {
@@ -593,6 +593,80 @@ it.each([
         .run("d".repeat(40), f.facts.chain_id);
       expect(await review()).toEqual({ status: "no_reserve", reason: "stop" });
       expect(count()).toEqual({ n: 3 });
+    }
+  } finally { f.close(); }
+});
+
+it.each(["waiting", "approved"] as const)("handles grant expiry with a %s repair candidate", async state => {
+  const { ContainedMissionRunner } = await import("./contained-mission-runner.js");
+  const { publishLocalFailureRepair } = await import("./contained-mission-local-failure-publish.js");
+  const { f, id, store, spec, actor, candidate, tree, approveLocalFailureRepair } = await publicationFixture();
+  try {
+    const expiry = f.facts.grant.expires_at;
+    let clock = state === "waiting" ? expiry : expiry - 1;
+    const approve = () => approveLocalFailureRepair(store, actor, id, candidate, clock);
+    const approvals = () => store.events(id).filter(event => event.kind === "verify_repair_approval");
+    const renew = () => diagnosisRenewal(f, clock).replace();
+    if (state === "waiting") {
+      expect(approve).toThrow("verify_publish_authority_invalid");
+      expect(store.get(id).state).toBe("awaiting_decision");
+      renew();
+      expect(approvals()).toHaveLength(0);
+    }
+    const approved = approve();
+    expect(approvals()).toHaveLength(1);
+    const mission = store.transition(id, { if_revision: approved.revision, to: "delivering",
+      event: { kind: "delivery_intent", payload: {} } }, clock);
+    store.record(id, "candidate_committed", { head_commit: candidate, tier: "T0" }, clock);
+    store.record(id, "verify_intent", { candidate }, clock);
+    store.record(id, "verify_receipt", { exit_code: 0, cancelled: false, evidence: "fixture" }, clock);
+    clock = expiry;
+    const repository = spec.publication!.repository, ref = "refs/heads/" + spec.local_failure_repair!.branch;
+    let head = spec.start_commit, pushes = 0;
+    let process: import("@osstack/core").HostProcessRecord | undefined;
+    const deps: Parameters<typeof publishLocalFailureRepair>[1] = {
+      store, now: () => clock, repository, enabled: () => true, refresh: () => actor,
+      host: { recordForIntent: () => process },
+      readPr: async () => ({ state: "open", head: { sha: head }, base: { sha: spec.local_failure_repair!.base } }),
+      runner: { gated: true, run: async (_command, args, options) => {
+        let stdout = "";
+        if (args.includes("ls-remote")) stdout = head + "\t" + ref;
+        else if (args.includes("remote")) stdout = "https://github.com/" + repository + ".git";
+        else if (args.includes("rev-list")) stdout = candidate + " " + spec.start_commit;
+        else {
+          expect(args.slice(-5)).toEqual(["push", "--porcelain", "--force-with-lease=" + ref + ":" + head, "origin", candidate + ":" + ref]);
+          f.db.transaction(() => options.gate!.fence()).immediate();
+          pushes++;
+          head = candidate;
+          process = { op_id: "test", intent_id: options.intentId, mission_id: id, state: "stopped", released_at: clock,
+            remote_target: repository + "#" + ref, kind: "git_push", exit_code: 0 } as import("@osstack/core").HostProcessRecord;
+        }
+        return { stdout, stderr: "", exitCode: 0 };
+      } },
+    };
+    const unused = async (): Promise<never> => { throw Error("unexpected port"); };
+    const runner = new ContainedMissionRunner({ store, now: deps.now, createWorkspace: unused, resumeWorkspace: unused,
+      qualify: unused, execute: unused, readFile: unused, commit: unused, cumulativeDiff: unused, restoreWorkspace: unused,
+      worktreeDiff: unused, commitWorktree: unused, verify: unused, publish: unused,
+      localFailurePublication: { publish: input => publishLocalFailureRepair(input, deps) } });
+    const result = await runner.step(id);
+    if (state === "waiting") {
+      expect(result.state).toBe("pr_opened");
+      expect(new RevisionChainStore(f.attention, f.owner).get(f.input.chain_id).published_head).toBe(candidate);
+      expect(pushes).toBe(1);
+    } else {
+      expect(result.state).toBe("awaiting_decision");
+      expect(JSON.parse(store.events(id).at(-1)!.payload_json).reason).toBe("verify_publish_authority_invalid");
+      expect(renew).toThrow("grant_renewal_busy");
+      expect(approve).toThrow("verify_repair_approval_refused");
+      expect(runner.decideImmediate(result, { kind: "abandon" }).state).toBe("abandoned");
+      renew();
+      expect(approve).toThrow("verify_repair_approval_refused");
+      const permit = { mission_id: id, revision: mission.revision, head: candidate, tree, spec_digest: mission.spec_digest };
+      await expect(publishLocalFailureRepair({ mission, permit, spec, body: "", signal: new AbortController().signal,
+        beforeRemoteMutation: () => {} }, deps)).rejects.toThrow("verify_publish_authority_invalid");
+      expect(approvals()).toHaveLength(1);
+      expect(pushes).toBe(0);
     }
   } finally { f.close(); }
 });

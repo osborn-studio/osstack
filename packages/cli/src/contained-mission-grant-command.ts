@@ -1,6 +1,7 @@
 // Client side of `osstack mission grant-revisions` (phase 5-A, appendix §5.1). Local operator only: it needs an interactive
 // terminal, shows the exact grant the daemon previewed, requires the operator to type `GRANT <preview digest>`, and only then
 // reads the host-private issuer key and signs. The daemon verifies the signature; nothing here is authority without that key.
+import { z } from 'zod';
 import { createInterface } from 'node:readline/promises';
 import {
   GRANT_LIMITS,
@@ -32,7 +33,7 @@ Defaults: 1 round (--rounds 2 is explicit; two is the cap), valid 24h (at most 7
 budget 3600s executor, 3600s container, 48h wall clock. --chain extends a chain: rounds and budget can only grow.
 With --chain, a local-failure grant renews as a local-failure grant. Give local flags individually to raise a timeout,
 add the recheck, or change the pin before the first diagnosis. Unnamed terms are kept. Type RENEW LOCAL-FAILURE <digest>
-to sign the renewal. A version 1 chain cannot be upgraded yet.
+to sign the renewal. The preview lists eligible diagnoses, a waiting repair candidate, and pending recheck attempts. A version 1 chain cannot be upgraded yet.
 Type GRANT LOCAL-FAILURE <digest> to authorise one diagnosis per PR head after a trusted verification failure, one automatic repair
 Mission for this PR, and the optional recheck on the repaired head. Pushing the exact candidate needs separate operator approval.
 The daemon refuses this grant unless the local-failure switch is on.
@@ -65,8 +66,30 @@ export function parseDuration(value: string): number {
   return Number(m[1]) * { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2] as 's' | 'm' | 'h' | 'd'];
 }
 
+const objectId = z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/);
+const carryForwardSchema = z.object({
+  eligible_diagnoses: z.array(z.object({
+    request_id: z.string().regex(/^vdr_[0-9a-f-]{36}$/), head_sha: objectId,
+  }).strict()).max(10),
+  waiting_child: z.object({
+    child_mission_id: z.string().regex(/^cm_[0-9a-f-]{36}$/), candidate_head: objectId.nullable(),
+  }).strict().nullable(),
+  pending_recheck: z.object({
+    recheck_id: z.string().regex(/^vrc_[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/), attempts: z.number().int().min(0).max(3),
+  }).strict().nullable(),
+}).strict();
+type CarriedForward = z.infer<typeof carryForwardSchema>;
+
+function renderCarriedForward(work: CarriedForward): string[] {
+  const lines = work.eligible_diagnoses.map(r => `  eligible diagnosis ${r.request_id} on head ${r.head_sha}`);
+  if (work.waiting_child) lines.push(`  repair candidate waiting for approval: child ${work.waiting_child.child_mission_id}, candidate ${work.waiting_child.candidate_head ?? 'unknown'}`);
+  if (work.pending_recheck) lines.push(`  pending recheck ${work.pending_recheck.recheck_id}, attempts so far ${work.pending_recheck.attempts}`);
+  return ['Work this renewal carries forward (shown for information, not signed):', ...(lines.length ? lines : ['  nothing']),
+    'This renewal does not approve a candidate; the approval stays a separate step.'];
+}
+
 /** Human-readable preview. Every signed field is shown. */
-export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPreview, digest: string, previous?: LocalFailureOptIn): string {
+export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPreview, digest: string, previous?: LocalFailureOptIn, carriedForward?: CarriedForward): string {
   const iso = (ms: number) => new Date(ms).toISOString();
   const change = (label: string, old: string | number, next: string | number) =>
     `  ${label}: ${old === next ? `${next} (unchanged)` : `${old} -> ${next}`}`;
@@ -109,6 +132,7 @@ export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPr
       change('diagnostic timeout', previous.diagnostic_timeout_seconds, p.local_failure.diagnostic_timeout_seconds),
       change('recheck timeout', previous.recheck?.timeout_seconds ?? 'none', p.local_failure.recheck?.timeout_seconds ?? 'none'),
     ] : []),
+    ...(p.version === 2 && p.renews && carriedForward ? renderCarriedForward(carriedForward) : []),
     'The daemon will, within these limits only, push fast-forward revision commits to this PR branch. It will never merge.',
   ];
   return `${lines.join('\n')}\n`;
@@ -195,6 +219,7 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
     // The daemon is trusted, but the operator signs what this process computes, not what it was told.
     const raw = reply['preview'];
     let preview: RevisionGrantPreview | LocalFailureGrantPreview;
+    let carriedForward: CarriedForward | undefined;
     let previous: LocalFailureOptIn | undefined;
     if (raw && typeof raw === 'object' && 'version' in raw && raw.version === 2) {
       try { preview = parseLocalFailureGrantPreview(raw); } catch { throw new Error('grant_preview_mismatch'); }
@@ -202,6 +227,9 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
       if (chain !== undefined) {
         const parsed = LocalFailureOptInSchema.safeParse(reply['previous_local_failure']);
         if (!parsed.success || preview.renews?.chain_id !== chain) throw new Error('grant_preview_mismatch');
+        const work = carryForwardSchema.safeParse(reply['carried_forward']);
+        if (!work.success) throw new Error('grant_preview_mismatch');
+        carriedForward = work.data;
         previous = parsed.data;
         expected = mergeLocalFailureTerms(previous, renewal?.data);
       } else {
@@ -217,7 +245,7 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
     if (digest !== reply['preview_sha256'] || preview.nonce !== reply['nonce'] || preview.key_id !== keyId || canonicalJson(preview) !== canonicalJson(reply['preview'])) throw new Error('grant_preview_mismatch');
     // Step 4: exact typed confirmation.
     const phrase = preview.version === 2 ? `${preview.renews ? 'RENEW' : 'GRANT'} LOCAL-FAILURE ${digest}` : `GRANT ${digest}`;
-    if (!(await (deps.confirm ?? terminalConfirm)(renderGrantPreview(preview, digest, previous), phrase))) throw new Error('grant_not_confirmed');
+    if (!(await (deps.confirm ?? terminalConfirm)(renderGrantPreview(preview, digest, previous, carriedForward), phrase))) throw new Error('grant_not_confirmed');
     // Step 5: only now is the private key read.
     const privateKey = await readIssuerPrivateKey(deps.home, key);
     const grant = preview.version === 2 ? signLocalFailureRevisionGrant(preview, privateKey) : signRevisionGrant(preview, privateKey);

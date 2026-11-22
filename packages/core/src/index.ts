@@ -80,4 +80,5 @@ export { SourceObservationLedger, SourceObservationScopeSchema, SourceSnapshotEv
 export { DecisionQueries } from "./state/decision-queries.js";
 export type { DecisionQuery, DecisionRow } from "./state/decision-queries.js";
 
+export { localFailureRenewalBusy, readLocalFailureCarryForward } from "./state/engineering-local-failure-renewal-facts.js";
 export { checkRootAdmission, readRootActivity, type RootActivity, type RootAdmission, type RootWriterKind } from "./state/engineering-root-admission.js";
