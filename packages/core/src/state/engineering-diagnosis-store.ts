@@ -184,6 +184,17 @@ export class DiagnosisStore {
       AND (created_at, request_id) > (?, ?) ORDER BY created_at, request_id LIMIT ?`)
       .all(after?.created_at ?? -1, after?.request_id ?? "", size) as DiagnosisRequest[];
   }
+  /** Eligible requests that have no repair yet and whose root was never refused, oldest first. Read only. */
+  dispatchable(limit = 10, after?: { created_at: number; request_id: string }): DiagnosisRequest[] {
+    const size = Math.max(1, Math.min(100, Math.trunc(limit) || 1));
+    return this.db.prepare(`SELECT r.* FROM engineering_diagnosis_requests r
+      JOIN engineering_host_receipts h ON h.receipt_id=r.receipt_id AND h.request_id=r.request_id
+      WHERE r.state='eligible' AND r.chain_id IS NOT NULL AND h.consumed_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM engineering_local_failure_dispatches d WHERE d.root_mission_id=r.root_mission_id)
+      AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=r.root_mission_id AND e.kind='local_failure_dispatch_refused')
+      AND (r.created_at, r.request_id) > (?, ?) ORDER BY r.created_at, r.request_id LIMIT ?`)
+      .all(after?.created_at ?? -1, after?.request_id ?? "", size) as DiagnosisRequest[];
+  }
   admitted() {
     return this.db
       .prepare("SELECT * FROM engineering_diagnosis_requests WHERE state='admitted' ORDER BY request_id")
