@@ -49,6 +49,7 @@ export async function readLocalFailureCloseout(deps: Dependencies, childMissionI
     }
     return { ...ids, recheck_id: row.recheck_id, state: row.state, reason: null, hold: true,
       published_head: target.published_head, recheck_head: row.recheck_id ? ledger.get(row.recheck_id).new_head_sha : null,
+      waiting: null, waiting_notice: null,
       head: row.head, merge_commit_oid: row.merge_commit_oid, verified_base_sha, merged_onto_oid, facts };
   };
   const recorded = terminal(latest());
@@ -94,7 +95,17 @@ export async function readLocalFailureCloseout(deps: Dependencies, childMissionI
       const payload: Audit = { dispatch_id, recheck_id, state, reason, hold, head, merge_commit_oid, verified_base_sha, merged_onto_oid };
       chains.appendEvent(chain_id, "local_repair_closeout", payload, deps.now());
     }
+    const liveRecheck = state === "merged" || state === "closed_unmerged" ? null : recheck;
+    const waiting = liveRecheck?.state === "reverify_pending" ? {
+      missing: JSON.parse(liveRecheck.missing_json) as string[],
+      since: liveRecheck.created_at,
+      waited_ms: Math.max(0, deps.now() - liveRecheck.created_at),
+    } : null;
+    const waiting_notice = liveRecheck ? store.db.prepare(`SELECT json_extract(payload_json,'$.status') AS status, created_at AS at
+      FROM engineering_revision_chain_events WHERE chain_id=? AND kind='local_recheck_waiting_notice'
+      AND json_extract(payload_json,'$.recheck_id')=? ORDER BY seq DESC LIMIT 1`).get(chain_id, liveRecheck.recheck_id) as
+      { status: "claimed" | "sent" | "failed"; at: number } | undefined : null;
     return { ...ids, recheck_id, published_head: chain.published_head, recheck_head: recheck?.new_head_sha ?? null,
-      head, merge_commit_oid, verified_base_sha, merged_onto_oid, ...verdict };
+      head, merge_commit_oid, verified_base_sha, merged_onto_oid, waiting, waiting_notice: waiting_notice ?? null, ...verdict };
   });
 }
