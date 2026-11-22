@@ -33,6 +33,10 @@ export class LocalFailureDiagnosisService {
 
   constructor(private readonly options: Options) {}
 
+  portsFor(request: DiagnosisRequest): Omit<DiagnosisPorts, 'registration'> | null {
+    return this.options.portsFor(request);
+  }
+
   recover(): void {
     if (this.recovered) return;
     const { recovered } = recoverDiagnoses({ store: this.options.diagnosis });

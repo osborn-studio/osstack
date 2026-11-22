@@ -429,3 +429,13 @@ it("preserves the skipped prefix if port construction throws mid-page", async ()
   expect(x.f.store.get(r.request_id).state).toBe("eligible");
   expect(x.log.mock.calls).toEqual([[`osstack: local-failure diagnosis: request ${r.request_id}: eligible`]]);
 });
+
+it("exposes the host ports for the supplied request", () => {
+  const { f, service, ports } = fixture();
+  const request = f.store.register(f.input);
+  const portsFor = vi.fn().mockReturnValueOnce(ports).mockReturnValueOnce(null);
+  const worker = service({ portsFor });
+  expect(worker.portsFor(request)).toBe(ports);
+  expect(worker.portsFor(request)).toBeNull();
+  expect(portsFor.mock.calls).toEqual([[request], [request]]);
+});

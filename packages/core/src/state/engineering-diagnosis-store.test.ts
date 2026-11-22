@@ -4,7 +4,7 @@ import { verificationDedupKey } from "../bridge/verification-result.js";
 import { createHash, randomUUID } from "node:crypto";
 import { GRANT_NOW } from "../bridge/revision-grant-fixtures.js";
 import { localFailureBindingFromLedger, type LocalVerificationReceipt } from "../bridge/local-failure.js";
-import { diagnosisFixture } from "./diagnosis-fixtures.js";
+import { diagnosisFixture, eligibleRequest } from "./diagnosis-fixtures.js";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -340,4 +340,35 @@ it("pages only never-admitted registered requests in creation and id order", () 
   expect(f.store.registered()).toEqual(rows.slice(0, 10));
   expect(f.store.registered(200)).toEqual(rows.slice(0, 100));
   expect(f.store.registered(100, rows[99])).toEqual(rows.slice(100));
+});
+
+it("pages dispatchable requests by creation time and id and excludes held roots", () => {
+  const f = fixture();
+  const seed = eligibleRequest(f);
+  expect(f.store.dispatchable()).toEqual([seed]);
+  // Project independent read-side cases, including incomplete rows that today's writer rejects.
+  for (const name of ["diagnosis_requests", "host_receipts", "local_failure_dispatches", "contained_events"]) {
+    f.db.exec(`CREATE TEMP TABLE engineering_${name} AS SELECT * FROM main.engineering_${name} WHERE 0`);
+  }
+  const rows = [];
+  for (let i = 0; i < 110; i++) {
+    const row = { ...seed, created_at: i % 3, request_id: randomUUID(), root_mission_id: randomUUID(),
+      receipt_id: randomUUID(), chain_id: i === 2 ? null : seed.chain_id, state: i === 0 ? "registered" : "eligible" };
+    const columns = Object.keys(row);
+    f.db.prepare(`INSERT INTO engineering_diagnosis_requests (${columns}) VALUES (${columns.map(k => "@" + k)})`)
+      .run({ ...row, receipt_id: i === 1 ? null : row.receipt_id });
+    if (i !== 6) f.db.prepare("INSERT INTO engineering_host_receipts(receipt_id, request_id, consumed_at) VALUES(?,?,?)")
+      .run(row.receipt_id, i === 7 ? randomUUID() : row.request_id, i === 3 ? seed.created_at : null);
+    if (i === 4) f.db.prepare("INSERT INTO engineering_local_failure_dispatches(root_mission_id,request_id) VALUES(?,?)")
+      .run(row.root_mission_id, randomUUID());
+    if (i === 5) f.db.prepare("INSERT INTO engineering_contained_events(mission_id,kind) VALUES(?,'local_failure_dispatch_refused')")
+      .run(row.root_mission_id);
+    if (i > 7) rows.push(row);
+  }
+  rows.sort((a, b) => a.created_at - b.created_at || a.request_id.localeCompare(b.request_id));
+  expect(f.store.dispatchable(0)).toEqual(rows.slice(0, 1));
+  expect(f.store.dispatchable(NaN)).toEqual(rows.slice(0, 1));
+  expect(f.store.dispatchable()).toEqual(rows.slice(0, 10));
+  expect(f.store.dispatchable(200)).toEqual(rows.slice(0, 100));
+  expect(f.store.dispatchable(100, rows[99])).toEqual(rows.slice(100));
 });

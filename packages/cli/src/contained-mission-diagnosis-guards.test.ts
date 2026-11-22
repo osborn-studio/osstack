@@ -157,9 +157,10 @@ it("confines the local-failure assembly and switch to the contained Mission fact
         continue;
       }
       if (pkg === "cli" && file === "contained-mission-local-failure-service.ts") {
-        expect(source.match(/\bimport\b/g)).toHaveLength(2);
+        expect(source.match(/\bimport\b/g)).toHaveLength(3);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-diagnose\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-scan\.js['"];?$/m);
+        expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-dispatch-step\.js['"];?$/m);
       } else expect(source, path).not.toMatch(/contained-mission-local-failure-service|createLocalFailureRouteService/);
       if (pkg !== "cli" || file !== "contained-mission-local-failure-switch.ts")
         expect(source, path).not.toMatch(/contained-mission-local-failure-switch|parseLocalFailureRouteSwitch|assertLocalFailureRouteStartable/);
@@ -212,6 +213,27 @@ it("gives the diagnosis run one caller", () => {
         expect(source, file).not.toContain("loadVerificationProfileHostConfig");
       if (diagnose)
         expect(source, file).not.toMatch(/\b(?:dispatchLocalFailureRepair|recoverLocalFailureDispatch|approveLocalFailureRepair|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runRecheck|recoverRecheckRuns|collectLocalFailureRecheck|readVerificationResults)\b|\brecord\s*\(/);
+    }
+  }
+});
+
+it("gives the dispatch step one caller", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      if (!/\.[cm]?[jt]sx?$/.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file)) continue;
+      const path = join(root, file), source = readFileSync(path, "utf8");
+      const step = pkg === "cli" && file === "contained-mission-local-failure-dispatch-step.ts";
+      const library = pkg === "cli" && file === "contained-mission-local-failure-dispatch.ts";
+      if (!step && !(pkg === "cli" && file === "contained-mission-local-failure-service.ts"))
+        expect(source, path).not.toContain("contained-mission-local-failure-dispatch-step");
+      if (!step && !library) expect(source, path).not.toMatch(/\b(?:dispatchLocalFailureRepair|recoverLocalFailureDispatch)\b/);
+      if (!step && !library && pkg !== "core" && !(pkg === "cli" && file === "contained-mission-local-failure-approval.ts"))
+        expect(source, path).not.toContain("LocalFailureDispatchStore");
+      if (!step && pkg !== "core") expect(source, path).not.toMatch(/\bdispatchable\s*\(/);
+      if (step) expect(source, path).not.toMatch(/\b(?:approveLocalFailureRepair|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runDiagnosis|recoverDiagnoses|runRecheck|recoverRecheckRuns|collectLocalFailureRecheck|readVerificationResults|createRecheckRunPorts|loadVerificationProfileHostConfig|locations|worktreesRoot)\b/);
     }
   }
 });

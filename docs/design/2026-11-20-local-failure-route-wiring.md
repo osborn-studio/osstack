@@ -225,6 +225,18 @@ Six points were open when the W4 brief was drafted. The owner accepted all six a
 
 One rule was added by the session that wrote the brief, not by the owner: a service instance hands a request to the library at most once, whatever the library answers. The library's own admission rule still applies.
 
+### 7.4 Addendum (2026-11-22): the dispatch (W5)
+
+Seven points were open when the W5 brief was written. **All seven were chosen by the session that wrote the brief, not by the owner.** Each takes the option that dispatches less. The owner may overrule any of them in review.
+
+1. **Allowed locations of the repair.** Traced (§8 had left it open): when the port passes no `locations`, the core takes the root Mission's own `allowed_paths`, and the protected-path check then refuses any of them that touches a protected or verification path. No trusted, narrower source exists: the verification result is external text and must not choose paths. W5 passes no `locations`.
+2. **Finding the requests to dispatch.** `DiagnosisStore` gets one read-only method, `dispatchable(limit, after)`: requests in state `eligible` whose receipt is not consumed, whose root has no dispatch row, and whose root has no `local_failure_dispatch_refused` event. No schema change.
+3. **A refusal is final for the service.** The core answers a refused dispatch with `awaiting_decision`. The service never tries that root again, also not after a restart, whatever the reason (a busy chain included). An entry for a person to release one does not exist yet.
+4. **Pace.** Its own timer, one minute, at most one dispatch per tick, never on the Mission tick, in the scan or in the diagnosis tick. A service instance hands a request to the library at most once.
+5. **Host ports.** The dispatch uses the same host ports the diagnosis built for that request (issuer keys, access, installed profile, root Mission with a usable `repo_path`). So without `bridge/verification-profile-host.json` nothing is dispatched either. Launch caps are the contained host's own (`revisionLaunchCaps`); the worktrees root is the host's default.
+6. **Restart.** The core commits a dispatch in one transaction: receipt consumption, child registration, budget allocation and the dispatch row either all exist or none does. A crash before the commit leaves the request `eligible` and unconsumed, and the next tick dispatches it once. Start recovery therefore has nothing to settle and launches nothing; before each dispatch the service asks `recoverLocalFailureDispatch` and skips a request that already has a child.
+7. **§4 flags 2 and 3 stay with W6.** The decision-list correction and the `adopt_worktree` test are in the W6 row of §6, while §4 asked for them in "the first node that can create a child". W5 leaves them to W6, because the service still cannot start with the switch on (the live bridge gate refuses), so no child can exist in a running service before W6, and the runner already refuses `approve_publication` for such a child. If the live gate opens before W6 is merged, W6 must land first.
+
 ## 8. What could not be verified
 
 - Nothing was built or run for this document beyond the gates in §9. Every statement about behaviour comes from reading the source at `bb360e92`.
