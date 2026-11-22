@@ -28,6 +28,8 @@ export async function assembleLiveBridge(deps: {
   host: Pick<ContainedMissionHost, 'isBusy' | 'cancel' | 'cancelFromBridge'>;
   access: EngineeringAccess;
   enabled: () => boolean;
+  /** The service reads OSSTACK_LOCAL_FAILURE_REPAIR=1 once. Absent or false keeps every version 2 grant refused. */
+  localFailureRoute?: boolean;
   now: () => number;
   log: (line: string) => void;
   launchCaps: DispatchRevisionDeps['launchCaps'];
@@ -117,6 +119,7 @@ export async function assembleLiveBridge(deps: {
     compare: deps.ledgerCompare ?? deps.publication.compare,
     access: deps.access, registry: config.registry, readPr: deps.readPr, loadIssuer: () => grant.loadRevisionIssuer(deps.home),
     enabled: deps.enabled, now: deps.now, protectedSetDigest: deps.protectedSetDigest,
+    ...(deps.localFailureRoute === true ? { localFailureEnabled: () => true } : {}),
     reconcileReceipt: chain => receipts.reconcileUncertain(chain),
     cancelChild: async (actor, id) => { await cancel(id, actor.principal_id, actor.client_session_id); },
   });
