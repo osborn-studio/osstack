@@ -3,6 +3,7 @@ import { parseLocalVerificationReceipt } from "../bridge/local-failure.js";
 import { createLocalFailureRepairInput, buildRepairGoal } from "../bridge/repair-input.js";
 import { loadProtectedInstructionConfig } from "../bridge/instruction-boundary.js";
 import { parseLocalFailureRevisionGrant } from "../bridge/revision-local-failure-grant.js";
+import type { LocalFailureIntake } from "./engineering-local-failure-intake-store.js";
 import type { EngineeringPrincipal } from "./engineering-store.js";
 import {
   ContainedMissionStore,
@@ -99,6 +100,23 @@ export class LocalFailureDispatchStore {
     ).get(r.result_id);
   }
 
+  private grantHonorsIntake(chain: RevisionChain, currentDigest: string, boundDigest: string, intake: LocalFailureIntake): boolean {
+    if (chain.chain_id !== intake.chain_id) return false;
+    if (currentDigest === boundDigest) return true;
+    try {
+      const grant = parseLocalFailureRevisionGrant(chain.grant_json);
+      if (grant.renews?.chain_id !== chain.chain_id) return false;
+      const pin = grant.local_failure;
+      // The intake digest covers only the artifact. Its immutable grant also binds repository and commit.
+      const source = parseLocalFailureRevisionGrant(intake.grant_json).local_failure.trusted_source;
+      return pin.profile_id === intake.profile_id && pin.profile_digest === intake.profile_digest
+        && pin.trusted_source.artifact_digest === intake.trusted_source_digest
+        && pin.trusted_source.repository === source.repository && pin.trusted_source.commit === source.commit;
+    } catch {
+      return false;
+    }
+  }
+
   publicationFence(childMissionId: string, now: number): PublicationFence {
     const s = this.diagnosis;
     const row = s.db.prepare(
@@ -107,15 +125,17 @@ export class LocalFailureDispatchStore {
     const invalid = { ok: false, reason: "verify_publish_authority_invalid" } as const;
     if (!row) return invalid;
     const chain = s.chain(row.root_mission_id, row.chain_id);
-    if (!chain || createHash("sha256").update(chain.grant_json).digest("hex") !== row.grant_digest) return invalid;
+    const r = s.get(row.request_id);
+    if (!chain || !r.intake_id) return invalid;
     try {
+      const digest = createHash("sha256").update(chain.grant_json).digest("hex");
+      if (!this.grantHonorsIntake(chain, digest, row.grant_digest, s.intakes.get(r.intake_id))) return invalid;
       const grant = parseLocalFailureRevisionGrant(chain.grant_json);
       if (now < grant.issued_at) return invalid;
       checkGrantWindow(grant, now, Infinity, chain.budget_json);
     } catch {
       return invalid;
     }
-    const r = s.get(row.request_id);
     if (this.sourceRevoked(r)) return { ok: false, reason: "verify_source_revoked" };
     if (chain.published_head !== r.head_sha) return { ok: false, reason: "verify_stale_head" };
     if (chain.published_base !== r.base_sha) return { ok: false, reason: "verify_base_changed" };
@@ -150,7 +170,7 @@ export class LocalFailureDispatchStore {
         const intake = s.intakes.get(r.intake_id!);
         if (
           verified.grant_digest !== createHash("sha256").update(chain.grant_json).digest("hex") ||
-          verified.grant_digest !== intake.grant_digest ||
+          !this.grantHonorsIntake(chain, verified.grant_digest, intake.grant_digest, intake) ||
           grant.scope_id !== root.scope_id ||
           verified.principal.principal_id !== grant.principal_id ||
           verified.principal.client_session_id !== grant.client_session_id ||
@@ -297,8 +317,8 @@ export class LocalFailureDispatchStore {
               root.mission_id,
               chain.chain_id,
               child_mission_id,
-              grant.grant_id,
-              verified.grant_digest,
+              intake.grant_id,
+              intake.grant_digest,
               check_id,
               failure_code,
               idempotency_key,

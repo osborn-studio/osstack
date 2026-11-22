@@ -277,3 +277,15 @@ export const recheckRunObjects = [
   ...["review","actions","intake","dispatch"].map(name=>"engineering_root_exclusion_recheck_"+name),
   ...[2,3,4].map(n=>"sqlite_autoindex_engineering_local_failure_recheck_runs_"+n),
 ];
+
+/** Sign against the current chain revision, including its current published head. */
+export function diagnosisRenewal(f: ReturnType<typeof diagnosisFixture>, now: number,
+  overrides: Partial<Pick<Parameters<typeof signLocalFailureRevisionGrant>[0], "budget" | "rounds">> = {}) {
+  const store = new RevisionChainStore(f.attention, f.owner);
+  const chain = store.get(f.input.chain_id);
+  const { signature: _sig, preview_sha256: _digest, ...old } = f.facts.grant;
+  const preview = { ...old, grant_id: `rg_${randomUUID()}`, issued_at: now, expires_at: now + (old.expires_at - old.issued_at),
+    head_sha: chain.published_head, base_sha: chain.published_base!, renews: { chain_id: chain.chain_id, revision: chain.revision }, ...overrides };
+  const grant = signLocalFailureRevisionGrant(preview, f.keys.privateKey);
+  return { preview, grant, replace: () => store.replaceGrant(chain.chain_id, chain.revision, grant, now) };
+}

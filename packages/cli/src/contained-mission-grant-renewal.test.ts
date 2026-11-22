@@ -142,17 +142,12 @@ it('refuses upgrade terms and keeps the V1 reply shape', async () => {
 
 it('checks real intake activity and pin changes at signed acceptance', async () => {
   const { f, chain_id, renew } = await fixture();
-  const chain = f.rig.chains.get(chain_id);
-  const store = new LocalFailureIntakeStore(f.rig.attention, f.rig.owner, () => f.clock.now);
-  const intake = store.reserve({ intake_id: `lfi_${randomUUID()}`, chain_id, chain_revision: chain.revision,
-    root_mission_id: chain.root_mission_id, repository: chain.repository, pr_number: chain.pr_number, branch: chain.branch,
-    head_sha: chain.published_head, tree_sha: 'd'.repeat(40), base_ref: chain.base_ref, base_sha: chain.published_base!,
-    profile_id: pins.profile_id, profile_digest: pins.profile_digest, trusted_source_digest: pins.trusted_source.artifact_digest,
-    grant_id: JSON.parse(chain.grant_json).grant_id, grant_digest: createHash('sha256').update(chain.grant_json).digest('hex'),
-    invocation_id: randomUUID(), journal_ref: 'test', container_cap_seconds: 60, ci_hint_json: '{}' });
-  await refused(f, chain_id, (await renew()).accept, 'grant_renewal_busy');
+  const unchanged = await renew();
+  const changed = await renew({ profile_id: 'other' });
+  const { store, intake } = reserveIntake(f, chain_id);
+  await refused(f, chain_id, unchanged.accept, 'grant_renewal_busy');
   store.settleNotStarted(intake.intake_id, intake.revision);
-  await refused(f, chain_id, (await renew({ profile_id: 'other' })).accept, 'grant_opt_in_changed');
+  await refused(f, chain_id, changed.accept, 'grant_opt_in_changed');
 });
 
 it.each(['revision', 'head'])('refuses changed live %s after preview', async fact => {
@@ -240,4 +235,67 @@ it.each(['chain', 'opt-in', 'missing previous', 'altered previous', 'v1'])('reje
   expect(confirm).not.toHaveBeenCalled();
   expect(snapshot(f, chain_id)).toEqual(before);
   expect(run.out + run.err).not.toMatch(new RegExp(cred('a') + '|PRIVATE KEY'));
+});
+
+function reserveIntake(f: Fixture, chain_id: string) {
+  const chain = f.rig.chains.get(chain_id);
+  const store = new LocalFailureIntakeStore(f.rig.attention, f.rig.owner, () => f.clock.now);
+  const intake = store.reserve({ intake_id: `lfi_${randomUUID()}`, chain_id, chain_revision: chain.revision,
+    root_mission_id: chain.root_mission_id, repository: chain.repository, pr_number: chain.pr_number, branch: chain.branch,
+    head_sha: chain.published_head, tree_sha: 'd'.repeat(40), base_ref: chain.base_ref, base_sha: chain.published_base!,
+    profile_id: pins.profile_id, profile_digest: pins.profile_digest, trusted_source_digest: pins.trusted_source.artifact_digest,
+    grant_id: JSON.parse(chain.grant_json).grant_id, grant_digest: createHash('sha256').update(chain.grant_json).digest('hex'),
+    invocation_id: randomUUID(), journal_ref: 'test', container_cap_seconds: 60, ci_hint_json: '{}' });
+  return { store, intake };
+}
+
+it('checks activity and the frozen pin before previewing the unsigned list', async () => {
+  const { f, chain_id, preview } = await fixture();
+  const { store, intake } = reserveIntake(f, chain_id);
+  await refused(f, chain_id, preview, 'grant_renewal_busy');
+  store.settleNotStarted(intake.intake_id, intake.revision);
+  await refused(f, chain_id, () => preview({ profile_id: 'other' }), 'grant_opt_in_changed');
+  const reply = await preview();
+  expect(reply.carried_forward).toEqual({ eligible_diagnoses: [], waiting_child: null, pending_recheck: null });
+  expect(reply.preview).not.toHaveProperty('carried_forward');
+});
+
+it('omits carried work from a V1 renewal reply', async () => {
+  const f = await setup();
+  const { chain } = await granted(f);
+  expect((await f.renew('a', chain.chain_id)).reply).not.toHaveProperty('carried_forward');
+});
+
+it.each([
+  ['empty', 40, true],
+  ['items', 40, true],
+  ['SHA-256', 64, true],
+  ['41-character diagnosis head', 41, false],
+  ['missing', 40, false],
+  ['malformed', 40, false],
+] as const)('handles a %s carry-forward list before signing', async (variant, headLength, valid) => {
+  const { f, chain_id } = await fixture();
+  const request_id = 'vdr_' + randomUUID(), head_sha = 'a'.repeat(headLength);
+  const candidate_head = 'b'.repeat(variant === 'SHA-256' ? 64 : 40);
+  const child_mission_id = 'cm_' + randomUUID(), recheck_id = 'vrc_' + randomUUID();
+  const confirm = vi.fn(async (text: string) => {
+    expect(text).toContain('Work this renewal carries forward (shown for information, not signed):');
+    expect(text).toContain('This renewal does not approve a candidate; the approval stays a separate step.');
+    if (variant === 'empty') expect(text).toContain('\n  nothing\n');
+    else {
+      expect(text).toContain(`eligible diagnosis ${request_id} on head ${head_sha}`);
+      expect(text).toContain(`repair candidate waiting for approval: child ${child_mission_id}, candidate ${candidate_head}`);
+      expect(text).toContain(`pending recheck ${recheck_id}, attempts so far 2`);
+    }
+    return false;
+  });
+  const run = await runCommand(f, ['grant-revisions', '--chain', chain_id], { interactive: true, confirm, tamper: (_, reply) => {
+    if (variant === 'empty') return reply;
+    if (variant === 'missing') { const { carried_forward: _work, ...rest } = reply; return rest; }
+    return { ...reply, carried_forward: { eligible_diagnoses: [{ request_id, head_sha }],
+      waiting_child: { child_mission_id, candidate_head }, pending_recheck: { recheck_id, attempts: variant === 'malformed' ? -1 : 2 } } };
+  } });
+  expect(run.err).toContain(valid ? 'grant_not_confirmed' : 'grant_preview_mismatch');
+  expect(confirm).toHaveBeenCalledTimes(valid ? 1 : 0);
+  expect(run.calls).toEqual(['mission.revision_grant_renew_preview']);
 });
