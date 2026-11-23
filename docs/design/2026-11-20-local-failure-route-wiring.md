@@ -252,6 +252,49 @@ Decision 2 is implemented as decided: `mission.approve_local_failure_repair` nee
 
 The method is a `mission.*` method on the local socket, like every other operator action. Whoever holds a credential with read, write and operator scope on that socket can call it; that is decision 2 as taken, and §4 flag 6 (who holds such a credential) is still host configuration.
 
+### 7.6 Addendum (2026-11-23): the commit audit and the repair push (W7a)
+
+**The gap.** The bridge's commit audit (`verifyBridgeLedger`, `packages/cli/src/contained-mission-bridge-ledger.ts`) rebuilt a chain's expected head only from the chain's own publication intents: the `open_pr` intent and each confirmed `push` intent. A local-failure repair push writes no chain intent. Its confirmation moves the chain's published head with a chain event only (`confirmLocalRepairPush`). So after every confirmed repair push the audit answered `external_write`, and the live scan, the stopped-chain scan and the start-up ledger recovery would each have stopped the chain for a write the host made itself. No earlier section of this document saw that.
+
+**Decision (owner, 2026-11-23, in the owner's words: "A：单独节点 W7a").** The audit learns the repair push, as its own node before W7. No migration, no RPC method, no change in `packages/core`.
+
+**Rule 1: one accepted step.** One `local_repair_push_confirmed` chain event counts as a covered step from its `old_head` to its `new_head` with exactly one commit, `new_head`. The step is accepted only when all of this holds:
+
+- the event is on this chain, and it is the only such event on the chain;
+- its payload has exactly `dispatch_id`, `child_mission_id`, `old_head` and `new_head`, and the two heads are different commit ids;
+- a dispatch row exists with that id, for this chain, this chain's root Mission and that child;
+- the child has exactly one approval record (`verify_repair_approval`) for that candidate, that previous head, the chain's branch, base and PR and that dispatch;
+- the child has exactly one push intent (`verify_repair_push_intent`), recorded after the approval, with the same candidate, previous head, branch, base and PR;
+- the child has a confirmation (`verify_repair_push_confirmed`), recorded after the intent, for the same intent and the same facts;
+- the host process record of that intent is a `git push` of that child, released and stopped;
+- `old_head` is the head the audit has reached when it walks the chain: the baseline, then at each head either the one confirmed push intent or the repair step that starts there. A push and a repair step that start at the same head, or a step that the walk never reaches, make the ledger invalid.
+
+The audit's existing final checks are unchanged and now cover the repair step too: the walk must end at the chain's published head, the remote head must equal it, and the list of covered commits must equal the commit list that GitHub reports from the root's start commit to the published head. That last comparison is what proves, against the real repository, that the repair is exactly one commit on top of the previous head. A second commit under the candidate, a different parent, a missing or mismatched record, a duplicate event or an event out of order is `external_write`, as before. Stored data that cannot be parsed is `external_write`, never a read error.
+
+**Rule 2: a released push that is not confirmed yet.** After the remote head is read, the audit answers `reconciliation_incomplete` when the chain's dispatch has a child with one approval and one push intent that bind the chain's current published head, branch, base and PR, the host process of that intent has been released, neither the chain nor the child has a confirmation, and the remote head is exactly that intent's candidate. In every other case nothing is deferred: a remote head that is neither the published head nor that candidate is `external_write`; an intent whose process was never released, with the remote at the candidate, is `external_write`; with the remote still at the published head the audit runs as usual.
+
+**What the audit trusts for this step, and who can write it.** Six stored facts, all in the host's own database, none read from GitHub or from a verification result:
+
+| Fact | Table | Written by |
+|---|---|---|
+| Chain event `local_repair_push_confirmed` | `engineering_revision_chain_events` (append-only by trigger) | `RevisionChainStore.confirmLocalRepairPush` only; a static guard pins the files that may name the event, and another pins the publisher as the only caller |
+| Dispatch row | `engineering_local_failure_dispatches` | `LocalFailureDispatchStore.dispatch` only, under the insert triggers of that table (one per root, one per child) |
+| Approval record | `engineering_contained_events` of the child | `approveLocalFailureRepair`, called only by the operator method `mission.approve_local_failure_repair` (§7.5) |
+| Push intent | same | the publisher, in the transaction that re-checks the approval and the publication fence |
+| Push confirmation | same | the publisher, after the PR and the remote branch both read back at the candidate, in the transaction that calls `confirmLocalRepairPush` |
+| Host process record | `engineering_host_processes` | the gated launcher (W13) |
+
+The only outside input is the two reads the audit already made: the remote branch head and the compared commit list. The audit does not re-check that the approval was unexpired at push time; the publisher did that inside the release transaction. Like the rest of the audit, the rule assumes that only the host process writes this database.
+
+**Start-up order.** `start()` runs the ledger recovery before the route's `recover()` (`contained-mission-rpc.ts`). After this change: a repair push that is confirmed is `matched`. One that landed but is not confirmed is `reconciliation_incomplete`, so the chain is not stopped; it stays so until the reconcile pass of W7 confirms it, after which the next audit is `matched`. One that was released and did not land leaves the remote at the published head, and the audit runs as usual. Until W7 exists nothing confirms such a push at start, and nothing produces one either.
+
+**Chosen by the session that wrote the brief, not by the owner.**
+
+1. At most one repair step per chain. The dispatch table allows one repair per root, so a second event can only be an error.
+2. The deferral of rule 2 holds only while the remote head is exactly the candidate, and it is decided after the remote read. The audit's own unsettled pushes are also deferred before the read; the repair push is not, because nothing settles a repair intent automatically yet, and a blanket deferral would switch the audit off for that chain.
+3. While rule 2 defers, the chain is not audited. That lasts until the push is confirmed. If it never is (the PR cannot be read back), the chain stays unaudited at that one candidate, which the host pushed under an approval, until a person acts. W7's reconcile pass is the remedy.
+4. The audit reads the child's events and the dispatch row with its own queries on the shared database, as it already reads the host process table. No store method was added.
+
 ## 8. What could not be verified
 
 - Nothing was built or run for this document beyond the gates in §9. Every statement about behaviour comes from reading the source at `bb360e92`.

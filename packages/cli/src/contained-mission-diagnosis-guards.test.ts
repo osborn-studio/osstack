@@ -57,12 +57,13 @@ it("keeps local failure publication closed outside its library", () => {
 
 it("keeps published-head writes in the chain store and repair confirmation in the publisher", () => {
   const packages = fileURLToPath(new URL("../../", import.meta.url));
-  const callers: string[] = [];
+  const callers: string[] = [], repairEvents: string[] = [];
   for (const pkg of ["cli", "core"]) {
     const root = join(packages, pkg, "src");
     for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
       if (!file.endsWith(".ts") || /\.(?:test|testkit)\.ts$/.test(file)) continue;
       const source = readFileSync(join(root, file), "utf8");
+      if (source.includes("local_repair_push_confirmed")) repairEvents.push(pkg + "/" + file);
       if (pkg === "core" && file === "state/engineering-revision-chain-store.ts") {
         expect(source.replace(/^\s*confirmLocalRepairPush\(/m, ""), file).not.toMatch(/\bconfirmLocalRepairPush\b/);
         continue;
@@ -73,6 +74,7 @@ it("keeps published-head writes in the chain store and repair confirmation in th
     }
   }
   expect(callers).toEqual(["cli/contained-mission-local-failure-publish.ts"]);
+  expect(repairEvents.sort()).toEqual(["cli/contained-mission-bridge-ledger.ts", "core/state/engineering-local-failure-recheck-store.ts", "core/state/engineering-revision-chain-store.ts"]);
 });
 
 it("keeps the recheck run library unwired and its admission and journal private to the host", () => {
