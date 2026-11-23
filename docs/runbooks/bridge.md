@@ -452,6 +452,27 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 `ci_repair_verified` 保存新提交的 GitHub 检查证据。App B 的本地检查信号仍用于容器验证路径。Watcher、计入的人工审批和合并身份继续按阶段 6 审批与验收。
 
+### 6.2 本地失败修复的候选审批（U4b 路线 B）**【未上线：需要 `OSSTACK_BRIDGE=1`，目前启动即拒绝】**
+
+开关 `OSSTACK_LOCAL_FAILURE_REPAIR=1` 只在 live 桥接下生效，并且要求没有配置任何自动合并路径。路线自动做到“候选已验证”为止：读取验证失败、登记、诊断、派发一个修复子 Mission。推送永远需要人在主机上批准。
+
+修复子 Mission 停在 `awaiting_decision(publication_pending)` 时，先审阅它的候选提交和本地 diff，再在主机上执行 `osstack mission approve-local-failure-repair --mission ID --candidate SHA`。需要该 scope 的 read、write 和 operator 权限；远端的 `decisions.answer` 对它回答 `local_only`，没有远程批准入口。批准绑定这一个候选，15 分钟内有效，每个子 Mission 只能批准一次。批准后由主机 tick 发布：重新读 PR 和远端分支，用旧 head 的 Git 租约，以 App A 身份向 PR 分支推送恰好一个提交，读回成功后记 `verify_repair_push_confirmed`，链的 `published_head` 前移。
+
+返回码与停止原因：
+
+| 现象 | 含义 | 下一步 |
+|---|---|---|
+| `local_failure_route_disabled` | 开关未开 | 不处理 |
+| `local_failure_publication_unavailable` | 发布端口没有装上（启动日志有一行 `publication port unavailable (<原因>)`：缺 App A 发布适配器、桥接配置没有仓库） | 修好配置后重启；此时批准不会被消耗 |
+| `verify_repair_approval_refused` | 状态、候选、权限不符，或已经批准过 | 核对 `mission status --json` |
+| 停在 `verify_publish_authority_invalid` | 批准过期、开关关闭、候选或规格变化，或子 Mission 的发布 remote 不是 `origin` | 只能 `abandon` |
+| 停在 `verify_source_revoked`、`verify_stale_head`、`verify_base_changed`、`verify_push_not_written` | 推送前或推送后读回发现来源已撤回、PR head 或 base 已变、或确定没有写入 | 只能 `abandon` |
+| 停在 `verify_push_uncertain` | 推送进程已放行，但读回不确定 | 不要手工推送。重启 `osstack serve`：启动时的对账只读 PR 和远端分支，两者都在候选上才补记确认并让子 Mission 继续到 `pr_opened`；否则日志记 `reconcile <Mission>: <结果>`，什么都不改 |
+
+`verify_push_uncertain` 期间，链的提交审计对这一个候选回答 `reconciliation_incomplete`，不会因此停链；确认补记后恢复为正常审计。经启动对账恢复的子 Mission 到 `pr_opened` 后不会自动发 `osstack/verify`，需要时执行 `osstack mission publish-check --mission <子>`。
+
+---
+
 ## 7. 阶段 7 上线前检查清单
 
 > 2026-11-09 首发计划更新。下列是既有本地验证和 App 迁移路径的清单。GitHub CI 驱动首发须先按[实施方案阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)完成验证、更新运行手册，并审批 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)后再开启单 scope 试运行。

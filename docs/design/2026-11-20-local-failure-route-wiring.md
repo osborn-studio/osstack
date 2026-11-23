@@ -295,6 +295,40 @@ The only outside input is the two reads the audit already made: the remote branc
 3. While rule 2 defers, the chain is not audited. That lasts until the push is confirmed. If it never is (the PR cannot be read back), the chain stays unaudited at that one candidate, which the host pushed under an approval, until a person acts. W7's reconcile pass is the remedy.
 4. The audit reads the child's events and the dispatch row with its own queries on the shared database, as it already reads the host process table. No store method was added.
 
+### 7.7 Addendum (2026-11-23): the publication port, the reconcile pass and the resume (W7)
+
+W7 is implemented as rows 7 and 8 of §3 and row W7 of §6 describe, with the differences and the choices below. No migration, no RPC method, no change in `packages/core`. Who may approve and who may push is unchanged: the approval is still the operator method of §7.5, and the only push is the one `publishLocalFailureRepair` makes under that approval with the App A runner.
+
+**What was added.**
+
+- One module, `contained-mission-local-failure-publication-port.ts`, called only by the route assembly (`contained-mission-local-failure-service.ts`). It takes the App A runner from the host's existing publication adapters (`revisionPublicationAdapters`, the same runner the review revision push and the sandbox CI repair use), builds the library's dependencies, and attaches `localFailurePublication` to the host ports.
+- `publicationReady` is the value that module returns. It is true only when the port object was attached in that same call.
+- `recover(signal)` of the route now runs the reconcile pass after the diagnosis recovery.
+- The host gained `resumeConfirmedLocalPublication(missionId)`: no principal, no RPC entry, serialised like a decision (`CONTAINED_MISSION_BUSY` while a step of that Mission runs). It calls the runner method of the same name, which checks every condition itself.
+
+**When the port is not supplied.** The route still starts and runs up to the candidate; the approval method keeps refusing with `local_failure_publication_unavailable`. That is the case when the host has no publication adapters, when the bridge configuration names no repository, or when a port is already attached (it is never replaced). One log line gives the reason. If the adapters exist and fail to load, or their runner is not the gated one, the service start fails: a configuration error does not look like "not ready".
+
+**The reconcile pass.** At start, after the bridge's ledger recovery and before any timer, for every local-failure child that has a push intent and either no confirmation or is waiting at `awaiting_decision`:
+
+1. Without a confirmation, `reconcileLocalFailurePush` reads the host process record, the PR and the remote branch. Only when the process was released and has stopped and both reads show the candidate does it record the child's confirmation and the chain event, in one transaction. Every other outcome (`unknown`, `not_written`, `stale_head`, `base_changed`) is logged and changes nothing.
+2. With a confirmation, and only if the child is at `awaiting_decision`, the host resume is called. The runner accepts it only at `verify_push_uncertain` with a confirmation for the current candidate, no open host process and an active claim. The child then revalidates and reaches `pr_opened` through the publisher's read-back path. On that path the runner refuses any remote mutation.
+
+The pass pushes nothing and approves nothing. One Mission's failure does not stop the pass. This is what ends the `reconciliation_incomplete` deferral of §7.6: after the confirmation is recorded the next audit of that chain answers `matched`.
+
+**Chosen by the session that wrote the brief, not by the owner.** Each takes the option that writes or publishes less.
+
+1. **Where the port is attached.** Row W7 of §6 said "one line in `contained-mission-ports.ts`". The ports object is built before the route assembly exists, so the port is attached by the new module after all its checks passed, as the bridge assembly attaches `revisionPublication`. `contained-mission-ports.ts` is unchanged.
+2. **No operator retry entry.** Decision 3 says the reconcile runs once at start "and otherwise on an operator retry". That retry would need a new RPC method. W7 adds none: restarting the service is the retry. A push that becomes uncertain while the service runs therefore stays at `verify_push_uncertain`, and its chain stays deferred by the audit, until the next start.
+3. **A resumed child publishes no check by itself.** After `pr_opened` the runner normally publishes the `osstack/verify` check, which is a write to GitHub. §5.1 says the resume makes no remote write, so the runner skips the automatic check on the resumed path (one condition in `contained-mission-runner.ts`). A person sends it with `mission publish-check`. The normal publication path is unchanged and still publishes the check.
+4. **Only `origin`.** The library always pushes to `origin`, while the adapters' preflight checks the remote named in the child's spec. The port refuses a child whose publication remote is not `origin` with `verify_publish_authority_invalid`, before any read. Such a child has used its single approval and can only be abandoned.
+5. **The pass is not tied to the kill switch.** It runs whenever the route was assembled, like the bridge's receipt recovery, because it only reads and records what the host itself pushed.
+6. **A terminal child is reconciled too.** A child that was cancelled or abandoned after its push was released is still read back, so that its chain does not stay deferred. It is never resumed.
+7. **The PR read.** The port answers "no PR" unless the PR's head repository is the bridge repository (compared without case) and its head branch is the chain's branch. The base branch name is not compared; the library compares the base commit.
+
+**Guards changed.** `resumeConfirmedLocalPublication` may be named in the host (definition and one call) and in the port module (type and one call), with exact counts. The port module may import the publish library and name the port. The service must have exactly four imports. A new guard confines the port factory to the service, the two library functions to the library and the port module, forbids the port module from approving, dispatching or writing either ledger directly, and forbids the daemon, entry and RPC files from naming the resume, the reconcile or the publish function.
+
+**Still true.** `OSSTACK_BRIDGE=1` refuses to start (`BRIDGE_LIVE_NOT_IMPLEMENTED`), so the route cannot run in production and everything above was exercised only in tests, with a fake delivery runner and a fake PR read.
+
 ## 8. What could not be verified
 
 - Nothing was built or run for this document beyond the gates in §9. Every statement about behaviour comes from reading the source at `bb360e92`.

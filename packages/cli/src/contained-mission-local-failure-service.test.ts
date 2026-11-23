@@ -39,6 +39,8 @@ it('logs only at assembly, including when stopped before start or twice', async 
   const step = await import('./contained-mission-local-failure-dispatch-step.js');
   const dispatch = { start: vi.fn(), stop: vi.fn(async () => {}) };
   const dispatchFactory = vi.spyOn(step, 'createLocalFailureDispatch').mockReturnValue(dispatch as unknown as ReturnType<typeof step.createLocalFailureDispatch>);
+  const publication = await import('./contained-mission-local-failure-publication-port.js');
+  const portFactory = vi.spyOn(publication, 'createLocalFailurePublicationPort').mockResolvedValue({ ready: false, recover: async () => {} });
   try {
     const route = await createLocalFailureRouteService({ log } as unknown as Parameters<typeof createLocalFailureRouteService>[0]);
     expect(route.publicationReady).toBe(false);
@@ -73,7 +75,7 @@ it('logs only at assembly, including when stopped before start or twice', async 
     diagnosis.stop.mockRejectedValueOnce(Error('diagnosis'));
     await expect(route.stop()).rejects.toThrow('diagnosis');
     expect(dispatch.stop).toHaveBeenCalledTimes(5);
-  } finally { dispatchFactory.mockRestore(); factory.mockRestore(); diagnosisFactory.mockRestore(); }
+  } finally { portFactory.mockRestore(); dispatchFactory.mockRestore(); factory.mockRestore(); diagnosisFactory.mockRestore(); }
   expect(log).toHaveBeenCalledTimes(1);
 });
 

@@ -116,14 +116,14 @@ async function readback(
   }
 }
 
-export async function reconcileLocalFailurePush(missionId: string, deps: Dependencies): Promise<Outcome> {
+export async function reconcileLocalFailurePush(missionId: string, deps: Dependencies, signal: AbortSignal = new AbortController().signal): Promise<Outcome> {
   try {
     const mission = deps.store.get(missionId);
     const spec = parseContainedMissionSpec(mission.spec_json);
     const facts = intended(spec, mission.candidate_head ?? "", deps.repository);
     const intent = existing(deps.store, missionId, facts);
     if (!intent) return "unknown";
-    return readback(deps, missionId, spec.worktree_path, intent, new AbortController().signal);
+    return readback(deps, missionId, spec.worktree_path, intent, signal);
   } catch {
     return "unknown";
   }

@@ -950,7 +950,8 @@ export class ContainedMissionRunner {
       event: { kind: 'pr_opened', payload: { pr: result.pr, evidence_digest: evidence.evidence_digest,
         ...(spec.verification_mode ? { verification_kind: spec.verification_mode } : {}) } } }, this.ports.now());
     // The Mission stays pr_opened whatever happens to the check; a failure is a recorded event and a manual retry.
-    if (!spec.verification_mode && this.ports.publishVerifyCheck) await this.attemptVerifyCheck(opened);
+    // After start-up reconciliation, a person sends the check with mission publish-check.
+    if (!resumedLocal && !spec.verification_mode && this.ports.publishVerifyCheck) await this.attemptVerifyCheck(opened);
     return opened;
   }
 

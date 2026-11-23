@@ -153,6 +153,14 @@ export class ContainedMissionHost {
     return this.runner.cancel(missionId);
   }
 
+  /** Start-up reconcile only: no principal, no RPC entry. The runner re-checks every condition and can only read back. */
+  async resumeConfirmedLocalPublication(missionId: string): Promise<ContainedMission> {
+    if (this.inFlight.has(missionId)) throw Error('CONTAINED_MISSION_BUSY');
+    let result: ContainedMission | undefined;
+    await this.track(missionId, async () => { result = await this.runner.resumeConfirmedLocalPublication(missionId); }, true);
+    return result!;
+  }
+
   /** Re-publish the `osstack/verify` check of a pr_opened Mission. Needs write scope; never touches the branch or PR. */
   async publishCheck(principal: EngineeringPrincipal, missionId: string): Promise<{ check_run_id: number; created: boolean }> {
     const mission = this.store.readable(principal, missionId);
