@@ -33,7 +33,8 @@ Defaults: 1 round (--rounds 2 is explicit; two is the cap), valid 24h (at most 7
 budget 3600s executor, 3600s container, 48h wall clock. --chain extends a chain: rounds and budget can only grow.
 With --chain, a local-failure grant renews as a local-failure grant. Give local flags individually to raise a timeout,
 add the recheck, or change the pin before the first diagnosis. Unnamed terms are kept. Type RENEW LOCAL-FAILURE <digest>
-to sign the renewal. The preview lists eligible diagnoses, a waiting repair candidate, and pending recheck attempts. A version 1 chain cannot be upgraded yet.
+to sign the renewal. The preview lists eligible diagnoses, a waiting repair candidate, and pending recheck attempts. With --chain on a version 1 chain, give all required local-failure flags and type
+UPGRADE LOCAL-FAILURE <digest> to upgrade the grant. The daemon refuses the upgrade unless the local-failure switch is on.
 Type GRANT LOCAL-FAILURE <digest> to authorise one diagnosis per PR head after a trusted verification failure, one automatic repair
 Mission for this PR, and the optional recheck on the repaired head. Pushing the exact candidate needs separate operator approval.
 The daemon refuses this grant unless the local-failure switch is on.
@@ -89,13 +90,14 @@ function renderCarriedForward(work: CarriedForward): string[] {
 }
 
 /** Human-readable preview. Every signed field is shown. */
-export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPreview, digest: string, previous?: LocalFailureOptIn, carriedForward?: CarriedForward): string {
+export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPreview, digest: string, previous?: LocalFailureOptIn | null, carriedForward?: CarriedForward): string {
   const iso = (ms: number) => new Date(ms).toISOString();
   const change = (label: string, old: string | number, next: string | number) =>
     `  ${label}: ${old === next ? `${next} (unchanged)` : `${old} -> ${next}`}`;
   const localAuthority = p.version === 2 ? ' AND local-failure repair' : '';
+  const renewalTitle = p.version === 2 && previous === null ? 'Upgrade revision grant to local-failure repair' : `Extend revision grant${localAuthority}`;
   const lines = [
-    p.renews ? `Extend revision grant${localAuthority} on chain ${p.renews.chain_id} (chain revision ${p.renews.revision})`
+    p.renews ? `${renewalTitle} on chain ${p.renews.chain_id} (chain revision ${p.renews.revision})`
       : `Grant same-PR revisions${localAuthority}`,
     `  repository      ${p.repository}  PR #${p.pr_number}`,
     `  branch          ${p.branch}  (base ${p.base_ref} @ ${p.base_sha})`,
@@ -122,15 +124,16 @@ export function renderGrantPreview(p: RevisionGrantPreview | LocalFailureGrantPr
         : 'A recheck is NOT authorised by this grant.',
       `Trusted source repository ${p.local_failure.trusted_source.repository}, commit ${p.local_failure.trusted_source.commit}, artifact digest ${p.local_failure.trusted_source.artifact_digest}.`,
     ] : []),
-    ...(p.version === 2 && p.renews && previous ? [
+    ...(p.version === 2 && p.renews && previous !== undefined ? [
+      ...(previous === null ? ["This chain's grant is version 1 today. This signature adds local-failure repair to it."] : []),
       'Local-failure opt-in, old -> new:',
-      change('profile id', previous.profile_id, p.local_failure.profile_id),
-      change('profile digest', previous.profile_digest, p.local_failure.profile_digest),
-      change('trusted source repository', previous.trusted_source.repository, p.local_failure.trusted_source.repository),
-      change('trusted source commit', previous.trusted_source.commit, p.local_failure.trusted_source.commit),
-      change('trusted source artifact digest', previous.trusted_source.artifact_digest, p.local_failure.trusted_source.artifact_digest),
-      change('diagnostic timeout', previous.diagnostic_timeout_seconds, p.local_failure.diagnostic_timeout_seconds),
-      change('recheck timeout', previous.recheck?.timeout_seconds ?? 'none', p.local_failure.recheck?.timeout_seconds ?? 'none'),
+      change('profile id', previous?.profile_id ?? 'none', p.local_failure.profile_id),
+      change('profile digest', previous?.profile_digest ?? 'none', p.local_failure.profile_digest),
+      change('trusted source repository', previous?.trusted_source.repository ?? 'none', p.local_failure.trusted_source.repository),
+      change('trusted source commit', previous?.trusted_source.commit ?? 'none', p.local_failure.trusted_source.commit),
+      change('trusted source artifact digest', previous?.trusted_source.artifact_digest ?? 'none', p.local_failure.trusted_source.artifact_digest),
+      change('diagnostic timeout', previous?.diagnostic_timeout_seconds ?? 'none', p.local_failure.diagnostic_timeout_seconds),
+      change('recheck timeout', previous?.recheck?.timeout_seconds ?? 'none', p.local_failure.recheck?.timeout_seconds ?? 'none'),
     ] : []),
     ...(p.version === 2 && p.renews && carriedForward ? renderCarriedForward(carriedForward) : []),
     'The daemon will, within these limits only, push fast-forward revision commits to this PR branch. It will never merge.',
@@ -220,18 +223,26 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
     const raw = reply['preview'];
     let preview: RevisionGrantPreview | LocalFailureGrantPreview;
     let carriedForward: CarriedForward | undefined;
-    let previous: LocalFailureOptIn | undefined;
+    let previous: LocalFailureOptIn | null | undefined;
     if (raw && typeof raw === 'object' && 'version' in raw && raw.version === 2) {
       try { preview = parseLocalFailureGrantPreview(raw); } catch { throw new Error('grant_preview_mismatch'); }
       let expected: LocalFailureOptIn;
       if (chain !== undefined) {
-        const parsed = LocalFailureOptInSchema.safeParse(reply['previous_local_failure']);
-        if (!parsed.success || preview.renews?.chain_id !== chain) throw new Error('grant_preview_mismatch');
+        if (preview.renews?.chain_id !== chain) throw new Error('grant_preview_mismatch');
         const work = carryForwardSchema.safeParse(reply['carried_forward']);
         if (!work.success) throw new Error('grant_preview_mismatch');
         carriedForward = work.data;
-        previous = parsed.data;
-        expected = mergeLocalFailureTerms(previous, renewal?.data);
+        if (reply['previous_local_failure'] === null) {
+          const full = LocalFailureGrantTerms.safeParse(renewal?.data);
+          if (!full.success) throw new Error('grant_preview_mismatch');
+          previous = null;
+          expected = localFailureOptIn(full.data);
+        } else {
+          const parsed = LocalFailureOptInSchema.safeParse(reply['previous_local_failure']);
+          if (!parsed.success) throw new Error('grant_preview_mismatch');
+          previous = parsed.data;
+          expected = mergeLocalFailureTerms(previous, renewal?.data);
+        }
       } else {
         if (!issuance || preview.renews || preview.root_mission_id !== flags.get('mission')) throw new Error('grant_preview_mismatch');
         expected = localFailureOptIn(issuance.data);
@@ -244,7 +255,7 @@ export async function handleGrantRevisionsCommand(args: string[], deps: GrantCom
     const digest = preview.version === 2 ? localFailurePreviewDigest(preview) : previewDigest(preview);
     if (digest !== reply['preview_sha256'] || preview.nonce !== reply['nonce'] || preview.key_id !== keyId || canonicalJson(preview) !== canonicalJson(reply['preview'])) throw new Error('grant_preview_mismatch');
     // Step 4: exact typed confirmation.
-    const phrase = preview.version === 2 ? `${preview.renews ? 'RENEW' : 'GRANT'} LOCAL-FAILURE ${digest}` : `GRANT ${digest}`;
+    const phrase = preview.version === 2 ? `${previous === null ? 'UPGRADE' : preview.renews ? 'RENEW' : 'GRANT'} LOCAL-FAILURE ${digest}` : `GRANT ${digest}`;
     if (!(await (deps.confirm ?? terminalConfirm)(renderGrantPreview(preview, digest, previous, carriedForward), phrase))) throw new Error('grant_not_confirmed');
     // Step 5: only now is the private key read.
     const privateKey = await readIssuerPrivateKey(deps.home, key);

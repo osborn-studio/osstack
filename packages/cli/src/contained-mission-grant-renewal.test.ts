@@ -2,10 +2,11 @@ import { createHash, generateKeyPairSync, randomBytes, randomUUID, sign } from '
 import { chmodSync } from 'node:fs';
 import { LocalFailureIntakeStore } from '@osstack/core/dist/state/engineering-local-failure-intake-store.js';
 import { canonicalJson, localFailurePreviewDigest, parseLocalFailureGrantPreview,
-  parseRevisionGrantPreview, previewDigest, signLocalFailureRevisionGrant } from '@osstack/core';
+  parseRevisionGrantPreview, previewDigest, signRevisionGrant, signLocalFailureRevisionGrant } from '@osstack/core';
 import { expect, it, vi } from 'vitest';
+import { readPullRequest } from './contained-mission-bridge-reader.js';
 import { issuerKeyPath, readIssuerPrivateKey } from './contained-mission-grant.js';
-import { cred, granted, runCommand, serviceFor, setup, type Fixture } from './contained-mission-grant.testkit.js';
+import { cred, granted, PUBLISHER, runCommand, serviceFor, setup, type Fixture } from './contained-mission-grant.testkit.js';
 import { mergeLocalFailureTerms, type LocalFailureRenewInput } from './contained-mission-grant-terms.js';
 import { ContainedMissionRpcRequests } from './contained-mission-rpc.js';
 
@@ -123,7 +124,7 @@ it.each(['bridge', 'local'])('checks the %s switch inside the replacement transa
   await refused(f, chain_id, accept, which === 'bridge' ? 'bridge_live_disabled' : 'local_failure_repair_disabled');
 });
 
-it('refuses upgrade terms and keeps the V1 reply shape', async () => {
+it('requires full upgrade terms and keeps the V1 reply shape', async () => {
   let on = true;
   const f = await setup({ grantOptions: { localFailureEnabled: () => on } });
   const { chain: { chain_id } } = await granted(f);
@@ -131,13 +132,146 @@ it('refuses upgrade terms and keeps the V1 reply shape', async () => {
     on = switchEnabled;
     for (const local_failure of [{}, { profile_id: 'new' }]) {
       await refused(f, chain_id, () => f.service.renewPreview(f.actor('a'), { chain_id, local_failure }),
-        on ? 'grant_upgrade_unsupported' : 'local_failure_repair_disabled');
+        on ? 'grant_terms_invalid' : 'local_failure_repair_disabled');
     }
   }
   const { reply, grant } = await f.renew('a', chain_id);
   expect(reply).not.toHaveProperty('previous_local_failure');
   expect(reply.preview.version).toBe(1);
   expect(await grant()).toMatchObject({ renewed: true });
+});
+
+it('refuses an upgrade for a dot repository component and still renews the V1 grant', async () => {
+  const repository = 'o/.';
+  const f: Fixture = await setup({ grantOptions: {
+    ...enabled.grantOptions,
+    registry: { repository, publisher: [PUBLISHER] },
+    readPr: async ref => {
+      const read = await readPullRequest(f.scripted.transport, ref);
+      return read.complete ? { ...read, pr: { ...read.pr, headRepository: repository } } : read;
+    },
+  } });
+  const issued = await f.issue('a', f.mission({ repository }));
+  const { chain_id } = await issued.grant();
+  await refused(f, chain_id, () => f.service.renewPreview(f.actor('a'), { chain_id, local_failure: pins }), 'grant_terms_invalid');
+  expect(f.service['pending'].size).toBe(0);
+  const renewal = await f.renew('a', chain_id);
+  expect(await renewal.grant()).toMatchObject({ chain_id, renewed: true });
+  expect(JSON.parse(f.rig.chains.get(chain_id).grant_json)).toEqual(renewal.signed);
+});
+
+async function upgradePreview(f: Fixture, chain_id: string) {
+  const reply = await f.service.renewPreview(f.actor('a'), { chain_id, local_failure: pins });
+  const preview = parseLocalFailureGrantPreview(reply.preview);
+  const key = await readIssuerPrivateKey(f.home, (await f.ctx()).keys.get('k1')!);
+  const signed = signLocalFailureRevisionGrant(preview, key);
+  const accept = (signature = signed.signature, who = 'a') => f.service.grant(f.actor(who), {
+    nonce: reply.nonce, preview_sha256: reply.preview_sha256, signature });
+  return { reply, preview, signed, accept, key };
+}
+
+it('requires a V2 signature for the exact upgrade and consumes the nonce once', async () => {
+  const f = await setup(enabled);
+  const { chain, missionId } = await granted(f);
+  const id = chain.chain_id;
+  const random = await upgradePreview(f, id);
+  await refused(f, id, () => random.accept(randomBytes(64).toString('base64')), 'grant_refused');
+  const domain = await upgradePreview(f, id);
+  const { local_failure: _opt, ...shared } = domain.preview;
+  const v1 = signRevisionGrant({ ...shared, version: 1 }, domain.key);
+  await refused(f, id, () => domain.accept(v1.signature), 'grant_refused');
+  const wrongDomain = await upgradePreview(f, id);
+  const signature = sign(null, Buffer.from(canonicalJson({ domain: 'osstack.revision-grant.v1',
+    preview: wrongDomain.preview, preview_sha256: wrongDomain.signed.preview_sha256 })), wrongDomain.key).toString('base64');
+  await refused(f, id, () => wrongDomain.accept(signature), 'grant_refused');
+  const { reply, preview, signed, accept } = await upgradePreview(f, id);
+  expect(preview.renews).toEqual({ chain_id: id, revision: chain.revision });
+  expect(reply.previous_local_failure).toBeNull();
+  expect(reply.carried_forward).toEqual({ eligible_diagnoses: [], waiting_child: null, pending_recheck: null });
+  await refused(f, id, () => accept(signed.signature, 'c'), 'grant_refused');
+  expect(await accept()).toMatchObject({ chain_id: id, renewed: true });
+  const row = f.rig.chains.get(id);
+  expect(JSON.parse(row.grant_json)).toEqual(signed);
+  for (const key of ['rounds_used', 'budget_json', 'spent_json', 'published_head', 'published_base'] as const) expect(row[key]).toBe(chain[key]);
+  const event = f.rig.chains.events(id).at(-1)!;
+  expect(event.kind).toBe('grant_replaced');
+  expect(JSON.parse(event.payload_json)).toMatchObject({ version: 2, local_failure: { changed: ['upgrade'] } });
+  await refused(f, id, accept, 'grant_refused');
+  expect((await f.service.renewPreview(f.actor('a'), { chain_id: id })).previous_local_failure).toEqual(preview.local_failure);
+  await refused(f, id, () => f.service.preview(f.actor('a'), { mission_id: missionId, local_failure: pins }), 'chain_exists');
+});
+
+it.each(['bridge', 'local'])('checks the %s switch before and inside the upgrade transaction', async which => {
+  let allowed = () => true;
+  const f = await setup({ grantOptions: { enabled: () => which !== 'bridge' || allowed(), localFailureEnabled: () => which !== 'local' || allowed() } });
+  const { chain: { chain_id } } = await granted(f);
+  for (const gate of [() => false, () => !f.rig.db.inTransaction]) {
+    allowed = () => true;
+    const { accept } = await upgradePreview(f, chain_id);
+    allowed = gate;
+    await refused(f, chain_id, accept, which === 'bridge' ? 'bridge_live_disabled' : 'local_failure_repair_disabled');
+  }
+});
+
+it('refuses stale previews across V1 renewals and upgrades', async () => {
+  const f = await setup(enabled);
+  const { chain: { chain_id } } = await granted(f);
+  const stale = await upgradePreview(f, chain_id);
+  await (await f.renew('a', chain_id)).grant();
+  await refused(f, chain_id, stale.accept, 'grant_refused');
+  const { preview, nonce, preview_sha256 } = await f.service.renewPreview(f.actor('a'), { chain_id });
+  const fresh = await upgradePreview(f, chain_id);
+  await fresh.accept();
+  const { signature } = signRevisionGrant(parseRevisionGrantPreview(preview), fresh.key);
+  await refused(f, chain_id, () => f.service.grant(f.actor('a'), { nonce, preview_sha256, signature }), 'grant_refused');
+});
+
+const upgradeFlags = ['--local-failure-profile', pins.profile_id, '--profile-digest', pins.profile_digest,
+  '--trusted-source-repository', pins.trusted_source.repository, '--trusted-source-commit', pins.trusted_source.commit,
+  '--trusted-source-artifact', pins.trusted_source.artifact_digest, '--diagnostic-timeout-seconds', '60'];
+
+it('shows the upgrade authority and signs only after the upgrade phrase', async () => {
+  const f = await setup(enabled);
+  const { chain } = await granted(f);
+  const run = await runCommand(f, ['grant-revisions', '--chain', chain.chain_id, ...upgradeFlags], {
+    interactive: true, confirm: async (text, phrase) => {
+      expect(text.split('\n')[0]).toBe(`Upgrade revision grant to local-failure repair on chain ${chain.chain_id} (chain revision ${chain.revision})`);
+      expect(text).toContain("This chain's grant is version 1 today. This signature adds local-failure repair to it.");
+      expect(text).toContain('profile id: none -> ' + pins.profile_id);
+      expect(text).toContain('Work this renewal carries forward (shown for information, not signed):\n  nothing');
+      expect(phrase).toBe('UPGRADE LOCAL-FAILURE ' + /preview sha256  ([a-f0-9]{64})/.exec(text)![1]);
+      return true;
+    } });
+  expect(run.code, run.err).toBe(0);
+  expect(JSON.parse(f.rig.chains.get(chain.chain_id).grant_json).version).toBe(2);
+});
+
+it('rejects incomplete flags and substituted upgrade replies before confirmation or key access', async () => {
+  const f = await setup(enabled);
+  const { chain: { chain_id } } = await granted(f);
+  const { reply } = await upgradePreview(f, chain_id);
+  chmodSync(issuerKeyPath(f.home, 'k1'), 0o644);
+  const before = snapshot(f, chain_id);
+  const args = ['grant-revisions', '--chain', chain_id];
+  const confirm = vi.fn(async () => true);
+  const partial = await runCommand(f, [...args, ...upgradeFlags.slice(0, -2)], { interactive: true, confirm });
+  expect(partial.err).toContain('grant_terms_invalid');
+  expect(partial.calls).toEqual(['mission.revision_grant_renew_preview']);
+  for (const variant of ['opt-in', 'previous', 'work', 'chain', 'flags']) {
+    const run = await runCommand(f, [...args, ...(variant === 'flags' ? [] : upgradeFlags)], { interactive: true, confirm, tamper: (_, r) => {
+      if (variant === 'flags') return reply;
+      if (variant === 'previous') { const { previous_local_failure: _previous, ...rest } = r; return rest; }
+      if (variant === 'work') { const { carried_forward: _work, ...rest } = r; return rest; }
+      const p = parseLocalFailureGrantPreview(r['preview']);
+      const preview = variant === 'chain' ? { ...p, renews: { ...p.renews!, chain_id: 'rc_' + randomUUID() } }
+        : { ...p, local_failure: { ...p.local_failure, profile_id: 'other' } };
+      return { ...r, preview, preview_sha256: localFailurePreviewDigest(preview) };
+    } });
+    expect(run.err).toContain('grant_preview_mismatch');
+    expect(run.calls).toEqual(['mission.revision_grant_renew_preview']);
+  }
+  expect(confirm).not.toHaveBeenCalled();
+  expect(snapshot(f, chain_id)).toEqual(before);
 });
 
 it('checks real intake activity and pin changes at signed acceptance', async () => {
