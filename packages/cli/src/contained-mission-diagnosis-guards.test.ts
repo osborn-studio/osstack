@@ -14,7 +14,11 @@ it("keeps diagnosis offline and single-writer", () => {
     }
     for (const file of files.filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))) {
       const source = readFileSync(join(root, file), "utf8");
-      expect(source.replace(file === "contained-mission-runner.ts" ? "async resumeConfirmedLocalPublication(" : "", ""), file)
+      if (pkg === "cli" && ["contained-mission-host.ts", "contained-mission-local-failure-publication-port.ts"].includes(file)) {
+        // One definition or Pick, and one call.
+        expect(source.match(/\bresumeConfirmedLocalPublication\b/g), file).toHaveLength(2);
+        expect(source.match(/\.resumeConfirmedLocalPublication\(/g), file).toHaveLength(1);
+      } else expect(source.replace(file === "contained-mission-runner.ts" ? "async resumeConfirmedLocalPublication(" : "", ""), file)
         .not.toContain("resumeConfirmedLocalPublication");
       const reader = pkg === "cli" && file === "contained-mission-local-failure-closeout.ts";
       if (!reader) expect(source, file).not.toMatch(/\breadLocalFailureCloseout\b|contained-mission-local-failure-closeout/);
@@ -49,6 +53,10 @@ it("keeps local failure publication closed outside its library", () => {
         .replace("localFailurePublication?:", "")
         .replace("!this.ports.localFailurePublication)", "")
         .replace("this.ports.localFailurePublication! :", "");
+    }
+    if (file === "contained-mission-local-failure-publication-port.ts") {
+      expect(source).not.toMatch(/contained-mission-local-failure-approval|approveLocalFailureRepair/);
+      source = source.replaceAll("./contained-mission-local-failure-publish.js", "").replaceAll("localFailurePublication", "");
     }
     if (!modules.includes(file)) expect(source, file).not.toMatch(/contained-mission-local-failure-(?:approval|publish)\b/);
     expect(source, file).not.toContain("localFailurePublication");
@@ -164,7 +172,8 @@ it("confines the local-failure assembly and switch to the contained Mission fact
         continue;
       }
       if (pkg === "cli" && file === "contained-mission-local-failure-service.ts") {
-        expect(source.match(/\bimport\b/g)).toHaveLength(3);
+        expect(source.match(/\bimport\b/g)).toHaveLength(4);
+        expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-publication-port\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-diagnose\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-scan\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-dispatch-step\.js['"];?$/m);
@@ -275,4 +284,25 @@ it("gives the candidate approval one caller", () => {
   expect(approval.sort()).toEqual(["cli/contained-mission-local-failure-approval.ts", rpc]);
   expect(method.sort()).toEqual([rpc, "cli/decisions/answer.ts", "cli/decisions/list.ts"]);
   expect(readiness.sort()).toEqual(["cli/contained-mission-local-failure-service.ts", rpc]);
+});
+
+it("confines the local-failure publication port and recovery callers", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      const path = join(root, file);
+      if (/\.test\.[^/]+$/.test(file) || !statSync(path).isFile()) continue;
+      const source = readFileSync(path, "utf8");
+      const port = pkg === "cli" && file === "contained-mission-local-failure-publication-port.ts";
+      if (!port && !(pkg === "cli" && file === "contained-mission-local-failure-service.ts"))
+        expect(source, path).not.toMatch(/createLocalFailurePublicationPort|contained-mission-local-failure-publication-port/);
+      if (!port && !(pkg === "cli" && file === "contained-mission-local-failure-publish.ts"))
+        expect(source, path).not.toMatch(/\b(?:publishLocalFailureRepair|reconcileLocalFailurePush)\b/);
+      if (port) expect(source, path).not.toMatch(/\b(?:approveLocalFailureRepair|dispatchLocalFailureRepair|runDiagnosis|runRecheck|collectLocalFailureRecheck|confirmLocalRepairPush|RevisionChainStore)\b|INSERT\s+INTO|UPDATE\s+engineering_|\.record\s*\(|\.transition\s*\(/);
+      if (/(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file))
+        expect(source, path).not.toMatch(/\b(?:resumeConfirmedLocalPublication|reconcileLocalFailurePush|publishLocalFailureRepair)\b/);
+    }
+  }
 });

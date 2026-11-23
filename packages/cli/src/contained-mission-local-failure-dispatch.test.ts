@@ -3,7 +3,14 @@ import { dispatchRevision } from "./contained-mission-revision.js";
 import { readPullRequest } from "./contained-mission-bridge-reader.js";
 import { scriptedTransport } from "./contained-mission-bridge-shadow.testkit.js";
 import { changesRequested, PUBLISHER, REVIEWER } from "./contained-mission-revision.testkit.js";
-import { expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
+import type { DeliveryCommandRunner } from "@osstack/github";
+import { verifyBridgeLedger } from "./contained-mission-bridge-ledger.js";
+import { ContainedMissionHost } from "./contained-mission-host.js";
+import { HostProcessKit } from "./contained-mission-host-process.js";
+import type { ContainedMissionHostPorts } from "./contained-mission-ports.js";
+import { createLocalFailurePublicationPort } from "./contained-mission-local-failure-publication-port.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   checkLocalFailureRepairPaths,
   dispatchLocalFailureRepair,
@@ -669,4 +676,231 @@ it.each(["waiting", "approved"] as const)("handles grant expiry with a %s repair
       expect(pushes).toBe(0);
     }
   } finally { f.close(); }
+});
+
+describe("attached local-failure publisher and startup recovery", () => {
+  const cleanups: Array<() => void> = [];
+  afterEach(() => { for (const close of cleanups.splice(0)) close(); });
+
+  async function fixtureWithRemote(remote: string) {
+    // Dispatch copies the authorized root's remote to the child.
+    const authorize = ContainedMissionStore.prototype.authorize;
+    const root = vi.spyOn(ContainedMissionStore.prototype, "authorize").mockImplementationOnce(function (this: ContainedMissionStore, principal, input, now) {
+      const publication = input.spec.publication as Record<string, unknown>;
+      return authorize.call(this, principal, { ...input, spec: { ...input.spec, publication: { ...publication, remote } } }, now);
+    });
+    try { return await publicationFixture(); } finally { root.mockRestore(); }
+  }
+
+  async function setup(options: { otherRemote?: boolean; exitCode?: number; unavailable?: boolean } = {}) {
+    const { f, id, store, spec, candidate, now, actor, approve } = await (options.otherRemote ? fixtureWithRemote("upstream") : publicationFixture());
+    cleanups.push(f.close);
+    const { base, branch } = spec.local_failure_repair!, repository = spec.publication!.repository, old = spec.start_commit;
+    approve();
+    store.record(id, "candidate_committed", { head_commit: candidate, tier: "T0" }, now);
+    store.record(id, "verify_intent", { candidate }, now);
+    store.record(id, "verify_receipt", { exit_code: 0, cancelled: false, evidence: "fixture" }, now);
+
+    const state = { clock: now, enabled: true, withdraw: false, readable: true, hideAfterRelease: false,
+      remote: old, prBase: base, repository, branch, pushes: 0 };
+    const kit = new HostProcessKit(store, { markerDir: f.root }, () => state.clock);
+    const unexpected = async (): Promise<never> => { throw Error("unexpected port"); };
+    const run = vi.fn<DeliveryCommandRunner["run"]>(async (_command, args, opts) => {
+      let stdout = "";
+      const ref = "refs/heads/" + branch;
+      if (args.includes("ls-remote")) stdout = state.remote + "\t" + ref;
+      else if (args.includes("remote")) stdout = "https://github.com/" + repository + ".git";
+      else if (args.includes("rev-list")) stdout = candidate + " " + old;
+      else {
+        expect(args.slice(-5)).toEqual(["push", "--porcelain", "--force-with-lease=" + ref + ":" + old, "origin", candidate + ":" + ref]);
+        const gate = opts.gate!, op = "hp_fixture";
+        kit.hp.launching({ op_id: op, mission_id: id, kind: "git_push", remote_target: gate.remoteTarget, local_target: spec.worktree_path,
+          intent_id: opts.intentId!, argv_digest: "a".repeat(64), boot_id: "fixture", marker: { path: "/fixture/marker", dev: "1", ino: "1" } });
+        kit.hp.registered(op, { pid: 12345, pgid: 12345, leader_start: "fixture" });
+        if (state.withdraw) await withdraw(f);
+        try { kit.hp.release(op, gate.fence); }
+        catch (error) { kit.hp.stopped(op, { proof: "never_released", detail: {} }); throw error; }
+        state.pushes++;
+        state.remote = candidate;
+        state.readable = !state.hideAfterRelease;
+        kit.hp.stopped(op, { proof: "group_empty+marker_unheld", detail: {}, exit_code: options.exitCode ?? null });
+        if (options.exitCode === undefined) throw Error("lost process status");
+        return { stdout, stderr: "", exitCode: options.exitCode };
+      }
+      return { stdout, stderr: "", exitCode: 0 };
+    });
+    const check = vi.fn(async () => ({ check_run_id: 7, created: true }));
+    const ports: ContainedMissionHostPorts = { store, hostProcesses: kit, now: () => state.clock, publishVerifyCheck: check,
+      verify: unexpected, publish: unexpected, verificationStopped: unexpected, createWorkspace: unexpected, resumeWorkspace: unexpected,
+      qualify: unexpected, execute: unexpected, readFile: unexpected, commit: unexpected, cumulativeDiff: unexpected,
+      restoreWorkspace: unexpected, worktreeDiff: unexpected, commitWorktree: unexpected,
+      remoteWriteReleasedSince: (key, since) => kit.remoteReleasedSince(key, since),
+      revisionPublicationAdapters: async () => ({ runner: { gated: true, run }, localGit: unexpected, preflight: unexpected }) };
+    const host = new ContainedMissionHost({ ports });
+    const resume = vi.spyOn(host, "resumeConfirmedLocalPublication");
+    const readPr = vi.fn(async (repo: string, number: number, _signal: AbortSignal) => {
+      expect([repo, number]).toEqual([repository, spec.local_failure_repair!.pr]);
+      if (!state.readable) throw Error("read unavailable");
+      return { repository: state.repository.toUpperCase(), state: "OPEN" as const, headRefName: state.branch, headRefOid: state.remote,
+        baseRefName: "main", baseRefOid: state.prBase, url: "fixture" };
+    });
+    const log = vi.fn();
+    const port = await createLocalFailurePublicationPort({ missions: store, ports, host, repository: options.unavailable ? "" : repository,
+      readPr, log, now: ports.now, enabled: () => state.enabled, access: { refresh: () => actor } });
+    const chains = new RevisionChainStore(f.attention, f.owner);
+    const chain = () => chains.get(f.facts.chain_id);
+    const events = (kind: string) => store.events(id).filter(e => e.kind === kind);
+    const confirmations = () => chains.events(chain().chain_id).filter(e => e.kind === "local_repair_push_confirmed");
+    const step = () => host.runner.step(id);
+    const uncertain = async () => {
+      state.hideAfterRelease = true;
+      const halted = await step();
+      expect(halted.state).toBe("awaiting_decision");
+      expect(JSON.parse(events("halted").at(-1)!.payload_json).reason).toBe("verify_push_uncertain");
+      expect(await step()).toEqual(halted);
+      expect(state.pushes).toBe(1);
+      return halted;
+    };
+    return { id, f, store, spec, old, state, candidate, now, actor, run, resume, check, chain, chains, events, confirmations,
+      readPr, log, recover: port.recover, step, uncertain, signal: new AbortController().signal };
+  }
+
+  it("publishes one approved candidate", async () => {
+    const t = await setup();
+    expect((await t.step()).state).toBe("pr_opened");
+    expect(t.state.pushes).toBe(1);
+    expect(t.confirmations()).toHaveLength(1);
+    expect(t.chain().published_head).toBe(t.candidate);
+    expect(t.check).toHaveBeenCalledOnce();
+  });
+
+  it.each(["expired", "withdrawn", "disabled", "remote", "fork", "branch"])("refuses publication for %s", async why => {
+    const t = await setup({ otherRemote: why === "remote" });
+    if (why === "expired") t.state.clock += 900000;
+    if (why === "withdrawn") t.state.withdraw = true;
+    if (why === "disabled") t.state.enabled = false;
+    if (why === "fork") t.state.repository = "fixture/fork";
+    if (why === "branch") t.state.branch += "-other";
+    expect((await t.step()).state).toBe("awaiting_decision");
+    expect(t.state.pushes).toBe(0);
+    expect(JSON.parse(t.events("halted").at(-1)!.payload_json).reason).toBe(why === "withdrawn" ? "verify_source_revoked" : "verify_publish_authority_invalid");
+    if (why !== "withdrawn") expect(t.events("verify_repair_push_intent")).toHaveLength(0);
+    if (why === "remote") {
+      expect(t.run).not.toHaveBeenCalled();
+      expect(t.readPr).not.toHaveBeenCalled();
+    }
+  });
+
+  it("confirms a landed push once, resumes through the host and completes the commit audit", async () => {
+    const t = await setup(), c = t.chain(), commits = [t.old];
+    const baseline = t.chains.recordIntent(c.chain_id, c.revision, { kind: "open_pr", expected_old_head: JSON.parse(t.store.get(c.root_mission_id).spec_json).start_commit,
+      branch: c.branch, expected_base_sha: c.published_base, new_head: t.old,
+      binding: { commit_count: 1, range_sha256: createHash("sha256").update(JSON.stringify(commits)).digest("hex") } }, t.now).intent;
+    t.chains.appendEvent(c.chain_id, "push_range", { intent_id: baseline.intent_id, commits }, t.now);
+    t.chains.settleIntent(baseline.intent_id, "confirmed", t.now);
+    const audit = () => verifyBridgeLedger({ chains: t.chains, missions: t.store, compare: async () => [...commits, t.candidate],
+      remoteHead: async () => t.state.remote }, t.chain(), t.signal);
+    await t.uncertain();
+    expect(await audit()).toBe("reconciliation_incomplete");
+    t.state.readable = true;
+    await t.recover(t.signal);
+    expect(t.readPr.mock.calls.some(([, , signal]) => signal === t.signal)).toBe(true);
+    expect(t.resume).toHaveBeenCalledExactlyOnceWith(t.id);
+    expect(t.store.get(t.id).state).toBe("pr_opened");
+    expect(await audit()).toBe("matched");
+    t.readPr.mockClear(); t.run.mockClear();
+    await t.recover(t.signal);
+    expect(t.readPr).not.toHaveBeenCalled();
+    expect(t.run).not.toHaveBeenCalled();
+    expect(t.resume).toHaveBeenCalledOnce();
+    expect(t.events("verify_repair_push_confirmed")).toHaveLength(1);
+    expect(t.confirmations()).toHaveLength(1);
+    expect(t.state.pushes).toBe(1);
+    expect(t.check).not.toHaveBeenCalled();
+  });
+
+  it.each(["unknown", "not_written", "stale_head", "base_changed"])("logs %s and preserves the child", async outcome => {
+    const t = await setup(outcome === "not_written" ? { exitCode: 1 } : {});
+    const halted = await t.uncertain();
+    t.state.readable = true;
+    t.state.remote = outcome === "stale_head" ? "f".repeat(40) : t.old;
+    if (outcome === "base_changed") t.state.prBase = "f".repeat(40);
+    const before = t.store.events(t.id);
+    await t.recover(t.signal);
+    expect(t.log.mock.calls).toEqual([[`osstack: local-failure route: reconcile ${t.id}: ${outcome}`]]);
+    expect(t.resume).not.toHaveBeenCalled();
+    expect(t.store.get(t.id)).toEqual(halted);
+    expect(t.store.events(t.id)).toEqual(before);
+    expect(t.confirmations()).toHaveLength(0);
+    expect(t.state.pushes).toBe(1);
+  });
+
+  it("resumes an already confirmed child before any read on the next startup", async () => {
+    const t = await setup();
+    await t.uncertain();
+    t.state.readable = true;
+    t.resume.mockRejectedValueOnce(Error("CONTAINED_MISSION_BUSY"));
+    await t.recover(t.signal);
+    expect(t.store.get(t.id).state).toBe("awaiting_decision");
+    expect(t.events("verify_repair_push_confirmed")).toHaveLength(1);
+    expect(JSON.parse(t.events("halted").at(-1)!.payload_json).reason).toBe("verify_push_uncertain");
+    t.readPr.mockClear(); t.run.mockClear(); t.resume.mockClear();
+    await t.recover(t.signal);
+    expect(t.resume).toHaveBeenCalledExactlyOnceWith(t.id);
+    expect(t.readPr).toHaveBeenCalledOnce();
+    expect(t.resume.mock.invocationCallOrder[0]!).toBeLessThan(t.readPr.mock.invocationCallOrder[0]!);
+    expect(t.run.mock.calls.map(([, args]) => args[0])).toEqual(["ls-remote"]);
+    expect(t.store.get(t.id).state).toBe("pr_opened");
+    expect(t.state.pushes).toBe(1);
+    expect(t.check).not.toHaveBeenCalled();
+  });
+
+  it("continues to the next Mission after a busy child", async () => {
+    const t = await setup();
+    await t.uncertain();
+    const earlier = t.store.authorize(t.actor, { scope_id: t.store.get(t.id).scope_id, spec: { ...t.spec },
+      claim: { repo_identity: "earlier", branch: "earlier", worktree_identity: "earlier" } }, t.now - 1);
+    t.store.transition(earlier.mission_id, { if_revision: earlier.revision, to: "awaiting_decision", event: { kind: "halted", payload: { reason: "verify_push_uncertain" } } }, t.now);
+    for (const kind of ["verify_repair_push_intent", "verify_repair_push_confirmed"]) t.store.record(earlier.mission_id, kind, {}, t.now);
+    t.state.readable = true;
+    t.readPr.mockClear(); t.run.mockClear();
+    t.resume.mockImplementationOnce(async () => {
+      expect(t.readPr).not.toHaveBeenCalled();
+      expect(t.run).not.toHaveBeenCalled();
+      throw Error("CONTAINED_MISSION_BUSY");
+    });
+    await t.recover(t.signal);
+    expect(t.resume.mock.calls).toEqual([[earlier.mission_id], [t.id]]);
+    expect(t.log.mock.calls).toEqual([[`osstack: local-failure route: resume ${earlier.mission_id}: CONTAINED_MISSION_BUSY`]]);
+    expect(t.store.get(t.id).state).toBe("pr_opened");
+    expect(t.state.pushes).toBe(1);
+  });
+
+  it("stops before reads on abort and skips remote reads and resume after an in-flight abort", async () => {
+    const t = await setup();
+    await t.uncertain();
+    t.run.mockClear(); t.readPr.mockClear();
+    await t.recover(AbortSignal.abort());
+    expect(t.readPr).not.toHaveBeenCalled();
+    const abort = new AbortController();
+    t.readPr.mockImplementationOnce(async (_repo, _number, signal) => {
+      expect(signal).toBe(abort.signal);
+      abort.abort();
+      throw Error("aborted");
+    });
+    await t.recover(abort.signal);
+    expect(t.run).not.toHaveBeenCalled();
+    expect(t.resume).not.toHaveBeenCalled();
+    expect(t.confirmations()).toHaveLength(0);
+  });
+
+  it("does no recovery work without a ready port", async () => {
+    const t = await setup({ unavailable: true });
+    t.store.record(t.id, "verify_repair_push_intent", {}, t.now);
+    await t.recover(t.signal);
+    expect(t.log).toHaveBeenCalledOnce();
+    expect(t.readPr).not.toHaveBeenCalled();
+    expect(t.resume).not.toHaveBeenCalled();
+    expect(t.run).not.toHaveBeenCalled();
+  });
 });

@@ -953,6 +953,34 @@ it("stops an interrupted local delivery before re-entering the publisher", async
 });
 
 describe("resumeConfirmedLocalPublication", () => {
+  it.each([false, true])("publishes the verify check once with resumed=%s", async resumed => {
+    let checks = 0;
+    let attempt = 0;
+    const f = setup({
+      publishVerifyCheck: async () => { checks++; return { check_run_id: 7, created: true }; },
+      localFailurePublication: { publish: async ({ mission, permit, beforeRemoteMutation }) => {
+        if (resumed && ++attempt === 1) {
+          f.store.record(mission.mission_id, "verify_repair_push_intent", { candidate: permit.head }, 2000);
+          beforeRemoteMutation("push");
+          throw Error("verify_push_uncertain");
+        }
+        return { pushed_commit: permit.head, pr: { reused: true, number: 7, url: "fixture" }, base_head: START };
+      } },
+    }, localRepairSpec);
+    const child = await drive(f, 4), id = child.mission_id;
+    f.store.transition(id, { if_revision: child.revision, to: "revalidating", event: { kind: "fixture", payload: {} } }, 2000);
+    let result = await f.runner.step(id);
+    if (resumed) {
+      f.store.record(id, "verify_repair_push_confirmed", { candidate: child.candidate_head }, 2001);
+      result = await f.runner.resumeConfirmedLocalPublication(id);
+      expect(result.state).toBe("pr_opened");
+      expect(checks).toBe(0);
+      await f.runner.retryVerifyCheck(id);
+    }
+    expect(result.state).toBe("pr_opened");
+    expect(checks).toBe(1);
+  });
+
   it.each(["confirmed", "stale", "missing intent"] as const)("revalidates a released push once on %s readback", async result => {
     let pushes = 0;
     let calls = 0;
