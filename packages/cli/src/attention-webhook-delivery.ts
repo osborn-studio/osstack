@@ -8,6 +8,7 @@ export interface AttentionWebhookConfig {
 }
 
 const noticeText = {
+  verification_waiting: "osstack is still waiting for the verification result on a repaired pull request. This is a notice, not a request. Replying here does nothing.",
   decision_pending_local: "A pending decision needs a signature on the owner's own machine. It cannot be answered remotely or by replying.",
   decision_overdue_local: "An overdue decision needs a signature on the owner's own machine. It cannot be answered remotely or by replying.",
   decision_pending: "A decision is waiting for the owner in osstack. Replying here does nothing; answer in osstack.",
@@ -64,6 +65,11 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
     throw new Error("attention_webhook_message_invalid");
   }
   const decision = message.decision;
+  const waiting = message.state === "verification_waiting";
+  if (waiting !== message.item_id.startsWith("verification-waiting:")
+    || (waiting && (decision !== undefined || reminder !== undefined || !/^verification-waiting:[a-f0-9]{32}$/.test(message.item_id)))) {
+    throw new Error("attention_webhook_message_invalid");
+  }
   if (decision !== undefined && (!decision || !["session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop"].includes(decision.source)
     || typeof decision.source_id !== "string" || decision.source_id.length > 256
     || typeof decision.requires_local_signature !== "boolean" || !/^decision:[a-f0-9]{32}$/.test(message.item_id))) {
@@ -81,7 +87,7 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
     facts = { reason: decision.reason, chain: { origin_mission_id, parent_mission_id, mission_id, depth, max_depth },
       evidence: { ledger: "engineering_contained_events", mission_id } };
   }
-  const reason = decision?.requires_local_signature ? (reminder ? "decision_overdue_local" : "decision_pending_local")
+  const reason = waiting ? "verification_waiting" : decision?.requires_local_signature ? (reminder ? "decision_overdue_local" : "decision_pending_local")
     : reminder ? "decision_overdue"
     : message.state === "answer_uncertain" || message.state === "source_missing" ? message.state : "decision_pending";
   const points = Array.from(message.question.replace(/[\r\n\t]/gu, " ").replace(/\p{Cc}/gu, ""));

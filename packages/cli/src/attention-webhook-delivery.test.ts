@@ -310,3 +310,25 @@ it("preserves the bytes of an ordinary contained Mission notice", () => {
     reference: { usage: "reference_only", kind: "external_reference", truncated: false, summary: "Choose?" },
   }));
 });
+
+describe("verification waiting notice", () => {
+  const waiting = { ...message, item_id: "verification-waiting:" + "a".repeat(32), state: "verification_waiting" };
+
+  it("builds a plain notice with the question as reference material", () => {
+    const notice = buildAttentionWebhookNotice(waiting);
+    expect(notice).toMatchObject({ reason_code: "verification_waiting", reminder: null,
+      text: "osstack is still waiting for the verification result on a repaired pull request. This is a notice, not a request. Replying here does nothing.",
+      reference: { summary: waiting.question, usage: "reference_only" } });
+    expect(notice).not.toHaveProperty("decision");
+  });
+
+  it.each([
+    { decision: { source: "session" as const, source_id: "fixture", requires_local_signature: false } },
+    { reminder: { sequence: 1, age_ms: 10 } },
+    { item_id: "verification-waiting:short" },
+    { item_id: "item" },
+    { state: "open" },
+  ])("refuses an inconsistent waiting message %#", (patch) => {
+    expect(() => buildAttentionWebhookNotice({ ...waiting, ...patch })).toThrow("attention_webhook_message_invalid");
+  });
+});
