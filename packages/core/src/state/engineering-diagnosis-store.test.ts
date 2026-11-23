@@ -4,7 +4,7 @@ import { verificationDedupKey } from "../bridge/verification-result.js";
 import { createHash, randomUUID } from "node:crypto";
 import { GRANT_NOW } from "../bridge/revision-grant-fixtures.js";
 import { localFailureBindingFromLedger, type LocalVerificationReceipt } from "../bridge/local-failure.js";
-import { diagnosisFixture, eligibleRequest } from "./diagnosis-fixtures.js";
+import { diagnosisFixture, diagnosisRenewal, eligibleRequest } from "./diagnosis-fixtures.js";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -345,7 +345,8 @@ it("pages only never-admitted registered requests in creation and id order", () 
 it("pages dispatchable requests by creation time and id and excludes held roots", () => {
   const f = fixture();
   const seed = eligibleRequest(f);
-  expect(f.store.dispatchable()).toEqual([seed]);
+  expect(f.store.dispatchable()).toEqual([{ ...seed, reopened_by: null }]);
+  diagnosisRenewal(f, GRANT_NOW + 1).replace();
   // Project independent read-side cases, including incomplete rows that today's writer rejects.
   for (const name of ["diagnosis_requests", "host_receipts", "local_failure_dispatches", "contained_events"]) {
     f.db.exec(`CREATE TEMP TABLE engineering_${name} AS SELECT * FROM main.engineering_${name} WHERE 0`);
@@ -363,7 +364,9 @@ it("pages dispatchable requests by creation time and id and excludes held roots"
       .run(row.root_mission_id, randomUUID());
     if (i === 5) f.db.prepare("INSERT INTO engineering_contained_events(mission_id,kind) VALUES(?,'local_failure_dispatch_refused')")
       .run(row.root_mission_id);
-    if (i > 7) rows.push(row);
+    if (i === 3 || i === 4) f.db.prepare("INSERT INTO engineering_contained_events(mission_id,kind,created_at) VALUES(?,'local_failure_dispatch_refused',?)")
+      .run(row.root_mission_id, GRANT_NOW);
+    if (i > 7) rows.push({ ...row, reopened_by: null });
   }
   rows.sort((a, b) => a.created_at - b.created_at || a.request_id.localeCompare(b.request_id));
   expect(f.store.dispatchable(0)).toEqual(rows.slice(0, 1));
@@ -371,4 +374,44 @@ it("pages dispatchable requests by creation time and id and excludes held roots"
   expect(f.store.dispatchable()).toEqual(rows.slice(0, 10));
   expect(f.store.dispatchable(200)).toEqual(rows.slice(0, 100));
   expect(f.store.dispatchable(100, rows[99])).toEqual(rows.slice(100));
+});
+
+it("requires an own-chain V2 renewal strictly newer than every root refusal", () => {
+  const f = fixture(), r = eligibleRequest(f);
+  const chains = new RevisionChainStore(f.attention, f.owner);
+  const missions = new ContainedMissionStore(f.attention, f.owner);
+  const renew = (at: number) => {
+    diagnosisRenewal(f, at).replace();
+    const event = chains.events(f.input.chain_id).filter(e =>
+      e.kind === "grant_replaced" && JSON.parse(e.payload_json).version === 2 && e.created_at === at).at(-1)!;
+    return event.seq;
+  };
+  const refuse = (reason: string, at: number) => missions.record(r.root_mission_id, "local_failure_dispatch_refused",
+    { state: "awaiting_decision", reason }, at);
+  const t = GRANT_NOW + 2;
+  renew(t - 1);
+  expect(f.store.dispatchable()).toEqual([{ ...r, reopened_by: null }]);
+  refuse("verify_repair_limit", t);
+  expect(f.store.dispatchable()).toEqual([]);
+  renew(t);
+  expect(f.store.dispatchable()).toEqual([]);
+
+  const other = chains.createShadowChain({ ...f.facts.binding, root_mission_id: r.root_mission_id,
+    published_head: r.head_sha, published_base: r.base_sha, trace_id: "fixture" }, t);
+  chains.appendEvent(other.chain_id, "grant_replaced", { version: 2 }, t + 1);
+  chains.appendEvent(f.input.chain_id, "grant_replaced", {}, t + 1);
+  expect(f.store.dispatchable()).toEqual([]);
+
+  const first = renew(t + 2);
+  expect(f.store.dispatchable()).toEqual([{ ...r, reopened_by: first }]);
+  refuse("verify_budget_exhausted", t + 3);
+  expect(f.store.dispatchable()).toEqual([]);
+  const second = renew(t + 4);
+  expect(second).toBeGreaterThan(first);
+  expect(f.store.dispatchable()).toEqual([{ ...r, reopened_by: second }]);
+  const latest = renew(t + 5);
+  expect(f.store.dispatchable()).toEqual([{ ...r, reopened_by: latest }]);
+  const receipt = f.store.receipt(r.receipt_id!);
+  f.store.consumeReceipt(receipt.receipt_id, receipt.receipt_digest, "fixture-consumer");
+  expect(f.store.dispatchable()).toEqual([]);
 });
