@@ -341,8 +341,11 @@ export class LocalFailureDispatchStore {
       s.transaction(() => {
         if (
           !s.db
-            .prepare(`SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='local_failure_dispatch_refused'
-          AND json_extract(payload_json,'$.reason')=?`)
+            .prepare(`SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=? AND e.kind='local_failure_dispatch_refused'
+          AND json_extract(e.payload_json,'$.reason')=?
+          AND NOT EXISTS (SELECT 1 FROM engineering_revision_chain_events c
+            JOIN engineering_revision_chains chain ON chain.chain_id=c.chain_id
+            WHERE chain.root_mission_id=e.mission_id AND c.kind='grant_replaced' AND c.created_at > e.created_at)`)
             .get(e.root, e.reason)
         )
           missions.record(

@@ -56,8 +56,8 @@ export class LocalFailureDispatchService {
     return this.active;
   }
 
-  private remember(ids: Set<string>, request: DiagnosisRequest): void {
-    if (ids.size < capacity) ids.add(request.request_id);
+  private remember(ids: Set<string>, request: DiagnosisRequest, key: string): void {
+    if (ids.size < capacity) ids.add(key);
     else {
       // Retire the scanned prefix so an id cannot be retried after the set fills.
       this.processedThrough = { created_at: request.created_at, request_id: request.request_id };
@@ -72,13 +72,14 @@ export class LocalFailureDispatchService {
       const rows = diagnosis.dispatchable(100, this.after ?? this.processedThrough);
       for (const request of rows) {
         const id = request.request_id;
-        if (this.skipped.has(id) || this.attempted.has(id)) continue;
+        const attemptKey = `${id}:${request.reopened_by ?? 0}`;
+        if (this.skipped.has(id) || this.attempted.has(attemptKey)) continue;
         let outcome: string;
         try {
           const ports = portsFor(request);
           if (this.stopped) return;
           if (!ports) {
-            this.remember(this.skipped, request);
+            this.remember(this.skipped, request, id);
             continue;
           }
           if (recoverLocalFailureDispatch({ store: ports.store }, id)) outcome = 'already_dispatched';
@@ -90,7 +91,7 @@ export class LocalFailureDispatchService {
         } catch {
           outcome = 'dispatch_failed';
         }
-        this.remember(this.attempted, request);
+        this.remember(this.attempted, request, attemptKey);
         this.after = undefined;
         log(prefix + id + ': ' + outcome);
         return;

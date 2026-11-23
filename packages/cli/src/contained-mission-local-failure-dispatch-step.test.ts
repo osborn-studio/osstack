@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { ContainedMissionStore, RevisionChainStore, signLocalFailureRevisionGrant } from "@osstack/core";
-import { DiagnosisStore, parseVerificationResultV1, verificationDedupKey } from "@osstack/core/verification-intake";
-import { diagnosisFixture, eligibleRequest } from "@osstack/core/dist/state/diagnosis-fixtures.js";
+import { DiagnosisStore, LocalFailureDispatchStore, parseVerificationResultV1, verificationDedupKey } from "@osstack/core/verification-intake";
+import { diagnosisFixture, diagnosisRenewal, eligibleRequest } from "@osstack/core/dist/state/diagnosis-fixtures.js";
 import { missionProtectedSetDigest } from "@osstack/governance";
 import { expect, it, onTestFinished, vi } from "vitest";
 import { dispatchLocalFailureRepair } from "./contained-mission-local-failure-dispatch.js";
@@ -110,6 +110,66 @@ it("holds a refused root after restart", async () => {
   expect(portsFor).not.toHaveBeenCalled();
   expect(children()).toEqual([]);
   expect(log.mock.calls).toEqual([[prefix + r.request_id + ": refused:verify_protected_path"]]);
+});
+
+it.each([1, 2] as const)("dispatches once when renewal %i raises the exhausted rounds", async successfulRenewal => {
+  const { f, r, ports, worker, children, log } = fixture();
+  const service = worker();
+  const dispatch = vi.spyOn(LocalFailureDispatchStore.prototype, "dispatch");
+  onTestFinished(() => dispatch.mockRestore());
+  f.db.exec("UPDATE engineering_revision_chains SET rounds_used=1,revision=revision+1");
+  let now = f.facts.now;
+  ports.now = () => now;
+  const refusal = [prefix + r.request_id + ": refused:verify_repair_limit"];
+  await service.runOnce();
+  expect(log.mock.calls).toEqual([refusal]);
+  if (successfulRenewal === 1) {
+    await service.runOnce();
+    expect(dispatch).toHaveBeenCalledTimes(1);
+  } else {
+    diagnosisRenewal(f, ++now).replace();
+    await service.runOnce();
+    expect(log.mock.calls).toEqual([refusal, refusal]);
+    await service.runOnce();
+    await service.runOnce();
+    await worker().runOnce();
+    expect(dispatch).toHaveBeenCalledTimes(2);
+  }
+  diagnosisRenewal(f, ++now, { rounds: 2 }).replace();
+  await service.runOnce();
+  expect(log.mock.lastCall?.[0]).toContain(prefix + r.request_id + ": dispatched ");
+  expect(children().map(c => c.parent_mission_id)).toEqual([r.root_mission_id]);
+  await service.runOnce();
+  expect(dispatch).toHaveBeenCalledTimes(successfulRenewal + 1);
+});
+
+it("keeps a request skipped when a renewal reopens it", async () => {
+  const { f, r, worker, ports, children } = fixture();
+  const portsFor = vi.fn<Options["portsFor"]>().mockReturnValueOnce(null).mockReturnValue(ports);
+  const service = worker({ portsFor });
+  await service.runOnce();
+  new ContainedMissionStore(f.attention, f.owner).record(r.root_mission_id, "local_failure_dispatch_refused",
+    { state: "awaiting_decision", reason: "verify_chain_busy" }, f.facts.now);
+  diagnosisRenewal(f, f.facts.now + 1).replace();
+  expect(f.store.dispatchable()[0]?.reopened_by).toBeGreaterThan(0);
+  await service.runOnce();
+  expect(portsFor).toHaveBeenCalledTimes(1);
+  expect(children()).toEqual([]);
+});
+
+it("attempts a repeatedly offered request once per reopening sequence", async () => {
+  const { f, r, worker } = fixture(["src/a.test.ts"]);
+  const read = vi.spyOn(f.store, "dispatchable").mockReturnValue([{ ...r, reopened_by: 4 }]);
+  const dispatch = vi.spyOn(LocalFailureDispatchStore.prototype, "dispatch");
+  onTestFinished(() => dispatch.mockRestore());
+  const service = worker();
+  await service.runOnce();
+  await service.runOnce();
+  expect(dispatch).toHaveBeenCalledTimes(1);
+  read.mockReturnValue([{ ...r, reopened_by: 7 }]);
+  await service.runOnce();
+  await service.runOnce();
+  expect(dispatch).toHaveBeenCalledTimes(2);
 });
 
 it.each(["before_consume", "after_consume", "after_child", "before_commit"] as const)("rolls back %s and retries after restart", async step => {
@@ -230,7 +290,7 @@ it("logs the depth limit once per instance", async () => {
 
 it.each(["skipped", "attempted"])("retires the scanned prefix at %s capacity", async mode => {
   const { f, r, worker } = fixture();
-  const rows = Array.from({ length: 1002 }, (_, n) => ({ ...r, created_at: n, request_id: "fixture-" + n }));
+  const rows = Array.from({ length: 1002 }, (_, n) => ({ ...r, reopened_by: null, created_at: n, request_id: "fixture-" + n }));
   const read = vi.spyOn(f.store, "dispatchable").mockImplementation((limit, after) => {
     const start = after ? after.created_at + 1 : 0;
     return rows.slice(start, start + limit!);

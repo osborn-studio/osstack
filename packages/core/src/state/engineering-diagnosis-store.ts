@@ -54,6 +54,7 @@ export interface DiagnosisRequest extends DiagnosisBinding, DiagnosisOwnerColumn
   writer_generation: number;
   updated_at: number;
 }
+export type DispatchableRequest = DiagnosisRequest & { reopened_by: number | null };
 export interface HostReceipt extends DiagnosisOwnerColumns {
   receipt_id: string;
   intake_id: string;
@@ -184,16 +185,24 @@ export class DiagnosisStore {
       AND (created_at, request_id) > (?, ?) ORDER BY created_at, request_id LIMIT ?`)
       .all(after?.created_at ?? -1, after?.request_id ?? "", size) as DiagnosisRequest[];
   }
-  /** Eligible requests that have no repair yet and whose root was never refused, oldest first. Read only. */
-  dispatchable(limit = 10, after?: { created_at: number; request_id: string }): DiagnosisRequest[] {
+  /** Eligible requests without a repair whose chain was renewed after any root refusal, oldest first. Read only. */
+  dispatchable(limit = 10, after?: { created_at: number; request_id: string }): DispatchableRequest[] {
     const size = Math.max(1, Math.min(100, Math.trunc(limit) || 1));
-    return this.db.prepare(`SELECT r.* FROM engineering_diagnosis_requests r
+    return this.db.prepare(`WITH renewals AS (
+      SELECT chain_id, seq, created_at FROM engineering_revision_chain_events
+      WHERE kind='grant_replaced' AND json_extract(payload_json,'$.version')=2
+    )
+      SELECT r.*, (SELECT MAX(c.seq) FROM renewals c WHERE c.chain_id=r.chain_id
+        AND c.created_at > (SELECT MAX(e.created_at) FROM engineering_contained_events e
+          WHERE e.mission_id=r.root_mission_id AND e.kind='local_failure_dispatch_refused')) AS reopened_by
+      FROM engineering_diagnosis_requests r
       JOIN engineering_host_receipts h ON h.receipt_id=r.receipt_id AND h.request_id=r.request_id
       WHERE r.state='eligible' AND r.chain_id IS NOT NULL AND h.consumed_at IS NULL
       AND NOT EXISTS (SELECT 1 FROM engineering_local_failure_dispatches d WHERE d.root_mission_id=r.root_mission_id)
-      AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=r.root_mission_id AND e.kind='local_failure_dispatch_refused')
+      AND NOT EXISTS (SELECT 1 FROM engineering_contained_events e WHERE e.mission_id=r.root_mission_id AND e.kind='local_failure_dispatch_refused'
+        AND NOT EXISTS (SELECT 1 FROM renewals c WHERE c.chain_id=r.chain_id AND c.created_at > e.created_at))
       AND (r.created_at, r.request_id) > (?, ?) ORDER BY r.created_at, r.request_id LIMIT ?`)
-      .all(after?.created_at ?? -1, after?.request_id ?? "", size) as DiagnosisRequest[];
+      .all(after?.created_at ?? -1, after?.request_id ?? "", size) as DispatchableRequest[];
   }
   admitted() {
     return this.db

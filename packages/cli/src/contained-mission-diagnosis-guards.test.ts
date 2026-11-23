@@ -229,6 +229,11 @@ it("gives the dispatch step one caller", () => {
       const library = pkg === "cli" && file === "contained-mission-local-failure-dispatch.ts";
       if (!step && !(pkg === "cli" && file === "contained-mission-local-failure-service.ts"))
         expect(source, path).not.toContain("contained-mission-local-failure-dispatch-step");
+      const diagnosisStore = pkg === "core" && file === "state/engineering-diagnosis-store.ts";
+      const dispatchStore = pkg === "core" && file === "state/engineering-local-failure-dispatch-store.ts";
+      if (!step && !diagnosisStore) expect(source, path).not.toContain("reopened_by");
+      if (!diagnosisStore && !dispatchStore) expect(source, path).not.toContain("local_failure_dispatch_refused");
+      if (step) expect(source, path).not.toMatch(/grant_replaced|RevisionChainStore|engineering_revision_chain/);
       if (!step && !library) expect(source, path).not.toMatch(/\b(?:dispatchLocalFailureRepair|recoverLocalFailureDispatch)\b/);
       if (!step && !library && pkg !== "core" && !(pkg === "cli" && file === "contained-mission-local-failure-approval.ts"))
         expect(source, path).not.toContain("LocalFailureDispatchStore");

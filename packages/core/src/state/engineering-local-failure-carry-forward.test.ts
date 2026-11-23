@@ -40,6 +40,29 @@ it.each(["rounds", "executor", "container", "expiry"])("renews the exhausted %s 
   expect(f.db.prepare("SELECT mission_id FROM engineering_mission_lineage WHERE source_kind='local_failure'").all()).toHaveLength(1);
 });
 
+it("records the same refusal once per renewal until a grant permits dispatch", () => {
+  const { f, r, store, input } = dispatchFixture();
+  const missions = new ContainedMissionStore(f.attention, f.owner);
+  const refusals = () => missions.events(r.root_mission_id).filter(e => e.kind === "local_failure_dispatch_refused");
+  let now = f.facts.now;
+  input.now = () => now;
+  f.db.exec("UPDATE engineering_revision_chains SET rounds_used=1,revision=revision+1");
+  const refused = { status: "refused", reason: "verify_repair_limit" };
+  expect(store.dispatch(input)).toMatchObject(refused);
+  expect(store.dispatch(input)).toMatchObject(refused);
+  expect(refusals().map(e => e.created_at)).toEqual([now]);
+  const initial = now;
+  diagnosisRenewal(f, ++now).replace();
+  expect(store.dispatch(input)).toMatchObject(refused);
+  expect(refusals().map(e => e.created_at)).toEqual([initial, now]);
+  expect(f.store.dispatchable()).toEqual([]);
+  diagnosisRenewal(f, ++now, { rounds: 2 }).replace();
+  expect(store.dispatch(input).status).toBe("dispatched");
+  expect(refusals()).toHaveLength(2);
+  expect(f.db.prepare("SELECT request_id FROM engineering_local_failure_dispatches").all()).toEqual([{ request_id: r.request_id }]);
+  expect(f.store.dispatchable()).toEqual([]);
+});
+
 const substitutions = ["another chain", "v1", "profile_id", "profile_digest", "artifact_digest", "repository", "commit", "first issuance"] as const;
 function substitute(f: Fixture, kind: typeof substitutions[number]) {
   const { preview } = diagnosisRenewal(f, f.facts.now);
