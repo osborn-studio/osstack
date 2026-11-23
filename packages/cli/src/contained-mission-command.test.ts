@@ -112,3 +112,14 @@ describe("osstack mission start publication grant", () => {
     expect((await run([...base, "--publish-repository", "not a repo"])).err.join("\n")).toContain("invalid_request");
   });
 });
+
+it("requires the exact candidate before reading the credential for local failure approval", async () => {
+  const args = ["approve-local-failure-repair", "--mission", MID];
+  const candidate = "a".repeat(40);
+  const accepted = await run([...args, "--candidate", candidate]);
+  expect(accepted.code).toBe(0);
+  expect(accepted.calls).toEqual([{ method: "mission.approve_local_failure_repair", params: { credential, mission_id: MID, candidate } }]);
+  const missing = await run(args);
+  expect(missing).toMatchObject({ code: 1, reads: 0, calls: [] });
+  expect(missing.err[0]).toContain("required:--candidate");
+});

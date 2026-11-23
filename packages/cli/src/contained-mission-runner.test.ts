@@ -904,6 +904,31 @@ it("keeps adoption available after a local child commit failure without authoriz
   expect(f.calls.execute).toHaveLength(1);
 });
 
+describe.each([false, true])("with local publication port present = %s", present => {
+  it("adoption of a local child still stops at the candidate approval", async () => {
+    let publishCalls = 0;
+    const publish = async () => { publishCalls++; throw Error("unexpected publication"); };
+    const f = setup({
+      commit: async () => { throw Error("interrupted"); },
+      ...(present ? { localFailurePublication: { publish } } : {}),
+    }, localRepairSpec);
+    let m = await drive(f, 2);
+    expect(m.state).toBe("needs_reconciliation");
+    m = await f.runner.decide(m.mission_id, { kind: "adopt_worktree" });
+    expect(m.state).toBe("candidate_ready");
+    m = await drive(f, 2);
+    expect(m).toMatchObject({ state: "awaiting_decision", candidate_verified: 1 });
+    const halt = f.store.events(m.mission_id).filter(event => event.kind === "halted").at(-1);
+    expect(JSON.parse(halt!.payload_json)).toMatchObject({ reason: "publication_pending" });
+    expect(f.runner.decisionAllowed(m, "approve_publication")).toBe(false);
+    await expect(f.runner.decide(m.mission_id, { kind: "approve_publication" })).rejects.toThrow("local_failure_candidate_approval_required");
+    expect(f.kinds()).not.toContain("verify_repair_approval");
+    expect(f.kinds()).not.toContain("delivery_intent");
+    expect(f.calls.publish).toHaveLength(0);
+    expect(publishCalls).toBe(0);
+  });
+});
+
 it("halts a local child when its inherited CI candidate admission fails", async () => {
   const f = setup({ assertGithubCiScope: () => {}, admitGithubCiCandidate: async () => { throw Error("invalid candidate"); } }, {
     ...localRepairSpec, verification_mode: "github_actions", verify: { argv: [] }, max_repair_cycles: 0, branch: "osstack/mission/child",

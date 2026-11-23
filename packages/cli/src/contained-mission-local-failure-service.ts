@@ -3,6 +3,7 @@ import { createLocalFailureDiagnosis } from './contained-mission-local-failure-d
 import { createLocalFailureScan } from './contained-mission-local-failure-scan.js';
 
 export interface LocalFailureRouteHandle {
+  readonly publicationReady: boolean;
   recover(signal: AbortSignal): Promise<void>;
   start(): void;
   stop(): Promise<void>;
@@ -17,6 +18,7 @@ export async function createLocalFailureRouteService(deps: FactoryDeps): Promise
   const dispatch = createLocalFailureDispatch({ ...deps, portsFor: request => diagnosis.portsFor(request) });
   deps.log('osstack: local-failure route: on (read, record, register, diagnose, dispatch)');
   return {
+    publicationReady: false,
     async recover() { diagnosis.recover(); },
     start() { scan.start(); diagnosis.start(); dispatch.start(); },
     async stop() {

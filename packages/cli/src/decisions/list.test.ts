@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { openDb, AttentionStore, ContainedMissionStore, RevisionChainStore, createAutonomyRun, transitionAutonomyRun } from "@osstack/core";
 import { DecisionsListResult } from "@osstack/protocol";
 import { DecisionQueries } from "@osstack/core";
-import { listDecisions } from "./list.js";
+import { decisionItem, listDecisions } from "./list.js";
 // Split so the repository secret scan does not match this redaction fixture.
 const FAKE_TOKEN = "ghp_" + "abcdefghijklmnopqrstuvwxyz1234567890";
 
@@ -254,4 +254,33 @@ it.each([1, 2])("offers host-signed renewal (v%s)", async version => {
   expect(item.allowed_answers).toEqual(["abandon", "takeover", "grant_revisions"]);
   expect(item.requires_local_signature).toBe(true);
   expect(item.answer_command.alternatives).toEqual([{ name: "mission grant-revisions", required_params: ["--chain"] }]);
+});
+
+it.each(["publication_pending", "publication_failed:x", "revalidation_failed:x", "repair_cycles_exhausted"])(
+  "lists repair child and ordinary Mission answers at %s", reason => {
+    const row = { id: "synthetic", scope_id: "scope", revision: "1", waiting_since: 1,
+      state: "awaiting_decision", summary: "Repair", kind: "mission", reason };
+    const item = (spec: object) => decisionItem("contained_mission", { ...row, details_json: JSON.stringify(spec) });
+    const decide = { name: "mission.decide", required_params: ["mission_id", "decision"] };
+    const pending = reason === "publication_pending";
+    const repair = item({ local_failure_repair: {} });
+    expect(repair).toMatchObject({
+      allowed_answers: pending ? ["abandon", "approve_local_failure_repair"] : ["abandon"],
+      requires_local_signature: pending,
+    });
+    expect(repair.answer_command).toEqual(pending ? {
+      ...decide, alternatives: [{ name: "mission approve-local-failure-repair", required_params: ["--mission", "--candidate"] }],
+    } : decide);
+    expect(item({})).toMatchObject({ allowed_answers: ["abandon", reason === "repair_cycles_exhausted" ? "extra_repair" : "approve_publication"],
+      requires_local_signature: false, answer_command: decide });
+  },
+);
+
+it.each([null, [], "invalid"])("withholds repair and approval answers for a malformed local binding %j", local => {
+  for (const reason of ["publication_pending", "repair_cycles_exhausted"]) {
+    const item = decisionItem("contained_mission", { id: "synthetic", scope_id: "scope", revision: "1", waiting_since: 1,
+      state: "awaiting_decision", summary: "Repair", kind: "mission", reason, details_json: JSON.stringify({ local_failure_repair: local }) });
+    expect(item.allowed_answers).toEqual(["abandon"]);
+    expect(item.requires_local_signature).toBe(false);
+  }
 });

@@ -44,6 +44,7 @@ export const ContainedMissionRpcRequests = {
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.publish_check': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.approve_ci_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/), decision_id: MissionDecideRequest.shape.decision_id, expected_revision: MissionDecideRequest.shape.expected_revision }).strict(),
+  'mission.approve_local_failure_repair': z.object({ credential: Credential, mission_id: MissionId, candidate: z.string().regex(/^[0-9a-f]{40}$/) }).strict(),
   'mission.decide': MissionDecideRequest,
   // Live revision grants (bridge phase 5-A). Handled by the lazily imported grant service; refused with `bridge_live_disabled` unless live is on.
   'mission.revision_grant_preview': z.object({ credential: Credential, mission_id: MissionId, local_failure: LocalFailureGrantTerms.optional(), ...GrantTerms }).strict(),
@@ -238,6 +239,18 @@ export class ContainedMissionService {
       case 'mission.publish_check': {
         const p = ContainedMissionRpcRequests['mission.publish_check'].parse(params);
         return host.publishCheck(actor, p.mission_id);
+      }
+      case 'mission.approve_local_failure_repair': {
+        if (this.options.localFailure === undefined) throw Error('local_failure_route_disabled');
+        if (this.options.localFailure.publicationReady !== true) throw Error('local_failure_publication_unavailable');
+        if (this.closed || this.options.draining()) throw Error('draining');
+        const p = ContainedMissionRpcRequests['mission.approve_local_failure_repair'].parse(params);
+        this.guardDecisionDepth(actor, p.mission_id, true);
+        if (host.isBusy(p.mission_id)) throw Error('CONTAINED_MISSION_BUSY');
+        const { approveLocalFailureRepair } = await import('./contained-mission-local-failure-approval.js');
+        if (this.closed || this.options.draining()) throw Error('draining');
+        if (host.isBusy(p.mission_id)) throw Error('CONTAINED_MISSION_BUSY');
+        return view(approveLocalFailureRepair(this.store, actor, p.mission_id, p.candidate, Date.now()));
       }
       case 'mission.approve_ci_repair': {
         const p = ContainedMissionRpcRequests['mission.approve_ci_repair'].parse(params);

@@ -132,6 +132,7 @@ These boundaries also apply to callers on the local socket:
 |---|---|---|
 | Revision chain `abandon`, `takeover`, `reconcile` | `not_answerable`, code `idempotency_unsupported` | `mission chain-decide` (RPC `mission.chain_decide`). Its current revision CAS uses the service's current revision, not a client revision. The interface has no client key. Reconcile and child cancellation await external work. A wrapper cannot atomically commit that work and a receipt. No unsafe check-then-execute route is offered. |
 | `grant_revisions` | `local_only` | `mission grant-revisions`; an external signature is required. |
+| `approve_local_failure_repair` | `local_only` | `mission approve-local-failure-repair --mission ID --candidate SHA` (RPC `mission.approve_local_failure_repair`). A person approves the exact verified candidate of a local-failure repair on the host. It needs read, write and operator scope and lasts 15 minutes. The list marks such an item with `requires_local_signature`; `abandon` on the same item is still forwarded. |
 | Autonomy approval | `local_only` | `autonomy approve` / `autonomy reject`; use the original signed decision flow. |
 | Loop escalation or blocked background card | `local_only` | Listed `cockpit retry` or `cockpit approve`; use the local terminal flow. No remote retry receipt is available. |
 | Session `risk_approval` / `task_authorization` | `local_only` | `attention answer` (RPC `attention.answer`) is the source command name. The current source rejects unsigned answers; this release adds no signed answer route. |

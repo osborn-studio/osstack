@@ -131,7 +131,7 @@ it('accepts V2 terms on both previews and keeps the RPC surface fixed', async ()
   const rpc = serviceFor(f);
   const params = { credential: cred('a'), mission_id: f.mission(), local_failure: pins };
   expect(Object.keys(ContainedMissionRpcRequests).sort()).toEqual(['mission.start', 'mission.status', 'mission.list', 'mission.cancel',
-    'mission.publish_check', 'mission.approve_ci_repair', 'mission.decide', 'mission.revision_grant_preview', 'mission.revision_grant_renew_preview',
+    'mission.publish_check', 'mission.approve_ci_repair', 'mission.approve_local_failure_repair', 'mission.decide', 'mission.revision_grant_preview', 'mission.revision_grant_renew_preview',
     'mission.grant_revisions', 'mission.chain_decide', 'mission.merger_report'].sort());
   await expect(rpc.handle('mission.revision_grant_preview', params)).resolves.toMatchObject({ preview: { version: 2 } });
   await expect(rpc.handle('mission.revision_grant_preview', { ...params, local_failure: { ...pins, extra: true } })).rejects.toThrow('bad_request');

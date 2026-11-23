@@ -38,6 +38,11 @@ it("keeps local failure publication closed outside its library", () => {
   for (const file of modules) expect(readFileSync(join(root, file), "utf8")).not.toContain("ci_repair");
   for (const file of readdirSync(root, { recursive: true, encoding: "utf8" }).filter(f => f.endsWith(".ts") && !f.endsWith(".test.ts"))) {
     let source = readFileSync(join(root, file), "utf8");
+    if (file === "contained-mission-rpc.ts") {
+      const approvalImport = "const { approveLocalFailureRepair } = await import('./contained-mission-local-failure-approval.js');";
+      expect(source.split(approvalImport)).toHaveLength(2);
+      source = source.replace(approvalImport, "");
+    }
     if (file === "contained-mission-runner.ts") {
       expect(source).toContain("const { LOCAL_FAILURE_PUBLISH_STOPS } = await import('./contained-mission-local-failure-publish.js')");
       source = source.replace("const { LOCAL_FAILURE_PUBLISH_STOPS } = await import('./contained-mission-local-failure-publish.js')", "")
@@ -236,4 +241,31 @@ it("gives the dispatch step one caller", () => {
       if (step) expect(source, path).not.toMatch(/\b(?:approveLocalFailureRepair|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runDiagnosis|recoverDiagnoses|runRecheck|recoverRecheckRuns|collectLocalFailureRecheck|readVerificationResults|createRecheckRunPorts|loadVerificationProfileHostConfig|locations|worktreesRoot)\b/);
     }
   }
+});
+
+it("gives the candidate approval one caller", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  const approval: string[] = [], method: string[] = [], readiness: string[] = [];
+  const rpc = "cli/contained-mission-rpc.ts";
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      if (!file.endsWith(".ts") || file.endsWith(".test.ts")) continue;
+      const path = pkg + "/" + file;
+      const source = readFileSync(join(root, file), "utf8");
+      if (/\bapproveLocalFailureRepair\b/.test(source)) approval.push(path);
+      if (source.includes("approve_local_failure_repair")) method.push(path);
+      if (source.includes("publicationReady")) readiness.push(path);
+      if (path === "cli/decisions/answer.ts") expect(source).not.toContain("mission.approve_local_failure_repair");
+      if (path === rpc) {
+        const body = source.match(/case 'mission\.approve_local_failure_repair'([\s\S]*?)case '/);
+        expect(body).not.toBeNull();
+        expect(body![1]).not.toMatch(/host\.(?:decide|tick|step)|publish|reconcile|resumeConfirmedLocalPublication/);
+      }
+    }
+  }
+  expect(approval.sort()).toEqual(["cli/contained-mission-local-failure-approval.ts", rpc]);
+  expect(method.sort()).toEqual([rpc, "cli/decisions/answer.ts", "cli/decisions/list.ts"]);
+  expect(readiness.sort()).toEqual(["cli/contained-mission-local-failure-service.ts", rpc]);
 });

@@ -22,7 +22,7 @@ describe('local-failure route switch', () => {
 it('preserves the contained Mission RPC surface', () => {
   // A later node that adds a method must change this list on purpose.
   expect(Object.keys(ContainedMissionRpcRequests).sort()).toEqual([
-    'mission.approve_ci_repair', 'mission.cancel', 'mission.chain_decide', 'mission.decide', 'mission.grant_revisions',
+    'mission.approve_ci_repair', 'mission.approve_local_failure_repair', 'mission.cancel', 'mission.chain_decide', 'mission.decide', 'mission.grant_revisions',
     'mission.list', 'mission.merger_report', 'mission.publish_check', 'mission.revision_grant_preview',
     'mission.revision_grant_renew_preview', 'mission.start', 'mission.status',
   ]);
@@ -41,6 +41,7 @@ it('logs only at assembly, including when stopped before start or twice', async 
   const dispatchFactory = vi.spyOn(step, 'createLocalFailureDispatch').mockReturnValue(dispatch as unknown as ReturnType<typeof step.createLocalFailureDispatch>);
   try {
     const route = await createLocalFailureRouteService({ log } as unknown as Parameters<typeof createLocalFailureRouteService>[0]);
+    expect(route.publicationReady).toBe(false);
     const request = { request_id: 'synthetic' } as import('@osstack/core/verification-intake').DiagnosisRequest;
     expect(dispatchFactory.mock.calls[0]![0].portsFor(request)).toBeNull();
     expect(diagnosis.portsFor).toHaveBeenCalledWith(request);
@@ -84,6 +85,7 @@ describe('local-failure route lifecycle', () => {
       start: () => record(name), stop: async () => {}, scan: async () => {},
     });
     const route = {
+      publicationReady: false,
       recover: vi.fn(async (_signal: AbortSignal) => record('route.recover')),
       start: () => record('route.start'),
       stop: vi.fn(async () => record('route.stop')),

@@ -72,6 +72,7 @@ Top-level `osstack` commands parsed from `--help` (59 total).
 - `mission cancel`
 - `mission publish-check`
 - `mission approve-ci-repair`
+- `mission approve-local-failure-repair`
 - `mission decide`
 - `mission grant-revisions`
 - `mission merger report`

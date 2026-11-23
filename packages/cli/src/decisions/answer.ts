@@ -48,6 +48,9 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
       current = { state, item }; return item;
     };
     const item = refresh();
+    if (engineering && p.answer === "approve_local_failure_repair") {
+      return result("local_only", "local_only", false, false, "mission approve-local-failure-repair");
+    }
     if (engineering && (p.answer === "grant_revisions" || p.answer === "grant_local_failure_repair")) {
       return result("local_only", "local_only", false, false, "mission grant-revisions");
     }
