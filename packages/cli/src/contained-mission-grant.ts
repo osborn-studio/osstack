@@ -291,7 +291,7 @@ export class RevisionGrantService {
     const { preview, previous_local_failure, carried_forward } = await this.buildRenew(actor, chain_id, terms,
       { grant_id: `rg_${randomUUID()}`, issued_at: now, nonce: randomBytes(16).toString('hex') }, named);
     const reply = this.remember(actor, preview, { chain_id, ...(named ? { local_failure: named } : {}) }, terms, now);
-    return { ...reply, ...(previous_local_failure ? { previous_local_failure, carried_forward } : {}) };
+    return { ...reply, ...(previous_local_failure !== undefined ? { previous_local_failure, carried_forward } : {}) };
   }
 
   /** Verifies the signed grant against the pending preview, recomputes every live fact, then writes the chain (or the re-grant) in one transaction. */
@@ -448,7 +448,7 @@ export class RevisionGrantService {
     });
   }
 
-  private async buildRenew(actor: EngineeringPrincipal, chainId: string, terms: TermsInput, fixed: Fixed, named?: LocalFailureRenewInput): Promise<{ preview: Preview; previous_local_failure?: LocalFailureOptIn; carried_forward?: CarriedForward }> {
+  private async buildRenew(actor: EngineeringPrincipal, chainId: string, terms: TermsInput, fixed: Fixed, named?: LocalFailureRenewInput): Promise<{ preview: Preview; previous_local_failure?: LocalFailureOptIn | null; carried_forward?: CarriedForward }> {
     const { chains } = this.options;
     const chain = chains.get(chainId);
     if (chain.mode !== 'live') return err('chain_not_live');
@@ -459,8 +459,13 @@ export class RevisionGrantService {
     let old: StoredRevisionGrant;
     try { old = parseStoredRevisionGrant(chain.grant_json); } catch { return err('chain_grant_unreadable'); }
     this.assertWrite(actor, old.scope_id);
-    if (old.version === 1 && named !== undefined) return err('grant_upgrade_unsupported');
-    if (old.version === 2) this.requireLocalFailure();
+    let upgrade: LocalFailureGrantInput | undefined;
+    if (old.version === 2 || named !== undefined) this.requireLocalFailure();
+    if (old.version === 1 && named !== undefined) {
+      const parsed = LocalFailureGrantTerms.safeParse(named);
+      if (!parsed.success || !LocalFailureRepositorySchema.safeParse(chain.repository).success) return err('grant_terms_invalid');
+      upgrade = parsed.data;
+    }
     if (chains.intents(chainId).some(i => i.kind === 'push' && (i.state === 'pending' || i.state === 'uncertain'))) return err('intent_unsettled');
     const issuer = await this.issuer();
     const key = this.pickKey(issuer, terms.key_id);
@@ -471,15 +476,20 @@ export class RevisionGrantService {
     }, key);
     if (resolved.rounds < old.rounds || resolved.budget.max_executor_seconds < old.budget.max_executor_seconds
       || resolved.budget.max_container_seconds < old.budget.max_container_seconds || resolved.budget.max_wall_clock_hours < old.budget.max_wall_clock_hours) return err('grant_terms_invalid');
-    let local: { next: LocalFailureOptIn; previous: LocalFailureOptIn; work: CarriedForward } | undefined;
-    if (old.version === 2) {
-      const next = mergeLocalFailureTerms(old.local_failure, named);
+    let local: { next: LocalFailureOptIn; previous: LocalFailureOptIn | null; work: CarriedForward } | undefined;
+    if (old.version === 2 || upgrade) {
       // The store repeats both the opt-in and activity checks inside the write transaction.
       const { has_intake, busy, ...work } = readLocalFailureCarryForward(chains.db, chain);
-      const check = checkLocalFailureRenewal(old.local_failure, next, has_intake);
-      if (!check.ok) return err(check.code);
+      if (old.version === 2) {
+        const next = mergeLocalFailureTerms(old.local_failure, named);
+        const check = checkLocalFailureRenewal(old.local_failure, next, has_intake);
+        if (!check.ok) return err(check.code);
+        local = { next, previous: old.local_failure, work };
+      } else if (upgrade) {
+        if (has_intake) return err('grant_opt_in_changed');
+        local = { next: localFailureOptIn(upgrade), previous: null, work };
+      }
       if (busy) return err('grant_renewal_busy');
-      local = { next, previous: old.local_failure, work };
     }
     await this.assertLivePr(chain.repository, chain.pr_number, { branch: chain.branch, base_ref: chain.base_ref, head: chain.published_head, base_sha: chain.published_base });
     const preview = this.compose(actor, fixed, key, resolved, {

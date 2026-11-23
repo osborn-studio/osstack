@@ -1,4 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { parseVerificationResultV1, verificationDedupKey } from "../bridge/verification-result.js";
+import { DiagnosisStore } from "./engineering-diagnosis-store.js";
+import { createHash, randomUUID } from "node:crypto";
 import { expect, it, onTestFinished } from "vitest";
 import { GRANT_NOW } from "../bridge/revision-grant-fixtures.js";
 import { signRevisionGrant } from "../bridge/revision-grant.js";
@@ -104,15 +106,98 @@ it("preserves shared refusal codes and leaves no writes", () => {
   raw({ ...sign(), signature: "" });
   refused(f, () => store.replaceGrant(chain.chain_id, chain.revision + 1, sign(), now), "chain_grant_unreadable");
 });
-it("refuses a V1 upgrade in the store while SQL permits both V1 directions", () => {
-  const f = fixture();
+function upgradeFixture(f: Fixture) {
   const { v1, preview, grant, store } = secondChain(f);
-  const { raw, sign } = renewal(f);
-  raw(grant, v1.chain_id);
-  const next = sign({ ...preview, version: 2, grant_id: "rg_" + randomUUID(), renews: { chain_id: v1.chain_id, revision: v1.revision + 1 } });
-  refused(f, () => store.replaceGrant(v1.chain_id, v1.revision + 1, next, now), "grant_upgrade_unsupported");
-  raw(next, v1.chain_id);
-  raw(next, v1.chain_id);
+  const { sign, raw } = renewal(f);
+  const shared = { ...preview, grant_id: "rg_" + randomUUID(), issued_at: now, renews: { chain_id: v1.chain_id, revision: v1.revision } };
+  const upgrade = (over: Partial<LocalFailureGrantPreview> = {}) => sign({ ...shared, version: 2, ...over });
+  return { v1, shared, grant, store, upgrade, raw };
+}
+it("upgrades a V1 grant and enforces V2 rules on subsequent renewals", () => {
+  const f = fixture();
+  const { v1, store, upgrade, shared, raw } = upgradeFixture(f);
+  const next = upgrade();
+  const { chain } = store.replaceGrant(v1.chain_id, v1.revision, next, now);
+  expect(chain).toEqual({ ...v1, grant_json: JSON.stringify(next), revision: v1.revision + 1, updated_at: now, review_deadline: now + next.review_deadline_ms });
+  for (const key of ["rounds_used", "budget_json", "spent_json", "published_head", "published_base", "state"] as const) expect(chain[key]).toBe(v1[key]);
+  const event = store.events(chain.chain_id).at(-1)!;
+  expect(event.kind).toBe("grant_replaced");
+  expect(JSON.parse(event.payload_json)).toMatchObject({ version: 2, local_failure: {
+    profile_id: next.local_failure.profile_id, profile_digest: next.local_failure.profile_digest, recheck: false, changed: ["upgrade"],
+  } });
+  const terms = { grant_id: "rg_" + randomUUID(), renews: { chain_id: chain.chain_id, revision: chain.revision } };
+  const downgrade = signRevisionGrant({ ...shared, ...terms }, f.keys.privateKey);
+  refused(f, () => store.replaceGrant(chain.chain_id, chain.revision, downgrade, now), "grant_not_monotonic");
+  refused(f, () => raw(downgrade, chain.chain_id), "grant_not_monotonic");
+  expect(store.replaceGrant(chain.chain_id, chain.revision, upgrade(terms), now).chain.revision).toBe(chain.revision + 1);
+});
+it("enforces the shared binding, limits and validity window on an upgrade", () => {
+  const f = fixture({ rounds: 2 });
+  const { v1, shared, grant, store, upgrade } = upgradeFixture(f);
+  const replace = (over: Partial<LocalFailureGrantPreview>, at = now) => store.replaceGrant(v1.chain_id, v1.revision, upgrade(over), at);
+  for (const over of [{ renews: { ...shared.renews, chain_id: "rc_" + randomUUID() } }, { renews: { ...shared.renews, revision: 4 } },
+    { grant_id: grant.grant_id }, { scope_id: "9".repeat(64) }, { protected_set_digest: "9".repeat(64) }])
+    refused(f, () => replace(over), "grant_binding_mismatch");
+  refused(f, () => replace({ rounds: 1 }), "grant_not_monotonic");
+  for (const key of Object.keys(shared.budget) as (keyof typeof shared.budget)[])
+    refused(f, () => replace({ budget: { ...shared.budget, [key]: shared.budget[key] - 1 } }), "grant_not_monotonic");
+  refused(f, () => replace({}, shared.expires_at), "grant_expired");
+  refused(f, () => replace({ issued_at: now + 1 }), "grant_expired");
+});
+it("follows the V1 renewal rules for a review reservation and an unsettled push", () => {
+  const f = fixture();
+  const { v1, shared, store, upgrade } = upgradeFixture(f);
+  const checkBoth = (revision: number, code: string) => {
+    const renews = { chain_id: v1.chain_id, revision };
+    for (const next of [signRevisionGrant({ ...shared, renews }, f.keys.privateKey), upgrade({ renews })])
+      refused(f, () => store.replaceGrant(v1.chain_id, revision, next, now), code);
+  };
+  const reserved = store.reserve(v1.chain_id, v1.revision, { head: v1.published_head, review_ids: [7], feedback_digest: "d".repeat(64) }, now);
+  checkBoth(reserved.chain.revision, "state_denied");
+  const child = f.input.root_mission_id;
+  const dispatched = store.dispatch(v1.chain_id, reserved.chain.revision, v1.published_head, child, now).chain;
+  const push = store.recordIntent(v1.chain_id, dispatched.revision, { kind: "push", branch: v1.branch,
+    expected_old_head: v1.published_head, expected_base_sha: v1.published_base, new_head: "9".repeat(40), child_mission_id: child }, now);
+  checkBoth(store.stopLive(v1.chain_id, push.chain.revision, "grant_expired", now).revision, "intent_unsettled");
+});
+it.each(["root", "chain"])("refuses an upgrade with an intake on the %s", mode => {
+  const f = fixture();
+  const { v1, store, upgrade } = upgradeFixture(f);
+  const request = f.store.register(f.input);
+  const admitted = f.store.admit(request.request_id, request.revision, f.facts);
+  if (admitted.status !== "admitted") throw Error(admitted.reason);
+  // A V1 chain cannot create an intake. Rebind this fixture row to simulate inconsistent historical data.
+  f.db.exec("DROP TRIGGER engineering_local_failure_fixed");
+  f.db.prepare("UPDATE engineering_local_failure_intakes SET root_mission_id=?, chain_id=?,state='running',started_at=updated_at,revision=revision+1 WHERE intake_id=?")
+    .run(v1.root_mission_id, mode === "chain" ? v1.chain_id : f.input.chain_id, admitted.intake.intake_id);
+  refused(f, () => store.replaceGrant(v1.chain_id, v1.revision, upgrade(), now), mode === "chain" ? "grant_opt_in_changed" : "grant_renewal_busy");
+});
+it("after the upgrade a failure on the bound head can be diagnosed once", () => {
+  const f = fixture();
+  const { v1, store, upgrade } = upgradeFixture(f);
+  const wire = { ...f.v, pr: v1.pr_number, result_id: randomUUID() };
+  wire.dedup_key = verificationDedupKey(wire);
+  const contract_text = JSON.stringify(wire);
+  const digest = (s: string) => createHash("sha256").update(s).digest("hex");
+  const parsed = parseVerificationResultV1(contract_text);
+  if (!parsed.ok) throw Error(parsed.code);
+  f.source.record([{ source_kind: "check_run", object_id: 2, repository_id: wire.repository_id, repository: wire.repository,
+    pr: wire.pr, observed_head_sha: wire.head_sha, app_id: 201, check_name: "fixture", response_digest: digest(contract_text),
+    contract_digest: digest(contract_text), verdict: { ok: true }, result: parsed.result }], 2, 2);
+  const diagnoses = new DiagnosisStore(f.attention, f.owner, () => now);
+  const request = diagnoses.register({ ...f.input, result_id: wire.result_id, contract_text, root_mission_id: v1.root_mission_id, chain_id: v1.chain_id });
+  expect(request).toMatchObject({ state: "awaiting_decision", reason: "verify_grant_missing", intake_id: null });
+  const grant = upgrade();
+  const binding = { ...f.facts.binding, pr_number: wire.pr };
+  const facts = { ...f.facts, now, grant, grant_digest: digest(JSON.stringify(grant)), chain_id: v1.chain_id, binding };
+  expect(diagnoses.admit(request.request_id, request.revision, facts)).toMatchObject({ status: "refused", reason: "verify_grant_invalid" });
+  store.replaceGrant(v1.chain_id, v1.revision, grant, now);
+  const admitted = diagnoses.admit(request.request_id, diagnoses.get(request.request_id).revision, facts);
+  if (admitted.status !== "admitted") throw Error(admitted.reason);
+  const intake = admitted.intake;
+  expect(intake).toMatchObject({ chain_id: v1.chain_id, head_sha: v1.published_head, profile_digest: grant.local_failure.profile_digest });
+  diagnoses.intakes.settleNotStarted(intake.intake_id, intake.revision);
+  expect(() => diagnoses.intakes.reserve({ ...intake, intake_id: "lfi_" + randomUUID(), invocation_id: randomUUID() })).toThrow("intake_reused");
 });
 it("keeps state and unsettled push refusals", () => {
   const f = fixture();

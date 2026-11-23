@@ -364,7 +364,9 @@ export class RevisionChainStore {
   /** Replace a live chain's grant (appendix §5.1 "再授"). Only for `awaiting_review`/`ready_for_human`, or `awaiting_decision`
    * stopped by a reason in `REFRESHABLE_STOP_REASONS`, with no unsettled push intent. The new grant
    * keeps the binding and scope, never lowers the allowance or a budget limit, and must carry `renews = {chain, ifRevision}`.
-   * Authenticity (signature, live PR facts, principal) is the caller's; the store enforces monotonicity and the state contract. */
+   * Authenticity (signature, live PR facts, principal) is the caller's; the store enforces monotonicity and the state contract.
+   * A version 1 grant may be upgraded to version 2 under the same rules plus the local-failure activity rule,
+   * and a version 2 grant can never be replaced by a version 1 grant. */
   replaceGrant(chainId: string, ifRevision: number, grant: StoredRevisionGrant, now: number): ReplaceGrantResult {
     this.clock(now);
     return this.write(() => {
@@ -373,7 +375,7 @@ export class RevisionChainStore {
       if (chain.state === "closed") fail("chain_terminal");
       const next = (() => { try { return parseStoredRevisionGrant(JSON.stringify(grant)); } catch { return fail("grant_invalid"); } })();
       const old = (() => { try { return parseStoredRevisionGrant(chain.grant_json); } catch { return fail("chain_grant_unreadable"); } })();
-      if (old.version !== next.version) fail(old.version === 2 ? "grant_not_monotonic" : "grant_upgrade_unsupported");
+      if (old.version === 2 && next.version === 1) fail("grant_not_monotonic");
       const reason = chain.stop_reason ?? "";
       const stopped = chain.state === "awaiting_decision" && REFRESHABLE_STOP_REASONS.has(reason);
       if (!stopped && chain.state !== "awaiting_review" && chain.state !== "ready_for_human") fail("state_denied");
@@ -416,13 +418,20 @@ export class RevisionChainStore {
         }
       }
       let localFailure: { profile_id: string; profile_digest: string; recheck: boolean; changed: string[] } | undefined;
-      if (old.version === 2 && next.version === 2) {
+      if (next.version === 2) {
         const hasIntake = chainHasLocalFailureIntake(this.db, chainId);
         const opt = next.local_failure;
-        const terms = checkLocalFailureRenewal(old.local_failure, opt, hasIntake);
-        if (!terms.ok) return fail(terms.code);
+        let changed: string[];
+        if (old.version === 2) {
+          const terms = checkLocalFailureRenewal(old.local_failure, opt, hasIntake);
+          if (!terms.ok) return fail(terms.code);
+          changed = terms.changed;
+        } else {
+          if (hasIntake) fail("grant_opt_in_changed");
+          changed = ["upgrade"];
+        }
         if (localFailureRenewalBusy(this.db, chain.root_mission_id)) fail("grant_renewal_busy");
-        localFailure = { profile_id: opt.profile_id, profile_digest: opt.profile_digest, recheck: Boolean(opt.recheck), changed: terms.changed };
+        localFailure = { profile_id: opt.profile_id, profile_digest: opt.profile_digest, recheck: Boolean(opt.recheck), changed };
       }
       const headConsumed = Boolean(this.db.prepare("SELECT 1 FROM engineering_revision_reservations WHERE repository=? AND pr_number=? AND head_sha=?").get(chain.repository, chain.pr_number, chain.published_head));
       const updated = this.update(chain, { state: to, ...(to === "awaiting_decision" && stopped ? { stop_reason: "child_halted" } : {}), grant_json: JSON.stringify(grant), review_deadline: next.issued_at + next.review_deadline_ms, ...(spentJson !== undefined ? { spent_json: spentJson } : {}) }, "grant_replaced",
