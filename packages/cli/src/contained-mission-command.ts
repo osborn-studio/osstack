@@ -13,6 +13,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
   cancel --mission ID
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
   approve-ci-repair --mission ID --candidate SHA
+  approve-local-failure-repair --mission ID --candidate SHA   (host only: approves the exact verified candidate of a local-failure repair for 15 minutes)
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check|resume_budget|resume_grant
          [--decision-id ID] [--expected-revision N]
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
@@ -25,13 +26,14 @@ The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No 
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "chain-decide" | "merger-report";
+type Command = "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "approve-local-failure-repair" | "chain-decide" | "merger-report";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   list: { single: ["scope"], repeated: [] },
   status: { single: ["mission"], repeated: [] },
   cancel: { single: ["mission"], repeated: [] },
   "publish-check": { single: ["mission"], repeated: [] },
+  "approve-local-failure-repair": { single: ["mission", "candidate"], repeated: [] },
   "approve-ci-repair": { single: ["mission", "candidate"], repeated: [] },
   decide: { single: ["mission", "decision", "decision-id", "expected-revision"], repeated: [] },
   "chain-decide": { single: ["chain", "decision"], repeated: [] },
@@ -117,7 +119,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       params = { mission_id: required("mission"), decision: required("decision"),
         ...(single.has("decision-id") ? { decision_id: required("decision-id") } : {}),
         ...(single.has("expected-revision") ? { expected_revision: Number(required("expected-revision")) } : {}) };
-    } else if (command === "approve-ci-repair") {
+    } else if (command === "approve-ci-repair" || command === "approve-local-failure-repair") {
       params = { mission_id: required("mission"), candidate: required("candidate") };
     } else if (command === "chain-decide") {
       params = { chain_id: required("chain"), decision: required("decision") };

@@ -29,12 +29,19 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
       if (row.state === "needs_reconciliation") allowed_answers.push("discard_changes", "adopt_worktree");
       if (row.state === "awaiting_decision") {
         const reason = row.reason ?? "";
-        if (reason === "repair_cycles_exhausted") allowed_answers.push("extra_repair");
+        const spec = JSON.parse(row.details_json) as { ci_repair?: unknown; local_failure_repair?: unknown };
+        const local = spec.local_failure_repair;
+        if (local && typeof local === "object" && !Array.isArray(local) && reason === "publication_pending") {
+          allowed_answers.push("approve_local_failure_repair");
+          requires_local_signature = true;
+          answer_command = { ...command("mission.decide", "mission_id", "decision"),
+            alternatives: [command("mission approve-local-failure-repair", "--mission", "--candidate")] };
+        }
+        if (local === undefined && reason === "repair_cycles_exhausted") allowed_answers.push("extra_repair");
         if (reason === "budget_exhausted") allowed_answers.push("resume_budget");
         if (reason.startsWith("grant_stopped:")) allowed_answers.push("resume_grant");
         if (reason === "workspace_recovered") allowed_answers.push("resume_workspace");
-        const spec = JSON.parse(row.details_json) as { ci_repair?: unknown };
-        if (!spec.ci_repair && (reason === "publication_pending" || reason.startsWith("publication_failed") || reason.startsWith("revalidation_failed"))) allowed_answers.push("approve_publication");
+        if (local === undefined && !spec.ci_repair && (reason === "publication_pending" || reason.startsWith("publication_failed") || reason.startsWith("revalidation_failed"))) allowed_answers.push("approve_publication");
       }
       break;
     }
