@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import {
@@ -12,9 +13,12 @@ import {
   secretViolations,
   machinePathFindings,
   machinePathViolations,
+  memoryBlockViolations,
   packageContractViolations,
+  repoRoot,
   scratchViolations,
   startupGraphViolations,
+  startupLimits,
   vitestConfigViolations,
 } from "./check-deterministic-rules.mjs";
 
@@ -87,19 +91,96 @@ test("docs check ignores code fences, anchors, and URLs; rejects broken relative
 });
 
 test("startup graph follows static imports but not dynamic imports, and enforces both limits", () => {
-  fixture({
+  const files = {
     "packages/cli/src/cli-entry.ts": 'import "./version.js"; await import("./bin.js");',
     "packages/cli/src/version.ts": 'import "./version-data.js"; export const VERSION = "1";',
     "packages/cli/src/version-data.ts": "export const data = 1;",
     "packages/cli/src/bin.ts": 'import "./helper.js"; await import("./command.js");',
     "packages/cli/src/helper.ts": "export const helper = 1;",
     "packages/cli/src/command.ts": "export const command = 1;",
-  }, (root) => {
-    assert.deepEqual(startupGraphViolations(root, { entry: 3, bin: 2 }).errors, []);
-    assert.match(startupGraphViolations(root, { entry: 2, bin: 1 }).errors.join("\n"), /use await import\(\)/);
+    "packages/demo/src/index.ts": 'import "./helper.js"; import type { T } from "./types.js"; export const load = () => import("./lazy.js");',
+    "packages/demo/src/helper.ts": 'export const helper = "é";',
+    "packages/demo/src/types.ts": "export type T = string;",
+    "packages/demo/src/lazy.ts": "export const lazy = 1;",
+  };
+  const bytes = (...paths) => paths.reduce((total, path) => total + Buffer.byteLength(files[path]), 0);
+  const entry = { files: 3, bytes: bytes("packages/cli/src/cli-entry.ts", "packages/cli/src/version.ts", "packages/cli/src/version-data.ts") };
+  const bin = { files: 2, bytes: bytes("packages/cli/src/bin.ts", "packages/cli/src/helper.ts") };
+  const index = "packages/demo/src/index.ts";
+  const demo = { files: 2, bytes: bytes(index, "packages/demo/src/helper.ts") };
+  const limits = { entry, bin, indexes: { demo } };
+  fixture(files, root => {
+    assert.deepEqual(startupGraphViolations(root, limits), { errors: [], counts: limits });
+    const remedy = "use await import() at the use site";
+    assert.deepEqual(startupGraphViolations(root, {
+      entry: { files: 2, bytes: entry.bytes - 1 },
+      bin: { files: 1, bytes: bin.bytes - 1 },
+      indexes: { demo: { files: 1, bytes: demo.bytes - 1 } },
+    }).errors, [
+      `cli-entry.ts static closure has 3 files (limit 2); ${remedy}`,
+      `cli-entry.ts static closure has ${entry.bytes} bytes (limit ${entry.bytes - 1}); ${remedy}`,
+      `bin.ts static closure has 2 files (limit 1); ${remedy}`,
+      `bin.ts static closure has ${bin.bytes} bytes (limit ${bin.bytes - 1}); ${remedy}`,
+      `${index} static closure has 2 files (limit 1); ${remedy}`,
+      `${index} static closure has ${demo.bytes} bytes (limit ${demo.bytes - 1}); ${remedy}`,
+    ]);
+    assert.deepEqual(startupGraphViolations(root, { entry, bin, indexes: { absent: demo } }).errors, [
+      `${index} has no startup limit; add its file and byte limits to startupLimits in scripts/check-deterministic-rules.mjs`,
+      "startup limit for packages/absent/src/index.ts is stale; remove it",
+    ]);
+    assert.deepEqual(startupGraphViolations(root, { entry, bin }), { errors: [], counts: { entry, bin, indexes: {} } });
     writeFileSync(join(root, "packages/cli/src/cli-entry.ts"), 'import "./command.js";');
-    assert.match(startupGraphViolations(root, { entry: 2, bin: 2 }).errors.join("\n"), /statically loads command module/);
+    assert.match(startupGraphViolations(root, { entry, bin }).errors.join("\n"), /statically loads command module/);
   });
+});
+
+test("repository startup limits cover every package index and pass", () => {
+  const packages = readdirSync(join(repoRoot, "packages"), { withFileTypes: true })
+    .filter(dir => dir.isDirectory() && existsSync(join(repoRoot, "packages", dir.name, "src/index.ts")))
+    .map(dir => dir.name);
+  assert.deepEqual(Object.keys(startupLimits.indexes).sort(), packages.sort());
+  assert.deepEqual(startupGraphViolations(repoRoot, startupLimits).errors, []);
+});
+
+test("memory blocks report the first tag in tracked instruction files", () => {
+  const block = "# Instructions\n\n  <claude-mem-context>\n</claude-mem-context>\n";
+  const files = {
+    "AGENTS.md": block,
+    "packages/demo/CLAUDE.md": "\t</claude-mem-context>\n",
+    "packages/demo/AGENTS.md": "Stage explicit paths.",
+    "CLAUDE.md": "An inline `<claude-mem-context>` is an example.",
+    "docs/notes.md": block,
+    "packages/demo/fixtures/AGENTS-case.md": block,
+  };
+  fixture(files, root => {
+    const errors = memoryBlockViolations(root, Object.keys(files));
+    assert.equal(errors.length, 2);
+    assert.match(errors[0], /^AGENTS\.md:3: tracked file contains a claude-mem block; unstage it/);
+    assert.match(errors[1], /^packages\/demo\/CLAUDE\.md:1: tracked file contains a claude-mem block; unstage it/);
+  });
+});
+
+test("memory blocks follow the git index through staging and unstaging", () => {
+  fixture({ "AGENTS.md": "# Instructions\n" }, root => {
+    const git = (...args) => execFileSync("git", args, { cwd: root });
+    git("init", "--quiet");
+    git("config", "--local", "user.email", "test@example.invalid");
+    git("config", "--local", "user.name", "Test");
+    git("add", "AGENTS.md");
+    git("-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", "commit", "-qm", "Clean instructions");
+    appendFileSync(join(root, "AGENTS.md"), "<claude-mem-context>\n</claude-mem-context>\n");
+    assert.deepEqual(memoryBlockViolations(root), []);
+    git("add", "AGENTS.md");
+    assert.deepEqual(memoryBlockViolations(root), [
+      'AGENTS.md:2: tracked file contains a claude-mem block; unstage it with "git restore --staged AGENTS.md" and stage explicit paths, never "git add -A"; if the block is already committed, remove it in a new commit',
+    ]);
+    git("restore", "--staged", "AGENTS.md");
+    assert.deepEqual(memoryBlockViolations(root), []);
+  });
+});
+
+test("repository tracked instruction files pass the memory block check", () => {
+  assert.deepEqual(memoryBlockViolations(repoRoot), []);
 });
 
 test("git writes reject unmanaged array, wrapper, and shell calls but ignore reads and tests", () => {

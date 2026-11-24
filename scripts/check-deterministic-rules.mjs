@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, resolve, dirname, extname } from "node:path";
+import { join, relative, resolve, dirname, extname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
@@ -177,15 +177,73 @@ export function dynamicCommandModules(root) {
   });
   return commands;
 }
+// 2026-11-17: bin.ts reaches 6 files. Lazy-load new code at its use site instead of raising
+// the limit. Lower the limit when the count drops.
+// 2026-11-24: Keep CLI file limits. For new ceilings, add 10% and round up to a
+// whole file or 4096 source bytes. Lower ceilings when headroom exceeds about 20%.
+export const startupLimits = {
+  entry: { files: 3, bytes: 4096 }, // 2 files, 3543 bytes
+  bin: { files: 21, bytes: 602112 }, // 6 files, 546777 bytes
+  indexes: {
+    agents: { files: 264, bytes: 2469888 }, // 240 files, 2245200 bytes
+    autonomy: { files: 174, bytes: 1761280 }, // 158 files, 1598346 bytes
+    compliance: { files: 2, bytes: 45056 }, // 1 files, 37998 bytes
+    config: { files: 270, bytes: 2490368 }, // 245 files, 2263787 bytes
+    conformance: { files: 2, bytes: 4096 }, // 1 files, 612 bytes
+    contracts: { files: 5, bytes: 20480 }, // 4 files, 15306 bytes
+    core: { files: 158, bytes: 1527808 }, // 143 files, 1386454 bytes
+    github: { files: 14, bytes: 114688 }, // 12 files, 100882 bytes
+    governance: { files: 69, bytes: 589824 }, // 62 files, 534619 bytes
+    graph: { files: 2, bytes: 4096 }, // 1 files, 541 bytes
+    "hermes-adapter": { files: 5, bytes: 20480 }, // 4 files, 16378 bytes
+    knowledge: { files: 5, bytes: 73728 }, // 4 files, 66115 bytes
+    "knowledge-cloud": { files: 7, bytes: 110592 }, // 6 files, 96912 bytes
+    loop: { files: 328, bytes: 3252224 }, // 298 files, 2952855 bytes
+    "neat-eval": { files: 6, bytes: 81920 }, // 5 files, 72208 bytes
+    plugins: { files: 2, bytes: 4096 }, // 1 files, 440 bytes
+    protocol: { files: 26, bytes: 135168 }, // 23 files, 120097 bytes
+    runtime: { files: 2, bytes: 4096 }, // 1 files, 244 bytes
+    "skill-registry": { files: 4, bytes: 12288 }, // 3 files, 8412 bytes
+    skills: { files: 3, bytes: 8192 }, // 2 files, 3901 bytes
+    supervisor: { files: 349, bytes: 3334144 }, // 317 files, 3029007 bytes
+    "verify-publisher": { files: 6, bytes: 28672 }, // 5 files, 23080 bytes
+  },
+};
 export function startupGraphViolations(root, limits) {
   const entry = staticClosure(root, "packages/cli/src/cli-entry.ts");
   const bin = staticClosure(root, "packages/cli/src/bin.ts");
   const errors = [];
   const forbidden = new Set(["packages/cli/src/bin.ts", ...dynamicCommandModules(root)]);
   for (const path of entry) if (forbidden.has(path)) errors.push(`cli-entry.ts statically loads command module ${path}; use await import() at the use site`);
-  if (entry.size > limits.entry) errors.push(`cli-entry.ts static closure has ${entry.size} files (limit ${limits.entry}); use await import() at the use site`);
-  if (bin.size > limits.bin) errors.push(`bin.ts static closure has ${bin.size} files (limit ${limits.bin}); use await import() at the use site`);
-  return { errors, counts: { entry: entry.size, bin: bin.size } };
+  function measure(name, closure, limit) {
+    // Sum source bytes on disk, not bundle bytes.
+    let bytes = 0;
+    for (const file of closure) bytes += statSync(join(root, file)).size;
+    const count = { files: closure.size, bytes };
+    for (const unit of ["files", "bytes"]) {
+      if (limit && count[unit] > limit[unit]) errors.push(`${name} static closure has ${count[unit]} ${unit} (limit ${limit[unit]}); use await import() at the use site`);
+    }
+    return count;
+  }
+  const counts = {
+    entry: measure("cli-entry.ts", entry, limits.entry),
+    bin: measure("bin.ts", bin, limits.bin),
+    indexes: {},
+  };
+  if (limits.indexes !== undefined) {
+    const indexes = [];
+    for (const dir of readdirSync(join(root, "packages"), { withFileTypes: true })) {
+      const path = `packages/${dir.name}/src/index.ts`;
+      if (!dir.isDirectory() || !statSync(join(root, path), { throwIfNoEntry: false })?.isFile()) continue;
+      if (!Object.hasOwn(limits.indexes, dir.name)) errors.push(`${path} has no startup limit; add its file and byte limits to startupLimits in scripts/check-deterministic-rules.mjs`);
+      indexes.push([dir.name, measure(path, staticClosure(root, path), limits.indexes[dir.name])]);
+    }
+    counts.indexes = Object.fromEntries(indexes);
+    for (const name of Object.keys(limits.indexes)) {
+      if (!Object.hasOwn(counts.indexes, name)) errors.push(`startup limit for packages/${name}/src/index.ts is stale; remove it`);
+    }
+  }
+  return { errors, counts };
 }
 
 // One entry per file. Exact counts reject growth and require stale entries to shrink.
@@ -462,8 +520,30 @@ export function machinePathScope(file) {
   return /^(?:packages\/[^/]+\/src\/|scripts\/|\.github\/|hermes-skill\/|loop-engineering\/)/.test(file)
     || (!file.includes("/") && (sourceExtensions.has(extname(file)) || /\.(?:json|ya?ml|toml|ini|conf|config)$/.test(file) || file.startsWith(".") || ["Makefile", "Dockerfile"].includes(file)));
 }
+function trackedFiles(root) {
+  return execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }).split("\0").filter(Boolean);
+}
+function readIndexFile(root, file) {
+  try {
+    return execFileSync("git", ["show", ":" + file], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    const path = join(root, file);
+    if (statSync(path, { throwIfNoEntry: false })?.isFile()) return readFileSync(path, "utf8");
+  }
+}
+export function memoryBlockViolations(root, files = trackedFiles(root), read = readIndexFile) {
+  const errors = [];
+  for (const file of files) {
+    if (!["AGENTS.md", "CLAUDE.md"].includes(basename(file))) continue;
+    const content = read(root, file);
+    if (content === undefined) continue;
+    const line = content.split("\n").findIndex(line => /^<\/?claude-mem-context/.test(line.trim()));
+    if (line !== -1) errors.push(`${file}:${line + 1}: tracked file contains a claude-mem block; unstage it with "git restore --staged ${file}" and stage explicit paths, never "git add -A"; if the block is already committed, remove it in a new commit`);
+  }
+  return errors;
+}
 function textFindings(root, files, patterns, inScope = () => true) {
-  const tracked = files ?? execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }).split("\0").filter(Boolean);
+  const tracked = files ?? trackedFiles(root);
   const findings = [];
   for (const file of tracked.filter(inScope)) {
     const path = join(root, file);
@@ -562,9 +642,15 @@ export function instructionBoundaryViolations(root) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const startup = startupGraphViolations(repoRoot, startupLimits);
+  if (process.argv.slice(2).includes("--startup-counts")) {
+    console.log(JSON.stringify(startup.counts, null, 2));
+    process.exit(0);
+  }
   const scratchAllowlist = JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-scratch-allowlist.json"), "utf8"));
   const docsAllowlist = JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-docs-allowlist.json"), "utf8"));
   const results = [
+    ...memoryBlockViolations(repoRoot),
     ...instructionBoundaryViolations(repoRoot),
     ...scratchViolations(repoRoot, scratchAllowlist),
     ...vitestConfigViolations(repoRoot),
@@ -575,9 +661,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     ...coreProductViolations(repoRoot, JSON.parse(readFileSync(join(repoRoot, "scripts/deterministic-core-product-allowlist.json"), "utf8"))),
     ...packageContractViolations(repoRoot),
     ...docsLinkViolations(repoRoot, docsAllowlist),
-    // 2026-11-17: bin.ts reaches 6 files. Lazy-load new code at its use site instead of raising
-    // the limit. Lower the limit when the count drops.
-    ...startupGraphViolations(repoRoot, { entry: 3, bin: 21 }).errors,
+    ...startup.errors,
   ];
   if (results.length) { console.error(results.join("\n")); process.exitCode = 1; }
   else console.log("deterministic repository rules: ok");
