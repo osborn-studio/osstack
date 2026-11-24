@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { AttentionStore, ContainedMissionStore, DecisionQueries, HostProcessStore, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
-import type { CodexProxyRun, CodexQualification } from "@osstack/agents";
-import { afterEach, describe, expect, it } from "vitest";
+import type { CodexProxyRepairRun, CodexProxyRun, CodexQualification } from "@osstack/agents";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContainedMissionRunner, type ContainedMissionPorts, type ContainedMissionSpec } from "./contained-mission-runner.js";
 import { parseMissionMarkers } from "./contained-mission-marker.js";
 import { approveCiRepairOnce, approveSandboxCiRepair, assertSandboxCiApproval } from "./contained-mission-github-ci-approval.js";
@@ -1067,4 +1067,173 @@ it.each(['deliver','reject','abandon'])('settles the registered stop delivery ac
       chain:{mission_id:id, parent_mission_id:lineage.parent_mission_id, origin_mission_id:lineage.origin_mission_id, depth:8, max_depth:8}});
   }
   expect(rows()).toEqual([{item_id:pending.item_id,state:mode==='abandon'?'superseded':mode==='reject'?'dead_letter':'delivered'}]);
+});
+
+describe("executor report repair", () => {
+  const incomplete = run({ patch: { ok: false, reason: "PATCH_INCOMPLETE" } });
+  const executeWith = (result: CodexProxyRun): ContainedMissionPorts["execute"] => async input => {
+    input.onLaunched(result.launch);
+    return result;
+  };
+  const accepted = (proposal = run()): CodexProxyRepairRun => ({ ...proposal, accepted: true });
+  const refused: CodexProxyRepairRun = { ...run(), accepted: false, patch: { ok: false, reason: "REPAIR_USED_TOOL" } };
+  const payloads = (f: ReturnType<typeof setup>, kind: string) =>
+    f.store.events(f.mission.mission_id).filter(e => e.kind === kind).map(e => JSON.parse(e.payload_json));
+  function scripted(turns: CodexProxyRepairRun[], spec: Partial<ContainedMissionSpec> = {}) {
+    const discardSession = vi.fn();
+    let attempt = 0;
+    const f = setup({ execute: executeWith(incomplete), discardSession, repairReport: async input => {
+      expect(f.store.get(f.mission.mission_id).stop_obligation).toBe(1);
+      const turn = turns[attempt++]!;
+      const pgid = 4242 + attempt;
+      input.onLaunched({ ...turn.launch, pid: pgid, pgid });
+      return { ...turn, ...(turn.stop && { stop: { ...turn.stop, pgid } }) };
+    } }, spec);
+    return { ...f, discardSession };
+  }
+
+  it.each([1, 2])("applies attempt %i through the normal candidate and verification path", async n => {
+    const f = scripted(n === 1 ? [accepted()] : [accepted(incomplete), accepted()]);
+    const direct = setup();
+    for (const fixture of [f, direct]) {
+      expect(await drive(fixture, 2)).toMatchObject({ state: "candidate_ready", repair_cycles: 0, verify_attempts: 0 });
+      expect(await drive(fixture, 1)).toMatchObject({ state: "verified", repair_cycles: 0, verify_attempts: 1 });
+    }
+    const later = (fixture: typeof direct) => fixture.kinds().slice(fixture.kinds().indexOf("t0_intent"));
+    expect(later(f)).toEqual(later(direct));
+    expect(f.calls.commit).toHaveLength(1);
+    expect(payloads(f, "executor_report_repair_attempt")).toEqual(Array.from({ length: n }, (_, i) => ({ attempt: i + 1 })));
+    expect(payloads(f, "executor_report_repair_result").map(r => r.outcome)).toEqual(n === 1 ? ["repaired"] : ["patch_invalid:PATCH_INCOMPLETE", "repaired"]);
+    expect(payloads(f, "executor_stopped")[0].turns.map((t: { pgid: number }) => t.pgid)).toEqual(n === 1 ? [4242, 4243] : [4242, 4243, 4244]);
+    expect(f.discardSession).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])("keeps the existing halt for exhausted attempts (local child %s)", async local => {
+    const f = scripted([refused, accepted(incomplete)], local ? localRepairSpec : {});
+    expect(await drive(f, 2)).toMatchObject({ state: "awaiting_decision", stop_obligation: 0, repair_cycles: 0 });
+    expect(payloads(f, "executor_report_repair_result").map(r => r.outcome)).toEqual(["refused:REPAIR_USED_TOOL", "patch_invalid:PATCH_INCOMPLETE"]);
+    expect(payloads(f, "halted")[0]).toMatchObject({ ...(local ? { reason: "verify_repair_failed", detail: "patch_invalid:PATCH_INCOMPLETE" } : { reason: "patch_invalid:PATCH_INCOMPLETE" }),
+      report_repair: { attempts: 2, last: "patch_invalid:PATCH_INCOMPLETE" } });
+    expect(f.discardSession).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    run({ patch: { ok: false, reason: "PATCH_MISSING" } }), run({ patch: { ok: false, reason: "PATCH_TOO_LARGE" } }),
+    run({ patch: { ok: false, reason: "PATCH_NOT_UTF8" } }), { ...incomplete, exit_code: 1 }, { ...incomplete, timed_out: true },
+    { ...incomplete, stdout: FAKE_TOKEN }, { ...incomplete, cancelled: true },
+  ])("preserves the original events for ineligible output %#", async proposal => {
+    const repairReport = vi.fn();
+    for (const ports of [{ repairReport }, {}]) {
+      const f = setup({ execute: executeWith(proposal), ...ports });
+      expect(await drive(f, 2)).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
+      expect(f.kinds().slice(f.kinds().indexOf("executor_launch_intent"))).toEqual(["executor_launch_intent", "executor_started", "executor_stopped", "executor_output", "halted"]);
+      expect(payloads(f, "executor_stopped")).toEqual([proposal.stop]);
+      expect(payloads(f, "halted")).toEqual([{ reason: 'patch_invalid:' + (proposal.patch.ok ? '' : proposal.patch.reason), from: 'executing', to: 'awaiting_decision' }]);
+    }
+    expect(repairReport).not.toHaveBeenCalled();
+  });
+
+  it("keeps the incomplete proposal halt when no repair port exists", async () => {
+    const f = setup({ execute: executeWith(incomplete) });
+    await drive(f, 2);
+    expect(f.kinds().slice(-3)).toEqual(["executor_stopped", "executor_output", "halted"]);
+    expect(payloads(f, "halted")).toEqual([{ reason: "patch_invalid:PATCH_INCOMPLETE", from: "executing", to: "awaiting_decision" }]);
+  });
+
+  it.each(["before launch", "after launch", "unproven stop"])("handles repair failure %s", async mode => {
+    const discardSession = vi.fn(() => { throw Error("cleanup failure"); });
+    const f = setup({ execute: executeWith(incomplete), discardSession, repairReport: async input => {
+      if (mode === "before launch") throw Error("codex_proxy_report_session_unavailable");
+      input.onLaunched(run().launch);
+      if (mode === "after launch") throw Error("repair_failure");
+      const turn = accepted(); delete turn.stop; return turn;
+    } });
+    const m = await drive(f, 2);
+    if (mode === "before launch") {
+      expect(m).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
+      expect(payloads(f, "executor_report_repair_result")).toEqual([{ attempt: 1, outcome: "not_started", code: "codex_proxy_report_session_unavailable" }]);
+      expect(payloads(f, "halted")[0].reason).toBe("patch_invalid:PATCH_INCOMPLETE");
+    } else {
+      expect(m).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+      expect(payloads(f, "executor_stopped")).toEqual([]);
+    }
+    expect(f.calls.commit).toHaveLength(0);
+    expect(discardSession).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([{ exit_code: 1 }, { timed_out: true }])("discards an otherwise valid patch from a failed repair %#", async failure => {
+    const f = scripted([accepted(run(failure)), accepted(incomplete)]);
+    expect(await drive(f, 2)).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
+    expect(payloads(f, "executor_report_repair_result").map(r => r.outcome)).toEqual(["failed", "patch_invalid:PATCH_INCOMPLETE"]);
+    expect(f.calls.commit).toHaveLength(0);
+  });
+
+  it.each(["valid", "spawn error", "no stop proof"])("discards the proposal session on %s", async mode => {
+    const discardSession = vi.fn(async () => { throw Error("discard failed"); });
+    const f = setup({ discardSession, execute: async input => {
+      if (mode === "spawn error") throw Error("spawn failed");
+      input.onLaunched(run().launch);
+      const turn = run();
+      if (mode === "no stop proof") delete turn.stop;
+      return turn;
+    } });
+    expect((await drive(f, 2)).state).toBe(mode === "valid" ? "candidate_ready" : mode === "spawn error" ? "awaiting_decision" : "stop_unknown");
+    expect(discardSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("halts after one cancelled repair when no mission cancellation was requested", async () => {
+    const discardSession = vi.fn();
+    const repairReport = vi.fn<NonNullable<ContainedMissionPorts["repairReport"]>>(async input => {
+      const turn = accepted(run({ cancelled: true }));
+      input.onLaunched(turn.launch);
+      return turn;
+    });
+    const f = setup({ execute: executeWith(incomplete), repairReport, discardSession });
+    expect(await drive(f, 2)).toMatchObject({ state: "awaiting_decision", stop_obligation: 0 });
+    expect(repairReport).toHaveBeenCalledTimes(1);
+    expect(payloads(f, "executor_report_repair_result").map(r => r.outcome)).toEqual(["failed"]);
+    expect(payloads(f, "halted")[0]).toMatchObject({
+      reason: "patch_invalid:PATCH_INCOMPLETE", report_repair: { attempts: 1, last: "failed" },
+    });
+    expect(f.kinds()).not.toContain("cancel_requested");
+    expect(f.kinds()).not.toContain("cancelled");
+    expect(discardSession).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["before", "during"])("settles cancel %s repair", async when => {
+    const discardSession = vi.fn();
+    const repairReport = vi.fn<NonNullable<ContainedMissionPorts["repairReport"]>>(async input => {
+      input.onLaunched(run().launch);
+      await f.runner.cancel(f.mission.mission_id);
+      expect(input.signal.aborted).toBe(true);
+      return accepted(run({ cancelled: true }));
+    });
+    const f = setup({ discardSession, repairReport, execute: async input => {
+      input.onLaunched(incomplete.launch);
+      if (when === "before") await f.runner.cancel(f.mission.mission_id);
+      return incomplete;
+    } });
+    expect(await drive(f, 2)).toMatchObject({ state: "cancelled", stop_obligation: 0 });
+    expect(repairReport).toHaveBeenCalledTimes(when === "before" ? 0 : 1);
+    expect(discardSession).toHaveBeenCalledTimes(1);
+    expect(f.calls.commit).toHaveLength(0);
+  });
+
+  it.each(["secret", "protected", "outside"])("screens a repaired patch with %s content before applying it", async mode => {
+    const text = mode === "secret" ? PATCH.replace("hello", FAKE_TOKEN) : PATCH.replaceAll("src/a.txt", mode === "protected" ? "src/check.ts" : "outside/a.txt");
+    const patch = { ok: true as const, text, bytes: text.length };
+    const spec = mode === "protected" ? { ...localRepairSpec, verification_paths: ["src/check.ts"] } : {};
+    const f = scripted([accepted(run({ patch }))], spec);
+    const direct = setup({ execute: executeWith(run({ patch })) }, spec);
+    for (const fixture of [f, direct]) {
+      expect((await drive(fixture, 2)).state).toBe("awaiting_decision");
+      expect(fixture.calls.commit).toHaveLength(0);
+      expect(fixture.allPayloads()).not.toContain(FAKE_TOKEN);
+    }
+    expect(payloads(f, "halted")[0].reason).toBe(payloads(direct, "halted")[0].reason);
+    if (mode === "secret") {
+      expect(payloads(f, "executor_output")[1]).toMatchObject({ attempt: 1, secret_hit_count: 1 });
+      expect(payloads(f, "halted")[0].reason).toBe("secret_detected");
+    }
+  });
 });

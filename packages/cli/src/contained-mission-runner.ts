@@ -2,7 +2,7 @@
 // `step` advances at most one state through the ledger; every effect is behind a
 // port so the daemon (M6b) supplies the real executor, workspace and verifier.
 import { createHash } from 'node:crypto';
-import { CODEX_PROXY_END_MARKER, type CodexProxyRun, type CodexQualification } from '@osstack/agents';
+import { CODEX_PROXY_END_MARKER, type CodexProxyRepairRun, type CodexProxyRun, type CodexQualification } from '@osstack/agents';
 import type { ContainedMission, ContainedMissionStore } from '@osstack/core';
 import { classifyMissionPatch, parseMissionPatch, redactSecrets, scanForSecrets, type MissionOutputChannel } from '@osstack/governance';
 import { GITHUB_CI_SANDBOX, productionCiPath, productionCiPolicy } from './contained-mission-ci-policy.js';
@@ -39,7 +39,7 @@ export class RevisionLaunchRefused extends Error {
 /** Budget and chain gate for revision children (appendix §5.2 "预算"). Absent on hosts without the bridge: a revision spec then halts instead of launching. */
 export interface ContainedRevisionPort {
   /** Synchronous, before the launch. Throws `RevisionLaunchRefused`. `settle(elapsedMs)` gives back what the launch did not use. */
-  chargeLaunch: (mission: ContainedMission, spec: ContainedMissionSpec, kind: ContainedLaunchKind) => { settle: (elapsedMs: number) => void };
+  chargeLaunch: (mission: ContainedMission, spec: ContainedMissionSpec, kind: ContainedLaunchKind) => { reservedSeconds: number; settle: (elapsedMs: number) => void };
   /** Throws `RevisionLaunchRefused` unless a `resume_budget` / `resume_grant` can proceed now (chain back in flight with this child, grant live, slice large enough). */
   /** Throws `RevisionLaunchRefused` unless this child is still its chain's current child, the chain is in flight and the grant is live. For work that is not a charged launch (adopting a worktree). */
   assertActive: (mission: ContainedMission, spec: ContainedMissionSpec) => void;
@@ -56,6 +56,9 @@ export interface ContainedPublicationResult { pushed_commit: string; pr: { numbe
 /** W13: identifies the Mission a covered host write belongs to and fences it (runs synchronously inside the release transaction). */
 export interface ContainedWriteContext { mission_id: string; fence: () => void; signal?: AbortSignal }
 export interface ContainedWorkspaceInfo { worktree: string; gitDir: string; head: string; configDigest: string }
+interface ExecutorTurnInput {
+  worktree: string; signal: AbortSignal; onLaunched: (launch: CodexProxyRun['launch']) => void;
+}
 export interface ContainedMissionPorts {
   store: ContainedMissionStore; now: () => number;
   createWorkspace: (spec: ContainedMissionSpec, signal: AbortSignal, write: ContainedWriteContext) => Promise<ContainedWorkspaceInfo>;
@@ -68,7 +71,10 @@ export interface ContainedMissionPorts {
   /** True when a remote write of the Mission was released at or after `since`: the release record decides whether the remote can have been written. */
   remoteWriteReleasedSince?: (missionId: string, since: number) => boolean;
   qualify: (worktree: string, gitDir: string) => Promise<CodexQualification>;
-  execute: (input: { worktree: string; prompt: string; signal: AbortSignal; onLaunched: (launch: { pid: number; pgid: number; started_at: number }) => void }) => Promise<CodexProxyRun>;
+  execute: (input: ExecutorTurnInput & { prompt: string }) => Promise<CodexProxyRun>;
+  repairReport?: (input: ExecutorTurnInput) => Promise<CodexProxyRepairRun>;
+  repairTimeoutMs?: number;
+  discardSession?: (worktree: string) => void | Promise<void>;
   readFile: (worktree: string, path: string) => Promise<string | null>;
   commit: (input: { mission_id: string; signal?: AbortSignal; worktree: string; branch: string; expectedHead: string; files: Array<{ path: string; action: 'write'; content: string } | { path: string; action: 'delete' }>; message: string;
     /** Must run before every worktree write and the ref update; it throws once this owner or Mission revision is no longer current. */
@@ -112,6 +118,12 @@ export function screenOutputs(outputs: Partial<Record<MissionOutputChannel, stri
   const hits = Object.entries(outputs).flatMap(([channel, text]) => text ? scanForSecrets(text, { channel: channel as MissionOutputChannel }) : []);
   const redacted = Object.fromEntries(Object.entries(outputs).map(([channel, text]) => [channel, text ? redactSecrets(text).slice(0, OUTPUT_EXCERPT) : ''])) as Partial<Record<MissionOutputChannel, string>>;
   return { hits, redacted };
+}
+function executorOutput(run: CodexProxyRun | CodexProxyRepairRun) {
+  const screen = screenOutputs({ patch: run.patch.ok ? run.patch.text : '', stdout: run.stdout, stderr: run.stderr });
+  return { exit_code: run.exit_code, timed_out: run.timed_out, cancelled: run.cancelled,
+    patch: run.patch.ok ? { bytes: run.patch.bytes } : { reason: run.patch.reason }, stdout: screen.redacted.stdout, stderr: screen.redacted.stderr,
+    secret_hits: screen.hits.slice(0, MAX_RECORDED_HITS), secret_hit_count: screen.hits.length };
 }
 /** Every executor turn states the proxy protocol; the goal alone gives Codex no way to know it. */
 export function containedExecutorPrompt(goal: string, feedback?: string, review?: ContainedRevisionFeedback): string {
@@ -371,10 +383,10 @@ export class ContainedMissionRunner {
   private async extraRepair(m: ContainedMission, reason: string | undefined, decisionId?: string): Promise<ContainedMission> {
     const spec = parseContainedMissionSpec(m.spec_json);
     const probed = await this.probe(m, spec); if ('halted' in probed) return probed.halted;
-    return this.charged(m, spec, 'executor', 'executor:extra_repair', async () => {
+    return this.charged(m, spec, 'executor', 'executor:extra_repair', async deadline => {
       const now = this.ports.store.get(m.mission_id);
       const next = this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'executing', event: { kind: 'decision_extra_repair', payload: { reason, ...(decisionId ? { decision_id: decisionId } : {}) } } }, this.ports.now());
-      return this.runExecutor(next, spec, this.lastFailurePrompt(next));
+      return this.runExecutor(next, spec, this.lastFailurePrompt(next), deadline);
     });
   }
 
@@ -404,7 +416,7 @@ export class ContainedMissionRunner {
   }
 
   /** Revision children pay for every launch before it starts; anyone else launches freely. A refusal halts with `blocked` so a later resume knows where to re-enter. */
-  private async charged(m: ContainedMission, spec: ContainedMissionSpec, kind: ContainedLaunchKind, route: LaunchRoute, run: () => Promise<ContainedMission>): Promise<ContainedMission> {
+  private async charged(m: ContainedMission, spec: ContainedMissionSpec, kind: ContainedLaunchKind, route: LaunchRoute, run: (deadline?: number) => Promise<ContainedMission>): Promise<ContainedMission> {
     if (!spec.publish_target) return run();
     const port = this.ports.revision;
     if (!port) return this.halt(m, 'awaiting_decision', 'revision_not_configured', { blocked: route });
@@ -423,7 +435,7 @@ export class ContainedMissionRunner {
     }
     const charge = attempt.charge;
     const started = this.ports.now();
-    const result = await run();
+    const result = await run(started + charge.reservedSeconds * 1000);
     // Only a launch that is provably over gives anything back. A launch that may still be running (stop_unknown, an open stop obligation) keeps its whole charge.
     try {
       const after = this.ports.store.get(m.mission_id);
@@ -436,9 +448,9 @@ export class ContainedMissionRunner {
   private async discardChanges(m: ContainedMission, reason: string | undefined, decisionId?: string): Promise<ContainedMission> {
     if (m.stop_obligation === 1) throw Error('stop_evidence_required');
     const spec = parseContainedMissionSpec(m.spec_json);
-    return this.charged(m, spec, 'executor', 'executor:discard_changes', () => this.discardChangesCharged(m, spec, reason, decisionId));
+    return this.charged(m, spec, 'executor', 'executor:discard_changes', deadline => this.discardChangesCharged(m, spec, reason, decisionId, deadline));
   }
-  private async discardChangesCharged(m: ContainedMission, spec: ContainedMissionSpec, reason: string | undefined, decisionId?: string): Promise<ContainedMission> {
+  private async discardChangesCharged(m: ContainedMission, spec: ContainedMissionSpec, reason: string | undefined, decisionId?: string, deadline?: number): Promise<ContainedMission> {
     const head = m.expected_head ?? spec.start_commit;
     const controller = new AbortController(); this.live.set(m.mission_id, controller);
     try { await this.ports.restoreWorkspace({ mission_id: m.mission_id, signal: controller.signal, fence: () => this.assertWriter(m, controller.signal), worktree: spec.worktree_path, branch: spec.branch, expectedHead: head }); }
@@ -461,7 +473,7 @@ export class ContainedMissionRunner {
     let next: ContainedMission;
     try { next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: head, event: { kind: 'decision_discard_changes', payload: { reason, head, version: q.version, identity_sha256: q.identity_sha256, ...(decisionId ? { decision_id: decisionId } : {}) } } }, this.ports.now()); }
     catch (error) { if (code(error) === 'repair_cycles_exhausted') return this.halt(m, 'awaiting_decision', 'repair_cycles_exhausted'); throw error; }
-    return this.runExecutor(next, spec, executorPromptFor(spec));
+    return this.runExecutor(next, spec, executorPromptFor(spec), deadline);
   }
 
   /** §4.4: the worktree as a new proposal. The whole diff from start_commit is classified and scanned again, then re-verified. */
@@ -576,42 +588,115 @@ export class ContainedMissionRunner {
     // The probe runs processes too: a cancel waits for it, and an unstopped probe group is stop_unknown.
     const probed = await this.probe(m, spec); if ('halted' in probed) return probed.halted;
     const { q } = probed;
-    return this.charged(m, spec, 'executor', 'executor:workspace_ready', async () => {
+    return this.charged(m, spec, 'executor', 'executor:workspace_ready', async deadline => {
       const next = this.ports.store.transition(m.mission_id, { if_revision: m.revision, to: 'executing', expected_head: spec.start_commit, event: { kind: 'executor_launch_intent', payload: { version: q.version, identity_sha256: q.identity_sha256 } } }, this.ports.now());
-      return this.runExecutor(next, spec, prompt);
+      return this.runExecutor(next, spec, prompt, deadline);
     });
   }
 
-  private async runExecutor(m: ContainedMission, spec: ContainedMissionSpec, prompt: string): Promise<ContainedMission> {
-    const controller = new AbortController(); this.live.set(m.mission_id, controller);
-    let run: CodexProxyRun; let launched = false;
+  private async runExecutor(m: ContainedMission, spec: ContainedMissionSpec, prompt: string, deadline?: number): Promise<ContainedMission> {
+    const id = m.mission_id;
+    const worktree = spec.worktree_path;
+    const controller = new AbortController();
+    this.live.set(id, controller);
+    const current = () => this.ports.store.get(id);
+    const record = (kind: string, payload: unknown) => this.ports.store.record(id, kind, payload, this.ports.now());
+    const stop = (proof: unknown) => this.ports.store.recordStopEvidence(id, current().revision, proof, this.ports.now());
+    const cancel = (mission: ContainedMission) => this.ports.store.transition(id, { if_revision: mission.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
+    const apply = (mission: ContainedMission, patch: string) => {
+      this.live.delete(id);
+      return this.applyPatch(mission, spec, patch);
+    };
+    const repairTimeoutMs = this.ports.repairTimeoutMs ?? 120_000;
+    const hasTime = () => deadline === undefined || deadline - this.ports.now() >= repairTimeoutMs;
+    let called = false;
     try {
-      this.markDecisionEffect(m.mission_id, 'executor_start');
-      run = await this.ports.execute({ worktree: spec.worktree_path, prompt, signal: controller.signal,
-        onLaunched: launch => { launched = true; this.ports.store.record(m.mission_id, 'executor_started', launch, this.ports.now()); } });
-    } catch (error) {
-      this.live.delete(m.mission_id);
-      const current = this.ports.store.get(m.mission_id);
-      if (launched) return this.halt(current, 'stop_unknown', `executor_failed:${code(error)}`);
-      // Nothing was spawned, so there is no executor to prove stopped.
-      const settled = this.ports.store.recordStopEvidence(current.mission_id, current.revision, { stop_proof: 'never_launched' }, this.ports.now());
-      return this.haltExecutionFailure(settled, spec, `executor_spawn_failed:${code(error)}`);
+      let proposal: CodexProxyRun;
+      let launched = false;
+      try {
+        this.markDecisionEffect(id, 'executor_start');
+        called = true;
+        proposal = await this.ports.execute({ worktree, prompt, signal: controller.signal,
+          onLaunched: launch => { launched = true; record('executor_started', launch); } });
+      } catch (error) {
+        if (launched) return this.halt(current(), 'stop_unknown', `executor_failed:${code(error)}`);
+        return this.haltExecutionFailure(stop({ stop_proof: 'never_launched' }), spec, `executor_spawn_failed:${code(error)}`);
+      }
+
+      const output = executorOutput(proposal);
+      const repair = this.ports.repairReport;
+      const eligible = repair && proposal.stop && !proposal.patch.ok && proposal.patch.reason === 'PATCH_INCOMPLETE'
+        && proposal.exit_code === 0 && !proposal.timed_out && !proposal.cancelled && current().state !== 'cancel_requested' && !output.secret_hit_count;
+      const incomplete = 'patch_invalid:PATCH_INCOMPLETE';
+      if (!eligible || !hasTime()) {
+        const mission = proposal.stop ? stop(proposal.stop) : current();
+        record('executor_output', output);
+        if (!proposal.stop) return this.halt(mission, 'stop_unknown', 'executor_stop_unproven');
+        if (mission.state === 'cancel_requested') return cancel(mission);
+        if (eligible) return this.haltExecutionFailure(mission, spec, incomplete, { report_repair: { attempts: 0, last: 'no_budget' } });
+        if (!proposal.patch.ok) return this.haltExecutionFailure(mission, spec, `patch_invalid:${proposal.patch.reason}`);
+        if (output.secret_hit_count) return this.halt(mission, 'awaiting_decision', 'secret_detected');
+        return await apply(mission, proposal.patch.text);
+      }
+
+      record('executor_output', output);
+      const turns = [proposal.stop!];
+      const finish = () => stop(turns.length === 1 ? turns[0] : { stop_proof: 'all_turns_stopped', turns });
+      let attempts = 0;
+      let last = 'no_budget';
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        if (current().state === 'cancel_requested') return cancel(finish());
+        if (!hasTime()) { last = 'no_budget'; break; }
+        const started = this.ports.now();
+        record('executor_report_repair_attempt', { attempt });
+        attempts = attempt;
+        let repairLaunched = false;
+        let budgetExpired = false;
+        // The adapter starts its timeout after spawn. The charge also covers session lookup and launch journaling.
+        const budgetTimer = deadline === undefined ? undefined : setTimeout(() => {
+          budgetExpired = true;
+          controller.abort();
+        }, Math.max(0, deadline - this.ports.now())).unref();
+        let turn: CodexProxyRepairRun;
+        try {
+          turn = await repair({ worktree, signal: controller.signal, onLaunched: launch => {
+            repairLaunched = true;
+            record('executor_started', { ...launch, attempt });
+          } });
+        } catch (error) {
+          const failure = redactSecrets(code(error));
+          if (repairLaunched) return this.halt(current(), 'stop_unknown', `executor_failed:${failure}`);
+          last = 'not_started';
+          record('executor_report_repair_result', { attempt, outcome: last, code: failure });
+          break;
+        } finally {
+          clearTimeout(budgetTimer);
+        }
+
+        const repairedOutput = executorOutput(turn);
+        record('executor_output', { ...repairedOutput, attempt });
+        if (budgetExpired || !turn.stop || turn.cancelled || turn.timed_out || turn.exit_code !== 0 || repairedOutput.secret_hit_count) last = 'failed';
+        else if (!turn.accepted) last = `refused:${turn.patch.reason}`;
+        else last = turn.patch.ok ? 'repaired' : `patch_invalid:${turn.patch.reason}`;
+        record('executor_report_repair_result', { attempt, outcome: last, exit_code: turn.exit_code, seconds: Math.max(0, Math.ceil((this.ports.now() - started) / 1000)) });
+        if (!turn.stop) return this.halt(current(), 'stop_unknown', 'executor_stop_unproven');
+        turns.push(turn.stop);
+        if (current().state === 'cancel_requested') return cancel(finish());
+        if (turn.cancelled && !budgetExpired) break;
+        if (repairedOutput.secret_hit_count) return this.halt(finish(), 'awaiting_decision', 'secret_detected');
+        if (budgetExpired) { last = 'no_budget'; break; }
+        if (last === 'repaired' && turn.patch.ok) return await apply(finish(), turn.patch.text);
+      }
+      const mission = finish();
+      if (mission.state === 'cancel_requested') return cancel(mission);
+      return this.haltExecutionFailure(mission, spec, incomplete, { report_repair: { attempts, last } });
+    } finally {
+      // applyPatch owns a separate controller once its host write begins.
+      if (this.live.get(id) === controller) this.live.delete(id);
+      if (called) {
+        try { await this.ports.discardSession?.(worktree); } catch { /* best-effort private home cleanup */ }
+      }
     }
-    this.live.delete(m.mission_id);
-    let current = this.ports.store.get(m.mission_id);
-    // Secrets in any channel are found before the patch, message or logs are recorded anywhere.
-    const patchText = run.patch.ok ? run.patch.text : '';
-    const screen = screenOutputs({ patch: patchText, stdout: run.stdout, stderr: run.stderr });
-    // Stop evidence first: nothing about the output may keep a stopped executor's obligation open.
-    if (run.stop) current = this.ports.store.recordStopEvidence(current.mission_id, current.revision, run.stop, this.ports.now());
-    this.ports.store.record(m.mission_id, 'executor_output', { exit_code: run.exit_code, timed_out: run.timed_out, cancelled: run.cancelled,
-      patch: run.patch.ok ? { bytes: run.patch.bytes } : { reason: run.patch.reason }, stdout: screen.redacted.stdout, stderr: screen.redacted.stderr,
-      secret_hits: screen.hits.slice(0, MAX_RECORDED_HITS), secret_hit_count: screen.hits.length }, this.ports.now());
-    if (!run.stop) return this.halt(current, 'stop_unknown', 'executor_stop_unproven');
-    if (current.state === 'cancel_requested') return this.ports.store.transition(current.mission_id, { if_revision: current.revision, to: 'cancelled', event: { kind: 'cancelled', payload: {} } }, this.ports.now());
-    if (!run.patch.ok) return this.haltExecutionFailure(current, spec, `patch_invalid:${run.patch.reason}`);
-    if (screen.hits.length > 0) return this.halt(current, 'awaiting_decision', 'secret_detected');
-    return this.applyPatch(current, spec, patchText);
   }
 
   private async localProtectedPaths(spec: ContainedMissionSpec, parsed: ReturnType<typeof parseMissionPatch>, unsafe: string[] = []) {
@@ -728,12 +813,12 @@ export class ContainedMissionRunner {
     // Check the budget before probing; the store enforces it again on the transition.
     if (m.repair_cycles >= Math.min(spec.max_repair_cycles ?? 2, 8)) return this.halt(m, 'awaiting_decision', 'repair_cycles_exhausted');
     const probed = await this.probe(m, spec); if ('halted' in probed) return probed.halted;
-    return this.charged(m, spec, 'executor', 'executor:repair', async () => {
+    return this.charged(m, spec, 'executor', 'executor:repair', async deadline => {
       const now = this.ports.store.get(m.mission_id);
       let next: ContainedMission;
       try { next = this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'executing', event: { kind: 'repair_started', payload: {} } }, this.ports.now()); }
       catch (error) { if (code(error) === 'repair_cycles_exhausted') return this.halt(m, 'awaiting_decision', 'repair_cycles_exhausted'); throw error; }
-      return this.runExecutor(next, spec, this.lastFailurePrompt(next));
+      return this.runExecutor(next, spec, this.lastFailurePrompt(next), deadline);
     });
   }
 
