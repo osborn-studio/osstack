@@ -69,6 +69,32 @@ export async function scanLocalFailureChain(ports: LocalFailureScanPorts, chain:
   return { code: 'read', pending: read.pending, recorded, registered, register_failed } as const;
 }
 
+export function createRecheckContractReader({ sources, policy, rest }: Pick<LocalFailureScanPorts, 'sources' | 'policy' | 'rest'>) {
+  return {
+    async readOriginalContract(q: { result_id: string; source_seq: number; repository_id: number; pr: number }, signal: AbortSignal) {
+      const row = sources.history(q.repository_id, q.pr).find(r =>
+        r.seq === q.source_seq && r.result_id === q.result_id && r.decision === 'accepted');
+      if (!row) return null;
+      const read = await readVerificationContractText({ rest }, policy, row, { signal });
+      return read.ok ? read.text : null;
+    },
+    async readRecheckContracts(q: { repository: string; repository_id: number; pr: number; head: string; base_sha: string }, signal: AbortSignal): Promise<readonly string[] | null> {
+      if (signal.aborted) return null;
+      const rows = sources.history(q.repository_id, q.pr).filter(r =>
+        r.decision === 'accepted' && r.source_kind === 'check_run' && r.repository === q.repository &&
+        r.observed_head_sha === q.head && r.result_id !== null && r.contract_digest !== null)
+        .sort((a, b) => b.seq - a.seq).slice(0, 20);
+      const texts: string[] = [];
+      for (const row of rows) {
+        const read = await readVerificationContractText({ rest }, policy, row, { signal });
+        if (!read.ok || signal.aborted) return null;
+        texts.push(read.text);
+      }
+      return texts;
+    },
+  };
+}
+
 interface Schedule {
   chains: Pick<RevisionChainStore, 'listOpen'>;
   ports: LocalFailureScanPorts;
@@ -87,7 +113,9 @@ export class LocalFailureScanService {
   private readonly interval: number;
   private readonly delay: number;
   private readonly limit: number;
+  readonly contracts: ReturnType<typeof createRecheckContractReader>;
   constructor(private readonly options: Schedule) {
+    this.contracts = createRecheckContractReader(options.ports);
     this.interval = options.intervalMs ?? 600_000;
     this.delay = options.initialDelayMs ?? this.interval;
     const limit = options.batchLimit ?? 10;

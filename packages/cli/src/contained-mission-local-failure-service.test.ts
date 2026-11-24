@@ -28,9 +28,9 @@ it('preserves the contained Mission RPC surface', () => {
   ]);
 });
 
-it('logs only at assembly, including when stopped before start or twice', async () => {
+it.each([false, true])('logs only at assembly, including when stopped before start or twice (publication=%s)', async ready => {
   const log = vi.fn();
-  const scan = { start: vi.fn(), stop: vi.fn(async () => {}) };
+  const scan = { contracts: {}, start: vi.fn(), stop: vi.fn(async () => {}) };
   const module = await import('./contained-mission-local-failure-scan.js');
   const factory = vi.spyOn(module, 'createLocalFailureScan').mockResolvedValue(scan as unknown as Awaited<ReturnType<typeof module.createLocalFailureScan>>);
   const diagnosis = { start: vi.fn(), stop: vi.fn(async () => {}), recover: vi.fn(), portsFor: vi.fn(() => null) };
@@ -39,17 +39,29 @@ it('logs only at assembly, including when stopped before start or twice', async 
   const step = await import('./contained-mission-local-failure-dispatch-step.js');
   const dispatch = { start: vi.fn(), stop: vi.fn(async () => {}) };
   const dispatchFactory = vi.spyOn(step, 'createLocalFailureDispatch').mockReturnValue(dispatch as unknown as ReturnType<typeof step.createLocalFailureDispatch>);
+  const recheckStep = await import('./contained-mission-local-failure-recheck-step.js');
+  const recheck = { start: vi.fn(), stop: vi.fn(async () => {}), recover: vi.fn() };
+  const recheckFactory = vi.spyOn(recheckStep, 'createLocalFailureRecheck').mockReturnValue(recheck as unknown as ReturnType<typeof recheckStep.createLocalFailureRecheck>);
+  const recoverPublication = vi.fn(async () => {});
   const publication = await import('./contained-mission-local-failure-publication-port.js');
-  const portFactory = vi.spyOn(publication, 'createLocalFailurePublicationPort').mockResolvedValue({ ready: false, recover: async () => {} });
+  const portFactory = vi.spyOn(publication, 'createLocalFailurePublicationPort').mockResolvedValue({ ready, recover: recoverPublication });
   try {
     const route = await createLocalFailureRouteService({ log } as unknown as Parameters<typeof createLocalFailureRouteService>[0]);
-    expect(route.publicationReady).toBe(false);
+    expect(route.publicationReady).toBe(ready);
     const request = { request_id: 'synthetic' } as import('@osstack/core/verification-intake').DiagnosisRequest;
     expect(dispatchFactory.mock.calls[0]![0].portsFor(request)).toBeNull();
     expect(diagnosis.portsFor).toHaveBeenCalledWith(request);
-    expect(log.mock.calls).toEqual([['osstack: local-failure route: on (read, record, register, diagnose, dispatch)']]);
+    diagnosis.portsFor.mockClear();
+    const recheckDeps = recheckFactory.mock.calls[0]![0];
+    expect(recheckDeps.contracts).toBe(scan.contracts);
+    expect(recheckDeps.runPortsFor(request)).toBeNull();
+    expect(diagnosis.portsFor).toHaveBeenCalledWith(request);
+    expect(log.mock.calls).toEqual([[`osstack: local-failure route: on (read, record, register, diagnose, dispatch${ready ? ', publish' : ''}, recheck)`]]);
     await route.recover(new AbortController().signal);
     expect(diagnosis.recover).toHaveBeenCalledOnce();
+    expect(recheck.recover).toHaveBeenCalledOnce();
+    expect(diagnosis.recover.mock.invocationCallOrder[0]!).toBeLessThan(recheck.recover.mock.invocationCallOrder[0]!);
+    expect(recheck.recover.mock.invocationCallOrder[0]!).toBeLessThan(recoverPublication.mock.invocationCallOrder[0]!);
     expect(scan.start).not.toHaveBeenCalled();
     expect(scan.stop).not.toHaveBeenCalled();
     await route.stop();
@@ -60,6 +72,8 @@ it('logs only at assembly, including when stopped before start or twice', async 
     expect(scan.stop).toHaveBeenCalledTimes(3);
     expect(diagnosis.start).toHaveBeenCalledOnce();
     expect(diagnosis.stop).toHaveBeenCalledTimes(3);
+    expect(recheck.start).toHaveBeenCalledOnce();
+    expect(recheck.stop).toHaveBeenCalledTimes(3);
     expect(dispatch.start).toHaveBeenCalledOnce();
     expect(dispatch.stop).toHaveBeenCalledTimes(3);
     let finish!: () => void;
@@ -75,7 +89,7 @@ it('logs only at assembly, including when stopped before start or twice', async 
     diagnosis.stop.mockRejectedValueOnce(Error('diagnosis'));
     await expect(route.stop()).rejects.toThrow('diagnosis');
     expect(dispatch.stop).toHaveBeenCalledTimes(5);
-  } finally { portFactory.mockRestore(); dispatchFactory.mockRestore(); factory.mockRestore(); diagnosisFactory.mockRestore(); }
+  } finally { recheckFactory.mockRestore(); portFactory.mockRestore(); dispatchFactory.mockRestore(); factory.mockRestore(); diagnosisFactory.mockRestore(); }
   expect(log).toHaveBeenCalledTimes(1);
 });
 

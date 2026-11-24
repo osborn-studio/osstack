@@ -244,3 +244,46 @@ it('requires an issuer and a valid config, and leaves unlisted repositories unre
   await write('verification-producers.json', {});
   await expect(createLocalFailureScan(h.factory)).rejects.toThrow('VERIFICATION_PRODUCER_CONFIG_INVALID');
 });
+
+it('reads the exact accepted original contract with the registered producer and digest', async () => {
+  const h = fixture();
+  await h.scan();
+  const record = vi.spyOn(h.f.source, 'record');
+  const row = h.f.source.registration(h.contract.result_id)!.registered;
+  const reader = new LocalFailureScanService(h.options).contracts;
+  const q = { result_id: h.contract.result_id, source_seq: row.seq, repository_id: row.repository_id, pr: row.pr_number };
+  const read = (seq = row.seq) => reader.readOriginalContract({ ...q, source_seq: seq }, h.controller.signal);
+  expect(await read()).toBe(h.run.output.text);
+  expect(await read(row.seq + 1)).toBeNull();
+  vi.spyOn(h.f.source, 'history').mockReturnValueOnce([{ ...row, decision: 'rejected' }]);
+  expect(await read()).toBeNull();
+  h.run.output.text += ' ';
+  expect(await read()).toBeNull();
+  h.run.output.text = JSON.stringify(h.contract);
+  h.ports.policy.producers = [];
+  expect(await read()).toBeNull();
+  expect(record).not.toHaveBeenCalled();
+});
+
+it('reads only the newest 20 accepted check runs on the requested head and discards partial reads', async () => {
+  const h = fixture();
+  await h.scan();
+  const row = h.f.source.registration(h.contract.result_id)!.registered;
+  const records = Array.from({ length: 22 }, (_, i) => ({ ...row, seq: i + 1, object_id: h.run.id + i }));
+  for (const r of records.slice(1)) h.runs.push({ ...h.run, id: r.object_id, output: { ...h.run.output } });
+  vi.spyOn(h.f.source, 'history').mockReturnValue([...records, { ...row, seq: 100, observed_head_sha: 'other' }]);
+  const record = vi.spyOn(h.f.source, 'record');
+  const reader = new LocalFailureScanService(h.options).contracts;
+  const read = (head = row.observed_head_sha!) => reader.readRecheckContracts({
+    repository_id: row.repository_id, repository: row.repository, pr: row.pr_number, head, base_sha: h.chain.published_base,
+  }, h.controller.signal);
+  h.paths.length = 0;
+  expect(await read('missing')).toEqual([]);
+  expect(await read()).toEqual(Array(20).fill(h.run.output.text));
+  expect(h.paths).toEqual(records.slice(-20).reverse().map(r => 'repos/' + row.repository + '/check-runs/' + r.object_id));
+  h.runs[20]!.output.text += ' ';
+  expect(await read()).toBeNull();
+  h.rest.mockImplementationOnce(async (path, opts) => { h.controller.abort(); return h.request(path, opts); });
+  expect(await read()).toBeNull();
+  expect(record).not.toHaveBeenCalled();
+});

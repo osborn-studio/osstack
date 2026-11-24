@@ -6,6 +6,7 @@ import * as publication from './contained-mission-local-failure-publication-port
 import { createLocalFailureRouteService } from './contained-mission-local-failure-service.js';
 import * as scan from './contained-mission-local-failure-scan.js';
 import * as diagnosis from './contained-mission-local-failure-diagnose.js';
+import * as recheck from './contained-mission-local-failure-recheck-step.js';
 import * as dispatch from './contained-mission-local-failure-dispatch-step.js';
 
 const unexpected = async (): Promise<never> => { throw Error('unexpected port'); };
@@ -65,14 +66,17 @@ it.each([false, true])('assembles and recovers the service with ready=%s', async
     vi.spyOn(diagnosis, 'createLocalFailureDiagnosis').mockResolvedValue({
       recover: () => { calls.push('diagnosis'); },
     } as Awaited<ReturnType<typeof diagnosis.createLocalFailureDiagnosis>>);
+    vi.spyOn(recheck, 'createLocalFailureRecheck').mockReturnValue({
+      recover: () => { calls.push('recheck'); },
+    } as ReturnType<typeof recheck.createLocalFailureRecheck>);
     vi.spyOn(dispatch, 'createLocalFailureDispatch').mockReturnValue({} as ReturnType<typeof dispatch.createLocalFailureDispatch>);
     vi.spyOn(publication, 'createLocalFailurePublicationPort').mockResolvedValue({ ready, recover });
     const service = await createLocalFailureRouteService(deps as Parameters<typeof createLocalFailureRouteService>[0]);
     expect(service.publicationReady).toBe(ready);
-    expect(vi.mocked(deps.log).mock.calls).toEqual([[`osstack: local-failure route: on (read, record, register, diagnose, dispatch${ready ? ', publish' : ''})`]]);
+    expect(vi.mocked(deps.log).mock.calls).toEqual([[`osstack: local-failure route: on (read, record, register, diagnose, dispatch${ready ? ', publish' : ''}, recheck)`]]);
     const signal = new AbortController().signal;
     await service.recover(signal);
-    expect(calls).toEqual(['diagnosis', 'publication']);
+    expect(calls).toEqual(['diagnosis', 'recheck', 'publication']);
     expect(recover).toHaveBeenCalledWith(signal);
   } finally { vi.restoreAllMocks(); }
 });
