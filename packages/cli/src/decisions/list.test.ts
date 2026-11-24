@@ -359,3 +359,59 @@ it("excludes a closed chain with a pending recheck and keeps prior decisions wit
   const result = await listDecisions(new DecisionQueries(pending.f.db), {}, () => pending.f.principal);
   expect(result.failures).toEqual([]); expect(result.items.some(i => i.source === "revision_chain")).toBe(false);
 });
+
+const loopSummary = (details_json: string, summary: string, kind = "loop") => {
+  const item = decisionItem("loop", { id: "event", scope_id: null, waiting_since: 1, revision: null,
+    state: "escalated", reason: null, kind, summary, details_json });
+  const card = kind === "loop_card";
+  expect(item.allowed_answers).toEqual([card ? "approve" : "retry"]);
+  expect(item.answer_command).toEqual(card ? { name: "cockpit approve", required_params: ["card_id"] }
+    : { name: "cockpit retry", required_params: ["task_id", "--workspace"] });
+  return item.summary;
+};
+
+it("locates the kept builder work and appends the original reason", () => {
+  const reason = "Repair attempts exhausted";
+  const payload = { role: "builder", task_id: "build-1", reason_code: "report_invalid", reason,
+    worktree_path: "/private/work", branch: "feature/private" };
+  expect(loopSummary(JSON.stringify(payload), reason)).toBe(
+    "The builder report was invalid and could not be repaired. The work is kept. See the completed task build-1 in LOOP-STATE.json. Choosing retry redoes the work. — Repair attempts exhausted");
+});
+
+it("locates the kept reviewer work when the event has no reason", () => {
+  const payload = { role: "reviewer", task_id: "review-1", reason_code: "report_invalid" };
+  expect(loopSummary(JSON.stringify(payload), "Loop escalation")).toBe(
+    "The reviewer report was invalid and could not be repaired. The work is kept. See the completed task review-1 in LOOP-STATE.json. Choosing retry redoes the work.");
+});
+
+it("keeps the complete guidance ahead of a long reason", () => {
+  const reason = "details ".repeat(80);
+  const payload = { role: "reviewer", task_id: "x".repeat(320), reason_code: "report_invalid", reason };
+  const result = loopSummary(JSON.stringify(payload), reason);
+  expect(result.length).toBeLessThanOrEqual(240);
+  expect(result.startsWith(`The reviewer report was invalid and could not be repaired. The work is kept. See the completed task ${"x".repeat(64)} in LOOP-STATE.json. Choosing retry redoes the work. — details`)).toBe(true);
+});
+
+it("redacts the task id before the cut and redacts the reason", () => {
+  const reason = `Token ${FAKE_TOKEN}`;
+  const payload = { task_id: "x".repeat(60) + FAKE_TOKEN, reason_code: "report_invalid", reason };
+  const result = loopSummary(JSON.stringify(payload), reason);
+  expect(result).not.toContain(FAKE_TOKEN.slice(0, 4));
+  expect(result).toContain(" — Token [REDACTED:secret]");
+});
+
+it("omits an unknown role and a missing task id", () => {
+  expect(loopSummary('{"role":"Reviewer","reason_code":"report_invalid"}', "Loop escalation")).toBe(
+    "The report was invalid and could not be repaired. The work is kept. See the completed task in LOOP-STATE.json. Choosing retry redoes the work.");
+});
+
+it.each([
+  ["loop", '{"reason_code":"other","task_id":"t"}'],
+  ["loop", "{"],
+  ["loop", '[{"reason_code":"report_invalid","task_id":"t"}]'],
+  ["loop", "null"],
+  ["loop", '{"reason_code":"report_invalid","task_id":123}'],
+  ["loop_card", '{"reason_code":"report_invalid","task_id":"t"}'],
+])("keeps the existing %s summary for %s", (kind, details) => {
+  expect(loopSummary(details, "Original text", kind)).toBe("Original text");
+});
