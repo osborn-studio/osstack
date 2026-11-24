@@ -25,6 +25,14 @@ async function makeQueuedWorkspace(): Promise<string> {
   return workspace;
 }
 
+async function makeQueuedGitWorkspace(): Promise<string> {
+  const workspace = await makeQueuedWorkspace();
+  execFileSync("git", ["init", "-q", workspace]);
+  execFileSync("git", ["add", "tasks/task.json"], { cwd: workspace });
+  execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture"], { cwd: workspace });
+  return workspace;
+}
+
 describe("LoopEngine budget clock", () => {
   it.each([
     { name: "rewind", steps: [-4], remaining: [8], elapsed: 0, duration: 0 },
@@ -79,11 +87,8 @@ describe("LoopEngine budget clock", () => {
 });
 
 describe("LoopEngine", () => {
-  it.each(["success", "exhausted", "unsupported", "budget", "runtime", "budget_after_one", "no_changes", "failed_check", "no_session", "committed"])("repairs builder report only: %s", async (mode) => {
-    const workspace = await makeQueuedWorkspace();
-    execFileSync("git", ["init", "-q", workspace]);
-    execFileSync("git", ["add", "tasks/task.json"], { cwd: workspace });
-    execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture"], { cwd: workspace });
+  it.each(["success", "exhausted", "unsupported", "budget", "runtime", "budget_after_one", "no_changes", "no_session", "committed"])("repairs builder report only: %s", async (mode) => {
+    const workspace = await makeQueuedGitWorkspace();
     if (mode === "no_changes") await writeFile(join(workspace, "output.txt"), "work complete");
     let builds = 0;
     let repairs = 0;
@@ -113,7 +118,7 @@ describe("LoopEngine", () => {
     };
     const engine = new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
       agentId: adapter.id, adapters: [adapter], maxIterations: 3,
-      verifyCommands: [mode === "failed_check" ? "node -e \"process.exit(1)\"" : "node -e \"process.exit(require('fs').existsSync('output.txt') ? 0 : 1)\""],
+      verifyCommands: ["node -e \"process.exit(require('fs').existsSync('output.txt') ? 0 : 1)\""],
       ...(mode === "success" ? { budget: { max_estimated_cost_usd: 1 } } : mode === "budget" ? { budget: { max_tokens: 11 } } : mode === "runtime" ? { budget: { max_runtime_ms: 1 } } : mode === "budget_after_one" ? { budget: { max_tokens: 12 } } : mode === "exhausted" ? { budget: { no_progress_limit: 1 } } : {}),
     });
     const result = mode === "exhausted" ? await engine.runCycles({ cycles: 3 }) : await engine.runOnce();
@@ -128,7 +133,7 @@ describe("LoopEngine", () => {
     expect(completed.iterations).toBe(1);
     expect(completed.outcome).toBe(mode === "success" || mode === "committed" ? "success" : "escalated");
     if (mode !== "success" && mode !== "committed") expect(completed.report_invalid).toBe("builder");
-    expect(completed.verify_commands?.[0]?.exit_code).toBe(mode === "failed_check" ? 1 : 0);
+    expect(completed.verify_commands?.[0]?.exit_code).toBe(0);
     expect(completed.tokens_in).toBe(10 + repairs * 2);
     expect(result.events.filter(e => e.type === "loop.report_repair.attempt")).toHaveLength(repairs);
     expect(result.events.filter(e => e.type === "loop.report_repair.result")).toHaveLength(repairs);
@@ -137,6 +142,65 @@ describe("LoopEngine", () => {
       expect(result.events.filter(event => event.type === "loop.stopped").at(-1)?.payload?.["reason_code"]).toBe("report_invalid");
     }
     await expect(readFile(join(workspace, "output.txt"), "utf8")).resolves.toBe("work complete");
+  });
+
+  it.each([
+    { mode: "failed_check", maxIterations: 3, expectedBuilds: 3 },
+    { mode: "recovers", maxIterations: 3, expectedBuilds: 2 },
+    { mode: "last_iteration", maxIterations: 1, expectedBuilds: 1 },
+    { mode: "no_progress", maxIterations: 3, expectedBuilds: 2 },
+    { mode: "token_limit", maxIterations: 3, expectedBuilds: 1 },
+  ])("iterates after a failed check with an invalid builder report: $mode", async ({ mode, maxIterations, expectedBuilds }) => {
+    const workspace = await makeQueuedGitWorkspace();
+    const feedback: unknown[] = [];
+    let repairs = 0;
+    const adapter: AgentAdapter = {
+      id: "report-builder", display_name: "Report builder", cost_tier: "low",
+      capabilities: () => [], isAvailable: async () => ({ available: true, last_checked_at: 0 }),
+      async *invoke(task) {
+        feedback.push(task.context?.["iteration_feedback"]);
+        const recovered = mode === "recovers" && feedback.length === 2;
+        const output = recovered ? "pass" : `failure marker ${mode === "no_progress" ? 1 : feedback.length}`;
+        await writeFile(join(workspace, "output.txt"), output);
+        yield fakeEvent(task, 0, "usage.final", { tokens_in: 10, tokens_out: 1 });
+        if (recovered) yield fakeEvent(task, 1, "done", { status: "completed", last_seq: 0 }, true);
+      },
+      async *resumeReport(task) {
+        repairs++;
+        yield fakeEvent(task, 0, "done", { status: "completed", last_seq: 0 }, true);
+      },
+    };
+    const result = await new LoopEngine({ workspacePath: workspace, sources: ["task_queue"],
+      agentId: adapter.id, adapters: [adapter], maxIterations,
+      ...(mode === "token_limit" ? { budget: { max_tokens: 11 } } : {}),
+      verifyCommands: [`node -e "const s=require('fs').readFileSync('output.txt','utf8'); if(s!=='pass'){console.error(s);process.exit(1)}"`],
+    }).runOnce();
+    const completed = result.state.completed_tasks[0]!;
+    const recovered = mode === "recovers";
+    expect(feedback).toHaveLength(expectedBuilds);
+    expect(repairs).toBe(0);
+    expect(result.events.filter(e => e.type === "loop.report_repair.attempt" || e.type === "loop.report_repair.result")).toHaveLength(0);
+    expect(completed).toMatchObject({ iterations: expectedBuilds, tokens_in: expectedBuilds * 10,
+      outcome: recovered ? "success" : "escalated", verify_commands: [{ exit_code: recovered ? 0 : 1 }] });
+    expect(completed.report_invalid).toBe(recovered ? undefined : "builder");
+    expect(completed.iteration_feedback).toHaveLength(expectedBuilds - Number(recovered));
+    for (const entry of completed.iteration_feedback!) {
+      expect(entry.blocking_issues).toContainEqual(expect.objectContaining({ rule: "execute.report_invalid" }));
+    }
+    if (expectedBuilds > 1) expect(feedback[1]).toMatchObject({ blocking_issues: expect.arrayContaining([
+      expect.objectContaining({ rule: "verify.command_failed", message: expect.stringContaining("failure marker 1") }),
+    ]) });
+    if (!recovered) {
+      const reason = mode === "no_progress" ? "No progress" : mode === "token_limit" ? "budget exhausted" : `Maximum iterations reached (${maxIterations})`;
+      const escalation = result.events.find(e => e.type === "loop.escalated")?.payload;
+      expect(escalation).toMatchObject({ escalate_to: "hermes", reason: expect.stringContaining(reason) });
+      expect(escalation).not.toHaveProperty("reason_code");
+      expect(completed.error_summary).toContain("report_invalid");
+      expect(completed.verify_issues).toContainEqual(expect.objectContaining({ rule: "execute.report_invalid" }));
+    }
+    expect(result.events.find(e => e.type === "loop.stopped")?.payload?.["reason_code"]).toBe(mode === "token_limit" ? "budget_exceeded" : "completed");
+    await expect(readFile(join(workspace, "output.txt"), "utf8")).resolves.toBe(
+      recovered ? "pass" : `failure marker ${mode === "no_progress" ? 1 : expectedBuilds}`);
   });
 
   it("runs a real local command loop and writes state files", async () => {
