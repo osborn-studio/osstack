@@ -1,6 +1,6 @@
 # U5: what is left of "repair the report, not the work"
 
-Date: 2026-11-24. Status: proposal. Nothing here is implemented. §6 lists the decisions the owner has to make; every other choice in this note is a recommendation of the designing session.
+Date: 2026-11-24. Status: accepted, not implemented. The owner answered the seven decisions of §6 on 2026-11-24; the answers are recorded there. Every other choice in this note is a recommendation of the designing session.
 
 Baseline: `main` at `7f674681`. Parent: [self-loop upgrade plan](../plans/2026-11-16-osstack-self-loop-upgrade.md) §4 U5 and U7.
 
@@ -95,9 +95,12 @@ One PR each, in this order.
 | R3 | `loop` | §3 option B, with the simulation updated and a 100,000-step run before merge | decision 5 |
 | R4 | `cli` | §4 card text | decision 6 |
 
-R3 and R4 do not depend on R1 or R2.
+| R2b | `cli` | Accept `extra_repair` after `patch_invalid:*` for a Mission that is neither a local-failure repair child nor a CI repair child; list it in the decision list | R2, decision 4 |
+| R5 | CI | A scheduled workflow (nightly, plus manual dispatch) that runs the loop simulation with at least 100,000 steps and fails on any violation. No new notification channel: a failed scheduled run is reported by GitHub as usual | decision 7 |
 
-U7 gate: R2 needs the crash-point test above; R3 needs the loop simulation run. Decision 7 asks whether CI should run more than 384 steps.
+R3, R4 and R5 do not depend on R1 or R2.
+
+U7 gate: R2 needs the crash-point test above; R3 needs the loop simulation run, by hand until R5 is merged.
 
 ## 6. Decisions for the owner
 
@@ -108,6 +111,8 @@ U7 gate: R2 needs the crash-point test above; R3 needs the loop simulation run. 
 5. **Loop, failed check with invalid report.** Option A or B of §3. Recommended: B.
 6. **Loop card.** The text change of §4. Recommended: yes.
 7. **Simulation steps in CI.** Keep 384 steps and run 100,000 by hand before U5 merges, or add a scheduled CI job with the long run. Recommended: keep by hand for now; a scheduled job belongs to U6.
+
+**Owner's answers, 2026-11-24.** Decisions 1 to 6: accepted as recommended. Decision 7: not as recommended. The owner wants CI to run the long simulation automatically; this is node R5. The per-PR run keeps its 384 steps.
 
 ## 7. Not verified
 
