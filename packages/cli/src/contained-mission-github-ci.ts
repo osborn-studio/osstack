@@ -227,10 +227,34 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         if (previous?.reason !== reason || previous.head !== live.head.sha) store.record(root.mission_id, 'ci_pr_merge_unverified',
           { pr: target.pr, head: live.head.sha, merge_commit_sha: live.merge_commit_sha, reason }, now());
       };
+      // Both callers hold an immediate transaction across the lookup and insert.
+      const recordLaterFailure = (job: ActionsJobObservation, phase: 'before_dispatch' | 'during_repair') => {
+        store.attention.assertOwner(store.owner);
+        if (!enabled() || signal.aborted) return;
+        const first = latestCiEvent<{ job: ActionsJobObservation }>(store, root.mission_id, 'ci_failure_observed');
+        if (!first || job.check_run_id === first.job.check_run_id) return;
+        const closed = store.db.prepare(`SELECT 1 FROM engineering_contained_events WHERE mission_id=?
+          AND kind IN ('ci_closed_unmerged','ci_pr_merged_observed') LIMIT 1`).get(root.mission_id);
+        if (closed) return;
+        const seen = store.db.prepare(`SELECT 1 FROM engineering_contained_events WHERE mission_id=?
+          AND kind='ci_later_failure_observed' AND json_extract(payload_json,'$.job.check_run_id')=? LIMIT 1`)
+          .get(root.mission_id, job.check_run_id);
+        if (!seen) store.record(root.mission_id, 'ci_later_failure_observed', { repository: policy.repository,
+          ...target, job, first_check_run_id: first.job.check_run_id, phase }, now());
+      };
       if (dispatch) {
         const child = store.get(dispatch.child);
         const repaired = readMissionPublication(store, child.mission_id);
-        if (child.state !== 'pr_opened') { await observeHeldPush(child, target, live, signal); holdMerge('repair_receipt_unavailable'); return; }
+        if (child.state !== 'pr_opened') {
+          await observeHeldPush(child, target, live, signal);
+          holdMerge('repair_receipt_unavailable');
+          if (live.state === 'open' && !live.merged && live.head.sha === target.head && enabled() && !signal.aborted) {
+            const result = await readJobs(ci, target, signal, undefined, policy);
+            if (!enabled() || signal.aborted) return;
+            if (result.kind === 'failure') store.db.transaction(() => recordLaterFailure(result.job, 'during_repair')).immediate();
+          }
+          return;
+        }
         if (repaired?.kind !== 'github_ci_opened' || repaired.pushed_commit !== live.head.sha
           || repaired.pr.number !== target.pr || repaired.base_head !== target.base) { holdMerge('repair_receipt_unavailable'); return; }
         if (live.merged && (!live.merge_commit_sha || !live.merged_by)) { holdMerge('merge_identity_unavailable'); return; }
@@ -311,7 +335,10 @@ export function createSandboxCiObserver(input: { store: ContainedMissionStore; s
         store.attention.assertOwner(store.owner);
         if (!enabled() || signal.aborted) return;
         const previous = latestCiEvent<{ job: ActionsJobObservation }>(store, root.mission_id, 'ci_failure_observed');
-        if (previous && previous.job.check_run_id !== result.job.check_run_id) return;
+        if (previous && previous.job.check_run_id !== result.job.check_run_id) {
+          recordLaterFailure(result.job, 'before_dispatch');
+          return;
+        }
         if (!previous) store.record(root.mission_id, 'ci_failure_observed', { repository: policy.repository, ...target, job: result.job }, now());
         if (!input.refresh || !spec.publication || (sandbox ? !spec.allowed_paths.includes('PROBE_FAIL') : !input.writeEnabled?.(root))
           || latestCiEvent(store, root.mission_id, 'ci_repair_dispatched')) return;

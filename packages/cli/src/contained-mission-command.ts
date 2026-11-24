@@ -158,9 +158,12 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     if (command === "list" && !json) {
       for (const row of response.result as Array<Record<string, unknown>>) {
         const scan = row["scan"] as { failing: true; reason: string; step: string; consecutive: number; since: number } | undefined;
+        const later = row["later_failures"] as { count?: unknown; latest?: { check_run_id?: unknown } } | undefined;
         const refused = row["repair_refused"] as { reason: string; holder: string } | undefined;
         out([row["mission_id"], row["scope_id"], row["repository"], row["pr"], row["state"], row["since"], row["head_before"], row["head_after"], row["merge_commit_sha"], row["stop_reason"]].map(v => v ?? "-").join("\t") + (scan?.failing ? ` scan_failing=${scan.reason}@${scan.step} x${scan.consecutive} since=${new Date(scan.since).toISOString()}` : "")
-          + (refused ? ` repair_refused=${refused.reason}@${refused.holder}` : ""));
+          + (refused ? ` repair_refused=${refused.reason}@${refused.holder}` : "")
+          + (typeof later?.count === "number" && typeof later.latest?.check_run_id === "number"
+            ? ` later_failures=${later.count} latest_check_run=${later.latest.check_run_id}` : ""));
       }
       return 0;
     }

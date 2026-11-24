@@ -655,11 +655,29 @@ describe("ContainedMissionHost status publication", () => {
     expect(readCiChain(f.store.db, f.store.get(id))).toMatchObject({ state: "stopped", since: 3105, reason: "grant_revoked" });
   });
 
+  it("exposes later failures in status and skips events without a numeric check run", () => {
+    const f = fixture();
+    const { mission_id: id } = ciRoot(f, "later");
+    const head = "b".repeat(40);
+    const digest = "2".repeat(64);
+    f.store.record(id, "ci_delivery_evidence", evidence(digest, head), 3000);
+    f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3001);
+    f.store.record(id, "ci_failure_observed", { job: { check_run_id: 41 } }, 3002);
+    const status = () => f.host.status(f.principal, id).github_ci_chain;
+    const original = status();
+    f.store.record(id, "ci_later_failure_observed", { job: { check_run_id: "42" } }, 3003);
+    expect(status()).toEqual(original);
+    f.store.record(id, "ci_later_failure_observed", { head, phase: "before_dispatch", job: { check_run_id: 42, job_name: "x".repeat(201) } }, 3004);
+    expect(status()).toMatchObject({ ...original, later_failures: { count: 1, first_since: 3004,
+      latest: { check_run_id: 42, job_name: "", head, phase: "before_dispatch", since: 3004 } } });
+  });
+
   it("measures the current wait until the chain stops", () => {
     const f = fixture();
     const stats = () => computeCiChainStats(f.store.db, 3100);
     expect(stats()).toMatchObject({ ci_chain_first_pass: { closed: 0, rate: null },
       ci_chain_hop_wait_ms: { closed_chains: 0, hops: [] }, ci_chain_open_wait_ms: { open_chains: 0 } });
+    expect(stats().ci_chain_later_failures).toMatchObject({ chains: 0, chains_with_later_failure: 0, later_failures: 0 });
     const { mission_id } = ciRoot(f, "open");
     const digest = "2".repeat(64);
     f.store.record(mission_id, "ci_delivery_evidence", evidence(digest, "b".repeat(40)), 3000);

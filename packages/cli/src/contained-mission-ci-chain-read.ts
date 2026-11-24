@@ -12,6 +12,11 @@ export type CiChainState = 'initial_ci_waiting' | 'repair_permission_waiting' | 
 export interface CiChainRow {
   mission_id: string; scope_id: string; repository: string; pr: number; state: CiChainState; since: number;
   head_before: string | null; head_after: string | null; merge_commit_sha: string | null; stop_reason: string | null;
+  later_failures?: {
+    counts: 'later CI failures with a check run different from the first failure; no repair is dispatched for them';
+    count: number; first_since: number;
+    latest: { check_run_id: number; job_name: string; head: string; phase: string; since: number };
+  };
   repair_refused?: { reason: string; holder: string; since: number };
   scan?: { failing: true; reason: CiReadFailureReason; step: CiScanStep; since: number; consecutive: number };
   reason?: string; head?: string; app_id?: number; handoff_comment_id?: number;
@@ -87,9 +92,28 @@ export function readCiChain(db: Database.Database, mission: ContainedMission): C
   const scan = health ? { failing: true as const, reason: health.reason, step: health.step, since: health.since, consecutive: health.consecutive } : undefined;
   const refused = state === 'repair_permission_waiting' && !dispatch ? last('ci_repair_dispatch_refused') : undefined;
   const refusal = payload(refused);
+  let laterFailures: CiChainRow['later_failures'];
+  for (const event of events) {
+    if (event.kind !== 'ci_later_failure_observed') continue;
+    const facts = payload(event);
+    const job = facts?.['job'] as Record<string, unknown> | undefined;
+    const id = number(job?.['check_run_id']);
+    if (id === null) continue;
+    const name = string(job?.['job_name']);
+    const latest = { check_run_id: id, job_name: name && name.length <= 200 ? name : '',
+      head: string(facts['head']) ?? '', phase: string(facts['phase']) ?? '', since: event.created_at };
+    if (laterFailures) {
+      laterFailures.count++;
+      laterFailures.latest = latest;
+    } else {
+      laterFailures = { counts: 'later CI failures with a check run different from the first failure; no repair is dispatched for them',
+        count: 1, first_since: event.created_at, latest };
+    }
+  }
   return {
     ...(refused && failure && refused.seq >= failure.seq && typeof refusal?.['reason'] === 'string' && typeof refusal['holder'] === 'string'
       ? { repair_refused: { reason: refusal['reason'], holder: refusal['holder'], since: refused.created_at } } : {}),
+    ...(laterFailures ? { later_failures: laterFailures } : {}),
     ...(scan ? { scan } : {}),
     mission_id: mission.mission_id, scope_id: mission.scope_id, repository: spec.publication?.repository ?? '',
     pr: state === 'closed' ? number(mergedFacts['pr']) ?? publication.pr.number
@@ -134,8 +158,11 @@ export function computeCiChainStats(db: Database.Database, nowMs = Date.now()) {
   const durations: Array<{ mission_id: string; duration_ms: number | null }> = [];
   const timelines: StageTimeline[] = [];
   let firstPass = 0;
+  let chainsWithLaterFailure = 0;
+  let laterFailures = 0;
   let closed = 0; let repairedClosed = 0; let consecutive = 0; let streakOpen = true;
   for (const chain of chains) {
+    if (chain.later_failures) { chainsWithLaterFailure++; laterFailures += chain.later_failures.count; }
     if (chain.scan) { scanFailing++; scanReasons.set(chain.scan.reason, (scanReasons.get(chain.scan.reason) ?? 0) + 1); }
     counts.set(chain.state, (counts.get(chain.state) ?? 0) + 1);
     if (chain.state === 'closed') {
@@ -173,6 +200,8 @@ export function computeCiChainStats(db: Database.Database, nowMs = Date.now()) {
     ci_chain_closed: closed, ci_chain_repaired_closed: repairedClosed, ci_chain_consecutive_normal_closed: consecutive,
     ci_chain_first_pass: { counts: 'closed chains with no ci_failure_observed and no ci_repair_dispatched event / all closed chains',
       closed, first_pass: firstPass, rate: closed ? firstPass / closed : null },
+    ci_chain_later_failures: { counts: 'chains with at least one later, different CI failure recorded after the first / all chains',
+      chains: chains.length, chains_with_later_failure: chainsWithLaterFailure, later_failures: laterFailures },
     ci_chain_hop_wait_ms: summarizeHops(timelines),
     ci_chain_open_wait_ms: summarizeOpenWaits(chains, nowMs),
     ci_chain_reverted_or_hotfixed_7d: { value: null,

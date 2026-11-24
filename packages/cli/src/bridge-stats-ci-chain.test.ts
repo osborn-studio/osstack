@@ -53,6 +53,7 @@ describe("CI chain wait and outcome lines", () => {
   const reason = "not_wired: needs a read of later commits on the default branch; only the pure calculation exists";
   const full = {
     ...chain,
+    ci_chain_later_failures: { chains: 6, chains_with_later_failure: 2, later_failures: 3 },
     ci_chain_first_pass: { closed: 4, first_pass: 3, rate: 0.75 },
     ci_chain_hop_wait_ms: { closed_chains: 4, out_of_order: 0, hops: [{ hop: "registered->pr_opened", n: 4, median_ms: 10, p95_ms: 20 }] },
     ci_chain_open_wait_ms: { open_chains: 2, clock_skew: 0, by_state: [{ state: "initial_ci_waiting", n: 2, median_ms: 1000.5, max_ms: 3000 }],
@@ -66,6 +67,7 @@ describe("CI chain wait and outcome lines", () => {
   it("prints first pass, hop and open waits, and the followup read status", () => {
     expect(lines(full)).toEqual([
       "first_pass_rate: 3/4 = 75.0% (n=4 closed chains; first pass = no CI failure observed and no repair dispatched)",
+      "later_failures: 2/6 chains, 3 failures (n=6 chains; a later failure with a different check run than the first; no second repair is dispatched)",
       "hop_wait_ms (n=4 closed chains; wait between consecutive recorded stages):",
       "  registered->pr_opened n=4 median=10 p95=20",
       "open_wait_ms (n=2 open chains; now minus start of current state):",
@@ -76,14 +78,15 @@ describe("CI chain wait and outcome lines", () => {
   });
   it("reports empty samples", () => {
     expect(lines({ ...full, ci_chain_first_pass: { closed: 0, first_pass: 0, rate: null },
+      ci_chain_later_failures: { chains: 0, chains_with_later_failure: 0, later_failures: 0 },
       ci_chain_hop_wait_ms: { closed_chains: 0, hops: [], out_of_order: 0 },
       ci_chain_open_wait_ms: { open_chains: 0, by_state: [], longest: [], clock_skew: 0 } })).toEqual([
-      "first_pass_rate: no data (n=0 closed chains)", "hop_wait_ms: no data (n=0 closed chains)",
+      "first_pass_rate: no data (n=0 closed chains)", "later_failures: no data (n=0 chains)", "hop_wait_ms: no data (n=0 closed chains)",
       "open_wait_ms: no data (n=0 open chains)", `reverted_or_hotfixed_within_7d: not measured (${reason})`,
     ]);
   });
   it("reports each field missing from an older daemon", () => {
-    expect(lines(chain)).toEqual(["first_pass_rate: unavailable", "hop_wait_ms: unavailable",
+    expect(lines(chain)).toEqual(["first_pass_rate: unavailable", "later_failures: unavailable", "hop_wait_ms: unavailable",
       "open_wait_ms: unavailable", "reverted_or_hotfixed_within_7d: unavailable"]);
   });
   it("prints skew counts, missing stage pairs and at most three safe mission IDs", () => {

@@ -12795,6 +12795,11 @@ function printCiChainStats(stats: CiChainStats | null | undefined): void {
   else if (pass.rate === null) console.log("first_pass_rate: no data (n=0 closed chains)");
   else console.log(`first_pass_rate: ${pass.first_pass}/${pass.closed} = ${(100 * pass.rate).toFixed(1)}% (n=${pass.closed} closed chains; first pass = no CI failure observed and no repair dispatched)`);
 
+  const later = stats?.ci_chain_later_failures;
+  if (!later) console.log("later_failures: unavailable");
+  else if (later.chains === 0) console.log("later_failures: no data (n=0 chains)");
+  else console.log(`later_failures: ${later.chains_with_later_failure}/${later.chains} chains, ${later.later_failures} failures (n=${later.chains} chains; a later failure with a different check run than the first; no second repair is dispatched)`);
+
   const hops = stats?.ci_chain_hop_wait_ms;
   if (!hops) console.log("hop_wait_ms: unavailable");
   else {
