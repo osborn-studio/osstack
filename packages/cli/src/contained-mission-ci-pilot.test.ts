@@ -677,3 +677,180 @@ describe('CI repair root writer exclusion', () => {
     } finally { await observer.stop(); f.close(); }
   });
 });
+
+describe('local-failure hold at the App E release boundary', () => {
+  type Timing = 'before request' | 'before authentication' | 'before CI' | 'before reservation' | 'before release' | 'after release' | 'baseline';
+  function setup(f: ReturnType<typeof fixture>, timing: Timing) {
+    f.writeRelease();
+    const root = f.seed(missionId => {
+      const hp = new HostProcessStore(f.rig.attention, f.rig.owner, { clock: () => 2060 });
+      for (const [index, kind] of (['git_push', 'gh_pr_create'] as const).entries()) {
+        const opId = `hp_${String(index + 1).repeat(32)}`;
+        hp.launching({ op_id: opId, mission_id: missionId, kind,
+          remote_target: remoteTargetOf(ciPolicy.repository, branch), local_target: '/isolated/fixture',
+          argv_digest: 'a'.repeat(64), boot_id: 'fixture', marker: { path: `/isolated/${index}`, dev: '1', ino: String(index + 1) } });
+        hp.registered(opId, { pid: 4242, pgid: 4242, leader_start: null });
+        hp.release(opId, () => {});
+        hp.stopped(opId, { proof: 'group_empty+marker_unheld', detail: {}, exit_code: 0 });
+      }
+    });
+    const policy: CiMergerPolicy = { ...SANDBOX_MERGER_POLICY, repository: ciPolicy.repository, repositoryId: ciPolicy.repositoryId,
+      ci: ciPolicy, installationId: 7002, qualityRulesetId: 31, updateRulesetId: 32, missionRulesets: { writers: 33, history: 34 } };
+    const binding = { ...target, repository: policy.repository, repositoryId: policy.repositoryId };
+    const repo = { id: policy.repositoryId, full_name: policy.repository };
+    const comment = { id: 271, body: `osstack-ci-pilot-merge ${head} ${base}`, user: { id: policy.watcherId, type: 'User' },
+      created_at: new Date(2500).toISOString(), updated_at: new Date(2500).toISOString(), author_association: 'MEMBER' };
+    const store = f.rig.missions;
+    const chain = f.rig.chains.createLiveChain({ root_mission_id: root.mission_id, repository: policy.repository,
+      pr_number: target.pr, branch, base_ref: 'main', published_head: head, published_base: base, trace_id: 'hold',
+      grant: { kind: 'live', version: 1, rounds: 1 } }, 2200);
+    // Install the direct fixture grant at the precise hand-off boundary being tested.
+    store.db.exec('DROP TRIGGER engineering_local_failure_grant_monotonic');
+    const optIn = () => store.db.prepare(`UPDATE engineering_revision_chains SET
+      grant_json=json_set(grant_json,'$.version',2,'$.local_failure',json('{}')),revision=revision+1 WHERE chain_id=?`).run(chain.chain_id);
+    const event = (kind: string) => latestCiEvent(store, root.mission_id, kind);
+    let comments = 0, insideWrite = false;
+    const rest = vi.fn<ReturnType<typeof createSandboxCiReader>['rest']>(async path => {
+      if (path.endsWith('/pulls/17')) return { ok: true, body: { number: 17, state: 'open', merged: false,
+        head: { sha: head, ref: branch, repo }, base: { sha: base, ref: 'main', repo }, user: { id: policy.publisherId, type: 'Bot' } } };
+      if (path.includes('/contents/')) {
+        const workflow = ciPolicy.jobs.map(job => job.workflow ?? ciPolicy).find(item => path.includes(`/${item.workflowPath}?`));
+        return { ok: !!workflow, body: { sha: workflow?.workflowBlob, type: 'file' } };
+      }
+      if (path.includes('/check-suites?')) return { ok: true, body: { total_count: 0, check_suites: [] } };
+      if (path.includes('/issues/17/comments?')) {
+        if (timing === 'before authentication') optIn();
+        return { ok: true, body: [comment] };
+      }
+      if (path.endsWith('/issues/comments/271')) {
+        comments++;
+        if ((timing === 'before reservation' && comments === 2) || (timing === 'before release' && insideWrite)) optIn();
+        return { ok: true, body: comment };
+      }
+      return { ok: false };
+    });
+    const ci: ReturnType<typeof createSandboxCiReader> = {
+      latestAttempt: async () => { throw Error('no failure'); },
+      observeLatestJob: async (q, job) => ({ outcome: 'success', run_id: job.workflowId, workflow_id: job.workflowId, attempt: 1,
+        ...(job.workflowSet ? { runSnapshot: 'same-attempts' } : {}),
+        check_run_id: 10, check_suite_id: 11, job_id: 12, job_name: q.name, runner_labels: job.runnerLabels,
+        matrix: job.matrix, workflow_path: job.workflowPath, head, base, app_id: ciPolicy.actionsAppId }),
+      rest,
+    };
+    const observe = vi.fn<SandboxAppEPorts['observe']>(async () => {
+      if (timing === 'before CI') optIn();
+      return {
+        binding, complete: true, open: true, draft: false, publisherId: policy.publisherId, headRepositoryId: policy.repositoryId,
+        baseRef: 'main', baseTip: base, mergeable: true, reviewDecision: 'APPROVED', labels: ['verified'], blockers: [], unresolvedThreads: 0,
+        currentChangesRequested: false, watcher: { userId: policy.watcherId, type: 'User', state: 'APPROVED', head, counted: true },
+        quality: { id: 31, active: true, appliesToMain: true, bypassActors: [], requiredChecksEnforced: true, approvalEnforced: true,
+          threadsEnforced: true, lastPushApprovalEnforced: true },
+        update: { id: 32, active: true, appliesToMain: true, restrictsUpdates: true,
+          bypassActors: [{ actorId: policy.appId, actorType: 'Integration', mode: 'pull_request' }] },
+      };
+    });
+    const written = vi.fn();
+    const merge = vi.fn<SandboxAppEPorts['merge']>(async (_request, beforeWrite) => {
+      insideWrite = true;
+      await beforeWrite();
+      if (timing === 'after release') {
+        expect(event('ci_app_e_merge_released')).toBeDefined();
+        expect(store.db.inTransaction).toBe(false);
+        optIn();
+      }
+      written();
+      return { merged: true, sha: mergedHead };
+    });
+    const readback = vi.fn<SandboxAppEPorts['readback']>(async () => ({ binding, merged: true, actorVerified: true,
+      actorType: 'Bot', actorUserId: policy.actorId, actorAppId: policy.appId, sha: mergedHead, parents: [base] }));
+    const service = createSandboxCiMerge({ store, scopeId: root.scope_id, now: () => 3000, enabled: () => true,
+      writeEnabled: () => true, ci, policy, github: () => ({ observe, merge, readback }) });
+    if (timing === 'before request') optIn();
+    const request = () => service.request(root, root, target, new AbortController().signal);
+    const accepts = () => service.acceptsMerge(root, root, target, { id: policy.actorId, type: 'Bot' }, mergedHead);
+    const events = () => store.events(root.mission_id);
+    return { request, accepts, events, event, optIn, rest, observe, merge, readback, written, chain, policy };
+  }
+
+  it('sends the baseline merge and recognizes its released hand-off after opt-in', async () => {
+    const f = fixture();
+    try {
+      const m = setup(f, 'baseline');
+      await m.request();
+      expect(m.written).toHaveBeenCalledOnce();
+      expect(m.event('ci_app_e_merge_confirmed')).toBeDefined();
+      const accepted = m.accepts();
+      expect(accepted).toEqual({ handoff_comment_id: 271, app_id: m.policy.appId });
+      m.optIn();
+      expect(m.accepts()).toEqual(accepted);
+    } finally { f.close(); }
+  });
+
+  it('records a held reason once per head and reason before any remote calls', async () => {
+    const f = fixture();
+    try {
+      const m = setup(f, 'before request');
+      const holds = () => m.events().filter(e => e.kind === 'local_failure_merge_held').map(e => JSON.parse(e.payload_json));
+      const payload = { pr: target.pr, head, base, reason: 'verification_pending' };
+      await m.request();
+      await m.request();
+      expect(holds()).toEqual([payload]);
+      // Simulate an unreadable stored grant to exercise a reason change on the same head.
+      f.rig.db.exec('DROP TRIGGER engineering_chain_grant_monotonic');
+      f.rig.db.pragma('ignore_check_constraints=ON');
+      f.rig.db.prepare("UPDATE engineering_revision_chains SET grant_json='{',revision=revision+1 WHERE chain_id=?").run(m.chain.chain_id);
+      await m.request();
+      expect(holds()).toEqual([payload, { ...payload, reason: 'verify_merge_unverified' }]);
+      for (const port of [m.rest, m.observe, m.merge, m.readback]) expect(port).not.toHaveBeenCalled();
+      expect(m.event('ci_app_e_merge_reserved')).toBeUndefined();
+    } finally { f.close(); }
+  });
+
+  it.each(['before authentication', 'before CI'] as const)('stops remote reads on opt-in %s', async timing => {
+    const f = fixture();
+    try {
+      const m = setup(f, timing);
+      await m.request();
+      const paths = m.rest.mock.calls.map(([path]) => path);
+      const prefix = 'repos/' + ciPolicy.repository;
+      expect(paths).toEqual([`${prefix}/issues/17/comments?per_page=100&page=1`,
+        ...(timing === 'before CI' ? [`${prefix}/issues/comments/271`] : [])]);
+      expect(m.observe).toHaveBeenCalledTimes(timing === 'before CI' ? 1 : 0);
+      expect(m.event('local_failure_merge_held')).toBeUndefined();
+      expect(m.event('ci_app_e_merge_reserved')).toBeUndefined();
+      expect(m.merge).not.toHaveBeenCalled();
+    } finally { f.close(); }
+  });
+
+  it.each(['before reservation', 'before release'] as const)('blocks opt-in committed %s', async timing => {
+    const f = fixture();
+    try {
+      const m = setup(f, timing);
+      await m.request();
+      expect(JSON.parse(f.rig.chains.get(m.chain.chain_id).grant_json).version).toBe(2);
+      expect(!!m.event('ci_app_e_merge_reserved')).toBe(timing === 'before release');
+      expect(m.merge).toHaveBeenCalledTimes(timing === 'before release' ? 1 : 0);
+      expect(m.event('local_failure_merge_held')).toBeUndefined();
+      expect(m.event('ci_app_e_merge_released')).toBeUndefined();
+      expect(m.written).not.toHaveBeenCalled();
+      expect(m.readback).not.toHaveBeenCalled();
+      expect(m.event('ci_app_e_merge_confirmed')).toBeUndefined();
+    } finally { f.close(); }
+  });
+
+  it('completes a released write when opt-in commits after release and ignores the next request', async () => {
+    const f = fixture();
+    try {
+      const m = setup(f, 'after release');
+      await m.request();
+      expect(m.event('ci_app_e_merge_confirmed')).toBeDefined();
+      expect(JSON.parse(f.rig.chains.get(m.chain.chain_id).grant_json).version).toBe(2);
+      const events = m.events(), reads = m.rest.mock.calls.length;
+      await m.request();
+      expect(m.events()).toEqual(events);
+      expect(m.rest).toHaveBeenCalledTimes(reads);
+      expect(m.merge).toHaveBeenCalledOnce();
+      expect(m.written).toHaveBeenCalledOnce();
+    } finally { f.close(); }
+  });
+});

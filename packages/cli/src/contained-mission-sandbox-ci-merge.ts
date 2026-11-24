@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { latestCiEvent } from './contained-mission-github-ci-approval.js';
 import type { SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
 import { readSandboxCiJobs, type SandboxCiTarget } from './contained-mission-github-ci.js';
+import { readLocalFailureMergeHold } from './contained-mission-local-failure-merge-hold.js';
 import type { AuthenticatedCiRest } from './contained-mission-local-failure-reader-transport.js';
 import { readMissionPublication } from './contained-mission-publication.js';
 import { remoteTargetOf } from './contained-mission-remote-writes.js';
@@ -42,6 +43,9 @@ export function createSandboxCiMerge(input: {
   const repo = policy.repository;
   const production = !!policy.missionRulesets;
   const canWrite = (root: ContainedMission) => enabled() && (!production || input.writeEnabled?.(root) === true);
+  const heldFor = (root: ContainedMission, target: SandboxCiTarget) => readLocalFailureMergeHold(store, {
+    repository: repo, pr: target.pr, root_mission_id: root.mission_id, head: target.head, base: target.base,
+  });
   const record = (mission: string, kind: string) => store.db.prepare(
     'SELECT created_at,payload_json FROM engineering_contained_events WHERE mission_id=? AND kind=? ORDER BY seq DESC LIMIT 1')
     .get(mission, kind) as { created_at: number; payload_json: string } | undefined;
@@ -92,6 +96,14 @@ export function createSandboxCiMerge(input: {
   return {
     async request(root: ContainedMission, child: ContainedMission, target: SandboxCiTarget, signal: AbortSignal) {
       if (!canWrite(root) || record(root.mission_id, 'ci_app_e_merge_reserved') || signal.aborted) return;
+      const hold = heldFor(root, target);
+      if (hold.held) {
+        const previous = latestCiEvent<{ head: string; reason: string }>(store, root.mission_id, 'local_failure_merge_held');
+        if (previous?.head !== target.head || previous.reason !== hold.reason) {
+          store.record(root.mission_id, 'local_failure_merge_held', { pr: target.pr, head: target.head, base: target.base, reason: hold.reason }, now());
+        }
+        return;
+      }
       const push = pushReceipt(root, child, target);
       if (!push) return;
       const binding = { ...target, repository: repo, repositoryId: policy.repositoryId };
@@ -108,7 +120,7 @@ export function createSandboxCiMerge(input: {
       if (matching.length !== 1 || !matching[0]) return;
       const handoff = matching[0];
       const authenticateHandoff = async (h: SandboxMergerHandoff) => {
-        if (!canWrite(root) || signal.aborted || !pushReceipt(root, child, target) || h.id !== handoff.id) return false;
+        if (!canWrite(root) || signal.aborted || !pushReceipt(root, child, target) || h.id !== handoff.id || heldFor(root, target).held) return false;
         const current = await rest(`repos/${repo}/issues/comments/${h.id}`, { signal });
         const reread = current.ok ? handoffFor(current.body, binding, push.created_at, now(), policy) : null;
         return reread?.id === h.id && reread.expiresAt === h.expiresAt && !signal.aborted && canWrite(root);
@@ -120,19 +132,20 @@ export function createSandboxCiMerge(input: {
           await beforeWrite();
           store.db.transaction(() => {
             store.attention.assertOwner(store.owner);
+            // The release transaction commit is the cutoff for a new local-failure opt-in.
             if (!canWrite(root) || signal.aborted || handoff.expiresAt <= now() || !pushReceipt(root, child, target)
-              || reservedFor(root, target)?.id !== handoff.id || record(root.mission_id, 'ci_app_e_merge_released')) {
+              || heldFor(root, target).held || reservedFor(root, target)?.id !== handoff.id || record(root.mission_id, 'ci_app_e_merge_released')) {
               throw Error('SANDBOX_APP_E_RELEASE_REFUSED');
             }
             store.record(root.mission_id, 'ci_app_e_merge_released', handoff, now());
           }).immediate();
         }),
-        verifyCurrentPublicationAndCi: async b => !!pushReceipt(root, child, b)
+        verifyCurrentPublicationAndCi: async b => !heldFor(root, b).held && !!pushReceipt(root, child, b)
           && (await readSandboxCiJobs(ci, b, signal, undefined, policy.ci)).kind === 'success',
         reserveOnce: (key, h) => Promise.resolve(store.db.transaction(() => {
           store.attention.assertOwner(store.owner);
           if (!canWrite(root) || signal.aborted || !pushReceipt(root, child, target) || h.expiresAt <= now()
-            || key !== `${policy.repositoryId}:${target.pr}`
+            || heldFor(root, target).held || key !== `${policy.repositoryId}:${target.pr}`
             || store.db.prepare(`SELECT 1 FROM engineering_contained_events WHERE kind='ci_app_e_merge_reserved'
               AND json_extract(payload_json,'$.binding.repositoryId')=? AND json_extract(payload_json,'$.binding.pr')=? LIMIT 1`)
               .get(policy.repositoryId, target.pr)) return false;
