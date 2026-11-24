@@ -16,6 +16,14 @@ function chainFacts(source: DecisionSource, row: DecisionRow): Pick<ExternalAtte
   return {};
 }
 
+function isRecheckOnly(source: DecisionSource, row: DecisionRow): boolean {
+  if (source !== "revision_chain" || row.state === "ready_for_human" || row.state === "awaiting_decision") return false;
+  try {
+    const recheck = JSON.parse(row.details_json)?.recheck;
+    return recheck !== null && typeof recheck === "object";
+  } catch { return false; }
+}
+
 function notice(queries: DecisionQueries, source: DecisionSource, row: DecisionRow, firstSeen: Map<string, number>, now: () => number): ExternalAttentionDecision {
   const item = decisionItem(source, row);
   // Without a transition, revisions on these projections (and the digest
@@ -61,18 +69,22 @@ export function createDecisionNoticeSource(
         firstSeenBySource.set(source, firstSeen);
         let after = "";
         try {
-          while (batch.length < sourceLimit) {
-            const limit = Math.min(pageSize, sourceLimit - batch.length);
-            const rows = queries[source]({ read_scopes, after, limit });
-            for (const row of rows) batch.push(notice(queries, source, row, firstSeen, now));
-            if (rows.length < limit) break;
+          while (true) {
+            const rows = queries[source]({ read_scopes, after, limit: pageSize });
+            for (const row of rows) {
+              if (isRecheckOnly(source, row)) continue;
+              if (batch.length === sourceLimit) {
+                truncated = true;
+                incomplete.add(source);
+                report?.("decision_notice_truncated:" + source);
+                break;
+              }
+              batch.push(notice(queries, source, row, firstSeen, now));
+            }
+            if (incomplete.has(source) || rows.length < pageSize) break;
             after = rows[rows.length - 1]!.id;
           }
-          if (batch.length === sourceLimit && queries[source]({ read_scopes, after, limit: 1 }).length) {
-            truncated = true;
-            incomplete.add(source);
-            report?.("decision_notice_truncated:" + source);
-          } else if (firstSeen.size) {
+          if (!incomplete.has(source) && firstSeen.size) {
             const present = new Set(batch.map(item => item.item_id));
             for (const id of firstSeen.keys()) if (!present.has(id)) firstSeen.delete(id);
           }

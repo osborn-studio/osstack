@@ -19,6 +19,7 @@ function hasLocalRepair(details: string): boolean {
 export function decisionItem(source: DecisionSource, row: DecisionRow): PendingDecision {
   let allowed_answers: string[] = [];
   let answer_command: PendingDecision["answer_command"] = command("mission.decide", "mission_id", "decision");
+  let description = row.summary ?? row.state;
   let requires_local_signature = false;
   switch (source) {
     case "session": {
@@ -60,17 +61,27 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
       answer_command = { ...command("mission.approve_ci_repair", "mission_id", "candidate"), alternatives: [command("mission.decide", "mission_id", "decision")] };
       break;
     case "revision_chain": {
+      const alternatives = [];
       // Shadow chains have no answering surface. The live service rejects them.
       if (row.kind === "live") {
+        const facts = JSON.parse(row.details_json) as { uncertain?: number; unsettled?: number; recheck?: { mission_id: string; attempt: number } };
+        const recheck = command("mission recheck-rearm", "--mission", "--attempt");
+        if (facts.recheck && row.state !== "ready_for_human" && row.state !== "awaiting_decision") {
+          requires_local_signature = true;
+          description = `recheck waiting: attempt ${facts.recheck.attempt} of 3, mission ${facts.recheck.mission_id}`;
+          answer_command = { ...command("mission.chain_decide", "chain_id", "decision"), alternatives: [recheck] };
+          break;
+        }
         allowed_answers = ["abandon", "takeover"];
-        const facts = JSON.parse(row.details_json) as { uncertain?: number; unsettled?: number };
         if (facts.uncertain) allowed_answers.push("reconcile");
         if (!facts.unsettled && (row.state === "ready_for_human" || REFRESHABLE_STOP_REASONS.has(row.reason ?? ""))) {
+          alternatives.push(command("mission grant-revisions", "--chain"));
           allowed_answers.push("grant_revisions"); requires_local_signature = true;
         }
+        if (facts.recheck) alternatives.push(recheck);
       }
       answer_command = { ...command("mission.chain_decide", "chain_id", "decision"),
-        ...(allowed_answers.includes("grant_revisions") ? { alternatives: [command("mission grant-revisions", "--chain")] } : {}),
+        ...(alternatives.length ? { alternatives } : {}),
       };
       break;
     }
@@ -89,7 +100,7 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
   }
   return {
     source, source_id: row.id, scope_id: row.scope_id, waiting_since: row.waiting_since,
-    summary: summary(row.summary ?? row.state), allowed_answers, answer_command, requires_local_signature,
+    summary: summary(description), allowed_answers, answer_command, requires_local_signature,
     source_revision: row.revision ?? digest(row),
   };
 }

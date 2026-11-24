@@ -37,7 +37,7 @@ function fixture(route: "disabled" | "unavailable" | "ready" = "ready") {
   const service = new ContainedMissionService({
     access: { authenticate: () => actor } as unknown as ContainedMissionServiceOptions["access"],
     host: host as unknown as ContainedMissionServiceOptions["host"], draining,
-    ...(route === "disabled" ? {} : { localFailure: { publicationReady: route === "ready", start() {}, async recover() {}, async stop() {} } }),
+    ...(route === "disabled" ? {} : { localFailure: { rearmRecheck: vi.fn(), recheckView: () => null, publicationReady: route === "ready", start() {}, async recover() {}, async stop() {} } }),
   });
   cleanup.push(() => service.close());
   vi.spyOn(Date, "now").mockReturnValue(now);

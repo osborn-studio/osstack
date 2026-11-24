@@ -307,3 +307,55 @@ it("keeps the state-specific handling of malformed Mission JSON", () => {
   expect(missionAnswers("{", "needs_reconciliation", "")).toEqual(["abandon", "discard_changes", "adopt_worktree"]);
   expect(() => missionAnswers("{", "awaiting_decision", "budget_exhausted")).toThrow(SyntaxError);
 });
+
+it("lists a waiting recheck in read scope and preserves existing live and shadow decisions", async () => {
+  const { publishedRecheck, runFixture } = await import("@osstack/core/dist/state/local-failure-recheck.testkit.js");
+  const h = publishedRecheck();
+  h.recordConfirmation(); h.confirm();
+  const { db, principal } = h.f, chain = h.chain(), queries = new DecisionQueries(db);
+  const items = async (read_scopes = principal.read_scopes) => (await listDecisions(queries, {}, () => ({ ...principal, read_scopes }))).items.filter(i => i.source === "revision_chain");
+  const state = (value: string) => db.prepare("UPDATE engineering_revision_chains SET state=?,revision=revision+1 WHERE chain_id=?").run(value, chain.chain_id);
+  state("ready_for_human");
+  const before = (await items())[0]!;
+  const rearm = { name: "mission recheck-rearm", required_params: ["--mission", "--attempt"] };
+  const row = h.open();
+  expect(await items()).toEqual([{ ...before, answer_command: { ...before.answer_command, alternatives: [...before.answer_command.alternatives!, rearm] } }]);
+  state("awaiting_review");
+  expect(await items()).toMatchObject([{ source_id: chain.chain_id, allowed_answers: [], requires_local_signature: true, waiting_since: row.created_at,
+    answer_command: { name: "mission.chain_decide", required_params: ["chain_id", "decision"], alternatives: [rearm] },
+    summary: `recheck waiting: attempt 1 of 3, mission ${row.root_mission_id}` }]);
+  expect(await items(["other"])).toEqual([]);
+  const shadow = new RevisionChainStore(h.f.attention, h.f.owner).createShadowChain(chain, h.now);
+  expect((await items()).map(i => i.source_id)).not.toContain(shadow.chain_id);
+  const { runs, input } = runFixture(h, row);
+  for (let n = 1; n <= 3; n++) {
+    const r = runs.reserve({ ...input, invocation_id: globalThis.crypto.randomUUID() }).run;
+    expect(await items()).toEqual([]);
+    runs.settleNotStarted(r.run_id, r.revision, "verify_recheck_not_started");
+    if (n < 3) expect((await items())[0]?.summary).toBe(`recheck waiting: attempt ${n + 1} of 3, mission ${row.root_mission_id}`);
+  }
+  expect(await items()).toEqual([]);
+});
+
+it("excludes a closed chain with a pending recheck and keeps prior decisions without a recheck", async () => {
+  const { publishedRecheck } = await import("@osstack/core/dist/state/local-failure-recheck.testkit.js");
+  const h = publishedRecheck(), chain = h.chain(), { db, principal } = h.f;
+  const list = async () => (await listDecisions(new DecisionQueries(db), {}, () => principal)).items.filter(i => i.source === "revision_chain");
+  for (const mode of ["live", "shadow"] as const) {
+    const c = mode === "live" ? chain : new RevisionChainStore(h.f.attention, h.f.owner).createShadowChain(chain, h.now);
+    for (const state of ["ready_for_human", "awaiting_decision"]) {
+      db.prepare("UPDATE engineering_revision_chains SET state=?,stop_reason=?,revision=revision+1 WHERE chain_id=?").run(state, state === "awaiting_decision" ? "operator_review" : null, c.chain_id);
+      const grant = mode === "live" && state === "ready_for_human";
+      expect((await list()).find(i => i.source_id === c.chain_id)).toEqual({ source: "revision_chain", source_id: c.chain_id,
+        scope_id: principal.read_scopes[0], waiting_since: null, summary: state, requires_local_signature: grant,
+        source_revision: String(new RevisionChainStore(h.f.attention, h.f.owner).get(c.chain_id).revision),
+        allowed_answers: mode === "shadow" ? [] : ["abandon", "takeover", ...(grant ? ["grant_revisions"] : [])],
+        answer_command: { name: "mission.chain_decide", required_params: ["chain_id", "decision"],
+          ...(grant && { alternatives: [{ name: "mission grant-revisions", required_params: ["--chain"] }] }) } });
+    }
+  }
+  const pending = publishedRecheck(); pending.recordConfirmation(); pending.confirm(); pending.open();
+  pending.f.db.exec("UPDATE engineering_revision_chains SET state='closed',revision=revision+1");
+  const result = await listDecisions(new DecisionQueries(pending.f.db), {}, () => pending.f.principal);
+  expect(result.failures).toEqual([]); expect(result.items.some(i => i.source === "revision_chain")).toBe(false);
+});

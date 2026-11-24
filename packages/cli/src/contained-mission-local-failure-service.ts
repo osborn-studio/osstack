@@ -3,8 +3,12 @@ import { createLocalFailureDiagnosis } from './contained-mission-local-failure-d
 import { createLocalFailureScan } from './contained-mission-local-failure-scan.js';
 import { createLocalFailurePublicationPort } from './contained-mission-local-failure-publication-port.js';
 import { createLocalFailureRecheck } from './contained-mission-local-failure-recheck-step.js';
+import { createRecheckRearm } from './contained-mission-local-failure-recheck-rearm.js';
+import { readLocalFailureRecheckView } from './contained-mission-local-failure-recheck-view.js';
 
 export interface LocalFailureRouteHandle {
+  rearmRecheck: ReturnType<typeof createRecheckRearm>['request'];
+  recheckView(missionId: string): ReturnType<typeof readLocalFailureRecheckView>;
   readonly publicationReady: boolean;
   recover(signal: AbortSignal): Promise<void>;
   start(): void;
@@ -13,17 +17,20 @@ export interface LocalFailureRouteHandle {
 
 type FactoryDeps = Parameters<typeof createLocalFailureScan>[0] & Parameters<typeof createLocalFailureDiagnosis>[0]
   & Omit<Parameters<typeof createLocalFailureDispatch>[0], 'portsFor'> & Parameters<typeof createLocalFailurePublicationPort>[0]
-  & Omit<Parameters<typeof createLocalFailureRecheck>[0], 'runPortsFor' | 'contracts'>;
+  & Omit<Parameters<typeof createLocalFailureRecheck>[0], 'runPortsFor' | 'contracts' | 'rearmed'>;
 
 export async function createLocalFailureRouteService(deps: FactoryDeps): Promise<LocalFailureRouteHandle> {
   const scan = await createLocalFailureScan(deps);
   const diagnosis = await createLocalFailureDiagnosis(deps);
   const dispatch = createLocalFailureDispatch({ ...deps, portsFor: request => diagnosis.portsFor(request) });
-  const recheck = createLocalFailureRecheck({ ...deps, runPortsFor: request => diagnosis.portsFor(request), contracts: scan.contracts });
+  const rearm = createRecheckRearm(deps);
+  const recheck = createLocalFailureRecheck({ ...deps, rearmed: () => rearm.next(), runPortsFor: request => diagnosis.portsFor(request), contracts: scan.contracts });
   const publication = await createLocalFailurePublicationPort(deps);
   deps.log(publication.ready ? 'osstack: local-failure route: on (read, record, register, diagnose, dispatch, publish, recheck)'
     : 'osstack: local-failure route: on (read, record, register, diagnose, dispatch, recheck)');
   return {
+    rearmRecheck: rearm.request,
+    recheckView: missionId => readLocalFailureRecheckView({ missions: deps.missions, now: deps.now, armed: rearm.armed }, missionId),
     publicationReady: publication.ready,
     async recover(signal) { diagnosis.recover(); recheck.recover(); await publication.recover(signal); },
     start() { scan.start(); diagnosis.start(); dispatch.start(); recheck.start(); },

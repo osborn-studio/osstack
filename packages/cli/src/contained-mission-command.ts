@@ -10,6 +10,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
          [--publish-draft true|false] [--publish-title TEXT] [--publish-preauthorized]]
   list --github-ci [--scope ID]       (read-only CI chain overview)
   status --mission ID                (includes publication: the opened PR and pushed commit, if any)
+  recheck-rearm --mission ROOT --attempt N [--decision-id ID]   (host only: asks for one more start of the host recheck; N is attempts used + 1, see status; runs at the next recheck pass, void after 15 minutes or a daemon restart)
   cancel --mission ID
   publish-check --mission ID         (pr_opened only: re-publish the osstack/verify check; never touches the branch or PR)
   approve-ci-repair --mission ID --candidate SHA
@@ -26,12 +27,13 @@ The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No 
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "approve-local-failure-repair" | "chain-decide" | "merger-report";
+type Command = "recheck-rearm" | "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "approve-local-failure-repair" | "chain-decide" | "merger-report";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   list: { single: ["scope"], repeated: [] },
   status: { single: ["mission"], repeated: [] },
   cancel: { single: ["mission"], repeated: [] },
+  "recheck-rearm": { single: ["mission", "attempt", "decision-id"], repeated: [] },
   "publish-check": { single: ["mission"], repeated: [] },
   "approve-local-failure-repair": { single: ["mission", "candidate"], repeated: [] },
   "approve-ci-repair": { single: ["mission", "candidate"], repeated: [] },
@@ -115,6 +117,10 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     } else if (command === "list") {
       if (!githubCi) throw new Error("required:--github-ci");
       params = { ...(single.has("scope") ? { scope_id: required("scope") } : {}) };
+    } else if (command === "recheck-rearm") {
+      const attempt = required("attempt");
+      params = { mission_id: required("mission"), expected_attempt: /^[123]$/.test(attempt) ? Number(attempt) : NaN,
+        decision_id: single.get("decision-id") ?? globalThis.crypto.randomUUID() };
     } else if (command === "decide") {
       params = { mission_id: required("mission"), decision: required("decision"),
         ...(single.has("decision-id") ? { decision_id: required("decision-id") } : {}),
@@ -128,7 +134,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     } else {
       params = { mission_id: required("mission") };
     }
-    const method = `mission.${command.replaceAll("-", "_")}` as keyof typeof ContainedMissionRpcRequests;
+    const method = command === "recheck-rearm" ? "mission.rearm_local_failure_recheck" : `mission.${command.replaceAll("-", "_")}` as keyof typeof ContainedMissionRpcRequests;
     // Validate locally before reading the credential, so a typo never needs the secret.
     const probe = ContainedMissionRpcRequests[method].safeParse({ ...params, credential: "x".repeat(32) });
     if (!probe.success) throw new Error(`invalid_request:${probe.error.issues.map((issue) => `${issue.path.join(".")}:${issue.code}`).join(",")}`);
@@ -148,7 +154,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       }
       return 0;
     }
-    out(json ? text : command === "merger-report" ? `Mission · merger report\n${text}\nShadow evidence only. Nothing is merged by OSStack.` : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
+    out(json || command === "recheck-rearm" ? text : command === "merger-report" ? `Mission · merger report\n${text}\nShadow evidence only. Nothing is merged by OSStack.` : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

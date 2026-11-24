@@ -83,3 +83,53 @@ it.each(['{"origin_mission_id":"root","parent_mission_id":"parent","depth":9}', 
   expect(Object.keys(notice)).not.toContain("reason");
   expect(Object.keys(notice)).not.toContain("chain");
 });
+
+async function chainNoticeFixture(state: "awaiting_review" | "ready_for_human") {
+  const { publishedRecheck } = await import("@osstack/core/dist/state/local-failure-recheck.testkit.js");
+  const h = publishedRecheck();
+  h.recordConfirmation(); h.confirm();
+  const { db, principal } = h.f, chainId = h.chain().chain_id;
+  db.prepare("UPDATE engineering_revision_chains SET state=?,revision=revision+1 WHERE chain_id=?").run(state, chainId);
+  const queries = new DecisionQueries(db);
+  const source = createDecisionNoticeSource(queries, () => principal.read_scopes, () => h.now);
+  const notices = () => source.pending().filter(item => item.source === "revision_chain");
+  return { h, principal, chainId, queries, source, notices };
+}
+
+it("lists a live awaiting_review chain with a waiting recheck without sending a notice", async () => {
+  const { listDecisions } = await import("./list.js");
+  const { h, principal, chainId, queries, source, notices } = await chainNoticeFixture("awaiting_review");
+  try {
+    h.open();
+    const list = await listDecisions(queries, {}, () => principal);
+    expect(list.items).toContainEqual(expect.objectContaining({ source: "revision_chain", source_id: chainId }));
+    expect(notices()).toEqual([]);
+    expect(source.incompleteSources).toEqual([]);
+  } finally { h.f.db.close(); }
+});
+
+it("preserves the ready_for_human notice when its chain gains a waiting recheck", async () => {
+  const { h, chainId, notices } = await chainNoticeFixture("ready_for_human");
+  try {
+    const before = notices();
+    expect(before).toMatchObject([{ source_id: chainId }]);
+    h.open();
+    expect(notices()).toEqual(before);
+  } finally { h.f.db.close(); }
+});
+
+it("pages past recheck-only chains and counts only notices toward truncation", () => {
+  const queries = new DecisionQueries({ prepare: () => ({ all: () => [] }) } as unknown as Database.Database);
+  const rows = Array.from({ length: 750 }, (_, i) => ({
+    ...row(String(i).padStart(3, "0")), kind: "live",
+    state: i < 150 || i >= 650 ? "awaiting_review" : "ready_for_human",
+    details_json: '{"recheck":{"mission_id":"root","attempt":1}}',
+  }));
+  vi.spyOn(queries, "revision_chain").mockImplementation(q => rows.filter(r => r.id > q.after).slice(0, q.limit));
+  const now = vi.fn(() => 10);
+  const source = createDecisionNoticeSource(queries, () => ["scope"], now);
+  expect(source.pending().map(item => item.source_id)).toEqual(rows.slice(150, 650).map(r => r.id));
+  expect(now).toHaveBeenCalledTimes(500);
+  expect(source.truncated).toBe(false);
+  expect(source.incompleteSources).toEqual([]);
+});

@@ -123,3 +123,17 @@ it("requires the exact candidate before reading the credential for local failure
   expect(missing).toMatchObject({ code: 1, reads: 0, calls: [] });
   expect(missing.err[0]).toContain("required:--candidate");
 });
+
+it("sends a scoped re-arm request with a supplied or generated decision ID", async () => {
+  const args = ["recheck-rearm", "--mission", MID, "--attempt", "2"];
+  for (const supplied of [true, false]) {
+    const r = await run(supplied ? [...args, "--decision-id", "d:1"] : args);
+    expect(r.calls).toEqual([{ method: "mission.rearm_local_failure_recheck", params: {
+      mission_id: MID, expected_attempt: 2, credential, decision_id: supplied ? "d:1" : expect.stringMatching(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/),
+    } }]);
+    expect(JSON.parse(r.out[0]!)).toEqual({ mission_id: MID });
+  }
+});
+it.each([["--attempt", "1"], ...["0", "4", "x"].map(n => ["--mission", MID, "--attempt", n])])("rejects malformed re-arm arguments before reading credentials (%s %s)", async (...args) => {
+  expect(await run(["recheck-rearm", ...args])).toMatchObject({ code: 1, reads: 0, calls: [] });
+});

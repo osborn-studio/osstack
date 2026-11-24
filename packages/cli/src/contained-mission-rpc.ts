@@ -39,6 +39,7 @@ export const ContainedMissionRpcRequests = {
       caps: z.object({ maxFiles: z.number().int().positive(), maxChangedLines: z.number().int().positive(), maxFileBytes: z.number().int().positive(), maxTotalBytes: z.number().int().positive() }).partial().strict().optional(),
     }).strict().refine(r => r.verification_mode ? r.verify.argv.length === 0 : r.verify.argv.length > 0, 'verification_mode'),
   }).strict(),
+  'mission.rearm_local_failure_recheck': z.object({ credential: Credential, mission_id: MissionId, expected_attempt: z.number().int().min(1).max(3), decision_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/) }).strict(),
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.list': z.object({ credential: Credential, scope_id: Text(256).optional() }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
@@ -198,6 +199,7 @@ export class ContainedMissionService {
   }
 
   async handle(method: string, params: unknown): Promise<unknown> {
+    if (method === 'mission.rearm_local_failure_recheck' && this.options.localFailure === undefined) throw Error('unknown_method');
     if (this.closed) throw new Error('mission_unavailable');
     if (!Object.hasOwn(ContainedMissionRpcRequests, method)) throw new Error('unknown_method');
     const parsed = ContainedMissionRpcRequests[method as ContainedMissionRpcMethod].safeParse(params);
@@ -226,7 +228,13 @@ export class ContainedMissionService {
       case 'mission.status': {
         const p = ContainedMissionRpcRequests['mission.status'].parse(params);
         const status = host.status(actor, p.mission_id);
-        return { ...status, chain: this.options.chainOf?.(p.mission_id) ?? null };
+        return { ...status, chain: this.options.chainOf?.(p.mission_id) ?? null,
+          ...(this.options.localFailure && { recheck: this.options.localFailure.recheckView(p.mission_id) }) };
+      }
+      case 'mission.rearm_local_failure_recheck': {
+        if (this.closed || this.options.draining()) throw Error('draining');
+        const { mission_id, expected_attempt, decision_id } = ContainedMissionRpcRequests['mission.rearm_local_failure_recheck'].parse(params);
+        return this.options.localFailure!.rearmRecheck(actor, { mission_id, expected_attempt, decision_id });
       }
       case 'mission.list': {
         const p = ContainedMissionRpcRequests['mission.list'].parse(params);

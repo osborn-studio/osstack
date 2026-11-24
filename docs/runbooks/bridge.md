@@ -484,6 +484,34 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 日志前缀为 `osstack: local-failure recheck: `。收集抛错时记录 `child <id>: collect_failed`。运行日志以 `<recheck_id>: ` 开头，随后是 `host_ports_unavailable`、`run_failed`、`refused:<reason>`、`existing:<state>` 或最终状态及其结论（例如 `stopped:host_passed`）。
 
+### 6.4 复验的人工重新启动与状态查看（D5c，尚未上线）
+
+**查看。** `osstack mission status --mission <根 Mission> --json` 在本地失败路线开关打开时多出 `recheck` 字段（只读）：台账 `state` 与 `reason`、仍缺的输入 `missing`（`result`、`actions`、`host`）、已等待毫秒数 `waited_ms`、已用次数 `attempts_used`（上限 3）与每次的结论、最近一次拒绝 `last_refusal`，以及 `rearm`：`allowed`、应传的 `expected_attempt`、阻止原因 `blocked_by`、是否已登记及到期时间 `armed`。没有台账记录时为 `null`。决定列表里，等待复验的链带有本机命令 `mission recheck-rearm`，没有可远程回答的选项。
+
+**重新启动。** 自动复验被拒绝或没有启动、原因已排除后，在主机上执行：
+
+```
+osstack mission recheck-rearm --mission <根 Mission> --attempt <expected_attempt>
+```
+
+需要该 Mission 所在 scope 的读、写、operator 权限。命令只登记请求并立即返回，不运行容器；下一轮复验（最多十分钟）用 `operator` 触发运行一次，日志为 `osstack: local-failure recheck: <recheck_id>: operator <结果>`。请求只存在于守护进程内存：15 分钟后失效，守护进程重启后失效，路线在那一轮被关闭时失效；失效后重新执行命令。它不推送、不审批候选、不更新授权、不让台账通过，已经真正启动过的复验不能再启动，总次数不超过 3。
+
+授权相关的拒绝（`verify_grant_missing`、`verify_grant_invalid`、`verify_budget_exhausted`）先用 `mission grant-revisions --chain` 更新授权，再重新启动；两步分开做。
+
+| 命令返回 | 含义 | 下一步 |
+|---|---|---|
+| `unknown_method` | 路线开关未打开 | 不适用 |
+| `recheck_rearm_unavailable` | 路线未启用或正在排空 | 稍后再试 |
+| `permission_denied` | 缺少 operator 权限 | 换有权限的凭据 |
+| `recheck_rearm_not_waiting` | 不是根 Mission、链已关闭，或台账不在 `reverify_pending` | 看 `status` 的 `recheck` |
+| `recheck_rearm_run_present` | 有未结清或已启动过的运行 | 不能再启动；`stop_unknown` 先证明停止 |
+| `recheck_run_attempts_exhausted` | 已用 3 次 | 放弃或接管该链 |
+| `recheck_rearm_attempt_mismatch` | `--attempt` 不等于已用次数加一 | 按 `status` 的 `expected_attempt` 重试 |
+| `recheck_rearm_pending` | 该记录已有一个未失效的请求 | 等下一轮复验 |
+| `decision_id_conflict` | `--decision-id` 已用过 | 换一个或不传 |
+
+日志中的 `rearm_expired`、`rearm_route_disabled`、`rearm_authority_lost`、`rearm_stale` 表示请求在使用前被丢弃，没有运行。
+
 ## 7. 阶段 7 上线前检查清单
 
 > 2026-11-09 首发计划更新。下列是既有本地验证和 App 迁移路径的清单。GitHub CI 驱动首发须先按[实施方案阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)完成验证、更新运行手册，并审批 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)后再开启单 scope 试运行。
