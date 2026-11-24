@@ -1,21 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { delimiter, join } from "node:path";
 import { createScratchDirSync } from "@osstack/core";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { CODEX_PROXY_PATCH_MAX_BYTES, CodexProxyExecutor, processGroupEmpty, readCodexProxyPatch } from "./codex-proxy.js";
+import { CODEX_PROXY_REPORT_REPAIR_PROMPT, CODEX_PROXY_PATCH_MAX_BYTES, CodexProxyExecutor, processGroupEmpty, readCodexProxyPatch } from "./codex-proxy.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.splice(0).forEach(fn => { fn(); }); });
-// Local TCP target so the unsandboxed connectivity control never depends on the internet.
-let server: Server; let target: { host: string; port: number };
-beforeAll(async () => {
-  server = createServer(socket => socket.destroy());
-  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
-  target = { host: "127.0.0.1", port: (server.address() as { port: number }).port };
-});
-afterAll(async () => { await new Promise(resolve => server.close(resolve)); });
+let target: { host: string; port: number };
 
 // Stands in for the codex launcher. FAKE_MODE selects exec behaviour and FAKE_SANDBOX the `codex sandbox` behaviour.
 const FAKE = `#!${process.execPath}
@@ -34,6 +27,23 @@ if (args[0] === "sandbox") {
 }
 const out = args[args.indexOf("-o") + 1];
 console.log(JSON.stringify({ args, HOME: process.env.HOME, CODEX_HOME: process.env.CODEX_HOME, keys: Object.keys(process.env).sort() }));
+const thread = "12345678-1234-1234-1234-123456789abc";
+if (process.env.FAKE_MARKER) fs.writeFileSync(process.env.FAKE_MARKER, "spawned");
+if (mode === "proposal" && !args.includes("--ephemeral")) {
+  const dir = path.join(process.env.CODEX_HOME, "sessions", "2026", "11", "24");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "rollout-2026-11-24T12-00-00-" + thread + ".jsonl"), "");
+  fs.writeFileSync(path.join(process.env.CODEX_HOME, "sentinel"), "first turn");
+  fs.writeFileSync(out, "diff");
+}
+if (args.includes("resume")) {
+  if (mode !== "no-thread") console.log(JSON.stringify({ type: "thread.started", thread_id: mode === "mismatch" ? "other" : thread }));
+  console.log(JSON.stringify({ type: "item.started", item: { type: mode === "command" ? "command_execution" : "reasoning" } }));
+  console.log(JSON.stringify({ type: "item.completed", item: { type: mode === "unknown" ? "future_item" : "agent_message" } }));
+  if (mode === "malformed") console.log("invalid");
+  if (mode === "truncated") console.log(JSON.stringify("x".repeat(1024 * 1024)));
+  if (mode !== "silent") fs.writeFileSync(out, mode === "incomplete" ? "diff" : "diff\\nEND-OF-PATCH");
+}
 if (mode === "ok") fs.writeFileSync(out, "--- a/a.txt\\n+++ b/a.txt\\n@@ -1 +1 @@\\n-hi\\n+hello\\nEND-OF-PATCH");
 if (mode === "nomarker") fs.writeFileSync(out, "--- a/a.txt\\n+++ b/a.txt\\n");
 if (mode === "linger") { spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" }).unref(); fs.writeFileSync(out, "END-OF-PATCH\\n"); }
@@ -105,6 +115,127 @@ describe("CodexProxyExecutor", () => {
   }, 15_000);
 });
 
+describe("CodexProxyExecutor report repair", () => {
+  async function proposal(f = setup({ FAKE_MODE: "proposal" }), runtime = join(f.root, "runtime")) {
+    const executor = new CodexProxyExecutor({
+      bin: f.bin, runtimeDir: runtime, sourceCodexHome: f.source, passEnv: ["FAKE_MODE", "FAKE_MARKER"],
+      model: "test-model", reasoningEffort: "high", terminationGraceMs: 200,
+    });
+    const input = { worktree: f.repo, prompt: "propose" };
+    const run = await executor.run({ ...input, keepSession: true });
+    expect(run.patch).toEqual({ ok: false, reason: "PATCH_INCOMPLETE" });
+    return { ...f, executor, runtime, input, run, home: join(runtime, "codex-home"), output: join(runtime, "last-message.txt") };
+  }
+
+  it("resumes a proposal when the runtime directory has a symlinked ancestor", async () => {
+    const f = setup({ FAKE_MODE: "proposal" });
+    const parent = join(f.root, "parent");
+    const alias = join(f.root, "alias");
+    mkdirSync(parent);
+    symlinkSync(parent, alias);
+    const { executor } = await proposal(f, join(alias, "runtime"));
+    process.env["FAKE_MODE"] = "repair";
+    expect(await executor.repair({ worktree: f.repo })).toMatchObject({ accepted: true, patch: { ok: true } });
+  });
+
+  it("keeps one proposal session and resumes it read-only with the original login and environment", async () => {
+    const f = await proposal();
+    const seen = JSON.parse(f.run.stdout);
+    const normal = f.executor.args(f.repo, f.output, f.input.prompt);
+    expect(seen.args).toEqual(normal.filter(arg => arg !== "--ephemeral"));
+    writeFileSync(join(f.source, "auth.json"), "replacement");
+    process.env["FAKE_MODE"] = "repair";
+    const repaired = await f.executor.repair({ worktree: f.repo });
+    expect(repaired).toMatchObject({ accepted: true, exit_code: 0, patch: { ok: true, text: "diff\n" } });
+    expect(JSON.parse(repaired.stdout.split("\n")[0]!)).toEqual({
+      ...seen, args: ["exec", "-s", "read-only", "-C", f.repo, "--skip-git-repo-check",
+        "--ignore-user-config", "--ignore-rules", "--json", "-o", f.output, "-c", 'model="test-model"',
+        "-c", 'model_reasoning_effort="high"', "resume", "--last", CODEX_PROXY_REPORT_REPAIR_PROMPT],
+    });
+    expect(readFileSync(join(f.home, "sentinel"), "utf8")).toBe("first turn");
+    expect(readFileSync(join(f.home, "auth.json"), "utf8")).toBe('{"token":"t"}');
+    const plain = await f.executor.run(f.input);
+    expect(JSON.parse(plain.stdout).args).toEqual(normal);
+    expect(readdirSync(f.home)).toEqual(["auth.json"]);
+  });
+
+  it.each(["none", "two", "linked sessions", "linked rollout", "linked date", "linked codex-home"])(
+    "refuses before launch or output removal with %s", async variant => {
+      const f = await proposal();
+      const sessions = join(f.home, "sessions");
+      const date = join(sessions, "2026", "11", "24");
+      const rollout = join(date, readdirSync(date)[0]!);
+      if (variant === "none") rmSync(rollout);
+      else if (variant === "two") writeFileSync(join(sessions, "rollout-second.jsonl"), "");
+      else {
+        const path = variant === "linked sessions" ? sessions : variant === "linked date" ? date
+          : variant === "linked codex-home" ? f.home : rollout;
+        const moved = join(f.root, "original");
+        renameSync(path, moved);
+        symlinkSync(moved, path);
+      }
+      const marker = join(f.root, "launched");
+      process.env["FAKE_MARKER"] = marker;
+      await expect(f.executor.repair({ worktree: f.repo })).rejects.toThrow(/^codex_proxy_report_session_unavailable$/);
+      expect(existsSync(marker)).toBe(false);
+      expect(readFileSync(f.output, "utf8")).toBe("diff");
+    },
+  );
+
+  it.each([
+    ["mismatch", "REPAIR_SESSION_MISMATCH"], ["no-thread", "REPAIR_SESSION_UNCONFIRMED"],
+    ["malformed", "REPAIR_SESSION_UNCONFIRMED"], ["truncated", "REPAIR_SESSION_UNCONFIRMED"],
+    ["command", "REPAIR_USED_TOOL"], ["unknown", "REPAIR_USED_TOOL"],
+  ] as const)("refuses %s even with a complete patch", async (mode, reason) => {
+    const f = await proposal();
+    process.env["FAKE_MODE"] = mode;
+    const result = await f.executor.repair({ worktree: f.repo });
+    expect(readCodexProxyPatch(f.output).ok).toBe(true);
+    expect(result.accepted).toBe(false);
+    expect(result.patch).toEqual({ ok: false, reason });
+    expect(result.stdout_truncated).toBe(mode === "truncated");
+  });
+
+  it("can repair the same session again after an incomplete reply and clears stale output", async () => {
+    const f = await proposal();
+    const input = { worktree: f.repo };
+    process.env["FAKE_MODE"] = "incomplete";
+    expect(await f.executor.repair(input)).toMatchObject({ accepted: true, patch: { ok: false, reason: "PATCH_INCOMPLETE" } });
+    process.env["FAKE_MODE"] = "repair";
+    expect(await f.executor.repair(input)).toMatchObject({ accepted: true, patch: { ok: true } });
+    process.env["FAKE_MODE"] = "silent";
+    expect(await f.executor.repair(input)).toMatchObject({ accepted: true, patch: { ok: false, reason: "PATCH_MISSING" } });
+  });
+
+  it.each(["cancel", "timeout"])("stops the repair process group on %s", async mode => {
+    const f = await proposal();
+    process.env["FAKE_MODE"] = "hang";
+    const executor = new CodexProxyExecutor({
+      bin: f.bin, runtimeDir: f.runtime, sourceCodexHome: f.source, passEnv: ["FAKE_MODE"],
+      repairTimeoutMs: mode === "timeout" ? 200 : 5000, terminationGraceMs: 200,
+    });
+    const controller = new AbortController();
+    let pgid = 0;
+    const result = await executor.repair({ worktree: f.repo, signal: controller.signal, onLaunched: launch => {
+      pgid = launch.pgid;
+      if (mode === "cancel") setTimeout(() => controller.abort(), 200);
+    } });
+    expect(result).toMatchObject({ cancelled: mode === "cancel", timed_out: mode === "timeout",
+      stop: { stop_proof: "group_empty+sandbox_inherited", pgid, signals: expect.arrayContaining(["SIGTERM"]) } });
+    expect(processGroupEmpty(pgid)).toBe(true);
+  });
+
+  it("discards only the two session directories, including on repeated calls", async () => {
+    const f = await proposal();
+    writeFileSync(join(f.runtime, "other"), "keep");
+    f.executor.discardSession();
+    f.executor.discardSession();
+    expect(readdirSync(f.runtime).sort()).toEqual(["last-message.txt", "other"]);
+    expect(readFileSync(f.output, "utf8")).toBe("diff");
+    expect(readFileSync(join(f.runtime, "other"), "utf8")).toBe("keep");
+  });
+});
+
 describe("CodexProxyExecutor shutdown edges", () => {
   it("returns without waiting for a detached descendant that holds the output pipes", async () => {
     const f = setup({ FAKE_MODE: "detached-pipe" });
@@ -122,6 +253,18 @@ describe("CodexProxyExecutor shutdown edges", () => {
 });
 
 describe("qualification probe", () => {
+  // Only qualification needs the unsandboxed TCP connectivity control.
+  let server: Server;
+  beforeAll(async () => {
+    server = createServer(socket => socket.destroy());
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolve);
+    });
+    target = { host: "127.0.0.1", port: (server.address() as { port: number }).port };
+  });
+  afterAll(async () => { if (server.listening) await new Promise(resolve => server.close(resolve)); });
+
   function gitDir(repo: string) { return join(repo, ".git"); }
   it("qualifies only when both the probe and its escaped child are denied every operation", async () => {
     const f = setup({ FAKE_SANDBOX: "deny" });
