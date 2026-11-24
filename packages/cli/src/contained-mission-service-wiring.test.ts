@@ -1,6 +1,6 @@
 import { setup as revisionSetup, dispatched } from './contained-mission-revision.testkit.js';
 import { createHash, generateKeyPairSync } from "node:crypto";
-import { chmodSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AttentionStore, createScratchDirSync, openDb } from "@osstack/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -41,6 +41,32 @@ describe("createContainedMissionService host process re-check", () => {
     const injected = await createContainedMissionService({ ...f.deps, hostProcessRecheckMs: 5 });
     expect(recheckOf(injected)).toBe(5);
     await injected.close();
+  });
+});
+
+describe("contained verification journal startup", () => {
+  it("creates a private directory in a fresh daemon home", async () => {
+    const f = setup();
+    const service = await f.create();
+    try {
+      const info = lstatSync(join(f.home, "contained-verification"));
+      expect(info.isDirectory()).toBe(true);
+      expect(info.mode & 0o777).toBe(0o700);
+    } finally { await service.close(); }
+  });
+
+  it.each(["wide directory", "symlink", "file"])("refuses a %s at the journal path", async kind => {
+    const f = setup();
+    const path = join(f.home, "contained-verification");
+    if (kind === "wide directory") {
+      mkdirSync(path);
+      chmodSync(path, 0o755);
+    } else if (kind === "symlink") {
+      symlinkSync(join(f.root, "auth"), path);
+    } else {
+      writeFileSync(path, "", { mode: 0o600 });
+    }
+    await expect(f.create()).rejects.toThrow(/^CONTAINED_VERIFICATION_JOURNAL_INVALID$/);
   });
 });
 
@@ -280,7 +306,7 @@ describe("live assembly configuration validation", () => {
     await expect(assembly.revisionRecovery(new AbortController().signal)).rejects.toThrow();
     await assembly.stoppedScan.stop(); await service.close();
   });
-  it("installs launch, publication, grant and scan services without starting work", async () => {
+  async function assemblyFixture() {
     const f = setup(); liveConfiguration(f);
     const { ContainedMissionStore, RevisionChainStore } = await import("@osstack/core");
     const { assembleLiveBridge } = await import("./contained-mission-bridge-assembly.js");
@@ -295,6 +321,24 @@ describe("live assembly configuration validation", () => {
       enabled: () => true, now: Date.now, log: () => {}, launchCaps: { executor_seconds: 60, verify_seconds: 60 },
       protectedSetDigest: () => "a".repeat(64), readPr: read, headIsDescendant: read, stoppedRead: read,
       publication: { runner: { run: write }, readPr: read, localGit: read, remoteHead: read, compare: read, preflight: write, checkEnabled: true } };
+    return { assembleLiveBridge, assemblyDeps, ports, service, read, write };
+  }
+  it("refuses publication cancellation for an unknown chain before requesting a host cancel", async () => {
+    const { assembleLiveBridge, assemblyDeps, service, write } = await assemblyFixture();
+    const publication = await import("./contained-mission-revision-publication.js");
+    const factory = vi.spyOn(publication, "createRevisionPublicationPort");
+    try {
+      await assembleLiveBridge(assemblyDeps);
+      const { cancelChild } = factory.mock.calls[0]![0];
+      await expect(cancelChild("child", "unknown")).rejects.toThrow(/^revision_chain_missing$/);
+      expect(write).not.toHaveBeenCalled();
+    } finally {
+      factory.mockRestore();
+      await service.close();
+    }
+  });
+  it("installs launch, publication, grant and scan services without starting work", async () => {
+    const { assembleLiveBridge, assemblyDeps, ports, service, read, write } = await assemblyFixture();
     await expect(assembleLiveBridge({ ...assemblyDeps, protectedSetDigest: () => "invalid" })).rejects.toThrow("protected_set_digest");
     expect(ports.revision).toBeUndefined(); expect(ports.revisionPublication).toBeUndefined();
     const assembly = await assembleLiveBridge(assemblyDeps);
@@ -370,12 +414,12 @@ it.each(['live', 'recovery', 'publication', 'stopped-write', 'stopped-stop', 'st
       } else if (route === 'recovery') {
         await assembly.revisionRecovery(new AbortController().signal);
       } else if (route === 'publication') {
-        // The publication callback looks up a child ID through a root-only store method.
-        const lookup = vi.spyOn(f.rig.chains, 'chainForMission').mockReturnValueOnce(f.rig.chains.get(f.chain.chain_id));
+        expect(id).not.toBe(f.chain.root_mission_id);
+        const lookup = vi.spyOn(f.rig.chains, 'get');
         await expect(assembly.publication.publishRevision({ mission, spec: f.childSpec(id),
           permit: { mission_id: id, revision: mission.revision, head, tree: head, spec_digest: mission.spec_digest },
           signal: new AbortController().signal, beforeRemoteMutation: unexpected })).rejects.toThrow('CONTAINED_REVISION_REFUSED:pr_closed');
-        expect(lookup).toHaveBeenCalledWith(id, 'live');
+        expect(lookup).toHaveBeenCalledWith(f.chain.chain_id);
       } else {
         const chain = f.rig.chains.get(f.chain.chain_id);
         f.rig.chains.stopLive(chain.chain_id, chain.revision, 'child_halted', f.clock.now);

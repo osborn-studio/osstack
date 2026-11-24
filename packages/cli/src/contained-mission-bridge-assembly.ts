@@ -1,5 +1,5 @@
 // Testable phase 5-E assembly. This does not open the production live-mode gate.
-import { parseStoredRevisionGrant, type ContainedMissionStore, type RevisionChainStore } from '@osstack/core';
+import { parseStoredRevisionGrant, type ContainedMissionStore, type RevisionChain, type RevisionChainStore } from '@osstack/core';
 import type { EngineeringAccess } from './engineering-access.js';
 import type { ContainedMissionHost } from './contained-mission-host.js';
 import type { ContainedMissionHostPorts } from './contained-mission-ports.js';
@@ -66,9 +66,11 @@ export async function assembleLiveBridge(deps: {
   const pub = publication.createRevisionPublicationPort({ ...deps.publication, chains: deps.chains, missions: deps.missions,
     host: deps.ports.hostProcesses, now: deps.now,
     fenceAuthority: () => ({ enabled: deps.enabled(), access: deps.access, keys: config.issuer.keys, now: deps.now() }),
-    cancelChild: async id => {
-      const chain = deps.chains.chainForMission(id, 'live');
-      if (!chain) throw Error('revision_chain_missing');
+    cancelChild: async (id, chainId) => {
+      let chain: RevisionChain;
+      try { chain = deps.chains.get(chainId); }
+      catch { throw Error('revision_chain_missing'); }
+      if (chain.mode !== 'live') throw Error('revision_chain_missing');
       const signed = parseStoredRevisionGrant(chain.grant_json);
       await cancel(id, signed.principal_id, signed.client_session_id);
     },
@@ -78,7 +80,7 @@ export async function assembleLiveBridge(deps: {
   const ledger = await import('./contained-mission-bridge-ledger.js');
   const ledgerDeps = { chains: deps.chains, missions: deps.missions, remoteHead: deps.publication.remoteHead,
     compare: deps.ledgerCompare ?? deps.publication.compare };
-  const cancelChain = async (chain: import('@osstack/core').RevisionChain) => {
+  const cancelChain = async (chain: RevisionChain) => {
     if (!chain.current_mission_id) return;
     const signed = parseStoredRevisionGrant(chain.grant_json);
     await cancel(chain.current_mission_id, signed.principal_id, signed.client_session_id);

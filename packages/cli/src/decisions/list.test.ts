@@ -285,6 +285,29 @@ it.each([null, [], "invalid"])("withholds repair and approval answers for a malf
   }
 });
 
+const missionAnswers = (details_json: string, state: string, reason: string) =>
+  decisionItem("contained_mission", { id: "synthetic", scope_id: "scope", revision: "1", waiting_since: 1,
+    state, summary: "Mission", kind: "mission", reason, details_json }).allowed_answers;
+
+it.each([
+  { kind: "plain Mission", spec: {}, resume: false, discard: true },
+  { kind: "revision child", spec: { publish_target: {} }, resume: true, discard: true },
+  { kind: "local-failure repair child", spec: { local_failure_repair: {} }, resume: false, discard: false },
+  { kind: "CI repair child", spec: { ci_repair: {} }, resume: false, discard: true },
+  { kind: "malformed bindings", spec: { publish_target: [], local_failure_repair: [] }, resume: false, discard: true },
+])("lists resume and reconciliation answers for a $kind", ({ spec, resume, discard }) => {
+  const json = JSON.stringify(spec);
+  expect(missionAnswers(json, "awaiting_decision", "budget_exhausted")).toEqual(resume ? ["abandon", "resume_budget"] : ["abandon"]);
+  expect(missionAnswers(json, "awaiting_decision", "grant_stopped:expired")).toEqual(resume ? ["abandon", "resume_grant"] : ["abandon"]);
+  expect(missionAnswers(json, "needs_reconciliation", "")).toEqual(discard
+    ? ["abandon", "discard_changes", "adopt_worktree"] : ["abandon", "adopt_worktree"]);
+});
+
+it("keeps the state-specific handling of malformed Mission JSON", () => {
+  expect(missionAnswers("{", "needs_reconciliation", "")).toEqual(["abandon", "discard_changes", "adopt_worktree"]);
+  expect(() => missionAnswers("{", "awaiting_decision", "budget_exhausted")).toThrow(SyntaxError);
+});
+
 it("lists a waiting recheck in read scope and preserves existing live and shadow decisions", async () => {
   const { publishedRecheck, runFixture } = await import("@osstack/core/dist/state/local-failure-recheck.testkit.js");
   const h = publishedRecheck();

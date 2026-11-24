@@ -48,6 +48,7 @@
 | 工程面 `OSSTACK_ENGINEERING=1`、`OSSTACK_ATTENTION=1`、`OSSTACK_ENGINEERING_AUTH_FILE` | 开了 `OSSTACK_CONTAINED_MISSIONS=1` 却没开 `OSSTACK_ENGINEERING=1`：`serve` 以 `contained_missions_require_engineering` 退出（`daemon.ts` L4410）。开了工程面但 attention 没启用：`attention_disabled`；缺授权文件变量：`engineering_auth_required`（L4367–4369） |
 | 执行配置 `OSSTACK_CONTAINED_CODEX_BIN`、`OSSTACK_CONTAINED_CODEX_HOME`、`OSSTACK_CONTAINED_DOCKER_SOCKET`、`OSSTACK_CONTAINED_DOCKER_DAEMON_ID`、`OSSTACK_CONTAINED_BASE_IMAGE_ID` | `serve` 以 `contained_config_required:<变量名>` 退出（`contained-mission-rpc.ts` L175、L186–191） |
 
+启用本地验证时，守护进程会创建 `$OSSTACK_HOME/contained-verification/`（0700）。如果已有目录允许组用户或其他用户访问，守护进程会拒绝启动。
 然后在一个终端运行 `osstack serve`。
 
 **所有桥接开关和 `bridge/` 下的文件只在 `osstack serve` 启动、并且 Mission 服务已启用时读取一次**（`createContainedMissionService`，`contained-mission-rpc.ts` L156–219）。改了开关或文件，必须重启 `osstack serve` 才生效。Mission 服务启用时，任何桥接配置错误都会让整个 `serve` 退出（fail closed），不会退回到“关闭桥接”。

@@ -9,6 +9,13 @@ const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(va
 const summary = (text: string) => redactBridge(text).replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\s]+/gu, " ").trim().slice(0, 240);
 const command = (name: string, ...required_params: string[]) => ({ name, required_params });
 
+const isObject = (value: unknown) => value !== null && typeof value === "object" && !Array.isArray(value);
+
+function hasLocalRepair(details: string): boolean {
+  try { return isObject(JSON.parse(details)?.local_failure_repair); }
+  catch { return false; }
+}
+
 export function decisionItem(source: DecisionSource, row: DecisionRow): PendingDecision {
   let allowed_answers: string[] = [];
   let answer_command: PendingDecision["answer_command"] = command("mission.decide", "mission_id", "decision");
@@ -27,20 +34,23 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
     case "contained_mission": {
       allowed_answers = ["abandon"];
       if (row.state === "stop_unknown") allowed_answers.push("retry_stop_check");
-      if (row.state === "needs_reconciliation") allowed_answers.push("discard_changes", "adopt_worktree");
+      if (row.state === "needs_reconciliation") {
+        if (!hasLocalRepair(row.details_json)) allowed_answers.push("discard_changes");
+        allowed_answers.push("adopt_worktree");
+      }
       if (row.state === "awaiting_decision") {
         const reason = row.reason ?? "";
-        const spec = JSON.parse(row.details_json) as { ci_repair?: unknown; local_failure_repair?: unknown };
+        const spec = JSON.parse(row.details_json) as { publish_target?: unknown; ci_repair?: unknown; local_failure_repair?: unknown };
         const local = spec.local_failure_repair;
-        if (local && typeof local === "object" && !Array.isArray(local) && reason === "publication_pending") {
+        if (isObject(local) && reason === "publication_pending") {
           allowed_answers.push("approve_local_failure_repair");
           requires_local_signature = true;
           answer_command = { ...command("mission.decide", "mission_id", "decision"),
             alternatives: [command("mission approve-local-failure-repair", "--mission", "--candidate")] };
         }
         if (local === undefined && reason === "repair_cycles_exhausted") allowed_answers.push("extra_repair");
-        if (reason === "budget_exhausted") allowed_answers.push("resume_budget");
-        if (reason.startsWith("grant_stopped:")) allowed_answers.push("resume_grant");
+        if (isObject(spec.publish_target) && reason === "budget_exhausted") allowed_answers.push("resume_budget");
+        if (isObject(spec.publish_target) && reason.startsWith("grant_stopped:")) allowed_answers.push("resume_grant");
         if (reason === "workspace_recovered") allowed_answers.push("resume_workspace");
         if (local === undefined && !spec.ci_repair && (reason === "publication_pending" || reason.startsWith("publication_failed") || reason.startsWith("revalidation_failed"))) allowed_answers.push("approve_publication");
       }
