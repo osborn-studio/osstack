@@ -450,6 +450,8 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 从原 Mission 的状态事件 `ci_repair_dispatched` 取出修复 Mission ID。审阅该 Mission 的候选提交和本地 diff 后，使用 `osstack mission approve-ci-repair --mission ID --candidate SHA`。授权有效期为 15 分钟。发布前 osstack 再读 PR、CI 失败和授权，用旧 head 的 Git 租约推送单个快进提交。修复停在 `ci_repair_publication_unresolved` 时，先对照发布意图与远端，保留该次尝试的记录。
 
+已选择本地失败修复路线的 PR（其 live 链带版本 2 授权）不会被 App E 自动合并，即使 Actions 全绿、复验已通过。根 Mission 上会有事件 `local_failure_merge_held`，其中 `reason` 说明当前状态（`verification_pending`、`verify_recheck_missing`、`verify_recheck_failed`、`verify_recheck_binding_changed`、`verify_approval_required`、`verify_merge_unverified`）。这类 PR 由人审阅后手动合并，不要为了让 App E 合并去改授权或数据库。
+
 `ci_repair_verified` 保存新提交的 GitHub 检查证据。App B 的本地检查信号仍用于容器验证路径。Watcher、计入的人工审批和合并身份继续按阶段 6 审批与验收。
 
 ### 6.2 本地失败修复的候选审批（U4b 路线 B）**【未上线：需要 `OSSTACK_BRIDGE=1`，目前启动即拒绝】**
