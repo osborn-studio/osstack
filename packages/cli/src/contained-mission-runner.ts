@@ -185,6 +185,14 @@ export function parseContainedMissionSpec(json: string): ContainedMissionSpec {
   }
   return v;
 }
+function extraRepairAllowed(m: ContainedMission, reason: string | undefined): boolean {
+  if (m.state !== 'awaiting_decision') return false;
+  const spec = JSON.parse(m.spec_json) as ContainedMissionSpec;
+  if (reason === 'repair_cycles_exhausted') return !spec.local_failure_repair;
+  return !!reason?.startsWith('patch_invalid:') && spec.local_failure_repair === undefined
+    && spec.ci_repair === undefined && spec.publish_target === undefined;
+}
+
 /** A chain-wide diff may be T0, or T1 (over the caps only) when the root was published at T1 too; a within-caps root can never be pushed over its caps by revisions. */
 function chainTierAllowed(spec: ContainedMissionSpec, tier: string | undefined): boolean {
   return tier === 'T0' || (tier === 'T1' && spec.publish_target?.root_tier === 'T1');
@@ -279,7 +287,7 @@ export class ContainedMissionRunner {
     if (decision !== 'abandon') this.ports.store.assertBelowDepthLimit(m.mission_id);
     const reason = this.haltReason(m);
     if (decision === 'abandon') return ['awaiting_decision', 'needs_reconciliation', 'stop_unknown'].includes(m.state);
-    if (decision === 'extra_repair') return m.state === 'awaiting_decision' && reason === 'repair_cycles_exhausted' && !JSON.parse(m.spec_json).local_failure_repair;
+    if (decision === 'extra_repair') return extraRepairAllowed(m, reason);
     if (decision === 'resume_budget' || decision === 'resume_grant') return m.state === 'awaiting_decision'
       && (decision === 'resume_budget' ? reason === 'budget_exhausted' : !!reason?.startsWith('grant_stopped:'));
     if (decision === 'approve_publication') return m.state === 'awaiting_decision' && !!reason
@@ -358,13 +366,15 @@ export class ContainedMissionRunner {
   private async decideRun(missionId: string, decision: IdentifiedContainedDecision): Promise<ContainedMission> {
     const m = this.ports.store.get(missionId); const reason = this.haltReason(m);
     if (decision.kind === 'discard_changes' && this.localExecutorRan(m)) throw Error('CONTAINED_DECISION_NOT_ALLOWED');
+    const extraRepair = decision.kind === 'extra_repair' && extraRepairAllowed(m, reason);
+    if (decision.kind === 'extra_repair' && reason?.startsWith('patch_invalid:') && !extraRepair) throw Error('CONTAINED_DECISION_NOT_ALLOWED');
     if ((decision.kind === 'approve_publication' || decision.kind === 'extra_repair') && JSON.parse(m.spec_json).local_failure_repair)
       throw Error(decision.kind === 'approve_publication' ? 'local_failure_candidate_approval_required' : 'CONTAINED_DECISION_NOT_ALLOWED');
     if (decision.kind === 'approve_publication' && parseContainedMissionSpec(m.spec_json).ci_repair) throw Error('ci_repair_candidate_approval_required');
     this.acknowledgeRevision(m, decision.kind);
     const go = (to: ContainedMission['state'], kind: string) => this.ports.store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind, payload: { reason, ...(decision.decision_id ? { decision_id: decision.decision_id } : {}) } } }, this.ports.now());
     if (decision.kind === 'abandon' && (m.state === 'awaiting_decision' || m.state === 'needs_reconciliation' || m.state === 'stop_unknown')) return go('abandoned', 'decision_abandon');
-    if (decision.kind === 'extra_repair' && m.state === 'awaiting_decision' && reason === 'repair_cycles_exhausted') return this.extraRepair(m, reason, decision.decision_id);
+    if (extraRepair) return this.extraRepair(m, reason, decision.decision_id);
     if ((decision.kind === 'resume_budget' && reason === 'budget_exhausted') || (decision.kind === 'resume_grant' && reason?.startsWith('grant_stopped:'))) {
       if (m.state === 'awaiting_decision') return this.resume(m, decision.kind === 'resume_budget' ? 'budget' : 'grant', decision.decision_id);
     }
@@ -386,7 +396,7 @@ export class ContainedMissionRunner {
     return this.charged(m, spec, 'executor', 'executor:extra_repair', async deadline => {
       const now = this.ports.store.get(m.mission_id);
       const next = this.ports.store.transition(now.mission_id, { if_revision: now.revision, to: 'executing', event: { kind: 'decision_extra_repair', payload: { reason, ...(decisionId ? { decision_id: decisionId } : {}) } } }, this.ports.now());
-      return this.runExecutor(next, spec, this.lastFailurePrompt(next), deadline);
+      return this.runExecutor(next, spec, this.lastFailurePrompt(next, reason), deadline);
     });
   }
 
@@ -404,7 +414,11 @@ export class ContainedMissionRunner {
     switch (route) {
       case 'executor:workspace_ready': return this.qualifyAndExecute(m, spec, executorPromptFor(spec));
       case 'executor:repair': return this.repair(m, spec);
-      case 'executor:extra_repair': return this.extraRepair(m, 'repair_cycles_exhausted', decisionId);
+      case 'executor:extra_repair': {
+        const last = this.allEvents(m.mission_id).filter(e => e.kind === 'decision_extra_repair').at(-1);
+        const reason = last && (JSON.parse(last.payload_json) as { reason?: string }).reason;
+        return this.extraRepair(m, reason ?? 'repair_cycles_exhausted', decisionId);
+      }
       case 'executor:discard_changes': return this.discardChanges(m, 'budget_resumed', decisionId);
       case 'verify': {
         // The halt kept the candidate; it re-enters candidate_ready as exactly that candidate and verification starts from there.
@@ -892,12 +906,18 @@ export class ContainedMissionRunner {
     const halted = this.allEvents(m.mission_id).filter(e => e.kind === 'halted').at(-1);
     return halted ? (JSON.parse(halted.payload_json) as { reason?: string }).reason : undefined;
   }
-  private lastFailurePrompt(m: ContainedMission): string {
+  private lastFailurePrompt(m: ContainedMission, reason?: string): string {
     const spec = parseContainedMissionSpec(m.spec_json);
     const receipt = this.allEvents(m.mission_id).filter(e => e.kind === 'verify_receipt').at(-1);
     const r = receipt ? JSON.parse(receipt.payload_json) as { exit_code: number | null; output: string } : undefined;
+    const exit = typeof r?.exit_code === 'number' ? r.exit_code : 'unknown';
     // Only the exit code and redacted, truncated output; never anything the host would execute.
-    return executorPromptFor(spec, `The previous change failed verification (exit ${r?.exit_code ?? 'unknown'}). Output excerpt:\n${r?.output ?? ''}`);
+    const failed = `The previous change failed verification (exit ${exit}). Output excerpt:\n${r?.output ?? ''}`;
+    if (reason?.startsWith('patch_invalid:')) {
+      const redo = 'The previous turn ended without a valid report, so its work was not applied. Do the work again and end with the required report.';
+      return executorPromptFor(spec, receipt ? `${redo} ${failed}` : redo);
+    }
+    return executorPromptFor(spec, failed);
   }
   /** §8.1: nothing is published unless the current candidate passed its own verification and every effect is proven stopped. */
   private publicationBlocker(m: ContainedMission, spec: ContainedMissionSpec): string | undefined {

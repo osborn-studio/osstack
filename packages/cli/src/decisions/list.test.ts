@@ -256,6 +256,18 @@ it.each([1, 2])("offers host-signed renewal (v%s)", async version => {
   expect(item.answer_command.alternatives).toEqual([{ name: "mission grant-revisions", required_params: ["--chain"] }]);
 });
 
+it.each(["patch_invalid:PATCH_INCOMPLETE", "patch_invalid:PATCH_MISSING", "patch_invalidX", "patch_apply_failed:x"])(
+  "lists extra repair only for a plain Mission at a patch-invalid halt (%s)", reason => {
+    const answers = (spec: object) => decisionItem("contained_mission", {
+      id: "synthetic", scope_id: "scope", revision: "1", waiting_since: 1, state: "awaiting_decision",
+      summary: "Repair", kind: "mission", reason, details_json: JSON.stringify(spec),
+    }).allowed_answers;
+    expect(answers({})).toEqual(reason.startsWith("patch_invalid:") ? ["abandon", "extra_repair"] : ["abandon"]);
+    for (const spec of [{ local_failure_repair: {} }, { ci_repair: {} }, { publish_target: {} }]) {
+      expect(answers(spec)).toEqual(["abandon"]);
+    }
+  });
+
 it.each(["publication_pending", "publication_failed:x", "revalidation_failed:x", "repair_cycles_exhausted"])(
   "lists repair child and ordinary Mission answers at %s", reason => {
     const row = { id: "synthetic", scope_id: "scope", revision: "1", waiting_since: 1,

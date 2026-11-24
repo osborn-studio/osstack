@@ -63,6 +63,7 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
             alternatives: [command("mission approve-local-failure-repair", "--mission", "--candidate")] };
         }
         if (local === undefined && reason === "repair_cycles_exhausted") allowed_answers.push("extra_repair");
+        if (local === undefined && !spec.ci_repair && !isObject(spec.publish_target) && reason.startsWith("patch_invalid:")) allowed_answers.push("extra_repair");
         if (isObject(spec.publish_target) && reason === "budget_exhausted") allowed_answers.push("resume_budget");
         if (isObject(spec.publish_target) && reason.startsWith("grant_stopped:")) allowed_answers.push("resume_grant");
         if (reason === "workspace_recovered") allowed_answers.push("resume_workspace");
