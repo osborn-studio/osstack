@@ -5,7 +5,7 @@ import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { hardenedGitEnvironment, type CodexProxyRun, type CodexQualification } from "@osstack/agents";
 import { AttentionStore, ContainedMissionStore, containedUpgradeHolds, createScratchDirSync, openDb, type ContainedMission } from "@osstack/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ensureHostProcessLedger, hostProcessOptions } from "./contained-mission-host-process.testkit.js";
 import { ContainedMissionHost, resolveContainedMissionStart } from "./contained-mission-host.js";
 import { createContainedMissionPorts, type ContainedMissionHostPorts } from "./contained-mission-ports.js";
@@ -48,7 +48,7 @@ function world() {
   const remote: Array<{ daemon: string; kind: string }> = [];
   let scope: { scope_id: string } | undefined;
 
-  function daemon(name: string) {
+  function daemon(name: string, groupEmpty = (_pgid: number) => world.groupEmpty) {
     const owner = attention.claimOwner(name);
     scope ??= attention.registerScope(owner, "t", root);
     const store = new ContainedMissionStore(attention, owner);
@@ -66,9 +66,9 @@ function world() {
         input.beforeRemoteMutation("pr_create"); remote.push({ daemon: name, kind: "pr_create" });
         return { pushed_commit: input.permit.head, pr: PR, base_head: "a".repeat(40) };
       } };
-    const host = new ContainedMissionHost({ ports, worktreesRoot, processGroupEmpty: () => world.groupEmpty, processesForWorktree: () => [] });
+    const host = new ContainedMissionHost({ ports, worktreesRoot, processGroupEmpty: groupEmpty, processesForWorktree: () => [] });
     cleanup.unshift(() => { void host.close(); });
-    return { name, store, host };
+    return { name, store, host, ports };
   }
   const principal = () => ({ principal_id: "human", client_session_id: "cli", read_scopes: [scope!.scope_id], write_scopes: [scope!.scope_id], stop_scopes: [], operator_scopes: [] });
   async function start(d: ReturnType<typeof daemon>, publication = false): Promise<ContainedMission> {
@@ -255,5 +255,69 @@ describe("contained Mission restart drills (M8)", () => {
     expect(w.kinds(a, m.mission_id)).not.toContain("halted");
     w.world.groupEmpty = true; w.gates.execute.release(); await step;
     expect(a.store.get(m.mission_id).state).toBe("candidate_ready");
+  });
+});
+
+describe('interrupted report repair', () => {
+  it.each(['proposal output', 'repair process'])('recovers at %s without resuming the launch', async point => {
+    const w = world();
+    const a = w.daemon('a');
+    const m = await w.start(a);
+    const id = m.mission_id;
+    await w.until(a, id, 'workspace_ready');
+    const wait = gate();
+    a.ports.execute = async input => {
+      input.onLaunched(run().launch);
+      return { ...run(), patch: { ok: false, reason: 'PATCH_INCOMPLETE' } };
+    };
+    a.ports.repairReport = vi.fn(async input => {
+      input.onLaunched({ pid: 4243, pgid: 4243, started_at: 3 });
+      await wait.wait();
+      return { ...run(), accepted: true as const };
+    });
+    if (point === 'proposal output') {
+      const record = a.store.record.bind(a.store);
+      vi.spyOn(a.store, 'record').mockImplementation((...args) => {
+        const seq = record(...args);
+        if (args[1] === 'executor_output') throw Error('simulated daemon exit');
+        return seq;
+      });
+    }
+    const tick = a.host.tick();
+    if (point === 'proposal output') await tick;
+    else await wait.reached;
+    expect(a.store.get(id)).toMatchObject({ state: 'executing', stop_obligation: 1 });
+    expect(w.kinds(a, id).filter(k => k === 'executor_output')).toHaveLength(1);
+    expect(a.ports.repairReport).toHaveBeenCalledTimes(point === 'proposal output' ? 0 : 1);
+    let liveGroup = point === 'repair process' ? 4243 : 0;
+    const proof = vi.fn((pgid: number) => pgid !== liveGroup);
+    const b = w.daemon('b', proof);
+    const execute = vi.spyOn(b.ports, 'execute');
+    const repair = vi.spyOn(b.ports, 'repairReport');
+    try {
+      await b.host.recover();
+      expect(proof.mock.calls.flat()).toEqual(point === 'proposal output' ? [4242] : [4242, 4243]);
+      if (point === 'repair process') {
+        expect(b.store.get(id)).toMatchObject({ state: 'stop_unknown', stop_obligation: 1 });
+        expect(w.reason(b, id)).toBe('executing_stop_unproven_after_restart');
+        // The last group alone cannot discharge this launch.
+        liveGroup = 4242;
+        await b.host.recover();
+        expect(b.store.get(id).stop_obligation).toBe(1);
+        liveGroup = 0;
+        await b.host.recover();
+        const stopped = b.store.events(id).filter(e => e.kind === 'executor_stopped').at(-1)!;
+        expect(JSON.parse(stopped.payload_json)).toMatchObject({ pgids: [4242, 4243] });
+      } else expect(w.reason(b, id)).toBe('orphaned_executing');
+      expect(b.store.get(id)).toMatchObject({ state: 'needs_reconciliation', stop_obligation: 0 });
+      await b.host.tick();
+    } finally {
+      wait.release();
+      await tick;
+    }
+    expect(execute).not.toHaveBeenCalled();
+    expect(repair).not.toHaveBeenCalled();
+    expect(w.kinds(b, id)).not.toContain('t0_intent');
+    expect(w.branchHead(m)).toBe(JSON.parse(m.spec_json).start_commit);
   });
 });

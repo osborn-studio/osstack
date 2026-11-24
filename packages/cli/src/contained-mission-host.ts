@@ -420,15 +420,25 @@ export class ContainedMissionHost {
       });
       return result.stopped ? { stop_proof: result.proof, evidence: result.evidence } : undefined;
     }
-    const started = events.slice(opened + 1).filter(e => e.kind === 'executor_started').at(-1);
+    const launch = events.slice(opened + 1);
+    const started = launch.filter(e => e.kind === 'executor_started');
     // The intent precedes the spawn, but a crash can fall between spawn and journaling: require that no process names the worktree.
-    if (!started) {
+    if (!started.length) {
       try { return this.processes(parseContainedMissionSpec(m.spec_json).worktree_path).length === 0 ? { stop_proof: 'never_launched', evidence: 'no_process_names_worktree' } : undefined; }
       catch { return undefined; }
     }
-    const pgid = eventPayload(started).pgid;
-    if (typeof pgid !== 'number') return undefined;
-    try { return this.groupEmpty(pgid) ? { stop_proof: 'group_empty_after_restart', pgid } : undefined; } catch { return undefined; }
+    try {
+      const pgids: number[] = [];
+      for (const event of started) {
+        const pgid = eventPayload(event).pgid;
+        if (typeof pgid !== 'number' || !this.groupEmpty(pgid)) return undefined;
+        pgids.push(pgid);
+      }
+      // A repair intent can survive a crash between spawn and its onLaunched callback.
+      const intent = launch.filter(e => e.kind === 'executor_report_repair_attempt').at(-1);
+      if (intent && started.at(-1)!.seq < intent.seq && this.processes(parseContainedMissionSpec(m.spec_json).worktree_path).length) return undefined;
+      return { stop_proof: 'group_empty_after_restart', ...(pgids.length === 1 ? { pgid: pgids[0] } : { pgids }) };
+    } catch { return undefined; }
   }
 
   private halt(m: ContainedMission, to: 'needs_reconciliation' | 'stop_unknown', reason: string): ContainedMission {

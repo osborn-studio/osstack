@@ -2,7 +2,7 @@
 // creation, the Codex proxy, plumbing commits, temp-index diffs and contained
 // verification. Nothing here runs repository code on the host.
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { lstat, realpath, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { CodexProxyExecutor, SafeFileError, assertRepoConfigUnchanged, commitPlumbing, createNoCheckoutWorktree, filterNeutralizingConfig, inspectRepoConfig, materializeCommit, runHardenedGit, safeReadFile, safeRelativePathSegments,
@@ -234,6 +234,17 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
   const now = options.now ?? Date.now;
   const kit = new HostProcessKit(store, options.hostProcess, now);
   const runtimeRoot = resolve(options.runtimeRoot ?? scratchPath('runtime'));
+  try {
+    if (lstatSync(runtimeRoot).isDirectory()) {
+      for (const entry of readdirSync(runtimeRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory() || !entry.name.startsWith('mission-')) continue;
+        for (const name of ['home', 'codex-home']) {
+          const path = join(runtimeRoot, entry.name, name);
+          try { if (lstatSync(path).isDirectory()) rmSync(path, { recursive: true, force: true }); } catch { /* missing or inaccessible */ }
+        }
+      }
+    }
+  } catch { /* runtime root may not exist yet */ }
   const runtimeDir = (worktree: string) => {
     const dir = join(runtimeRoot, `mission-${sha(resolve(worktree)).slice(0, 16)}`);
     mkdirSync(dir, { recursive: true, mode: 0o700 }); return dir;
@@ -536,7 +547,10 @@ export function createContainedMissionPorts(options: ContainedMissionPortsOption
       return { pushed_commit: opened.pushedCommit, pr: opened.pr, base_head: baseHead, stop_proof_scope: app ? 'app_isolated' as const : 'host_credential_helpers_untrusted' as const };
     }),
     ...(!pilot && options.bridge && options.bridge.disabled !== true ? { publishVerifyCheck: async (mission: ContainedMission) => (await bridgeKit()).publishVerifyCheck(mission, deliveryEvidenceFacts(mission.mission_id)) } : {}),
-    execute: input => executor(input.worktree).run({ worktree: input.worktree, prompt: input.prompt, signal: input.signal, onLaunched: input.onLaunched }),
+    execute: input => executor(input.worktree).run({ ...input, keepSession: true }),
+    repairReport: input => executor(input.worktree).repair(input),
+    discardSession: worktree => executor(worktree).discardSession(),
+    repairTimeoutMs: options.codex.repairTimeoutMs ?? 120_000,
     readFile: async (worktree, path) => {
       try { return utf8((await safeReadFile(worktree, path)).bytes, 'CONTAINED_FILE_NOT_UTF8'); }
       catch (error) { if (error instanceof SafeFileError && error.code === 'SAFE_PATH_NOT_FOUND') return null; throw error; }

@@ -53,7 +53,7 @@ codex exec -s read-only -C <worktree> --skip-git-repo-check --ignore-user-config
 
 **Budget.** The seconds of a repair turn are charged to the executor seconds of the Mission (and of the chain allocation for a revision child). A repair turn does not count as a repair cycle or a revision round.
 
-**Session data at rest.** Between the proposal turn and the end of the repair the session file lies in `<runtime>/codex-home`, mode 0700. It holds the prompt, what the model read from the repository, and its output. It is deleted when the step ends for any reason. After a crash it is deleted by the next `isolatedEnv()` and by start recovery. **No repair is attempted after a restart**; the Mission halts with `patch_invalid` as today.
+**Session data at rest.** Between the proposal turn and the end of the repair the session file lies in `<runtime>/codex-home`, mode 0700. It holds the prompt, what the model read from the repository, and its output. It is deleted when the step ends for any reason. After a crash it is deleted by the next `isolatedEnv()` and by start recovery. **No repair is attempted after a restart.** Recovery treats the launch as an interrupted executor: the Mission enters `needs_reconciliation` when all groups are proven stopped, or `stop_unknown` while proof is missing.
 
 **Events.** `executor_report_repair_attempt` and `executor_report_repair_result` on the Mission, with attempt number, outcome, seconds, and failure code. The event kind column is free text (`engineering-contained-ddl.ts`), so no migration is needed.
 

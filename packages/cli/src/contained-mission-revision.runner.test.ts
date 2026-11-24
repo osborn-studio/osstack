@@ -823,3 +823,67 @@ describe('a revision child under the runner', () => {
     });
   });
 });
+
+it.each([[300, 2], [480, 1], [481, 0]])('charges one %is proposal and %i report turns once', async (proposalSeconds, expectedRepairs) => {
+  const h = await harness();
+  let now = T0;
+  h.ports.now = () => now;
+  h.ports.execute = async input => {
+    input.onLaunched(run().launch);
+    now += proposalSeconds * 1000;
+    return { ...run(), patch: { ok: false, reason: 'PATCH_INCOMPLETE' } };
+  };
+  let repairs = 0;
+  h.ports.repairReport = async input => {
+    input.onLaunched(run().launch);
+    now += 30_000;
+    repairs++;
+    return { ...run(), accepted: true, ...(repairs === 1 && { patch: { ok: false, reason: 'PATCH_INCOMPLETE' } }) };
+  };
+  const charge = vi.spyOn(h.f.rig.chains, 'chargeLaunch');
+  const refund = vi.spyOn(h.f.rig.chains, 'refundLaunch');
+  const m = await h.step(2);
+  expect(repairs).toBe(expectedRepairs);
+  expect(charge).toHaveBeenCalledTimes(1);
+  expect(refund).toHaveBeenCalledTimes(1);
+  expect(h.f.rig.chains.allocations(h.f.chain.chain_id)[h.childId]!.executor_used).toBe(proposalSeconds + repairs * 30);
+  if (repairs === 2) expect(m.state).toBe('candidate_ready');
+  else expect(h.lastHalt()).toMatchObject({ reason: 'patch_invalid:PATCH_INCOMPLETE', report_repair: { attempts: repairs, last: 'no_budget' } });
+});
+
+it('aborts a report turn at the reservation deadline and waits for its stop proof', async () => {
+  const h = await harness();
+  let now = T0;
+  h.ports.now = () => now;
+  h.ports.execute = async input => {
+    input.onLaunched(run().launch);
+    now += 480_000;
+    return { ...run(), patch: { ok: false, reason: 'PATCH_INCOMPLETE' } };
+  };
+  let launched!: () => void;
+  const started = new Promise<void>(resolve => { launched = resolve; });
+  let confirm!: () => void;
+  const proof = new Promise<void>(resolve => { confirm = resolve; });
+  let signal: AbortSignal | undefined;
+  h.ports.repairReport = async input => {
+    input.onLaunched(run().launch);
+    signal = input.signal;
+    launched();
+    await proof;
+    return { ...run(), accepted: true, cancelled: input.signal.aborted };
+  };
+  await h.step();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    const step = h.step();
+    await started;
+    now += 120_000;
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(signal?.aborted).toBe(true);
+    expect(h.get()).toMatchObject({ state: 'executing', stop_obligation: 1 });
+    confirm();
+    expect(await step).toMatchObject({ state: 'awaiting_decision', stop_obligation: 0 });
+    expect(h.lastHalt()).toMatchObject({ reason: 'patch_invalid:PATCH_INCOMPLETE', report_repair: { attempts: 1, last: 'no_budget' } });
+    expect(h.f.rig.chains.allocations(h.f.chain.chain_id)[h.childId]!.executor_used).toBe(600);
+  } finally { confirm(); vi.useRealTimers(); }
+});

@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createHash, generateKeyPairSync } from "node:crypto";
 import { dirname, join } from "node:path";
-import { hardenedGitEnvironment } from "@osstack/agents";
+import { CodexProxyExecutor, hardenedGitEnvironment } from "@osstack/agents";
 import { AttentionStore, ContainedMissionStore, createScratchDirSync, openDb } from "@osstack/core";
 import { parseMissionPatch } from "@osstack/governance";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ContainedMissionSpec } from "./contained-mission-runner.js";
 import { ensureHostProcessLedger, hostProcessOptions } from "./contained-mission-host-process.testkit.js";
 import { containedVerifyInvocationId, createContainedMissionPorts, fencedDeliveryRunner, githubRepositoryOf, removalProven } from "./contained-mission-ports.js";
@@ -536,4 +536,42 @@ it("rejects a local failure child at the generic production publisher", async ()
   await expect(f.ports.publish({ spec, mission, permit: { mission_id: mission.mission_id, revision: mission.revision,
     head: f.start, tree: f.start, spec_digest: mission.spec_digest }, signal: signal(), body: "", beforeRemoteMutation: () => {} }))
     .rejects.toThrow("CONTAINED_LOCAL_FAILURE_REQUIRES_PUBLISHER");
+});
+
+describe('report session ports', () => {
+  it('keeps, repairs and discards the session with the same worktree executor', async () => {
+    const f = fixture();
+    const input = { worktree: f.spec.worktree_path, signal: signal(), onLaunched: vi.fn() };
+    const run = vi.spyOn(CodexProxyExecutor.prototype, 'run').mockRejectedValue(Error('proposal'));
+    const repair = vi.spyOn(CodexProxyExecutor.prototype, 'repair').mockRejectedValue(Error('repair'));
+    const discard = vi.spyOn(CodexProxyExecutor.prototype, 'discardSession').mockImplementation(() => {});
+    try {
+      await expect(f.ports.execute({ ...input, prompt: 'test' })).rejects.toThrow('proposal');
+      await expect(f.ports.repairReport!(input)).rejects.toThrow('repair');
+      await f.ports.discardSession!(input.worktree);
+      expect(run).toHaveBeenCalledWith({ ...input, prompt: 'test', keepSession: true });
+      expect(repair).toHaveBeenCalledWith(input);
+      expect(repair.mock.contexts[0]).toBe(run.mock.contexts[0]);
+      expect(discard.mock.contexts[0]).toBe(run.mock.contexts[0]);
+    } finally { run.mockRestore(); repair.mockRestore(); discard.mockRestore(); }
+  });
+
+  it('removes only private directories directly inside mission runtime directories', () => {
+    const f = fixture();
+    const runtime = join(f.root, 'runtime');
+    const outside = join(f.root, 'outside');
+    for (const dir of [outside, ...['mission-one', 'mission-two', 'other'].map(name => join(runtime, name))]) {
+      for (const name of ['home', 'codex-home']) mkdirSync(join(dir, name), { recursive: true });
+      writeFileSync(join(dir, 'other'), 'keep');
+    }
+    symlinkSync(outside, join(runtime, 'mission-link'));
+    createContainedMissionPorts({ store: f.store, hostProcess: hostProcessOptions(f.root), author: AUTHOR,
+      verification: { socketPath: join(f.root, 'docker.sock'), daemonId: 'd', baseImageId: 'sha256:' + '0'.repeat(64), journalRoot: f.journalRoot },
+      codex: { bin: 'unused', sourceCodexHome: f.root }, runtimeRoot: runtime });
+    for (const dir of ['mission-one', 'mission-two', 'mission-link', 'other']) {
+      for (const name of ['home', 'codex-home'])
+        expect(existsSync(join(runtime, dir, name))).toBe(dir === 'mission-link' || dir === 'other');
+      expect(readFileSync(join(runtime, dir, 'other'), 'utf8')).toBe('keep');
+    }
+  });
 });

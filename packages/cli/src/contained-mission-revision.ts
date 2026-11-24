@@ -157,6 +157,7 @@ export function createRevisionLaunchPort(deps: RevisionLaunchDeps): ContainedRev
         throw new RevisionLaunchRefused(error instanceof RevisionChainError ? error.code : 'charge_failed');
       }
       return {
+        reservedSeconds: charge,
         settle(elapsedMs) {
           const back = charge - Math.min(charge, Math.max(0, Math.ceil(elapsedMs / 1000)));
           if (back > 0) deps.chains.refundLaunch(chain.chain_id, mission.mission_id, kind === 'executor' ? 'executor' : 'container', back, deps.now());
