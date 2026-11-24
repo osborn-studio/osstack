@@ -23,7 +23,7 @@ it('preserves the contained Mission RPC surface', () => {
   // A later node that adds a method must change this list on purpose.
   expect(Object.keys(ContainedMissionRpcRequests).sort()).toEqual([
     'mission.approve_ci_repair', 'mission.approve_local_failure_repair', 'mission.cancel', 'mission.chain_decide', 'mission.decide', 'mission.grant_revisions',
-    'mission.list', 'mission.merger_report', 'mission.publish_check', 'mission.revision_grant_preview',
+    'mission.list', 'mission.merger_report', 'mission.publish_check', 'mission.rearm_local_failure_recheck', 'mission.revision_grant_preview',
     'mission.revision_grant_renew_preview', 'mission.start', 'mission.status',
   ]);
 });
@@ -101,6 +101,7 @@ describe('local-failure route lifecycle', () => {
       start: () => record(name), stop: async () => {}, scan: async () => {},
     });
     const route = {
+      rearmRecheck: vi.fn(), recheckView: () => null,
       publicationReady: false,
       recover: vi.fn(async (_signal: AbortSignal) => record('route.recover')),
       start: () => record('route.start'),

@@ -250,3 +250,18 @@ it("keeps grant and candidate approval answers local across engineering sources"
   }
   expect(f.forward).not.toHaveBeenCalled();
 });
+
+it("keeps re-arm local for Mission and chain answers and refuses abandon on a recheck-only item", async () => {
+  const { publishedRecheck } = await import("@osstack/core/dist/state/local-failure-recheck.testkit.js");
+  const h = publishedRecheck(); h.recordConfirmation(); h.confirm(); h.open();
+  const { db, principal } = h.f, queries = new DecisionQueries(db), authenticate = () => principal;
+  const forward = vi.fn(), resolveHermes = vi.fn();
+  const req = { credential: "c".repeat(32), source_revision: String(h.chain().revision), answer_id: "decision", answer: "rearm_local_failure_recheck" };
+  for (const [source, source_id] of [["revision_chain", h.chain().chain_id], ["contained_mission", h.r.root_mission_id]]) {
+    const response = await answerDecision({ db, queries, authenticate, forward, resolveHermes }, { ...req, source, source_id });
+    expect(response).toMatchObject({ accepted: false, replay: false, outcome: "local_only", code: "local_only", local_command: "mission recheck-rearm" });
+  }
+  const response = await answerDecision({ db, queries, authenticate, forward, resolveHermes }, { ...req, source: "revision_chain", source_id: h.chain().chain_id, answer: "abandon" });
+  expect(response).toMatchObject({ outcome: "not_answerable", current: { item: { allowed_answers: [] } } });
+  expect(forward).not.toHaveBeenCalled();
+});

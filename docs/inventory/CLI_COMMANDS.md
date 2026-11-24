@@ -69,6 +69,7 @@ Top-level `osstack` commands parsed from `--help` (59 total).
 - `mission start`
 - `mission list`
 - `mission status`
+- `mission recheck-rearm`
 - `mission cancel`
 - `mission publish-check`
 - `mission approve-ci-repair`

@@ -9,6 +9,7 @@ interface Options {
   diagnosis: DiagnosisStore;
   runPortsFor(request: DiagnosisRequest): RecheckRunPorts | null;
   collector: Omit<RecheckCollectorDeps, 'store' | 'now' | 'signal'>;
+  rearmed?: () => { recheck_id: string; request_id: string } | undefined;
   enabled(): boolean;
   now(): number;
   log(line: string): void;
@@ -17,6 +18,7 @@ interface Options {
   batchLimit?: number;
 }
 
+const manualTrigger = "operator";
 const prefix = 'osstack: local-failure recheck: ';
 export class LocalFailureRecheckService {
   private readonly attempted = new Set<string>();
@@ -69,7 +71,13 @@ export class LocalFailureRecheckService {
   private async pass(): Promise<void> {
     const { diagnosis, missions, now, collector, enabled, log } = this.options;
     const { signal } = this.controller;
-    if (signal.aborted || !enabled()) return;
+    if (signal.aborted) return;
+    while (!signal.aborted) {
+      const request = this.options.rearmed?.();
+      if (!request || !enabled()) break;
+      await this.startRun(request.recheck_id, request.request_id, manualTrigger, signal);
+    }
+    if (!enabled()) return;
     const store = new LocalFailureRecheckStore(diagnosis);
     const rows = store.collectable(this.limit, this.cursor);
     for (const row of rows) {
@@ -84,25 +92,27 @@ export class LocalFailureRecheckService {
       const ledger = store.forDispatch(row.dispatch_id);
       if (!wasAbsent || !ledger) continue;
       if (ledger.state === 'reverify_pending' && !signal.aborted && enabled() && !this.attempted.has(ledger.recheck_id))
-        await this.startRun(ledger.recheck_id, row.request_id, signal);
+        // Only the pass that opened this row can start it automatically. Later passes and
+        // restarts collect its inputs, even after a refusal; another start needs a re-arm by a person at the host.
+        await this.startRun(ledger.recheck_id, row.request_id, "automatic", signal);
       break;
     }
     if (rows.length < this.limit) this.cursor = undefined;
   }
 
-  private async startRun(id: string, requestId: string, signal: AbortSignal): Promise<void> {
+  private async startRun(id: string, requestId: string, trigger: Parameters<typeof runRecheck>[2], signal: AbortSignal): Promise<void> {
     const { diagnosis, runPortsFor, enabled, log } = this.options;
+    const manual = trigger === manualTrigger;
+    const label = prefix + id + ': ' + (manual ? trigger + ' ' : '');
     let ports: RecheckRunPorts | null;
     try { ports = runPortsFor(diagnosis.get(requestId)); }
     catch { ports = null; }
-    if (!ports) { log(prefix + id + ': host_ports_unavailable'); return; }
+    if (!ports) { log(label + 'host_ports_unavailable'); return; }
     if (signal.aborted || !enabled()) return;
-    this.attempted.add(id);
+    if (!manual) this.attempted.add(id);
     let message: string;
     try {
-      // Only the pass that opened this row can start it. Later passes and
-      // restarts collect its inputs, even after a refusal.
-      const outcome = await runRecheck(ports, id, "automatic", signal);
+      const outcome = await runRecheck(ports, id, trigger, signal);
       if (outcome.status === 'refused') message = 'refused:' + outcome.reason;
       else if (outcome.status === 'existing') message = 'existing:' + outcome.run.state;
       else {
@@ -111,11 +121,11 @@ export class LocalFailureRecheckService {
         message = state + (conclusion ? ':' + conclusion : '');
       }
     } catch { message = 'run_failed'; }
-    log(prefix + id + ': ' + message);
+    log(label + message);
   }
 }
 
-interface FactoryDeps extends Pick<Options, 'missions' | 'runPortsFor' | 'enabled' | 'now' | 'log' | 'intervalMs'> {
+interface FactoryDeps extends Pick<Options, 'missions' | 'runPortsFor' | 'enabled' | 'now' | 'log' | 'intervalMs' | 'rearmed'> {
   attention: AttentionStore;
   owner: AttentionOwner;
   contracts: Pick<RecheckCollectorDeps, 'readOriginalContract' | 'readRecheckContracts'>;
