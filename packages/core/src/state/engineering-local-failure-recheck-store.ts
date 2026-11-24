@@ -49,6 +49,14 @@ export interface RecheckEvaluation {
 const digest = (text: string) => createHash("sha256").update(text).digest("hex");
 const table = "engineering_local_failure_rechecks";
 
+type CollectableDispatch = {
+  dispatch_id: string;
+  request_id: string;
+  child_mission_id: string;
+  created_at: number;
+  recheck_id: string | null;
+};
+
 export class LocalFailureRecheckStore {
   private readonly sources: VerificationSourceStore;
   constructor(readonly diagnosis: DiagnosisStore) {
@@ -65,6 +73,19 @@ export class LocalFailureRecheckStore {
   }
   forDispatch(id: string) {
     return this.db.prepare(`SELECT * FROM ${table} WHERE dispatch_id=?`).get(id) as LocalFailureRecheck | undefined;
+  }
+  collectable(limit: number, after?: { created_at: number; dispatch_id: string }): CollectableDispatch[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw Error("invalid_limit");
+    return this.db.prepare(`SELECT d.dispatch_id, d.request_id, d.child_mission_id, d.created_at, r.recheck_id
+      FROM engineering_local_failure_dispatches d LEFT JOIN ${table} r ON r.dispatch_id=d.dispatch_id
+      WHERE ${after ? "(d.created_at,d.dispatch_id) > (?,?) AND" : ""}
+        (r.state='reverify_pending' OR (r.recheck_id IS NULL AND EXISTS (
+          SELECT 1 FROM engineering_revision_chains c JOIN engineering_revision_chain_events e ON e.chain_id=c.chain_id
+          WHERE c.chain_id=d.chain_id AND e.kind='local_repair_push_confirmed'
+            AND json_extract(e.payload_json,'$.dispatch_id')=d.dispatch_id
+            AND json_extract(e.payload_json,'$.child_mission_id')=d.child_mission_id
+            AND json_extract(e.payload_json,'$.new_head')=c.published_head)))
+      ORDER BY d.created_at,d.dispatch_id LIMIT ?`).all(...(after ? [after.created_at, after.dispatch_id] : []), limit) as CollectableDispatch[];
   }
   forChain(id: string) {
     return this.db

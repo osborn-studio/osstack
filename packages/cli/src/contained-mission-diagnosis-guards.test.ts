@@ -85,7 +85,7 @@ it("keeps published-head writes in the chain store and repair confirmation in th
   expect(repairEvents.sort()).toEqual(["cli/contained-mission-bridge-ledger.ts", "core/state/engineering-local-failure-recheck-store.ts", "core/state/engineering-revision-chain-store.ts"]);
 });
 
-it("keeps the recheck run library unwired and its admission and journal private to the host", () => {
+it("gives the recheck run one caller and keeps its admission and journal private to the host", () => {
   const packages = fileURLToPath(new URL("../../", import.meta.url));
   for (const pkg of readdirSync(packages)) {
     const root = join(packages, pkg, "src");
@@ -102,7 +102,12 @@ it("keeps the recheck run library unwired and its admission and journal private 
       const ports = pkg === "cli" && file === "contained-mission-local-failure-recheck-ports.ts";
       // The factory imports only the run port type.
       const runSource = ports ? source.replace('import type { RecheckRunPorts } from "./contained-mission-local-failure-recheck-run.js";', "") : source;
-      expect(runSource, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
+      if (pkg === "cli" && file === "contained-mission-local-failure-recheck-step.ts") {
+        expect(source.match(/\brunRecheck\s*\(/g)).toHaveLength(1);
+        expect(source.match(/\brecoverRecheckRuns\s*\(/g)).toHaveLength(1);
+        expect(source).toContain('"automatic"');
+        expect(source).not.toMatch(/\boperator\b/);
+      } else expect(runSource, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
       if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.[cm]?[jt]sx?$/.test(file)) {
         // The factory supplies the run store's hostProof method to the collector.
         const journalSource = ports ? source.replaceAll(/\b(?:LocalFailureRecheckRunStore|hostProof)\b/g, "") : source;
@@ -115,7 +120,7 @@ it("keeps the recheck run library unwired and its admission and journal private 
   }
 });
 
-it("keeps the recheck collector and Actions adapter unwired", () => {
+it("gives the recheck collector one caller and confines the Actions adapter", () => {
   const packages = fileURLToPath(new URL("../../", import.meta.url));
   const modules = ["contained-mission-actions-attempt", "contained-mission-local-failure-recheck-collect"];
   const names = ["readActionsAttemptFact", "collectLocalFailureRecheck"];
@@ -130,6 +135,10 @@ it("keeps the recheck collector and Actions adapter unwired", () => {
       const consumer = ports ? source.replace('import type { RecheckCollectorDeps } from "./contained-mission-local-failure-recheck-collect.js";', "") : source;
       for (const [i, module] of modules.entries()) {
         if (pkg === "cli" && (file === module + ".ts" || (ports && i === 0))) continue;
+        if (pkg === "cli" && file === "contained-mission-local-failure-recheck-step.ts" && i === 1) {
+          expect(consumer.match(/\bcollectLocalFailureRecheck\s*\(/g)).toHaveLength(1);
+          continue;
+        }
         expect(consumer, pkg + "/" + file).not.toContain(names[i]!);
         expect(consumer, pkg + "/" + file).not.toContain(module);
       }
@@ -137,7 +146,7 @@ it("keeps the recheck collector and Actions adapter unwired", () => {
   }
 });
 
-it("keeps the recheck ports factories unwired across packages", () => {
+it("confines the recheck ports factories across packages", () => {
   const packages = fileURLToPath(new URL("../../", import.meta.url));
   for (const pkg of readdirSync(packages)) {
     const root = join(packages, pkg, "src");
@@ -149,6 +158,8 @@ it("keeps the recheck ports factories unwired across packages", () => {
       const source = readFileSync(path, "utf8");
       if (pkg === "cli" && file === "contained-mission-local-failure-diagnose.ts")
         expect(source, path).not.toContain("createRecheckCollectorPorts");
+      else if (pkg === "cli" && file === "contained-mission-local-failure-recheck-step.ts")
+        expect(source, path).not.toContain("createRecheckRunPorts");
       else expect(source, path).not.toMatch(/contained-mission-local-failure-recheck-ports|createRecheckRunPorts|createRecheckCollectorPorts/);
     }
   }
@@ -172,11 +183,12 @@ it("confines the local-failure assembly and switch to the contained Mission fact
         continue;
       }
       if (pkg === "cli" && file === "contained-mission-local-failure-service.ts") {
-        expect(source.match(/\bimport\b/g)).toHaveLength(4);
+        expect(source.match(/\bimport\b/g)).toHaveLength(5);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-publication-port\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-diagnose\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-scan\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-dispatch-step\.js['"];?$/m);
+        expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-recheck-step\.js['"];?$/m);
       } else expect(source, path).not.toMatch(/contained-mission-local-failure-service|createLocalFailureRouteService/);
       if (pkg !== "cli" || file !== "contained-mission-local-failure-switch.ts")
         expect(source, path).not.toMatch(/contained-mission-local-failure-switch|parseLocalFailureRouteSwitch|assertLocalFailureRouteStartable/);
@@ -303,6 +315,33 @@ it("confines the local-failure publication port and recovery callers", () => {
       if (port) expect(source, path).not.toMatch(/\b(?:approveLocalFailureRepair|dispatchLocalFailureRepair|runDiagnosis|runRecheck|collectLocalFailureRecheck|confirmLocalRepairPush|RevisionChainStore)\b|INSERT\s+INTO|UPDATE\s+engineering_|\.record\s*\(|\.transition\s*\(/);
       if (/(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file))
         expect(source, path).not.toMatch(/\b(?:resumeConfirmedLocalPublication|reconcileLocalFailurePush|publishLocalFailureRepair)\b/);
+    }
+  }
+});
+
+it("gives the recheck step one caller", () => {
+  const packages = fileURLToPath(new URL("../../", import.meta.url));
+  for (const pkg of readdirSync(packages)) {
+    const root = join(packages, pkg, "src");
+    if (!existsSync(root)) continue;
+    for (const file of readdirSync(root, { recursive: true, encoding: "utf8" })) {
+      const path = join(root, file);
+      if (/\.test\.[^/]+$/.test(file) || !statSync(path).isFile()) continue;
+      const source = readFileSync(path, "utf8");
+      const step = pkg === "cli" && file === "contained-mission-local-failure-recheck-step.ts";
+      const service = pkg === "cli" && file === "contained-mission-local-failure-service.ts";
+      if (!step && !service) expect(source, path).not.toMatch(/contained-mission-local-failure-recheck-step|\bcreateLocalFailureRecheck\b/);
+      if (!service) expect(source, path).not.toMatch(/\bscan\s*\.\s*contracts\b/);
+      if (pkg !== "cli" || file !== "contained-mission-local-failure-scan.ts")
+        expect(source, path).not.toContain("createRecheckContractReader");
+      if (/(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.ts$/.test(file))
+        expect(source, path).not.toMatch(/\b(?:runRecheck|recoverRecheckRuns|collectLocalFailureRecheck|createRecheckContractReader)\b|contained-mission-local-failure-recheck-step/);
+      if (pkg !== "cli" || file !== "contained-mission-local-failure-recheck-waiting.ts")
+        expect(source, path).not.toMatch(/noticeWaitingRechecks|contained-mission-local-failure-recheck-waiting/);
+      if (step) {
+        expect(source, path).not.toMatch(/\b(?:operator|LocalFailureRecheckRunStore|hostProof|verifyRecheckGrant|createRecheckRunPorts|approveLocalFailureRepair|dispatchLocalFailureRepair|recoverLocalFailureDispatch|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runDiagnosis|recoverDiagnoses|registerDiagnosis)\b/);
+        expect(source, path).not.toMatch(/INSERT\s+INTO|UPDATE\s+engineering_|DELETE\s+FROM|\.\s*(?:event|appendEvent)\s*\(|revision_chain_events|contained-mission-(?:rpc|local-failure-scan)|['"][^'"]*daemon[^'"]*['"]/i);
+      }
     }
   }
 });

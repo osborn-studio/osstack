@@ -274,7 +274,7 @@ export async function runRecheck(p: RecheckRunPorts, recheckId: string, trigger:
   }));
 }
 
-export function recoverRecheckRuns(p: RecheckRunPorts): RecheckRecoveryReport {
+export function recoverRecheckRuns(p: Pick<RecheckRunPorts, "store" | "now">): RecheckRecoveryReport {
   const runs = new LocalFailureRecheckRunStore(p.store, p.now);
   return p.store.transaction(() => ({
     recovered: runs.unsettled().map(row => {

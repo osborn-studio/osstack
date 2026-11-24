@@ -2,6 +2,7 @@ import { createLocalFailureDispatch } from './contained-mission-local-failure-di
 import { createLocalFailureDiagnosis } from './contained-mission-local-failure-diagnose.js';
 import { createLocalFailureScan } from './contained-mission-local-failure-scan.js';
 import { createLocalFailurePublicationPort } from './contained-mission-local-failure-publication-port.js';
+import { createLocalFailureRecheck } from './contained-mission-local-failure-recheck-step.js';
 
 export interface LocalFailureRouteHandle {
   readonly publicationReady: boolean;
@@ -11,21 +12,23 @@ export interface LocalFailureRouteHandle {
 }
 
 type FactoryDeps = Parameters<typeof createLocalFailureScan>[0] & Parameters<typeof createLocalFailureDiagnosis>[0]
-  & Omit<Parameters<typeof createLocalFailureDispatch>[0], 'portsFor'> & Parameters<typeof createLocalFailurePublicationPort>[0];
+  & Omit<Parameters<typeof createLocalFailureDispatch>[0], 'portsFor'> & Parameters<typeof createLocalFailurePublicationPort>[0]
+  & Omit<Parameters<typeof createLocalFailureRecheck>[0], 'runPortsFor' | 'contracts'>;
 
 export async function createLocalFailureRouteService(deps: FactoryDeps): Promise<LocalFailureRouteHandle> {
   const scan = await createLocalFailureScan(deps);
   const diagnosis = await createLocalFailureDiagnosis(deps);
   const dispatch = createLocalFailureDispatch({ ...deps, portsFor: request => diagnosis.portsFor(request) });
+  const recheck = createLocalFailureRecheck({ ...deps, runPortsFor: request => diagnosis.portsFor(request), contracts: scan.contracts });
   const publication = await createLocalFailurePublicationPort(deps);
-  deps.log(publication.ready ? 'osstack: local-failure route: on (read, record, register, diagnose, dispatch, publish)'
-    : 'osstack: local-failure route: on (read, record, register, diagnose, dispatch)');
+  deps.log(publication.ready ? 'osstack: local-failure route: on (read, record, register, diagnose, dispatch, publish, recheck)'
+    : 'osstack: local-failure route: on (read, record, register, diagnose, dispatch, recheck)');
   return {
     publicationReady: publication.ready,
-    async recover(signal) { diagnosis.recover(); await publication.recover(signal); },
-    start() { scan.start(); diagnosis.start(); dispatch.start(); },
+    async recover(signal) { diagnosis.recover(); recheck.recover(); await publication.recover(signal); },
+    start() { scan.start(); diagnosis.start(); dispatch.start(); recheck.start(); },
     async stop() {
-      const results = await Promise.allSettled([scan, diagnosis, dispatch].map(async service => service.stop()));
+      const results = await Promise.allSettled([scan, diagnosis, dispatch, recheck].map(async service => service.stop()));
       for (const result of results) if (result.status === 'rejected') throw result.reason;
     },
   };

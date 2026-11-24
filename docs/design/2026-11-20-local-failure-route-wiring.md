@@ -319,6 +319,7 @@ The pass pushes nothing and approves nothing. One Mission's failure does not sto
 
 1. **Where the port is attached.** Row W7 of §6 said "one line in `contained-mission-ports.ts`". The ports object is built before the route assembly exists, so the port is attached by the new module after all its checks passed, as the bridge assembly attaches `revisionPublication`. `contained-mission-ports.ts` is unchanged.
 2. **No operator retry entry.** Decision 3 says the reconcile runs once at start "and otherwise on an operator retry". That retry would need a new RPC method. W7 adds none: restarting the service is the retry. A push that becomes uncertain while the service runs therefore stays at `verify_push_uncertain`, and its chain stays deferred by the audit, until the next start.
+   Accepted by the owner on 2026-11-23 ("Accept, no retry entry"): a restart is the only retry.
 3. **A resumed child publishes no check by itself.** After `pr_opened` the runner normally publishes the `osstack/verify` check, which is a write to GitHub. §5.1 says the resume makes no remote write, so the runner skips the automatic check on the resumed path (one condition in `contained-mission-runner.ts`). A person sends it with `mission publish-check`. The normal publication path is unchanged and still publishes the check.
 4. **Only `origin`.** The library always pushes to `origin`, while the adapters' preflight checks the remote named in the child's spec. The port refuses a child whose publication remote is not `origin` with `verify_publish_authority_invalid`, before any read. Such a child has used its single approval and can only be abandoned.
 5. **The pass is not tied to the kill switch.** It runs whenever the route was assembled, like the bridge's receipt recovery, because it only reads and records what the host itself pushed.
@@ -328,6 +329,28 @@ The pass pushes nothing and approves nothing. One Mission's failure does not sto
 **Guards changed.** `resumeConfirmedLocalPublication` may be named in the host (definition and one call) and in the port module (type and one call), with exact counts. The port module may import the publish library and name the port. The service must have exactly four imports. A new guard confines the port factory to the service, the two library functions to the library and the port module, forbids the port module from approving, dispatching or writing either ledger directly, and forbids the daemon, entry and RPC files from naming the resume, the reconcile or the publish function.
 
 **Still true.** `OSSTACK_BRIDGE=1` refuses to start (`BRIDGE_LIVE_NOT_IMPLEMENTED`), so the route cannot run in production and everything above was exercised only in tests, with a fake delivery runner and a fake PR read.
+
+### 7.8 Addendum (2026-11-23): the recheck step (D5b)
+
+At startup, `contained-mission-local-failure-service.ts` recovers diagnosis first, recheck runs second and publication last. Recheck recovery settles a reserved run as stopped with outcome `not_started`. It marks a running one `stop_unknown`. Recovery launches nothing.
+
+Every ten minutes, `contained-mission-local-failure-recheck-step.ts` reads up to five children from `engineering-local-failure-recheck-store.ts`. It collects inputs for confirmed pushes and pending rows. The collector presents the Watcher result, the Actions fact and the proof from the host run journal. The pass ends after the first ledger row it opens. If that row is pending, the step requests one automatic run.
+
+`contained-mission-local-failure-scan.ts` reads the original and new Watcher contracts from the recorded check runs. It checks the producer and text digest on each read. `contained-mission-rpc.ts` supplies the host CI reader and policy to the Actions adapter.
+
+**Chosen by the session that wrote the brief, not by the owner.**
+
+1. Only the pass that opens a ledger row can request its automatic run. If the service stops, host ports are missing or the collector process dies between opening and calling, the row gets no automatic run. The re-arm entry is due in D5c. Starting any pending row without a run or refusal event would cover more cases. This step uses the opening pass only.
+2. Every refusal is final for the service. The run library records the reason as a chain event.
+3. If any selected result on the new head fails its digest-checked read, `readRecheckContracts` returns no texts.
+4. Only the newest 20 accepted results on the new head are re-read.
+5. The Actions fact uses the host CI reader and its policy. A repository outside that policy gets no Actions fact and its row stays pending.
+6. Only the existing scan records results on the new head. It does so only while the chain grant is valid.
+7. The recheck and diagnosis timers run independently. Containers for two different roots can run at the same time.
+
+**Still true**
+
+`OSSTACK_BRIDGE=1` refuses to start. The Watcher publisher (B8) does not exist, so production cannot reach `recheck_passed`. No merge path reads the ledger (W8).
 
 ## 8. What could not be verified
 

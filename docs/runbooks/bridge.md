@@ -473,6 +473,14 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 
 ---
 
+### 6.3 推送确认后的自动复验（D5b，尚未上线）
+
+启动恢复按诊断、复验、发布的顺序执行。重启恢复不会启动复验。日志 `osstack: local-failure recheck: recovered=<n>` 给出恢复时读到的未结清记录数。
+
+复验每十分钟最多检查五个子 Mission。首次打开台账记录后，若仍缺验证输入，主机尝试一次自动复验，随即结束本轮。后续轮次收集 Watcher 结果、Actions 事实和主机证明。没有获得自动运行的记录须等待后续节点提供的重新启动入口。
+
+日志前缀为 `osstack: local-failure recheck: `。收集抛错时记录 `child <id>: collect_failed`。运行日志以 `<recheck_id>: ` 开头，随后是 `host_ports_unavailable`、`run_failed`、`refused:<reason>`、`existing:<state>` 或最终状态及其结论（例如 `stopped:host_passed`）。
+
 ## 7. 阶段 7 上线前检查清单
 
 > 2026-11-09 首发计划更新。下列是既有本地验证和 App 迁移路径的清单。GitHub CI 驱动首发须先按[实施方案阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)完成验证、更新运行手册，并审批 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)后再开启单 scope 试运行。
