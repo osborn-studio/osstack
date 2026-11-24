@@ -3,12 +3,18 @@
 // group, and a host-run qualification probe. Verified on codex-cli 0.160.1 (§5.7).
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { accessSync, closeSync, constants, copyFileSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { accessSync, closeSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
 
 export const CODEX_PROXY_PATCH_MAX_BYTES = 256 * 1024;
 export const CODEX_PROXY_END_MARKER = "END-OF-PATCH";
+export const CODEX_PROXY_REPORT_REPAIR_PROMPT = [
+  "Restate only the result of this session. Output your previous final reply again, unchanged.",
+  "Do not redo the work. Do not change files. Do not use tools.",
+  "End with a final line containing exactly this marker.",
+  CODEX_PROXY_END_MARKER,
+].join("\n");
 const OUTPUT_LIMIT = 1024 * 1024;
 const PASS_ENV = /^(PATH|LANG|LC_[A-Z_]+|TZ)$/;
 
@@ -26,6 +32,7 @@ export interface CodexProxyOptions {
   /** Extra variable names to pass through unchanged, for executor auth only. */
   passEnv?: readonly string[];
   timeoutMs?: number;
+  repairTimeoutMs?: number;
   /** Grace between SIGTERM and SIGKILL when stopping the group. */
   terminationGraceMs?: number;
   /** TCP target for the network probe; the host first connects to it unsandboxed as a control. */
@@ -43,10 +50,18 @@ export interface CodexProxyRun {
   patch: CodexProxyPatch; stdout: string; stderr: string; stdout_truncated: boolean; stderr_truncated: boolean;
 }
 export interface CodexProxyRunInput {
+  keepSession?: boolean;
   worktree: string; prompt: string; signal?: AbortSignal;
   /** Called after spawn, before any output is read, so the host can journal the group (§9). */
   onLaunched?: (launch: CodexProxyLaunch) => void;
 }
+export type CodexProxyRepairInput = Pick<CodexProxyRunInput, "worktree" | "signal" | "onLaunched">;
+export type CodexProxyRepairRefusal = "REPAIR_SESSION_UNCONFIRMED" | "REPAIR_SESSION_MISMATCH" | "REPAIR_USED_TOOL";
+/** A refused turn exposes only the refusal reason in its patch. */
+export type CodexProxyRepairRun = Omit<CodexProxyRun, "patch"> & (
+  | { accepted: true; patch: CodexProxyPatch }
+  | { accepted: false; patch: { ok: false; reason: CodexProxyRepairRefusal } }
+);
 export type CodexProbeOperation = "write_worktree" | "write_outside" | "write_gitdir" | "network";
 export interface CodexQualification {
   qualified: boolean; version: string; identity_sha256: string | null; profile: ":read-only";
@@ -57,19 +72,23 @@ export interface CodexQualification {
 
 /** Host-side Codex proxy executor. It never writes into the worktree; the patch is data for the host classifier. */
 export class CodexProxyExecutor {
-  private readonly options: Required<Pick<CodexProxyOptions, "timeoutMs" | "terminationGraceMs">> & CodexProxyOptions;
+  private readonly options: Required<Pick<CodexProxyOptions, "timeoutMs" | "repairTimeoutMs" | "terminationGraceMs">> & CodexProxyOptions;
   constructor(options: CodexProxyOptions) {
     if (!options.bin || !options.sourceCodexHome || !options.runtimeDir) throw Error("codex_proxy_config_invalid");
-    this.options = { timeoutMs: 600_000, terminationGraceMs: 2_000, ...options };
+    this.options = { timeoutMs: 600_000, repairTimeoutMs: 120_000, terminationGraceMs: 2_000, ...options };
   }
 
   /** Read-only argv for one proposal turn. Explicit `-s` overrides any repository config (§5.7). */
   args(worktree: string, outputFile: string, prompt: string): string[] {
-    return ["exec", "-s", "read-only", "-C", worktree, "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--ignore-rules",
-      "-o", outputFile,
+    return this.turnArgs(worktree, outputFile, "ephemeral", prompt);
+  }
+
+  private turnArgs(worktree: string, outputFile: string, mode: "ephemeral" | "keep" | "repair", prompt: string): string[] {
+    return ["exec", "-s", "read-only", "-C", worktree, "--skip-git-repo-check", ...(mode === "ephemeral" ? ["--ephemeral"] : []), "--ignore-user-config", "--ignore-rules",
+      ...(mode === "repair" ? ["--json"] : []), "-o", outputFile,
       ...(this.options.model ? ["-c", `model=${JSON.stringify(this.options.model)}`] : []),
       ...(this.options.reasoningEffort ? ["-c", `model_reasoning_effort=${JSON.stringify(this.options.reasoningEffort)}`] : []),
-      prompt];
+      ...(mode === "repair" ? ["resume", "--last"] : []), prompt];
   }
 
   /** Fresh HOME and CODEX_HOME holding only a copied auth.json; never links to the user's home. */
@@ -79,6 +98,10 @@ export class CodexProxyExecutor {
     mkdirSync(home, { recursive: true, mode: 0o700 }); mkdirSync(codexHome, { recursive: true, mode: 0o700 });
     const auth = join(this.options.sourceCodexHome, "auth.json");
     if (existsSync(auth)) copyFileSync(auth, join(codexHome, "auth.json"));
+    return this.sessionEnv(home, codexHome);
+  }
+
+  private sessionEnv(home: string, codexHome: string): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = {};
     const extra = new Set(this.options.passEnv ?? []);
     for (const [key, value] of Object.entries(process.env)) if (value !== undefined && (PASS_ENV.test(key) || extra.has(key))) env[key] = value;
@@ -91,11 +114,36 @@ export class CodexProxyExecutor {
     mkdirSync(this.options.runtimeDir, { recursive: true, mode: 0o700 });
     rmSync(outputFile, { force: true });
     const env = this.isolatedEnv();
-    const result = await runGroup(this.options.bin, this.args(input.worktree, outputFile, input.prompt), {
+    const args = input.keepSession
+      ? this.turnArgs(input.worktree, outputFile, "keep", input.prompt)
+      : this.args(input.worktree, outputFile, input.prompt);
+    const result = await runGroup(this.options.bin, args, {
       cwd: input.worktree, env, timeoutMs: this.options.timeoutMs, graceMs: this.options.terminationGraceMs,
       ...(input.signal ? { signal: input.signal } : {}), ...(input.onLaunched ? { onLaunched: input.onLaunched } : {}),
     });
     return { ...result, patch: readCodexProxyPatch(outputFile) };
+  }
+
+  async repair(input: CodexProxyRepairInput): Promise<CodexProxyRepairRun> {
+    const { runtimeDir, bin, repairTimeoutMs, terminationGraceMs } = this.options;
+    const codexHome = join(runtimeDir, "codex-home");
+    const rollout = singleRollout(runtimeDir);
+    if (!rollout) throw Error("codex_proxy_report_session_unavailable");
+    const outputFile = join(runtimeDir, "last-message.txt");
+    rmSync(outputFile, { force: true });
+    const args = this.turnArgs(input.worktree, outputFile, "repair", CODEX_PROXY_REPORT_REPAIR_PROMPT);
+    const result = await runGroup(bin, args, {
+      ...input, cwd: input.worktree, env: this.sessionEnv(join(runtimeDir, "home"), codexHome),
+      timeoutMs: repairTimeoutMs, graceMs: terminationGraceMs, requireDrainedOutput: true,
+    });
+    const reason = repairRefusal(result, rollout);
+    if (reason) return { ...result, accepted: false, patch: { ok: false, reason } };
+    return { ...result, accepted: true, patch: readCodexProxyPatch(outputFile) };
+  }
+
+  discardSession(): void {
+    for (const name of ["home", "codex-home"])
+      rmSync(join(this.options.runtimeDir, name), { recursive: true, force: true });
   }
 
   /** Host-run probe through Codex's own sandbox entry; no model is involved (§5.5). */
@@ -140,6 +188,53 @@ export class CodexProxyExecutor {
   }
 }
 
+function singleRollout(runtimeDir: string): string | undefined {
+  const codexHome = join(runtimeDir, "codex-home");
+  const sessions = join(codexHome, "sessions");
+  let rollout: string | undefined;
+  try {
+    if (!lstatSync(codexHome).isDirectory() || !lstatSync(sessions).isDirectory()) return undefined;
+    const pending = [sessions];
+    while (pending.length) {
+      const dir = pending.pop()!;
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) pending.push(join(dir, entry.name));
+        else if (entry.isFile() && entry.name.startsWith("rollout-") && entry.name.endsWith(".jsonl")) {
+          if (rollout) return undefined;
+          rollout = entry.name;
+        }
+      }
+    }
+  } catch { return undefined; }
+  return rollout;
+}
+
+function repairRefusal(result: Pick<CodexProxyRun, "stdout" | "stdout_truncated">, rollout: string): CodexProxyRepairRefusal | undefined {
+  if (result.stdout_truncated) return "REPAIR_SESSION_UNCONFIRMED";
+  // Match the complete Codex thread UUID regardless of the timestamp format.
+  const threadId = /-([\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12})\.jsonl$/i.exec(rollout)?.[1];
+  let started = false;
+  let mismatch = false;
+  let usedTool = false;
+  for (const line of result.stdout.split("\n")) {
+    if (!line.trim()) continue;
+    let event: { type?: unknown; thread_id?: unknown; item?: { type?: unknown } } | null;
+    try { event = JSON.parse(line); } catch { return "REPAIR_SESSION_UNCONFIRMED"; }
+    if (event?.type === "thread.started" && typeof event.thread_id === "string") {
+      started = true;
+      if (event.thread_id !== threadId) mismatch = true;
+    }
+    if (event?.type === "item.started" || event?.type === "item.completed") {
+      const type = event.item?.type;
+      if (type !== "agent_message" && type !== "reasoning") usedTool = true;
+    }
+  }
+  if (!started) return "REPAIR_SESSION_UNCONFIRMED";
+  if (mismatch) return "REPAIR_SESSION_MISMATCH";
+  if (usedTool) return "REPAIR_USED_TOOL";
+  return undefined;
+}
+
 /** Lossless `-o` channel check (§5.3): bounded, valid UTF-8, last non-empty line is the end marker; EOF may follow it directly. */
 export function readCodexProxyPatch(path: string, marker = CODEX_PROXY_END_MARKER): CodexProxyPatch {
   let fd: number;
@@ -166,6 +261,7 @@ export function processGroupEmpty(pgid: number): boolean {
 }
 
 interface GroupOptions {
+  requireDrainedOutput?: boolean;
   cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number; graceMs: number; signal?: AbortSignal;
   onLaunched?: (launch: CodexProxyLaunch) => void;
 }
@@ -206,7 +302,7 @@ async function runGroup(bin: string, args: string[], options: GroupOptions): Pro
   return {
     launch, exit_code: exit.code, signal: exit.signal, timed_out: timedOut, cancelled,
     ...(empty ? { stop: { stop_proof: "group_empty+sandbox_inherited" as const, pgid: launch.pgid, signals, confirmed_at: Date.now() } } : {}),
-    stdout: out.text(), stderr: err.text(), stdout_truncated: out.truncated(), stderr_truncated: err.truncated(),
+    stdout: out.text(), stderr: err.text(), stdout_truncated: out.truncated() || (options.requireDrainedOutput === true && !child.stdout.readableEnded), stderr_truncated: err.truncated(),
   };
 }
 async function waitEmpty(pgid: number, ms: number): Promise<boolean> {
