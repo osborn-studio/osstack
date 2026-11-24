@@ -1092,6 +1092,99 @@ describe("executor report repair", () => {
     return { ...f, discardSession };
   }
 
+  const redo = "The previous turn ended without a valid report, so its work was not applied. Do the work again and end with the required report.";
+  const missing = run({ patch: { ok: false, reason: "PATCH_MISSING" }, stdout: "previous-executor-output" });
+  function executorTurns(...turns: CodexProxyRun[]) {
+    return vi.fn<ContainedMissionPorts["execute"]>(async input => executeWith(turns.shift()!)(input));
+  }
+
+  it.each([false, true])("redoes an invalid turn after failed verification = %s", async verifiedBefore => {
+    const execute = executorTurns(...(verifiedBefore ? [run()] : []), missing, run());
+    const f = setup({ execute });
+    f.setVerifyExit(1);
+    const m = await drive(f, verifiedBefore ? 4 : 2);
+    const reason = "patch_invalid:PATCH_MISSING";
+    expect(m.state).toBe("awaiting_decision");
+    expect(payloads(f, "halted").at(-1)).toMatchObject({ reason });
+    expect(f.runner.decisionAllowed(m, "extra_repair")).toBe(true);
+    expect(await f.runner.decide(m.mission_id, { kind: "extra_repair" })).toMatchObject({
+      state: "candidate_ready", repair_cycles: verifiedBefore ? 1 : 0,
+    });
+    expect(execute).toHaveBeenCalledTimes(verifiedBefore ? 3 : 2);
+    const prompt = execute.mock.calls.at(-1)![0].prompt;
+    expect(prompt).toContain(redo);
+    if (verifiedBefore) {
+      expect(prompt).toContain(`${redo} The previous change failed verification (exit 1). Output excerpt:\n1 failed`);
+    } else {
+      expect(prompt).not.toContain("failed verification");
+      expect(prompt).not.toContain("1 failed");
+    }
+    expect(prompt).not.toContain("PATCH_MISSING");
+    expect(prompt).not.toContain("previous-executor-output");
+    expect(payloads(f, "decision_extra_repair")).toEqual([expect.objectContaining({ reason })]);
+  });
+
+  it("starts the report-repair attempts again on the new executor turn", async () => {
+    const f = scripted([refused, accepted(incomplete), accepted()]);
+    const m = await drive(f, 2);
+    expect(payloads(f, "halted").at(-1)).toMatchObject({ reason: "patch_invalid:PATCH_INCOMPLETE", report_repair: { attempts: 2 } });
+    expect(await f.runner.decide(m.mission_id, { kind: "extra_repair" })).toMatchObject({ state: "candidate_ready", repair_cycles: 0 });
+    expect(payloads(f, "executor_report_repair_attempt").map(p => p.attempt)).toEqual([1, 2, 1]);
+  });
+
+  it("requires a separate decision for each invalid executor turn", async () => {
+    const f = setup({ execute: executorTurns(missing, missing, run()) });
+    let m = await drive(f, 2);
+    for (const decision_id of ["redo-1", "redo-2"]) {
+      expect(m.state).toBe("awaiting_decision");
+      expect(payloads(f, "halted").at(-1)?.reason).toBe("patch_invalid:PATCH_MISSING");
+      expect(f.runner.decisionAllowed(m, "extra_repair")).toBe(true);
+      m = await f.runner.decide(m.mission_id, { kind: "extra_repair", decision_id });
+    }
+    expect(m.state).toBe("candidate_ready");
+    expect(payloads(f, "decision_extra_repair").map(p => p.decision_id)).toEqual(["redo-1", "redo-2"]);
+  });
+
+  const ciSpec: Partial<ContainedMissionSpec> = {
+    branch: "osstack/mission/child", allowed_paths: ["PROBE_FAIL"], max_repair_cycles: 0, verification_mode: "github_actions",
+    verify: { argv: [] }, publication: { ...localRepairSpec.publication, repository: "osborn-studio/osstack-bridge-sandbox" },
+    ci_repair: { root: localRepairSpec.local_failure_repair.root, pr: 7, branch: "osstack/mission/root", base: START, check_run_id: 1 },
+  };
+  const revisionSpec: Partial<ContainedMissionSpec> = {
+    publication: localRepairSpec.publication,
+    publish_target: { kind: "revision", chain_id: "rc_" + "a".repeat(36), pr: 7, remote_branch: "topic", round: 1, chain_start_commit: START, root_tier: "T0" },
+    revision_feedback: { review_ids: [1], feedback_digest: "a".repeat(64), nonce: "b".repeat(32), text: "feedback" },
+  };
+  it.each([
+    ["patch_invalid:PATCH_MISSING", ciSpec], ["patch_invalid:PATCH_MISSING", revisionSpec],
+    ["patch_invalid:PATCH_MISSING", localRepairSpec], ["executor_spawn_failed:x", {}],
+    ["patch_apply_failed:x", {}], ["cumulative_diff_failed:x", {}],
+  ] as const)("refuses extra repair for ineligible halt %# (%s)", async (reason, spec) => {
+    const f = setup({}, spec);
+    const m = f.store.transition(f.mission.mission_id, { to: "awaiting_decision", if_revision: f.mission.revision,
+      event: { kind: "halted", payload: { reason } } }, 1001);
+    expect(f.runner.decisionAllowed(m, "extra_repair")).toBe(false);
+    await expect(f.runner.decide(m.mission_id, { kind: "extra_repair" })).rejects.toThrow("CONTAINED_DECISION_NOT_ALLOWED");
+  });
+
+  it("requires the Mission to be awaiting a decision", async () => {
+    const f = setup();
+    f.store.record(f.mission.mission_id, "halted", { reason: "patch_invalid:PATCH_MISSING" }, 1001);
+    expect(f.runner.decisionAllowed(f.mission, "extra_repair")).toBe(false);
+    await expect(f.runner.decide(f.mission.mission_id, { kind: "extra_repair" })).rejects.toThrow("CONTAINED_DECISION_NOT_ALLOWED");
+  });
+
+  it("requires stop evidence before launching the extra executor", async () => {
+    const f = setup();
+    const ready = await drive(f, 1);
+    const executing = f.store.transition(ready.mission_id, { if_revision: ready.revision, to: "executing", event: { kind: "executor_launch_intent", payload: {} } }, 1002);
+    const m = f.store.transition(executing.mission_id, { if_revision: executing.revision, to: "awaiting_decision",
+      event: { kind: "halted", payload: { reason: "patch_invalid:PATCH_MISSING" } } }, 1003);
+    expect(m.stop_obligation).toBe(1);
+    await expect(f.runner.decide(m.mission_id, { kind: "extra_repair" })).rejects.toThrow("stop_evidence_required");
+    expect(f.calls.execute).toHaveLength(0);
+  });
+
   it.each([1, 2])("applies attempt %i through the normal candidate and verification path", async n => {
     const f = scripted(n === 1 ? [accepted()] : [accepted(incomplete), accepted()]);
     const direct = setup();

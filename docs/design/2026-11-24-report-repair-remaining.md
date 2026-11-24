@@ -95,7 +95,7 @@ One PR each, in this order.
 | R3 | `loop` | §3 option B, with the simulation updated and a 100,000-step run before merge | decision 5 |
 | R4 | `cli` | §4 card text | decision 6 |
 
-| R2b | `cli` | Accept `extra_repair` after `patch_invalid:*` for a Mission that is neither a local-failure repair child nor a CI repair child; list it in the decision list | R2, decision 4 |
+| R2b | `cli` | Accept `extra_repair` after `patch_invalid:*` for a Mission that is neither a local-failure repair child nor a CI repair child; list it in the decision list. R2b covers plain Missions only and excludes revision children (`publish_target`) because the chain store admits `extra_repair` only for `repair_cycles_exhausted`. | R2, decision 4 |
 | R5 | CI | A scheduled workflow (nightly, plus manual dispatch) that runs the loop simulation with at least 100,000 steps and fails on any violation. No new notification channel: a failed scheduled run is reported by GitHub as usual | decision 7 |
 
 R3, R4 and R5 do not depend on R1 or R2.
@@ -107,7 +107,7 @@ U7 gate: R2 needs the crash-point test above; R3 needs the loop simulation run, 
 1. **Session at rest.** May the proposal turn store its Codex session in the run's private `CODEX_HOME` until the step ends? Recommended: yes. Without it the contained Mission cannot have a report repair at all.
 2. **Repairable failures.** Only `PATCH_INCOMPLETE` after a clean exit. Recommended: yes; widen later with data.
 3. **Budget.** Repair seconds are charged to executor seconds; no repair cycle or round is counted. Recommended: yes.
-4. **Exit after `patch_invalid`.** Today only `abandon` is accepted. Should `extra_repair` be accepted for `patch_invalid:*` on a Mission that is neither a local-failure repair child nor a CI repair child (a new executor turn, counted in the budget)? This widens what a decision may start. Recommended: yes, as a separate small node after R2, because otherwise one malformed message still ends the Mission when the repair fails. If no, the Mission can only be abandoned, as today.
+4. **Exit after `patch_invalid`.** Today only `abandon` is accepted. Should `extra_repair` be accepted for `patch_invalid:*` on a Mission that is neither a local-failure repair child nor a CI repair child (a new executor turn, counted in the budget)? This widens what a decision may start. Recommended: yes, as a separate small node after R2, because otherwise one malformed message still ends the Mission when the repair fails. If no, the Mission can only be abandoned, as today. R2b covers plain Missions only and excludes revision children (`publish_target`) because the chain store admits `extra_repair` only for `repair_cycles_exhausted`.
 5. **Loop, failed check with invalid report.** Option A or B of §3. Recommended: B.
 6. **Loop card.** The text change of §4. Recommended: yes.
 7. **Simulation steps in CI.** Keep 384 steps and run 100,000 by hand before U5 merges, or add a scheduled CI job with the long run. Recommended: keep by hand for now; a scheduled job belongs to U6.
