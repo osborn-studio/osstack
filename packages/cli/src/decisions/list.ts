@@ -9,11 +9,25 @@ const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(va
 const summary = (text: string) => redactBridge(text).replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\s]+/gu, " ").trim().slice(0, 240);
 const command = (name: string, ...required_params: string[]) => ({ name, required_params });
 
-const isObject = (value: unknown) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isObject = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
 function hasLocalRepair(details: string): boolean {
   try { return isObject(JSON.parse(details)?.local_failure_repair); }
   catch { return false; }
+}
+
+function loopReportSummary(details: string, fallback: string): string {
+  let payload: unknown;
+  try { payload = JSON.parse(details); }
+  catch { return fallback; }
+  if (!isObject(payload) || payload.reason_code !== "report_invalid") return fallback;
+  if (payload.task_id !== undefined && typeof payload.task_id !== "string") return fallback;
+
+  const role = payload.role === "builder" || payload.role === "reviewer" ? `${payload.role} ` : "";
+  // Redact before shortening so the cut cannot leave a partial secret in the notice.
+  const id = typeof payload.task_id === "string" ? summary(payload.task_id).slice(0, 64) : "";
+  const reason = typeof payload.reason === "string" ? payload.reason.trim() : "";
+  return `The ${role}report was invalid and could not be repaired. The work is kept. See the completed task${id ? ` ${id}` : ""} in LOOP-STATE.json. Choosing retry redoes the work.${reason ? ` — ${reason}` : ""}`;
 }
 
 export function decisionItem(source: DecisionSource, row: DecisionRow): PendingDecision {
@@ -94,6 +108,7 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
       answer_command = row.kind === "approval" ? command("approval.resolve", "approval_id", "choice") : command("clarify.resolve", "clarify_id", "answer");
       break;
     case "loop":
+      if (row.kind === "loop") description = loopReportSummary(row.details_json, description);
       allowed_answers = [row.kind === "loop_card" ? "approve" : "retry"];
       answer_command = row.kind === "loop_card" ? command("cockpit approve", "card_id") : command("cockpit retry", "task_id", "--workspace");
       break;
