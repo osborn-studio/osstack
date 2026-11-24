@@ -43,7 +43,7 @@ import { truncateUnicodeSafe } from "./unicode.js";
 
 export interface LocalVerifierOptions {
   reportRepair?: ReportRepairHooks;
-  repairBuilderReport?(run: AgentRun, deterministicPass: boolean): Promise<void>;
+  repairBuilderReport?(run: AgentRun, deterministicPass: boolean, hasDeterministicChecks: boolean): Promise<void>;
   /** Internal continuation; never sourced from repository task context. */
   reportRunId?: string;
   workspacePath: string;
@@ -114,9 +114,11 @@ export async function verifyRun(run: AgentRun, options: LocalVerifierOptions): P
   if (artifactStop !== undefined) return { pass: false, score: 0, reviewer_agent_id: "local-verifier", summary: artifactStop.message, issues: artifact.issues };
   const adapterSpecs = explicitSpecs.filter(isAdapterEvaluationSpec);
   if (run.outcome === "report_invalid") {
-    await options.repairBuilderReport?.(run, commandRuns.length + artifact.evaluations.length > 0
+    const hasChecks = commandRuns.length + artifact.evaluations.length > 0;
+    const deterministicPass = hasChecks
       && commandRuns.every(({ result }) => result.exitCode === 0)
-      && !artifact.issues.some(issue => issue.severity === "error"));
+      && !artifact.issues.some(issue => issue.severity === "error");
+    await options.repairBuilderReport?.(run, deterministicPass, hasChecks);
   }
   const adapterResults = run.outcome === "report_invalid" ? [] : await runVerifierAdapters(
     run,

@@ -1147,6 +1147,7 @@ export class LoopEngine {
           decisions.push(`${task.task_id}: verification scope rejected: ${reason}`);
           break;
         }
+        let retryFailedCheck = false;
         const verifierAgentIds = this.options.verifierAgentIds ?? [];
         // Defense in depth for the identity returned by execution, including local commands.
         if (verifierAgentIds.includes(finalRun.agent_id)) {
@@ -1165,7 +1166,8 @@ export class LoopEngine {
           const implementationRun = finalRun;
           finalVerdict = await this.awaitStopSensitive(() => verifyRun(implementationRun, {
           reportRepair: repairHooks,
-          repairBuilderReport: async (run, deterministicPass) => {
+          repairBuilderReport: async (run, deterministicPass, hasChecks) => {
+            retryFailedCheck = hasChecks && !deterministicPass;
             const adapter = this.options.adapters?.find(candidate => candidate.id === run.agent_id);
             const originalRunId = run.run_id;
             const beforeRepair = await snapshotReviewerWorkspace(runWorkspacePath).catch(() => undefined);
@@ -1248,6 +1250,7 @@ export class LoopEngine {
         if (verifyFence) {
           try { await verifyFence(); }
           catch (error) {
+            retryFailedCheck = false;
             finalVerdict = { ...finalVerdict, pass: false, score: 0,
               summary: "Candidate changed while checks or review were running",
               issues: [...finalVerdict.issues, { severity: "error", rule: "verify.candidate_changed",
@@ -1322,7 +1325,8 @@ export class LoopEngine {
           });
         }
 
-        if (finalRun.outcome === "report_invalid" || finalVerdict.issues.some(issue => issue.rule === "verify.review_artifact_invalid")) {
+        if ((finalRun.outcome === "report_invalid" && !retryFailedCheck)
+          || finalVerdict.issues.some(issue => issue.rule === "verify.review_artifact_invalid")) {
           this.reportInvalid = true;
           outcome = "escalated";
           preserveCandidateWorktree = true;
@@ -1342,10 +1346,16 @@ export class LoopEngine {
         });
         if (!finalVerdict.pass) {
           const fingerprint = issueFingerprint(finalVerdict);
-          if (decision.action === "continue" && fingerprint === previousFingerprint) {
+          const sameFingerprint = fingerprint === previousFingerprint;
+          if (
+            decision.action === "continue" &&
+            (sameFingerprint || (retryFailedCheck && repairHooks.remainingMs() === undefined))
+          ) {
             decision = {
               action: "escalate",
-              reason: `No progress: attempt ${iteration} produced the same blocking issues and failed evaluations as attempt ${iteration - 1}.`,
+              reason: sameFingerprint
+                ? `No progress: attempt ${iteration} produced the same blocking issues and failed evaluations as attempt ${iteration - 1}.`
+                : "Iteration budget exhausted after failed verification.",
               escalate_to: "hermes",
             };
           }
