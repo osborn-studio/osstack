@@ -655,6 +655,50 @@ describe("ContainedMissionHost status publication", () => {
     expect(readCiChain(f.store.db, f.store.get(id))).toMatchObject({ state: "stopped", since: 3105, reason: "grant_revoked" });
   });
 
+  it("measures the current wait until the chain stops", () => {
+    const f = fixture();
+    const stats = () => computeCiChainStats(f.store.db, 3100);
+    expect(stats()).toMatchObject({ ci_chain_first_pass: { closed: 0, rate: null },
+      ci_chain_hop_wait_ms: { closed_chains: 0, hops: [] }, ci_chain_open_wait_ms: { open_chains: 0 } });
+    const { mission_id } = ciRoot(f, "open");
+    const digest = "2".repeat(64);
+    f.store.record(mission_id, "ci_delivery_evidence", evidence(digest, "b".repeat(40)), 3000);
+    f.store.record(mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3001);
+    expect(stats().ci_chain_open_wait_ms).toMatchObject({ as_of_ms: 3100, open_chains: 1, clock_skew: 0,
+      by_state: [{ state: "initial_ci_waiting", n: 1, median_ms: 99, max_ms: 99 }],
+      longest: [{ mission_id, state: "initial_ci_waiting", since: 3001, wait_ms: 99 }] });
+    f.store.record(mission_id, "ci_closed_unmerged", {}, 3010);
+    expect(stats()).toMatchObject({ ci_chain_first_pass: { closed: 0, rate: null },
+      ci_chain_hop_wait_ms: { closed_chains: 0, hops: [] }, ci_chain_open_wait_ms: { open_chains: 0, longest: [] } });
+  });
+
+  it("measures repaired hops using the first dispatch and the first events on its child", () => {
+    const f = fixture();
+    const root = ciRoot(f, "repaired");
+    const id = root.mission_id;
+    const digest = "2".repeat(64);
+    const child = f.store.authorize(f.principal, { scope_id: root.scope_id, spec: { repo_path: f.repo },
+      claim: { repo_identity: "child", branch: "child", worktree_identity: "child" } }, 3000);
+    f.store.record(id, "ci_delivery_evidence", evidence(digest, "b".repeat(40)), 3000);
+    f.store.record(id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3001);
+    f.store.record(id, "ci_initial_verified", {}, 3002);
+    f.store.record(id, "ci_failure_observed", {}, 3003);
+    f.store.record(id, "ci_repair_dispatched", { child: child.mission_id }, 3006);
+    f.store.record(id, "ci_repair_dispatched", { child: "missing" }, 3007);
+    f.store.record(child.mission_id, "ci_repair_approval", {}, 3010);
+    f.store.record(child.mission_id, "ci_repair_approval", {}, 3008);
+    f.store.record(child.mission_id, "ci_repair_push_confirmed", {}, 3015);
+    f.store.record(id, "ci_repair_verified", {}, 3021);
+    f.store.record(id, "ci_pr_merged_observed", { pr: 7 }, 3028);
+    const stats = computeCiChainStats(f.store.db);
+    expect(stats.ci_chain_first_pass).toMatchObject({ closed: 1, first_pass: 0, rate: 0 });
+    expect(stats.ci_chain_hop_wait_ms.hops.map(row => [row.hop, row.median_ms])).toEqual([
+      ["pr_opened->failure_observed", 2], ["failure_observed->repair_dispatched", 3],
+      ["repair_dispatched->repair_approved", 4], ["repair_approved->repair_pushed", 5],
+      ["repair_pushed->ci_verified", 6], ["ci_verified->merged", 7],
+    ]);
+  });
+
   it("counts five consecutive closed chains and observed durations", async () => {
     const f = fixture();
     for (let i = 0; i < 5; i++) {
@@ -683,6 +727,7 @@ describe("ContainedMissionHost status publication", () => {
     f.store.record(root.mission_id, "ci_delivery_evidence", evidence(digest, head), 5000);
     f.store.record(root.mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 5001);
     f.store.record(root.mission_id, "ci_pr_merged_observed", { pr: 7, head, merge_commit_sha: "f".repeat(40), merged_by: { id: 9, type: "User" } }, 5002);
+    expect(computeCiChainStats(f.store.db).ci_chain_first_pass).toMatchObject({ closed: 1, first_pass: 1, rate: 1 });
     expect(computeCiChainStats(f.store.db)).toMatchObject({ ci_chain_closed: 1, ci_chain_consecutive_normal_closed: 0 });
   });
 

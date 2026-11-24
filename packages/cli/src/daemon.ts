@@ -1609,7 +1609,7 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       const stats = computeStats(ctx.db, ctx.loopSessions, ctx.rpcLatency, ctx.supervision);
       // Lazy: the bridge section is read-only SQL and must not weigh on CLI/daemon startup. A failure here never fails `stats`.
       const bridge = await import("./bridge-stats.js").then(m => m.computeBridgeStats(ctx.db, Date.now())).catch(() => null);
-      const ciChain = await import("./contained-mission-ci-chain-read.js").then(m => m.computeCiChainStats(ctx.db)).catch(() => null);
+      const ciChain = await import("./contained-mission-ci-chain-read.js").then(m => m.computeCiChainStats(ctx.db, Date.now())).catch(() => null);
       return singleOk(req.id, { ...stats, bridge, ci_chain: ciChain });
     }
 

@@ -5,6 +5,8 @@ import { readCiScanHealth, type CiScanStep } from './contained-mission-ci-scan-h
 import type { CiReadFailureReason } from './contained-mission-local-failure-reader.js';
 import { readMissionPublication } from './contained-mission-publication.js';
 
+import { summarizeHops, summarizeOpenWaits, type StageTimeline } from './contained-mission-ci-chain-stats.js';
+
 type Event = { seq: number; kind: string; created_at: number; payload_json: string };
 export type CiChainState = 'initial_ci_waiting' | 'repair_permission_waiting' | 'repair_in_progress' | 'repair_ci_waiting' | 'approval_and_handoff_waiting' | 'merge_reserved' | 'merge_reconciling' | 'merge_held' | 'closed' | 'stopped' | 'result_unknown';
 export interface CiChainRow {
@@ -113,38 +115,68 @@ export function listCiChains(db: Database.Database, readScopes: readonly string[
     .flatMap(row => { const chain = readCiChain(db, row); return chain ? [chain] : []; });
 }
 
-export function computeCiChainStats(db: Database.Database) {
+// SQLite takes the other columns from the row with MIN(seq). Sequence is unique per mission.
+function firstStageEvents(db: Database.Database, missionId: string) {
+  const events = db.prepare(`SELECT MIN(seq) AS seq,kind,created_at,payload_json FROM engineering_contained_events
+    WHERE mission_id=? AND kind IN ('ci_pilot_root_bound','pr_opened','ci_failure_observed','ci_repair_dispatched',
+      'ci_repair_approval','ci_repair_push_confirmed','ci_repair_verified','ci_initial_verified',
+      'ci_app_e_merge_reserved','ci_pr_merged_observed') GROUP BY kind`).all(missionId) as Event[];
+  return new Map(events.map(event => [event.kind, event]));
+}
+
+export function computeCiChainStats(db: Database.Database, nowMs = Date.now()) {
   const hasTable = db.prepare("SELECT 1 FROM sqlite_master WHERE name='engineering_contained_missions'").get();
-  if (!hasTable) return { ci_chain_scan_failing: 0, ci_chain_scan_failing_by_reason: [], ci_chain_available: false, ci_chain_by_state: [], ci_chain_closed: 0, ci_chain_repaired_closed: 0,
-    ci_chain_consecutive_normal_closed: 0, ci_chain_registration_to_close_ms: [] };
-  const scopes = db.prepare('SELECT DISTINCT scope_id FROM engineering_contained_missions').all() as Array<{ scope_id: string }>;
+  const scopes = hasTable ? db.prepare('SELECT DISTINCT scope_id FROM engineering_contained_missions').all() as Array<{ scope_id: string }> : [];
   const chains = scopes.length ? listCiChains(db, scopes.map(row => row.scope_id)) : [];
   const counts = new Map<string, number>();
   const scanReasons = new Map<string, number>();
   let scanFailing = 0;
   const durations: Array<{ mission_id: string; duration_ms: number | null }> = [];
+  const timelines: StageTimeline[] = [];
+  let firstPass = 0;
   let closed = 0; let repairedClosed = 0; let consecutive = 0; let streakOpen = true;
   for (const chain of chains) {
     if (chain.scan) { scanFailing++; scanReasons.set(chain.scan.reason, (scanReasons.get(chain.scan.reason) ?? 0) + 1); }
     counts.set(chain.state, (counts.get(chain.state) ?? 0) + 1);
     if (chain.state === 'closed') {
       closed++;
-      const failed = db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_failure_observed' LIMIT 1").get(chain.mission_id);
-      const repaired = db.prepare("SELECT 1 FROM engineering_contained_events WHERE mission_id=? AND kind='ci_repair_verified' LIMIT 1").get(chain.mission_id);
-      if (failed && repaired) repairedClosed++;
+      const root = firstStageEvents(db, chain.mission_id);
+      const dispatch = root.get('ci_repair_dispatched');
+      const childId = string(payload(dispatch)['child']);
+      const child = childId ? firstStageEvents(db, childId) : undefined;
+      const timeline = {
+        registered: root.get('ci_pilot_root_bound')?.created_at,
+        pr_opened: root.get('pr_opened')?.created_at,
+        failure_observed: root.get('ci_failure_observed')?.created_at,
+        repair_dispatched: dispatch?.created_at,
+        repair_approved: child?.get('ci_repair_approval')?.created_at,
+        repair_pushed: child?.get('ci_repair_push_confirmed')?.created_at,
+        ci_verified: root.get(dispatch ? 'ci_repair_verified' : 'ci_initial_verified')?.created_at,
+        merge_reserved: root.get('ci_app_e_merge_reserved')?.created_at,
+        merged: root.get('ci_pr_merged_observed')?.created_at,
+      };
+      timelines.push(timeline);
+      if (!root.has('ci_failure_observed') && !dispatch) firstPass++;
+      if (root.has('ci_failure_observed') && root.has('ci_repair_verified')) repairedClosed++;
       // Historical manual merges also produce merged observations. Only App E
       // readback carries both the application and authenticated handoff IDs.
       const normal = !!chain.merge_commit_sha && (chain.app_id ?? 0) > 0 && (chain.handoff_comment_id ?? 0) > 0;
       if (!normal) streakOpen = false;
       if (streakOpen) consecutive++;
-      const opened = db.prepare("SELECT created_at FROM engineering_contained_events WHERE mission_id=? AND kind='ci_pilot_root_bound' ORDER BY seq LIMIT 1").get(chain.mission_id) as { created_at: number } | undefined;
-      durations.push({ mission_id: chain.mission_id, duration_ms: opened && chain.since >= opened.created_at ? chain.since - opened.created_at : null });
+      const registered = timeline.registered;
+      durations.push({ mission_id: chain.mission_id, duration_ms: registered !== undefined && chain.since >= registered ? chain.since - registered : null });
     } else streakOpen = false;
   }
   return { ci_chain_scan_failing: scanFailing,
     ci_chain_scan_failing_by_reason: [...scanReasons].map(([reason, count]) => ({ reason, count })).sort((a, b) => a.reason.localeCompare(b.reason)),
-    ci_chain_available: true, ci_chain_by_state: [...counts].map(([state, count]) => ({ state, count })).sort((a,b) => a.state.localeCompare(b.state)),
+    ci_chain_available: !!hasTable, ci_chain_by_state: [...counts].map(([state, count]) => ({ state, count })).sort((a,b) => a.state.localeCompare(b.state)),
     ci_chain_closed: closed, ci_chain_repaired_closed: repairedClosed, ci_chain_consecutive_normal_closed: consecutive,
+    ci_chain_first_pass: { counts: 'closed chains with no ci_failure_observed and no ci_repair_dispatched event / all closed chains',
+      closed, first_pass: firstPass, rate: closed ? firstPass / closed : null },
+    ci_chain_hop_wait_ms: summarizeHops(timelines),
+    ci_chain_open_wait_ms: summarizeOpenWaits(chains, nowMs),
+    ci_chain_reverted_or_hotfixed_7d: { value: null,
+      reason: 'not_wired: needs a read of later commits on the default branch; only the pure calculation exists' },
     ci_chain_registration_to_close_ms: durations };
 }
 
