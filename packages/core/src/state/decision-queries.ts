@@ -59,12 +59,21 @@ export class DecisionQueries {
     return this.rows(`SELECT c.chain_id id,m.scope_id,CAST(c.revision AS TEXT) revision,c.state,
       c.state summary,c.stop_reason reason,c.mode kind,
       json_object('uncertain',EXISTS(SELECT 1 FROM engineering_publication_intents i WHERE i.chain_id=c.chain_id AND i.kind='push' AND i.state='uncertain'),
-        'grant_version',json_extract(c.grant_json,'$.version'), 'unsettled',EXISTS(SELECT 1 FROM engineering_publication_intents i WHERE i.chain_id=c.chain_id AND i.kind='push' AND i.state IN ('pending','uncertain'))) details_json,
+        'grant_version',json_extract(c.grant_json,'$.version'), 'unsettled',EXISTS(SELECT 1 FROM engineering_publication_intents i WHERE i.chain_id=c.chain_id AND i.kind='push' AND i.state IN ('pending','uncertain')),
+        'recheck',CASE WHEN r.attempt IS NOT NULL THEN json_object('mission_id',c.root_mission_id,'attempt',r.attempt) END) details_json,
+      CASE WHEN c.state NOT IN ('ready_for_human','awaiting_decision') THEN r.created_at ELSE
       (SELECT e.created_at FROM engineering_revision_chain_events e WHERE e.chain_id=c.chain_id AND e.kind='transition'
         AND json_extract(e.payload_json,'$.to')=c.state AND json_extract(e.payload_json,'$.from')<>c.state
-        ORDER BY e.seq DESC LIMIT 1) waiting_since
+        ORDER BY e.seq DESC LIMIT 1) END waiting_since
       FROM engineering_revision_chains c JOIN engineering_contained_missions m ON m.mission_id=c.root_mission_id
-      WHERE c.state IN ('ready_for_human','awaiting_decision') AND m.scope_id IN (${q.read_scopes.map(() => "?").join(",")})
+      LEFT JOIN (
+        SELECT r.chain_id,r.root_mission_id,r.created_at,
+          (SELECT COUNT(*)+1 FROM engineering_local_failure_recheck_runs a WHERE a.recheck_id=r.recheck_id) attempt
+        FROM engineering_local_failure_rechecks r WHERE r.state='reverify_pending'
+          AND NOT EXISTS (SELECT 1 FROM engineering_local_failure_recheck_runs a WHERE a.recheck_id=r.recheck_id
+            AND NOT (a.state='stopped' AND a.outcome IS 'not_started'))
+      ) r ON r.chain_id=c.chain_id AND r.root_mission_id=c.root_mission_id AND c.mode='live' AND c.state<>'closed' AND r.attempt<=3
+      WHERE (c.state IN ('ready_for_human','awaiting_decision') OR r.attempt IS NOT NULL) AND m.scope_id IN (${q.read_scopes.map(() => "?").join(",")})
       AND c.chain_id>${q.inclusive ? "=" : ""}? AND (? IS NULL OR m.scope_id=?) ORDER BY c.chain_id LIMIT ?`,
       ...q.read_scopes, q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);
   }

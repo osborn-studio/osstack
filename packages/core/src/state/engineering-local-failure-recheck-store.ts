@@ -8,6 +8,7 @@ import {
   type RecheckVerdict,
 } from "../bridge/recheck.js";
 import type { DiagnosisStore } from "./engineering-diagnosis-store.js";
+import type { LocalFailureRecheckRun } from "./engineering-local-failure-recheck-run-store.js";
 import { VerificationSourceStore } from "./engineering-verification-source-store.js";
 
 type Outcome = {
@@ -70,6 +71,12 @@ export class LocalFailureRecheckStore {
     const row = this.db.prepare(`SELECT * FROM ${table} WHERE recheck_id=?`).get(id) as LocalFailureRecheck | undefined;
     if (!row) throw Error("not_found");
     return row;
+  }
+  runFacts(recheckId: string) {
+    type Attempt = Pick<LocalFailureRecheckRun, "attempt" | "state" | "outcome" | "conclusion_state" | "conclusion_reason" | "created_at" | "updated_at">;
+    const attempts = this.db.prepare(`SELECT attempt,state,outcome,conclusion_state,conclusion_reason,created_at,updated_at
+      FROM engineering_local_failure_recheck_runs WHERE recheck_id=? ORDER BY attempt`).all(recheckId) as Attempt[];
+    return { attempts, blocking: attempts.some(row => row.state !== "stopped" || row.outcome !== "not_started") };
   }
   forDispatch(id: string) {
     return this.db.prepare(`SELECT * FROM ${table} WHERE dispatch_id=?`).get(id) as LocalFailureRecheck | undefined;

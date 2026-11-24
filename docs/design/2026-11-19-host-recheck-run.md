@@ -50,7 +50,7 @@ The run row copies, and never accepts from a caller, these values from the ledge
 
 ### 1.4 Who may trigger it, and under which authority
 
-Only the host process that owns the control-plane database may start a run. The run is never a decision kind and has no RPC, webhook or bot entry (§3.4).
+Only the host process that owns the control-plane database may start a run. The run has no decision kind, no webhook or bot entry and no remote answer path; its only entries are the host's own tick and one local-socket method with operator scope that `decisions.answer` refuses (§3.4, amended 2026-11-23).
 
 Two readings of the authority are possible.
 
@@ -151,6 +151,7 @@ The database also checks the proof, so that a mistake in process memory cannot p
 - The row can only be written by the daemon owner (owner fence copied from `engineering-local-failure-intake-ddl.ts:72-74`, `:120-121`), inside the run library, after a stop receipt from the local Docker daemon.
 - The run library and the collector are libraries with no caller in `daemon`, `bin`, `cli-entry` or any `*-rpc` file until the wiring node. A static test enforces this, in the same way as `packages/cli/src/contained-mission-diagnosis-guards.test.ts:5-23`.
 - The wiring node (D5) adds two entry points only: the host's own tick, and an operator command that requires read, write and operator scope on the host, as publication approval does (`packages/cli/src/contained-mission-local-failure-approval.ts:10-14`). Neither is a decision kind. The Grok Bot channel only receives notices.
+- **Amendment (2026-11-23, [grant renewal note](2026-11-20-local-failure-grant-renewal.md) §4.3, owner decision 8 of 2026-11-20).** The operator command reaches the host through one local-socket method, `mission.rearm_local_failure_recheck`. It arms a request in the daemon's memory and returns; the host's own tick then starts the run. The run therefore still has no decision kind, no webhook or bot entry and no remote answer path: `decisions.answer` answers `local_only` for the re-arm and never forwards it. The method cannot produce the proof: it writes one chain event and no run row. The implementation is described in [the re-arm note](2026-11-23-local-failure-recheck-rearm.md).
 - Text from a PR, a check run or a bot is never an input to the run. The command, image, fixtures and limits come from the installed profile (intake design §5.1).
 
 ## 4. Failure and uncertainty states

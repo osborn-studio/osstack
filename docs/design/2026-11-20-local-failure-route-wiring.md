@@ -153,7 +153,7 @@ One PR per node, each against `main`, in this order. Every node keeps the three 
 | W6 | Candidate approval entry and the decision list correction | per decision 2 | Approval needs read, write and operator scope, binds the exact candidate and expires. `decisions.answer` answers `local_only`. The list no longer offers `approve_publication` for a local-failure child. `adopt_worktree` test of §4 flag 3 |
 | W7 | Publication port, reconcile, resume after confirmed push | assembly, one line in `contained-mission-ports.ts`, guards | With a fake delivery runner: no push without a live approval; withdrawal before release pushes nothing; unknown after release only reconciles; a confirmed push records `local_repair_push_confirmed` once; nothing re-pushes |
 | D5b | Recheck recovery, collect, one automatic recheck run | as in the recheck design | Needs W7 and **[D5a]** |
-| D5c | Operator re-arm, close-out view, notices | open | Needs the owner's answer on transport |
+| D5c | Operator re-arm and the recheck view: [re-arm note](2026-11-23-local-failure-recheck-rearm.md). The waiting notice is a later node | as in the grant renewal note §7 | Transport decided 2026-11-20 (grant renewal note, decision 8) |
 | W8 | Merge hold, if decision 6 puts it here | close-out reader ports, the merge paths | Green Actions with a pending or failed verification never merges |
 
 W1 and W2 are independent. W3 needs W1 and W2. W4 needs W3 and **[D5a]**. W5 needs W4. W6 needs W5. W7 needs W6. If W2 is too large, split the host command from the service acceptance; if W3 is too large, split the contract-text reader from the scan.

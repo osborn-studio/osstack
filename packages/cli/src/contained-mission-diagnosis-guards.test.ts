@@ -105,8 +105,9 @@ it("gives the recheck run one caller and keeps its admission and journal private
       if (pkg === "cli" && file === "contained-mission-local-failure-recheck-step.ts") {
         expect(source.match(/\brunRecheck\s*\(/g)).toHaveLength(1);
         expect(source.match(/\brecoverRecheckRuns\s*\(/g)).toHaveLength(1);
-        expect(source).toContain('"automatic"');
-        expect(source).not.toMatch(/\boperator\b/);
+        expect(source.match(/"automatic"/g)).toHaveLength(1);
+        expect(source.match(/"operator"/g)).toHaveLength(1);
+        expect(source.match(/\boperator\b/g)).toHaveLength(source.match(/"operator"/g)!.length);
       } else expect(runSource, path).not.toMatch(/contained-mission-local-failure-recheck-run|\b(?:runRecheck|recoverRecheckRuns)\b/);
       if (pkg === "cli" || /(?:^|\/)(?:daemon|bin|cli-entry|[^/]+-rpc)\.[cm]?[jt]sx?$/.test(file)) {
         // The factory supplies the run store's hostProof method to the collector.
@@ -183,7 +184,9 @@ it("confines the local-failure assembly and switch to the contained Mission fact
         continue;
       }
       if (pkg === "cli" && file === "contained-mission-local-failure-service.ts") {
-        expect(source.match(/\bimport\b/g)).toHaveLength(5);
+        expect(source.match(/\bimport\b/g)).toHaveLength(7);
+        expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-recheck-rearm\.js['"];?$/m);
+        expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-recheck-view\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-publication-port\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-diagnose\.js['"];?$/m);
         expect(source).toMatch(/^import\s+[^;'"]+\s+from\s+['"]\.\/contained-mission-local-failure-scan\.js['"];?$/m);
@@ -339,7 +342,7 @@ it("gives the recheck step one caller", () => {
       if (pkg !== "cli" || file !== "contained-mission-local-failure-recheck-waiting.ts")
         expect(source, path).not.toMatch(/noticeWaitingRechecks|contained-mission-local-failure-recheck-waiting/);
       if (step) {
-        expect(source, path).not.toMatch(/\b(?:operator|LocalFailureRecheckRunStore|hostProof|verifyRecheckGrant|createRecheckRunPorts|approveLocalFailureRepair|dispatchLocalFailureRepair|recoverLocalFailureDispatch|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runDiagnosis|recoverDiagnoses|registerDiagnosis)\b/);
+        expect(source, path).not.toMatch(/\b(?:LocalFailureRecheckRunStore|hostProof|verifyRecheckGrant|createRecheckRunPorts|approveLocalFailureRepair|dispatchLocalFailureRepair|recoverLocalFailureDispatch|publishLocalFailureRepair|reconcileLocalFailurePush|resumeConfirmedLocalPublication|runDiagnosis|recoverDiagnoses|registerDiagnosis)\b/);
         expect(source, path).not.toMatch(/INSERT\s+INTO|UPDATE\s+engineering_|DELETE\s+FROM|\.\s*(?:event|appendEvent)\s*\(|revision_chain_events|contained-mission-(?:rpc|local-failure-scan)|['"][^'"]*daemon[^'"]*['"]/i);
       }
     }
