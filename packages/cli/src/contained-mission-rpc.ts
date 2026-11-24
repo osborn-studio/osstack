@@ -379,6 +379,16 @@ function view(m: ReturnType<ContainedMissionHost['start']>) {
 
 export const HOST_PROCESS_RECHECK_MS = 60_000;
 
+async function prepareVerificationJournal(root: string): Promise<string> {
+  const { lstat, mkdir } = await import('node:fs/promises');
+  try {
+    await mkdir(root, { recursive: true, mode: 0o700 });
+    const info = await lstat(root);
+    if (!info.isDirectory() || info.uid !== process.getuid?.() || (info.mode & 0o077) !== 0) throw Error();
+    return root;
+  } catch { throw Error('CONTAINED_VERIFICATION_JOURNAL_INVALID'); }
+}
+
 /** Daemon wiring, kept here so daemon.ts only gates and routes. Configuration is environment-only. */
 export async function createContainedMissionService(deps: {
   attention: ConstructorParameters<typeof import('@osstack/core').ContainedMissionStore>[0];
@@ -490,7 +500,7 @@ export async function createContainedMissionService(deps: {
       ...(env['OSSTACK_CONTAINED_CODEX_IDENTITY'] ? { identityBinary: env['OSSTACK_CONTAINED_CODEX_IDENTITY'] } : {}),
       ...(env['OSSTACK_CONTAINED_CODEX_MODEL'] ? { model: env['OSSTACK_CONTAINED_CODEX_MODEL'] } : {}) },
     ...(scopeId === undefined ? { verification: { socketPath: need('OSSTACK_CONTAINED_DOCKER_SOCKET'), daemonId: need('OSSTACK_CONTAINED_DOCKER_DAEMON_ID'),
-      baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: join(deps.home, 'contained-verification') } } : {
+      baseImageId: need('OSSTACK_CONTAINED_BASE_IMAGE_ID'), journalRoot: await prepareVerificationJournal(join(deps.home, 'contained-verification')) } } : {
         ...(pilot && pilotPolicy && bridge ? { githubCiPilot: { scopeId: pilot.config.scope_id, policy,
           bindRoot: (actor, scope, spec) => pilot.bindNewRoot(store, actor, scope, spec, Date.now()),
           assertWrite: mission => { pilot.assertWrite(store, mission, refreshCi, Date.now()); },

@@ -76,7 +76,7 @@ export interface RevisionPublicationDeps {
   /** Required for a release. Read the current authority and live switch inside the W13 release transaction. */
   fenceAuthority?: () => GrantLiveContext & { enabled: boolean };
   /** Host cancellation for remote facts that invalidate the in-flight child. */
-  cancelChild: (missionId: string) => Promise<unknown>;
+  cancelChild: (missionId: string, chainId: string) => Promise<unknown>;
   sleep?: (ms: number) => Promise<void>;
 }
 export type RevisionReceiptDeps = Pick<RevisionPublicationDeps, 'chains' | 'missions' | 'host' | 'now' | 'remoteHead' | 'compare' | 'readPr' | 'localGit' | 'remoteIsDescendant'> & { checkEnabled?: boolean };
@@ -536,7 +536,7 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
   const reject = (code: RevisionRefusalCode, intentId?: string): never => {
     refuseRevisionPublication(deps, chainId, mission.mission_id, intentId, code);
     if (['pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'external_write', 'head_regressed'].includes(code)) {
-      void Promise.resolve().then(() => deps.cancelChild(mission.mission_id))
+      void Promise.resolve().then(() => deps.cancelChild(mission.mission_id, chainId))
         .catch(error => recordCancelFailure(deps, chainId, mission.mission_id, error));
     }
     throw Error(`CONTAINED_REVISION_REFUSED:${code}`);
@@ -652,7 +652,7 @@ export async function publishRevision(deps: RevisionPublicationDeps, input: Revi
   if (readback.state !== 'OPEN' || readback.baseRefName !== chain.base_ref || readback.baseRefOid !== chain.published_base) {
     const reason = readback.state === 'MERGED' ? 'pr_merged' : readback.state === 'CLOSED' ? 'pr_closed' : 'base_changed';
     await reconcileReceipt(deps, intentId, reason, { cwd: spec.worktree_path, remote: publication.remote });
-    try { await deps.cancelChild(mission.mission_id); } catch (error) { recordCancelFailure(deps, chainId, mission.mission_id, error); }
+    try { await deps.cancelChild(mission.mission_id, chainId); } catch (error) { recordCancelFailure(deps, chainId, mission.mission_id, error); }
     throw Error('CONTAINED_REVISION_PR_CHANGED_AFTER_PUSH');
   }
   return { pushed_commit: permit.head, pr: { number: chain.pr_number, url: readback.url, reused: true }, base_head: chain.published_base,

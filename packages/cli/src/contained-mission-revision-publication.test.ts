@@ -521,7 +521,7 @@ it.each(['pr_closed', 'pr_merged', 'pr_head_ref_changed', 'base_changed', 'exter
       exitCode: expected === 'head_regressed' && args[0] === 'merge-base' && args[3] === oid('f') ? 1 : 0 });
     await expect(f.call()).rejects.toThrow(`CONTAINED_REVISION_REFUSED:${expected}`);
     expect(cancel).toHaveBeenCalledOnce();
-    expect(cancel).toHaveBeenCalledWith(f.id);
+    expect(cancel).toHaveBeenCalledWith(f.id, f.chain.chain_id);
     expect(f.deps.chains.get(f.chain.chain_id).state).toBe(expected === 'pr_closed' || expected === 'pr_merged' ? 'closed' : 'awaiting_decision');
   });
 
@@ -998,7 +998,7 @@ it.each(['success', 'success_three_commits', 'lease_ancestor', 'stale', 'lease_r
       expect(intent.state).toBe(scenario === 'readback_mismatch' || scenario === 'stale' || scenario === 'lease_ancestor' ? 'uncertain' : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? 'failed' : 'confirmed');
       if (scenario === 'lease_rejected') expect(intent.detail).toBe('push_rejected');
       expect(deps.missions.get(id).state).toBe('awaiting_decision');
-      if (scenario === 'base_changed' || scenario === 'pr_closed') expect(cancel).toHaveBeenCalledWith(id);
+      if (scenario === 'base_changed' || scenario === 'pr_closed') expect(cancel).toHaveBeenCalledWith(id, chain.chain_id);
     }
     expect(remoteHead()).toBe(scenario === 'lease_ancestor' ? ancestor : scenario === 'stale' || scenario === 'success' ? third : scenario === 'lease_rejected' || scenario === 'base_changed_before_release' ? first : candidate);
     expect(pushes).toBe(scenario === 'base_changed_before_release' ? 0 : 1);
