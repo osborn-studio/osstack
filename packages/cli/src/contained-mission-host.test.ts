@@ -27,7 +27,7 @@ const run = (patch = PATCH): CodexProxyRun => ({ launch: { pid: 4242, pgid: 4242
   stop: { stop_proof: "group_empty+sandbox_inherited", pgid: 4242, signals: [], confirmed_at: 2 }, patch: { ok: true, text: patch, bytes: patch.length },
   stdout: "", stderr: "", stdout_truncated: false, stderr_truncated: false });
 
-function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { schema60?: boolean; maxConcurrent?: number; empty?: (pgid: number) => boolean; scan?: { pageSize: number; maxPages: number } } = {}) {
+function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { schema60?: boolean; recheck?: number; maxConcurrent?: number; empty?: (pgid: number) => boolean; scan?: { pageSize: number; maxPages: number } } = {}) {
   const root = realpathSync(createScratchDirSync("tests", "contained-host"));
   const repo = join(root, "repo"); mkdirSync(repo);
   for (const [path, content] of Object.entries({ "src/a.txt": "hi\n", "src/b.txt": "bye\n", "package.json": "{}\n" })) { mkdirSync(dirname(join(repo, path)), { recursive: true }); writeFileSync(join(repo, path), content); }
@@ -57,6 +57,7 @@ function fixture(over: Partial<ContainedMissionHostPorts> = {}, hostOver: { sche
     ...over };
   let empty = hostOver.empty ?? (() => true); let named: number[] = [];
   const host = new ContainedMissionHost({ ports, worktreesRoot, processGroupEmpty: pgid => empty(pgid), processesForWorktree: () => named,
+    ...(hostOver.recheck !== undefined ? { hostProcessRecheckMs: hostOver.recheck } : {}),
     ...(hostOver.maxConcurrent ? { maxConcurrent: hostOver.maxConcurrent } : {}), ...(hostOver.scan ? { scan: hostOver.scan } : {}) });
   const principal = { principal_id: "human", client_session_id: "cli", read_scopes: [scope.scope_id], write_scopes: [scope.scope_id], stop_scopes: [], operator_scopes: [] };
   const start = async () => host.start(principal, { scope_id: scope.scope_id, spec: await resolveContainedMissionStart({ goal: "say hello", repo_path: repo, base_ref: "main", allowed_paths: ["src/**"], verify: { argv: ["true"] } }, { worktreesRoot }) });
@@ -76,8 +77,10 @@ async function ticks(f: Fixture, n: number) { for (let i = 0; i < n; i++) await 
 async function orphanExecuting(f: Fixture, launched = true): Promise<ContainedMission> {
   const m = await f.start();
   await f.host.tick();
-  let current = f.store.get(m.mission_id);
-  current = f.store.transition(m.mission_id, { if_revision: current.revision, to: "executing", expected_head: spec(m).start_commit, event: { kind: "executor_launch_intent", payload: {} } }, f.now());
+  return recordExecuting(f, f.store.get(m.mission_id), launched);
+}
+function recordExecuting(f: Fixture, m: ContainedMission, launched = true) {
+  const current = f.store.transition(m.mission_id, { if_revision: m.revision, to: "executing", expected_head: spec(m).start_commit, event: { kind: "executor_launch_intent", payload: {} } }, f.now());
   if (launched) f.store.record(m.mission_id, "executor_started", { pid: 7777, pgid: 7777, started_at: 1 }, f.now());
   return current;
 }
@@ -397,6 +400,106 @@ describe("ContainedMissionHost recovery", () => {
     await f.host.recover();
     expect(f.store.get(m.mission_id)).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
     expect(f.calls.verify).toBe(0);
+  });
+});
+
+describe("periodic executor re-check (W13-E2)", () => {
+  async function executor(f: Fixture) {
+    const m = await f.start();
+    const ready = f.store.transition(m.mission_id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: {} } }, f.now());
+    return recordExecuting(f, ready);
+  }
+
+  // Advance the re-check clock on every tick and reject even an implicit SIGTERM.
+  function periodicTick(f: Fixture) {
+    let time = Date.now();
+    return async () => {
+      const clock = vi.spyOn(Date, "now").mockReturnValue(++time);
+      const kill = vi.spyOn(process, "kill").mockReturnValue(true);
+      try {
+        await f.host.tick();
+        expect(kill.mock.calls.filter(([, signal]) => signal !== 0)).toEqual([]);
+      } finally { kill.mockRestore(); clock.mockRestore(); }
+    };
+  }
+
+  it("T7a settles stop_unknown only after every recorded group empties", async () => {
+    const f = fixture({}, { recheck: 1, empty: () => false });
+    const { mission_id: id } = await executor(f);
+    f.store.record(id, "executor_started", { pgid: 8888 }, f.now());
+    await f.host.recover();
+    const tick = periodicTick(f);
+    const busyDuringProbe: boolean[] = [];
+    f.setEmpty(pgid => {
+      busyDuringProbe.push(f.host.isBusy(id));
+      return pgid === 7777;
+    });
+    await tick();
+    expect(busyDuringProbe).not.toContain(true);
+    expect(f.store.get(id)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+    f.setEmpty(() => true);
+    await tick();
+    expect(f.store.get(id)).toMatchObject({ state: "needs_reconciliation", stop_obligation: 0 });
+    expect(f.reason(id)).toBe("stop_evidence_recovered");
+  });
+
+  it.each(["cancel_requested", "abandoned"] as const)("T7b settles %s when the executor stops", async state => {
+    const f = fixture({}, { recheck: 1, empty: () => false });
+    const { mission_id: id } = await executor(f);
+    if (state === "cancel_requested") await f.host.cancel(f.principal, id);
+    else {
+      await f.host.recover();
+      await f.host.decide(f.principal, id, { kind: "abandon" });
+    }
+    const tick = periodicTick(f);
+    await tick();
+    expect(f.store.get(id)).toMatchObject({ state, stop_obligation: 1 });
+    expect(f.store.claim(id).state).toBe("active");
+    f.setEmpty(() => true);
+    await tick();
+    expect(f.store.get(id)).toMatchObject({ state: state === "abandoned" ? state : "cancelled", stop_obligation: 0 });
+    if (state === "abandoned") expect(f.store.claim(id)).toMatchObject({ state: "released", release_reason: "terminal" });
+  });
+
+  it("T7c leaves the executor alone when periodic re-checks are off", async () => {
+    const f = fixture({}, { empty: () => false });
+    const { mission_id: id } = await executor(f);
+    await f.host.recover();
+    const probe = vi.fn(() => true);
+    f.setEmpty(probe);
+    await periodicTick(f)();
+    expect(probe).not.toHaveBeenCalled();
+    expect(f.store.get(id)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+  });
+
+  it("T7d skips a verification opened after the executor", async () => {
+    const verificationStopped = vi.fn<ContainedMissionHostPorts["verificationStopped"]>(async () => ({ stopped: false }));
+    const f = fixture({ verificationStopped }, { recheck: 1 });
+    const m = await executor(f);
+    const stopped = f.store.recordStopEvidence(m.mission_id, m.revision, { stop_proof: "group_empty_after_restart", pgid: 7777 }, f.now());
+    const candidate = { head: spec(m).start_commit, tree: "a".repeat(40), diff_digest: "b".repeat(64) };
+    const ready = f.store.transition(m.mission_id, { if_revision: stopped.revision, to: "candidate_ready", candidate, event: { kind: "candidate_ready", payload: {} } }, f.now());
+    f.store.transition(m.mission_id, { if_revision: ready.revision, to: "verifying", event: { kind: "verify_intent", payload: {} } }, f.now());
+    await f.host.recover();
+    expect(verificationStopped).toHaveBeenCalledOnce();
+    verificationStopped.mockClear();
+    await periodicTick(f)();
+    expect(verificationStopped).not.toHaveBeenCalled();
+    expect(f.store.get(m.mission_id)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+  });
+
+  it("advances the executor scan cursor across successive re-checks", async () => {
+    const f = fixture({}, { recheck: 1, empty: () => false, scan: { pageSize: 1, maxPages: 1 } });
+    const first = await executor(f);
+    const second = await executor(f);
+    await f.host.recover();
+    f.setEmpty(() => true);
+    const tick = periodicTick(f);
+    await tick();
+    expect(f.store.get(first.mission_id).state).toBe("needs_reconciliation");
+    expect(f.store.get(second.mission_id).state).toBe("stop_unknown");
+    await tick();
+    expect(f.store.get(second.mission_id).state).toBe("needs_reconciliation");
   });
 });
 

@@ -391,6 +391,29 @@ describe("recovery by observation (probe double)", () => {
     expect(b.store.get(m.mission_id).state).toBe("pr_opened");
   });
 
+  it("keeps a present host group unproven across two re-checks when the executor group is empty", async () => {
+    const fp = fakeProbe();
+    fp.answers.leader = { pgid: 4242, start: "Fri Nov  6 10:00:00 2026" };
+    const w = world({ probe: fp.probe, host: { recheck: 0 } });
+    const a = w.daemon("a");
+    const m = await w.start(a);
+    const id = m.mission_id;
+    const ready = a.store.transition(id, { if_revision: m.revision, to: "workspace_ready", event: { kind: "workspace_created", payload: {} } }, a.ports.now());
+    const executing = a.store.transition(id, { if_revision: ready.revision, to: "executing", event: { kind: "executor_launch_intent", payload: {} } }, a.ports.now());
+    a.store.record(id, "executor_started", { pgid: 7777 }, a.ports.now());
+    a.store.recordStopEvidence(id, executing.revision, { stop_proof: "group_empty_after_restart", pgid: 7777 }, a.ports.now());
+    w.orphan(a, id, "released");
+    await a.host.recover();
+    const unproven = () => w.kinds(a, id).filter(kind => kind === "host_process_unproven");
+    expect(unproven()).toHaveLength(1);
+    expect(a.store.get(id).state).toBe("stop_unknown");
+
+    await a.host.tick();
+    await a.host.tick();
+    expect(a.store.get(id)).toMatchObject({ state: "stop_unknown", stop_obligation: 1 });
+    expect(unproven()).toHaveLength(1);
+  });
+
   it("the periodic re-check is off by default and settles an open record only when enabled", async () => {
     for (const recheck of [undefined, 1]) {
       const fp = fakeProbe(); fp.answers.group = true; fp.answers.leader = { pgid: 4242, start: "Fri Nov  6 10:00:00 2026" };

@@ -30,8 +30,8 @@ export interface ContainedMissionHostOptions {
   /** Page size and pages per tick; the scan resumes where the previous tick stopped. */
   scan?: { pageSize: number; maxPages: number };
   /**
-   * Re-check host child processes that are not proven stopped every this many ms (design W13 section 10, decision 2a). Off by
-   * default: that decision is still open, so recovery runs on host start and on `retry_stop_check` only.
+   * Re-check unproven host processes and executor groups (W13-E2). The daemon sets HOST_PROCESS_RECHECK_MS
+   * to 60 seconds (owner decision 2a, 2026-11-07). Direct construction leaves the re-check off when omitted.
    */
   hostProcessRecheckMs?: number;
   /** Longest wait for a host process that is still exiting during a proof (default: the classifier's 5 s). Tests shorten it. */
@@ -75,6 +75,7 @@ export class ContainedMissionHost {
   private readonly processes: (worktree: string) => number[];
   private readonly page: number; private readonly pages: number;
   private cursor: { created_at: number; mission_id: string } | undefined;
+  private recheckCursor: typeof this.cursor;
   private closed = false;
   private lastRecheck = 0;
   constructor(private readonly options: ContainedMissionHostOptions) {
@@ -199,7 +200,9 @@ export class ContainedMissionHost {
     const launched: Promise<void>[] = [];
     if (this.recheckMs !== undefined && Date.now() - this.lastRecheck >= this.recheckMs) {
       this.lastRecheck = Date.now();
-      for (const missionId of await this.recheckCandidates()) launched.push(this.track(missionId, async () => { await this.recoverOne(missionId); }));
+      for (const missionId of await this.recheckCandidates()) {
+        if (!this.inFlight.has(missionId)) launched.push(this.track(missionId, () => this.recoverOne(missionId)));
+      }
     }
     // Resume after the last row scanned, so long-halted Missions cannot starve later ones.
     pages: for (let page = 0; page < this.pages; page++) {
@@ -388,16 +391,29 @@ export class ContainedMissionHost {
       }
     } catch { /* no marker directory yet */ }
   }
-  /** Missions with an open host process whose process group is gone or unknown: a present group is cheap to rule out before any `lsof`. */
-  private async recheckCandidates(): Promise<string[]> {
-    const due: string[] = [];
+  /** Use cheap group probes to select Missions for a full recovery check. */
+  private async recheckCandidates(): Promise<Set<string>> {
+    const due = new Set<string>();
     for (const missionId of this.hp.missionsWithOpen()) {
       if (this.inFlight.has(missionId)) continue;
       let gone = false;
       for (const row of this.hp.open(missionId)) {
         try { if (row.pgid === null || !(await this.kit.probe.groupPresent(row.pgid))) gone = true; } catch { gone = true; }
       }
-      if (gone) due.push(missionId);
+      if (gone) due.add(missionId);
+    }
+    for (let page = 0; page < this.pages; page++) {
+      const rows = this.store.listOutstanding(this.page, this.recheckCursor);
+      for (const { mission_id } of rows) {
+        if (due.has(mission_id) || this.inFlight.has(mission_id) || this.hp.hasOpen(mission_id)) continue;
+        const m = this.store.get(mission_id);
+        if (m.state !== 'stop_unknown' && m.state !== 'cancel_requested' && !(TERMINAL.has(m.state) && m.stop_obligation === 1)) continue;
+        try {
+          if (await this.stopProof(m, 'executor_groups_only')) due.add(mission_id);
+        } catch { /* An unreadable event history cannot establish proof. Continue scanning later Missions. */ }
+      }
+      this.recheckCursor = rows.at(-1);
+      if (rows.length < this.page) { this.recheckCursor = undefined; break; }
     }
     return due;
   }
@@ -409,11 +425,12 @@ export class ContainedMissionHost {
   }
 
   /** Proof that the effect the Mission last opened (an executor turn or a verification) is gone. */
-  private async stopProof(m: ContainedMission): Promise<Record<string, unknown> | undefined> {
+  private async stopProof(m: ContainedMission, mode: 'full' | 'executor_groups_only' = 'full'): Promise<Record<string, unknown> | undefined> {
     const events = containedEvents(this.store, m.mission_id);
     const opened = lastTransitionTo(events, ['executing', 'verifying']);
     if (opened < 0) return undefined;
     if (eventPayload(events[opened]!).to === 'verifying') {
+      if (mode === 'executor_groups_only') return undefined;
       const result = await this.options.ports.verificationStopped(m, () => {
         const decisionId = this.activeDecisionIds.get(m.mission_id);
         if (decisionId) this.store.record(m.mission_id, 'decision_effect_started', { decision_id: decisionId, effect: 'verification_stop' }, this.options.ports.now());
@@ -424,6 +441,7 @@ export class ContainedMissionHost {
     const started = launch.filter(e => e.kind === 'executor_started');
     // The intent precedes the spawn, but a crash can fall between spawn and journaling: require that no process names the worktree.
     if (!started.length) {
+      if (mode === 'executor_groups_only') return undefined;
       try { return this.processes(parseContainedMissionSpec(m.spec_json).worktree_path).length === 0 ? { stop_proof: 'never_launched', evidence: 'no_process_names_worktree' } : undefined; }
       catch { return undefined; }
     }
@@ -436,7 +454,7 @@ export class ContainedMissionHost {
       }
       // A repair intent can survive a crash between spawn and its onLaunched callback.
       const intent = launch.filter(e => e.kind === 'executor_report_repair_attempt').at(-1);
-      if (intent && started.at(-1)!.seq < intent.seq && this.processes(parseContainedMissionSpec(m.spec_json).worktree_path).length) return undefined;
+      if (intent && started.at(-1)!.seq < intent.seq && (mode === 'executor_groups_only' || this.processes(parseContainedMissionSpec(m.spec_json).worktree_path).length)) return undefined;
       return { stop_proof: 'group_empty_after_restart', ...(pgids.length === 1 ? { pgid: pgids[0] } : { pgids }) };
     } catch { return undefined; }
   }
