@@ -84,14 +84,20 @@ Webhook body, a new notice kind:
   rules. Nothing is retried beyond what the drain already does.
 
 Wiring: the daemon start uses the sender from the environment when the caller
-passed none (`opts.notificationSender ?? select…(process.env, home)`).
+passed none (`opts.notificationSender ?? select…(process.env, home)`). The sender is
+selected under the same condition as the attention sender (the attention
+feature is on), so one configuration turns owner notices on or off.
 
 ## 3. Things that change when the switch is on
 
-- **The 30-second health poll starts on any host with the switch set**, even
-  without guarded autonomy: the daemon creates that interval when a sender
-  exists (`daemon.ts:4542-4545`). The implementation must confirm that
-  `refreshAutonomyHealthAndRecover` is safe there, and say so in the PR.
+- **No new periodic work besides the drain.** Found while implementing: the
+  existing 30-second poll (`refreshAutonomyHealthAndRecover`) first runs log
+  and proof retention, which deletes expired proof directories, and only then
+  drains the outbox. Passing the environment sender into that poll would make
+  a host without guarded autonomy run retention every 30 seconds instead of
+  once at start. So: where guarded autonomy is configured, the existing poll
+  gets the sender (it already runs there). Where it is not, a separate timer
+  runs the drain only, every 30 seconds, and nothing else.
 - **A backlog is sent on first start.** Rows that have been `pending` since
   before this change go out, 50 per drain, oldest first (§6 decision 4).
 - The health check stops warning once the outbox drains.
