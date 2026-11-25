@@ -458,6 +458,22 @@ importers:
         specifier: ^22.19.19
         version: 22.19.19
 
+  packages/verify-harness:
+    dependencies:
+      '@osstack/agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@osstack/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+
   packages/verify-publisher:
     dependencies:
       '@osstack/core':
