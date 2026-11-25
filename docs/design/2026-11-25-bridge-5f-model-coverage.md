@@ -1,6 +1,6 @@
 # Bridge 5-F: does the TLA model have to cover the local-failure route and V2 grant renewal?
 
-Status: proposed, 2026-11-25. Three owner decisions are open in §5. No model change has been made yet.
+Status: accepted, 2026-11-25. The owner chose M1 (a), M2 (a) and M3 (a); see §6. The model extension is a separate node; this note changes no model file.
 
 Context: the phase 5 threshold (`2026-11-06-bridge-same-pr-revision.md` §5.6, last paragraph) requires that "the live TLA model has no TLC counterexample". The model is `docs/design/specs/bridge.tla`, last revised on 2026-11-07. Main has since added two things the model does not describe: the U4b local-failure route and version 2 grant renewal. The 2026-11-25 audit (`docs/plans/2026-11-25-sandbox-drill-checklist.md` §0) asked whether the model must be extended before 5-F is cited to open `OSSTACK_BRIDGE=1`. This note answers that question and proposes a scope. File references are to main `091b9cd5`.
 
@@ -68,3 +68,11 @@ The proposed extension is one node: Codex writes the model, and TLC runs locally
 | M3 | F9 wording (found in 5-F node 2) | §5.6 expects a 403 on push to settle the intent as `failed`. The code keeps a released push that failed with an authorization error `uncertain` unless it has structured proof that the push was rejected before any update (`explicitlyRejectedPush`, `contained-mission-revision-publication.ts:516-525`); a token revoked before release does give `failed`. (a) amend §5.6 to match the code; (b) change the code | (a): the code's rule is the safer one, since stderr alone does not prove nothing was written |
 
 The gate stays closed whichever way these go. Choosing (b) for M1 changes the acceptance criteria, which the threshold paragraph says requires the owner's explicit change to the design.
+
+## 6. Decision record (2026-11-25)
+
+The owner answered in the 5-F session:
+
+- **M1 (a): extend the model** before citing 5-F to open the gate. This is the next node; Codex writes it and TLC runs locally under the heavy lock.
+- **M2 (a): close finding 10** in that same node, by modelling the store's close exactly.
+- **M3 (a): amend §5.6.** The F9 row in `2026-11-06-bridge-same-pr-revision.md` §5.6 now matches the code (this PR).
