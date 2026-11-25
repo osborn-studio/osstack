@@ -1,7 +1,7 @@
 import { open } from "node:fs/promises";
 import { z } from "zod";
 import { createFileAttemptLedger } from "./attempt-ledger.js";
-import { parsePublisherAllowlist, parsePublishRequest } from "./config.js";
+import { parsePublisherAllowlist, parsePublishRequest, type PublisherAllowlist } from "./config.js";
 import { abandonVerification, publishVerification, type PublisherGithub, type PublishOutcome } from "./publish.js";
 
 export interface CliDeps { github: PublisherGithub; now: () => Date; uuid: () => string; stdout: (line: string) => void }
@@ -42,6 +42,11 @@ async function jsonFile(path: string): Promise<unknown> {
 }
 
 export async function runCli(argv: readonly string[], deps: CliDeps): Promise<number> {
+  return runCliWithGithub(argv, { ...deps, github: () => deps.github });
+}
+
+export async function runCliWithGithub(argv: readonly string[],
+  deps: Omit<CliDeps, "github"> & { github: (config: PublisherAllowlist) => PublisherGithub }): Promise<number> {
   function invalid(reason: "usage" | "config_invalid" | "request_invalid") {
     deps.stdout(JSON.stringify({ ok: false, reason, detail: null }));
     return 2;
@@ -50,7 +55,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<nu
   if (!args) return invalid("usage");
   const config = parsePublisherAllowlist(await jsonFile(args.config));
   if (!config.ok) return invalid("config_invalid");
-  const publisher = { ...deps, ledger: createFileAttemptLedger(args.ledger) };
+  const publisher = { ...deps, github: deps.github(config.value), ledger: createFileAttemptLedger(args.ledger) };
   const signal = new AbortController().signal;
   let outcome: PublishOutcome;
   if (args.command === "publish") {

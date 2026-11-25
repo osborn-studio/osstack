@@ -48,6 +48,8 @@ it("isolates the cloud package and keeps check-run writes out of host source", a
       const file = basename(path);
       if (file !== "github-transport.ts" && /api\.github\.com|authorization/u.test(source)) violations.push(name);
       if (file !== "app-key.ts" && /createPrivateKey|createSign|O_NOFOLLOW/u.test(source)) violations.push(name);
+      if (file !== "main.ts" && source.includes("--key")) violations.push(name);
+      if (file !== "bin.ts" && /process\.(?:argv|stdout|exitCode)\b/u.test(source)) violations.push(name);
       if (source.includes("console.")) violations.push(name);
       if (file === "github-transport.ts") {
         const methods = [...source.matchAll(/\bmethod:\s*("[A-Z]+")/gu)].map(m => m[1]).sort();

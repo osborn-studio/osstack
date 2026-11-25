@@ -1,21 +1,29 @@
 # Verification publisher: cloud runbook
 
-Date: 2026-11-20. Status: **prepared, not runnable yet**. Execution location: the cloud side, next to the existing Grok Bots. Scope of the first release: `osborn-studio/osstack-bridge-sandbox` and one skill.
+Date: 2026-11-20, updated 2026-11-24. Status: **prepared, not runnable yet**. Execution location: the cloud side, next to the existing Grok Bots. Scope of the first release: `osborn-studio/osstack-bridge-sandbox` and one skill.
 
-Sources: [B8 design](../design/2026-11-19-watcher-recheck-publication.md) (node B8-5, §2.3, §3.2–§3.6, §5), [Grok Bots hand-over](bridge-grok-bots-handoff.md), [bridge runbook](bridge.md). The publisher's code is the package `packages/verify-publisher`; every statement below about its behaviour was read from that code at `f09adb41`.
+Sources: [B8 design](../design/2026-11-19-watcher-recheck-publication.md) (node B8-5, §2.3, §3.2–§3.6, §5), [Grok Bots hand-over](bridge-grok-bots-handoff.md), [bridge runbook](bridge.md). The publisher's code is the package `packages/verify-publisher`; every statement below about its behaviour was read from that code at `f09adb41`; the statements about the entry point, the transport and the key were read from the code of nodes B9-1 and B9-2.
 
 ## 1. What exists and what does not
 
-The publisher package is a library with a command function. It has been tested only against an in-memory GitHub. Three pieces are missing, and all three belong to node B9:
+The publisher package has an entry point and a real GitHub transport. Both have been tested only against an in-memory GitHub; no real request has been sent. One piece is missing, and it belongs to node B9 ([runtime design](../design/2026-11-24-verification-publisher-runtime.md)):
 
 | Piece | State |
 |---|---|
 | Publish and abandon logic, allowlist and request parsers, attempt ledger | Merged (`packages/verify-publisher/src`) |
-| An executable entry point. The package has no `bin`; `runCli` takes its GitHub transport as an argument. | **Not built** |
-| The real GitHub transport, including how it reads the private key | **Not built** |
+| The executable entry point (`src/bin.ts`, `src/main.ts`) | Merged with B9-2 |
+| The real GitHub transport and the key loader (`src/github-transport.ts`, `src/app-key.ts`) | Merged with B9-1 |
 | The fixed harness that checks out the head, runs the pinned profile and writes the request file | **Not built** |
 
-Until B9 delivers these and the owner approves one sandbox run (design §3.6 item 8), **nothing in this runbook writes to GitHub and no command here can be run**. Commands are written with the placeholder `<publisher>` for the future entry point; the arguments after it are the ones `runCli` accepts today.
+Until B9 delivers the harness and the owner approves one sandbox run (design §3.6 item 8), **no command in this runbook is to be run against GitHub**. Without the harness there is no request file to publish.
+
+The entry point is run from a checkout of a pinned commit, after `pnpm install --frozen-lockfile` and `pnpm build`:
+
+```sh
+node packages/verify-publisher/dist/bin.js <command> --key <key file> <other arguments>
+```
+
+The package is private and is not published to npm. Commands below are written with `<publisher>` for `node packages/verify-publisher/dist/bin.js`.
 
 Rules that hold throughout:
 
@@ -42,7 +50,10 @@ These are the owner's manual steps from design §3.6. This runbook does not perf
 - The owner places the key by hand. It does not pass through this repository, a chat, a model or the host.
 - The key file, the allowlist and the attempt ledger live under an OS user (or a separate small service) that the bots' OS user cannot read. The PR checkout, the browser and the model executor must not be able to read that location.
 - File mode 0600, owned by the publisher's user. No copy in a shell profile, an environment file shared with the bots, or a routine prompt.
-- The merged publisher code reads no key. How the transport loads it is defined in B9; when that lands, add the exact path rule here.
+- The publisher gets the key path only from the required flag `--key <absolute path>`. It does not read the path from the environment, the allowlist or the request file.
+- The publisher refuses the key file unless all of these hold: the path is absolute; the file is a regular file and not a symbolic link; it has no group or other permission bits; it belongs to the user that runs the publisher; it is at most 16,384 bytes; it holds an RSA private key. On any failure the command prints `key_unavailable`, exits 2 and sends nothing that needs the key.
+- The key is read only when the first GitHub call of a run is made. A run that is refused earlier (bad arguments, a bad file, not allowlisted) does not open the key file.
+- With the key the publisher signs a short-lived App token, reads the installation, and continues only if the installation has the configured ids, is not suspended, covers selected repositories only and has exactly the permissions Checks write and Metadata read. It then requests one installation token for the one repository and those two permissions. The token is held in memory for that run only.
 - To revoke: the owner deletes the key in the App's settings. The host key keeps working.
 
 ## 4. The allowlist file
@@ -106,7 +117,7 @@ The intended chain, of which only the last step exists today:
 3. The harness writes a request file and calls the publisher:
 
 ```sh
-<publisher> publish --config <allowlist.json> --ledger <attempts.jsonl> --request <request.json>
+<publisher> publish --key <key file> --config <allowlist.json> --ledger <attempts.jsonl> --request <request.json>
 ```
 
 The request file (at most 262,144 bytes):
@@ -167,7 +178,7 @@ If a `publish` call was interrupted or ended with `write_unconfirmed` or `read_f
 ### 7.3 Abandon an unconfirmed write
 
 ```sh
-<publisher> abandon --config <allowlist.json> --ledger <attempts.jsonl> --invocation <invocation uuid>
+<publisher> abandon --key <key file> --config <allowlist.json> --ledger <attempts.jsonl> --invocation <invocation uuid>
 ```
 
 The command looks the check run up once more. Only if it is absent does it write `abandoned` and answer `{"ok":true,"status":"abandoned",...}`. If the check run is found after all, it records it and answers `recovered`. An abandoned attempt does not use up its attempt number.
@@ -179,7 +190,7 @@ After an abandon, the same invocation id is refused for good (`invocation_abando
 To publish a second result for a head that already has one, run the harness again and add `--operator`:
 
 ```sh
-<publisher> publish --config <allowlist.json> --ledger <attempts.jsonl> --request <new-request.json> --operator
+<publisher> publish --key <key file> --config <allowlist.json> --ledger <attempts.jsonl> --request <new-request.json> --operator
 ```
 
 The new result gets the next attempt number. The earlier check run is left untouched. Use this only on the owner's or operator's own decision, never because a PR comment or a bot message asks for it.
@@ -195,9 +206,11 @@ The new result gets the next attempt number. The earlier check run is left untou
 | `reason` | Meaning | Action |
 |---|---|---|
 | `usage`, `config_invalid`, `request_invalid` (exit 2) | Bad arguments, or a file that is missing, too large or fails its schema | Fix the call or the file. A bad request file is a harness fault. |
+| `key_unavailable` (exit 2) | The key file is missing or fails one of the checks of §3 | Fix the file as the publisher's user. Nothing was written. Do not paste the key or its path into a chat or a report. |
+| `internal` (exit 1) | An unexpected error inside the entry point. No message text is printed. | Do not retry with changed input. Check the ledger for an open intent (§7.2) and report to the owner. |
 | `ledger_unavailable` | Ledger locked, corrupt or unreadable | Check for a running publisher and a leftover lock file (§5). If the file is corrupt, stop and restore from backup; do not repair lines by hand. |
 | `not_allowlisted` | Repository id and skill id are not in the allowlist | Expected for anything outside the release scope. No action. |
-| `read_failed` | The PR or the check runs could not be read | Rerun later (§7.2). |
+| `read_failed` | The PR or the check runs could not be read. Also: the installation read failed, the App is suspended, installed on all repositories or has other permissions than the two of §2, or the token was refused or came back with another scope. | Rerun later (§7.2). If it repeats, read the App's installation and permissions (§2). The publisher wrote nothing. |
 | `pr_not_open` | The PR is closed or merged | No action. |
 | `scope_mismatch` | The PR's base repository is not the allowlisted one | Stop and report; the request does not match the allowlist. |
 | `fork` | The head is in another repository | No action. Fork PRs are never published. |
