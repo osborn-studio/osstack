@@ -7,7 +7,7 @@
 > 一次真实的 `verify-*` 失败 → 可信结果被主机读到 → 登记一条 Mission → 一次受控修复 → 新 head 复验通过 → 审批、合并、关单。另跑四个负向用例：来源不可信、旧 head、重复结果、无法复现，各自停住并有原因。
 
 本清单只汇总顺序和每一步由谁做。细节以这些文档为准：
-[验证程序运行手册](../runbooks/bridge-verification-harness.md)（B9-6，合并前在分支上）、
+验证程序运行手册 `docs/runbooks/bridge-verification-harness.md`（随 B9-6 合并，之前不在 main 上）、
 [发布程序运行手册](../runbooks/bridge-verification-publisher.md)、
 [桥接运行手册](../runbooks/bridge.md) §6.2–§6.4、
 [B9 运行时设计](../design/2026-11-24-verification-publisher-runtime.md)、
