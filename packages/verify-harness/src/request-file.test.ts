@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -10,12 +10,31 @@ const request = (): HarnessRequest => ({ version: 1, repository_id: 101, pr: 3, 
   head_sha: head, base_sha: base, record: buildRecord(recordInput()) });
 const temp = () => mkdtemp(join(tmpdir(), "request-"));
 const mode = async (path: string) => (await stat(path)).mode & 0o777;
-it("publishes a private file once under concurrent writes", async () => {
+it("publishes a group-readable request once under concurrent writes", async () => {
   const dir = await temp();
   const results = await Promise.allSettled([writeRequestFile(dir, request()), writeRequestFile(dir, request())]);
   expect(results.filter(item => item.status === "fulfilled")).toEqual([{ status: "fulfilled", value: id + ".json" }]);
   expect(await readdir(dir)).toEqual([id + ".json"]);
-  expect(await mode(join(dir, id + ".json"))).toBe(0o600);
+  expect(await mode(join(dir, id + ".json"))).toBe(0o640);
+});
+it.each([0o077, 0])("publishes with mode 0640 under umask %i", async mask => {
+  const dir = await temp();
+  const previous = process.umask(mask);
+  try {
+    const file = await writeRequestFile(dir, request());
+    expect(await mode(join(dir, file))).toBe(0o640);
+  } finally {
+    process.umask(previous);
+  }
+});
+it("inherits the drop directory's group when the set-group-ID bit is retained", async () => {
+  const dir = await temp();
+  await chmod(dir, 0o2750);
+  const directory = await stat(dir);
+  const file = await writeRequestFile(dir, request());
+  const published = await stat(join(dir, file));
+  expect(published.mode & 0o777).toBe(0o640);
+  if (directory.mode & 0o2000) expect(published.gid).toBe(directory.gid);
 });
 it("preserves an existing request", async () => {
   const dir = await temp();

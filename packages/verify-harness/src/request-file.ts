@@ -36,6 +36,8 @@ export async function writeRequestFile(dropDir: string, request: HarnessRequest)
         });
         if (exists) throw writeError();
         await handle.writeFile(text);
+        // The operator's set-group-ID drop directory supplies the group. Keep the owner and group.
+        await handle.chmod(0o640);
         await handle.sync();
       } finally {
         await handle.close();
