@@ -107,11 +107,12 @@ describe("CodexProxyExecutor", () => {
     const controller = new AbortController();
     const pending = f.executor.run({ worktree: f.repo, prompt: "p", signal: controller.signal, onLaunched: () => { setTimeout(() => controller.abort(), 100); } });
     const cancelled = await pending;
-    expect(cancelled).toMatchObject({ cancelled: true, timed_out: false });
-    expect(cancelled.stop).toBeDefined(); expect(processGroupEmpty(cancelled.launch.pgid)).toBe(true);
+    expect(cancelled).toMatchObject({ cancelled: true, timed_out: false, signal: "SIGTERM", stop: { signals: ["SIGTERM"] } });
+    expect(processGroupEmpty(cancelled.launch.pgid)).toBe(true);
     const quick = new CodexProxyExecutor({ bin: f.bin, sourceCodexHome: f.source, runtimeDir: join(f.root, "runtime2"), passEnv: ["FAKE_MODE"], timeoutMs: 150, terminationGraceMs: 200 });
     const timed = await quick.run({ worktree: f.repo, prompt: "p" });
-    expect(timed.timed_out).toBe(true); expect(timed.stop).toBeDefined();
+    expect(timed).toMatchObject({ cancelled: false, timed_out: true, signal: "SIGTERM", stop: { signals: ["SIGTERM"] } });
+    expect(processGroupEmpty(timed.launch.pgid)).toBe(true);
   }, 15_000);
 });
 
