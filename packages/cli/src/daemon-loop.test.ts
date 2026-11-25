@@ -1,14 +1,15 @@
 import type { AutonomyHealthReport } from "./autonomy-health.js";
 import { connect } from "node:net";
-import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { stat, utimes, chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, sep } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import {
+  createScratchDirSync,
   createAutonomyRun as persistAutonomyRun,
   enqueueAutonomyNotification,
   getNotification,
@@ -217,6 +218,91 @@ describe("daemon loop RPC", () => {
     await closing;
     daemon = null;
     expect(closed).toBe(true);
+  });
+
+  describe("environment autonomy notices", () => {
+    const pollMs = 37;
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+    });
+
+    it.each([
+      ["0", "webhook"], ["1", undefined],
+    ] as const)("creates no poll for attention=%s and notify=%s", async (attention, mode) => {
+      vi.stubEnv("OSSTACK_ATTENTION", attention);
+      vi.stubEnv("OSSTACK_ATTENTION_NOTIFY", mode);
+      vi.stubEnv("OSSTACK_ATTENTION_WEBHOOK_URL", "invalid");
+      const intervals = vi.spyOn(globalThis, "setInterval");
+      daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`, healthPollIntervalMs: pollMs });
+      expect(intervals.mock.calls.some(([, ms]) => ms === pollMs)).toBe(false);
+    });
+
+    it("rejects invalid enabled webhook settings before listening", async () => {
+      vi.stubEnv("OSSTACK_ATTENTION", "1");
+      vi.stubEnv("OSSTACK_ATTENTION_NOTIFY", "webhook");
+      vi.stubEnv("OSSTACK_ATTENTION_WEBHOOK_URL", "invalid");
+      const socketPath = `/tmp/osstack-daemon-loop-${randomUUID()}.sock`;
+      await expect(startDaemon({ socketPath })).rejects.toThrow(/^attention_webhook_url_invalid$/);
+      await expect(stat(socketPath)).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
+    it("spools the backlog and later rows without repeating startup retention, then clears the timer", async () => {
+      vi.stubEnv("OSSTACK_ATTENTION", "1");
+      vi.stubEnv("OSSTACK_ATTENTION_NOTIFY", "local");
+      vi.stubEnv("OSSTACK_PROOF_MIN_KEEP", "1");
+      const home = createScratchDirSync("tests", "daemon-autonomy-notices");
+      vi.stubEnv("OSSTACK_HOME", home);
+      const dbPath = join(home, "state.db");
+      const db = guardedOpenDb({ path: dbPath });
+      try {
+        const run = createAutonomyRun(db, dbPath, {
+          autonomy_run_id: "run_notice", transition_id: "queued", task_id: "notice", repo_id: "repo",
+          workspace_path: tmp, contract_sha256: "a".repeat(64), budget: {}, attempt: {}, event: { kind: "queued" }, occurred_at: 1,
+        });
+        transitionAutonomyRun(db, dbPath, {
+          autonomy_run_id: "run_notice", transition_id: "completed", expected_revision: run.revision,
+          to_state: "completed", event: { kind: "completed" }, occurred_at: 2,
+        });
+        const enqueue = (transition: string) => enqueueAutonomyNotification(db, dbPath, {
+          kind: "escalated", autonomy_run_id: "run_notice", repo_id: "repo", run_state: "escalated",
+          source_transition_id: transition, occurred_at: 1,
+        }).notification_id;
+        const proof = join(home, "autonomy", "run_notice");
+        const expiredProof = async () => { await mkdir(proof, { recursive: true }); await utimes(proof, 1, 1); };
+        await expiredProof();
+        await mkdir(join(home, "autonomy", "run_newer"));
+        const first = enqueue("first");
+        const intervals = vi.spyOn(globalThis, "setInterval");
+        const cleared = vi.spyOn(globalThis, "clearInterval");
+        daemon = await startDaemon({ socketPath: `/tmp/osstack-daemon-loop-${randomUUID()}.sock`, healthPollIntervalMs: pollMs });
+        await vi.waitFor(async () => {
+          expect(getNotification(db, first)?.status).toBe("delivered");
+          await expect(stat(proof)).rejects.toMatchObject({ code: "ENOENT" });
+        });
+        const hash = createHash("sha256").update(first).digest("hex");
+        expect(JSON.parse(await readFile(join(home, "attention-notifications", hash + ".json"), "utf8")))
+          .toMatchObject({ notification_id: first, transport: "local_spool" });
+        await expiredProof();
+        for (const transition of ["second", "third", "fourth"]) {
+          const id = enqueue(transition);
+          await vi.waitFor(() => expect(getNotification(db, id)?.status).toBe("delivered"));
+        }
+        expect((await stat(proof)).isDirectory()).toBe(true);
+        const timers = intervals.mock.calls.flatMap(([, ms], i) => ms === pollMs ? [intervals.mock.results[i]!.value] : []);
+        expect(timers).toHaveLength(1);
+        await daemon.close();
+        daemon = null;
+        expect(cleared).toHaveBeenCalledWith(timers[0]);
+        const afterClose = enqueue("closed");
+        await sleep(pollMs * 3);
+        expect(getNotification(db, afterClose)?.attempt_count).toBe(0);
+      } finally {
+        if (daemon) { await daemon.close(); daemon = null; }
+        db.close();
+        await rm(home, { recursive: true, force: true });
+      }
+    });
   });
 
   it("drains durable Owner notifications after daemon restart", async () => {

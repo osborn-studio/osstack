@@ -7,14 +7,14 @@ import type { AttentionSender } from "@osstack/core";
 export async function validateExternalNoticeIds(message: Parameters<AttentionSender>[0]): Promise<void> {
   const decision = message.decision;
   if (!decision) return;
-  const { redactBridge } = await import("./contained-mission-redact.js");
+  const { isSafeExternalNoticeId } = await import("./contained-mission-redact.js");
   const ids = [decision.source_id, message.scope_id, message.delivery_id, message.item_id];
   if (decision.chain) {
     ids.push(decision.chain.origin_mission_id, decision.chain.mission_id);
     if (decision.chain.parent_mission_id !== null) ids.push(decision.chain.parent_mission_id);
   }
   for (const id of ids) {
-    if (typeof id !== "string" || !id.length || id.length > 256 || /[\\/\p{C}]/u.test(id) || redactBridge(id) !== id)
+    if (!isSafeExternalNoticeId(id))
       throw new Error("attention_webhook_message_invalid");
   }
 }
@@ -24,24 +24,28 @@ export function localAttentionSender(home: string): AttentionSender {
   return async (message, signal) => {
     if (signal.aborted) throw new Error("aborted");
     if (message.decision) await validateExternalNoticeIds(message);
-    const dir = join(home, "attention-notifications");
-    await mkdir(dir, { recursive: true, mode: 0o700 });
-    const id = createHash("sha256").update(message.delivery_id).digest("hex");
-    const target = join(dir, `${id}.json`);
-    const temp = join(dir, `.${id}.${randomUUID()}.tmp`);
-    const body = JSON.stringify({ ...message, transport: "local_spool" });
-    await writeFile(temp, body, { flag: "wx", mode: 0o600 });
-    try {
-      if (signal.aborted) throw new Error("aborted");
-      try {
-        await link(temp, target);
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-        if ((await readFile(target, "utf8")) !== body)
-          throw new Error("delivery_collision");
-      }
-    } finally {
-      await unlink(temp).catch(() => {});
-    }
+    await writeLocalNotice(home, message.delivery_id, message, signal);
   };
+}
+
+export async function writeLocalNotice(home: string, deliveryId: string, notice: object, signal: AbortSignal): Promise<void> {
+  const dir = join(home, "attention-notifications");
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const id = createHash("sha256").update(deliveryId).digest("hex");
+  const target = join(dir, `${id}.json`);
+  const temp = join(dir, `.${id}.${randomUUID()}.tmp`);
+  const body = JSON.stringify({ ...notice, transport: "local_spool" });
+  await writeFile(temp, body, { flag: "wx", mode: 0o600 });
+  try {
+    if (signal.aborted) throw new Error("aborted");
+    try {
+      await link(temp, target);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      if ((await readFile(target, "utf8")) !== body)
+        throw new Error("delivery_collision");
+    }
+  } finally {
+    await unlink(temp).catch(() => {});
+  }
 }
