@@ -12789,6 +12789,40 @@ function printCiChainStats(stats: CiChainStats | null | undefined): void {
   console.log(`scan_failing=${c?.ci_chain_scan_failing ?? "-"}${c?.ci_chain_scan_failing ? c.ci_chain_scan_failing_by_reason.map(row => ` ${row.reason}=${row.count}`).join("") : ""}`);
   console.log(`closed=${c?.ci_chain_closed ?? "-"} repaired_closed=${c?.ci_chain_repaired_closed ?? "-"} consecutive_normal_closed=${c?.ci_chain_consecutive_normal_closed ?? "-"}`);
   console.log(`registration_to_close_ms: median=${median ?? "-"} latest=${durations[0]?.duration_ms ?? "-"}`);
+  const duration = (ms: number) => Number.isInteger(ms) ? String(ms) : ms.toFixed(1);
+  const pass = stats?.ci_chain_first_pass;
+  if (!pass) console.log("first_pass_rate: unavailable");
+  else if (pass.rate === null) console.log("first_pass_rate: no data (n=0 closed chains)");
+  else console.log(`first_pass_rate: ${pass.first_pass}/${pass.closed} = ${(100 * pass.rate).toFixed(1)}% (n=${pass.closed} closed chains; first pass = no CI failure observed and no repair dispatched)`);
+
+  const hops = stats?.ci_chain_hop_wait_ms;
+  if (!hops) console.log("hop_wait_ms: unavailable");
+  else {
+    const order = hops.out_of_order > 0 ? ` out_of_order=${hops.out_of_order}` : "";
+    if (!hops.hops.length) {
+      const detail = hops.closed_chains ? ", no stage pairs recorded" : "";
+      console.log(`hop_wait_ms: no data (n=${hops.closed_chains} closed chains${detail})${order}`);
+    } else {
+      console.log(`hop_wait_ms (n=${hops.closed_chains} closed chains; wait between consecutive recorded stages):${order}`);
+      for (const row of hops.hops) console.log(`  ${row.hop} n=${row.n} median=${duration(row.median_ms)} p95=${duration(row.p95_ms)}`);
+    }
+  }
+
+  const open = stats?.ci_chain_open_wait_ms;
+  if (!open) console.log("open_wait_ms: unavailable");
+  else if (!open.open_chains) console.log("open_wait_ms: no data (n=0 open chains)");
+  else {
+    const skew = open.clock_skew > 0 ? ` clock_skew=${open.clock_skew}` : "";
+    console.log(`open_wait_ms (n=${open.open_chains} open chains; now minus start of current state):${skew}`);
+    for (const row of open.by_state) console.log(`  ${row.state} n=${row.n} median=${duration(row.median_ms)} max=${duration(row.max_ms)}`);
+    for (const row of open.longest.slice(0, 3)) {
+      const id = /^[A-Za-z0-9_.:-]{1,80}$/.test(row.mission_id) ? row.mission_id : "?";
+      console.log(`  longest: ${id} ${row.state} wait_ms=${duration(row.wait_ms)}`);
+    }
+  }
+
+  const followup = stats?.ci_chain_reverted_or_hotfixed_7d;
+  console.log(followup ? `reverted_or_hotfixed_within_7d: not measured (${followup.reason})` : "reverted_or_hotfixed_within_7d: unavailable");
 }
 
 /** Bridge section: omitted when the ledger has no revision-chain tables; one line per group, so it stays short with no bridge activity. */
