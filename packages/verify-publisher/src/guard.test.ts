@@ -43,6 +43,15 @@ it("isolates the cloud package and keeps check-run writes out of host source", a
         if (!/^\.\.?\//u.test(match[1]!) && !allowed.includes(match[1]!)) violations.push(name + " import " + match[1]);
       }
       if (/\bfetch\s*\(|child_process|node:http|process\.env|PATCH|DELETE|PUT/u.test(source)) violations.push(name);
+      const file = basename(path);
+      if (file !== "github-transport.ts" && /api\.github\.com|authorization/u.test(source)) violations.push(name);
+      if (file !== "app-key.ts" && /createPrivateKey|createSign|O_NOFOLLOW/u.test(source)) violations.push(name);
+      if (source.includes("console.")) violations.push(name);
+      if (file === "github-transport.ts") {
+        const methods = [...source.matchAll(/\bmethod:\s*("[A-Z]+")/gu)].map(m => m[1]).sort();
+        expect(methods).toEqual(['"GET"', '"POST"', '"POST"']);
+        expect(source.match(/\bmethod\s*:/gu)).toHaveLength(methods.length);
+      }
       if (basename(path) === "publish.ts") expect(source.match(/\bcreateCheckRun\s*\(/gu)).toHaveLength(1);
     }
   }
