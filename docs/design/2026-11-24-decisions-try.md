@@ -1,6 +1,6 @@
 # U3 T2: a harmless dry run of the decision inbox (`osstack decisions try`)
 
-Status: design, waiting for the owner's decisions in §7. No code yet.
+Status: design accepted. The owner accepted all five recommendations in §7 on 2026-11-24.
 Plan: `docs/plans/2026-11-16-osstack-self-loop-upgrade.md`, U3 acceptance 6:
 "一次无害试跑：发一张测试卡、回答、看到“已续办”，全程不触碰任何真实 Mission。"
 Read on `main` at `4e18588c`.
@@ -196,3 +196,5 @@ T4 (Autonomy sender), T5 (CI pilot release source).
 5. **Continue as a separate step** (`--wait` or `try continue`) instead of
    marking the card continued inside the answer transaction. Recommended:
    separate.
+
+**Record (2026-11-24).** The owner accepted the recommended option for all five: own source `probe`; the webhook notice is sent with `source: "probe"`; one-hour expiry and one pending card; any valid engineering credential may create a card; continue is a separate step.
