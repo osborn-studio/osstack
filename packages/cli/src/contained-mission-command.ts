@@ -8,6 +8,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
         (--verify-arg ARG [--verify-arg ARG...] | --github-ci) [--max-repair N] [--supersedes MISSION]
         [--publish-repository OWNER/NAME [--publish-remote origin] [--publish-base REF]
          [--publish-draft true|false] [--publish-title TEXT] [--publish-preauthorized]]
+  ci-pilot-status [--json]            (show the CI pilot release and root counts)
   list --github-ci [--scope ID]       (read-only CI chain overview)
   status --mission ID                (includes publication: the opened PR and pushed commit, if any)
   recheck-rearm --mission ROOT --attempt N [--decision-id ID]   (host only: asks for one more start of the host recheck; N is attempts used + 1, see status; runs at the next recheck pass, void after 15 minutes or a daemon restart)
@@ -27,7 +28,7 @@ The host assigns identity and rights through OSSTACK_ENGINEERING_CREDENTIAL. No 
 Publication is a separate bounded grant: one PR on the named repository and base, opened after the
 candidate's own verification passed and approve_publication (or --publish-preauthorized). Nothing is merged.`;
 
-type Command = "recheck-rearm" | "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "approve-local-failure-repair" | "chain-decide" | "merger-report";
+type Command = "ci-pilot-status" | "recheck-rearm" | "start" | "list" | "status" | "cancel" | "decide" | "publish-check" | "approve-ci-repair" | "approve-local-failure-repair" | "chain-decide" | "merger-report";
 const flagsByCommand: Record<Command, { single: readonly string[]; repeated: readonly string[] }> = {
   start: { single: ["scope", "repo", "base", "goal", "max-repair", "supersedes", "publish-repository", "publish-remote", "publish-base", "publish-draft", "publish-title"], repeated: ["allow", "verify-arg"] },
   list: { single: ["scope"], repeated: [] },
@@ -39,6 +40,7 @@ const flagsByCommand: Record<Command, { single: readonly string[]; repeated: rea
   "approve-ci-repair": { single: ["mission", "candidate"], repeated: [] },
   decide: { single: ["mission", "decision", "decision-id", "expected-revision"], repeated: [] },
   "chain-decide": { single: ["chain", "decision"], repeated: [] },
+  "ci-pilot-status": { single: [], repeated: [] },
   "merger-report": { single: [], repeated: [] },
 };
 
@@ -129,7 +131,7 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       params = { mission_id: required("mission"), candidate: required("candidate") };
     } else if (command === "chain-decide") {
       params = { chain_id: required("chain"), decision: required("decision") };
-    } else if (command === "merger-report") {
+    } else if (command === "merger-report" || command === "ci-pilot-status") {
       params = {};
     } else {
       params = { mission_id: required("mission") };
@@ -145,6 +147,14 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
     const response = await deps.rpc(method, { ...params, credential }, 120000) as { ok?: boolean; result?: unknown; error?: { code?: unknown } };
     if (response?.ok !== true) throw new Error(typeof response?.error?.code === "string" ? response.error.code : "mission_request_failed");
     const text = safeJson(response.result ?? null).split(credential).join("[REDACTED]");
+    if (command === "ci-pilot-status" && !json) {
+      const status = response.result as ReturnType<import("./contained-mission-ci-pilot.js").ProductionCiPilot["status"]>;
+      const expiry = status.expires_at === null ? null : new Date(status.expires_at).toJSON();
+      for (const [field, value] of Object.entries({ ...status, expires_at: expiry, release_fields: status.release_fields.join(", ") })) {
+        out(`${field}: ${value ?? "-"}`);
+      }
+      return 0;
+    }
     if (command === "list" && !json) {
       for (const row of response.result as Array<Record<string, unknown>>) {
         const scan = row["scan"] as { failing: true; reason: string; step: string; consecutive: number; since: number } | undefined;

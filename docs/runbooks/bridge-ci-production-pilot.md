@@ -38,6 +38,8 @@ Alpha 的三个必需检查为 `test`、`provider-date-ingress` 和 `source-fixt
 
 只有负责人批准试运行后才创建 `ci-pilot-release.json`。同样用 0600，字段为 `version`（1）、原始 profile 文件的 SHA-256 `profile_sha256`、`issued_at`、`expires_at`（Unix 毫秒）、`principal_id` 和 `client_session_id`。使用独立 App E 私钥文件。在单独 daemon 设置 `OSSTACK_CONTAINED_CI_PILOT=live`。原先的 `OSSTACK_BRIDGE=1` 属于评审驱动路线，继续按自己的门禁。不要混用沙箱环境变量。
 
+在试点主机运行 `osstack mission ci-pilot-status [--json]`，查看当前模式、放行状态、到期时间、已登记和未关单的 Mission 数，以及 release 文件所需字段。使用有该 scope 读取权限的凭证。live 模式需要负责人处理放行或五条 Mission 全部关单时，决策收件箱显示一条 `ci_pilot`。负责人仍按上文在主机签发 release。
+
 停止时先移走 release 文件，保留 profile 和 SQLite。登记、自动修复和合并的写入授权随即失效。daemon 可重启为 `shadow`，继续只读对账。已释放的 GitHub 请求可能落地。用 PR/head/base、一次性预留及合并者核对结果。已经落地但本机缺推送回执的修复进入待处理记录，不发第二次推送。合并回复丢失时用只读结果关单。无法核对时停止后续派发，保留证据。当前证据来自使用真实 SQLite 与注入 GitHub 响应的隔离测试。生产试点还需核对 GitHub 真实权限和运行结果。
 
 相关规则见 [ADR-007](../decisions/ADR-007-bridge-github-ci-first.md) 和 [阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)。

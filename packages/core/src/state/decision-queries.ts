@@ -26,7 +26,15 @@ export interface DecisionRow {
  * migrate, refresh a projection, or read a repository. */
 export class DecisionQueries {
   readonly externalDecisionItemId = externalDecisionItemId;
-  constructor(readonly db: Database.Database, private readonly now: () => number = Date.now) {}
+  constructor(readonly db: Database.Database, private readonly now: () => number = Date.now,
+    private readonly options: { ciPilot?: () => DecisionRow | null } = {}) {}
+  ci_pilot(q: DecisionQuery): DecisionRow[] {
+    if (!q.read_scopes.length) return [];
+    const row = this.options.ciPilot?.();
+    if (!row?.scope_id || !q.read_scopes.includes(row.scope_id) || (q.scope_id !== undefined && q.scope_id !== row.scope_id)
+      || row.id < q.after || (row.id === q.after && !q.inclusive)) return [];
+    return [row];
+  }
   session(q: DecisionQuery): DecisionRow[] {
     // created_at is projection time, not the time the Session entered the wait.
     return this.rows(`SELECT item_id id,scope_id,NULL waiting_since,CAST(revision AS TEXT)||':'||content_hash revision,

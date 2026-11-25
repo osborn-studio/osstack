@@ -108,6 +108,10 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
       allowed_answers = [row.kind === "approval" ? "choice" : "free_text"];
       answer_command = row.kind === "approval" ? command("approval.resolve", "approval_id", "choice") : command("clarify.resolve", "clarify_id", "answer");
       break;
+    case "ci_pilot":
+      requires_local_signature = true;
+      answer_command = command("mission ci-pilot-status");
+      break;
     case "probe":
       allowed_answers = [...PROBE_COLOURS];
       answer_command = command("decisions.answer", "source", "source_id", "answer", "answer_id", "source_revision");
@@ -151,7 +155,7 @@ export async function listDecisions(
   const failures: DecisionsListResult["failures"] = [];
   const items: PendingDecision[] = [];
   for (const source of sources) {
-    if (accessError && ["contained_mission", "ci_repair", "revision_chain"].includes(source)) {
+    if (accessError && ["contained_mission", "ci_repair", "revision_chain", "ci_pilot"].includes(source)) {
       failures.push({ source, code: accessError }); continue;
     }
     try {

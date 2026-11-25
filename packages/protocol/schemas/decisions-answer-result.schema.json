@@ -55,7 +55,8 @@
                     "autonomy",
                     "hermes",
                     "loop",
-                    "probe"
+                    "probe",
+                    "ci_pilot"
                   ]
                 },
                 "source_id": {

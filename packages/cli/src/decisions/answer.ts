@@ -53,6 +53,13 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
       current = { state, item }; return item;
     };
     const item = probes ? null : refresh();
+    if (p.source === "ci_pilot") {
+      if (!item?.scope_id || !actor.write_scopes.includes(item.scope_id)) {
+        current = { state: "unknown", item: null };
+        return result("refused", "permission_denied");
+      }
+      return result("local_only", "local_only", false, false, "mission ci-pilot-status");
+    }
     if (engineering && p.answer === "rearm_local_failure_recheck") return result("local_only", "local_only", false, false, "mission recheck-rearm");
     if (engineering && p.answer === "approve_local_failure_repair") {
       return result("local_only", "local_only", false, false, "mission approve-local-failure-repair");

@@ -30,7 +30,7 @@ function notice(queries: DecisionQueries, source: DecisionSource, row: DecisionR
   // of a card's editable title) can change during the same wait.
   const mutableRevision = source === "contained_mission" || source === "ci_repair"
     || source === "revision_chain" || source === "autonomy" || row.kind === "loop_card";
-  const identity = item.waiting_since ?? (mutableRevision ? row.state : item.source_revision);
+  const identity = source === "ci_pilot" ? JSON.stringify([row.reason, item.waiting_since]) : item.waiting_since ?? (mutableRevision ? row.state : item.source_revision);
   const item_id = queries.externalDecisionItemId(source, item.source_id, identity);
   const waiting_since = item.waiting_since ?? firstSeen.get(item_id) ?? now();
   if (item.waiting_since === null) firstSeen.set(item_id, waiting_since);
@@ -60,7 +60,7 @@ export function createDecisionNoticeSource(
       catch { scopesAvailable = false; report?.("decision_notice_scopes_unreadable"); }
       for (const source of DecisionSource.options) {
         if (source === "session") continue;
-        if (!scopesAvailable && ["contained_mission", "ci_repair", "revision_chain"].includes(source)) {
+        if (!scopesAvailable && ["contained_mission", "ci_repair", "revision_chain", "ci_pilot"].includes(source)) {
           incomplete.add(source);
           continue;
         }

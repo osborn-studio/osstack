@@ -33,6 +33,7 @@ it("serves decisions.list through the daemon socket and rejects invalid paramete
     { source: "contained_mission", code: "source_unavailable" },
     { source: "ci_repair", code: "source_unavailable" },
     { source: "revision_chain", code: "source_unavailable" },
+    { source: "ci_pilot", code: "source_unavailable" },
   ] } });
   expect(await rpc("decisions.list", { limit: 101 })).toMatchObject({ ok: false, error: { code: "bad_request" } });
 });

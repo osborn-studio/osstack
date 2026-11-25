@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const DecisionSource = z.enum([
-  "session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop", "probe",
+  "session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop", "probe", "ci_pilot",
 ]);
 export type DecisionSource = z.infer<typeof DecisionSource>;
 export const DecisionsListParams = z.object({
@@ -28,7 +28,7 @@ export const PendingDecision = z.object({
 export type PendingDecision = z.infer<typeof PendingDecision>;
 export const DecisionsListResult = z.object({
   items: z.array(PendingDecision).max(100),
-  failures: z.array(z.object({ source: DecisionSource, code: z.enum(["read_failed", "permission_denied", "source_unavailable"]) }).strict()).max(8),
+  failures: z.array(z.object({ source: DecisionSource, code: z.enum(["read_failed", "permission_denied", "source_unavailable"]) }).strict()).max(9),
   next_cursor: z.string().max(2048).nullable(),
 }).strict();
 export type DecisionsListResult = z.infer<typeof DecisionsListResult>;

@@ -21,12 +21,12 @@ it("requires answer credentials, identity and source revision", async () => {
   expect(DecisionsAnswerResult.safeParse({ accepted: false, replay: false, outcome: "local_only", code: "local_only", current: { state: "pending", item: null }, local_command: "autonomy approve" }).success).toBe(true);
 });
 
-it("appends probe to the source order and permits one failure for each source", async () => {
+it("appends ci_pilot to the source order and permits one failure for each source", async () => {
   const { DecisionSource } = await import("./decisions.js");
-  expect(DecisionSource.options.at(-1)).toBe("probe");
+  expect(DecisionSource.options.slice(-2)).toEqual(["probe", "ci_pilot"]);
   const failures = DecisionSource.options.map(source => ({ source, code: "read_failed" }));
   const page = { items: [], failures, next_cursor: null };
-  expect(DecisionsListResult.parse(page).failures).toHaveLength(8);
+  expect(DecisionsListResult.parse(page).failures).toHaveLength(9);
   expect(DecisionsListResult.safeParse({ ...page, failures: [...failures, failures[0]] }).success).toBe(false);
 });
 

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { closeSync, constants, fstatSync, openSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
-import type { ContainedMission, ContainedMissionStore, EngineeringPrincipal } from '@osstack/core';
+import type { ContainedMission, ContainedMissionStore, DecisionRow, EngineeringPrincipal } from '@osstack/core';
 import { z } from 'zod';
 import { GITHUB_CI_PILOT_REPOSITORY, PRODUCTION_CI_REPOSITORIES, productionCiPath, productionCiPolicy, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 import { approveSandboxCiRepair, latestCiEvent, type RefreshCiPrincipal } from './contained-mission-github-ci-approval.js';
@@ -36,6 +36,39 @@ function readPrivate(path: string): string {
   } finally { closeSync(fd); }
 }
 
+const hour = 3_600_000;
+const slots = 5;
+const summaries = {
+  release_missing: 'The CI pilot needs a release.',
+  release_expired: 'The CI pilot release has expired.',
+  release_invalid: 'The CI pilot release failed validation.',
+  release_expiring: 'The CI pilot release expires soon with work still open.',
+  slots_exhausted: 'All five CI pilot roots have closed.',
+} as const;
+type PilotReason = keyof typeof summaries;
+type PilotRelease = Pick<z.infer<typeof release>, 'issued_at' | 'expires_at' | 'profile_sha256'>;
+type RootCounts = { roots_bound: number; roots_open: number; latest_close: number | null };
+type ReleaseFacts = { missing: boolean; grant: PilotRelease | null; profileMatches: boolean; releaseDigest: string | null };
+
+export function pilotDecisionReason(facts: ReleaseFacts, roots: RootCounts, profileDigest: string, now: number): PilotReason | null {
+  const { grant } = facts;
+  if (facts.missing) return 'release_missing';
+  if (grant && now >= grant.expires_at) return 'release_expired';
+  if (!grant || !facts.profileMatches || grant.profile_sha256 !== profileDigest || now < grant.issued_at
+    || grant.expires_at - grant.issued_at > 72 * hour) return 'release_invalid';
+  if (grant.expires_at - now <= 24 * hour && roots.roots_open > 0) return 'release_expiring';
+  if (roots.roots_bound === slots && roots.roots_open === 0) return 'slots_exhausted';
+  return null;
+}
+
+function readRoots(store: ContainedMissionStore, scope: string): RootCounts {
+  return store.db.prepare(`SELECT count(*) AS roots_bound, count(*) - count(closed) AS roots_open, max(closed) AS latest_close
+    FROM (SELECT m.mission_id, max(c.created_at) AS closed FROM engineering_contained_missions m
+      JOIN engineering_contained_events b ON b.mission_id=m.mission_id AND b.kind='ci_pilot_root_bound'
+      LEFT JOIN engineering_contained_events c ON c.mission_id=m.mission_id AND c.kind IN ('ci_closed_unmerged','ci_pr_merged_observed')
+      WHERE m.scope_id=? GROUP BY m.mission_id)`).get(scope) as RootCounts;
+}
+
 export class ProductionCiPilot {
   readonly config: PilotProfile;
   readonly policy: GithubCiPolicy;
@@ -57,6 +90,50 @@ export class ProductionCiPilot {
       || new Set([c.main_quality_ruleset_id, c.main_update_ruleset_id, c.mission_writers_ruleset_id, c.mission_history_ruleset_id]).size !== 4
       || c.publisher_installation_id === c.merger_installation_id) throw refusal();
     this.policy = policy;
+  }
+
+  private readRelease(): ReleaseFacts {
+    const facts: ReleaseFacts = { missing: false, grant: null, profileMatches: false, releaseDigest: null };
+    let raw: string;
+    try { raw = readPrivate(this.releasePath); }
+    catch (error) {
+      facts.missing = (error as NodeJS.ErrnoException).code === 'ENOENT';
+      return facts;
+    }
+    facts.releaseDigest = digest(raw);
+    try {
+      facts.grant = release.parse(JSON.parse(raw));
+      facts.profileMatches = digest(readPrivate(this.profilePath)) === this.profileDigest;
+    } catch { /* Keep the digest of a readable release even when validation fails. */ }
+    return facts;
+  }
+
+  decisionRow(store: ContainedMissionStore, now: number): DecisionRow | null {
+    let reason: PilotReason | null = 'release_invalid';
+    let releaseDigest: string | null = null;
+    let waiting_since: number | null = null;
+    try {
+      if (!this.live || this.draining()) return null;
+      const facts = this.readRelease();
+      releaseDigest = facts.releaseDigest;
+      const roots = readRoots(store, this.config.scope_id);
+      reason = pilotDecisionReason(facts, roots, this.profileDigest, now);
+      if (!reason) return null;
+      if (reason === 'release_expired') waiting_since = facts.grant!.expires_at;
+      if (reason === 'release_expiring') waiting_since = facts.grant!.expires_at - 24 * hour;
+      if (reason === 'slots_exhausted') waiting_since = roots.latest_close;
+    } catch { reason = 'release_invalid'; }
+    const scope_id = this.config.scope_id;
+    return { id: 'ci_pilot:' + scope_id, scope_id, waiting_since, reason, state: reason, summary: summaries[reason],
+      revision: digest(JSON.stringify([reason, this.profileDigest, releaseDigest ?? 'none'])), kind: 'ci_pilot', details_json: '{}' };
+  }
+
+  status(store: ContainedMissionStore, now: number) {
+    const roots = readRoots(store, this.config.scope_id);
+    const facts = this.live && !this.draining() ? this.readRelease() : null;
+    return { mode: this.live ? 'live' : 'shadow', reason: facts && pilotDecisionReason(facts, roots, this.profileDigest, now),
+      expires_at: facts?.grant?.expires_at ?? null, roots_bound: roots.roots_bound, roots_open: roots.roots_open,
+      slots, release_fields: release.keyof().options };
   }
 
   private permit(spec: ContainedMissionSpec, scope: string, now: number) {
