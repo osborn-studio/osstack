@@ -18,7 +18,7 @@ import { openDb } from "./db.js";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 export function diagnosisFixture(
   options: {
-    legacy?: boolean | 59 | 60 | 62 | 63;
+    legacy?: boolean | 59 | 60 | 62 | 63 | 64;
     recheck?: { timeout_seconds: number };
     allowedPaths?: string[];
     protectedDigest?: string;

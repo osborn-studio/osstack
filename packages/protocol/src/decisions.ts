@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const DecisionSource = z.enum([
-  "session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop",
+  "session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop", "probe",
 ]);
 export type DecisionSource = z.infer<typeof DecisionSource>;
 export const DecisionsListParams = z.object({
@@ -28,7 +28,7 @@ export const PendingDecision = z.object({
 export type PendingDecision = z.infer<typeof PendingDecision>;
 export const DecisionsListResult = z.object({
   items: z.array(PendingDecision).max(100),
-  failures: z.array(z.object({ source: DecisionSource, code: z.enum(["read_failed", "permission_denied", "source_unavailable"]) }).strict()).max(7),
+  failures: z.array(z.object({ source: DecisionSource, code: z.enum(["read_failed", "permission_denied", "source_unavailable"]) }).strict()).max(8),
   next_cursor: z.string().max(2048).nullable(),
 }).strict();
 export type DecisionsListResult = z.infer<typeof DecisionsListResult>;
@@ -52,3 +52,19 @@ export const DecisionsAnswerResult = z.object({
   local_command: z.string().max(128).optional(),
 }).strict();
 export type DecisionsAnswerResult = z.infer<typeof DecisionsAnswerResult>;
+
+const probeId = z.string().regex(/^[0-9a-f]{32}$/);
+export const DecisionsTryCreateParams = DecisionsAnswerParams.pick({ credential: true });
+export const DecisionsTryStatusParams = DecisionsTryCreateParams.extend({ probe_id: probeId });
+export const DecisionsTryContinueParams = DecisionsTryStatusParams;
+export const DecisionsTryResult = z.object({
+  probe_id: probeId,
+  state: z.enum(["pending", "answered", "continued", "expired"]),
+  revision: z.number().int().positive(),
+  created_at: z.number().int().nonnegative(),
+  expires_at: z.number().int().nonnegative(),
+  answer: z.string().nullable(),
+  continued_at: z.number().int().nonnegative().nullable(),
+  created: z.boolean().optional(),
+}).strict();
+export type DecisionsTryResult = z.infer<typeof DecisionsTryResult>;

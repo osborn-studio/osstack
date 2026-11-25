@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import type Database from "better-sqlite3";
-import type { DecisionQueries, EngineeringPrincipal } from "@osstack/core";
+import { DecisionProbes, type DecisionQueries, type EngineeringPrincipal } from "@osstack/core";
 import { DecisionsAnswerParams, DecisionsAnswerResult, SessionDecision } from "@osstack/protocol";
 import { decisionItem } from "./list.js";
 
@@ -33,6 +33,7 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
       scope = row?.scope_id;
       if (!scope || !actor.read_scopes.includes(scope) || !actor.write_scopes.includes(scope)) return result("refused", "permission_denied");
     }
+    const probes = p.source === "probe" ? new DecisionProbes(ports.db) : undefined;
     const refresh = () => {
       const row = ports.queries[p.source]({ read_scopes: actor.read_scopes, after: p.source_id, inclusive: true, limit: 1 })[0];
       const item = row?.id === p.source_id ? decisionItem(p.source, row) : null;
@@ -45,9 +46,13 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
         const approval = p.source_id.startsWith("approval:");
         state = (ports.db.prepare(`SELECT status FROM ${approval ? "approvals" : "clarifies"} WHERE ${approval ? "approval_id" : "clarify_id"}=?`).get(p.source_id.slice(p.source_id.indexOf(":") + 1)) as { status: string } | undefined)?.status ?? "not_found";
       }
+      if (probes && !item) {
+        const probe = probes.status(p.source_id, Date.now());
+        state = probe?.expired ? "expired" : probe?.state ?? "not_found";
+      }
       current = { state, item }; return item;
     };
-    const item = refresh();
+    const item = probes ? null : refresh();
     if (engineering && p.answer === "rearm_local_failure_recheck") return result("local_only", "local_only", false, false, "mission recheck-rearm");
     if (engineering && p.answer === "approve_local_failure_repair") {
       return result("local_only", "local_only", false, false, "mission approve-local-failure-repair");
@@ -65,6 +70,19 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
       return result("not_answerable", "idempotency_unsupported", false, false, "mission chain-decide");
     }
     const only = (...keys: string[]) => { if (Object.keys(p.params).some(k => !keys.includes(k))) throw Error("bad_request"); };
+    if (probes) {
+      const digest = createHmac("sha256", p.credential).update(JSON.stringify([
+        p.source_id, p.answer, p.source_revision, actor.principal_id, actor.client_session_id,
+      ])).digest("hex");
+      const revision = /^[1-9][0-9]*$/.test(p.source_revision) ? Number(p.source_revision) : NaN;
+      const { code } = probes.answer({
+        probe_id: p.source_id, answer: p.answer, answer_id: p.answer_id, digest,
+        actor: actor.principal_id, expected_revision: revision, now: Date.now(), hasParams: Object.keys(p.params).length > 0,
+      });
+      refresh();
+      if (code === "applied" || code === "replay") return result("applied", null, true, code === "replay");
+      return result(classify(code), code);
+    }
     if (p.source === "hermes") {
       const approval = p.source_id.startsWith("approval:");
       if (!approval && !p.source_id.startsWith("clarify:")) return result("refused", "bad_request");

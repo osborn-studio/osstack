@@ -185,6 +185,7 @@ function renderChineseMainHelp(): string {
   engineering         采纳现有 Session，回答决定并观察本轮结果
   mission             受限单执行器 Mission：只读提议补丁，主机分类、应用、验证
   decisions answer    回答一条待决定事项（需要凭据和来源版本）
+  decisions try       创建测试卡并试跑决定收件箱 [--wait SECONDS] [--json]
   decisions list      只读查看全部待决定事项 [--scope ID] [--json]
   attention status    只读查看任务状态与最新决策（未后台接管）
   attention routing-eval --input <path> --mode router_golden|paired_holdout  路由评估与配对留出比较
@@ -437,6 +438,7 @@ Project commands:
   engineering         Adopt a Session, answer decisions, and observe the reply turn
   mission             Contained single-executor Missions: read-only proposals, host-applied and verified
   decisions answer    Answer one pending decision with a credential and source revision
+  decisions try       Test the decision inbox with one colour choice [--wait SECONDS] [--json]
   decisions list      Read pending decisions across sources [--scope ID] [--json]
   attention status    Read-only task/session attention snapshot
   attention routing-eval --input <path> --mode router_golden|paired_holdout  Router evaluation and paired holdout comparison
