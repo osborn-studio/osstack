@@ -13,6 +13,10 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./contained-profile": {
+      "types": "./dist/contained-profile/index.d.ts",
+      "import": "./dist/contained-profile/index.js"
+    },
     "./experimental/changeset-client": {
       "types": "./dist/experimental/changeset-client.d.ts",
       "import": "./dist/experimental/changeset-client.js"
