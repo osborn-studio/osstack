@@ -1,0 +1,80 @@
+# Run the long seeded loop simulation. GitHub's normal scheduled-workflow
+# notification reports a failed scheduled run.
+# To replay locally after install and build, replace N with the reported seed:
+# OSSTACK_PROPERTY_SEED=N OSSTACK_SIMULATION_SEEDS=1 pnpm --filter @osstack/loop exec vitest run src/loop-random.simulation.test.ts
+name: Long loop simulation
+
+on:
+  schedule:
+    - cron: '37 3 * * *'
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: Consecutive seeds to run (1600–20000)
+        type: string
+        required: true
+        default: "1600"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loop-simulation
+  cancel-in-progress: false
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - name: Build loop dependencies
+        run: pnpm --filter '@osstack/loop^...' build
+
+      - name: Run loop simulation
+        shell: bash
+        env:
+          OSSTACK_SIMULATION_SEEDS: ${{ github.event_name == 'schedule' && '1600' || inputs.seeds }}
+          OSSTACK_SCRATCH_ROOT: ${{ runner.temp }}/osstack
+          FORCE_COLOR: "0"
+          NO_COLOR: "1"
+        run: |
+          set -euo pipefail
+          # Bound the significant digits before Bash does integer arithmetic.
+          if [[ ! $OSSTACK_SIMULATION_SEEDS =~ ^0*([1-9][0-9]{0,4})$ ]]; then
+            echo 'Expected a decimal seed count between 1600 and 20000.' >&2
+            exit 1
+          fi
+          OSSTACK_SIMULATION_SEEDS=${BASH_REMATCH[1]}
+          if (( OSSTACK_SIMULATION_SEEDS < 1600 || OSSTACK_SIMULATION_SEEDS > 20000 )); then
+            echo 'Expected a decimal seed count between 1600 and 20000.' >&2
+            exit 1
+          fi
+
+          printf 'Seeds: %d | Steps per seed: 64 | Total steps: %d\n\n' \
+            "$OSSTACK_SIMULATION_SEEDS" "$(( OSSTACK_SIMULATION_SEEDS * 64 ))" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "$OSSTACK_SCRATCH_ROOT"
+          log="$OSSTACK_SCRATCH_ROOT/loop-simulation.log"
+          status=0
+          pnpm --filter @osstack/loop exec vitest run src/loop-random.simulation.test.ts 2>&1 | tee "$log" || status=$?
+
+          awk '/loop-random seeds=/ && match($0, /steps=[0-9]+ passes=[0-9]+ elapsed_ms=[0-9]+/) {
+            print substr($0, RSTART, RLENGTH)
+            found = 1
+          }
+          END { if (!found && !status) exit 1 }' status="$status" "$log" >> "$GITHUB_STEP_SUMMARY"
+          if (( status != 0 )); then
+            awk '{ gsub(/\033\[[0-?]*[ -\/]*[@-~]/, "") }
+              /seed=|OSSTACK_SIMULATION_REPLAY=/ { print "    " substr($0, 1, 4096) }' "$log" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
