@@ -237,3 +237,13 @@ E1 does not depend on E2. E1 touches the T6 test, so it lands after
    That is a new chain-to-host coupling and would be its own node.
 5. **Watcher grace.** Recommended: the executor's existing `terminationGraceMs`,
    passed as an argument. Alternative: a fixed 2 s.
+
+**Record (2026-11-25).** The owner accepted the recommended option for all five:
+(1) approach D, keeping "recovery never signals" and rejecting B and C; (2) E2
+extends the per-minute re-check to executor groups, as a separate node after E1;
+(3) the T6 test launches its fake executor through the real launcher and asserts
+the group stopped; (4) a proven-stopped child of a closed chain lands in the
+decision inbox and is answered `abandon` once, recovery does not cancel it;
+(5) the watcher grace is the executor's existing `terminationGraceMs`. Because
+`feat/chain-decide-idempotency` (#553) had not merged when E1 started, E1 is based
+on `main` and the T6 test change (decision 3) follows once #553 merges.
