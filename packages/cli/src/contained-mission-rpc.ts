@@ -40,6 +40,7 @@ export const ContainedMissionRpcRequests = {
     }).strict().refine(r => r.verification_mode ? r.verify.argv.length === 0 : r.verify.argv.length > 0, 'verification_mode'),
   }).strict(),
   'mission.rearm_local_failure_recheck': z.object({ credential: Credential, mission_id: MissionId, expected_attempt: z.number().int().min(1).max(3), decision_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/) }).strict(),
+  'mission.ci_pilot_status': z.object({ credential: Credential }).strict(),
   'mission.status': z.object({ credential: Credential, mission_id: MissionId }).strict(),
   'mission.list': z.object({ credential: Credential, scope_id: Text(256).optional() }).strict(),
   'mission.cancel': z.object({ credential: Credential, mission_id: MissionId }).strict(),
@@ -79,6 +80,7 @@ export interface ContainedMissionServiceOptions {
   stoppedScan?: Pick<import('./contained-mission-bridge-stopped-scan.js').StoppedChainScanService, 'start' | 'stop'>;
   checkRetry?: { start(): void; stop(): Promise<void> };
   githubCi?: { start(): void; stop(): Promise<void> };
+  pilot?: import('./contained-mission-ci-pilot.js').ProductionCiPilot;
   autoApproveCiRepair?: () => Promise<void>;
   /** Shadow merger (OSSTACK_MERGER=shadow): started after recovery, stopped on close. Never on the tick path. */
   merger?: import('./contained-mission-merger-shadow.js').MergerShadowHandle;
@@ -141,6 +143,8 @@ export class ContainedMissionService {
   private readonly background = new Set<Promise<void>>();
   constructor(private readonly options: ContainedMissionServiceOptions) {}
   get store(): ContainedMissionStore { return this.options.host.store; }
+
+  ciPilotDecision() { return this.options.pilot?.decisionRow(this.store, Date.now()) ?? null; }
 
   start(): Promise<void> {
     if (this.closed) return Promise.reject(Error('mission_unavailable'));
@@ -224,6 +228,12 @@ export class ContainedMissionService {
             ...(r.publication.title ? { title: r.publication.title } : {}), ...(r.publication.preauthorized !== undefined ? { preauthorized: r.publication.preauthorized } : {}) } } : {}) });
         parseContainedMissionSpec(JSON.stringify(spec));
         return view(host.start(actor, { scope_id: p.scope_id, spec, ...(p.supersedes ? { supersedes: p.supersedes } : {}) }));
+      }
+      case 'mission.ci_pilot_status': {
+        const pilot = this.options.pilot;
+        if (!pilot) throw Error('ci_pilot_not_configured');
+        if (!actor.read_scopes.includes(pilot.config.scope_id)) throw Error('permission_denied');
+        return pilot.status(this.store, Date.now());
       }
       case 'mission.status': {
         const p = ContainedMissionRpcRequests['mission.status'].parse(params);
@@ -648,7 +658,7 @@ export async function createContainedMissionService(deps: {
       chains: chainStore, access: deps.access, enabled: () => env['OSSTACK_BRIDGE'] === '1' && !deps.draining(), now: Date.now });
   }
   return new ContainedMissionService({ host, access: deps.access, draining: deps.draining, chainOf,
-    ...(localFailure ? { localFailure } : {}),
+    ...(pilot ? { pilot } : {}), ...(localFailure ? { localFailure } : {}),
     ...(autoApproveCiRepair ? { autoApproveCiRepair } : {}), ...(githubCi ? { githubCi } : {}),
     revisionRecovery: live?.revisionRecovery ?? revisionRecovery, ...(shadow ? { shadow } : {}),
     ...(live ? { live: live.live, stoppedScan: live.stoppedScan, grants: live.grants,

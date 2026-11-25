@@ -22,7 +22,7 @@ describe('local-failure route switch', () => {
 it('preserves the contained Mission RPC surface', () => {
   // A later node that adds a method must change this list on purpose.
   expect(Object.keys(ContainedMissionRpcRequests).sort()).toEqual([
-    'mission.approve_ci_repair', 'mission.approve_local_failure_repair', 'mission.cancel', 'mission.chain_decide', 'mission.decide', 'mission.grant_revisions',
+    'mission.approve_ci_repair', 'mission.approve_local_failure_repair', 'mission.cancel', 'mission.chain_decide', 'mission.ci_pilot_status', 'mission.decide', 'mission.grant_revisions',
     'mission.list', 'mission.merger_report', 'mission.publish_check', 'mission.rearm_local_failure_recheck', 'mission.revision_grant_preview',
     'mission.revision_grant_renew_preview', 'mission.start', 'mission.status',
   ]);

@@ -1,4 +1,4 @@
-The pending decisions list reads eight local sources through `decisions.list`.
+The pending decisions list reads nine local sources through `decisions.list`.
 Use `osstack decisions list [--scope ID] [--limit 1..100] [--cursor TOKEN] [--json]`.
 The command connects to an existing daemon. It does not start a daemon, answer a
 request, update a projection, or send a notification.
@@ -30,16 +30,16 @@ They retain `requires_local_signature: true`; this change adds no signed answer
 route. Autonomy decisions and entries that offer `grant_revisions` also set the
 flag. Native Hermes approval.resolve keeps its existing unsigned behavior.
 
-Mission, CI repair, and revision-chain queries require engineering credentials.
+Mission, CI repair, revision-chain, and CI pilot queries require engineering credentials.
 The CLI reads `OSSTACK_ENGINEERING_CREDENTIAL` if supplied. The daemon uses the
 existing EngineeringAccess principal and reloads its authority on each page.
-SQL filters these entries by `read_scopes` before projecting any data. A chain
+The daemon returns only entries in the principal’s `read_scopes`. A chain
 uses its root Mission's scope. A read grant does not imply a write grant.
-Without usable credentials these three sources report `permission_denied`.
+Without usable credentials these four sources report `permission_denied`.
 Without a configured engineering authority they report `source_unavailable`.
 Other sources keep their existing daemon-local read boundary.
 
-`--scope` filters all eight sources. Session items and Missions have direct
+`--scope` filters all nine sources. Session items and Missions have direct
 scope bindings. Autonomy, Hermes, and loop events use their persisted task's
 attention-scope binding. Unbound sources remain visible only in an unfiltered
 query. If a task has multiple scopes, its item has `scope_id: null`; an explicit
@@ -65,6 +65,7 @@ The waiting-time evidence is:
 | Hermes approvals / clarifies | Durable `requested_at` seconds multiplied by 1000. The request event supplies this field. | `packages/core/src/state/decision-queries.ts:77` | `packages/core/src/state/run-store.ts:137`, `:158` |
 | Loop escalated | `loop.escalated` event `created_at` in ms; background cards use the latest `kanban_card_events.blocked` entry in seconds × 1000. | `packages/core/src/state/decision-queries.ts:88`, `:99` | `packages/loop/src/loop-engine.ts:1602`, `packages/cli/src/daemon.ts:2311`; cards: `packages/core/src/kanban/repository.ts:149`, `:76` |
 | Test card | The card’s `created_at` in ms. | `DecisionQueries.probe` | `DecisionProbes.create` |
+| CI pilot release | Missing or invalid release: `null`. Expired release: expiry time. Expiring release: expiry minus 24 hours. Five closed roots: latest close event. | `ProductionCiPilot.decisionRow` | Owner’s private release file and Mission close events |
 
 Missing Mission, chain, or Autonomy entry events also produce `null`; projection
 update timestamps are not substituted. Loop coverage includes events and blocked background-loop escalation cards
@@ -76,6 +77,12 @@ The loop run-event ledger has no human-decision receipt. A later execution or
 escalation for the same task and loop supersedes an earlier escalation; stopping
 a loop alone does not resolve it. Decisions made only outside that ledger cannot
 be inferred by this read-only query.
+
+## CI pilot release
+
+A live pilot can show one `ci_pilot` item in its scope. A missing, expired, or invalid release takes priority. A valid release appears in its final 24 hours if a bound root is still open. After all five roots close, the item asks the owner to review the completed run. Shadow mode, the bridge kill switch, and daemon drain suppress the item.
+
+On the pilot host, run `osstack mission ci-pilot-status [--json]` to read the reason, expiry, root counts and required release fields. The owner manages the release file as described in the [pilot runbook](../runbooks/bridge-ci-production-pilot.md).
 
 ## 回答 / Answer one decision
 
@@ -134,6 +141,7 @@ These boundaries also apply to callers on the local socket:
 | Revision chain `abandon`, `takeover`, `reconcile` | `not_answerable`, code `idempotency_unsupported` | `mission chain-decide` (RPC `mission.chain_decide`). Its current revision CAS uses the service's current revision, not a client revision. The interface has no client key. Reconcile and child cancellation await external work. A wrapper cannot atomically commit that work and a receipt. No unsafe check-then-execute route is offered. |
 | `grant_revisions` | `local_only` | `mission grant-revisions`; an external signature is required. |
 | `approve_local_failure_repair` | `local_only` | `mission approve-local-failure-repair --mission ID --candidate SHA` (RPC `mission.approve_local_failure_repair`). A person approves the exact verified candidate of a local-failure repair on the host. It needs read, write and operator scope and lasts 15 minutes. The list marks such an item with `requires_local_signature`; `abandon` on the same item is still forwarded. |
+| `ci_pilot` | `local_only` | `mission ci-pilot-status` shows the current release status. Only the owner can issue a release on the host. |
 | Autonomy approval | `local_only` | `autonomy approve` / `autonomy reject`; use the original signed decision flow. |
 | Loop escalation or blocked background card | `local_only` | Listed `cockpit retry` or `cockpit approve`; use the local terminal flow. No remote retry receipt is available. |
 | Session `risk_approval` / `task_authorization` | `local_only` | `attention answer` (RPC `attention.answer`) is the source command name. The current source rejects unsigned answers; this release adds no signed answer route. |

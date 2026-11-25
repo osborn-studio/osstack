@@ -16,6 +16,7 @@ import {
 import { createDecisionNoticeSource } from "./decisions/notices.js";
 type LoopReadInput = { repo: string; path: string; loop_id: string; signal: AbortSignal };
 export interface SupervisionOptions {
+  decisions?: DecisionQueries;
   loopReader?: (input: LoopReadInput) => Promise<unknown>;
   readTimeoutMs?: number;
   /** Opt-in overdue-decision reminders; only scheduled when a sender exists. */
@@ -203,7 +204,7 @@ export class SupervisionService {
     if (this.sender) {
       try {
         this.experienceOptions.externalDecisions ??= createDecisionNoticeSource(
-          new DecisionQueries(this.store.db), () => this.store.listScopes().map(scope => scope.scope_id),
+          this.options.decisions ?? new DecisionQueries(this.store.db), () => this.store.listScopes().map(scope => scope.scope_id),
           Date.now, code => this.noteScanError(code),
         );
         this.experience.enqueueExternal();

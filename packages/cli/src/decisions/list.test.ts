@@ -104,7 +104,7 @@ it("reloads real engineering credentials and binds cursors to current read grant
   const revoked = await listDecisions(f.queries, { credential }, auth);
   expect(revoked.items.some(i => ["contained_mission", "ci_repair", "revision_chain"].includes(i.source))).toBe(false);
   const denied = await listDecisions(f.queries, { credential: "x".repeat(32) }, auth);
-  expect(denied.failures.map(failure => failure.code)).toEqual(["permission_denied", "permission_denied", "permission_denied"]);
+  expect(denied.failures.map(failure => failure.code)).toEqual(["permission_denied", "permission_denied", "permission_denied", "permission_denied"]);
   expect(denied.items.some(i => i.source === "hermes")).toBe(true);
 });
 it("filters chain roots before exposing identifiers and reports live grant signatures", async () => {

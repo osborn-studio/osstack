@@ -116,7 +116,7 @@ import { makeRepositoryPolicyGate } from "./repository-policy.js";
 import { SessionCollaborator, readContinuationTrust } from "./session-collaborator.js";
 import { describeSessionWait } from "./session-wait.js";
 import { runDailyBrief } from "./daily-command.js";
-import { parseAttentionReminderPolicy, resolveRepositoryScope } from "@osstack/core";
+import { DecisionQueries, parseAttentionReminderPolicy, resolveRepositoryScope } from "@osstack/core";
 import { osstackHome, pidFilePath, resolveSocketPath } from "./paths.js";
 import { PROTOCOL_VERSION, VERSION } from "./version.js";
 import { readUpdateCache, startUpdateChecker } from "./update-check.js";
@@ -173,7 +173,13 @@ interface SingleResponse {
   error?: { code: string; message: string };
 }
 
+function decisionQueries(ctx: DaemonContext): DecisionQueries {
+  ctx.decisions ??= new DecisionQueries(ctx.db, Date.now, { ciPilot: () => ctx.contained?.ciPilotDecision() ?? null });
+  return ctx.decisions;
+}
+
 interface DaemonContext {
+  decisions?: DecisionQueries;
   deploymentIdentity?: import("./home-inventory.js").DeploymentIdentity;
   followUps?: import("@osstack/core").FollowUpObligationService;
   followUpDelivery?: import("@osstack/core").FollowUpDeliveryService;
@@ -1294,11 +1300,11 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
   }
   if (req.method === "decisions.answer") {
     if (ctx.draining) return singleOk(req.id, { accepted: false, replay: false, outcome: "refused", code: "draining", current: { state: "unknown", item: null } });
-    const [{ answerDecision }, { DecisionQueries }, { resolveHermesDecision }] = await Promise.all([
-      import("./decisions/answer.js"), import("@osstack/core"), import("./decisions/hermes-resolve.js"),
+    const [{ answerDecision }, { resolveHermesDecision }] = await Promise.all([
+      import("./decisions/answer.js"), import("./decisions/hermes-resolve.js"),
     ]);
     const access = ctx.engineering?.access;
-    const decision = await answerDecision({ db: ctx.db, queries: new DecisionQueries(ctx.db),
+    const decision = await answerDecision({ db: ctx.db, queries: decisionQueries(ctx),
       authenticate: credential => { if (!access) throw Error("permission_denied"); return access.authenticate(credential); },
       forward: async (method, params) => {
         const response = await handleSingle(ctx, { id: req.id, method, params });
@@ -1313,11 +1319,9 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
   }
   if (req.method === "decisions.list") {
     try {
-      const [{ listDecisions }, { DecisionQueries }] = await Promise.all([
-        import("./decisions/list.js"), import("@osstack/core"),
-      ]);
+      const { listDecisions } = await import("./decisions/list.js");
       const access = ctx.engineering?.access;
-      return singleOk(req.id, await listDecisions(new DecisionQueries(ctx.db), req.params,
+      return singleOk(req.id, await listDecisions(decisionQueries(ctx), req.params,
         access ? credential => access.authenticate(credential) : undefined));
     } catch (error) {
       const code = error instanceof Error && ["bad_request", "bad_cursor"].includes(error.message) ? error.message : "decisions_unavailable";
@@ -4354,7 +4358,7 @@ export async function startDaemon(
   if (attentionEnabled) {
     // Invalid enabled reminder settings refuse startup instead of looping unbounded.
     const reminders = parseAttentionReminderPolicy(process.env);
-    ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, selectAttentionSender(process.env, osstackHome()), reminders ? { reminders } : {});
+    ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, selectAttentionSender(process.env, osstackHome()), { decisions: decisionQueries(ctx), ...(reminders ? { reminders } : {}) });
     ctx.supervision.start();
   }
   ctx.collaborator = new SessionCollaborator({

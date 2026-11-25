@@ -18,7 +18,8 @@
               "autonomy",
               "hermes",
               "loop",
-              "probe"
+              "probe",
+              "ci_pilot"
             ]
           },
           "source_id": {
@@ -148,7 +149,8 @@
               "autonomy",
               "hermes",
               "loop",
-              "probe"
+              "probe",
+              "ci_pilot"
             ]
           },
           "code": {
@@ -166,7 +168,7 @@
         ],
         "additionalProperties": false
       },
-      "maxItems": 8
+      "maxItems": 9
     },
     "next_cursor": {
       "anyOf": [
