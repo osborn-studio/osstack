@@ -32,7 +32,7 @@ export type HarnessOutcome =
 const refuse = (reason: HarnessRefusal) => ({ ok: false, reason }) as const;
 const limits = new Set(["CONTAINED_CANDIDATE_REGULAR_FILES_REQUIRED", "CONTAINED_CANDIDATE_LIMIT",
   "CONTAINED_CANDIDATE_FILE_LIMIT", "CONTAINED_CANDIDATE_SIZE_LIMIT", "CONTAINED_CANDIDATE_PATH_LIMIT"]);
-const candidateLimit = (error: unknown) => error instanceof Error && limits.has(error.message);
+export const candidateLimit = (error: unknown) => error instanceof Error && limits.has(error.message);
 // The harness has no revocable grant. Each callback returns synchronously without a value.
 const authorize = (): void => {};
 

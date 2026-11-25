@@ -73,5 +73,10 @@
     "file": "packages/github/src/delivery.ts",
     "count": 1,
     "reason": "GitHub delivery publication boundary: gated runner and delivery-contract checks protect the push."
+  },
+  {
+    "file": "packages/verify-harness/src/source.ts",
+    "count": 2,
+    "reason": "Cloud verification harness (U4b B9, owner exception of 2026-11-24, design decision 5): init of a private bare repository and one fetch by SHA of an allowlisted public repository, without credentials; nothing is checked out and nothing is pushed."
   }
 ]
