@@ -2,7 +2,7 @@
 
 Date: 2026-11-24. Status: **prepared, never run**. Execution location: the cloud side. Scope of the first release: `osborn-studio/osstack-bridge-sandbox` and one skill.
 
-Sources: [runtime design](../design/2026-11-24-verification-publisher-runtime.md) (§5, §7, §9.1, §10), [publisher runbook](bridge-verification-publisher.md), [B8 design](../design/2026-11-19-watcher-recheck-publication.md). The harness is the package `packages/verify-harness`. Every statement below about its behaviour was read from that code at nodes B9-4 and B9-5. No command here has been run against GitHub or Docker.
+Sources: [runtime design](../design/2026-11-24-verification-publisher-runtime.md) (§5, §7, §9.1, §10), [publisher runbook](bridge-verification-publisher.md), [B8 design](../design/2026-11-19-watcher-recheck-publication.md), [owner's drill checklist](../plans/2026-11-25-sandbox-drill-checklist.md). The harness is the package `packages/verify-harness`. Every statement below about its behaviour was read from that code at nodes B9-4 and B9-5. No command here has been run against GitHub or Docker.
 
 ## 1. What the harness is
 
