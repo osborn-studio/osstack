@@ -2,7 +2,19 @@ import { createHash } from "node:crypto";
 import type { ContainedImageReceipt, ContainedProfileRunResult } from "@osstack/agents";
 import type { InstalledVerificationProfile, PreparedContainedProfile, runPreparedContainedProfile } from "@osstack/agents/contained-profile";
 import { canonicalJson } from "@osstack/core";
-import type { VerificationHarnessRecord } from "@osstack/core/verification-publish";
+
+export interface HarnessRecord {
+  invocation_id: string;
+  started_at: string;
+  finished_at: string;
+  outcome: "passed" | "failed" | "blocked" | "cancelled";
+  failure_code: string | null;
+  checks: readonly { check_id: string; failure_code: string | null; exit: number | null; result_digest: string }[];
+  evidence_refs: readonly { artifact_id: string; sha256: string; size: number; type: string; retention: number }[];
+  evidence_digest: string;
+  runtime_provenance: { runtime_id: string; runtime_digest: string; source_manifest_digest: string };
+  summary: string;
+}
 
 type Observation = Awaited<ReturnType<typeof runPreparedContainedProfile>>;
 export type StoppedResult = Extract<ContainedProfileRunResult, { status: "stopped" }>;
@@ -34,7 +46,7 @@ export interface RecordInput {
 }
 const stamp = (date: Date) => date.toISOString().replace(/\.\d{3}Z$/u, "Z");
 
-export function buildRecord(input: RecordInput): VerificationHarnessRecord & { outcome: "passed" | "failed" | "blocked" } {
+export function buildRecord(input: RecordInput): HarnessRecord & { outcome: "passed" | "failed" | "blocked" } {
   const { result, image, check, invocation_id } = input;
   const { exitCode, stdout, stderr, termination, oomKilled, started } = result;
   const exit = termination === "exited" && started && !oomKilled && exitCode !== null

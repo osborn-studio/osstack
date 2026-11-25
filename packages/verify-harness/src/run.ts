@@ -27,7 +27,7 @@ export interface HarnessPorts {
 export type HarnessRefusal = PullRequestRefusal | "not_configured" | "source_unavailable" | "candidate_unsupported"
   | "profile_unavailable" | "isolation_unavailable" | "stop_unknown" | "request_write_failed";
 export type HarnessOutcome =
-  | { ok: true; invocation_id: string; file: string; outcome: "passed" | "failed" | "blocked" }
+  | { ok: true; invocation_id: string; file: string; outcome: ReturnType<typeof buildRecord>["outcome"] }
   | { ok: false; reason: HarnessRefusal };
 const refuse = (reason: HarnessRefusal) => ({ ok: false, reason }) as const;
 const limits = new Set(["CONTAINED_CANDIDATE_REGULAR_FILES_REQUIRED", "CONTAINED_CANDIDATE_LIMIT",

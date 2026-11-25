@@ -1,7 +1,12 @@
 import { canonicalJson } from "@osstack/core";
-import { expect, it } from "vitest";
-import { acceptRun, buildRecord, type StoppedResult } from "./record.js";
+import type { VerificationHarnessRecord } from "@osstack/core/verification-publish";
+import { expect, expectTypeOf, it } from "vitest";
+import { acceptRun, buildRecord, type HarnessRecord, type StoppedResult } from "./record.js";
 import { binding, digest, entry, hash, id, observation, prepared, recordInput } from "./testkit/fixtures.js";
+
+it("keeps the harness record and kit record types equal", () => {
+  expectTypeOf<HarnessRecord>().toEqualTypeOf<VerificationHarnessRecord>();
+});
 
 const cases: [Partial<StoppedResult>, string, number | null][] = [
   [{}, "passed", 0], [{ exitCode: 12 }, "failed", 12], [{ exitCode: 255 }, "blocked", 255],

@@ -1,8 +1,7 @@
 import { lstat, mkdir, open, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
-import type { VerificationHarnessRecord } from "@osstack/core/verification-publish";
 import { z } from "zod";
-import type { StoppedResult } from "./record.js";
+import type { HarnessRecord, StoppedResult } from "./record.js";
 
 export interface HarnessRequest {
   version: 1;
@@ -11,7 +10,7 @@ export interface HarnessRequest {
   skill_id: string;
   head_sha: string;
   base_sha: string;
-  record: VerificationHarnessRecord;
+  record: HarnessRecord;
 }
 const uuid = z.string().uuid();
 const writeError = () => new Error("request_write_failed");

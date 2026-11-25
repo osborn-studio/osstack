@@ -6,6 +6,7 @@ import { expect, it } from "vitest";
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const harness = "verify-harness";
 const publisher = "verify-" + "publisher";
+const publishKit = ["verification-" + "result-builder", "verification-" + "publish"];
 const credentials = ["access" + "_tokens", "author" + "ization", "private" + "_key"];
 
 async function sources(dir: string): Promise<string[]> {
@@ -37,7 +38,9 @@ it("keeps package dependencies isolated and all transport and execution behind p
         continue;
       }
       if ([publisher, ...credentials].some(word => source.includes(word))) violations.push(name);
-      if (!path.endsWith(".test.ts") && /\bfetch\s*\(|child_process|node:https?|node:net|process\.env|console\.|\b(?:POST|PATCH|PUT|DELETE)\b/u.test(source))
+      if (path.endsWith(".test.ts")) continue;
+      if (publishKit.some(word => source.includes(word))) violations.push(name);
+      if (/\bfetch\s*\(|child_process|node:https?|node:net|process\.env|console\.|\b(?:POST|PATCH|PUT|DELETE)\b/u.test(source))
         violations.push(name);
     }
   }
