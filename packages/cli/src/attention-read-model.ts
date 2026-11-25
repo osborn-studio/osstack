@@ -19,8 +19,9 @@ import {
  * tables, 48 the reminder outbox, 49 the return-brief facts (a nullable posture
  * column and two ledgers), 50 the contained-Mission ledger, 51 the revision-chain ledger, 52 the shadow-merger ledger, 53 only live-grant triggers on the chain table, 54 the host child-process ledger, 55 the shadow-merger scan ids (one table, three nullable columns, five triggers), 56 the immutable Mission lineage ledger, 57 the append-only verification source ledger, 58 the local-failure intake journal and root-exclusion triggers (preserves the v24 read projection and adds no launch path), 59 adds diagnosis requests and host receipts, 60 adds immutable local-failure dispatch records, and 61 adds two Mission depth triggers, none of which this view reads. Kept apart from the
  * upgrade gate; a new migration fails `schema-gates.test.ts` until reviewed here. Migration 64 adds one chain trigger, no table, column or row,
- * and holds no unsettled side effect. The read projection does not use the trigger. */
-export const ATTENTION_READ_QUALIFIED_SCHEMA = 64;
+ * and holds no unsettled side effect. The read projection does not use the trigger.
+ * Migration 65 stores local test cards and holds no external effects. */
+export const ATTENTION_READ_QUALIFIED_SCHEMA = 65;
 
 export interface AttentionReadInput {
   dbPath: string;

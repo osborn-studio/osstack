@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack Decisions Try Create Params",
+  "type": "object",
+  "properties": {
+    "credential": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 4096
+    }
+  },
+  "required": [
+    "credential"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSStack Decisions Try Result",
+  "type": "object",
+  "properties": {
+    "probe_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "answered",
+        "continued",
+        "expired"
+      ]
+    },
+    "revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "created_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "answer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "continued_at": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "created": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "probe_id",
+    "state",
+    "revision",
+    "created_at",
+    "expires_at",
+    "answer",
+    "continued_at"
+  ],
+  "additionalProperties": false
+}

@@ -382,10 +382,10 @@ it("migrates a populated schema 62 ledger without rewriting existing rows or obj
   const next = openDb({ path });
   try {
     const after = objects(next);
-    expect(next.pragma("user_version", { simple: true })).toBe(64);
+    expect(next.pragma("user_version", { simple: true })).toBe(65);
     expect(after.filter((o) => schema.some((p) => p.name === o.name))).toEqual(schema);
     expect(after.filter((o) => !schema.some((p) => p.name === o.name)).map((o) => o.name)).toEqual(
-      [...recheckRunObjects, "engineering_local_failure_grant_monotonic"].sort()
+      [...recheckRunObjects, "engineering_local_failure_grant_monotonic", "decision_probes", "decision_probes_answer_id", "decision_probes_pending_expiry"].sort()
     );
     expect(rows(next)).toEqual(before);
     expect(next.prepare(`SELECT * FROM ${table}`).all()).toEqual([]);

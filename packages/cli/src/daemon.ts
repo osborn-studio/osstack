@@ -1279,13 +1279,26 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
       return singleErr(req.id, "worker_view_failed", "Worker view unavailable");
     }
   }
+  if (req.method === "decisions.try_create" || req.method === "decisions.try_status" || req.method === "decisions.try_continue") {
+    try {
+      const { tryDecisionRpc } = await import("./decisions/try-rpc.js");
+      const access = ctx.engineering?.access;
+      const probe = tryDecisionRpc(req.method, req.params, ctx.db, access?.authenticate.bind(access), !!ctx.draining);
+      if (req.method === "decisions.try_create") requestSupervisionScan(ctx, "decision.probe");
+      return singleOk(req.id, probe);
+    } catch (error) {
+      const code = error instanceof Error && ["draining", "permission_denied", "bad_request", "not_found", "pending", "expired"].includes(error.message)
+        ? error.message : "decisions_unavailable";
+      return singleErr(req.id, code, "Decision test card request failed");
+    }
+  }
   if (req.method === "decisions.answer") {
     if (ctx.draining) return singleOk(req.id, { accepted: false, replay: false, outcome: "refused", code: "draining", current: { state: "unknown", item: null } });
     const [{ answerDecision }, { DecisionQueries }, { resolveHermesDecision }] = await Promise.all([
       import("./decisions/answer.js"), import("@osstack/core"), import("./decisions/hermes-resolve.js"),
     ]);
     const access = ctx.engineering?.access;
-    return singleOk(req.id, await answerDecision({ db: ctx.db, queries: new DecisionQueries(ctx.db),
+    const decision = await answerDecision({ db: ctx.db, queries: new DecisionQueries(ctx.db),
       authenticate: credential => { if (!access) throw Error("permission_denied"); return access.authenticate(credential); },
       forward: async (method, params) => {
         const response = await handleSingle(ctx, { id: req.id, method, params });
@@ -1293,7 +1306,10 @@ async function handleSingle(ctx: DaemonContext, req: DaemonRequest): Promise<Sin
         return response.result;
       },
       resolveHermes: (method, params) => resolveHermesDecision(ctx.db, method, params),
-    }, req.params));
+    }, req.params);
+    if (decision.accepted && req.params && typeof req.params === "object"
+      && "source" in req.params && req.params.source === "probe") requestSupervisionScan(ctx, "decision.probe");
+    return singleOk(req.id, decision);
   }
   if (req.method === "decisions.list") {
     try {

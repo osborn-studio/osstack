@@ -17,7 +17,7 @@ it("prepares only SELECTs and imports only read dependencies", () => {
     const source = createDecisionNoticeSource(new DecisionQueries(db), () => ["scope"], Date.now);
     expect(source.pending()).toEqual([]);
     expect(source.incompleteSources).toEqual([]);
-    expect(prepare).toHaveBeenCalledTimes(6);
+    expect(prepare).toHaveBeenCalledTimes(7);
     for (const [sql] of prepare.mock.calls) expect(sql).toMatch(/^SELECT /);
   } finally { db.close(); }
   const imports = [...readFileSync(new URL("./notices.ts", import.meta.url), "utf8").matchAll(/from ["']([^"']+)/g)].map(m => m[1]);

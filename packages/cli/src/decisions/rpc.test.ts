@@ -6,8 +6,8 @@ import { connect } from "node:net";
 import { afterEach, expect, it, vi } from "vitest";
 import { encodeFrame, FrameDecoder } from "@osstack/hermes-adapter";
 import { startDaemon, type DaemonHandles } from "../daemon.js";
-import { openDb, appendEvent } from "@osstack/core";
-import { DecisionsListResult } from "@osstack/protocol";
+import { openDb, appendEvent, createScratchDirSync } from "@osstack/core";
+import { DecisionsListResult, DecisionsTryResult } from "@osstack/protocol";
 import { healthyAutonomyHealth } from "../test-healthy-autonomy.js";
 
 let daemon: DaemonHandles | undefined;
@@ -62,4 +62,32 @@ it("answers a listed Hermes decision over the daemon socket and replays a lost r
     const receipt = db.prepare("SELECT payload_json FROM events WHERE json_extract(payload_json,'$.decisions_answer') IS NOT NULL").get() as { payload_json: string };
     expect(JSON.parse(receipt.payload_json).decisions_answer).toMatchObject({ actor: "human", client_session_id: "chat" });
   } finally { db.close(); }
+});
+
+it("serves a credentialed, unscoped probe and keeps status readable during drain", async () => {
+  root = createScratchDirSync("tests", "probe-rpc");
+  vi.stubEnv("OSSTACK_HOME", root);
+  vi.stubEnv("OSSTACK_ATTENTION", "1");
+  vi.stubEnv("OSSTACK_ENGINEERING", "1");
+  vi.stubEnv("OSSTACK_CONTAINED_MISSIONS", "0");
+  vi.stubEnv("OSSTACK_ATTENTION_NOTIFY", "local");
+  vi.stubEnv("OSSTACK_UPDATE_CHECK", "0");
+  const credential = "p".repeat(32);
+  const authority = join(root, "authority.json");
+  writeFileSync(authority, JSON.stringify({ version: 1, principals: [{
+    credential_sha256: createHash("sha256").update(credential).digest("hex"), principal_id: "owner", client_session_id: "local",
+    read_scopes: [], write_scopes: [], stop_scopes: [], operator_scopes: [],
+  }] }), { mode: 0o600 });
+  vi.stubEnv("OSSTACK_ENGINEERING_AUTH_FILE", authority);
+  daemon = await startDaemon({ socketPath: join(root, "p.sock"), adapters: [], autonomyHealth: async () => healthyAutonomyHealth() });
+  expect(await rpc("decisions.try_create", {})).toMatchObject({ ok: false, error: { code: "permission_denied" } });
+  const card = DecisionsTryResult.parse((await rpc("decisions.try_create", { credential })).result);
+  const params = { credential, probe_id: card.probe_id };
+  expect(await rpc("decisions.answer", { credential, source: "probe", source_id: card.probe_id,
+    answer: "green", source_revision: "1", answer_id: "socket:1" })).toMatchObject({ result: { accepted: true } });
+  expect(await rpc("decisions.try_continue", params)).toMatchObject({ result: { state: "continued", answer: "green" } });
+  expect(await rpc("daemon.drain", { timeout_ms: 0 })).toMatchObject({ ok: true });
+  expect(await rpc("decisions.try_status", params)).toMatchObject({ result: { state: "continued" } });
+  expect(await rpc("decisions.try_create", { credential })).toMatchObject({ error: { code: "draining" } });
+  expect(await rpc("decisions.try_continue", params)).toMatchObject({ error: { code: "draining" } });
 });

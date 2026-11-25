@@ -1,5 +1,5 @@
 import { MissionDecideRequest } from "./mission-decide.js";
-import { DecisionsListParams, DecisionsListResult, DecisionsAnswerParams, DecisionsAnswerResult } from "./decisions.js";
+import { DecisionsListParams, DecisionsListResult, DecisionsAnswerParams, DecisionsAnswerResult, DecisionsTryCreateParams, DecisionsTryStatusParams, DecisionsTryContinueParams, DecisionsTryResult } from "./decisions.js";
 import { EngineeringDecisionRef, EngineeringAnswer, EngineeringAdoptRequest, EngineeringObserveRequest, EngineeringDecideRequest, EngineeringDeferRequest, EngineeringCancelRequest, EngineeringEndObservationRequest, EngineeringReconcileRequest } from "./engineering.js";
 import { FollowUpCreateParams, FollowUpListParams, FollowUpDraftParams, FollowUpResolveParams, FollowUpObligation, FollowUpMutationResult, FollowUpListResult } from "./follow-up.js";
 // JSON Schema generation — Zod is the source of truth; this module emits the
@@ -55,6 +55,10 @@ interface SchemaEntry {
 /** Public protocol contracts emitted as JSON Schema. Order is stable. */
 export const SCHEMA_MANIFEST: readonly SchemaEntry[] = [
   { key: "mission-decide-request", title: "OSStack MissionDecideRequest", schema: MissionDecideRequest, comment: "Shape only. The host authenticates write scope, checks revision and state, and records keyed admission before execution. The key deduplicates admission, not external execution." },
+  { key: "decisions-try-create-params", title: "OSStack Decisions Try Create Params", schema: DecisionsTryCreateParams },
+  { key: "decisions-try-status-params", title: "OSStack Decisions Try Status Params", schema: DecisionsTryStatusParams },
+  { key: "decisions-try-continue-params", title: "OSStack Decisions Try Continue Params", schema: DecisionsTryContinueParams },
+  { key: "decisions-try-result", title: "OSStack Decisions Try Result", schema: DecisionsTryResult },
   { key: "decisions-answer-params", title: "OSStack Decisions Answer Params", schema: DecisionsAnswerParams },
   { key: "decisions-answer-result", title: "OSStack Decisions Answer Result", schema: DecisionsAnswerResult },
   { key: "decisions-list-params", title: "OSStack Decisions List Params", schema: DecisionsListParams },
