@@ -179,34 +179,34 @@ export function dynamicCommandModules(root) {
 }
 // 2026-11-17: bin.ts reaches 6 files. Lazy-load new code at its use site instead of raising
 // the limit. Lower the limit when the count drops.
-// 2026-11-24: Keep CLI file limits. For new ceilings, add 10% and round up to a
+// 2026-11-24: Measured at 076159dc. Keep CLI file limits. For new ceilings, add 10% and round up to a
 // whole file or 4096 source bytes. Lower ceilings when headroom exceeds about 20%.
 export const startupLimits = {
   entry: { files: 3, bytes: 4096 }, // 2 files, 3543 bytes
-  bin: { files: 21, bytes: 602112 }, // 6 files, 546777 bytes
+  bin: { files: 21, bytes: 602112 }, // 6 files, 546960 bytes
   indexes: {
-    agents: { files: 264, bytes: 2469888 }, // 240 files, 2245200 bytes
-    autonomy: { files: 174, bytes: 1761280 }, // 158 files, 1598346 bytes
+    agents: { files: 267, bytes: 2486272 }, // 242 files, 2256547 bytes
+    autonomy: { files: 176, bytes: 1765376 }, // 160 files, 1604776 bytes
     compliance: { files: 2, bytes: 45056 }, // 1 files, 37998 bytes
-    config: { files: 270, bytes: 2490368 }, // 245 files, 2263787 bytes
+    config: { files: 272, bytes: 2502656 }, // 247 files, 2275134 bytes
     conformance: { files: 2, bytes: 4096 }, // 1 files, 612 bytes
     contracts: { files: 5, bytes: 20480 }, // 4 files, 15306 bytes
-    core: { files: 158, bytes: 1527808 }, // 143 files, 1386454 bytes
+    core: { files: 160, bytes: 1536000 }, // 145 files, 1392884 bytes
     github: { files: 14, bytes: 114688 }, // 12 files, 100882 bytes
     governance: { files: 69, bytes: 589824 }, // 62 files, 534619 bytes
     graph: { files: 2, bytes: 4096 }, // 1 files, 541 bytes
     "hermes-adapter": { files: 5, bytes: 20480 }, // 4 files, 16378 bytes
     knowledge: { files: 5, bytes: 73728 }, // 4 files, 66115 bytes
     "knowledge-cloud": { files: 7, bytes: 110592 }, // 6 files, 96912 bytes
-    loop: { files: 328, bytes: 3252224 }, // 298 files, 2952855 bytes
+    loop: { files: 330, bytes: 3264512 }, // 300 files, 2964774 bytes
     "neat-eval": { files: 6, bytes: 81920 }, // 5 files, 72208 bytes
     plugins: { files: 2, bytes: 4096 }, // 1 files, 440 bytes
-    protocol: { files: 26, bytes: 135168 }, // 23 files, 120097 bytes
+    protocol: { files: 26, bytes: 135168 }, // 23 files, 120999 bytes
     runtime: { files: 2, bytes: 4096 }, // 1 files, 244 bytes
     "skill-registry": { files: 4, bytes: 12288 }, // 3 files, 8412 bytes
     skills: { files: 3, bytes: 8192 }, // 2 files, 3901 bytes
-    supervisor: { files: 349, bytes: 3334144 }, // 317 files, 3029007 bytes
-    "verify-publisher": { files: 6, bytes: 28672 }, // 5 files, 23080 bytes
+    supervisor: { files: 351, bytes: 3346432 }, // 319 files, 3040926 bytes
+    "verify-publisher": { files: 8, bytes: 36864 }, // 7 files, 32877 bytes
   },
 };
 export function startupGraphViolations(root, limits) {
