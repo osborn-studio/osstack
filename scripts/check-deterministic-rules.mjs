@@ -206,6 +206,7 @@ export const startupLimits = {
     "skill-registry": { files: 4, bytes: 12288 }, // 3 files, 8412 bytes
     skills: { files: 3, bytes: 8192 }, // 2 files, 3901 bytes
     supervisor: { files: 351, bytes: 3346432 }, // 319 files, 3040926 bytes
+    "verify-harness": { files: 167, bytes: 1552384 }, // 151 files, 1407961 bytes
     "verify-publisher": { files: 8, bytes: 36864 }, // 7 files, 32877 bytes
   },
 };
