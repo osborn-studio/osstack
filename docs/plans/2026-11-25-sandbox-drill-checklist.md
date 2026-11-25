@@ -19,7 +19,12 @@
 主机侧的本地失败修复路线（[桥接运行手册](../runbooks/bridge.md) §6.2）只在 `OSSTACK_BRIDGE=1`（live 桥接）下工作。**这个值目前在代码里启动即拒绝**：`parseBridgeMode` 调用 `assertLiveBridgeAcceptance()`，固定抛出 `BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G`（`packages/cli/src/contained-mission-rpc.ts:111-124`）。注释写明：只有带着 5-F 和 5-G 验收证据、经过评审的代码改动才能打开它。
 
 - **5-G（沙箱端到端）**：2026-11-08 第 4 次运行通过，13/13 场景，`qualified:true`（[记录](../reports/bridge-phase5-verification/current-v2-status.md)）。但那之后主机代码改了很多（U3、U4b、U5、T6 等），这份证据是否还算数，要由你决定。
-- **5-F（故障注入、变异、属性测试、live TLA 模型）**：门槛在 [同 PR 受控修订](../design/2026-11-06-bridge-same-pr-revision.md) §5.6 末尾。报告目录里有 `pending-tlc.json`。**我没有核对 5-F 是否全部完成**，这要在开门前查清。
+- **5-F（故障注入、变异、属性测试、live TLA 模型）**：门槛在 [同 PR 受控修订](../design/2026-11-06-bridge-same-pr-revision.md) §5.6 末尾。2026-11-25 核对结论：**在当前 main 上不完整，不能用来开门。**
+  - TLC 四个配置无反例、14 个模型变异体都有反例、1 万次属性测试通过、19 个源码变异体全部被杀，证据都在 [报告目录](../reports/bridge-phase5-verification/)，但都是 2026-11-07 的。`pending-tlc.json` 为空，没有挂起的 TLC。
+  - 之后合并的改动（U4b 的本地失败路线、版本 2 授权、#530、U5 R2/R2b、U3 T6）改了 9 个变异目标文件中的 6 个，属性测试绑定哈希的两个文件也变了，所以变异和属性证据已和 main 不符。
+  - [`gaps.md`](../reports/bridge-phase5-verification/gaps.md) 仍有未关的故障注入项：评审冲突交错的变异（F2）、外部推送三个边界的逐一映射（F3）、`host.recover()` 与 `revisionRecovery()` 之间崩溃的独立断言（F8），以及 F1、F4、F6、F9 只写着“测试存在、需重跑”。
+  - TLA 模型没有覆盖本地失败路线和版本 2 授权续期；规格 README 还记着一个未关的缺口（finding 10）。
+  - 补齐的工作全部是本机运行，不需要 Docker、GitHub 或真实密钥：在当前 main 上重跑 19 个变异体和两组 1 万次属性测试并重新绑定哈希；补上 F2、F3、F8 的测试与变异，记录 F1、F4、F6、F9 的定向重跑；决定 TLA 模型是否要扩展到新路径（要的话还需本机 Java 和 `tla2tools.jar` v1.7.4）；最后一次完整门禁，再写开门的代码改动。
 
 所以真实演练之前，必须先有一个“打开 live 桥接门”的节点，而它需要你的批准。见 §4 决定 1。
 
