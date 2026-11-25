@@ -53,7 +53,8 @@ export const ContainedMissionRpcRequests = {
   'mission.revision_grant_renew_preview': z.object({ credential: Credential, chain_id: ChainId, local_failure: LocalFailureRenewTerms.optional(), ...GrantTerms }).strict(),
   'mission.grant_revisions': z.object({ credential: Credential, nonce: z.string().regex(/^[0-9a-f]{32}$/), preview_sha256: z.string().regex(/^[0-9a-f]{64}$/),
     signature: z.string().regex(/^[A-Za-z0-9+/]{86}==$/) }).strict(),
-  'mission.chain_decide': z.object({ credential: Credential, chain_id: ChainId, decision: z.enum(['abandon', 'takeover', 'reconcile']) }).strict(),
+  'mission.chain_decide': z.object({ credential: Credential, chain_id: ChainId, decision: z.enum(['abandon', 'takeover', 'reconcile']),
+    decision_id: MissionDecideRequest.shape.decision_id, expected_revision: MissionDecideRequest.shape.expected_revision }).strict(),
   // Shadow merger comparison report (merger design §4.3): read-only over the shadow tables.
   'mission.merger_report': z.object({ credential: Credential }).strict(),
 } as const;

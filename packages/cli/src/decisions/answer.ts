@@ -70,12 +70,6 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
     if (p.source === "loop" || p.source === "autonomy" || (p.source === "session" && item?.requires_local_signature)) {
       return result("local_only", "local_only", false, false, p.answer === "grant_revisions" ? "mission grant-revisions" : p.source === "session" ? "attention answer" : p.source === "autonomy" ? (p.answer === "reject" ? "autonomy reject" : "autonomy approve") : item?.answer_command.name ?? "cockpit retry");
     }
-    if (p.source === "revision_chain") {
-      if (item && item.source_revision !== p.source_revision) return result("stale", "stale_revision");
-      // chainDecide awaits remote reconcile/cancel work. Its own revision CAS does not
-      // accept a client revision or receipt key. A wrapper transaction cannot cover it.
-      return result("not_answerable", "idempotency_unsupported", false, false, "mission chain-decide");
-    }
     const only = (...keys: string[]) => { if (Object.keys(p.params).some(k => !keys.includes(k))) throw Error("bad_request"); };
     if (probes) {
       const digest = createHmac("sha256", p.credential).update(JSON.stringify([
@@ -148,15 +142,24 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
       const ci = p.source === "ci_repair" && p.answer === "approve_ci_repair";
       only(...(ci ? ["candidate"] : []));
       if (!/^[1-9][0-9]*$/.test(p.source_revision) || !Number.isSafeInteger(Number(p.source_revision))) return result("stale", "stale_revision");
-      method = ci ? "mission.approve_ci_repair" : "mission.decide";
-      params = { credential: p.credential, mission_id: p.source_id, decision_id: p.answer_id, expected_revision: Number(p.source_revision), ...(ci ? { candidate: p.params.candidate } : { decision: p.answer }) };
+      const identity = { credential: p.credential, decision_id: p.answer_id, expected_revision: Number(p.source_revision) };
+      if (p.source === "revision_chain") {
+        if (item?.allowed_answers.length === 0 || !["abandon", "takeover", "reconcile"].includes(p.answer)) {
+          return result("not_answerable", "invalid_answer");
+        }
+        method = "mission.chain_decide";
+        params = { ...identity, chain_id: p.source_id, decision: p.answer };
+      } else {
+        method = ci ? "mission.approve_ci_repair" : "mission.decide";
+        params = { ...identity, mission_id: p.source_id, ...(ci ? { candidate: p.params.candidate } : { decision: p.answer }) };
+      }
     }
     try {
       const response = await ports.forward(method, params) as Record<string, unknown>;
       refresh();
       const code = typeof response.code === "string" ? response.code : null;
       const replay = response.replay === true;
-      const unknown = response.outcome === "unknown" || ["uncertain", "in_flight", "needs_reconciliation"].includes(String(response.state));
+      const unknown = response.outcome === "unknown" || (method === "mission.chain_decide" && response.child_cancel === "unknown") || ["uncertain", "in_flight", "needs_reconciliation"].includes(String(response.state));
       return result(code ? classify(code) : unknown ? "unknown" : response.outcome === "accepted" || response.state === "reserved" || (response.accepted === true && response.mission !== undefined && response.state === undefined) ? "accepted" : "applied", code, response.accepted !== false, replay);
     } catch (error) { refresh(); throw error; }
   } catch (error) {

@@ -20,7 +20,8 @@ applies and commits it, verifies in a no-network container, and stops at publica
          [--decision-id ID] [--expected-revision N]
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
   merger report [--json]             (shadow merger: classify shadow decisions against real outcomes; read-only, no recommendation)
-  chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain; never merges)
+  chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain)
+         [--decision-id ID] [--expected-revision N]
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
 OSSTACK_CONTAINED_CODEX_BIN, OSSTACK_CONTAINED_CODEX_HOME and the OSSTACK_CONTAINED_DOCKER_* settings.
 The --github-ci path requires an authorized App A host and registered scope.
@@ -39,7 +40,7 @@ const flagsByCommand: Record<Command, { single: readonly string[]; repeated: rea
   "approve-local-failure-repair": { single: ["mission", "candidate"], repeated: [] },
   "approve-ci-repair": { single: ["mission", "candidate"], repeated: [] },
   decide: { single: ["mission", "decision", "decision-id", "expected-revision"], repeated: [] },
-  "chain-decide": { single: ["chain", "decision"], repeated: [] },
+  "chain-decide": { single: ["chain", "decision", "decision-id", "expected-revision"], repeated: [] },
   "ci-pilot-status": { single: [], repeated: [] },
   "merger-report": { single: [], repeated: [] },
 };
@@ -123,14 +124,13 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       const attempt = required("attempt");
       params = { mission_id: required("mission"), expected_attempt: /^[123]$/.test(attempt) ? Number(attempt) : NaN,
         decision_id: single.get("decision-id") ?? globalThis.crypto.randomUUID() };
-    } else if (command === "decide") {
-      params = { mission_id: required("mission"), decision: required("decision"),
+    } else if (command === "decide" || command === "chain-decide") {
+      const target = command === "chain-decide" ? { chain_id: required("chain") } : { mission_id: required("mission") };
+      params = { ...target, decision: required("decision"),
         ...(single.has("decision-id") ? { decision_id: required("decision-id") } : {}),
         ...(single.has("expected-revision") ? { expected_revision: Number(required("expected-revision")) } : {}) };
     } else if (command === "approve-ci-repair" || command === "approve-local-failure-repair") {
       params = { mission_id: required("mission"), candidate: required("candidate") };
-    } else if (command === "chain-decide") {
-      params = { chain_id: required("chain"), decision: required("decision") };
     } else if (command === "merger-report" || command === "ci-pilot-status") {
       params = {};
     } else {

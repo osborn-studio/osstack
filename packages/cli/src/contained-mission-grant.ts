@@ -253,6 +253,32 @@ const TERMINAL = new Set(['pr_opened', 'cancelled', 'abandoned', 'failed']);
 const refused = (): never => { throw new Error('grant_refused'); };
 const err = (code: string): never => { throw new Error(code); };
 
+type ChainDecision = 'abandon' | 'takeover' | 'reconcile';
+interface ChainAnswerInput {
+  chain_id: string;
+  decision: ChainDecision;
+  decision_id?: string;
+  expected_revision?: number;
+}
+
+function replayChainAnswer(chains: RevisionChainStore, chainId: string, key: string, principal: string, digest: string): Record<string, unknown> | undefined {
+  const receipt = chains.db.prepare<[string], { chain_id: string; payload_json: string }>(`
+    SELECT chain_id, payload_json FROM engineering_revision_chain_events
+    WHERE kind='chain_answer_accepted' AND json_extract(payload_json,'$.decision_id')=? LIMIT 1`).get(key);
+  if (!receipt) return undefined;
+  if (receipt.chain_id !== chainId) return err('decision_id_conflict');
+  const accepted = JSON.parse(receipt.payload_json) as { principal_id: string; digest: string; result?: Record<string, unknown> };
+  if (accepted.principal_id !== principal) return err('decision_id_owner_mismatch');
+  if (accepted.digest !== digest) return err('decision_id_conflict');
+  const kind = accepted.result ? 'chain_answer_child_cancel' : 'chain_answer_result';
+  const event = chains.db.prepare<[string, string, string], { payload_json: string }>(`
+    SELECT payload_json FROM engineering_revision_chain_events WHERE chain_id=? AND kind=?
+    AND json_extract(payload_json,'$.decision_id')=? LIMIT 1`).get(chainId, kind, key);
+  const completion = event ? JSON.parse(event.payload_json) as { outcome?: string; settled?: boolean } : undefined;
+  if (accepted.result) return { ...accepted.result, child_cancel: completion?.outcome ?? 'unknown', replay: true };
+  return completion ? { settled: completion.settled, replay: true } : { outcome: 'unknown', replay: true };
+}
+
 export class RevisionGrantService {
   private readonly pending = new Map<string, Pending>();
   constructor(private readonly options: RevisionGrantServiceOptions) {}
@@ -392,20 +418,47 @@ export class RevisionGrantService {
     }
   }
 
-  async chainDecide(actor: EngineeringPrincipal, input: { chain_id: string; decision: 'abandon' | 'takeover' | 'reconcile' }): Promise<Record<string, unknown>> {
+  async chainDecide(actor: EngineeringPrincipal, input: ChainAnswerInput): Promise<Record<string, unknown>> {
     this.live();
-    const { chains, missions } = this.options;
-    const chain = chains.get(input.chain_id);
-    if (chain.mode !== 'live') return err('chain_not_live');
-    this.assertWrite(actor, missions.readable(actor, chain.root_mission_id).scope_id);
-    const now = this.options.now();
-    if (input.decision === 'reconcile') {
-      const uncertain = chains.intents(chain.chain_id).some(i => i.kind === 'push' && i.state === 'uncertain');
-      if (!uncertain) return err('nothing_to_reconcile');
-      if (!this.options.reconcileReceipt) return err('reconcile_unavailable');
-      return { chain_id: chain.chain_id, decision: 'reconcile', ...(await this.options.reconcileReceipt(chain)) };
+    const { chains, missions, reconcileReceipt } = this.options;
+    const { chain_id, decision, decision_id, expected_revision } = input;
+    const admit = () => {
+      const chain = chains.get(chain_id);
+      if (chain.mode !== 'live') return err('chain_not_live');
+      this.assertWrite(actor, missions.readable(actor, chain.root_mission_id).scope_id);
+      const now = this.options.now();
+      const receipt = decision_id === undefined ? undefined : { decision_id, principal_id: actor.principal_id,
+        digest: createHash('sha256').update(JSON.stringify({ decision })).digest('hex'), revision: chain.revision, decision };
+      if (receipt) {
+        const replay = replayChainAnswer(chains, chain_id, receipt.decision_id, receipt.principal_id, receipt.digest);
+        if (replay) return { kind: 'replay', replay } as const;
+      }
+      if (expected_revision !== undefined && expected_revision !== chain.revision) return err('stale_revision');
+      if (decision === 'reconcile') {
+        if (!chains.intents(chain_id).some(i => i.kind === 'push' && i.state === 'uncertain')) return err('nothing_to_reconcile');
+        if (!reconcileReceipt) return err('reconcile_unavailable');
+        if (receipt) {
+          chains.appendEvent(chain_id, 'chain_answer_accepted', receipt, now);
+          chains.appendEvent(chain_id, 'chain_answer_effect_started', { decision_id }, now);
+        }
+        return { kind: 'reconcile', chain, reconcileReceipt } as const;
+      }
+      const closed = chains.closeLive(chain_id, expected_revision ?? chain.revision, decision, now);
+      const result = { chain_id, state: closed.state, decision };
+      if (receipt) chains.appendEvent(chain_id, 'chain_answer_accepted', { ...receipt, result }, now);
+      return { kind: 'closed', result, chain } as const;
+    };
+    const admitted = decision_id === undefined && expected_revision === undefined ? admit() : chains.transaction(admit);
+    if (admitted.kind === 'replay') return admitted.replay;
+    if (admitted.kind === 'reconcile') {
+      const { settled } = await admitted.reconcileReceipt(admitted.chain);
+      if (decision_id !== undefined) {
+        chains.appendEvent(chain_id, 'chain_answer_result', { decision_id, settled }, this.options.now());
+        return { settled };
+      }
+      return { chain_id, decision, settled };
     }
-    const closed = chains.closeLive(chain.chain_id, chain.revision, input.decision, now);
+    const { chain, result } = admitted;
     let cancel: 'not_needed' | 'requested' | 'failed' = 'not_needed';
     const child = chain.current_mission_id;
     if (child !== null && !TERMINAL.has(missions.state(child))) {
@@ -413,7 +466,8 @@ export class RevisionGrantService {
       try { await this.options.cancelChild?.(actor, child); cancel = this.options.cancelChild ? 'requested' : 'failed'; }
       catch (error) { recordChildCancelFailure(chains, chain.chain_id, child, error, this.options.now(), actor.principal_id); }
     }
-    return { chain_id: closed.chain_id, state: closed.state, decision: input.decision, child_cancel: cancel };
+    if (decision_id !== undefined) chains.appendEvent(chain_id, 'chain_answer_child_cancel', { decision_id, outcome: cancel }, this.options.now());
+    return { ...result, child_cancel: cancel };
   }
 
   // -------------------------------------------------------------- previews

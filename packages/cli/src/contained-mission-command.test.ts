@@ -77,6 +77,18 @@ describe("osstack mission", () => {
     expect(stale.calls).toEqual([]);
   });
 
+  it("passes the optional answer key and safe revision to mission.chain_decide", async () => {
+    const chain = "rc_00000000-0000-4000-8000-000000000000";
+    const args = ["chain-decide", "--chain", chain, "--decision", "takeover"];
+    const params = { chain_id: chain, decision: "takeover", credential };
+    expect((await run(args)).calls).toEqual([{ method: "mission.chain_decide", params }]);
+    expect((await run([...args, "--decision-id", "operator:42", "--expected-revision", "3"])).calls)
+      .toEqual([{ method: "mission.chain_decide", params: { ...params, decision_id: "operator:42", expected_revision: 3 } }]);
+    for (const flags of [["--decision-id", "!bad"], ["--expected-revision", "0"], ["--expected-revision", "9007199254740992"]]) {
+      expect((await run([...args, ...flags])).calls).toEqual([]);
+    }
+  });
+
   it("rejects unknown commands and flags, and reports daemon errors without the credential", async () => {
     expect((await run(["merge"])).err.join("\n")).toContain("unknown_mission_command");
     expect((await run(["status", "--mission", MID, "--force", "1"])).err.join("\n")).toContain("unknown_flag:--force");
