@@ -60,8 +60,10 @@ it.each(["alone", "unrelated"])("empties the executor group after daemon SIGKILL
     cwd: dir, stdio: ["ignore", "pipe", "inherit"],
   });
   const exited = once(daemon, "exit");
+  let groupObservedEmpty = false;
   let pgid: number | undefined;
   let unrelated: number | undefined;
+  let unrelatedObservedAlive = false;
   try {
     const lines = createInterface({ input: daemon.stdout });
     const first = await lines[Symbol.asyncIterator]().next();
@@ -70,36 +72,44 @@ it.each(["alone", "unrelated"])("empties the executor group after daemon SIGKILL
     if (!pgid) throw Error("missing executor pgid");
     const group = pgid;
     await expect.poll(() => existsSync(ready), { timeout: 3000 }).toBe(true);
-    expect(processGroupEmpty(group)).toBe(false);
+    groupObservedEmpty = processGroupEmpty(group);
+    expect(groupObservedEmpty).toBe(false);
     expect(() => process.kill(Number(readFileSync(ready, "utf8")), 0)).not.toThrow();
 
     const deadline = Date.now() + graceMs + 1000;
     expect(daemon.kill("SIGKILL")).toBe(true);
     expect(await exited).toEqual([null, "SIGKILL"]);
-    while (!processGroupEmpty(group) && Date.now() < deadline) await delay(10);
-    expect(processGroupEmpty(group)).toBe(true);
+    groupObservedEmpty = processGroupEmpty(group);
+    while (!groupObservedEmpty && Date.now() < deadline) {
+      await delay(10);
+      groupObservedEmpty = processGroupEmpty(group);
+    }
+    expect(groupObservedEmpty).toBe(true);
     expect(Date.now()).toBeLessThanOrEqual(deadline);
     if (mode === "unrelated") {
       expect(unrelated).toBeDefined();
       expect(() => process.kill(unrelated!, 0)).not.toThrow();
+      unrelatedObservedAlive = true;
     }
   } finally {
     daemon.kill("SIGKILL");
-    killGroup(pgid);
-    killGroup(unrelated);
+    if (!groupObservedEmpty) killGroup(pgid);
+    if (unrelatedObservedAlive) killGroup(unrelated);
   }
 });
 
 it("releases the watcher promptly when the leader exits normally", async () => {
   const stamp = join(dir, "leader-exit");
+  let groupObservedEmpty = false;
   let pgid: number | undefined;
   try {
     const run = await runGroup(process.execPath, ["executor.cjs", "exit", stamp], {
       cwd: dir, env: process.env, graceMs, timeoutMs: 5000, onLaunched: launch => { pgid = launch.pgid; },
     });
+    groupObservedEmpty = run.stop !== undefined;
     expect(Date.now() - Number(readFileSync(stamp, "utf8"))).toBeLessThanOrEqual(graceMs + 500);
     expect(run).toMatchObject({ exit_code: 0, stop: { stop_proof: "group_empty+sandbox_inherited", signals: [] } });
-  } finally { killGroup(pgid); }
+  } finally { if (!groupObservedEmpty) killGroup(pgid); }
 });
 
 it("keeps watcher signals group-relative and recovery observation-only", () => {

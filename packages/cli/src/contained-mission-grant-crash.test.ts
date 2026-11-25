@@ -1,6 +1,5 @@
-import { spawn, spawnSync } from 'node:child_process';
-import { once } from 'node:events';
-import { symlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { processGroupEmpty } from '@osstack/agents';
 import { AttentionStore, ContainedMissionStore, DecisionQueries, openDb, RevisionChainStore } from '@osstack/core';
@@ -11,9 +10,9 @@ import { StoppedChainScanService } from './contained-mission-bridge-stopped-scan
 import { granted, setup, T0 } from './contained-mission-grant.testkit.js';
 import { createGrantMissionView, RevisionGrantService } from './contained-mission-grant.js';
 import { ContainedMissionHost } from './contained-mission-host.js';
-import { createContainedMissionPorts } from './contained-mission-ports.js';
+import { createContainedMissionPorts, eventPayload } from './contained-mission-ports.js';
 
-it('lists the stop_unknown child for retry_stop_check after restart and replays without a cancel', async () => {
+it('stops the executor group on daemon death and recovers the child for reconciliation without replaying the cancel', async () => {
   const f = await setup();
   const { root, path, missions, chains } = f.rig;
   const { chain } = await granted(f);
@@ -25,31 +24,58 @@ it('lists the stop_unknown child for retry_stop_check after restart and replays 
   const ready = missions.transition(child.mission_id, { if_revision: child.revision, to: 'workspace_ready', event: { kind: 'workspace_created', payload: {} } }, T0);
   missions.transition(child.mission_id, { if_revision: ready.revision, to: 'executing', expected_head: chain.published_head, event: { kind: 'executor_start', payload: {} } }, T0);
 
+  const terminationGraceMs = 250;
+  const worktree = join(root, 'worktree');
+  mkdirSync(worktree);
+  const bin = join(root, 'fake-codex.cjs');
+  writeFileSync(bin, `#!${process.execPath}
+    const { spawn } = require('node:child_process');
+    const { writeFileSync } = require('node:fs');
+    const member = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+    member.once('spawn', () => writeFileSync('ready', JSON.stringify([process.pid, member.pid])));
+    setInterval(() => {}, 1000);
+  `, { mode: 0o755 });
+
   const worker = join(root, 'answer.mjs');
   symlinkSync(resolve('node_modules'), join(root, 'node_modules'));
   await build({ stdin: { resolveDir: resolve('src'), contents: `
+    import { existsSync, writeSync } from 'node:fs';
+    import { join } from 'node:path';
+    import { setTimeout as delay } from 'node:timers/promises';
+    import { CodexProxyExecutor } from '@osstack/agents';
     import { AttentionStore, ContainedMissionStore, RevisionChainStore, openDb } from '@osstack/core';
     import { createGrantMissionView, RevisionGrantService } from './contained-mission-grant.js';
-    const [path, actor, request] = process.argv.slice(2);
+    const [path, actor, request, childId, bin, worktree, root, graceMs] = process.argv.slice(2);
     const db = openDb({ path }); db.pragma('synchronous=FULL');
     const attention = new AttentionStore(db, path);
     const owner = attention.claimOwner('answer');
     const chains = new RevisionChainStore(attention, owner);
-    const missions = await createGrantMissionView(new ContainedMissionStore(attention, owner));
+    const store = new ContainedMissionStore(attention, owner);
+    const missions = await createGrantMissionView(store);
+    const executor = new CodexProxyExecutor({ bin, sourceCodexHome: root, runtimeDir: join(root, 'runtime'), terminationGraceMs: Number(graceMs) });
+    let pgid;
+    void executor.run({ worktree, prompt: 'p', onLaunched: launch => {
+      store.record(childId, 'executor_started', { pid: launch.pid, pgid: launch.pgid }, Date.now());
+      pgid = launch.pgid;
+    } });
+    while (!existsSync(join(worktree, 'ready'))) await delay(10);
+    writeSync(1, String(pgid));
     // The first child-state read is after the transaction returns and before the host cancel.
     missions.state = () => process.kill(process.pid, 'SIGKILL');
     await new RevisionGrantService({ chains, missions, now: Date.now, enabled: () => true })
       .chainDecide(JSON.parse(actor), JSON.parse(request));
   ` }, outfile: worker, bundle: true, packages: 'external', platform: 'node', format: 'esm' });
 
-  const executor = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });
-  await once(executor, 'spawn');
-  const exit = once(executor, 'exit');
+  const death = spawnSync(process.execPath, [worker, path, JSON.stringify(f.actor('a')), JSON.stringify(request),
+    child.mission_id, bin, worktree, root, String(terminationGraceMs)], { encoding: 'utf8', timeout: 10000 });
+  const pgid = Number(death.stdout);
+  let groupObservedEmpty = false;
   try {
-    const pgid = executor.pid!;
-    missions.record(child.mission_id, 'executor_started', { pgid, pid: pgid }, T0);
-    const death = spawnSync(process.execPath, [worker, path, JSON.stringify(f.actor('a')), JSON.stringify(request)], { encoding: 'utf8', timeout: 10000 });
     expect(death.signal, death.stderr).toBe('SIGKILL');
+    expect(pgid).toBeGreaterThan(1);
+    // W13-E1 stops the orphaned executor group before restart recovery observes it.
+    await expect.poll(() => processGroupEmpty(pgid), { timeout: terminationGraceMs + 2000 }).toBe(true);
+    groupObservedEmpty = true;
     const db = openDb({ path });
     try {
       db.pragma('synchronous=FULL');
@@ -76,13 +102,24 @@ it('lists the stop_unknown child for retry_stop_check after restart and replays 
         await scan.scan();
         expect(await grantService.chainDecide(f.actor('a'), request)).toMatchObject({ state: 'closed', child_cancel: 'unknown', replay: true });
         expect(cancelChild).not.toHaveBeenCalled();
-        expect(store.get(child.mission_id)).toMatchObject({ state: 'stop_unknown', stop_obligation: 1 });
+        expect(store.get(child.mission_id)).toMatchObject({ state: 'needs_reconciliation', stop_obligation: 0 });
+        const events = store.events(child.mission_id);
+        expect(events.filter(e => e.kind === 'executor_stopped').map(eventPayload)).toContainEqual(
+          expect.objectContaining({ stop_proof: 'group_empty_after_restart', pgid }));
+        expect(events.filter(e => e.kind === 'halted').map(eventPayload).at(-1)).toMatchObject({ reason: 'orphaned_executing' });
         const page = await listDecisions(new DecisionQueries(db), { credential: 'a'.repeat(48) }, token => f.access.authenticate(token));
         const item = page.items.find(i => i.source === 'contained_mission' && i.source_id === child.mission_id);
-        expect(item?.allowed_answers).toContain('retry_stop_check');
-        // Recovery leaves the orphaned executor running (open W13 decision on hostProcessRecheckMs).
-        expect(processGroupEmpty(pgid)).toBe(false);
+        expect(item?.allowed_answers).toEqual(['abandon', 'discard_changes', 'adopt_worktree']);
       } finally { await scan.stop(); await host.close(); }
     } finally { db.close(); }
-  } finally { executor.kill('SIGKILL'); await exit; }
+  } finally {
+    // The worker can fail before reporting the journalled launch on stdout.
+    const launch = missions.events(child.mission_id).find(e => e.kind === 'executor_started');
+    const group = pgid || (launch && eventPayload(launch).pgid);
+    if (!groupObservedEmpty && typeof group === 'number' && Number.isSafeInteger(group) && group > 1) {
+      try { process.kill(-group, 'SIGKILL'); } catch {
+        // Best-effort cleanup of a group not yet observed empty.
+      }
+    }
+  }
 });
