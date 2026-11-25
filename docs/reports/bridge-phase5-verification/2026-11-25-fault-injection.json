@@ -1,0 +1,168 @@
+{
+  "date": "2026-11-25",
+  "head": "613b51b5bea57f3016353b96d461744f89175a22",
+  "node": "v26.5.0",
+  "base_main": "091b9cd5",
+  "note": "F8 simulates the crash as a service shutdown right after host.recover() resolves; the durable ledger state equals a process exit at that point. F9: tests assert the code rule (released push + auth error without pre-update proof stays uncertain), which differs from the §5.6 wording (failed); see docs/design/2026-11-25-bridge-5f-model-coverage.md M3.",
+  "targeted_reruns": [
+    {
+      "name": "F1",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision.test.ts src/contained-mission-bridge-live.test.ts -t racing one|two cycles started together|never dispatches the same head twice|coalesces concurrent scans --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "4 passed | 73 skipped (77)",
+      "log_sha256": "0640f1a5f8e46fdcb90634d953048d3c59257f7d0e435e6987195967d4ab73ed",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F1.log"
+    },
+    {
+      "name": "F2",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision.test.ts src/contained-mission-bridge-live.test.ts -t defers a concurrent approval|second full read disagrees|stable second read|refuses readiness if the PR branch --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "4 passed | 73 skipped (77)",
+      "log_sha256": "7f61cd144a783111423827cae57e47b615b344d7e8b32fc6d8284f5a34789bd4",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F2.log"
+    },
+    {
+      "name": "F2-core",
+      "command": "pnpm --filter @osstack/core exec vitest run src/bridge/revision-chain.test.ts -t approves and another requests|second read moved --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "3 passed | 63 skipped (66)",
+      "log_sha256": "8f7b8134e3a24f9e3e544c10bb9acbd5dd9c3cb4e27e6a9cad8cd414538cf07a",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F2-core.log"
+    },
+    {
+      "name": "F3",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts -t refuses an outsider head at precheck|local lease push with W13 binding|keeps a successful push uncertain when an outsider --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "11 passed | 147 skipped (158)",
+      "log_sha256": "86f86ab1a5d43e2720e243cb0d442f70b404c25ba497299b88e10c0f9dae0a05",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F3.log"
+    },
+    {
+      "name": "F4",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts -t host cancellation for head_regressed --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "1 passed | 157 skipped (158)",
+      "log_sha256": "954f0f4c2bf9ccfd2b6c55a6b72afed3c095949d5b183bcff6d3bc9c70ca42a4",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F4.log"
+    },
+    {
+      "name": "F4-core",
+      "command": "pnpm --filter @osstack/core exec vitest run src/bridge/revision-chain.test.ts -t head_regressed for a non-descendant|revising head attribution --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "4 passed | 62 skipped (66)",
+      "log_sha256": "c38d95a311f49f28b77f897b4ae8c92deb34eaf57e0a2b41d0eeda0e33c93a44",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F4-core.log"
+    },
+    {
+      "name": "F6",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-bridge-live.test.ts src/contained-mission-revision-publication.test.ts -t closes a PR without fetching ancestry|host cancellation for pr_ --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "5 passed | 187 skipped (192)",
+      "log_sha256": "7b9e5b245b5ae942438128b97b005097bdc56e69e8e0f16104e3762ef435754a",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F6.log"
+    },
+    {
+      "name": "F6-core",
+      "command": "pnpm --filter @osstack/core exec vitest run src/bridge/revision-chain.test.ts -t on merge and on close|closes a revising chain --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "8 passed | 58 skipped (66)",
+      "log_sha256": "cae34b1fbcc31172053679cbc7e06b72765e151b88a362ca9aad2a2153d5abe6",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F6-core.log"
+    },
+    {
+      "name": "F8",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts src/contained-mission-revision.test.ts src/contained-mission-service-wiring.test.ts -t K1|K2|K3|K4|K5|K6|startup recovery|shutdown between recovery phases|inside the transaction|runs host recovery, then --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "26 passed | 233 skipped (259)",
+      "log_sha256": "e3416bd015e9803c1794ff66f72e3e5c774d657a0e117d4d2e6af6a1ae2e2b4d",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F8.log"
+    },
+    {
+      "name": "F9",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts -t HTTP authorization status|stopped auth failure|TOKEN_REVOKED --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "3 passed | 155 skipped (158)",
+      "log_sha256": "63668567492943a0ade2db89689803d21ab2cc86ed9ae8c2a0eb59e3cc521c27",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/F9.log"
+    },
+    {
+      "name": "changed-files-full",
+      "command": "pnpm --filter @osstack/cli exec vitest run src/contained-mission-revision-publication.test.ts src/contained-mission-revision.test.ts --maxWorkers=1",
+      "status": 0,
+      "signal": null,
+      "tests": "201 passed (201)",
+      "log_sha256": "11f48b7299bdba371b9ea5f3bd8451d172915ea0e32e65ddfadc30c86e5f2b04",
+      "log": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted/changed-files-full.log"
+    }
+  ],
+  "new_mutants": [
+    {
+      "name": "second-read-uses-first",
+      "file": "packages/cli/src/contained-mission-revision.ts",
+      "verdict": "killed",
+      "status": 1,
+      "signal": null,
+      "spawn_error": null,
+      "command": "--filter @osstack/cli test src/contained-mission-revision.test.ts -t defers a concurrent approval",
+      "output_sha256": "235b8a6fb0641ca530905de50d224c06697ab2f11abc1c353d9741cc06cb88c5",
+      "baseline_status": 0,
+      "baseline_source_sha256": "69abc0f4190cb2192e38f769ded8c2de5651682641e27a06b223420c4e70d7ae",
+      "source_restored": true
+    },
+    {
+      "name": "precheck-ignores-remote",
+      "file": "packages/cli/src/contained-mission-revision-publication.ts",
+      "verdict": "killed",
+      "status": 1,
+      "signal": null,
+      "spawn_error": null,
+      "command": "--filter @osstack/cli test src/contained-mission-revision-publication.test.ts -t refuses an outsider head at precheck",
+      "output_sha256": "2f9e41c9e5f4346b03f1a36e8059aa5e4045fa91877898641e8f56773434f416",
+      "baseline_status": 0,
+      "baseline_source_sha256": "6602297337d5ce3769f6734ad199d232a17417c4258e57e2d01c602d22788385",
+      "source_restored": true
+    },
+    {
+      "name": "readback-ignores-remote",
+      "file": "packages/cli/src/contained-mission-revision-publication.ts",
+      "verdict": "killed",
+      "status": 1,
+      "signal": null,
+      "spawn_error": null,
+      "command": "--filter @osstack/cli test src/contained-mission-revision-publication.test.ts -t keeps a successful push uncertain",
+      "output_sha256": "ee5e9d2a18e3d102108fb51d939c6018b8c48aa8681224a5df23fa0df38106c3",
+      "baseline_status": 0,
+      "baseline_source_sha256": "6602297337d5ce3769f6734ad199d232a17417c4258e57e2d01c602d22788385",
+      "source_restored": true
+    },
+    {
+      "name": "start-skips-revision-recovery",
+      "file": "packages/cli/src/contained-mission-rpc.ts",
+      "verdict": "killed",
+      "status": 1,
+      "signal": null,
+      "spawn_error": null,
+      "command": "--filter @osstack/cli test src/contained-mission-revision-publication.test.ts -t confirms a pending push on restart",
+      "output_sha256": "01bc6861ffb152097475d4912bef0f761ca11b983ace0e07f5672a6896c8916e",
+      "baseline_status": 0,
+      "baseline_source_sha256": "b03d836d83882dbc0d981fa18ef875db759ffaff52b965c3a0c12531219ee72c",
+      "source_restored": true
+    }
+  ],
+  "evidence_dirs": {
+    "targeted": "/Volumes/AIMATE_WORK/tmp/osstack/runtime/5f-n2-targeted",
+    "mutants": "/Volumes/AIMATE_WORK/tmp/osstack/smoke/bridge-phase5-mutants-hbNz1l"
+  },
+  "results_json_sha256": "fbe614a46fbec64306bff16abc2e69cee1d22a5f9c71bf110f539beb9b9e98ec",
+  "targeted_json_sha256": "4993f5c37d6c8b980f6af2fcd46e9aee2f7155dd8c21d6edbf5f4383f8c17219"
+}
