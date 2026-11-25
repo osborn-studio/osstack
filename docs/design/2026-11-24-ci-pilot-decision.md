@@ -1,6 +1,6 @@
 # U3 T5: show the CI pilot release in the decision inbox
 
-Status: design, waiting for the owner's decisions in §6. No code yet.
+Status: design accepted. The owner accepted all five recommendations in §6 on 2026-11-24.
 Plan: `docs/plans/2026-11-16-osstack-self-loop-upgrade.md`, U3 table row
 "CI 试点放行 | 无状态，靠私有文件 | 负责人手工改文件" and acceptance 1 ("一个查询列出七类来源的全部未决条目").
 Read on `main` at `46b642ee`.
@@ -117,3 +117,5 @@ which the runbook still has to approve.
    Grok Bot side sees it with the local-signature text. Recommended: yes.
 5. **A read-only `osstack mission ci-pilot-status`** so the card names a real
    command. Recommended: yes; it never writes the release.
+
+**Record (2026-11-24).** The owner accepted the recommended option for all five: build it now; local only, read-only and derived at read time (the release is treated like the signature-bound decisions and gets no remote answer path); all five reasons; the new source value `ci_pilot` in the list and the webhook notice; a read-only `osstack mission ci-pilot-status`.
