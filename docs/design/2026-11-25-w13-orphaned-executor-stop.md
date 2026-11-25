@@ -2,7 +2,7 @@
 
 Date: 2026-11-25. Baseline: `main` `21a31832`. Line numbers refer to that baseline.
 Parent documents: [W13 design](2026-11-06-w13-host-git-survival.md) (below "W13"), the
-[chain-decide idempotency note](2026-11-25-chain-decide-idempotency.md) (U3 T6, on
+chain-decide idempotency note (`docs/design/2026-11-25-chain-decide-idempotency.md`, U3 T6, on
 `feat/chain-decide-idempotency` until it merges), and the plan
 [`2026-11-16-osstack-self-loop-upgrade.md`](../plans/2026-11-16-osstack-self-loop-upgrade.md).
 Status: design only. No code in this node.
