@@ -4108,6 +4108,22 @@ async function restoreGuardedAutonomy(
   );
 }
 
+async function drainDaemonAutonomyNotifications(ctx: DaemonContext, sender: AutonomyNotificationSender): Promise<void> {
+  try {
+    await drainAutonomyNotifications({
+      db: ctx.db,
+      db_path: ctx.dbPath,
+      sender,
+    });
+  } catch (error) {
+    process.stderr.write(
+      `osstack: autonomy notification drain failed: ${
+        error instanceof Error ? error.message : String(error)
+      }\n`,
+    );
+  }
+}
+
 async function refreshAutonomyHealthAndRecover(
   ctx: DaemonContext,
   recover: boolean,
@@ -4149,21 +4165,7 @@ async function refreshAutonomyHealthAndRecover(
       }\n`,
     );
   }
-  if (notificationSender !== undefined) {
-    try {
-      await drainAutonomyNotifications({
-        db: ctx.db,
-        db_path: ctx.dbPath,
-        sender: notificationSender,
-      });
-    } catch (error) {
-      process.stderr.write(
-        `osstack: autonomy notification drain failed: ${
-          error instanceof Error ? error.message : String(error)
-        }\n`,
-      );
-    }
-  }
+  if (notificationSender !== undefined) await drainDaemonAutonomyNotifications(ctx, notificationSender);
   if (ctx.guardedAutonomy === undefined) return;
   const previous = ctx.lastAutonomyHealth;
   let current: AutonomyHealthReport;
@@ -4345,7 +4347,11 @@ export async function startDaemon(
     }));
     return graphBroker;
   };
-  if (process.env["OSSTACK_ATTENTION"] === "1") {
+  const attentionEnabled = process.env["OSSTACK_ATTENTION"] === "1";
+  const autonomySender = opts.notificationSender ?? (attentionEnabled
+    ? (await import("./autonomy-notice-delivery.js")).selectAutonomyNotificationSender(process.env, osstackHome())
+    : undefined);
+  if (attentionEnabled) {
     // Invalid enabled reminder settings refuse startup instead of looping unbounded.
     const reminders = parseAttentionReminderPolicy(process.env);
     ctx.supervision = new SupervisionService(ctx.db, ctx.dbPath, selectAttentionSender(process.env, osstackHome()), reminders ? { reminders } : {});
@@ -4534,11 +4540,12 @@ export async function startDaemon(
       server.listen(socketPath, () => {
       try { chmodSync(socketPath, 0o600); } catch { /* best effort */ }
 
+      const healthSender = ctx.guardedAutonomy === undefined ? opts.notificationSender : autonomySender;
       let healthPollPending = true;
       let guardedRecovery = refreshAutonomyHealthAndRecover(
         ctx,
         true,
-        opts.notificationSender,
+        healthSender,
       )
         .finally(() => {
           healthPollPending = false;
@@ -4573,7 +4580,7 @@ export async function startDaemon(
               guardedRecovery = refreshAutonomyHealthAndRecover(
                 ctx,
                 clock.jump_detected,
-                opts.notificationSender,
+                healthSender,
               )
                 .catch((error) => {
                   process.stderr.write(
@@ -4587,6 +4594,18 @@ export async function startDaemon(
                 });
             }, healthPollIntervalMs);
       healthMonitor?.unref();
+      let notificationMonitor: NodeJS.Timeout | undefined;
+      let pendingDrain: Promise<void> | undefined;
+      if (autonomySender !== undefined && healthSender === undefined) {
+        const drain = () => {
+          if (pendingDrain !== undefined) return;
+          pendingDrain = drainDaemonAutonomyNotifications(ctx, autonomySender)
+            .finally(() => { pendingDrain = undefined; });
+        };
+        drain();
+        notificationMonitor = setInterval(drain, healthPollIntervalMs);
+        notificationMonitor.unref();
+      }
       let shutdownPromise: Promise<void> | undefined;
       const shutdown = async (): Promise<void> => {
         checkpointClosed = true;
@@ -4598,6 +4617,7 @@ export async function startDaemon(
         process.off("SIGINT", onSig);
         try { stopUpdateChecker(); } catch { /* cleanup must continue */ }
         if (healthMonitor !== undefined) clearInterval(healthMonitor);
+        if (notificationMonitor !== undefined) clearInterval(notificationMonitor);
         shutdownPromise = (async () => {
           ctx.draining = true;
           ctx.workerLogAbort?.abort();
@@ -4636,6 +4656,7 @@ export async function startDaemon(
             ...loopCompletions,
             ...dailyCompletions,
             guardedRecovery,
+            pendingDrain,
             collaboratorStopped,
             ctx.engineering?.close(),
             ctx.contained?.close(),

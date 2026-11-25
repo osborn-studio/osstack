@@ -175,3 +175,11 @@ daemon 在 socket 清理、业务 DB 打开、恢复前取得独立 SQLite 文�
 - [后续开发总计划](../plans/2026-10-23-firstmate-remaining-master.md)
 
 本地通知每轮最多处理 20 项、等待预算 1 秒，关闭时取消并等待逻辑回执完成。回执写失败在下一次扫描恢复；这只保证本地按 delivery ID 幂等的 artifact，不代表公共消息送达。
+
+## Autonomy notices
+
+启用 `OSSTACK_ATTENTION=1` 后，Autonomy 通知使用同一个 `OSSTACK_ATTENTION_NOTIFY` 开关。选择 `local` 将通知写入 `attention-notifications/`。选择 `webhook` 将通知发送到 `OSSTACK_ATTENTION_WEBHOOK_URL`，并使用已配置的 `OSSTACK_ATTENTION_WEBHOOK_KEY`。
+
+`autonomy_notice` 的 `reason_code` 有五种：`awaiting_approval`、`escalated`、`deploy_frozen`、`rollback_failed` 和 `delivery_evidence_failed`。每次等待审批会产生两条通知，一条待决策通知和一条 Autonomy 通知。请在所有者自己的机器上签名。
+
+启用前，在服务使用的 home 上运行 `osstack autonomy health`，查看 `notification_outbox` 的待发送数量。启用后的首次启动会开始发送积压通知，每轮最多 50 条，无年龄限制。发送失败时按退避间隔重试。累计失败 5 次后，该条通知进入 `dead_letter`。
