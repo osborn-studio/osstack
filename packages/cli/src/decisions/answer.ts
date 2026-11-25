@@ -68,12 +68,18 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
     if (p.source === "hermes") {
       const approval = p.source_id.startsWith("approval:");
       if (!approval && !p.source_id.startsWith("clarify:")) return result("refused", "bad_request");
-      only(approval ? "choice" : "text");
+      if (approval) only("choice", "status");
+      else only("text");
+      const status = p.params.status;
+      if (status !== undefined && status !== "accepted" && status !== "rejected") return result("refused", "bad_request");
       const value = p.params[approval ? "choice" : "text"];
       if (p.answer !== (approval ? "choice" : "free_text") || !value?.trim()) return result("refused", "bad_request");
       // A producer can supply request payload fields. Authenticate router-owned
       // receipt metadata before treating any such field as a successful answer.
-      const digest = createHmac("sha256", p.credential).update(JSON.stringify([p.source_id, p.answer, value, p.source_revision, actor.principal_id, actor.client_session_id])).digest("hex");
+      const receiptFields = [p.source_id, p.answer, value, p.source_revision, actor.principal_id, actor.client_session_id];
+      // Accepted answers must still match receipts written before status was optional.
+      if (status === "rejected") receiptFields.push(status);
+      const digest = createHmac("sha256", p.credential).update(JSON.stringify(receiptFields)).digest("hex");
       return ports.db.transaction(() => {
         const prior = ports.db.prepare("SELECT payload_json FROM events WHERE type IN ('approval.requested','clarify.requested') AND json_extract(payload_json,'$.decisions_answer.answer_id')=? LIMIT 1").get(p.answer_id) as { payload_json: string } | undefined;
         if (prior) {
@@ -90,7 +96,7 @@ export async function answerDecision(ports: Ports, input: unknown): Promise<Deci
           .get(run.run_id, approval ? "approval.requested" : "clarify.requested", `$.${key}`, id) as { event_id: string; receipt: unknown } | undefined;
         if (!request) return result("not_answerable", "idempotency_unsupported", false, false, approval ? "approval.resolve" : "clarify.resolve");
         if (request.receipt !== null) return result("conflict", "answer_receipt_conflict");
-        ports.resolveHermes(approval ? "approval.resolve" : "clarify.resolve", { [key]: id, [approval ? "choice" : "answer"]: value, actor: actor.principal_id });
+        ports.resolveHermes(approval ? "approval.resolve" : "clarify.resolve", { [key]: id, [approval ? "choice" : "answer"]: value, actor: actor.principal_id, ...(status === "rejected" ? { status } : {}) });
         // Keep the producer's sequence intact. The existing request event can
         // carry receipt metadata; no source event is inserted or renumbered.
         ports.db.prepare("UPDATE events SET payload_json=json_set(payload_json,'$.decisions_answer',json(?)) WHERE event_id=?")

@@ -4,6 +4,7 @@ const HELP = `Usage: osstack decisions answer --source S --id ID --answer KIND [
         osstack decisions list [--scope ID] [--limit 1..100] [--cursor TOKEN] [--json]
 List pending decisions or answer one through its source command.
 Answer requires a credential, answer ID and the listed source revision.
+Hermes approvals default to accepted. Pass --param status=rejected to reject one.
 Use next_cursor to request the next page. Engineering credentials select readable Mission scopes.`;
 export async function handleDecisionsCommand(args: string[], io: {
   rpc: (method: string, params: unknown) => Promise<unknown>;

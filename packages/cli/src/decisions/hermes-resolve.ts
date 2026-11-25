@@ -9,8 +9,10 @@ export function resolveHermesDecision(db: Database.Database, method: "approval.r
   const id = params[key];
   const value = params[field];
   if (typeof id !== "string" || typeof value !== "string") throw Error("bad_request");
-  const status = approval ? "accepted" : "answered";
-  const result = { resolved: true, [key]: id, ...(approval ? { choice: value } : {}) };
+  const hasStatus = approval && Object.hasOwn(params, "status");
+  const status = hasStatus ? params.status : approval ? "accepted" : "answered";
+  if (hasStatus && status !== "accepted" && status !== "rejected") throw Error("bad_request");
+  const result = { resolved: true, [key]: id, ...(approval ? { choice: value } : {}), ...(hasStatus ? { status } : {}) };
   const lookup = db.prepare<[string], { status: string; value: string | null }>(
     `SELECT status, ${field} AS value FROM ${table} WHERE ${key}=?`,
   );

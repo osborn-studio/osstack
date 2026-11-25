@@ -43,6 +43,38 @@ for (const kind of ["approval", "clarify"] as const) {
       expect(changes()).toBe(before);
     });
 
+    if (approval) {
+      it.each(["accepted", "rejected"])("writes and replays explicit status %s", stated => {
+        const request = { ...params, status: stated };
+        const first = resolveHermesDecision(db, method, request);
+        expect(first).toStrictEqual({ ...result, status: stated });
+        const stored = row();
+        expect(stored).toMatchObject({ status: stated, choice: "no", resolved_at: expect.any(Number) });
+        const before = changes();
+        expect(resolveHermesDecision(db, method, request)).toStrictEqual(first);
+        const other = stated === "accepted" ? "rejected" : "accepted";
+        expect(() => resolveHermesDecision(db, method, { ...params, status: other })).toThrow(/^already_resolved$/);
+        if (stated === "accepted") expect(resolve()).toStrictEqual(result);
+        expect(row()).toStrictEqual(stored);
+        expect(changes()).toBe(before);
+      });
+
+      it.each(["timed_out", "", 1, "REJECTED"])("refuses invalid status %j before writing", invalid => {
+        const before = changes();
+        expect(() => resolveHermesDecision(db, method, { ...params, status: invalid })).toThrow(/^bad_request$/);
+        expect(row()).toMatchObject({ status: "pending", choice: null, resolved_at: null });
+        expect(changes()).toBe(before);
+      });
+    } else {
+      it("ignores the status key on a clarify resolution", () => {
+        expect(resolveHermesDecision(db, method, { ...params, status: "rejected" })).toStrictEqual(result);
+        expect(row()).toMatchObject({ status: "answered", answer: "no" });
+        const before = changes();
+        expect(resolve()).toStrictEqual(result);
+        expect(changes()).toBe(before);
+      });
+    }
+
     it.each([
       [status, "NO"], [status, null], ["timed_out", "no"], [approval ? "rejected" : "abandoned", "no"],
     ])("refuses stored status %s and value %s without a write", (priorStatus, priorValue) => {
