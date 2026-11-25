@@ -4,6 +4,15 @@ Baseline `5602b901`. This branch adds tests, model transitions and reproducible 
 
 ## Current acceptance snapshot
 
+**2026-11-25 rerun on current main (5-F node 1).** Base main `091b9cd5`; evidence head `f8569028`, which changes only the harness and adds `scripts/verify-bridge-phase5-properties.mjs`. Node v26.5.0, clean tracked tree.
+
+- Source mutants: [`2026-11-25-source-mutants.json`](2026-11-25-source-mutants.json). **20/20 killed** by the strict classifier (real AssertionError). That is the 19 §5.6 mutants, with the same names as the 2026-11-07 record, plus `no-adversarial-protected-path-finding`. The 20th mutant was added on main by `c5f6d843` for the 5-G v2 offline check, so it is not part of the 19. Every baseline exited 0, with no invalid, timeout, signal or spawn error, and every source was restored. Only one splice point had moved: `no-acknowledge-advance` now targets `acknowledgeRevision` (`acknowledgeAdvance(m, spec, kind)`). Six of the nine original target files changed since 2026-11-07, and all six were re-bound.
+- Property tests: [`2026-11-25-property-runs.json`](2026-11-25-property-runs.json). Both 10,000-run suites pass with seed 51007 and one worker, and the before and after HEAD and source hashes are identical. Coverage counts equal the 2026-11-07 run because the seed and generator are unchanged; the store, `contained-mission-revision.ts` and the lockfile under test did change.
+- Reproduce with `node scripts/verify-bridge-phase5-properties.mjs` and `node scripts/verify-bridge-phase5-mutations.mjs` (`OSSTACK_SCRATCH_ROOT` set). Raw logs stay in scratch, and the JSON records their hashes.
+- Not rerun here: TLC (model unchanged; see the coverage note in node 3) and the 5-G sandbox. The open fault-injection items in `gaps.md` are handled by node 2.
+
+The 2026-11-07 records below (`final-source-mutants.json`, `final-property-runs.json`) are kept as history.
+
 Final source-bound mutation rerun at `315e7fc49ed2bfa01321cd904a7c2ab04e8e115a`: all 19 mutants killed by actual assertion failures, all baselines pass, zero invalid/timeout/signal/spawn-error results. The unmodified strict harness ran each mutant separately and stopped on any non-kill; it exited zero. Node was v26.5.0. All tracked package/script SHA256 values match before/after and final source diff/status are clean. `final-source-mutants.json` binds the aggregate, raw evidence paths and manifest hashes; this supersedes historical mutation snapshots below for final-source coverage.
 
 Parent final `812` full acceptance: all 22 workspaces, 8,901 passed / 6 skipped; CLI 3,985 passed / 5 skipped. After journal fixes `cf6` + `dab`, only root verification JavaScript changed; Linux Node24 journal validation passed 220/220. Parent reports main `d89cd4a5` with #421 and #422 user-merged; their exact-head CI was green.
