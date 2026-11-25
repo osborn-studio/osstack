@@ -1,6 +1,6 @@
 # U3 T4: a production sender for the Autonomy notification outbox
 
-Status: design, waiting for the owner's decisions in §6. No code yet.
+Status: design accepted. The owner accepted all four recommendations in §6 on 2026-11-24.
 Plan: `docs/plans/2026-11-16-osstack-self-loop-upgrade.md`, U3 "需要改" item 6
 and the Autonomy row of the U3 table ("发件箱有，生产没接发送器").
 Owner direction (2026-11-24): use the existing attention sender channel.
@@ -139,3 +139,5 @@ Not in this node: T5 (CI pilot release source); any answer path from the chat.
    leaves them `pending` for the owner to inspect. Recommended: send the
    backlog if it is small (the owner decides after reading the count); no
    age rule in code.
+
+**Record (2026-11-24).** The owner accepted the recommended option for all four: the new notice kind `autonomy_notice`; the same switch, URL and key as the attention channel; `awaiting_approval` is sent from the outbox as well as by the decision notice; no age rule in code, the owner reads the pending count before enabling.
