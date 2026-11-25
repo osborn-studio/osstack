@@ -8,6 +8,7 @@ const HELP = `Usage: osstack decisions answer --source S --id ID --answer KIND [
 Create one test card. Use --wait to continue it after an answer.
 List pending decisions or answer one through its source command.
 Answer requires a credential, answer ID and the listed source revision.
+Hermes approvals default to accepted. Pass --param status=rejected to reject one.
 Use next_cursor to request the next page. Engineering credentials select readable Mission scopes.`;
 interface DecisionCommandIO {
   rpc: (method: string, params: unknown) => Promise<unknown>;

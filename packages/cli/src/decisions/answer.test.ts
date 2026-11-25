@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -81,6 +81,63 @@ for (const kind of ["approval", "clarify", "session"] as const) {
     expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
   });
 }
+it.each(["rejected", "accepted", "absent"])("binds the effective approval status to the receipt (%s)", async stated => {
+  const f = fixture();
+  f.hermes("approval");
+  const req = await f.request("hermes");
+  const choice = "yes";
+  const status = stated === "absent" ? "accepted" : stated;
+  const params = stated === "absent" ? { choice } : { choice, status };
+  expect(await f.answer({ ...req, params })).toMatchObject({
+    outcome: "applied", replay: false, current: { state: status, item: null },
+  });
+  expect(f.resolveHermes).toHaveBeenCalledWith("approval.resolve", {
+    approval_id: "a", choice, actor: f.principal.principal_id, ...(status === "rejected" ? { status } : {}),
+  });
+  expect(f.db.prepare("SELECT status, choice FROM approvals").get()).toEqual({ status, choice });
+  expect(f.db.prepare("SELECT json_extract(payload_json,'$.decisions_answer.answer_id') FROM events WHERE event_id='request'")
+    .pluck().get()).toBe(req.answer_id);
+  expect((await f.list()).items).toEqual([]);
+  const before = f.db.prepare("SELECT total_changes()").pluck().get();
+  const rejected = { choice, status: "rejected" };
+  expect(await f.answer({ ...req, params: status === "rejected" ? rejected : { choice } })).toMatchObject({
+    outcome: "applied", replay: true, current: { state: status, item: null },
+  });
+  expect(await f.answer({ ...req, params: status === "rejected" ? { choice } : rejected })).toMatchObject({
+    outcome: "conflict", code: "answer_id_conflict",
+  });
+  expect(f.db.prepare("SELECT total_changes()").pluck().get()).toBe(before);
+  expect(f.resolveHermes).toHaveBeenCalledTimes(1);
+});
+
+it.each(["approval", "clarify"] as const)("refuses an invalid %s status before writing a receipt", async kind => {
+  const f = fixture();
+  f.hermes(kind);
+  const req = await f.request("hermes");
+  const params = kind === "approval" ? { choice: "yes", status: "timed_out" } : { text: "yes", status: "accepted" };
+  const before = f.db.prepare("SELECT total_changes()").pluck().get();
+  expect(await f.answer({ ...req, params })).toMatchObject({ outcome: "refused", code: "bad_request", current: { state: "pending" } });
+  expect(f.resolveHermes).not.toHaveBeenCalled();
+  expect(f.db.prepare("SELECT json_extract(payload_json,'$.decisions_answer') FROM events WHERE event_id='request'").pluck().get()).toBeNull();
+  expect(f.db.prepare("SELECT total_changes()").pluck().get()).toBe(before);
+});
+
+it("replays an approval receipt written with the original digest", async () => {
+  const f = fixture();
+  f.hermes("approval");
+  const req = await f.request("hermes");
+  const choice = "no";
+  const digest = createHmac("sha256", req.credential).update(JSON.stringify([
+    req.source_id, req.answer, choice, req.source_revision, f.principal.principal_id, f.principal.client_session_id,
+  ])).digest("hex");
+  f.db.prepare("UPDATE approvals SET status='accepted', choice=?, resolved_at=42 WHERE approval_id='a'").run(choice);
+  f.db.prepare("UPDATE events SET payload_json=json_set(payload_json,'$.decisions_answer',json(?)) WHERE event_id='request'")
+    .run(JSON.stringify({ digest, answer_id: req.answer_id, source_id: req.source_id, actor: f.principal.principal_id, client_session_id: f.principal.client_session_id }));
+  const before = f.db.prepare("SELECT total_changes()").pluck().get();
+  expect(await f.answer({ ...req, params: { choice } })).toMatchObject({ outcome: "applied", replay: true, current: { state: "accepted" } });
+  expect(f.db.prepare("SELECT total_changes()").pluck().get()).toBe(before);
+});
+
 it("requires the original Hermes answer_id to replay the same answer", async () => {
   const f = fixture();
   f.hermes("approval");

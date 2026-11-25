@@ -21,7 +21,8 @@ const routes = [
   ["ci_repair", "approve_ci_repair"], ["ci_repair", "abandon"],
   ["hermes", "choice"], ["hermes", "free_text"], ["session", "free_text"], ["probe", "blue"],
 ] as const;
-type Route = typeof routes[number];
+const rejectedApproval = ["hermes", "choice", "rejected"] as const;
+type Route = typeof routes[number] | typeof rejectedApproval;
 type Point = "P1" | "P2" | "P3" | "P4";
 type Db = ReturnType<typeof openDb>;
 const credential = "c".repeat(32);
@@ -201,9 +202,9 @@ function eventCounts(db: Db, [source]: Route) {
     "attention_receipt_resolutions", "events"] : source === "hermes" ? ["events"] : ["engineering_contained_events"];
   return tables.map(table => count(db, table));
 }
-function parameters(answer: string): Record<string, string> {
+function parameters(answer: string, status?: "rejected"): Record<string, string> {
   if (answer === "approve_ci_repair") return { candidate };
-  if (answer === "choice") return { choice: "yes" };
+  if (answer === "choice") return status ? { choice: "yes", status } : { choice: "yes" };
   if (answer === "free_text") return { text: "answer" };
   return {};
 }
@@ -218,7 +219,7 @@ async function interrupt(root: string, route: Route, point: Point) {
     const item = page.items[0]!;
     expect(item.source).toBe(source);
     expect(item.allowed_answers).toContain(answer);
-    const request = { credential, source, answer, params: parameters(answer), answer_id: "key:1",
+    const request = { credential, source, answer, params: parameters(answer, route[2]), answer_id: "key:1",
       source_id: item.source_id, source_revision: item.source_revision! };
     const before = eventCounts(router.db, route);
     installFault(router.db, route, point);
@@ -276,6 +277,7 @@ async function scenario(route: Route, point: Point, retries: number) {
         // The guide requires a stale revision to be refused before a new admission.
         // P1 and rolled-back P4 preserve the listed revision, so the first retry must be admitted.
         expect(result).toMatchObject({ accepted: true, code: null, replay: !unapplied || attempt > 0 });
+        if (route[2] === "rejected") expect(result.current.state).toBe("rejected");
         if (source === "probe") {
           expect(result.outcome).toBe("applied");
           expect(db.prepare("SELECT revision, state, answer FROM decision_probes").all()).toEqual([
@@ -317,7 +319,7 @@ async function scenario(route: Route, point: Point, retries: number) {
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
 
-for (const route of routes) {
+for (const route of [...routes, rejectedApproval]) {
   describe(route.join(" / "), () => {
     for (const point of points(route)) it(point, () => scenario(route, point, 2));
   });
