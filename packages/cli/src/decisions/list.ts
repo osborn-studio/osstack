@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { REFRESHABLE_STOP_REASONS, type DecisionQueries, type DecisionRow, type EngineeringPrincipal } from "@osstack/core";
+import { PROBE_COLOURS, REFRESHABLE_STOP_REASONS, type DecisionQueries, type DecisionRow, type EngineeringPrincipal } from "@osstack/core";
 import { DecisionSource, DecisionsListParams, DecisionsListResult, PendingDecision, SessionDecision } from "@osstack/protocol";
 import { redactBridge } from "../contained-mission-redact.js";
 
@@ -107,6 +107,10 @@ export function decisionItem(source: DecisionSource, row: DecisionRow): PendingD
     case "hermes":
       allowed_answers = [row.kind === "approval" ? "choice" : "free_text"];
       answer_command = row.kind === "approval" ? command("approval.resolve", "approval_id", "choice") : command("clarify.resolve", "clarify_id", "answer");
+      break;
+    case "probe":
+      allowed_answers = [...PROBE_COLOURS];
+      answer_command = command("decisions.answer", "source", "source_id", "answer", "answer_id", "source_revision");
       break;
     case "loop":
       if (row.kind === "loop") description = loopReportSummary(row.details_json, description);

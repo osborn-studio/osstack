@@ -132,4 +132,4 @@ export {
 } from "./behavior-capability.js";
 
 export { MissionDecideRequest } from "./mission-decide.js";
-export { DecisionSource, PendingDecision, DecisionsListParams, DecisionsListResult, DecisionsAnswerParams, DecisionsAnswerResult } from "./decisions.js";
+export { DecisionSource, PendingDecision, DecisionsListParams, DecisionsListResult, DecisionsAnswerParams, DecisionsAnswerResult, DecisionsTryCreateParams, DecisionsTryStatusParams, DecisionsTryContinueParams, DecisionsTryResult } from "./decisions.js";

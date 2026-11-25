@@ -1,3 +1,4 @@
+import { PROBE_SUMMARY } from "./decision-probes.js";
 import { externalDecisionItemId } from "./external-decision-id.js";
 import type Database from "better-sqlite3";
 
@@ -25,7 +26,7 @@ export interface DecisionRow {
  * migrate, refresh a projection, or read a repository. */
 export class DecisionQueries {
   readonly externalDecisionItemId = externalDecisionItemId;
-  constructor(readonly db: Database.Database) {}
+  constructor(readonly db: Database.Database, private readonly now: () => number = Date.now) {}
   session(q: DecisionQuery): DecisionRow[] {
     // created_at is projection time, not the time the Session entered the wait.
     return this.rows(`SELECT item_id id,scope_id,NULL waiting_since,CAST(revision AS TEXT)||':'||content_hash revision,
@@ -119,6 +120,13 @@ export class DecisionQueries {
         AND (? IS NULL OR EXISTS(SELECT 1 FROM attention_scopes s WHERE s.task_id=c.task_id AND s.scope_id=?))
       ) ORDER BY id LIMIT ?`, q.after, q.scope_id ?? null, q.scope_id ?? null,
       q.after, q.scope_id ?? null, q.scope_id ?? null, q.limit);
+  }
+  probe(q: DecisionQuery): DecisionRow[] {
+    if (q.scope_id !== undefined) return [];
+    return this.rows(`SELECT probe_id id,NULL scope_id,created_at waiting_since,CAST(revision AS TEXT) revision,
+      ? summary,state,NULL reason,'probe' kind,'{}' details_json FROM decision_probes
+      WHERE state='pending' AND expires_at>? AND probe_id>${q.inclusive ? "=" : ""}? ORDER BY probe_id LIMIT ?`,
+      PROBE_SUMMARY, this.now(), q.after, q.limit);
   }
   private scopeForTask(task: string): string {
     // Ambiguous or unbound local sources have no single scope. An explicit

@@ -54,7 +54,8 @@
                     "revision_chain",
                     "autonomy",
                     "hermes",
-                    "loop"
+                    "loop",
+                    "probe"
                   ]
                 },
                 "source_id": {

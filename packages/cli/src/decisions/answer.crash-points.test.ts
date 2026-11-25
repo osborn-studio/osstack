@@ -3,7 +3,7 @@ import { copyFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   appendEvent, AttentionActions, AttentionStore, ContainedMissionStore, createScratchDirSync,
-  DecisionQueries, openDb, SessionRepository,
+  DecisionProbes, DecisionQueries, openDb, SessionRepository,
 } from "@osstack/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ContainedMissionHost } from "../contained-mission-host.js";
@@ -19,7 +19,7 @@ import { listDecisions } from "./list.js";
 const routes = [
   ["contained_mission", "abandon"], ["contained_mission", "extra_repair"],
   ["ci_repair", "approve_ci_repair"], ["ci_repair", "abandon"],
-  ["hermes", "choice"], ["hermes", "free_text"], ["session", "free_text"],
+  ["hermes", "choice"], ["hermes", "free_text"], ["session", "free_text"], ["probe", "blue"],
 ] as const;
 type Route = typeof routes[number];
 type Point = "P1" | "P2" | "P3" | "P4";
@@ -58,7 +58,9 @@ function seed(root: string, [source, answer]: Route) {
       { ...principal, credential_sha256: createHash("sha256").update(credential).digest("hex") },
     ] }), { mode: 0o600 });
 
-    if (source === "hermes") {
+    if (source === "probe") {
+      new DecisionProbes(db).create({ created_by: principal.principal_id, now: Date.now() });
+    } else if (source === "hermes") {
       const approval = answer === "choice";
       appendEvent(db, path, { event_id: "request", run_id: "r", session_id: "s", seq: 0, created_at: 1, terminal: false,
         type: approval ? "approval.requested" : "clarify.requested",
@@ -170,8 +172,9 @@ function openRouter(root: string, point?: Point) {
 }
 
 function installFault(db: Db, [source, answer]: Route, point: Point) {
-  if (point === "P2" && source === "hermes") {
-    // The router owns this outer transaction. Drop its return value immediately AFTER SQLite commits.
+  if (point === "P1" && source === "probe") db.transaction = death;
+  if (point === "P2" && (source === "hermes" || source === "probe")) {
+    // Drop the answer transaction’s return value immediately after SQLite commits.
     const transaction = db.transaction.bind(db);
     db.transaction = fn => {
       const tx = transaction(fn);
@@ -183,6 +186,7 @@ function installFault(db: Db, [source, answer]: Route, point: Point) {
   }
   if (point !== "P4") return;
   const target = source === "session" ? "AFTER INSERT ON attention_actions"
+    : source === "probe" ? "AFTER UPDATE ON decision_probes"
     : source === "hermes" ? "AFTER UPDATE OF payload_json ON events WHEN json_type(NEW.payload_json,'$.decisions_answer')='object'"
     : `AFTER INSERT ON engineering_contained_events WHEN NEW.kind='${answer === "abandon" ? "decision_result"
       : answer === "approve_ci_repair" ? "ci_repair_answer" : "decision_accepted"}'`;
@@ -192,6 +196,7 @@ function installFault(db: Db, [source, answer]: Route, point: Point) {
 
 const count = (db: Db, table: string) => db.prepare<[], number>(`SELECT count(*) FROM ${table}`).pluck().get()!;
 function eventCounts(db: Db, [source]: Route) {
+  if (source === "probe") return db.prepare("SELECT * FROM decision_probes").all();
   const tables = source === "session" ? ["session_messages", "attention_actions", "attention_dispatch_phases",
     "attention_receipt_resolutions", "events"] : source === "hermes" ? ["events"] : ["engineering_contained_events"];
   return tables.map(table => count(db, table));
@@ -242,8 +247,11 @@ async function scenario(route: Route, point: Point, retries: number) {
         }
       }
 
+      const effectCount = () => source === "probe"
+        ? db.prepare("SELECT count(*) FROM decision_probes WHERE state <> 'pending'").pluck().get()
+        : count(db, "observed_effects");
       const unapplied = point === "P1" || point === "P4";
-      expect(count(db, "observed_effects")).toBe(unapplied ? 0 : 1);
+      expect(effectCount()).toBe(unapplied ? 0 : 1);
       if (unapplied) {
         expect(pending?.source_revision).toBe(request.source_revision);
         expect(eventCounts(db, route)).toEqual(before);
@@ -268,6 +276,12 @@ async function scenario(route: Route, point: Point, retries: number) {
         // The guide requires a stale revision to be refused before a new admission.
         // P1 and rolled-back P4 preserve the listed revision, so the first retry must be admitted.
         expect(result).toMatchObject({ accepted: true, code: null, replay: !unapplied || attempt > 0 });
+        if (source === "probe") {
+          expect(result.outcome).toBe("applied");
+          expect(db.prepare("SELECT revision, state, answer FROM decision_probes").all()).toEqual([
+            { revision: Number(request.source_revision) + 1, state: "answered", answer },
+          ]);
+        }
         if (point === "P3") {
           expect(result.outcome).toBe("unknown");
           expect(eventCounts(db, route)).toEqual(receiptCounts);
@@ -276,23 +290,29 @@ async function scenario(route: Route, point: Point, retries: number) {
         }
         if (firstOutcome !== undefined) expect(result.outcome).toBe(firstOutcome);
         firstOutcome = result.outcome;
-        expect(count(db, "observed_effects")).toBe(1);
+        expect(effectCount()).toBe(1);
       }
 
       const writes = () => db.prepare("SELECT total_changes()").pluck().get();
       const stable = writes();
       const otherAnswer = answer === "abandon" ? (source === "ci_repair" ? "approve_ci_repair" : "extra_repair")
-        : answer === "extra_repair" ? "abandon" : answer;
+        : answer === "extra_repair" ? "abandon" : source === "probe" ? "red" : answer;
       const params = otherAnswer !== answer ? parameters(otherAnswer) : answer === "approve_ci_repair" ? { candidate: "e".repeat(40) }
         : answer === "choice" ? { choice: "no" } : { text: "different" };
       expect(await send({ ...request, answer: otherAnswer, params })).toMatchObject({ outcome: "conflict", accepted: false });
       expect(writes()).toBe(stable);
+      if (source === "probe" && point === "P2") {
+        expect(await send({ ...request, answer_id: "key:2" })).toMatchObject({
+          outcome: "conflict", accepted: false, code: "already_resolved",
+        });
+        expect(writes()).toBe(stable);
+      }
       if (point === "P3") {
         expect(await send({ ...request, answer_id: "key:2" })).toMatchObject({ outcome: "stale", accepted: false,
           code: source === "session" ? "stale_item" : "stale_revision" });
         expect(writes()).toBe(stable);
       }
-      expect(count(db, "observed_effects")).toBe(1);
+      expect(effectCount()).toBe(1);
     } finally { db.close(); }
   } finally { rmSync(root, { recursive: true, force: true }); }
 }

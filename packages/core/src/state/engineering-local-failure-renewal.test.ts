@@ -290,8 +290,8 @@ it("upgrades a populated schema 63 with only one new trigger", () => {
   db.close();
   const migrated = openDb({ path });
   try {
-    expect(migrated.pragma("user_version", { simple: true })).toBe(64);
-    expect(objects(migrated).filter(o => o.name !== trigger)).toEqual(schema);
+    expect(migrated.pragma("user_version", { simple: true })).toBe(65);
+    expect(objects(migrated).filter(o => ![trigger, "decision_probes", "decision_probes_answer_id", "decision_probes_pending_expiry"].includes(o.name))).toEqual(schema);
     expect(objects(migrated).find(o => o.name === trigger)?.type).toBe("trigger");
     expect(rows(migrated)).toEqual(before);
   } finally { migrated.close(); }

@@ -17,8 +17,9 @@ import { launchdUpgradeBackend, managedPlist, removeAbandonedUpgradeSocket, upgr
  * not CURRENT_SCHEMA_VERSION: a new migration fails `schema-gates.test.ts` until
  * someone reviews it in lockHomeDatabase (tables it adds, any unsettled side
  * effect it can hold) and bumps this. Migration 64 adds one chain trigger, no table, column or row,
- * and holds no unsettled side effect. */
-export const UPGRADE_QUALIFIED_SCHEMA = 64;
+ * and holds no unsettled side effect.
+ * Migration 65 stores local test cards and holds no external effects. */
+export const UPGRADE_QUALIFIED_SCHEMA = 65;
 export interface NativeUpgradeInput { registry: string; registryDigest: string; artifact: string; artifactDigest: string; approvedPlanDigest: string }
 const pause = (signal: AbortSignal) => new Promise<void>((resolve,reject) => { signal.throwIfAborted(); const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); },50); const abort = () => { clearTimeout(timer); reject(Error('upgrade_cancelled')); }; signal.addEventListener('abort',abort,{once:true}); });
 /** Concrete opt-in managed launchd installation. Does not call npm, evaluate scripts or restore databases. */
@@ -164,6 +165,7 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       // 59 adds request and receipt metadata. Only the intake can own a process.
       // Hold once per unsettled intake, including after its request goes to awaiting_decision.
       // 60 registers a contained child. containedUpgradeHolds already counts its state, stop obligation and claim.
+      if(schema>=65)expected.push('decision_probes');
       if(schema>=63)expected.push('engineering_local_failure_recheck_runs');
       if(schema>=62)expected.push('engineering_local_failure_rechecks');
       if(schema>=60)expected.push('engineering_local_failure_dispatches');
@@ -186,6 +188,9 @@ export class ManagedNativeUpgradePort implements NativeUpgradePort {
       const lineageIndexes=['engineering_mission_lineage_parent','engineering_mission_lineage_origin'];
       const scanTriggers=['engineering_merger_scan_append_only','engineering_merger_scan_no_delete','engineering_merger_cycle_scan_required','engineering_merger_outcome_scan_required','engineering_merger_watermark_poll_monotonic'];
       const indexes = new Set((db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as {name:string}[]).map(r=>r.name));
+      const probeIndexes = ["decision_probes_answer_id", "decision_probes_pending_expiry"];
+      if (schema >= 65 && probeIndexes.some(name => !indexes.has(name))) throw Error("upgrade_schema_tables_missing");
+      if (schema < 65 && (tables.has("decision_probes") || probeIndexes.some(name => indexes.has(name)))) throw Error("upgrade_schema_unqualified");
       const scanColumns=[['engineering_merger_shadow_cycles','scan_id'],['engineering_merger_shadow_outcomes','scan_id'],['engineering_merger_shadow_watermarks','last_poll_at']] as const;
       const hasColumn=(table:string,column:string)=>tables.has(table)&&(db.prepare(`PRAGMA table_info(${table})`).all() as {name:string}[]).some(r=>r.name===column);
       const dispatchTriggers=['no_update','no_delete','no_replace','binding','review','actions','intake','exclusion'].map(suffix=>'engineering_local_failure_dispatch_'+suffix);

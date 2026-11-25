@@ -70,7 +70,7 @@ export function buildAttentionWebhookNotice(message: Parameters<AttentionSender>
     || (waiting && (decision !== undefined || reminder !== undefined || !/^verification-waiting:[a-f0-9]{32}$/.test(message.item_id)))) {
     throw new Error("attention_webhook_message_invalid");
   }
-  if (decision !== undefined && (!decision || !["session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop"].includes(decision.source)
+  if (decision !== undefined && (!decision || !["session", "contained_mission", "ci_repair", "revision_chain", "autonomy", "hermes", "loop", "probe"].includes(decision.source)
     || typeof decision.source_id !== "string" || decision.source_id.length > 256
     || typeof decision.requires_local_signature !== "boolean" || !/^decision:[a-f0-9]{32}$/.test(message.item_id))) {
     throw new Error("attention_webhook_message_invalid");

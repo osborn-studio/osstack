@@ -1,4 +1,4 @@
-The pending decisions list reads seven local sources through `decisions.list`.
+The pending decisions list reads eight local sources through `decisions.list`.
 Use `osstack decisions list [--scope ID] [--limit 1..100] [--cursor TOKEN] [--json]`.
 The command connects to an existing daemon. It does not start a daemon, answer a
 request, update a projection, or send a notification.
@@ -39,7 +39,7 @@ Without usable credentials these three sources report `permission_denied`.
 Without a configured engineering authority they report `source_unavailable`.
 Other sources keep their existing daemon-local read boundary.
 
-`--scope` filters all seven sources. Session items and Missions have direct
+`--scope` filters all eight sources. Session items and Missions have direct
 scope bindings. Autonomy, Hermes, and loop events use their persisted task's
 attention-scope binding. Unbound sources remain visible only in an unfiltered
 query. If a task has multiple scopes, its item has `scope_id: null`; an explicit
@@ -64,6 +64,7 @@ The waiting-time evidence is:
 | Autonomy | Latest transition into `awaiting_approval` from a different state; `occurred_at` seconds multiplied by 1000. | `packages/core/src/state/decision-queries.ts:69` | `packages/core/src/state/autonomy-runs.ts:306` |
 | Hermes approvals / clarifies | Durable `requested_at` seconds multiplied by 1000. The request event supplies this field. | `packages/core/src/state/decision-queries.ts:77` | `packages/core/src/state/run-store.ts:137`, `:158` |
 | Loop escalated | `loop.escalated` event `created_at` in ms; background cards use the latest `kanban_card_events.blocked` entry in seconds × 1000. | `packages/core/src/state/decision-queries.ts:88`, `:99` | `packages/loop/src/loop-engine.ts:1602`, `packages/cli/src/daemon.ts:2311`; cards: `packages/core/src/kanban/repository.ts:149`, `:76` |
+| Test card | The card’s `created_at` in ms. | `DecisionQueries.probe` | `DecisionProbes.create` |
 
 Missing Mission, chain, or Autonomy entry events also produce `null`; projection
 update timestamps are not substituted. Loop coverage includes events and blocked background-loop escalation cards
@@ -137,5 +138,30 @@ These boundaries also apply to callers on the local socket:
 | Loop escalation or blocked background card | `local_only` | Listed `cockpit retry` or `cockpit approve`; use the local terminal flow. No remote retry receipt is available. |
 | Session `risk_approval` / `task_authorization` | `local_only` | `attention answer` (RPC `attention.answer`) is the source command name. The current source rejects unsigned answers; this release adds no signed answer route. |
 
-These refusals never forward to a write command. No table, migration, or index is
-added. Native source commands remain the sole state authorities.
+These refusals never forward to a write command.
+Native source commands remain the sole state authorities.
+
+## 试跑 / Dry run
+
+Set `OSSTACK_ENGINEERING_CREDENTIAL` to a valid local credential. Create a
+test card and wait up to 120 seconds for its answer.
+
+```sh
+osstack decisions try --wait 120
+```
+
+In another terminal, run `osstack decisions list`. Use the printed answer
+command and replace `<red|green|blue>` with one colour. The waiting terminal
+prints `continued: you picked blue` if you choose blue. For separate steps,
+run `osstack decisions try`, `osstack decisions try status ID`, and, after the
+answer, `osstack decisions try continue ID`. With `--json --wait`, the command
+prints the card immediately and a second JSON record when the wait ends.
+A timeout ends only the wait.
+An unanswered card expires after one hour. Starting another trial during that
+hour reuses the pending card.
+
+This checks the serving daemon, the credential, the inbox and the answer path.
+Check the configured destination to verify delivery. With
+`OSSTACK_ATTENTION_NOTIFY=webhook`, a new card sends one real notice to the
+configured webhook. Enabled reminders can send a follow-up. The test card has
+its own table. It exercises no Mission, agent session or executor.

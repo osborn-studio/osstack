@@ -17,7 +17,8 @@
               "revision_chain",
               "autonomy",
               "hermes",
-              "loop"
+              "loop",
+              "probe"
             ]
           },
           "source_id": {
@@ -146,7 +147,8 @@
               "revision_chain",
               "autonomy",
               "hermes",
-              "loop"
+              "loop",
+              "probe"
             ]
           },
           "code": {
@@ -164,7 +166,7 @@
         ],
         "additionalProperties": false
       },
-      "maxItems": 7
+      "maxItems": 8
     },
     "next_cursor": {
       "anyOf": [
