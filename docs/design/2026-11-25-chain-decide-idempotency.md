@@ -1,6 +1,6 @@
 # U3 T6: a client key and revision for `mission.chain_decide`
 
-Status: design, waiting for the owner's decisions in §6. No code yet.
+Status: design accepted. The owner accepted all three recommendations in §6 on 2026-11-25.
 Plan: `docs/plans/2026-11-16-osstack-self-loop-upgrade.md`, U3 "需要改" item 3
 (client idempotency keys and expected revisions before forwarding) and the U3
 status row ("修订链决定没有客户端幂等键，统一入口不转发").
@@ -126,3 +126,5 @@ One PR, CLI only (the chain store already has the event append), estimated
    on, which breaks `osstack mission chain-decide` callers until they pass
    one. Recommended: keep it optional; the CLI command gains
    `--decision-id` and `--expected-revision`.
+
+**Record (2026-11-25).** The owner accepted the recommended option for all three: remote answers for `abandon`, `takeover` and `reconcile` on live chains; no second child cancel on replay, provided a test shows which existing recovery stops a child whose cancel was lost (otherwise stop and report); unkeyed calls keep today's behaviour and the CLI gains `--decision-id` and `--expected-revision`.
