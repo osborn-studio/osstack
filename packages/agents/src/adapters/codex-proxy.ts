@@ -265,59 +265,45 @@ interface GroupOptions {
   cwd: string; env: NodeJS.ProcessEnv; timeoutMs: number; graceMs: number; signal?: AbortSignal;
   onLaunched?: (launch: CodexProxyLaunch) => void;
 }
-const EXECUTOR_WATCHER_SCRIPT = '( trap "" TERM; IFS= read -r line <&3; [ "$line" = release ] && exit 0; kill -TERM 0; sleep "$0"; kill -KILL 0 ) & exec 3<&- "$@"';
-
-/** @internal */
-export async function runGroup(bin: string, args: string[], options: GroupOptions): Promise<Omit<CodexProxyRun, "patch">> {
-  // W13-E §4 D: on daemon death, fd 3 closes and the watcher stops its own group.
-  const child = spawn("/bin/sh", ["-c", EXECUTOR_WATCHER_SCRIPT, (options.graceMs / 1000).toFixed(3), bin, ...args], {
-    cwd: options.cwd, env: options.env, stdio: ["ignore", "pipe", "pipe", "pipe"], detached: true,
-  });
-  const watcher = child.stdio[3] as import("node:stream").Writable;
-  watcher.on("error", () => { /* The watcher may already have exited. */ });
-  // The four-descriptor spawn overload does not narrow the stdout and stderr types.
-  const stdout = child.stdout!; const stderr = child.stderr!;
+async function runGroup(bin: string, args: string[], options: GroupOptions): Promise<Omit<CodexProxyRun, "patch">> {
+  // detached: the child leads a new session and process group, so the group can be signalled and inspected as a whole.
+  const child = spawn(bin, args, { cwd: options.cwd, env: options.env, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const out = capture(); const err = capture();
-  stdout.on("data", (chunk: Buffer) => out.push(chunk)); stderr.on("data", (chunk: Buffer) => err.push(chunk));
-  try {
-    const spawned = await new Promise<number | Error>(resolve => {
-      child.once("spawn", () => resolve(child.pid!)); child.once("error", error => resolve(error));
-    });
-    if (spawned instanceof Error) throw Error(`codex_proxy_spawn_failed: ${spawned.message}`);
-    const launch = { pid: spawned, pgid: spawned, started_at: Date.now() };
-    const signals: NodeJS.Signals[] = [];
-    const kill = (signal: NodeJS.Signals) => { signals.push(signal); try { process.kill(-launch.pgid, signal); } catch { /* ESRCH: proven by processGroupEmpty below */ } };
-    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once("exit", (code, signal) => resolve({ code, signal })));
-    const closed = new Promise<void>(resolve => child.once("close", () => resolve()));
-    try { options.onLaunched?.(launch); } catch (error) {
-      // The host could not journal the launch: do not leave an unrecorded executor running.
-      kill("SIGTERM"); if (!(await waitEmpty(launch.pgid, options.graceMs))) { kill("SIGKILL"); await waitEmpty(launch.pgid, options.graceMs); }
-      stdout.destroy(); stderr.destroy();
-      throw error;
-    }
-    let timedOut = false; let cancelled = false;
-    const stop = () => { kill("SIGTERM"); setTimeout(() => { if (!processGroupEmpty(launch.pgid)) kill("SIGKILL"); }, options.graceMs).unref(); };
-    const timer = setTimeout(() => { timedOut = true; stop(); }, options.timeoutMs); timer.unref();
-    const onAbort = () => { cancelled = true; stop(); };
-    if (options.signal?.aborted) onAbort(); else options.signal?.addEventListener("abort", onAbort, { once: true });
-    // Wait for the leader's exit, not for its pipes: a descendant that inherited them could hold close open.
-    const exit = await exited;
-    watcher.end("release\n");
-    clearTimeout(timer); options.signal?.removeEventListener("abort", onAbort);
-    // The leader has exited; give remaining members a grace period, then kill and re-check the group.
-    let empty = await waitEmpty(launch.pgid, options.graceMs);
-    if (!empty) { kill("SIGTERM"); empty = await waitEmpty(launch.pgid, options.graceMs); }
-    if (!empty) { kill("SIGKILL"); empty = await waitEmpty(launch.pgid, options.graceMs); }
-    const drained = await Promise.race([closed.then(() => true), new Promise<boolean>(resolve => setTimeout(() => resolve(false), options.graceMs).unref())]);
-    if (!drained) { stdout.destroy(); stderr.destroy(); }
-    return {
-      launch, exit_code: exit.code, signal: exit.signal, timed_out: timedOut, cancelled,
-      ...(empty ? { stop: { stop_proof: "group_empty+sandbox_inherited" as const, pgid: launch.pgid, signals, confirmed_at: Date.now() } } : {}),
-      stdout: out.text(), stderr: err.text(), stdout_truncated: out.truncated() || (options.requireDrainedOutput === true && !stdout.readableEnded), stderr_truncated: err.truncated(),
-    };
-  } finally {
-    if (!watcher.writableEnded) watcher.end("release\n");
+  child.stdout.on("data", (chunk: Buffer) => out.push(chunk)); child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
+  const spawned = await new Promise<number | Error>(resolve => {
+    child.once("spawn", () => resolve(child.pid!)); child.once("error", error => resolve(error));
+  });
+  if (spawned instanceof Error) throw Error(`codex_proxy_spawn_failed: ${spawned.message}`);
+  const launch = { pid: spawned, pgid: spawned, started_at: Date.now() };
+  const signals: NodeJS.Signals[] = [];
+  const kill = (signal: NodeJS.Signals) => { signals.push(signal); try { process.kill(-launch.pgid, signal); } catch { /* ESRCH: proven by processGroupEmpty below */ } };
+  const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once("exit", (code, signal) => resolve({ code, signal })));
+  const closed = new Promise<void>(resolve => child.once("close", () => resolve()));
+  try { options.onLaunched?.(launch); } catch (error) {
+    // The host could not journal the launch: do not leave an unrecorded executor running.
+    kill("SIGTERM"); if (!(await waitEmpty(launch.pgid, options.graceMs))) { kill("SIGKILL"); await waitEmpty(launch.pgid, options.graceMs); }
+    child.stdout.destroy(); child.stderr.destroy();
+    throw error;
   }
+  let timedOut = false; let cancelled = false;
+  const stop = () => { kill("SIGTERM"); setTimeout(() => { if (!processGroupEmpty(launch.pgid)) kill("SIGKILL"); }, options.graceMs).unref(); };
+  const timer = setTimeout(() => { timedOut = true; stop(); }, options.timeoutMs); timer.unref();
+  const onAbort = () => { cancelled = true; stop(); };
+  if (options.signal?.aborted) onAbort(); else options.signal?.addEventListener("abort", onAbort, { once: true });
+  // Wait for the leader's exit, not for its pipes: a descendant that inherited them could hold close open.
+  const exit = await exited;
+  clearTimeout(timer); options.signal?.removeEventListener("abort", onAbort);
+  // The leader has exited; give remaining members a grace period, then kill and re-check the group.
+  let empty = await waitEmpty(launch.pgid, options.graceMs);
+  if (!empty) { kill("SIGTERM"); empty = await waitEmpty(launch.pgid, options.graceMs); }
+  if (!empty) { kill("SIGKILL"); empty = await waitEmpty(launch.pgid, options.graceMs); }
+  const drained = await Promise.race([closed.then(() => true), new Promise<boolean>(resolve => setTimeout(() => resolve(false), options.graceMs).unref())]);
+  if (!drained) { child.stdout.destroy(); child.stderr.destroy(); }
+  return {
+    launch, exit_code: exit.code, signal: exit.signal, timed_out: timedOut, cancelled,
+    ...(empty ? { stop: { stop_proof: "group_empty+sandbox_inherited" as const, pgid: launch.pgid, signals, confirmed_at: Date.now() } } : {}),
+    stdout: out.text(), stderr: err.text(), stdout_truncated: out.truncated() || (options.requireDrainedOutput === true && !child.stdout.readableEnded), stderr_truncated: err.truncated(),
+  };
 }
 async function waitEmpty(pgid: number, ms: number): Promise<boolean> {
   const deadline = Date.now() + ms;
