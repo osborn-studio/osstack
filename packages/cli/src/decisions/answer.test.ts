@@ -206,19 +206,46 @@ it("autonomy and loop stay local and never call an execution port", async () => 
   expect(await f.answer({ ...await f.request("autonomy"), answer: "reject" })).toMatchObject({ local_command: "autonomy reject" });
   expect(f.forward).not.toHaveBeenCalled(); expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
 });
-it("chain decisions refuse unsafe remote retries; grant revisions stay signed and stale versions are rejected", async () => {
+it("forwards keyed chain decisions with the listed revision and keeps grants local", async () => {
   const f = fixture(); const store = new ContainedMissionStore(f.store, f.owner);
   const root = store.authorize(f.principal, { scope_id: f.scope, spec: { goal: "test" }, claim: { repo_identity: "r", branch: "b", worktree_identity: "w" } }, 1000);
   const chains = new RevisionChainStore(f.store, f.owner);
   const chain = chains.createLiveChain({ root_mission_id: root.mission_id, repository: "owner/repo", pr_number: 1, branch: "b", base_ref: "main", published_head: "a".repeat(40), published_base: "b".repeat(40), trace_id: "trace", grant: { rounds: 2 } }, 1000);
   chains.applyDecision(chain.chain_id, chain.revision, { kind: "transition", to: "ready_for_human", reason: "all_participating_approved", from_head: chain.published_head, from_base: chain.published_base, head: chain.published_head, base: chain.published_base, review_ids: [], discards: [] }, 3000);
   const req = await f.request("revision_chain"); const before = f.db.prepare("SELECT total_changes() n").get();
-  for (const answer of ["abandon", "takeover", "reconcile"]) expect(await f.answer({ ...req, answer })).toMatchObject({ outcome: "not_answerable", code: "idempotency_unsupported", local_command: "mission chain-decide" });
+  for (const answer of ["abandon", "takeover", "reconcile"]) {
+    f.forward.mockResolvedValueOnce({ replay: true });
+    expect(await f.answer({ ...req, answer })).toMatchObject({ accepted: true, outcome: "applied", replay: true });
+    expect(f.forward).toHaveBeenLastCalledWith("mission.chain_decide", { credential: req.credential, chain_id: chain.chain_id,
+      decision: answer, decision_id: req.answer_id, expected_revision: Number(req.source_revision) });
+  }
+  f.forward.mockRejectedValueOnce(Error("stale_revision"));
   expect(await f.answer({ ...req, source_revision: "1" })).toMatchObject({ outcome: "stale" });
+  f.forward.mockClear();
+  for (const revision of ["0", "1.5", "9007199254740992"]) {
+    expect(await f.answer({ ...req, source_revision: revision })).toMatchObject({ outcome: "stale", code: "stale_revision" });
+  }
+  expect(await f.answer({ ...req, params: { unexpected: "value" } })).toMatchObject({ code: "bad_request" });
   expect(await f.answer({ ...req, answer: "grant_revisions" })).toMatchObject({ outcome: "local_only", local_command: "mission grant-revisions" });
   f.principal.write_scopes = []; f.writeAuthority();
   expect(await f.answer(req)).toMatchObject({ code: "permission_denied" });
   expect(f.forward).not.toHaveBeenCalled(); expect(f.db.prepare("SELECT total_changes() n").get()).toEqual(before);
+});
+
+it("keeps a listed shadow chain unanswerable", async () => {
+  const f = fixture();
+  const store = new ContainedMissionStore(f.store, f.owner);
+  const root = store.authorize(f.principal, { scope_id: f.scope, spec: { goal: "test" },
+    claim: { repo_identity: "r", branch: "b", worktree_identity: "w" } }, 1000);
+  const chains = new RevisionChainStore(f.store, f.owner);
+  const chain = chains.createShadowChain({ root_mission_id: root.mission_id, repository: "owner/repo", pr_number: 1, branch: "b",
+    base_ref: "main", published_head: "a".repeat(40), published_base: "b".repeat(40), trace_id: "trace" }, 1000);
+  chains.applyDecision(chain.chain_id, chain.revision, { kind: "transition", to: "ready_for_human", reason: "all_participating_approved",
+    from_head: chain.published_head, from_base: chain.published_base, head: chain.published_head, base: chain.published_base,
+    review_ids: [], discards: [] }, 2000);
+  const result = await f.answer({ ...await f.request("revision_chain"), answer: "abandon" });
+  expect(result).toMatchObject({ accepted: false, outcome: "not_answerable", current: { item: { allowed_answers: [] } } });
+  expect(f.forward).not.toHaveBeenCalled();
 });
 
 it("keeps a source early acknowledgement as accepted rather than claiming applied", async () => {

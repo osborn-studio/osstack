@@ -220,7 +220,7 @@ it('limits the V2 signer, switch and forwarded methods to their owners', () => {
       if (file === 'decisions/answer.ts') {
         expect([...text.matchAll(/ports\.forward\(([^)]+)\)/g)].map(m => m[1])).toEqual(['method, params']);
         const assignments = [...text.matchAll(/\bmethod = ([^;]+);/g)].map(m => m[1]);
-        expect(assignments).toEqual(['"attention.answer"', 'ci ? "mission.approve_ci_repair" : "mission.decide"']);
+        expect(assignments).toEqual(['"attention.answer"', '"mission.chain_decide"', 'ci ? "mission.approve_ci_repair" : "mission.decide"']);
       }
     }
   }

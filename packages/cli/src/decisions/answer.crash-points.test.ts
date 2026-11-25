@@ -3,9 +3,10 @@ import { copyFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   appendEvent, AttentionActions, AttentionStore, ContainedMissionStore, createScratchDirSync,
-  DecisionProbes, DecisionQueries, openDb, SessionRepository,
+  DecisionProbes, DecisionQueries, openDb, RevisionChainStore, SessionRepository,
 } from "@osstack/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createGrantMissionView, RevisionGrantService } from "../contained-mission-grant.js";
 import type { ContainedMissionHost } from "../contained-mission-host.js";
 import { ContainedMissionService } from "../contained-mission-rpc.js";
 import {
@@ -20,6 +21,7 @@ const routes = [
   ["contained_mission", "abandon"], ["contained_mission", "extra_repair"],
   ["ci_repair", "approve_ci_repair"], ["ci_repair", "abandon"],
   ["hermes", "choice"], ["hermes", "free_text"], ["session", "free_text"], ["probe", "blue"],
+  ["revision_chain", "abandon"], ["revision_chain", "reconcile"],
 ] as const;
 const rejectedApproval = ["hermes", "choice", "rejected"] as const;
 type Route = typeof routes[number] | typeof rejectedApproval;
@@ -28,7 +30,7 @@ type Db = ReturnType<typeof openDb>;
 const credential = "c".repeat(32);
 const candidate = "d".repeat(40);
 const points = ([source, answer]: Route): Point[] =>
-  source === "session" || answer === "extra_repair" ? ["P1", "P2", "P3", "P4"] : ["P1", "P2", "P4"];
+  source === "session" || answer === "extra_repair" || answer === "reconcile" ? ["P1", "P2", "P3", "P4"] : ["P1", "P2", "P4"];
 
 let template: string;
 beforeAll(() => {
@@ -87,6 +89,22 @@ function seed(root: string, [source, answer]: Route) {
             pr: 1, check_run_id: 2, base: "b".repeat(40) } } : {}) };
       let m = store.authorize(principal, { scope_id: scope, spec,
         claim: { repo_identity: "repo", branch: spec.branch, worktree_identity: "worktree" } }, 1);
+      if (source === "revision_chain") {
+        const chains = new RevisionChainStore(attention, owner);
+        const chain = chains.createLiveChain({ root_mission_id: m.mission_id, repository: "owner/repo", pr_number: 1,
+          branch: spec.branch, base_ref: "main", published_head: spec.start_commit, published_base: "b".repeat(40),
+          trace_id: "trace", grant: { rounds: 2 } }, 1);
+        const reserved = chains.reserve(chain.chain_id, chain.revision, { head: chain.published_head,
+          review_ids: [1], feedback_digest: "d".repeat(64) }, 2);
+        const child = store.authorize(principal, { scope_id: scope, spec: { goal: "child" },
+          claim: { repo_identity: "repo", branch: "child", worktree_identity: "child" } }, 2);
+        const dispatched = chains.dispatch(chain.chain_id, reserved.chain.revision, chain.published_head, child.mission_id, 2).chain;
+        const { intent } = chains.recordIntent(chain.chain_id, dispatched.revision, { kind: "push", branch: chain.branch,
+          expected_old_head: chain.published_head, new_head: candidate, expected_base_sha: chain.published_base,
+          child_mission_id: child.mission_id }, 2);
+        chains.settleIntent(intent.intent_id, "uncertain", 2);
+        return;
+      }
       const step = (to: typeof m.state, extra: Partial<Parameters<typeof store.transition>[1]> = {}) => {
         m = store.transition(m.mission_id, { if_revision: m.revision, to, event: { kind: to, payload: {} }, ...extra }, 2);
       };
@@ -109,7 +127,7 @@ function seed(root: string, [source, answer]: Route) {
 
 function death(): never { throw Error("injected_death"); }
 
-function openRouter(root: string, point?: Point) {
+async function openRouter(root: string, point?: Point) {
   const path = join(root, "state.db");
   const db = openDb({ path });
   db.pragma("synchronous=FULL");
@@ -143,7 +161,20 @@ function openRouter(root: string, point?: Point) {
   const host = { store, runner, isBusy: () => false,
     decide: (_actor: unknown, id: string, decision: IdentifiedContainedDecision) => runner.decide(id, decision),
   } as unknown as ContainedMissionHost;
-  const missions = new ContainedMissionService({ host, access, draining: () => false, ackMs: 1,
+  const chains = new RevisionChainStore(attention, owner);
+  const grants = new RevisionGrantService({ chains, missions: await createGrantMissionView(store), access,
+    registry: { repository: "owner/repo", publisher: [] }, readPr: unexpected, compare: unexpected,
+    protectedSetDigest: unexpected, loadIssuer: unexpected, enabled: () => true, now: Date.now,
+    cancelChild: async () => { record("cancel"); },
+    reconcileReceipt: async chain => {
+      record("read");
+      if (point === "P3") death();
+      const intent = chains.intents(chain.chain_id).find(i => i.kind === "push" && i.state === "uncertain")!;
+      chains.settleIntent(intent.intent_id, "confirmed", Date.now());
+      return { settled: true };
+    },
+  });
+  const missions = new ContainedMissionService({ grants, host, access, draining: () => false, ackMs: 1,
     githubCi: { start: () => {}, stop: async () => {} } });
   const forward = async (method: string, params: Record<string, unknown>) => {
     if (point === "P1") death();
@@ -174,14 +205,15 @@ function openRouter(root: string, point?: Point) {
 
 function installFault(db: Db, [source, answer]: Route, point: Point) {
   if (point === "P1" && source === "probe") db.transaction = death;
-  if (point === "P2" && (source === "hermes" || source === "probe")) {
+  if (point === "P2" && (source === "hermes" || source === "probe" || source === "revision_chain")) {
     // Drop the answer transaction’s return value immediately after SQLite commits.
     const transaction = db.transaction.bind(db);
     db.transaction = fn => {
       const tx = transaction(fn);
       return Object.assign(tx.bind(null), tx, { immediate: (...args: Parameters<typeof tx.immediate>) => {
-        tx.immediate(...args);
-        death();
+        const value = tx.immediate(...args);
+        if (!db.inTransaction) death();
+        return value;
       } });
     };
   }
@@ -189,6 +221,7 @@ function installFault(db: Db, [source, answer]: Route, point: Point) {
   const target = source === "session" ? "AFTER INSERT ON attention_actions"
     : source === "probe" ? "AFTER UPDATE ON decision_probes"
     : source === "hermes" ? "AFTER UPDATE OF payload_json ON events WHEN json_type(NEW.payload_json,'$.decisions_answer')='object'"
+    : source === "revision_chain" ? `AFTER INSERT ON engineering_revision_chain_events WHEN NEW.kind='${answer === "abandon" ? "chain_answer_accepted" : "chain_answer_effect_started"}'`
     : `AFTER INSERT ON engineering_contained_events WHEN NEW.kind='${answer === "abandon" ? "decision_result"
       : answer === "approve_ci_repair" ? "ci_repair_answer" : "decision_accepted"}'`;
   // TEMP scopes the fault to this connection. All prior writes in admission must roll back.
@@ -199,7 +232,8 @@ const count = (db: Db, table: string) => db.prepare<[], number>(`SELECT count(*)
 function eventCounts(db: Db, [source]: Route) {
   if (source === "probe") return db.prepare("SELECT * FROM decision_probes").all();
   const tables = source === "session" ? ["session_messages", "attention_actions", "attention_dispatch_phases",
-    "attention_receipt_resolutions", "events"] : source === "hermes" ? ["events"] : ["engineering_contained_events"];
+    "attention_receipt_resolutions", "events"] : source === "hermes" ? ["events"]
+    : source === "revision_chain" ? ["engineering_revision_chain_events"] : ["engineering_contained_events"];
   return tables.map(table => count(db, table));
 }
 function parameters(answer: string, status?: "rejected"): Record<string, string> {
@@ -211,7 +245,7 @@ function parameters(answer: string, status?: "rejected"): Record<string, string>
 
 async function interrupt(root: string, route: Route, point: Point) {
   const [source, answer] = route;
-  const router = openRouter(root, point);
+  const router = await openRouter(root, point);
   try {
     const page = await router.list();
     expect(page.failures).toEqual([]);
@@ -234,7 +268,7 @@ async function scenario(route: Route, point: Point, retries: number) {
   try {
     seed(root, route);
     const { request, before } = await interrupt(root, route, point);
-    const { db, list, answer: send } = openRouter(root);
+    const { db, list, answer: send } = await openRouter(root);
     try {
       const page = await list();
       expect(page.failures).toEqual([]);
@@ -252,7 +286,13 @@ async function scenario(route: Route, point: Point, retries: number) {
         ? db.prepare("SELECT count(*) FROM decision_probes WHERE state <> 'pending'").pluck().get()
         : count(db, "observed_effects");
       const unapplied = point === "P1" || point === "P4";
-      expect(effectCount()).toBe(unapplied ? 0 : 1);
+      const interruptedAdmission = source === "revision_chain" && point === "P2";
+      const expectedEffects = interruptedAdmission ? 0 : 1;
+      expect(effectCount()).toBe(unapplied ? 0 : expectedEffects);
+      if (source === "revision_chain" && (point === "P2" || point === "P3")) {
+        const events = db.prepare("SELECT kind FROM engineering_revision_chain_events WHERE kind GLOB 'chain_answer_*' ORDER BY seq").pluck().all();
+        expect(events).toEqual(answer === "abandon" ? ["chain_answer_accepted"] : ["chain_answer_accepted", "chain_answer_effect_started"]);
+      }
       if (unapplied) {
         expect(pending?.source_revision).toBe(request.source_revision);
         expect(eventCounts(db, route)).toEqual(before);
@@ -284,7 +324,7 @@ async function scenario(route: Route, point: Point, retries: number) {
             { revision: Number(request.source_revision) + 1, state: "answered", answer },
           ]);
         }
-        if (point === "P3") {
+        if (point === "P3" || interruptedAdmission) {
           expect(result.outcome).toBe("unknown");
           expect(eventCounts(db, route)).toEqual(receiptCounts);
         } else {
@@ -292,12 +332,12 @@ async function scenario(route: Route, point: Point, retries: number) {
         }
         if (firstOutcome !== undefined) expect(result.outcome).toBe(firstOutcome);
         firstOutcome = result.outcome;
-        expect(effectCount()).toBe(1);
+        expect(effectCount()).toBe(expectedEffects);
       }
 
       const writes = () => db.prepare("SELECT total_changes()").pluck().get();
       const stable = writes();
-      const otherAnswer = answer === "abandon" ? (source === "ci_repair" ? "approve_ci_repair" : "extra_repair")
+      const otherAnswer = source === "revision_chain" ? "takeover" : answer === "abandon" ? (source === "ci_repair" ? "approve_ci_repair" : "extra_repair")
         : answer === "extra_repair" ? "abandon" : source === "probe" ? "red" : answer;
       const params = otherAnswer !== answer ? parameters(otherAnswer) : answer === "approve_ci_repair" ? { candidate: "e".repeat(40) }
         : answer === "choice" ? { choice: "no" } : { text: "different" };
@@ -310,11 +350,13 @@ async function scenario(route: Route, point: Point, retries: number) {
         expect(writes()).toBe(stable);
       }
       if (point === "P3") {
-        expect(await send({ ...request, answer_id: "key:2" })).toMatchObject({ outcome: "stale", accepted: false,
+        // Chain answer events preserve the revision until the receipt settles.
+        const source_revision = source === "revision_chain" ? String(Number(request.source_revision) - 1) : request.source_revision;
+        expect(await send({ ...request, source_revision, answer_id: "key:2" })).toMatchObject({ outcome: "stale", accepted: false,
           code: source === "session" ? "stale_item" : "stale_revision" });
         expect(writes()).toBe(stable);
       }
-      expect(effectCount()).toBe(1);
+      expect(effectCount()).toBe(expectedEffects);
     } finally { db.close(); }
   } finally { rmSync(root, { recursive: true, force: true }); }
 }
