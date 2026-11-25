@@ -1,6 +1,6 @@
 # U4b B9: verification publisher runtime
 
-Date: 2026-11-24. Status: **proposed; the decisions in §9 are open**. Design only: no code, test, migration, GitHub write, App setting or sandbox run is part of this change.
+Date: 2026-11-24. Status: **accepted; the owner decided all ten items of §9 on 2026-11-24 (§9.1)**. Design only: no code, test, migration, GitHub write, App setting or sandbox run is part of this change.
 
 Baseline: `origin/main` at `176ea389`. Every `file:line` below refers to that commit.
 
@@ -322,6 +322,30 @@ Order: B9-1 → B9-2. B9-3 → B9-4 → B9-5. The two chains are independent. B9
 | 8 | What is published when the harness cannot measure | Container results that are not a decision (timeout, OOM, unexpected exit code) are published as `blocked`. Harness faults before or around the container (PR unreadable, source unavailable, Docker missing, stop not proven) publish nothing and report in the cloud. | B9-4 |
 | 9 | Where the failure code of a failed result comes from | One `failure_code` per entry in the harness configuration. You keep it equal to the one code in the host's producer policy. | B9-4 |
 | 10 | Evidence in the first release | Local directory per invocation, 30 days, `evidence_refs` empty, bound by `evidence_digest`. The readable store and the copy before close-out stay open. | B9-4 |
+
+### 9.1 Decision record (2026-11-24)
+
+The owner accepted the recommendation of every row above. The answer came through the orchestrating session, which showed the owner three items in short form and relayed the reply word for word:
+
+> 第 5 项：云端取代码用 `git fetch`，需要你对“Git 白名单只减不增”规则破例加两条；agree
+> 第 6 项：首版把验证程序和密钥放同一台云机器、用两个系统用户隔离；接收外部 PR 之前必须换成两台机器。 agree
+> 第 3 项：如果 App 的令牌读不了 PR，就不带身份去读，不给 App 加权限。 agree
+> 都按推荐
+
+| # | Decided |
+|---|---|
+| 1 | `--key <absolute path>` flag with the file checks of the row. |
+| 2 | One scoped token per run, in memory only, after the installation check. |
+| 3 | The App keeps exactly two permissions. If the token cannot read a public PR, the three GET calls go without authentication. The fallback of B8 decision 8 is replaced. Named by the owner. |
+| 4 | The harness holds no credential. Public repositories only. |
+| 5 | S1, `git fetch` by SHA. The owner grants the exception: `scripts/deterministic-git-allowlist.json` may grow by two counted entries (`init`, `fetch`) for the one harness file in B9-5, and by nothing else. Named by the owner. |
+| 6 | First release, sandbox only: one cloud computer, two OS users. Two machines before any repository that receives PRs from outside. Named by the owner. See the note below. |
+| 7 | R1: move the profile code to `@osstack/agents`, with re-exports in `cli`. |
+| 8 | Container non-decisions publish `blocked`. Harness faults publish nothing. |
+| 9 | One `failure_code` per entry in the harness configuration. |
+| 10 | Local evidence directory, 30 days, `evidence_refs` empty. |
+
+Note on row 6. The short form shown to the owner did not name rootless Docker. The row as written requires rootless Docker for the harness user and forbids rootful Docker on the machine that holds the key. "都按推荐" covers the row as written, and the two conditions make the arrangement stricter, not wider. They bind only the cloud setup and the runbook of B9-6; no code node depends on them. The session asks the owner to confirm them before B9-6.
 
 Chosen by the session, not put to the owner: the file names, the `bin` name `osstack-verify-publisher`, the byte and time limits of §3.4, the closed code names of §7, and the split into six nodes.
 
