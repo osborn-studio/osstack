@@ -247,3 +247,6 @@ decision inbox and is answered `abandon` once, recovery does not cancel it;
 (5) the watcher grace is the executor's existing `terminationGraceMs`. Because
 `feat/chain-decide-idempotency` (#553) had not merged when E1 started, E1 is based
 on `main` and the T6 test change (decision 3) follows once #553 merges.
+
+**Update (2026-11-25).** #553 merged before #556 did, so the T6 test change
+(decision 3) is folded into E1 (#556) rather than a separate node.
