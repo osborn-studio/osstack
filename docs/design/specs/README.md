@@ -1,6 +1,30 @@
 # Bridge revision-chain TLA+ model (phase 5 ordering)
 
-## Current verification revision (2026-11-07)
+## Current revision (2026-11-25)
+
+This revision closes the M1 and M2 model changes in the [accepted 5-F decision](../2026-11-25-bridge-5f-model-coverage.md).
+One live chain can run review children and dispatch one local-failure child. Each writer
+spends a grant round. The local child has its own approval, intent, process release and
+confirmation. Grant replacement can keep a stopped review child parked in the same round.
+
+SANY v1.7.4 parsed and semantically processed the module. The bounded TLC invocation stopped
+before state generation because the sandbox denied the scratch metadir. A loopback bind was
+also denied. The 5-F gate still needs exhaustive results for this revision. All state counts
+and observed counterexamples below belong to earlier revisions.
+
+| New mutant | Guard disabled | Expected violation and witness |
+|---|---|---|
+| `local-overlaps-review` | `LocalExcludesReview` | `Inv3` when a review child dispatches while the local child is active |
+| `local-skips-round-cap` | `LocalChecksRounds` | `Inv1` when a review spends a one-round grant and the local child dispatches after the review child clears |
+| `renewal-skips-busy` | `RenewalChecksBusy` | `RenewalSafety` when replacement writes a fresh deadline after local approval |
+| `local-no-lease` | `LocalUsesLease` | `LeaseSafety` when Git overwrites an intervening outsider commit |
+| `local-fence-skips-close` | `LocalFenceChecksClosed` | `NoPushAfterClose` when `Reconcile` closes the local chain after `ClosePR` and `LocalPush` then releases the recorded intent |
+
+Each new mutant uses the bounded live configuration and checks its named invariant.
+The original fourteen mutants keep repairs disabled. The unsettled-intent target includes
+`HaltChild` so a pending review receipt can coexist with a refreshable stop reason.
+
+## Historical verification revision (2026-11-07)
 
 The historical tables below describe the earlier model. This revision adds a released process
 that stops with an unknown result; rejection after a crash; pending versus released halt
@@ -36,12 +60,6 @@ resume probes completed without one: their forbidden historical transition is es
 `ResumeOutcomeSafety`. The latter must not be described as independently detecting all resume
 mutants.
 
-Remaining model limits: one commit per push and an assumed root baseline (the TypeScript
-property now checks actual baseline intent plus multi-commit ordered ranges); close paths still
-abstract the store's exact stop-reason and reservation cleanup; halted grant renewal preserves
-the prior reason rather than modelling every R2 reason rewrite. These limits mean the historical
-"all phase 5 gates complete" claim is not established by this model alone.
-
 `bridge.tla` models one revision chain on one PR: the chain ledger (chains, reservations, push
 intents, shadow decisions), the child Missions, GitHub (branch history, base, open/closed,
 reviews) and the daemon's in-memory state that a crash loses. It covers the row 模型检查 of design
@@ -67,7 +85,9 @@ Each has a mutant showing what breaks without it.
 | `bridge.cfg` | main run: live chain, every guard on |
 | `bridge-shadow.cfg` | shadow chain (`OSSTACK_BRIDGE=shadow`) |
 | `bridge-rounds.cfg` | two full rounds: 3 review submissions, no outsider |
-| `mutants/*.cfg` | one seeded bug each; every config has an exhaustive counterexample |
+| `bridge-bounded.cfg` | both writers, one reviewer, submission, attempt and outsider write |
+| `bridge-local.cfg` | all `bridge.cfg` bounds, plus one local repair |
+| `mutants/*.cfg` | one disabled guard per configuration |
 
 ## Running and historical phase 4 results
 
@@ -147,20 +167,22 @@ not prove that all continuations satisfy the invariants. Scratch logs are under 
 
 | Name | Design | Statement in the model |
 |---|---|---|
-| `Inv1` | §10.2 item 1 | live: `rounds_used ≤ grant.rounds ≤ 2` |
+| `Inv1` | §10.2 item 1 | each review reservation and the one local dispatch cost one round, with `rounds_used ≤ grant.rounds ≤ 2` |
 | `Inv2` | item 2 | at most one reservation row per (PR, head); rows are a set of records, so a void row and a new row on the same head are two rows |
-| `Inv3`, `Inv3Active` | item 3 | at most one child that is dispatched and not (terminal with the stop proven); at most one `reserved`/`dispatched` row |
-| `Inv4` | item 4 | ghost: no new release while an external write or read-back mismatch is detected and no human chain decision has been taken since |
+| `Inv3`, `Inv3Active` | item 3 | at most one unsettled writer child across both routes. An active local child also excludes any active review reservation |
+| `Inv4` | item 4 | ghost: no new review release while an external write or read-back mismatch is detected and no human chain decision has been taken since |
 | — | item 5 | spec inheritance: phase 5, out of scope |
-| `Inv6` | item 6 | when a reconciler cycle has just run, after recovery and with no pending push intent, a chain it left active has every branch commit beyond the root backed by a `confirmed` push intent |
-| `Inv6Published` | item 6 | `published_head` is the root or a confirmed intent's `new_head` |
-| `WriteAheadIntent` | §8.7 step 1 | no chain commit is on the branch without a pending, confirmed or uncertain intent |
+| `Inv6` | item 6 | after a completed ledger check, every edge on an accepted branch has one confirmed source, either a review intent or the one-commit repair splice |
+| `Inv6Published` | item 6 | the ordered path from the root to `published_head` is covered edge by edge, including any confirmed repair |
+| `WriteAheadIntent` | §8.7 step 1 | every writer commit on the branch has a live review intent or a matching durable repair intent |
 | `ResumeSafety`, `ResumeOutcomeSafety` | D1, D9 | guard-compliance flag for resume; a resumed running round has no unsettled intent or outstanding release marker, and has a fresh running stop obligation |
+| `RenewalSafety` | M1 | the pin stays fixed from local dispatch onward. No replacement writes a fresh deadline during approval or while the child intent is unsettled |
+| `ClosedCleanup` | M2 | a closed chain has a clear stop reason and zero active reservations |
 | `PendingIntentUniqueness`, `ConfirmedExtensionGuard` | D2–D3 | one pending intent per child; only a confirmed extension may be accepted |
-| `PublishedMonotone` | §8.5 | action property: `published_head` only advances, one confirmed revision at a time |
+| `PublishedMonotone` | §8.5 | action property: `published_head` only advances, one confirmed review or repair edge at a time |
 | `LeaseSafety` | §8.7 step 5 | a remote apply never discards a commit already on the branch |
 | `ShadowNeverWrites` | appendix §1, §3.2 | a shadow chain has no reservation, no intent, no child, no in-flight state, 0 rounds, and never releases |
-| `NoPushAfterClose`, `NoReleaseAfterStop`, `GrantSafety` | §8.7.1, §8.7 step 4 | no new release after a local close or stop; no dispatch or release on an expired or revoked grant |
+| `NoPushAfterClose`, `NoReleaseAfterStop`, `GrantSafety` | §8.7.1, §8.7 step 4 | both writers check chain closure at release. Local release also checks PR closure. A review stop forbids another review release. Dispatch and release require a valid grant |
 
 `Inv6` checks attribution against the PR state the reconciler acted on. A write that lands after
 the read is the next cycle's business, and the lease and fence cover it in the meantime. A chain
@@ -198,11 +220,56 @@ a liveness property.
 | `ChildDeliver`, `ChildFail`, `HaltChild`, `CancelRequest`, `CancelDone`, `ProveStop` | contained-Mission runner states, `stop_obligation`, D9 stopped child |
 | `Review`, `ExpireReview` | GitHub reviews, 24 h TTL (`REVIEW_TTL_MS`) |
 | `OutsiderPush`, `OutsiderForcePush`, `BaseAdvance`, `ClosePR`, `ReopenPR`, `DeadlinePass`, `GrantExpire` | environment |
-| `GrantStop`, `HumanResume`, `ResumeChild`, `ResumeRefused`, `HumanClose`, `HumanResolveIntent` | `stopLive` reasons, grant renewal, `resumeChild` through `acknowledgeAdvance`, `resume_refused` with no ledger change, human decisions |
+| `GrantStop`, `ResumeChild`, `ResumeRefused`, `HumanClose`, `HumanResolveIntent` | `stopLive` reasons, `resumeChild` through `acknowledgeAdvance`, `resume_refused` with no ledger change, human decisions |
+| `LocalIntake`, `LocalDispatch` | `checkRootAdmission`, `LocalFailureDispatchStore.dispatch`, `allocateChild` and the local-failure dispatch DDL triggers |
+| `LocalWait`, `LocalApprove` | runner stops for `publication_pending` with a verified candidate. `approveLocalFailureRepair` records the approval |
+| `LocalRecordIntent`, `LocalPush`, `LocalRemoteApply` | `publishLocalFailureRepair` writes the child event, rechecks `publicationFence` at process release, then Git tests the lease |
+| `LocalHalt`, `LocalProcessLost`, `LocalConfirm`, `LocalFinish` | runner halt or crash, stopped host process, `reconcileLocalFailurePush` read-back, `confirmLocalRepairPush` transaction and child settlement |
+| `RepairLedgerVerdict`, `CoveredEdge` | `verifyBridgeLedger`, `releasedRepairAtRemote` and `validatedRepair` in `contained-mission-bridge-ledger.ts` |
+| `RenewGrant` | `RevisionChainStore.replaceGrant`, `localFailureRenewalBusy`, `chainHasLocalFailureIntake` and `checkLocalFailureRenewal` |
 | `ScanStopped` | D7 `listStoppedLive` / stopped-chain scan, `closeLive` and reservation void on closed or merged PR |
 
 ## Abstractions
 
+- The two writers share one repository, branch, PR, root and base binding. The repair
+  candidate has exactly one parent and adds one commit. The child stage and immutable
+  dispatch proof stand for ordered, valid approval, intent, host and confirmation records.
+  One repair slot makes a second splice impossible. Event IDs, hashes, malformed records,
+  compare transport errors, stale ledger reads and actual root-baseline evidence are outside
+  the model. A released, unconfirmed candidate at the remote gives
+  `reconciliation_incomplete`. An unrelated remote head still goes through normal attribution.
+- `LocalIntake` represents the interval during which intake work holds root admission.
+  `LocalDispatch` assumes an eligible diagnosis and completed intake, then spends the
+  round atomically with child allocation. Dispatch is the first persistent intake fact used
+  for pinning. Open intake and a running recheck have the same busy effect for renewal.
+  The model omits separate diagnosis, recheck, Actions-repair and multi-root workflows,
+  protected path checks, lineage checks, launch slices and budget accounting.
+- A local child progresses from running to verified and waiting, then approved.
+  Only waiting, with its stop proved and no approval, permits renewal among active local children.
+  A fresh approval represents successful principal refresh, session and scope checks,
+  source registration, feature enablement, TTL, owner, workspace claim, spec, verified
+  tree and publication permit. Their individual invalidations collapse to refusal or halt.
+  `grantValid` represents the grant window. The fence compares the dispatch pin, chain
+  head and chain base. The chain lookup excludes closed chains and permits stopped ones.
+  Chain stop and close leave the local child alone.
+- `LocalRecordIntent` samples an open PR, its head and base, and the remote ref together.
+  At host release, `LocalPush` rechecks local authority and blocks release if the local chain is closed.
+  As on the review route, the PR can close between the pre-intent
+  read and the push. Readback and ledger checks handle this race at confirmation.
+  Git compares the expected old head at `LocalRemoteApply`. A released write can land after close or crash.
+- A crash before release parks the child. A recorded intent is durable and cannot start a
+  second push. After release the original process can still apply, lose the race or stop
+  with unknown outcome. Read-back combines stopped-process evidence and matching PR/ref
+  reads in one step. An open PR, matching base, candidate at the remote and matching old
+  chain head permit confirmation even on a stopped chain. Failed, unavailable and mismatched
+  read-backs can remain unsettled. Duplicate confirmation is a stuttering step. Finishing
+  the child is separate from advancing the published head.
+- V1 has no pin. Two representative V2 pin values distinguish preserving from changing
+  the source/profile binding. Initial V2 uses the first representative. Renewal overwrites
+  the deadline even when it was still fresh. The model tracks this event and expiry,
+  without timestamps, grant IDs, signatures, budget raises or child slice top-ups.
+  Terminal stop proof includes claim release. Only refreshable reasons emitted by the
+  model can renew. The generic review fence refusal represents a non-refreshable refusal.
 - Commits are integers. The root is 0, the child revising head `c` produces exactly `c + 1`, and
   the outsider writes only `OutCommit`. One commit per push: a multi-commit push would need
   `Inv6` restated over the ancestry range of each confirmed intent (design wording is ambiguous).
@@ -224,20 +291,21 @@ a liveness property.
   `delivering` (the store requires the stop proven before `verified`), and required clear by the
   publication fence. `failed` with it still set also stands for `needs_reconciliation` / `stop_unknown`:
   the child is unreleased and blocks every dispatch until a human ends it and the stop is proven.
-- Crashes are explored only while a push intent is pending or the publisher is mid-step. Any
-  other crash loses nothing.
+- Review publisher crashes are explored while an intent is pending or publication is mid-step.
+  On the local route, a pause before writing an intent can also stutter and continue from
+  the durable approval. A halt after writing the intent leaves only read-back available.
 - Resolved in this revision (5-F, finding 4): durable releases can reject after a crash or
   take `ReleasedProcessLost` when the stopped process did not establish an outcome. Pre-release
   death is handled by `RecoverIntent`; an uncertain receipt remains for human reconciliation.
-- A closed chain is expanded only while a publication is still in flight.
+- Closed chains remain explorable while a review process, unsettled receipt or local child can still act.
 - Resolved in this revision (5-F, finding 11): `Explore` retains closed chains with pending
   or uncertain intents, so late human receipt settlement remains reachable.
 - The review deadline and grant expiry are single booleans. Budgets (§8.6), scope permission,
-  signed grant validation, the workspace claim and scanned-fact freshness are not modelled.
+  signed grant validation, independent workspace claim state and scanned-fact freshness are abstracted.
 - `stopObl` combines stop proof and absence of an open host process. `released` is durable
   W13 release state; `RemoteApply` may run after a local stop. PR `CLOSED` and `MERGED` are
   represented by the same `prOpen = FALSE`. The scan rate limit and observation event are omitted.
-- R2 grant replacement while a child is halted is not modelled. R3 landed-round recovery
+- R3 landed-round recovery
   requires the separate human `ApproveLanded` action. Normal D10 confirmation changes the
   intent, chain, reservation and child together. A receipt after PR closure or base change
   confirms the remote fact while keeping the chain closed or stopped.
@@ -245,15 +313,19 @@ a liveness property.
   intent that was never released; only uncertain receipts or released work use `intent_uncertain`.
 - Resolved in this revision (5-F, finding 6): a halted child can enter cancel or abandon;
   `ProveStop` and reservation release still gate subsequent dispatch.
-- Partly resolved in this revision (5-F, finding 7): `HumanResume` keeps a halted child
-  stopped until `ResumeChild`; exact R2 stop-reason rewrites remain abstracted.
-- Open gap (5-F, finding 10): close paths retain `stopReason` and may leave active reservations.
-  The store clears the reason and voids all active reservations on close.
+- Resolved (5-F, finding 7). A renewal on a refreshable stop checks the current child.
+  A proven terminal child permits return to review. A nonterminal child with no confirmed
+  push stays stopped with reason `child_halted`.
+- Resolved (5-F, finding 10). Every close clears `stopReason` and voids all active
+  reservations in the same transition. `ClosedCleanup` checks the result.
 - Mutant precision (finding 12): `resume-uncertain-intent` also widens the resumable-reason
   list; `resume-without-stop-proof` uses `Spec` while the other resume mutants use focused
   targets; and `resume-after-push-rejected` cannot explore a post-crash rejection.
 - Bounds: 2 reviewers, `MaxRounds = 2`, 2 push attempts per child, 2 review submissions
-  (3 in `bridge-rounds.cfg`), 2 outsider writes.
+  (3 in `bridge-rounds.cfg`), 2 outsider writes. `MaxLocalRepairs = 1` in
+  `bridge-bounded.cfg`, `bridge-local.cfg` and the five new mutants. The bounded run uses
+  one reviewer, one submission, one attempt and one outsider write. The local run retains
+  all main bounds. Other configurations use `MaxLocalRepairs = 0` and V1 only.
 
 ## Discrepancies the model surfaced
 
