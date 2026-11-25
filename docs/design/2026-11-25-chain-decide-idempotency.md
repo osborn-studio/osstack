@@ -128,3 +128,15 @@ One PR, CLI only (the chain store already has the event append), estimated
    `--decision-id` and `--expected-revision`.
 
 **Record (2026-11-25).** The owner accepted the recommended option for all three: remote answers for `abandon`, `takeover` and `reconcile` on live chains; no second child cancel on replay, provided a test shows which existing recovery stops a child whose cancel was lost (otherwise stop and report); unkeyed calls keep today's behaviour and the CLI gains `--decision-id` and `--expected-revision`.
+
+**Finding and record (2026-11-25).** The proof required by decision 2 showed
+that no existing recovery stops a surviving executor: after a process death
+between the close and the cancel, host recovery records the child as
+`stop_unknown` with `stop_obligation: 1` (listed and notified as a pending
+Mission decision), the stopped-chain scan skips a manually closed chain, and
+the executor's process group keeps running. The same window exists today for
+unkeyed calls; the cause is the open W13 decision that restart recovery never
+kills orphaned processes and the periodic re-check is off by default
+(`hostProcessRecheckMs`). The owner chose to finish this node as designed (no
+second cancel), assert the current behaviour in the test, and handle the
+orphaned executor in a separate W13 node.
