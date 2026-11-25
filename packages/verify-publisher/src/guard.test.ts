@@ -19,6 +19,8 @@ async function sources(dir: string): Promise<string[]> {
 it("isolates the cloud package and keeps check-run writes out of host source", async () => {
   const violations: string[] = [];
   const writers = new Set(["cli/src/contained-mission-bridge.ts"]);
+  // This host guard test names the publisher's transport file to bound where installation tokens are minted.
+  const namers = new Set(["cli/src/contained-mission-verification-identity.guard.test.ts"]);
   for (const entry of await readdir(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const dir = join(root, entry.name);
@@ -34,7 +36,7 @@ it("isolates the cloud package and keeps check-run writes out of host source", a
     for (const path of paths) {
       const source = await readFile(path, "utf8");
       const name = relative(root, path);
-      if (entry.name !== ours && source.includes(ours)) violations.push(name);
+      if (entry.name !== ours && !namers.has(name) && source.includes(ours)) violations.push(name);
       if (path.endsWith(".test.ts") || name.split("/").slice(0, -1).includes("testkit")) continue;
       if (!writers.has(name) && source.split("\n").some(l => l.includes("check-runs") && /\b(?:POST|PATCH|PUT|DELETE)\b/u.test(l))) violations.push(name);
       if (entry.name !== ours) continue;
@@ -43,6 +45,15 @@ it("isolates the cloud package and keeps check-run writes out of host source", a
         if (!/^\.\.?\//u.test(match[1]!) && !allowed.includes(match[1]!)) violations.push(name + " import " + match[1]);
       }
       if (/\bfetch\s*\(|child_process|node:http|process\.env|PATCH|DELETE|PUT/u.test(source)) violations.push(name);
+      const file = basename(path);
+      if (file !== "github-transport.ts" && /api\.github\.com|authorization/u.test(source)) violations.push(name);
+      if (file !== "app-key.ts" && /createPrivateKey|createSign|O_NOFOLLOW/u.test(source)) violations.push(name);
+      if (source.includes("console.")) violations.push(name);
+      if (file === "github-transport.ts") {
+        const methods = [...source.matchAll(/\bmethod:\s*("[A-Z]+")/gu)].map(m => m[1]).sort();
+        expect(methods).toEqual(['"GET"', '"POST"', '"POST"']);
+        expect(source.match(/\bmethod\s*:/gu)).toHaveLength(methods.length);
+      }
       if (basename(path) === "publish.ts") expect(source.match(/\bcreateCheckRun\s*\(/gu)).toHaveLength(1);
     }
   }

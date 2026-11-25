@@ -38,7 +38,7 @@ it('isolates verification credentials and keeps the identity libraries unwired',
       if (file === config) {
         for (const line of source.split('\n').filter(l => l.includes('verification_private_key_path'))) expect(line).not.toMatch(/readFile|lstat|stat|open|access/);
       }
-      if (source.includes('access_tokens')) expect(file).toBe('cli/src/contained-mission-github-app.ts');
+      if (source.includes('access_tokens')) expect(['cli/src/contained-mission-github-app.ts', 'verify-publisher/src/github-transport.ts'], file).toContain(file);
       if (file !== proof && file !== transport && !libraries.some(name => source.includes(name))) continue;
       const imports = specifiers(file, source);
       if (file !== 'cli/src/contained-mission-local-failure-scan.ts') for (const spec of imports) expect(libraries, file).not.toContain(spec.split('/').pop()!.replace(/\.(?:js|ts)$/, ''));
