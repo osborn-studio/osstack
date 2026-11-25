@@ -7,10 +7,20 @@ One live chain can run review children and dispatch one local-failure child. Eac
 spends a grant round. The local child has its own approval, intent, process release and
 confirmation. Grant replacement can keep a stopped review child parked in the same round.
 
-SANY v1.7.4 parsed and semantically processed the module. The bounded TLC invocation stopped
-before state generation because the sandbox denied the scratch metadir. A loopback bind was
-also denied. The 5-F gate still needs exhaustive results for this revision. All state counts
-and observed counterexamples below belong to earlier revisions.
+TLC v1.7.4 (jar SHA256 `936a2620…0e88`, OpenJDK 26.0.1) checked model commit `ee445be9` on
+2026-11-25, outside the Codex sandbox. Evidence: [`2026-11-25-model-checks.json`](../../reports/bridge-phase5-verification/2026-11-25-model-checks.json).
+Every normal configuration finished with no error and an empty queue:
+
+| Config | Generated | Distinct | Depth | Wall time |
+|---|---|---|---|---|
+| `bridge-bounded.cfg` | 10,221,901 | 1,556,922 | 32 | 21s |
+| `bridge.cfg` | 376,490,793 | 47,599,782 | 48 | 13min |
+| `bridge-local.cfg` | 2,043,606,121 | 258,884,342 | 49 | 1h21 |
+| `bridge-rounds.cfg` | 502,269,079 | 68,433,084 | 46 | 19min |
+| `bridge-shadow.cfg` | 60,003 | 11,897 | 12 | <1s |
+
+All 19 model mutants give a counterexample on the intended invariant; the 14 older ones hit
+the same invariants as in `model-checks.json`. This is a bounded model-checking result.
 
 | New mutant | Guard disabled | Expected violation and witness |
 |---|---|---|
@@ -49,7 +59,7 @@ Run the portable evidence runner from the repository root:
 ```sh
 TLA2TOOLS_JAR=/path/to/tla2tools.jar JAVA=/path/to/java \
   node scripts/verify-bridge-phase5-tlc.mjs --bounded
-# --main checks main, shadow and rounds; --mutants checks every guard config.
+# --main checks main, local, shadow and rounds; --mutants checks every guard config.
 ```
 
 All fourteen existing guard mutants produced exhaustive invariant counterexamples on the
