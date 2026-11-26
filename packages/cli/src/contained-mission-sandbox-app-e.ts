@@ -1,3 +1,4 @@
+import type { MergeVerdict } from '@osstack/core';
 import { z } from 'zod';
 import { GITHUB_CI_SANDBOX, GITHUB_CI_SANDBOX_ID, PRODUCTION_CI_REPOSITORIES, SANDBOX_CI_POLICY, type GithubCiPolicy } from './contained-mission-ci-policy.js';
 
@@ -125,20 +126,58 @@ export async function executeSandboxAppEMerge(raw: unknown, ports: SandboxAppEPo
     if (!await authorized() || !gated(await ports.observe(h.binding), h.binding, policy)
       || !await ports.verifyCurrentPublicationAndCi(h.binding)) return { kind: 'refused', reason: 'gate_failed' };
     if (!await authorized()) return { kind: 'refused', reason: 'handoff_unauthorized' };
-    const reply = await ports.merge({ appId: policy.appId, installationId: policy.installationId,
-      repository: policy.repository, pr: h.binding.pr, sha: h.binding.head, merge_method: 'squash' }, async () => {
+    return await mergeAndReadback(h.binding, ports, policy, async () => {
       if (policy.missionRulesets && (!gated(await ports.observe(h.binding), h.binding, policy)
         || !await ports.verifyCurrentPublicationAndCi(h.binding))) throw Error('CI_PILOT_MERGE_GATE_CHANGED');
       if (!await authorized()) throw Error('SANDBOX_APP_E_HANDOFF_REVOKED');
     });
-    if (!reply.merged || !sha.safeParse(reply.sha).success) return { kind: 'unknown' };
-    const back = await ports.readback(h.binding);
-    if (!same(back.binding, h.binding) || !back.merged || !back.actorVerified || back.actorType !== 'Bot'
-      || back.actorUserId !== policy.actorId
-      || back.actorAppId !== policy.appId || back.sha !== reply.sha
-      || back.parents.length !== 1 || back.parents[0] !== h.binding.base) return { kind: 'unknown' };
-    return { kind: 'merged', sha: back.sha };
   } catch {
+    return reserved ? { kind: 'unknown' } : { kind: 'refused', reason: 'evidence_unavailable' };
+  }
+}
+
+type WritePorts = Pick<SandboxAppEPorts, 'merge' | 'readback'>;
+type AppIdentity = Pick<CiMergerPolicy, 'appId' | 'actorId' | 'installationId'>;
+
+async function mergeAndReadback(binding: SandboxMergeBinding, ports: WritePorts, app: AppIdentity,
+  beforeWrite: () => Promise<void>): Promise<SandboxMergeResult> {
+  const reply = await ports.merge({ appId: app.appId, installationId: app.installationId, repository: binding.repository,
+    pr: binding.pr, sha: binding.head, merge_method: 'squash' }, beforeWrite);
+  if (!reply.merged || !sha.safeParse(reply.sha).success) return { kind: 'unknown' };
+  const back = await ports.readback(binding);
+  if (!same(back.binding, binding) || !back.merged || !back.actorVerified || back.actorType !== 'Bot'
+    || back.actorUserId !== app.actorId
+    || back.actorAppId !== app.appId || back.sha !== reply.sha
+    || back.parents.length !== 1 || back.parents[0] !== binding.base) return { kind: 'unknown' };
+  return { kind: 'merged', sha: back.sha };
+}
+
+export interface MissionAppEPorts extends WritePorts {
+  enabled(): boolean;
+  /** A complete Mission gate evaluation bound to the published head and base. */
+  observe(binding: SandboxMergeBinding): Promise<boolean>;
+  reserveOnce(key: string): Promise<boolean>;
+}
+
+export async function executeMissionAppEMerge(raw: SandboxMergeBinding, decision: MergeVerdict, ports: MissionAppEPorts, app: AppIdentity): Promise<SandboxMergeResult> {
+  const parsed = bindingSchema.safeParse(raw);
+  if (!parsed.success || parsed.data.repository !== APP_E_SANDBOX.repository || parsed.data.repositoryId !== APP_E_SANDBOX.repositoryId) {
+    return { kind: 'refused', reason: 'binding_invalid' };
+  }
+  const binding = parsed.data;
+  let reserved = false;
+  const changed = Error('MISSION_MERGE_GATE_CHANGED');
+  try {
+    if (!ports.enabled()) return { kind: 'refused', reason: 'disabled' };
+    if (decision.verdict !== 'would_merge' || !decision.gates.second_read || decision.request.sha !== binding.head
+      || decision.gates.g5?.live_tip !== binding.base) return { kind: 'refused', reason: 'gate_failed' };
+    reserved = await ports.reserveOnce(`${binding.repositoryId}:${binding.pr}`);
+    if (!reserved) return { kind: 'refused', reason: 'already_reserved' };
+    return await mergeAndReadback(binding, ports, app, async () => {
+      if (!ports.enabled() || !await ports.observe(binding) || !ports.enabled()) throw changed;
+    });
+  } catch (error) {
+    if (error === changed) return { kind: 'refused', reason: 'gate_failed' };
     return reserved ? { kind: 'unknown' } : { kind: 'refused', reason: 'evidence_unavailable' };
   }
 }

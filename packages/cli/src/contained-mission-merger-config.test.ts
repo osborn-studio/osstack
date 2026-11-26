@@ -65,6 +65,18 @@ describe('loadMergerConfig', () => {
     await expect(load({ ...good, counted_approvers: [{ actor_id: 1001, app_id: null }] })).rejects.toThrow(invalid('approver_is_app'));
   });
 
+  it('validates the live block and keeps machine users separate from human approvers', async () => {
+    const live = { merger_key_path: '/test/app-e', merger_installation_id: 1 };
+    const bot = { actor_id: 270, app_id: null };
+    expect(await load({ ...good, live, bot_approvers: [bot] })).toMatchObject({ live, bot_approvers: [bot] });
+    for (const bad of [{ ...live, merger_key_path: 'relative' }, { ...live, merger_installation_id: 0 }, { ...live, token: 'x' }, {}]) {
+      await expect(load({ ...good, live: bad })).rejects.toThrow(invalid('live'));
+    }
+    for (const bad of [[bot, bot], good.counted_approvers, [{ ...bot, app_id: 7 }], [{ ...bot, actor_id: good.merger.actor_id }]]) {
+      await expect(load({ ...good, bot_approvers: bad })).rejects.toThrow('MERGER_CONFIG_INVALID');
+    }
+  });
+
   it('the three Apps, the two bots, the required checks and the rulesets must be distinct', async () => {
     await expect(load({ ...good, evidence_app_id: 11 })).rejects.toThrow(invalid('app_ids_overlap'));
     await expect(load({ ...good, merger: { actor_id: 1001, app_id: 15 } })).rejects.toThrow(invalid('bot_ids_overlap'));

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { MergeGateFacts } from "../bridge/merge-gates.js";
 import type Database from "better-sqlite3";
 import type { AttentionOwner, AttentionStore } from "./attention-store.js";
 
@@ -95,6 +96,10 @@ const INT = (v: unknown): boolean => typeof v === "number" && Number.isSafeInteg
 const object = (shape: Record<string, (v: unknown) => boolean>) => (v: unknown): boolean =>
   typeof v === "object" && v !== null && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype
   && Object.keys(v).every(k => Object.hasOwn(shape, k) && shape[k]!((v as Record<string, unknown>)[k]));
+const ruleFacts = object({
+  enforcement: TOKEN_OR_NULL,
+  bypass_actors: v => v === null || (Array.isArray(v) && v.every(object({ actor_id: INT_OR_NULL, actor_type: TOKEN_OR_NULL, bypass_mode: TOKEN_OR_NULL }))),
+});
 const GATES_SCHEMA = object({
   start_is_base: v => typeof v === "boolean", second_read: v => typeof v === "boolean",
   g2c: object({ live: OID_OR_NULL, pushed: OID_OR_NULL, candidate: OID_OR_NULL, evidence: OID_OR_NULL, marker: OID_OR_NULL, check: OID_OR_NULL }),
@@ -103,6 +108,7 @@ const GATES_SCHEMA = object({
   g5: object({ base_head: OID_OR_NULL, live_tip: OID_OR_NULL }),
   g6a: object({ review_id: INT_OR_NULL, commit: OID_OR_NULL }),
   g6b: object({ rulesets: v => Array.isArray(v) && v.length <= 8 && v.every(INT), force_push_events: INT }),
+  g6e: v => v === null || ruleFacts(v), g8: v => v === null || ruleFacts(v),
   g7: object({ mergeable: TOKEN_OR_NULL, merge_state: TOKEN_OR_NULL }),
   read_ms: v => Array.isArray(v) && v.length === 2 && v.every(INT),
 });
@@ -124,10 +130,44 @@ const SQL_OUTCOME = `INSERT INTO engineering_merger_shadow_outcomes(repository,p
   merge_commit,merged_by_actor_id,merged_by_type,owner_approved_head,facts_json,observed_at,created_at,scan_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 
 /** Append-only shadow-merger ledger. Synchronous; every write is one `BEGIN IMMEDIATE` transaction under the daemon owner
- * fence and makes no network, git or process call. It never touches the Mission or revision-chain tables. */
+ * fence. Shadow operations only write the shadow tables. Live attempts use the append-only Mission event ledger. */
 export class MergerShadowStore {
   constructor(readonly attention: AttentionStore, readonly owner: AttentionOwner) {}
   get db(): Database.Database { return this.attention.db; }
+
+  // Live App E uses the existing append-only Mission event ledger. The CI pilot also reserves by
+  // numeric repository ID and PR here, so both paths see a reservation after a restart.
+  static hasAppEReservation(db: Database.Database, repositoryId: number, pr: number): boolean {
+    return !!db.prepare(`SELECT 1 FROM engineering_contained_events WHERE kind IN ('ci_app_e_merge_reserved','mission_app_e_merge_reserved')
+      AND json_extract(payload_json,'$.binding.repositoryId')=? AND json_extract(payload_json,'$.binding.pr')=? LIMIT 1`)
+      .get(repositoryId, pr);
+  }
+
+  reserveLiveMerge(missionId: string, binding: { repositoryId: number; pr: number; head: string; base: string }, now: number): number | null {
+    return this.write(() => {
+      if (MergerShadowStore.hasAppEReservation(this.db, binding.repositoryId, binding.pr)) return null;
+      return this.liveEvent(missionId, "mission_app_e_merge_reserved", { binding }, now);
+    });
+  }
+
+  recordLiveMerge(missionId: string, receipt: { binding: { repositoryId: number; pr: number; head: string; base: string };
+    reservation: number | null; gates: MergeGateFacts; outcome: "merged" | "unknown" | `refused:${string}`; sha?: string }, now: number): void {
+    this.write(() => this.liveEvent(missionId, "mission_app_e_merge_result", receipt, now));
+  }
+
+  /** A committed intent without a receipt can never be retried. Recover it as unknown. */
+  recoverLiveMerges(now: number): void {
+    this.write(() => this.db.prepare(`INSERT INTO engineering_contained_events(mission_id,kind,payload_json,created_at)
+      SELECT i.mission_id,'mission_app_e_merge_result',json_set(i.payload_json,'$.reservation',i.seq,'$.outcome','unknown'),?
+      FROM engineering_contained_events i WHERE i.kind='mission_app_e_merge_reserved' AND NOT EXISTS
+      (SELECT 1 FROM engineering_contained_events r WHERE r.kind='mission_app_e_merge_result'
+       AND r.mission_id=i.mission_id AND json_extract(r.payload_json,'$.reservation')=i.seq)`).run(now));
+  }
+
+  private liveEvent(missionId: string, kind: string, payload: unknown, now: number): number {
+    return Number(this.db.prepare("INSERT INTO engineering_contained_events(mission_id,kind,payload_json,created_at) VALUES(?,?,?,?)")
+      .run(missionId, kind, JSON.stringify(payload), now).lastInsertRowid);
+  }
 
   watermark(repository: string, prNumber: number): MergerWatermark | null {
     return (this.db.prepare("SELECT * FROM engineering_merger_shadow_watermarks WHERE repository=? AND pr_number=?").get(this.repo(repository), prNumber) as MergerWatermark | undefined) ?? null;

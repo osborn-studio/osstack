@@ -90,7 +90,7 @@ const page = <T,>(all: readonly T[], after: unknown, size = 100) => {
   return { pageInfo: { hasNextPage: end < all.length, endCursor: end < all.length ? String(end) : null }, nodes: all.slice(start, end) };
 };
 
-export function serve(w: World): { graphql: GraphqlTransport; rest: RestGet; calls: Calls } {
+export function serve(w: World, repository = REPO): { graphql: GraphqlTransport; rest: RestGet; calls: Calls } {
   const calls: Calls = { gql: [], rest: [] };
   let pass = 0;
   const graphql: GraphqlTransport = async (query, variables) => {
@@ -100,7 +100,7 @@ export function serve(w: World): { graphql: GraphqlTransport; rest: RestGet; cal
     if (w.graphqlHook) return w.graphqlHook(query, variables);
     const pr: Json = {
       number: 7, state: 'OPEN', isDraft: false, mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', reviewDecision: 'APPROVED', body: w.body,
-      baseRepository: { nameWithOwner: REPO }, headRepository: { nameWithOwner: REPO }, isCrossRepository: false,
+      baseRepository: { nameWithOwner: repository }, headRepository: { nameWithOwner: repository }, isCrossRepository: false,
       headRefName: BRANCH, baseRefName: 'main', headRefOid: HEAD, changedFiles: w.changedFiles ?? w.files.length,
       author: { __typename: 'Bot', databaseId: BOT.publisher }, baseRef: { target: { oid: BASE } }, ...w.pr,
     };
@@ -115,7 +115,7 @@ export function serve(w: World): { graphql: GraphqlTransport; rest: RestGet; cal
     calls.rest.push(path);
     for (const f of w.failRest) if (f.match.test(path)) return f.result;
     const url = new URL(`https://x/${path}`);
-    const p = decodeURIComponent(url.pathname.slice(1)).replace(`repos/${REPO}/`, '');
+    const p = decodeURIComponent(url.pathname.slice(1)).replace(`repos/${repository}/`, '');
     const q = url.searchParams;
     const per = Number(q.get('per_page') ?? 30);
     const pg = Number(q.get('page') ?? 1);

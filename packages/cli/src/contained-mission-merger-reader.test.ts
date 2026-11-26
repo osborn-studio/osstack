@@ -1,4 +1,4 @@
-import { evaluateMergeGates } from '@osstack/core';
+import { DEFAULT_MERGE_GATE_OPTIONS, evaluateMergeGates } from '@osstack/core';
 import { describe, expect, it } from 'vitest';
 import {
   MERGER_PULL_REQUEST_QUERY,
@@ -611,5 +611,54 @@ describe('REST method and path allowlist', () => {
     const evil = await readMergeSnapshot({ graphql: s.graphql, rest: s.rest }, evidence, { ...registry, base_ref: 'main/../x' });
     expect(evil).toEqual({ ok: false, codes: ['U.read_failed:base_ref'] });
     expect(OWNER).toBe(269);
+  });
+});
+
+describe('live Mission gates', () => {
+  const bot = 12345;
+  async function live(w: World, lowestTier = true) {
+    const options = { ...DEFAULT_MERGE_GATE_OPTIONS, missionLive: true };
+    const r = await readMergeGateInput(serve(w), { ...evidence, lowest_tier: lowestTier }, { ...registry, bot_approvers: [{ actor_id: bot, app_id: null }] }, options);
+    if (!r.ok) throw Error(r.codes.join());
+    return evaluateMergeGates(r.input, options);
+  }
+  it.each([
+    ['human, large', OWNER, 6, 201, 'src', true],
+    ['bot, at limits', bot, 5, 200, 'src', true],
+    ['bot, too many files', bot, 6, 0, 'src', false],
+    ['bot, too many lines', bot, 1, 201, 'src', false],
+    ['workflow', bot, 1, 1, '.github/workflows', false],
+    ['action', bot, 1, 1, '.github/actions', false],
+    ['protected path', bot, 1, 1, 'scripts', false],
+  ] as const)('%s', async (_, actor, count, lines, dir, allowed) => {
+    const w = makeWorld();
+    w.files = Array.from({ length: count }, (_, i) => `${dir}/f${i}`);
+    w.pr = { additions: lines - Math.min(1, lines), deletions: Math.min(1, lines) };
+    w.reviews = [review(1, { author: { __typename: 'User', databaseId: actor } })];
+    expect((await live(w)).verdict).toBe(allowed ? 'would_merge' : 'refused');
+  });
+  it('requires the lowest Mission tier and known line counts for bot approval', async () => {
+    const w = makeWorld();
+    w.reviews = [review(1, { author: { __typename: 'User', databaseId: bot } })];
+    expect((await live(w)).verdict).toBe('refused');
+    w.pr = { additions: 1, deletions: 0 };
+    expect((await live(w, false)).verdict).toBe('refused');
+  });
+  it('rejects a stale or superseded approval', async () => {
+    const w = makeWorld();
+    w.reviews = [review(1, { commit: { oid: BASE } })];
+    expect((await live(w)).verdict).toBe('refused');
+    w.reviews = [review(1), review(2, { state: 'CHANGES_REQUESTED' })];
+    expect((await live(w)).verdict).toBe('refused');
+  });
+  it('records disabled quality and update rules with their bypass actors', async () => {
+    const w = makeWorld();
+    const bypass = [{ actor_type: 'Integration', actor_id: APP.publisher, bypass_mode: 'always' }];
+    for (const id of [IDS.quality, IDS.update]) Object.assign(w.rulesets[id] as object, { enforcement: 'disabled', bypass_actors: bypass });
+    w.baseRules = [];
+    w.pr['reviewDecision'] = null;
+    expect(await live(w)).toMatchObject({ verdict: 'would_merge', gates: {
+      g6e: { enforcement: 'disabled', bypass_actors: bypass }, g8: { enforcement: 'disabled', bypass_actors: bypass },
+    } });
   });
 });

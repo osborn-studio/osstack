@@ -29,11 +29,11 @@ export function evidencePayload(m: { mission_id: string; spec_digest: string }, 
 }
 
 export interface SeededMission { missionId: string; specDigest: string }
-export function seedMergerMission(rig: Rig, pr = 7, branch = BRANCH): SeededMission {
+export function seedMergerMission(rig: Rig, pr = 7, branch = BRANCH, repository = REPO): SeededMission {
   let specDigest = '';
   const missionId = rig.seedMission({
-    pr_number: pr, head: HEAD, base_head: BASE, branch,
-    evidence: (m) => { specDigest = m.spec_digest; return evidencePayload(m, {}, pr, branch); },
+    repository, pr_number: pr, head: HEAD, base_head: BASE, branch,
+    evidence: (m) => { specDigest = m.spec_digest; return evidencePayload(m, { repository }, pr, branch); },
   });
   return { missionId, specDigest };
 }
@@ -63,12 +63,12 @@ export interface Rigged {
 export function createRigged(cfg: MergerConfig = config()): Rigged {
   const rig = createRig();
   const store = new MergerShadowStore(rig.attention, rig.owner);
-  const mission = seedMergerMission(rig);
+  const mission = seedMergerMission(rig, 7, BRANCH, cfg.repository);
   const world = makeWorld();
   world.body = [`Contained Mission \`${mission.missionId}\`, opened by OSStack. Review before merging; OSStack never merges.`, '', 'SECRET-BODY-TOKEN goal text', '',
     formatMissionMarker({ id: mission.missionId, spec_digest: mission.specDigest, head: HEAD, start: START })].join('\n');
   world.runs[1201] = [run(5001, 'osstack/verify', APP.evidence, { external_id: `${mission.missionId}:${HEAD}` })];
-  const served = serve(world);
+  const served = serve(world, cfg.repository);
   const outcome: OutcomeWorld = { state: 'OPEN', head: HEAD, mergedAt: null, mergeCommit: null, mergedBy: null, reviews: [], hasPreviousPage: false };
   const outcomeQueries: string[] = [];
   const graphql: GraphqlTransport = async (query, variables) => {

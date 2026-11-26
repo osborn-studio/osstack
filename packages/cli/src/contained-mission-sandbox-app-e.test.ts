@@ -1,5 +1,6 @@
+import type { MergeVerdict } from '@osstack/core';
 import { describe, expect, it, vi } from 'vitest';
-import { APP_E_SANDBOX, executeSandboxAppEMerge, type SandboxAppEPorts, type SandboxMergeObservation } from './contained-mission-sandbox-app-e.js';
+import { APP_E_SANDBOX, executeMissionAppEMerge, executeSandboxAppEMerge, type SandboxAppEPorts, type SandboxMergeObservation } from './contained-mission-sandbox-app-e.js';
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40), squash = 'c'.repeat(40);
 const binding = { repository: APP_E_SANDBOX.repository, repositoryId: APP_E_SANDBOX.repositoryId,
@@ -131,5 +132,46 @@ describe('independent sandbox App E', () => {
   it('fails closed on read failure without leaking errors', async () => {
     const { ports } = fixture(); ports.observe.mockRejectedValue(Error('private transport details'));
     expect(await executeSandboxAppEMerge(handoff, ports)).toEqual({ kind: 'refused', reason: 'evidence_unavailable' });
+  });
+});
+
+describe('Mission App E', () => {
+  function mission() {
+    const { ports } = fixture();
+    const observe = vi.fn(async () => true);
+    const enabled = vi.fn(() => true);
+    const write = ports.merge;
+    const merge: SandboxAppEPorts['merge'] = async (request, beforeWrite) => {
+      await beforeWrite();
+      return (write as SandboxAppEPorts['merge'])(request, beforeWrite);
+    };
+    const decision: MergeVerdict = { verdict: 'would_merge', codes: [], request: { sha: head, merge_method: 'squash' },
+      gates: { second_read: true, start_is_base: true, g5: { live_tip: base, base_head: base } } };
+    const run = () => executeMissionAppEMerge(binding, decision, { ...ports, observe, enabled, merge }, APP_E_SANDBOX);
+    return { ports, observe, enabled, write, run };
+  }
+  it('reserves once and submits a head-bound squash', async () => {
+    const f = mission();
+    expect(await f.run()).toEqual({ kind: 'merged', sha: squash });
+    expect(await f.run()).toEqual({ kind: 'refused', reason: 'already_reserved' });
+    expect(f.write).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ sha: head, merge_method: 'squash' }), expect.any(Function));
+  });
+  it('refuses changed gates immediately before PUT', async () => {
+    const f = mission();
+    f.ports.reserveOnce.mockImplementationOnce(async () => { f.observe.mockResolvedValue(false); return true; });
+    expect(await f.run()).toEqual({ kind: 'refused', reason: 'gate_failed' });
+    expect(f.write).not.toHaveBeenCalled();
+  });
+  it('records uncertainty after contradictory readback', async () => {
+    const f = mission();
+    f.ports.readback.mockResolvedValue({ ...await f.ports.readback(), parents: [head] });
+    expect(await f.run()).toEqual({ kind: 'unknown' });
+  });
+  it('does not reserve or write when disabled or draining', async () => {
+    const f = mission();
+    f.enabled.mockReturnValue(false);
+    expect((await f.run()).kind).toBe('refused');
+    expect(f.ports.reserveOnce).not.toHaveBeenCalled();
+    expect(f.write).not.toHaveBeenCalled();
   });
 });

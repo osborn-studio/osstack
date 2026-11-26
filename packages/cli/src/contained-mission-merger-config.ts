@@ -1,13 +1,15 @@
 // Registry for the bridge shadow merger (merger design §5.2): `$OSSTACK_HOME/bridge/merger.json`. Host-private, numeric ids only.
 // Deliberately independent of loadBridgeConfig and of every App-credential module: it never reads apps.json, rulesets.json or a key,
-// and the schema has no field that could hold one. Missing file -> undefined (merger off); present but invalid -> throws.
+// and validates live installation settings without opening the key. Missing file -> undefined (merger off); present but invalid -> throws.
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import type { MergerRegistry } from '@osstack/core';
 import { z } from 'zod';
 
 const positive = z.number().int().positive();
 const identity = z.object({ actor_id: positive, app_id: positive }).strict();
+const approver = z.object({ actor_id: positive, app_id: z.null() }).strict();
+const liveSchema = z.object({ merger_key_path: z.string().refine(isAbsolute), merger_installation_id: positive.safe() }).strict();
 const checkSchema = z.object({ context: z.string().min(1).max(200), app_id: positive }).strict();
 const configSchema = z
   .object({
@@ -23,7 +25,9 @@ const configSchema = z
     base_ref: z.literal('main'),
     inspection_evidence: z.boolean(),
     /** P-5: only Users count; an App approval never does, so `app_id` must be null. */
-    counted_approvers: z.array(z.object({ actor_id: positive, app_id: z.null() }).strict()).nonempty(),
+    counted_approvers: z.array(approver).nonempty(),
+    bot_approvers: z.array(approver).optional(),
+    live: liveSchema.optional(),
     required_checks: z.array(checkSchema).nonempty(),
     main_quality_ruleset_id: positive,
     main_update_ruleset_id: positive,
@@ -32,6 +36,7 @@ const configSchema = z
   .strict();
 
 export interface MergerConfig extends MergerRegistry {
+  readonly live?: z.infer<typeof liveSchema>;
   readonly inspection_evidence: boolean;
   /** The owner reviewer: the first (today the only) counted approver's user id. */
   readonly owner_reviewer_id: number;
@@ -64,11 +69,13 @@ export async function loadMergerConfig(home: string): Promise<MergerConfig | und
   } catch {
     throw invalid('json');
   }
-  if (findCredentialKey(json)) throw invalid('credential_field');
+  const fields = json !== null && typeof json === 'object' ? { ...json } as Record<string, unknown> : {};
+  delete fields['live']; // The strict live schema permits exactly the two installation settings.
+  if (findCredentialKey(fields)) throw invalid('credential_field');
   const result = configSchema.safeParse(json);
   if (!result.success) throw invalid(result.error.issues[0]?.path.join('.') || 'root');
   const c = result.data;
-  const approvers = c.counted_approvers.map((a) => a.actor_id);
+  const approvers = [...c.counted_approvers, ...(c.bot_approvers ?? [])].map((a) => a.actor_id);
   if (new Set(approvers).size !== approvers.length) throw invalid('duplicate_approver');
   // The three Apps (and their bot users) must be three different identities; an approver must be none of them.
   const apps = [c.publisher.app_id, c.evidence_app_id, c.merger.app_id];
@@ -81,6 +88,8 @@ export async function loadMergerConfig(home: string): Promise<MergerConfig | und
   const rulesets = [c.main_quality_ruleset_id, c.main_update_ruleset_id, ...c.mission_ruleset_ids];
   if (new Set(rulesets).size !== rulesets.length) throw invalid('ruleset_ids_overlap');
   return {
+    ...(c.live && { live: c.live }),
+    ...(c.bot_approvers && { bot_approvers: c.bot_approvers }),
     repository: c.repository,
     base_ref: c.base_ref,
     publisher: c.publisher,
