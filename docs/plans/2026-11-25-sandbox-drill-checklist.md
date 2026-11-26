@@ -16,7 +16,9 @@
 
 ## 0. 一个必须先知道的门
 
-主机侧的本地失败修复路线（[桥接运行手册](../runbooks/bridge.md) §6.2）只在 `OSSTACK_BRIDGE=1`（live 桥接）下工作。**这个值目前在代码里启动即拒绝**：`parseBridgeMode` 调用 `assertLiveBridgeAcceptance()`，固定抛出 `BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G`（`packages/cli/src/contained-mission-rpc.ts:111-124`）。注释写明：只有带着 5-F 和 5-G 验收证据、经过评审的代码改动才能打开它。
+主机侧的本地失败修复路线（[桥接运行手册](../runbooks/bridge.md) §6.2）只在 `OSSTACK_BRIDGE=1`（live 桥接）下工作。
+
+**2026-11-25 更新：** 你选择了“只对沙箱仓库开门”（[设计说明](../design/2026-11-25-bridge-live-sandbox-gate.md)）。现在桥接仓库是 `osborn-studio/osstack-bridge-sandbox` 时，`OSSTACK_BRIDGE=1` 可以启动；其他仓库启动失败，错误为 `BRIDGE_LIVE_SANDBOX_ONLY:repository`。演练通过后，要另一个经过评审的改动才能去掉这个限制。下面保留的是开门之前的核对记录：此前这个值启动即拒绝（`BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G`）。
 
 - **5-G（沙箱端到端）**：2026-11-08 第 4 次运行通过，13/13 场景，`qualified:true`（[记录](../reports/bridge-phase5-verification/current-v2-status.md)）。但那之后主机代码改了很多（U3、U4b、U5、T6 等），这份证据是否还算数，要由你决定。
 - **5-F（故障注入、变异、属性测试、live TLA 模型）**：门槛在 [同 PR 受控修订](../design/2026-11-06-bridge-same-pr-revision.md) §5.6 末尾。2026-11-25 核对结论：**在当前 main 上不完整，不能用来开门。**

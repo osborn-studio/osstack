@@ -36,7 +36,7 @@ function setup() {
     read_scopes: [rig.scope.scope_id], write_scopes: [rig.scope.scope_id], stop_scopes: [], operator_scopes: [],
   }] }), { mode: 0o600 });
   const home = join(rig.root, 'home');
-  mkdirSync(join(home, 'bridge'), { recursive: true });
+  mkdirSync(join(home, 'bridge'), { recursive: true, mode: 0o700 });
   const env = {
     OSSTACK_CONTAINED_CODEX_BIN: '/bin/true', OSSTACK_CONTAINED_CODEX_HOME: rig.root, OSSTACK_CONTAINED_DOCKER_SOCKET: join(rig.root, 'd.sock'),
     OSSTACK_CONTAINED_DOCKER_DAEMON_ID: 'd', OSSTACK_CONTAINED_BASE_IMAGE_ID: `sha256:${'0'.repeat(64)}`,
@@ -65,7 +65,7 @@ describe('OSSTACK_BRIDGE switch', () => {
     expect(parseBridgeMode(undefined)).toBe('off');
     expect(parseBridgeMode('0')).toBe('off');
     expect(parseBridgeMode('shadow')).toBe('shadow');
-    expect(() => parseBridgeMode('1')).toThrow('BRIDGE_LIVE_NOT_IMPLEMENTED');
+    expect(parseBridgeMode('1')).toBe('live');
     for (const bad of ['', 'true', 'SHADOW', 'shadow ', 'live', '2']) expect(() => parseBridgeMode(bad)).toThrow('BRIDGE_MODE_INVALID');
   });
 
@@ -121,10 +121,10 @@ describe('OSSTACK_BRIDGE switch', () => {
     await expect(f.create('shadow')).rejects.toThrow('BRIDGE_CONFIG_INVALID:producers.json:publisher_is_reviewer');
   });
 
-  it('refuses live (1) and any other value before building anything', async () => {
+  it('refuses live with incomplete configuration and rejects invalid modes', async () => {
     const f = setup();
     f.producers();
-    await expect(f.create('1')).rejects.toThrow('BRIDGE_LIVE_NOT_IMPLEMENTED');
+    await expect(f.create('1')).rejects.toThrow(new Error('BRIDGE_CONFIG_INVALID:live:apps_rulesets_required'));
     for (const bad of ['garbage', '', 'on', 'true']) await expect(f.create(bad)).rejects.toThrow('BRIDGE_MODE_INVALID');
   });
 });
