@@ -168,6 +168,8 @@ The harness runs commands against a PR head. A PR head is untrusted code. These 
 
 This is decision 6 in §9. It is the owner's, because it decides what can reach a signing key.
 
+**Sandbox exception (2026-11-25).** For the sandbox drill only, the owner chose the shared Grok Bots computer, where the Bots have root and can read the key. See [the amendment](2026-11-25-b9-sandbox-shared-computer.md); it states what a result from there does and does not prove.
+
 **What a compromised harness can do even without the key.** It can write a request file with a false `passed` record. The publisher would publish it for that PR and head, because the publisher trusts the record (B8 decision 3). It could not publish for another repository, another PR or a moved head (`publish.ts:147`, `:168-171`). The three later gates still hold: the host's own recheck in its own container, the Actions result, and a counted human approval (intake design §4.1).
 
 ### 5.2 Where it lives, and what it reuses
@@ -385,7 +387,7 @@ None of this is part of the nodes in §8. Each item needs the owner's separate a
 - Nothing was built or run for this document. Statements about code come from reading source at `176ea389`.
 - GitHub platform behaviour comes from GitHub's documentation, read on 2026-11-24 through a fetch tool, and was not probed: the token endpoint and its narrowing fields, the one-hour token life, the 10-minute JWT limit, `RS256`, the check-run endpoints and their 65,535-character output limits, and the rate limits. The sentence that the repository-installation read needs a JWT came from a summary of the page, not its verbatim text. The documentation did not state whether a token without Pull requests permission can read a public PR.
 - I did not read any key, any host-private configuration, the App's settings or the cloud computer. The App's permission set and installation come from the B8 design and the plan.
-- Whether rootless Docker is available on the shared cloud computer, and whether that computer can keep two OS users apart from the bots' user (also open in B8 design §9).
+- Whether rootless Docker is available on the shared cloud computer, and whether that computer can keep two OS users apart from the bots' user (also open in B8 design §9). Answered on 2026-11-25 for the sandbox: rootless Docker runs with enforced limits, and two users cannot be kept apart because the Bots have root ([amendment](2026-11-25-b9-sandbox-shared-computer.md)).
 - Whether the sandbox repository's PR heads meet the exporter's limits (regular files only, 10,000 files, 32 MiB). `osborn-studio/osstack` itself was not measured either.
 - Which profile will be installed for the first skill, and whether its base image exists in the cloud. The profile, its digest and the image are owner inputs.
 - The cost of R1 was estimated from the importer list, not from a trial move. Tests that read the moved files as text may need path changes.
