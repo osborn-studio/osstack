@@ -1,0 +1,89 @@
+name: OSStack mission verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: osstack-verify-${{ inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    outputs:
+      head: ${{ steps.pr.outputs.head }}
+    steps:
+      - name: Validate the pull request and record its head
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$PR" =~ ^[1-9][0-9]{0,8}$ ]] || exit 1
+          head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" | jq -er --arg repo "$GITHUB_REPOSITORY" '
+            select(.state == "open" and .draft == false
+              and .base.repo.full_name == $repo and .head.repo.full_name == .base.repo.full_name
+              and (.head.ref | test("^osstack/mission/[A-Za-z0-9_.-]+\\z"))
+              and (.base.repo.default_branch | type == "string" and length > 0)
+              and .base.ref == .base.repo.default_branch)
+            | .head.sha | select(test("^[0-9a-fA-F]{40}\\z"))
+          ')
+          printf 'head=%s\n' "$head" >> "$GITHUB_OUTPUT"
+
+  verify:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.head }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check the commit under verification
+        env:
+          EXPECTED_HEAD: ${{ needs.prepare.outputs.head }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Repository verification (replace this step for another repository)
+        run: test ! -e PROBE_FAIL
+
+  report:
+    needs: [prepare, verify]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - name: Publish the check on the verified commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          HEAD_SHA: ${{ needs.prepare.outputs.head }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$PR" =~ ^[1-9][0-9]{0,8}$ ]] || exit 1
+          conclusion=failure
+          if [[ "$VERIFY_RESULT" == success ]]; then
+            conclusion=success
+          fi
+          jq -n --arg head "$HEAD_SHA" --arg id "$PR:$HEAD_SHA" --arg conclusion "$conclusion" \
+            --arg summary "Workflow run $GITHUB_RUN_ID, attempt $GITHUB_RUN_ATTEMPT." \
+            '{name: "osstack/verify-actions", head_sha: $head, external_id: $id,
+              status: "completed", conclusion: $conclusion,
+              output: {title: "OSStack mission verification", summary: $summary}}' |
+            gh api -X POST "repos/$GITHUB_REPOSITORY/check-runs" --input - --silent
