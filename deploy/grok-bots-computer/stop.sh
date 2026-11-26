@@ -1,97 +1,81 @@
 #!/bin/bash
 set -euo pipefail
 
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+[[ $(id -u) == 1000 && $(id -un) == box ]] ||
+  fail 'run as box (uid 1000)'
+
 XDG=/tmp/xdg-box
 BUS=unix:path=$XDG/bus
 export PATH=/usr/sbin:/sbin:$PATH
 export XDG_RUNTIME_DIR=$XDG
 export DBUS_SESSION_BUS_ADDRESS=$BUS
 
-pat_sd='/usr/lib/systemd/systemd --user'
-pat_dbus="unix:path=$XDG/bus"
-pat_rk='/tmp/xdg-box/dockerd-rootless'
-pat_ct='/tmp/xdg-box/docker/containerd'
-
-stop_pat() {
-  local pat=$1
-  local sig=${2:-TERM}
-  local pids
-  pids=$(pgrep -u box -f "$pat" || true)
-  if [ -n "${pids:-}" ]
-  then
-    kill -s "$sig" $pids || true
-  fi
+names=(systemd rootlesskit dockerd containerd dbus-daemon)
+# Collect matching PIDs and their names for the caller.
+collect() {
+  local name pid candidates
+  pids=()
+  survivors=()
+  for name in "$@"
+  do
+    candidates=$(pgrep -u box -x "$name") ||
+      [[ $? == 1 ]] || fail "cannot check for $name"
+    for pid in $candidates
+    do
+      case "$name" in
+        systemd)
+          grep -zFxq -- '--user' "/proc/$pid/cmdline" 2>/dev/null || continue ;;
+        dbus-daemon)
+          grep -zFxq -- "--address=$BUS" "/proc/$pid/cmdline" 2>/dev/null ||
+            continue ;;
+        *)
+          grep -Eq '/user-1000\.slice(/|$)' "/proc/$pid/cgroup" 2>/dev/null ||
+            continue ;;
+      esac
+      pids+=("$pid")
+      survivors+=("$name($pid)")
+    done
+  done
 }
 
-if systemctl --user is-active docker \
-  >/dev/null 2>&1
+if systemctl --user is-active docker >/dev/null 2>&1
 then
   systemctl --user stop docker
 fi
 
-if pgrep -u box -f "$pat_sd" >/dev/null
+collect systemd
+if (( ${#pids[@]} ))
 then
-  systemctl --user exit >/dev/null 2>&1 \
-    || true
+  systemctl --user exit >/dev/null 2>&1 || true
+  for ((i=0; i<10; i++))
+  do
+    collect systemd
+    (( ${#pids[@]} )) || break
+    sleep 1
+  done
 fi
 
-i=0
-while [ "$i" -lt 10 ]
-do
-  if ! pgrep -u box -f "$pat_sd" >/dev/null
-  then
-    break
-  fi
-  sleep 1
-  i=$((i + 1))
-done
-
-stop_pat "$pat_sd"
-stop_pat "$pat_rk"
-stop_pat "$pat_ct"
-stop_pat "$pat_dbus"
-
-for pid in $(pgrep -u box -x dockerd || true)
-do
-  cg=$(cat /proc/$pid/cgroup 2>/dev/null \
-    || true)
-  case "$cg" in
-    *user-1000.slice*) kill "$pid" || true ;;
-  esac
-done
-
-i=0
-while [ "$i" -lt 5 ]
-do
-  alive=0
-  if pgrep -u box -f "$pat_sd" >/dev/null
-  then
-    alive=1
-  fi
-  if pgrep -u box -f "$pat_dbus" >/dev/null
-  then
-    alive=1
-  fi
-  if pgrep -u box -f "$pat_rk" >/dev/null
-  then
-    alive=1
-  fi
-  if [ "$alive" = 0 ]
-  then
-    break
-  fi
-  sleep 1
-  i=$((i + 1))
-done
-
-if pgrep -u box -f "$pat_sd" >/dev/null \
-  || pgrep -u box -f "$pat_dbus" >/dev/null \
-  || pgrep -u box -f "$pat_rk" >/dev/null
+collect "${names[@]}"
+if (( ${#pids[@]} ))
 then
-  stop_pat "$pat_sd" KILL
-  stop_pat "$pat_rk" KILL
-  stop_pat "$pat_ct" KILL
-  stop_pat "$pat_dbus" KILL
+  kill -TERM "${pids[@]}" 2>/dev/null || true
+  for ((i=0; i<5; i++))
+  do
+    sleep 1
+    collect "${names[@]}"
+    (( ${#pids[@]} )) || break
+  done
 fi
-
+if (( ${#pids[@]} ))
+then
+  kill -KILL "${pids[@]}" 2>/dev/null || true
+  sleep 1
+fi
+collect "${names[@]}"
+(( ${#pids[@]} == 0 )) || fail "still running: ${survivors[*]}"
 echo 'ok: stopped rootless docker session'
