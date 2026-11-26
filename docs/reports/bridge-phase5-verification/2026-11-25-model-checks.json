@@ -1,0 +1,489 @@
+{
+  "recorded": "2026-11-25",
+  "model": "docs/design/specs/bridge.tla",
+  "model_commit": "ee445be9",
+  "model_sha256": "0b888044253464631ff670b8a93cc3ebedc6be131b83c656779fa5f020b1eef5",
+  "tla2tools": {
+    "version": "v1.7.4",
+    "sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
+  },
+  "jdk": "openjdk version \"26.0.1\" 2026-04-21",
+  "tlc_flags": "-Xmx6g -XX:+UseParallelGC -workers 4",
+  "note": "Main configs ran one per heavy-lock slot with the same flags as scripts/verify-bridge-phase5-tlc.mjs; bounded and mutants via that script.",
+  "all_passed": true,
+  "results": [
+    {
+      "config": "bridge-bounded.cfg",
+      "status": 0,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-ldk3gF/bridge-bounded.log",
+      "log_sha256": "5fe208a40bc2a19d4fe9223d65ccd0764c4dfc5ab39b6bdfc4febbc71400ba23",
+      "counts": [
+        10221901,
+        1556922,
+        0
+      ],
+      "depth": 32,
+      "mode": "--bounded"
+    },
+    {
+      "config": "mutants/fence-no-chain.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant NoPushAfterClose is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-fence-no-chain.log",
+      "log_sha256": "278999263211b295304771ca3297b26d2aab88179fe0306ce427b369d04c2fee",
+      "counts": [
+        110,
+        54,
+        0
+      ],
+      "depth": 11,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/local-fence-skips-close.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant NoPushAfterClose is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-local-fence-skips-close.log",
+      "log_sha256": "30fb22d6e337f8c96c2a4bbc424b9c2cb88ee12d0f60eeafe01e38b7472f06f7",
+      "counts": [
+        111297,
+        26790,
+        12231
+      ],
+      "depth": 9,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/local-no-lease.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant LeaseSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-local-no-lease.log",
+      "log_sha256": "50f847d6e5f82ca7c5bd638dbf100bc615c2b5bdbaaf4285ad00109c3a655281",
+      "counts": [
+        110424,
+        26546,
+        12105
+      ],
+      "depth": 8,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/local-overlaps-review.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant Inv3 is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-local-overlaps-review.log",
+      "log_sha256": "ea18d9abc76579af124ff90957b5f4fc034fd076929c9951483749a471453338",
+      "counts": [
+        6383,
+        2179,
+        1496
+      ],
+      "depth": 5,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/local-skips-round-cap.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant Inv1 is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-local-skips-round-cap.log",
+      "log_sha256": "9189e05adca5fd6a74b3b5049564e73ce6eb4469ae33c63f2785e54c3ed8fd74",
+      "counts": [
+        69618,
+        18088,
+        9154
+      ],
+      "depth": 8,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/no-grant-check.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant GrantSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-no-grant-check.log",
+      "log_sha256": "697195a57f39e68de08e0a2d47f1a05ab88575ffb0493dffa0b2214253b06584",
+      "counts": [
+        3477,
+        1387,
+        1070
+      ],
+      "depth": 5,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/no-lease.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant LeaseSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-no-lease.log",
+      "log_sha256": "663b463e8ba9a3d37c2afe4dcd9592eadc193b1b81b8825b6154ab43095501e3",
+      "counts": [
+        1205,
+        595,
+        71
+      ],
+      "depth": 11,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/no-reservation-pk.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant Inv2 is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-no-reservation-pk.log",
+      "log_sha256": "07a3b2c3ca72410ffae90f58bd8e39e315e4924751e5af2efa2c0bb679c0f951",
+      "counts": [
+        87087,
+        21116,
+        12028
+      ],
+      "depth": 8,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/no-rounds.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant Inv1 is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-no-rounds.log",
+      "log_sha256": "fc4c0c540f3ce3ee2998b694524f1f38f103fa89a233102b0e91ae405b2b91f7",
+      "counts": [
+        244,
+        113,
+        1
+      ],
+      "depth": 18,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/pending-push-skips-base.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant PendingBaseSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-pending-push-skips-base.log",
+      "log_sha256": "1469ec1d53bc6b647f96e7791cbe7afb7a84547ae335d68b1845f4e02d823c5f",
+      "counts": [
+        184,
+        110,
+        0
+      ],
+      "depth": 13,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/renewal-skips-busy.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant RenewalSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-renewal-skips-busy.log",
+      "log_sha256": "0031bc2e9d21b077f258e1e435f5233f749a7959c71600703f645e71962fc067",
+      "counts": [
+        10320,
+        3135,
+        2059
+      ],
+      "depth": 6,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/resume-after-push-rejected.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant ResumeSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-resume-after-push-rejected.log",
+      "log_sha256": "0b4efaabedb506357da2b83bac12aa1d1e847d100bdb2f0bbdd12ef9090fb535",
+      "counts": [
+        108,
+        58,
+        0
+      ],
+      "depth": 10,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/resume-before-receipts.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant ResumeSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-resume-before-receipts.log",
+      "log_sha256": "0fde3ff0ec5b2b1ebf34b73e7b2b9c9dfcd195199ac4792b6665d3e234974fc1",
+      "counts": [
+        539,
+        241,
+        76
+      ],
+      "depth": 9,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/resume-uncertain-intent.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant ResumeSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-resume-uncertain-intent.log",
+      "log_sha256": "e334137a30030535a645873ec9c58c2907dbac069cc41686e0be93c4b3a351d2",
+      "counts": [
+        102,
+        58,
+        8
+      ],
+      "depth": 10,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/resume-without-stop-proof.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant ResumeSafety is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-resume-without-stop-proof.log",
+      "log_sha256": "876d6703efeb308e44ba65934b489ed0ebe71f9cf644fda805b97b10869050ec",
+      "counts": [
+        577,
+        104,
+        24
+      ],
+      "depth": 7,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/shadow-reserve.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant ShadowNeverWrites is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-shadow-reserve.log",
+      "log_sha256": "11924cf16b0aa647c3b68b03b4b00db942e4f7fab304b1a3eeeeb4b4e7236dbf",
+      "counts": [
+        107,
+        74,
+        64
+      ],
+      "depth": 4,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/store-any-confirmed-head.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant ConfirmedExtensionGuard is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-store-any-confirmed-head.log",
+      "log_sha256": "c5b92ea73a561b748eefc9ed7ea59a22eb4a8b3baf4fee4ed97e1f0b7bd2308c",
+      "counts": [
+        248,
+        115,
+        0
+      ],
+      "depth": 22,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/store-many-pending-intents.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant PendingIntentUniqueness is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-store-many-pending-intents.log",
+      "log_sha256": "45146ac5c8d9fbb39b8056407ae09b85220fb7ccc89c026139de1129947ecb4f",
+      "counts": [
+        316,
+        143,
+        40
+      ],
+      "depth": 8,
+      "mode": "--mutants"
+    },
+    {
+      "config": "mutants/timeline-attribution.cfg",
+      "status": 12,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [
+        "Error: Invariant Inv6 is violated.",
+        "Error: The behavior up to this point is:"
+      ],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-qCzpZF/mutants-timeline-attribution.log",
+      "log_sha256": "4d6feccf94bbe42175c65c3e3f8b09f5c581883bada10f58e7cb17ab78fa1d89",
+      "counts": [
+        302,
+        154,
+        130
+      ],
+      "depth": 4,
+      "mode": "--mutants"
+    },
+    {
+      "config": "bridge.cfg",
+      "status": 0,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-main-ee445be9/bridge.log",
+      "log_sha256": "ddbed52881d14d0921cba2bf22381f8ae873eb77aac75d6d5c3a2b76fab2a660",
+      "counts": [
+        376490793,
+        47599782,
+        0
+      ],
+      "depth": 48,
+      "mode": "--main",
+      "started": "2026-11-25T15:10:59Z",
+      "ended": "2026-11-25T15:24:13Z"
+    },
+    {
+      "config": "bridge-local.cfg",
+      "status": 0,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-main-ee445be9/bridge-local.log",
+      "log_sha256": "626c90aadc10061ad6f8803e6f5c4c15e87829d2eade8d60feb8dfa14b9bd303",
+      "counts": [
+        2043606121,
+        258884342,
+        0
+      ],
+      "depth": 49,
+      "mode": "--main",
+      "started": "2026-11-25T13:49:07Z",
+      "ended": "2026-11-25T15:10:18Z"
+    },
+    {
+      "config": "bridge-shadow.cfg",
+      "status": 0,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-main-ee445be9/bridge-shadow.log",
+      "log_sha256": "90737010c190b4f112dd90ed11c1298f485248d873ecfa7804dfb0a73d11fe4b",
+      "counts": [
+        60003,
+        11897,
+        0
+      ],
+      "depth": 12,
+      "mode": "--main",
+      "started": "2026-11-25T13:49:06Z",
+      "ended": "2026-11-25T13:49:07Z"
+    },
+    {
+      "config": "bridge-rounds.cfg",
+      "status": 0,
+      "passed": true,
+      "kind": "exhaustive-breadth-first",
+      "errors": [],
+      "model_commit": "ee445be9",
+      "log": "$OSSTACK_SCRATCH_ROOT/smoke/bridge-phase5-tlc-main-ee445be9/bridge-rounds.log",
+      "log_sha256": "5fa7f1f31a72485b09fd525387f9f64ee361b923a8643c79d9b894b1dcaa7423",
+      "counts": [
+        502269079,
+        68433084,
+        0
+      ],
+      "depth": 46,
+      "mode": "--main",
+      "started": "2026-11-25T15:24:13Z",
+      "ended": "2026-11-25T15:43:05Z"
+    }
+  ]
+}

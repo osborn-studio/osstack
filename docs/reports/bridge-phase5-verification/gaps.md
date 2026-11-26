@@ -63,3 +63,13 @@ The tables above preserve their historical baseline/local scope. **Attempt 4 pas
 Attempts 1–3 remain failed/unqualified; the third-run report remains 7/13. The cold case still cancels before the first executor tick and does not establish parent shutdown or in-flight executor recovery. The single predeclared mixed case is bounded evidence. Historical mutation/model assumptions are unchanged. All 69 host journals are stopped and all 14 mission stop obligations are zero, but two decision reservations/missions/claims remain; `ledger_settled:false` is expected and no rows were manipulated to clear them.
 
 All five Sol CLI scope reviews now PASS; GLM-5.3 post-run review returned SCOPED PASS with no unresolved material findings for static projection/artifact consistency only; it executed nothing and does not prove authenticity or full-project completion. Reporter provenance fix `05eb6600` passed 12/12 targeted tests; parent fifteen-file Node run passed 484/484 (zero failures/skips, exit 0). Actual external Grok capability and [Watcher failure/local repair intake](acceptance-v2.md#product-closure-still-missing) remain open, as do production admission and five production chains. Reviewer remains paused/excluded and the counted human main gate remains unchanged. Production is **CLOSED**; no fifth real run is authorized. See [current status](current-v2-status.md).
+
+## 2026-11-25 TLA model coverage (5-F)
+
+| Item | Status | Evidence |
+|---|---|---|
+| Live TLA model has no TLC counterexample, including the local-failure writer | evidenced on model `ee445be9` | `2026-11-25-model-checks.json`: bounded, main, local, rounds and shadow all pass with an empty queue |
+| V2 grant renewal while a local repair is approved or unsettled | evidenced (model) | `RenewalSafety` holds; `renewal-skips-busy` mutant counterexample |
+| Finding 10 (close keeps reason and reservations) | closed | close clears `stopReason` and voids reservations; `ClosedCleanup` holds |
+| Model mutants | 19/19 counterexamples | five new: `local-overlaps-review`, `local-skips-round-cap`, `renewal-skips-busy`, `local-no-lease`, `local-fence-skips-close` |
+| Limit | open | Bounded check only (`MaxLocalRepairs = 1`, two reviewers, two rounds). The race between the pre-intent PR read and the local push is modelled the same as on the review route. |

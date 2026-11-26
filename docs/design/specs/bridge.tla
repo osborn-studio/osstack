@@ -28,8 +28,10 @@ CONSTANTS
   MaxAttempts,        \* push intents per child (retry after failed)
   MaxReviews,         \* bound on review submissions (state-space bound)
   MaxOutsiderWrites,  \* bound on outsider pushes / force pushes
+  MaxLocalRepairs,    \* one V2 dispatch per root, or zero for the review-only configurations
   OutCommit,          \* the outsider's commit id
   \* Guards; TRUE = as implemented / designed. FALSE = seeded bug (mutants/).
+  LocalExcludesReview, LocalChecksRounds, RenewalChecksBusy, LocalUsesLease, LocalFenceChecksClosed,
   UseLease,           \* push uses --force-with-lease=<branch>:<expected_old_head>
   FenceChecksChain,   \* beforeRemoteMutation re-checks the chain (S8.7 step 4)
   ShadowGuard,        \* every "shadow never reserves" layer (store mode check,
@@ -44,13 +46,15 @@ CONSTANTS
   ResumeChecksIntent, ResumeChecksStop, ResumeRejectsPushRejected,
   CheckPendingBase    \* D8: base check inside pending-push branch
 
+ASSUME MaxLocalRepairs \in 0..1
 ASSUME Modes \subseteq {"live", "shadow"} /\ Modes # {}
 ASSUME MaxRounds \in 1..2 /\ MaxAttempts \in 1..3 /\ MaxReviews \in Nat
 ASSUME MaxOutsiderWrites \in Nat /\ OutCommit \in Nat /\ OutCommit > MaxRounds + 1
 ASSUME \A f \in {UseLease, FenceChecksChain, ShadowGuard, CheckRounds, ReservePK,
                  AcceptOnlyConfirmed, StrictConfirmedHead, OnePendingIntent,
                  ResumeAfterReceipts, ChecksGrant, ResumeChecksIntent, ResumeChecksStop,
-                 ResumeRejectsPushRejected, CheckPendingBase} : f \in BOOLEAN
+                 ResumeRejectsPushRejected, CheckPendingBase, LocalExcludesReview, LocalChecksRounds,
+                 RenewalChecksBusy, LocalUsesLease, LocalFenceChecksClosed} : f \in BOOLEAN
 
 VARIABLES
   \* chain ledger (engineering_revision_chains / _reservations / _publication_intents / shadow decisions)
@@ -69,7 +73,9 @@ VARIABLES
   pub, released, recovering, justReconciled,
   \* ghost variables for the invariants
   detected, pushWhileDetected, clobbered, chainPushed, pushedWhileClosed, actedWithoutGrant,
-  badResume
+  badResume,
+  \* Local child and its immutable dispatch proof; grant replacement state.
+  localStage, repairIntent, proof, intakeOpen, grantV2, pin, badRenewal
 
 chainVars == <<mode, cState, stopReason, publishedHead, publishedBase, roundsUsed, grantRounds,
                res, intent, currentChild, shadowWould>>
@@ -79,7 +85,10 @@ envVars == <<branch, base, prOpen, reviewVars, deadlinePassed, grantValid, outsi
 procVars == <<pub, released, recovering>>
 ghostVars == <<detected, pushWhileDetected, clobbered, chainPushed, pushedWhileClosed,
                actedWithoutGrant, badResume>>
-vars == <<chainVars, childVars, envVars, procVars, ghostVars, justReconciled>>
+localVars == <<localStage, repairIntent, proof, intakeOpen>>
+grantVars == <<grantV2, pin, badRenewal>>
+extensionVars == <<localVars, grantVars>>
+vars == <<extensionVars, chainVars, childVars, envVars, procVars, ghostVars, justReconciled>>
 
 -----------------------------------------------------------------------------
 None == -1
@@ -116,6 +125,17 @@ Active(row) == row.st \in {"reserved", "dispatched"}
 HasRow(h) == \E row \in res : row.head = h
 VoidIf(row, h) == IF row.head = h /\ Active(row) THEN [row EXCEPT !.st = "void"] ELSE row
 VoidRows(h) == {VoidIf(row, h) : row \in res}
+
+VoidAll == {[row EXCEPT !.st = "void"] : row \in res}
+LocalActive == localStage \notin {"none", "terminal"}
+LocalSpent == IF localStage = "none" THEN 0 ELSE 1
+RepairUnsettled == repairIntent \notin {"none", "confirmed"}
+RepairApproved == localStage \in {"approved", "halted_approved"}
+RepairBusy == intakeOpen \/ RepairUnsettled \/ (LocalActive /\ localStage # "waiting")
+LocalBlocksReview == intakeOpen \/ (LocalExcludesReview /\ LocalActive)
+RepairAtRemote == repairIntent \in {"released", "stopped"}
+                  /\ Last(branch) = proof.previous + 1 /\ publishedHead = proof.previous
+RepairLedgerVerdict == IF RepairAtRemote THEN "reconciliation_incomplete" ELSE "continue"
 
 ConfirmedHeads == {c + 1 : c \in {d \in Children : \E a \in Attempts : intent[d][a] = "confirmed"}}
 NoPending == \A c \in Children, a \in Attempts : intent[c][a] # "pending"
@@ -169,6 +189,8 @@ Decide ==
   IF cState = "closed" THEN NoDec
   ELSE IF ~Snap.open THEN TransDec("closed", "pr_closed")
   ELSE IF cState = "awaiting_decision" THEN NoDec
+  ELSE IF RepairAtRemote /\ Snap.base # publishedBase THEN StopDec("base_changed")
+  ELSE IF RepairLedgerVerdict = "reconciliation_incomplete" THEN NoDec
   ELSE IF h # publishedHead /\ mode = "shadow" THEN StopDec("attribution_unknown")
   ELSE IF h # publishedHead /\ ~Acceptable(h) /\ PendingHead(h)
        THEN IF CheckPendingBase /\ Snap.base # publishedBase THEN StopDec("base_changed") ELSE NoDec
@@ -195,6 +217,7 @@ Decide ==
 \* store.reserveInner + DDL (PK, engineering_reservation_active, reservation_child_exclusive_insert,
 \* live_only trigger, grant CHECK).
 StoreReserveOK ==
+  /\ ~LocalBlocksReview
   /\ cState \in {"awaiting_review", "ready_for_human"}
   /\ IF mode = "shadow" THEN ~ShadowGuard ELSE (CheckRounds => roundsUsed < grantRounds)
   /\ ~\E row \in res : Active(row)
@@ -221,19 +244,25 @@ Init ==
   /\ pub = Idle /\ released = {} /\ recovering = FALSE /\ justReconciled = FALSE
   /\ detected = FALSE /\ pushWhileDetected = FALSE /\ clobbered = FALSE /\ chainPushed = FALSE
   /\ pushedWhileClosed = FALSE /\ actedWithoutGrant = FALSE
-  /\ badResume = FALSE
+  /\ badResume = FALSE /\ badRenewal = FALSE
+  /\ localStage = "none" /\ repairIntent = "none" /\ intakeOpen = FALSE
+  /\ proof = [previous |-> None, base |-> 0, pin |-> None]
+  /\ grantV2 \in (IF mode = "live" /\ MaxLocalRepairs = 1 THEN BOOLEAN ELSE {FALSE})
+  /\ pin = IF grantV2 THEN 0 ELSE None
 
 -----------------------------------------------------------------------------
 (* Reconciler cycle (listOpen skips closed and awaiting_decision chains).  *)
 
 Reconcile ==
+  /\ UNCHANGED extensionVars
   /\ ~recovering /\ cState \notin {"closed", "awaiting_decision"}
   /\ LET d == Decide IN
      \/ /\ d.kind = "none"
         /\ UNCHANGED <<chainVars, ghostVars>>
      \/ /\ d.kind = "transition"
         /\ cState' = d.to /\ stopReason' = "none"
-        /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds, res, intent,
+        /\ res' = IF d.to = "closed" THEN VoidAll ELSE res
+        /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds, intent,
                        currentChild, shadowWould, ghostVars>>
      \/ /\ d.kind = "stop"
         /\ cState' = "awaiting_decision" /\ stopReason' = d.reason
@@ -266,12 +295,12 @@ Reconcile ==
 ScanStopped ==
   /\ mode = "live" /\ cState = "awaiting_decision"
   /\ IF ~prOpen
-       THEN /\ cState' = "closed" /\ res' = VoidRows(publishedHead)
+       THEN /\ cState' = "closed" /\ res' = VoidAll /\ stopReason' = "none"
             /\ IF currentChild # None /\ childSt[currentChild] \in {"running", "delivering", "halted"}
                  THEN childSt' = [childSt EXCEPT ![currentChild] = "cancel_requested"]
                  ELSE UNCHANGED childSt
-       ELSE UNCHANGED <<cState, res, childSt>>
-  /\ UNCHANGED <<mode, stopReason, publishedHead, publishedBase, roundsUsed, grantRounds,
+       ELSE UNCHANGED <<cState, res, childSt, stopReason>>
+  /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds,
                  intent, currentChild, shadowWould, stopObl, envVars, procVars, ghostVars>>
 
 -----------------------------------------------------------------------------
@@ -279,6 +308,7 @@ ScanStopped ==
 (* clearCurrentMission and their DDL triggers.                              *)
 
 Dispatch ==
+  /\ ~LocalBlocksReview
   /\ ~recovering /\ (mode = "live" \/ ~ShadowGuard) /\ cState = "revision_reserved"
   /\ (ChecksGrant => grantValid)                    \* S8.7.1: re-validated before every dispatch
   /\ \E row \in res :
@@ -365,13 +395,14 @@ LandedReceipt(c, a) ==
   /\ intent' = [intent EXCEPT ![c][a] = "confirmed"]
   /\ IF cState \in InFlight
        THEN /\ cState' = IF prOpen THEN "awaiting_decision" ELSE "closed"
-            /\ stopReason' = IF ~prOpen THEN "pr_closed"
+            /\ stopReason' = IF ~prOpen THEN "none"
                                ELSE IF base # publishedBase THEN "base_changed"
                                ELSE "intent_uncertain"
        ELSE UNCHANGED <<cState, stopReason>>
   /\ childSt' = IF childSt[c] = "delivering" THEN [childSt EXCEPT ![c] = "halted"] ELSE childSt
   /\ publishedHead' = c + 1
-  /\ UNCHANGED <<mode, publishedBase, roundsUsed, grantRounds, res, currentChild,
+  /\ res' = IF cState' = "closed" THEN VoidAll ELSE res
+  /\ UNCHANGED <<mode, publishedBase, roundsUsed, grantRounds, currentChild,
                  shadowWould, stopObl, envVars, released, ghostVars>>
 
 \* Step 2: read the PR. Mismatch: intent failed, reservation void, chain to a human.
@@ -422,13 +453,14 @@ Release ==
         \/ /\ ~Fence(c, a)
            \* Rule 2: refusal, intent settlement and child halt share one step.
            /\ intent' = [intent EXCEPT ![c][a] = "failed"]
-           /\ cState' = IF ~prOpen THEN "closed" ELSE "awaiting_decision"
-           /\ stopReason' = IF ~prOpen THEN "pr_closed" ELSE "publish_refused:fence"
+           /\ cState' = IF ~prOpen \/ cState = "closed" THEN "closed" ELSE "awaiting_decision"
+           /\ res' = IF cState' = "closed" THEN VoidAll ELSE res
+           /\ stopReason' = IF cState' = "closed" THEN "none" ELSE "publish_refused:fence"
            /\ childSt' = IF childSt[c] \in {"running", "delivering"}
                           THEN [childSt EXCEPT ![c] = "halted"] ELSE childSt
            /\ pub' = Idle
            /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds,
-                          res, currentChild, shadowWould, stopObl, envVars, released,
+                          currentChild, shadowWould, stopObl, envVars, released,
                           recovering, ghostVars>>
 
 RemoteApply ==
@@ -498,7 +530,7 @@ ReadBack ==
 -----------------------------------------------------------------------------
 (* Crash and receipt reconciliation (S8.7 step 5; R3 landed round).        *)
 
-\* Only crashes that can lose publication progress are explored: with no pending intent and an
+\* Review publisher crashes that can lose progress: with no pending intent and an
 \* idle publisher there is no in-memory state to lose.
 Crash ==
   /\ pub.stage # "idle" \/ ~NoPending
@@ -618,7 +650,7 @@ DeadlinePass == ~deadlinePassed /\ EnvStep(branch, base, prOpen, TRUE, grantVali
 \* before dispatch and before each push sees it. Explored only while the chain is in flight: in
 \* any other state nothing re-validates the grant before the next dispatch, which re-checks it.
 GrantExpire ==
-  /\ grantValid /\ cState \in InFlight
+  /\ grantValid /\ (cState \in InFlight \/ LocalActive)
   /\ EnvStep(branch, base, prOpen, deadlinePassed, FALSE, outsiderWrites)
 \* A reopened PR must not revive a closed chain (the chain row is terminal). Explored for closed
 \* chains, the case where a still-running publisher could otherwise push again.
@@ -634,25 +666,37 @@ GrantStop ==
                  currentChild, shadowWould, childVars, envVars, procVars, ghostVars>>
 
 -----------------------------------------------------------------------------
-(* Human decisions (phase 5; not implemented in the store yet).            *)
+(* Grant replacement and human decisions.                                 *)
 
-HumanResume ==   \* grant another round / continue
-  /\ cState = "awaiting_decision"
-  \* Without this, settleIntent('uncertain') on the then-unbound intent leaves the resumed chain
-  \* running after an external write (TLC counterexample; mutants/resume-before-receipts.cfg).
-  /\ ResumeAfterReceipts =>
-       \A c \in Children, a \in Attempts : intent[c][a] \notin {"pending", "uncertain"}
-  /\ \E g \in (IF mode = "live" THEN grantRounds..MaxRounds ELSE {0}) : grantRounds' = g
-  /\ IF currentChild # None /\ childSt[currentChild] = "halted"
-       THEN UNCHANGED <<cState, stopReason>>
-       ELSE cState' = "awaiting_review" /\ stopReason' = "none"
+\* replaceGrant: only reasons from REFRESHABLE_STOP_REASONS reachable in this model.
+RenewGrant ==
+  /\ mode = "live"
+  /\ \/ cState \in {"awaiting_review", "ready_for_human"}
+     \/ (cState = "awaiting_decision" /\ stopReason \in {"child_halted", "rounds_exhausted", "grant_invalid"})
+  /\ ResumeAfterReceipts => NoUnsettled
+  /\ grantRounds' \in grantRounds..MaxRounds
+  /\ grantRounds' >= roundsUsed
+  /\ stopReason = "rounds_exhausted" => grantRounds' > roundsUsed
+  /\ grantV2' \in (IF MaxLocalRepairs = 1 THEN BOOLEAN ELSE {FALSE})
+  /\ (grantV2 => grantV2')
+  /\ pin' \in (IF grantV2' THEN 0..1 ELSE {None})
+  /\ LocalSpent = 1 => pin' = pin
+  /\ (grantV2' /\ RenewalChecksBusy) => ~RepairBusy
+  /\ IF cState # "awaiting_decision" THEN UNCHANGED cState
+     ELSE IF currentChild = None THEN cState' = "awaiting_review"
+     ELSE IF childSt[currentChild] \in ChildTerminal
+          THEN /\ Released(currentChild) /\ cState' = "awaiting_review"
+          ELSE /\ \A a \in Attempts : intent[currentChild][a] # "confirmed"
+               /\ cState' = "awaiting_decision"
+  /\ stopReason' = IF cState' = "awaiting_decision" THEN "child_halted" ELSE "none"
   /\ deadlinePassed' = FALSE /\ grantValid' = TRUE /\ detected' = FALSE
-  /\ badResume' = (badResume \/ \E c \in Children, a \in Attempts :
-                     intent[c][a] \in {"pending", "uncertain"})
-  /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, res, intent, currentChild,
-                 shadowWould, childVars, branch, base, prOpen, reviewVars, outsiderWrites, procVars,
-                 pushWhileDetected, clobbered, chainPushed, pushedWhileClosed,
-                       actedWithoutGrant>>
+  /\ badResume' = (badResume \/ ~NoUnsettled)
+  \* Every replacement writes a new deadline, including when the old one is still fresh.
+  /\ badRenewal' = (badRenewal \/ RepairApproved \/ RepairUnsettled)
+  /\ UNCHANGED <<localVars, mode, publishedHead, publishedBase, roundsUsed, res, intent,
+                 currentChild, shadowWould, childVars, branch, base, prOpen, reviewVars,
+                 outsiderWrites, procVars, pushWhileDetected, clobbered, chainPushed,
+                 pushedWhileClosed, actedWithoutGrant>>
 
 \* D9 / R1: the human decision resumes the same child in the same round.
 \* A failed guard is a refusal: no state changes (represented by absent transition).
@@ -701,8 +745,8 @@ ApproveLanded ==
 
 HumanClose ==    \* abandon / take over manually
   /\ cState = "awaiting_decision"
-  /\ cState' = "closed" /\ detected' = FALSE
-  /\ UNCHANGED <<mode, stopReason, publishedHead, publishedBase, roundsUsed, grantRounds, res,
+  /\ cState' = "closed" /\ detected' = FALSE /\ stopReason' = "none" /\ res' = VoidAll
+  /\ UNCHANGED <<mode, publishedHead, publishedBase, roundsUsed, grantRounds,
                  intent, currentChild, shadowWould, childVars, envVars, procVars,
                  pushWhileDetected, clobbered, chainPushed, pushedWhileClosed,
                        actedWithoutGrant, badResume>>
@@ -716,6 +760,94 @@ HumanResolveIntent ==   \* uncertain -> confirmed | failed, truthfully
   /\ UNCHANGED <<pub, released, recovering>>
 
 -----------------------------------------------------------------------------
+\* One root, one immutable dispatch proof, one durable child event ledger.
+LocalAuthority == grantValid /\ grantV2 /\ pin = proof.pin
+                  /\ publishedHead = proof.previous /\ publishedBase = proof.base
+
+LocalIntake ==
+  /\ mode = "live" /\ grantV2 /\ localStage = "none"
+  /\ IF intakeOpen THEN intakeOpen' = FALSE
+     ELSE /\ cState = "awaiting_review" /\ currentChild = None
+          /\ ~\E row \in res : Active(row)
+          /\ intakeOpen' = TRUE
+  /\ UNCHANGED <<localStage, repairIntent, proof, chainVars, childVars, envVars, procVars, ghostVars>>
+
+LocalDispatch ==
+  /\ mode = "live" /\ grantV2 /\ grantValid /\ ~recovering
+  /\ cState = "awaiting_review" /\ currentChild = None /\ ~intakeOpen
+  /\ ~\E row \in res : Active(row)
+  /\ \A c \in Children : childSt[c] = "none" \/ Released(c)
+  /\ localStage = "none" /\ (LocalChecksRounds => roundsUsed < grantRounds)
+  /\ localStage' = "running" /\ roundsUsed' = roundsUsed + 1
+  /\ proof' = [previous |-> publishedHead, base |-> publishedBase, pin |-> pin]
+  /\ UNCHANGED <<intakeOpen, repairIntent, mode, cState, stopReason, publishedHead,
+                 publishedBase, grantRounds, res, intent, currentChild, shadowWould,
+                 childVars, envVars, procVars, ghostVars>>
+
+LocalStageStep(to) ==
+  /\ localStage' = to
+  /\ UNCHANGED <<intakeOpen, proof, repairIntent, chainVars, childVars, envVars, procVars, ghostVars>>
+
+LocalWait == localStage = "running" /\ LocalStageStep("waiting")
+LocalApprove == localStage = "waiting" /\ cState # "closed" /\ LocalAuthority /\ LocalStageStep("approved")
+
+LocalRecordIntent ==
+  /\ localStage = "approved" /\ repairIntent = "none" /\ cState # "closed" /\ LocalAuthority
+  /\ prOpen /\ base = proof.base /\ Last(branch) = proof.previous
+  /\ repairIntent' = "recorded"
+  /\ UNCHANGED <<localStage, intakeOpen, proof, chainVars, childVars, envVars, procVars, ghostVars>>
+
+\* Authorize the host process once. Git tests the lease later, at remote apply.
+LocalPush ==
+  /\ localStage = "approved" /\ repairIntent = "recorded"
+  /\ LocalAuthority
+  /\ LocalFenceChecksClosed => cState # "closed"
+  /\ repairIntent' = "released"
+  /\ pushedWhileClosed' = (pushedWhileClosed \/ cState = "closed")
+  /\ UNCHANGED <<localStage, intakeOpen, proof, chainVars, childVars, envVars, procVars,
+                 detected, pushWhileDetected, clobbered, chainPushed, actedWithoutGrant, badResume>>
+
+LocalRemoteApply ==
+  /\ repairIntent = "released"
+  /\ LET writes == ~LocalUsesLease \/ Last(branch) = proof.previous IN
+     /\ branch' = IF writes THEN ChainHist(proof.previous + 1) ELSE branch
+     /\ chainPushed' = (chainPushed \/ writes)
+  /\ clobbered' = (clobbered \/ ~IsPrefix(branch, branch'))
+  /\ repairIntent' = "stopped"
+  /\ UNCHANGED <<localStage, intakeOpen, proof, chainVars, childVars, base, prOpen,
+                 reviewVars, deadlinePassed, grantValid, outsiderWrites, procVars, detected,
+                 pushWhileDetected, pushedWhileClosed, actedWithoutGrant, badResume>>
+
+LocalConfirm ==
+  /\ repairIntent = "stopped" /\ Last(branch) = proof.previous + 1
+  /\ prOpen /\ base = proof.base /\ publishedBase = proof.base
+  /\ cState # "closed" /\ publishedHead = proof.previous
+  /\ repairIntent' = "confirmed" /\ publishedHead' = Last(branch)
+  /\ localStage' = "confirmed"
+  /\ UNCHANGED <<intakeOpen, proof, mode, cState, stopReason, publishedBase, roundsUsed,
+                 grantRounds, res, intent, currentChild, shadowWould, childVars, envVars,
+                 procVars, ghostVars>>
+
+\* Halt/crash loses the permission to initiate a push. A released process can
+\* still apply; recovery can confirm a stopped process without releasing again.
+LocalHalt ==
+  /\ localStage \in {"running", "waiting", "approved"}
+  /\ LocalStageStep(IF localStage = "approved" THEN "halted_approved" ELSE "halted")
+
+LocalFinish ==
+  /\ localStage = "confirmed" \/ (localStage \in {"halted", "halted_approved"} /\ repairIntent = "none")
+  /\ LocalStageStep("terminal")
+
+\* The process stopped with no established write, including a lost command result.
+LocalProcessLost ==
+  /\ repairIntent = "released" /\ repairIntent' = "stopped"
+  /\ UNCHANGED <<localStage, intakeOpen, proof, chainVars, childVars, envVars, procVars, ghostVars>>
+
+LocalStep ==
+  /\ MaxLocalRepairs = 1 /\ UNCHANGED grantVars
+  /\ \/ LocalIntake \/ LocalDispatch \/ LocalWait \/ LocalApprove \/ LocalRecordIntent
+     \/ LocalPush \/ LocalRemoteApply \/ LocalProcessLost \/ LocalConfirm \/ LocalHalt \/ LocalFinish
+
 \* Every step except Reconcile clears justReconciled.
 Other ==
   \/ Dispatch \/ VoidReservation \/ ClearCurrent \/ ScanStopped
@@ -724,60 +856,61 @@ Other ==
   \/ ChildDeliver \/ ChildFail \/ HaltChild \/ CancelRequest \/ CancelDone \/ AbandonChild \/ ProveStop
   \/ Review \/ ExpireReview \/ OutsiderPush \/ OutsiderForcePush
   \/ BaseAdvance \/ ClosePR \/ ReopenPR \/ DeadlinePass \/ GrantExpire \/ GrantStop
-  \/ HumanResume \/ ResumeChild \/ ResumeRefused \/ ApproveLanded \/ HumanClose \/ HumanResolveIntent
+  \/ ResumeChild \/ ResumeRefused \/ ApproveLanded \/ HumanClose \/ HumanResolveIntent
 
-Next == Reconcile \/ (Other /\ justReconciled' = FALSE)
+KeepLocalAndGrant(step) == step /\ UNCHANGED extensionVars
+Next == Reconcile \/ ((KeepLocalAndGrant(Other) \/ RenewGrant \/ LocalStep) /\ justReconciled' = FALSE)
 
 Spec == Init /\ [][Next]_vars
 
 \* Small action alphabets for the two deep seeded paths. They retain the same actions
 \* and state transitions; only unrelated environment and human choices are removed.
 ResumeTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ PushRejected \/ HaltChild \/ ProveStop \/ ResumeChild) /\ justReconciled' = FALSE))]_vars
 PendingBaseTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ RemoteApply \/ BaseAdvance) /\ justReconciled' = FALSE))]_vars
 RoundTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  ((KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ RemoteApply \/ ReadBack \/ OutsiderPush \/ OutsiderForcePush
-    \/ HumanResume \/ HumanResolveIntent \/ HaltChild \/ ProveStop \/ ResumeChild
-    \/ VoidReservation \/ Crash \/ RecoverIntent \/ RecoverDone) /\ justReconciled' = FALSE))]_vars
+    \/ HumanResolveIntent \/ HaltChild \/ ProveStop \/ ResumeChild
+    \/ VoidReservation \/ Crash \/ RecoverIntent \/ RecoverDone) \/ RenewGrant) /\ justReconciled' = FALSE))]_vars
 StopTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ HaltChild \/ ProveStop \/ ClosePR
+  (KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ HaltChild \/ ProveStop \/ ClosePR
     \/ ScanStopped) /\ justReconciled' = FALSE))]_vars
 LandedTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ RemoteApply \/ Crash \/ RecoverIntent \/ RecoverDone \/ ApproveLanded
     \/ ReadBack) /\ justReconciled' = FALSE))]_vars
 LateTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ HaltChild \/ RemoteApply) /\ justReconciled' = FALSE))]_vars
 ReviewCR == Review /\ \E r \in Reviewers : rv'[r][publishedHead] = "CR"
 RoundsTarget == Init /\ [][(Reconcile \/
-  ((ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ RemoteApply \/ ReadBack) /\ justReconciled' = FALSE))]_vars
 LeaseTarget == Init /\ [][(Reconcile \/
-  ((Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(Review \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ OutsiderPush \/ RemoteApply) /\ justReconciled' = FALSE))]_vars
 FenceTarget == Init /\ [][(Reconcile \/
-  ((ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck
+  (KeepLocalAndGrant(ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck
     \/ ClosePR \/ Release) /\ justReconciled' = FALSE))]_vars
 StoreAnyTarget == Init /\ [][(Reconcile \/
-  ((ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  (KeepLocalAndGrant(ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ RemoteApply \/ ReadBack) /\ justReconciled' = FALSE))]_vars
 UnsettledTarget == Init /\ [][(Reconcile \/
-  ((ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
+  ((KeepLocalAndGrant(ReviewCR \/ Dispatch \/ ChildDeliver \/ RecordIntent \/ PreCheck \/ Release
     \/ RemoteApply \/ ReadBack \/ OutsiderPush \/ OutsiderForcePush
-    \/ VoidReservation \/ HumanResume \/ HumanResolveIntent \/ DropStaleIntent
-    \/ Crash \/ RecoverIntent \/ RecoverDone) /\ justReconciled' = FALSE))]_vars
+    \/ VoidReservation \/ HaltChild \/ HumanResolveIntent \/ DropStaleIntent
+    \/ Crash \/ RecoverIntent \/ RecoverDone) \/ RenewGrant) /\ justReconciled' = FALSE))]_vars
 
 Symm == Permutations(Reviewers)
 
 \* State constraint: a closed chain row is terminal (DDL trigger engineering_chain_terminal), but a
 \* publisher or receipt may still be in flight. Closed states are expanded only while a push
 \* intent is pending or the publisher is mid-step; afterwards nothing the chain owns can move.
-Explore == cState # "closed" \/ pub.stage # "idle" \/ ~NoUnsettled \/ released # {}
+Explore == LocalActive \/ RepairUnsettled \/ cState # "closed" \/ pub.stage # "idle" \/ ~NoUnsettled \/ released # {}
 
 \* Bounded search for focused mutant configurations:
 \* prunes branches that end in a stop the trace does not need.
@@ -798,6 +931,11 @@ FocusPendingBase ==
 (* Invariants (design S10.2). Invariant 5 (spec inheritance) is phase 5.   *)
 
 TypeOK ==
+  /\ {intakeOpen, grantV2, badRenewal} \subseteq BOOLEAN
+  /\ pin \in (IF grantV2 THEN 0..1 ELSE {None})
+  /\ localStage \in {"none", "running", "waiting", "approved", "halted", "halted_approved", "confirmed", "terminal"}
+  /\ repairIntent \in {"none", "recorded", "released", "stopped", "confirmed"}
+  /\ proof \in [previous : Commits \cup {None}, base : {0, 1}, pin : {None, 0, 1}]
   /\ mode \in {"live", "shadow"}
   /\ cState \in States
   /\ publishedHead \in Commits /\ publishedBase \in {0, 1}
@@ -820,33 +958,47 @@ TypeOK ==
   /\ reviewCount \in 0..MaxReviews /\ outsiderWrites \in 0..MaxOutsiderWrites
 
 \* 1. rounds_used <= grant.rounds <= 2
-Inv1 == mode = "live" => (roundsUsed <= grantRounds /\ grantRounds <= 2)
+Inv1 == mode = "live" => /\ roundsUsed <= grantRounds /\ grantRounds <= 2
+                         /\ roundsUsed = Cardinality(res) + LocalSpent
 
 \* 2. at most one reservation per (repository, PR, head)
 Inv2 == \A h \in Commits : Cardinality({row \in res : row.head = h}) <= 1
 
 \* 3. at most one in-flight child per chain (dispatched and not terminal with the stop proven)
-Inv3 == Cardinality({c \in Children : childSt[c] # "none" /\ ~Released(c)}) <= 1
-Inv3Active == Cardinality({row \in res : Active(row)}) <= 1
+LocalWriters == IF LocalActive THEN 1 ELSE 0
+Inv3 == LocalWriters + Cardinality({c \in Children : childSt[c] # "none" /\ ~Released(c)}) <= 1
+Inv3Active == LocalWriters + Cardinality({row \in res : Active(row)}) <= 1
 
-\* 4. after an external write is detected, no new release until a human decision
+\* 4. after detection, no new review release until a human decision
 Inv4 == ~pushWhileDetected
 
-\* 6. after reconciliation every commit on the branch beyond the root has a confirmed push intent.
+\* 6. Each accepted edge is backed by one of the two confirmation ledgers.
 \* "Reconciled": the step just taken was a reconciler cycle, run after recovery with every push
 \* receipt settled. A chain the reconciler stopped or closed is the human's (it may carry the
 \* foreign commit it stopped on).
-Reconciled == justReconciled /\ ~recovering /\ NoUnsettled
+Reconciled == justReconciled /\ ~recovering /\ NoUnsettled /\ ~RepairAtRemote
+\* Each edge must have exactly one source. A repair can supply only its one
+\* recorded edge; review ranges before and after it still need chain receipts.
+CoveredEdge(old, new) ==
+  LET review == new \in ConfirmedHeads
+      repair == repairIntent = "confirmed" /\ proof.previous = old
+  IN new = old + 1 /\ (review # repair)
+
 Inv6 ==
   (Reconciled /\ cState \notin {"awaiting_decision", "closed"})
-    => \A i \in 2..Len(branch) : branch[i] \in ConfirmedHeads
+    => /\ Last(branch) = publishedHead
+       /\ \A i \in 2..Len(branch) : CoveredEdge(branch[i-1], branch[i])
 \* The chain only ever stands on commits it pushed and confirmed.
-Inv6Published == publishedHead = Root \/ publishedHead \in ConfirmedHeads
+Inv6Published ==
+  /\ publishedHead \in ChainCommits
+  /\ repairIntent = "confirmed" => proof.previous + 1 <= publishedHead
+  /\ \A h \in 1..publishedHead : CoveredEdge(h-1, h)
 \* Write-ahead: no chain commit is on the branch without a live (non-failed) intent.
 WriteAheadIntent ==
   \A i \in 2..Len(branch) :
     branch[i] \in (ChainCommits \ {Root}) =>
-      \E a \in Attempts : intent[branch[i] - 1][a] \in {"pending", "confirmed", "uncertain"}
+      \/ (repairIntent # "none" /\ proof.previous = branch[i-1] /\ branch[i] = proof.previous + 1)
+      \/ \E a \in Attempts : intent[branch[i] - 1][a] \in {"pending", "confirmed", "uncertain"}
 
 \* The lease: remote apply never discards a commit someone else put on the branch.
 LeaseSafety == ~clobbered
@@ -854,6 +1006,8 @@ LeaseSafety == ~clobbered
 \* No new release after a local close; an earlier release may apply later. Grant is checked at release.
 NoPushAfterClose == ~pushedWhileClosed
 GrantSafety == ~actedWithoutGrant
+RenewalSafety == ~badRenewal /\ (LocalSpent = 1 => (grantV2 /\ pin = proof.pin))
+ClosedCleanup == cState = "closed" => (stopReason = "none" /\ ~\E row \in res : Active(row))
 ResumeSafety == ~badResume
 \* A resumed round has settled receipts and no released remote write still outstanding.
 \* The old stop was proved before resume; running starts a fresh stop obligation.
@@ -870,6 +1024,7 @@ ConfirmedExtensionGuard ==
     \E c \in Children, a \in Attempts : c = publishedHead
       /\ intent[c][a] = "confirmed" /\ h = c + 1
 \* A release already in progress may apply remotely after a stop; no new marker is added.
+\* Review publisher only: the local publication fence admits a stopped, open chain.
 NoReleaseAfterStop ==
   [][(cState \in {"awaiting_decision", "closed"}) => released' \subseteq released]_vars
 PendingBaseSafety ==
@@ -881,11 +1036,14 @@ ShadowNeverWrites ==
   mode = "shadow" =>
     /\ roundsUsed = 0 /\ res = {} /\ currentChild = None /\ cState \notin InFlight
     /\ \A c \in Children, a \in Attempts : intent[c][a] = "none"
-    /\ ~chainPushed
+    /\ ~chainPushed /\ LocalSpent = 0 /\ repairIntent = "none"
 
 \* published_head only moves forward, one confirmed revision at a time.
 PublishedMonotone ==
-  [][publishedHead' # publishedHead => publishedHead' = publishedHead + 1]_vars
+  [][publishedHead' # publishedHead =>
+       /\ publishedHead' = publishedHead + 1
+       /\ (publishedHead' \in ConfirmedHeads') #
+          (repairIntent' = "confirmed" /\ proof.previous = publishedHead)]_vars
 
 -----------------------------------------------------------------------------
 (* Coverage witnesses. Each is EXPECTED to be violated: checking one alone *)
@@ -913,7 +1071,7 @@ W_LateRemoteApply == ~(cState = "awaiting_decision" /\ Last(branch) # publishedH
 W_ResumeChild == ~(cState = "revising" /\ \E c \in Children :
                    currentChild = c /\ childSt[c] = "running" /\ roundsUsed = 1
                    /\ \E row \in res : row.head = c /\ row.st = "dispatched")
-W_ScanClosed == ~(cState = "closed" /\ stopReason = "child_halted")
+W_ScanClosed == ~(cState = "closed" /\ stopReason = "none" /\ ~prOpen /\ currentChild # None /\ childSt[currentChild] = "cancel_requested")
 W_PendingBaseStopped == ~(stopReason = "base_changed" /\ ~NoPending)
 W_ResumeEnabled == ~ENABLED ResumeChild
 W_ResumeRefused == ~ENABLED ResumeRefused
