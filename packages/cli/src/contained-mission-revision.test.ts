@@ -1,3 +1,4 @@
+import { LiveReconciler } from './contained-mission-bridge-live.js';
 import { withLegacyRoot } from './contained-mission-lineage.testkit.js';
 import { randomUUID } from 'node:crypto';
 import type { RevisionChain } from '@osstack/core';
@@ -183,6 +184,34 @@ describe('dispatchRevision', () => {
       expect(f.reservations()).toEqual([]);
       expect(f.rig.chains.get(f.chain.chain_id)).toMatchObject({ state: 'awaiting_review', revision: f.chain.revision });
     }
+  });
+
+  it('defers a concurrent approval until the next cycle stops for reviewer conflict', async () => {
+    const f = setup();
+    const approver = { actor_id: 901, app_id: null };
+    f.deps.registry.reviewers = [...f.deps.registry.reviewers, approver];
+    let reads = 0;
+    const intervalMs = 60_000;
+    const live = new LiveReconciler({
+      dispatch: f.deps, intervalMs, isBusy: () => false, cancelChild: async () => {}, headIsDescendant: async () => true, log: () => {},
+      readPr: async ref => {
+        if (++reads === 2) {
+          f.pr.reviews.push({ ...changesRequested(79, f.pr.head), reviewer: approver, state: 'APPROVED', submitted_at: T0 });
+        }
+        return f.deps.readPr(ref);
+      },
+    });
+    await live.scan();
+    expect(reads).toBe(2);
+    expect(f.reservations()).toEqual([]);
+    expect(f.children()).toEqual([]);
+    expect(f.rig.chains.get(f.chain.chain_id).state).toBe('awaiting_review');
+
+    f.clock.now += intervalMs;
+    await live.scan();
+    expect(f.rig.chains.get(f.chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'reviewer_conflict' });
+    expect(f.reservations()).toEqual([]);
+    expect(f.children()).toEqual([]);
   });
 
   it.each(['reserve', 'authorize', 'dispatch', 'allocate', 'event'] as const)('a crash after %s inside the transaction leaves no reservation and no child; the next cycle creates exactly one', async step => {
