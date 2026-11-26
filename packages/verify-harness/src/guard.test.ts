@@ -40,7 +40,12 @@ it("keeps package dependencies isolated and all transport and execution behind p
       if ([publisher, ...credentials].some(word => source.includes(word))) violations.push(name);
       if (path.endsWith(".test.ts")) continue;
       if (publishKit.some(word => source.includes(word))) violations.push(name);
-      if (/\bfetch\s*\(|child_process|node:https?|node:net|process\.env|console\.|\b(?:POST|PATCH|PUT|DELETE)\b/u.test(source))
+      if (/\bfetch\s*\(|node:https?|node:net|process\.env|console\.|\b(?:POST|PATCH|PUT|DELETE)\b/u.test(source)
+        || (name !== harness + "/src/source.ts" && source.includes("child_process"))
+        || (name !== harness + "/src/github-read.ts" && source.includes("api.github.com"))
+        || (![harness + "/src/github-read.ts", harness + "/src/source.ts"].includes(name) && source.includes("github.com/"))
+        || (name !== harness + "/src/bin.ts" && /process\.(?:argv|stdout|exitCode|getuid)\b/u.test(source))
+        || ([harness + "/src/main.ts", harness + "/src/bin.ts"].includes(name) && /protocol|remote/u.test(source)))
         violations.push(name);
     }
   }
