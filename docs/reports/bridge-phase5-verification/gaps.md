@@ -63,3 +63,18 @@ The tables above preserve their historical baseline/local scope. **Attempt 4 pas
 Attempts 1–3 remain failed/unqualified; the third-run report remains 7/13. The cold case still cancels before the first executor tick and does not establish parent shutdown or in-flight executor recovery. The single predeclared mixed case is bounded evidence. Historical mutation/model assumptions are unchanged. All 69 host journals are stopped and all 14 mission stop obligations are zero, but two decision reservations/missions/claims remain; `ledger_settled:false` is expected and no rows were manipulated to clear them.
 
 All five Sol CLI scope reviews now PASS; GLM-5.3 post-run review returned SCOPED PASS with no unresolved material findings for static projection/artifact consistency only; it executed nothing and does not prove authenticity or full-project completion. Reporter provenance fix `05eb6600` passed 12/12 targeted tests; parent fifteen-file Node run passed 484/484 (zero failures/skips, exit 0). Actual external Grok capability and [Watcher failure/local repair intake](acceptance-v2.md#product-closure-still-missing) remain open, as do production admission and five production chains. Reviewer remains paused/excluded and the counted human main gate remains unchanged. Production is **CLOSED**; no fifth real run is authorized. See [current status](current-v2-status.md).
+
+## 2026-11-25 rerun on current main
+
+Base main `091b9cd5`, evidence head `f8569028`. Rows marked "rerun required" in the first table are updated as follows.
+
+| Item | 2026-11-25 status |
+|---|---|
+| 19 §5.6 source mutants | pass: 19/19 killed on current main, re-bound to new source hashes ([evidence](2026-11-25-source-mutants.json)); the 5-G v2 protected-path mutant also killed |
+| 10,000 live interleavings (invariants 1–4, 6) | pass, seed 51007 ([evidence](2026-11-25-property-runs.json)) |
+| Invariant 5 constructor, 10,000 specs | pass, seed 51007 (same file) |
+| F2 reviewer conflict interleaving mutant | open, node 2 |
+| F3 per-boundary outsider push mapping | open, node 2 |
+| F8 crash between `host.recover()` and `revisionRecovery()` | open, node 2 |
+| F1, F4, F6, F9 targeted reruns | open, node 2 |
+| TLA coverage of local-failure route and version 2 grant renewal | open, node 3 design note |
