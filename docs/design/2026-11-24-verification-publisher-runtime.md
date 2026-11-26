@@ -252,7 +252,7 @@ Only the first two rows are assertions about the code. The third and fourth are 
 | `runtime_provenance.source_manifest_digest` | The candidate content digest from the image receipt (`contained-image.ts:46`) |
 | `summary` | The fixed sentence `stdout: N bytes; stderr: M bytes`, as on the host (`contained-mission-local-failure-recheck-run.ts:263`). No output text. |
 
-6. Write the request file (`config.ts:22-26`) to `<drop>/<invocation_id>.json`: first to a temporary name in the same directory with mode 0600, then `fsync`, then rename. Print one JSON line with the invocation id and the file name, and exit 0.
+6. Write the request file (`config.ts:22-26`) to `<drop>/<invocation_id>.json`: first to a temporary name in the same directory, opened with mode 0600 and set to mode 0640 before it gets its final name, then `fsync`, then rename. The file's group is the drop directory's group (§5.7; corrected on 2026-11-25, §9.1). Print one JSON line with the invocation id and the file name, and exit 0.
 
 Harness exit codes: 0 a request file was written; 1 refused or could not measure (closed code on standard output, no request file); 2 bad arguments or configuration. A `blocked` record is exit 0: it is a measurement, and the publisher publishes it.
 
@@ -264,7 +264,7 @@ The intake decision is 30 days' retention in a cloud store, copied before close-
 
 ### 5.7 Handing the request file to the publisher
 
-The harness and the publisher are different OS users (§5.1). The drop directory is writable by the harness user and readable by the publisher user. How the publisher is started for a new file is a cloud deployment matter: the routine's wrapper, an operator, or a path-triggered service unit. No code in either package starts the other. The runbook gets the exact arrangement once decision 6 is made.
+The harness and the publisher are different OS users (§5.1). The drop directory belongs to the harness user, has the set-group-id bit, and its group holds only the publisher's user. A request file is therefore readable by the publisher's user and by no third user. No step runs as root. How the publisher is started for a new file is a cloud deployment matter: the routine's wrapper, an operator, or a path-triggered service unit. No code in either package starts the other. The runbook gets the exact arrangement once decision 6 is made.
 
 ## 6. What stays out
 
@@ -346,6 +346,18 @@ The owner accepted the recommendation of every row above. The answer came throug
 | 10 | Local evidence directory, 30 days, `evidence_refs` empty. |
 
 Note on row 6. The short form shown to the owner did not name rootless Docker. The row as written requires rootless Docker for the harness user and forbids rootful Docker on the machine that holds the key. "都按推荐" covers the row as written, and the two conditions make the arrangement stricter, not wider. They bind only the cloud setup and the runbook of B9-6; no code node depends on them. The session asks the owner to confirm them before B9-6.
+
+Confirmed on 2026-11-25. The orchestrating session showed the owner row 6 in full, with rootless Docker named, and the owner chose:
+
+> 同意 rootless (Recommended)：按设计第 6 项原文：验证程序用户用 rootless Docker，持密钥的机器上不装、不用 rootful Docker。B9-6 运行手册照此写。
+
+This confirms the design. It does not approve a Docker run or the setup of the cloud computer.
+
+Correction of 2026-11-25: the mode of the request file. §5.5 step 6 said mode 0600, and §5.7 said that the publisher's user reads the drop directory. With two OS users both cannot hold: the publisher could not read the file. The session found this while writing the runbook and asked the owner through the orchestrating session. The owner chose:
+
+> 同组可读 0640 (Recommended)：验证程序把请求文件以 0640 写进一个投递目录，目录和文件的组里只有发布程序用户。不加以 root 身份运行的步骤。
+
+The request file holds identifiers, commit SHAs, digests and an exit code, and no secret. Evidence files stay 0600. §5.5 step 6 and §5.7 now state the decided rule.
 
 Chosen by the session, not put to the owner: the file names, the `bin` name `osstack-verify-publisher`, the byte and time limits of §3.4, the closed code names of §7, and the split into six nodes.
 

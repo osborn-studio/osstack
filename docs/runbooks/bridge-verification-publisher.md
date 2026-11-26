@@ -6,16 +6,16 @@ Sources: [B8 design](../design/2026-11-19-watcher-recheck-publication.md) (node 
 
 ## 1. What exists and what does not
 
-The publisher package has an entry point and a real GitHub transport. Both have been tested only against an in-memory GitHub; no real request has been sent. One piece is missing, and it belongs to node B9 ([runtime design](../design/2026-11-24-verification-publisher-runtime.md)):
+The publisher package has an entry point and a real GitHub transport. Both have been tested only against an in-memory GitHub; no real request has been sent. The harness is a separate package with its own runbook ([runtime design](../design/2026-11-24-verification-publisher-runtime.md)):
 
 | Piece | State |
 |---|---|
 | Publish and abandon logic, allowlist and request parsers, attempt ledger | Merged (`packages/verify-publisher/src`) |
 | The executable entry point (`src/bin.ts`, `src/main.ts`) | Merged with B9-2 |
 | The real GitHub transport and the key loader (`src/github-transport.ts`, `src/app-key.ts`) | Merged with B9-1 |
-| The fixed harness that checks out the head, runs the pinned profile and writes the request file | **Not built** |
+| The fixed harness that fetches the head, runs the pinned profile and writes the request file | Built in B9-4 and B9-5 (`packages/verify-harness`); see the [harness runbook](bridge-verification-harness.md). Never run against GitHub or Docker. |
 
-Until B9 delivers the harness and the owner approves one sandbox run (design §3.6 item 8), **no command in this runbook is to be run against GitHub**. Without the harness there is no request file to publish.
+Until the owner approves one sandbox run (design §3.6 item 8), **no command in this runbook is to be run against GitHub**. The drill plan is in the [harness runbook](bridge-verification-harness.md) §9.
 
 The entry point is run from a checkout of a pinned commit, after `pnpm install --frozen-lockfile` and `pnpm build`:
 
@@ -110,11 +110,11 @@ One append-only JSONL file, passed through `--ledger`. It is the publisher's mem
 
 The Watcher routine triggers a verification with **the repository id and the PR number, and nothing else** (design §2.3). It does not pass a head, a branch, an outcome or any text.
 
-The intended chain, of which only the last step exists today:
+The intended chain. Steps 2 and 3 exist as programs; the trigger of step 1 is cloud setup and does not exist yet:
 
-1. The routine calls the harness service with repository id and PR number.
-2. The harness reads the PR from GitHub itself, checks out the head it read, runs the pinned profile's commands and records the exit codes. The model does not author the outcome (design decision 3).
-3. The harness writes a request file and calls the publisher:
+1. The routine starts the harness with a repository id and a PR number.
+2. The harness reads the PR from GitHub itself, fetches the head it read, runs the pinned profile's commands and records the exit codes. The model does not author the outcome (design decision 3).
+3. The harness writes a request file into the drop directory. The publisher is then started with that file, as its own OS user ([harness runbook](bridge-verification-harness.md) §3.1, §6). Neither program starts the other:
 
 ```sh
 <publisher> publish --key <key file> --config <allowlist.json> --ledger <attempts.jsonl> --request <request.json>
