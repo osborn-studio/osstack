@@ -362,7 +362,7 @@ publishRevision?: (input: { mission: ContainedMission; spec: ContainedMissionSpe
 | PR 关闭 | 执行期间、推送前 | `closed`，不推送 |
 | API 5xx、限流 | 读取与读回 | 退避，无写入；读回耗尽 → `uncertain` |
 | 崩溃 | 意图 `pending` 后；推送 spawn 后退出前（W13 记录的进程组仍在）；推送后确认事务前；确认后 check 前；派发事务中途；`host.recover()` 之后、`revisionRecovery()` 之前（之后证明停止并结算回执） | 按 §5.5 完成或转人；派发事务回滚无残留 |
-| 令牌吊销 | 推送返回 403 | 意图 `failed`，链转人 |
+| 令牌吊销 | 放行前令牌已吊销；放行后推送返回 403 | 放行前：意图 `failed`，链转人。放行后：没有结构化的“更新前即被拒”证明时，意图 `uncertain`、链转人（单凭 stderr 不能证明远端未写入；2026-11-25 用户决定 M3，见 [5-F 模型覆盖](2026-11-25-bridge-5f-model-coverage.md)） |
 | 授权到期、授权文件删掉 write scope | 派发前；第 1 与第 4 步之间 | `grant_expired`/`grant_invalid`，不推送 |
 | 1 轮额度 | 第二个合格 `CHANGES_REQUESTED` | `rounds_exhausted`；不派发 |
 | 取消后重启 | 第 1 步后、第 4 步前 | 不推送（§5.4） |
