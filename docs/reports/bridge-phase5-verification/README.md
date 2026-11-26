@@ -23,6 +23,10 @@ The user's full local-code/Grok-approval loop is **not complete**: v2 5-G tests 
 
 Final source `7f657613` local checks: full explicit-SSD-root suite **8,905 passed / 6 skipped across 22 packages** (CLI 3,989/5), twelve-file Node **369 passed**, final targeted finding mutant validly killed/restored, and GLM static delta review **PASS** with source hash binding. The initial long-socket environment run failed/was aborted 143 and remains preserved. These are separately scoped local results, not live v2 or Grok integration proof; see [current evidence](current-v2-status.md).
 
+## 2026-11-25 TLA extension (5-F, M1/M2)
+
+Per the [5-F model-coverage decision](../../design/2026-11-25-bridge-5f-model-coverage.md), model commit `ee445be9` adds the U4b local-failure writer, V2 grant renewal (`RenewGrant`, `RenewalSafety`) and the store's close (`ClosedCleanup`, finding 10). TLC v1.7.4 found no error in any normal configuration, each with an empty queue: bounded 1,556,922 distinct (depth 32), main 47,599,782 (48), local 258,884,342 (49), rounds 68,433,084 (46), shadow 11,897 (12). All 19 model mutants, five of them new, give the intended counterexample. [`2026-11-25-model-checks.json`](2026-11-25-model-checks.json) binds the jar and model digests, the JDK, log hashes and counts. `model-checks.json` stays as the 2026-11-07 record.
+
 ## Completed local checks
 
 - Reproduced the two loop process-fixture cleanup failures (114/116). Short unique process titles plus platform-appropriate `ps` identity checks produce 116/116 passing tests. Only recorded PIDs whose exact marker was verified were cleaned.

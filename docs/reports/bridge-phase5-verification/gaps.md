@@ -80,6 +80,16 @@ Base main `091b9cd5`, evidence head `f8569028`. Rows marked "rerun required" in 
 | F6 PR closed | targeted rerun pass. Limit: the publication refusal cases do not separately assert zero git invocations (they refuse before the intent exists) |
 | F8 crash between `host.recover()` and `revisionRecovery()` | closed: `confirms a pending push on restart after shutdown between recovery phases` (real ledger; first start leaves it pending with no push, second start confirms with no push); mutant `start-skips-revision-recovery` killed. K1–K6 and transaction-crash reruns pass |
 | F9 token revoked 403 | targeted rerun pass, **with a deviation from the §5.6 wording**: a revoked token before release gives `failed`, but a released push failing with HTTP 403 and no structured pre-update proof stays `uncertain` (conservative). Owner decision M3 in `2026-11-25-bridge-5f-model-coverage.md` |
-| TLA coverage of local-failure route and version 2 grant renewal | open, node 3 design note |
+| TLA coverage of local-failure route and version 2 grant renewal | evidenced (bounded model): see [TLA model coverage](#2026-11-25-tla-model-coverage-5-f) below |
 
 Node 2 evidence: [`2026-11-25-fault-injection.json`](2026-11-25-fault-injection.json) (head `613b51b5`). The two changed test files pass in full (201/201), and the CLI typecheck passes.
+
+## 2026-11-25 TLA model coverage (5-F)
+
+| Item | Status | Evidence |
+|---|---|---|
+| Live TLA model has no TLC counterexample, including the local-failure writer | evidenced on model `ee445be9` | `2026-11-25-model-checks.json`: bounded, main, local, rounds and shadow all pass with an empty queue |
+| V2 grant renewal while a local repair is approved or unsettled | evidenced (model) | `RenewalSafety` holds; `renewal-skips-busy` mutant counterexample |
+| Finding 10 (close keeps reason and reservations) | closed | close clears `stopReason` and voids reservations; `ClosedCleanup` holds |
+| Model mutants | 19/19 counterexamples | five new: `local-overlaps-review`, `local-skips-round-cap`, `renewal-skips-busy`, `local-no-lease`, `local-fence-skips-close` |
+| Limit | open | Bounded check only (`MaxLocalRepairs = 1`, two reviewers, two rounds). The race between the pre-intent PR read and the local push is modelled the same as on the review route. |
