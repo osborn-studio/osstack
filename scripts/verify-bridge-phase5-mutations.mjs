@@ -38,6 +38,10 @@ const mutants = [
   // This mutant requires the production invariant-6 baseline node (bcd20732).
   ['baseline-omission', 'packages/cli/src/contained-mission-grant.ts', "chains.settleIntent(initial.intent.intent_id, 'confirmed', at);", "chains.settleIntent(initial.intent.intent_id, 'failed', at);", '@osstack/cli', ['src/contained-mission-grant.test.ts', '-t', 'issues a signed grant']],
   ['no-readback-range-check', publication, "if (digest(compared) !== digest(commits) || (readback.state === 'OPEN' && readback.headRefOid !== permit.head)) {", 'if (false) {', '@osstack/cli', pubTests],
+  ['second-read-uses-first', 'packages/cli/src/contained-mission-revision.ts', 'const second = decide(secondRead);', 'const second = decide(firstRead);', '@osstack/cli', ['src/contained-mission-revision.test.ts', '-t', 'defers a concurrent approval']],
+  ['precheck-ignores-remote', publication, 'if (pr.headRefOid !== old || beforeRemote !== old) {', 'if (pr.headRefOid !== old) {', '@osstack/cli', [...pubTests, '-t', 'refuses an outsider head at precheck']],
+  ['readback-ignores-remote', publication, 'if (remote !== permit.head) {', 'if (false) {', '@osstack/cli', [...pubTests, '-t', 'keeps a successful push uncertain']],
+  ['start-skips-revision-recovery', 'packages/cli/src/contained-mission-rpc.ts', 'await this.options.revisionRecovery?.(this.recoveryAbort.signal);', 'void 0;', '@osstack/cli', [...pubTests, '-t', 'confirms a pending push on restart']],
   // Suppress only this fixture's finding, including cumulative classification.
   // Do not alter protected-set.ts/digest or merely bypass the first T2 branch.
   [protectedPathMutant, classifier,

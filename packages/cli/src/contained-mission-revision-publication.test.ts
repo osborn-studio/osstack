@@ -1,3 +1,4 @@
+import { ContainedMissionService } from './contained-mission-rpc.js';
 import { createRevisionLaunchPort } from './contained-mission-revision.js';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -200,6 +201,40 @@ it('startup recovery confirms stopped pending receipts without a second push', a
   expect(deps.chains.getIntent(intent.intent_id).state).toBe('confirmed');
   expect(deps.missions.get(id).state).toBe('pr_opened');
   expect(await createRevisionReceiptRecovery(deps).recoverPendingReceipts()).toMatchObject({ visited: 0, complete: true });
+});
+
+it('confirms a pending push on restart after shutdown between recovery phases', async () => {
+  const { f, deps, intent } = await fullFixture();
+  const run = vi.spyOn(deps.runner, 'run');
+  const receipt = createRevisionReceiptRecovery(deps);
+  const revisionRecovery = vi.fn(async (signal: AbortSignal) => { await receipt.recoverPendingReceipts({ signal }); });
+  function startup() {
+    const hostProcesses = new HostProcessKit(deps.missions, { markerDir: f.rig.root }, deps.now);
+    const host = new ContainedMissionHost({ worktreesRoot: f.wtRoot,
+      ports: { store: deps.missions, hostProcesses, now: deps.now } as ContainedMissionHostPorts });
+    const service = new ContainedMissionService({ host, access: f.deps.access as never, draining: () => false, revisionRecovery });
+    return { host, service };
+  }
+
+  expect(deps.host.recordForIntent(intent.intent_id)).toMatchObject({ state: 'stopped', released_at: expect.any(Number) });
+  const first = startup();
+  const recover = first.host.recover.bind(first.host);
+  vi.spyOn(first.host, 'recover').mockImplementationOnce(async () => {
+    await recover();
+    void first.service.close();
+  });
+  await first.service.start();
+  await first.service.close();
+  expect(revisionRecovery).not.toHaveBeenCalled();
+  expect(deps.chains.getIntent(intent.intent_id).state).toBe('pending');
+  expect(run).not.toHaveBeenCalled();
+
+  const second = startup();
+  try {
+    await second.service.start();
+    expect(deps.chains.getIntent(intent.intent_id).state).toBe('confirmed');
+    expect(run).not.toHaveBeenCalled();
+  } finally { await second.service.close(); }
 });
 
 it.each(['closed', 'stopped', 'stop_unknown'] as const)('startup recovery preserves the %s human route while confirming the receipt', async route => {
@@ -453,6 +488,34 @@ it('leaves a pending intent for recovery when W13 loses the owner before release
   expect(intent.state).toBe('pending');
   expect(fixture.deps.chains.get(fixture.chain.chain_id).state).toBe('publishing');
   vi.restoreAllMocks();
+});
+
+it('refuses an outsider head at precheck while the PR still shows the old head', async () => {
+  const push = vi.fn(async () => { throw Error('unexpected_push'); });
+  const f = await publishFixture(push);
+  f.deps.remoteHead = async () => oid('f');
+  await expect(f.call()).rejects.toThrow('CONTAINED_REVISION_REFUSED:external_write');
+  expect(f.deps.chains.intents(f.chain.chain_id)).toEqual([]);
+  expect(push).not.toHaveBeenCalled();
+});
+
+it('keeps a successful push uncertain when an outsider moves the remote before readback', async () => {
+  let pushes = 0;
+  let id = '';
+  const f = await publishFixture(async (intentId, journal, fence) => {
+    const opId = releasePush(journal, intentId, id, fence, true);
+    pushes++;
+    return { stdout: '', stderr: '', exitCode: 0, opId };
+  });
+  id = f.id;
+  const readPr = f.deps.readPr;
+  f.deps.readPr = async (...args) => ({ ...await readPr(...args), headRefOid: pushes ? next : old });
+  f.deps.remoteHead = async () => pushes ? oid('f') : old;
+
+  await expect(f.call()).rejects.toThrow('CONTAINED_REVISION_READBACK_MISMATCH');
+  expect(f.deps.chains.intents(f.chain.chain_id)).toMatchObject([{ kind: 'push', state: 'uncertain' }]);
+  expect(f.deps.chains.get(f.chain.chain_id)).toMatchObject({ state: 'awaiting_decision', stop_reason: 'intent_uncertain' });
+  expect(pushes).toBe(1);
 });
 
 it.each(['exhausted', 'HTTP 503', 'HTTP 429'] as const)('keeps %s readback uncertain after one stopped push', async failure => {
