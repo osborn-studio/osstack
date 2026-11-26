@@ -107,20 +107,12 @@ export interface ChainStatus {
 const STATUS_DECISIONS = 10;
 
 export type BridgeMode = 'off' | 'shadow' | 'live';
-/** `OSSTACK_BRIDGE`: unset or `0` -> off; `shadow` -> read-only shadow; `1` (live) is not implemented in phase 4; anything else is invalid. */
+/** Unset or `0` selects off, `shadow` selects read-only shadow, and `1` selects live. loadLiveBridgeConfiguration restricts live to the sandbox. */
 export function parseBridgeMode(value: string | undefined): BridgeMode {
   if (value === undefined || value === '0') return 'off';
   if (value === 'shadow') return 'shadow';
-  if (value === '1') {
-    assertLiveBridgeAcceptance();
-    return 'live';
-  }
+  if (value === '1') return 'live';
   throw new Error('BRIDGE_MODE_INVALID');
-}
-
-/** This release has no 5-F/5-G acceptance record. Only a reviewed code change with that evidence can open the gate. */
-function assertLiveBridgeAcceptance(): void {
-  throw new Error('BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G');
 }
 
 export type MergerMode = 'off' | 'shadow';
@@ -426,7 +418,7 @@ export async function createContainedMissionService(deps: {
 }): Promise<ContainedMissionService> {
   const env = deps.env ?? process.env;
   const log = deps.log ?? ((line: string) => { process.stderr.write(`${line}\n`); });
-  // Fail before anything is built: live is not implemented in phase 4, and an unknown value never degrades to off.
+  // Reject unknown modes before setup. loadLiveBridgeConfiguration restricts live mode to the sandbox.
   const bridgeMode = parseBridgeMode(env['OSSTACK_BRIDGE']);
   const mergerMode = parseMergerMode(env['OSSTACK_MERGER']);
   const localFailureOn = parseLocalFailureRouteSwitch(env['OSSTACK_LOCAL_FAILURE_REPAIR']);

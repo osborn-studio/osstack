@@ -1,5 +1,5 @@
-// Testable phase 5-E assembly. This does not open the production live-mode gate.
 import { parseStoredRevisionGrant, type ContainedMissionStore, type RevisionChain, type RevisionChainStore } from '@osstack/core';
+import { GITHUB_CI_SANDBOX } from './contained-mission-ci-policy.js';
 import type { EngineeringAccess } from './engineering-access.js';
 import type { ContainedMissionHost } from './contained-mission-host.js';
 import type { ContainedMissionHostPorts } from './contained-mission-ports.js';
@@ -18,6 +18,8 @@ export async function loadLiveBridgeConfiguration(home: string) {
   if (!issuer) throw Error('BRIDGE_CONFIG_INVALID:live:revision_issuer_required');
   if (bridge.repository.toLowerCase() !== registry.repository.toLowerCase()
     || !registry.publisher.some(p => p.app_id === bridge.publisher.app_id)) throw Error('BRIDGE_CONFIG_INVALID:live:publisher_mismatch');
+  // The 2026-11-25 bridge-live-sandbox-gate design limits live operation to the sandbox drill.
+  if (bridge.repository.toLowerCase() !== GITHUB_CI_SANDBOX.toLowerCase()) throw Error('BRIDGE_LIVE_SANDBOX_ONLY:repository');
   return { bridge, registry, issuer };
 }
 

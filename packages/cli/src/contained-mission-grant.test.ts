@@ -663,18 +663,17 @@ describe('grant-revisions command', () => {
 });
 
 describe('mission status for live chains', () => {
-  it('reports the live chain with a grant summary and no secrets; production service still refuses live', async () => {
+  it('reports the live chain with a grant summary and no secrets; production service refuses live without configuration', async () => {
     const f = await setup();
     const { missionId, chain } = await granted(f, { rounds: 2 });
-    const home = join(f.rig.root, 'prod-home'); mkdirSync(join(home, 'bridge'), { recursive: true });
+    const home = join(f.rig.root, 'prod-home'); mkdirSync(join(home, 'bridge'), { recursive: true, mode: 0o700 });
     const env = {
       OSSTACK_CONTAINED_CODEX_BIN: '/bin/true', OSSTACK_CONTAINED_CODEX_HOME: f.rig.root, OSSTACK_CONTAINED_DOCKER_SOCKET: join(f.rig.root, 'd.sock'),
       OSSTACK_CONTAINED_DOCKER_DAEMON_ID: 'd', OSSTACK_CONTAINED_BASE_IMAGE_ID: `sha256:${'0'.repeat(64)}`,
     };
     const create = (bridge?: string) => createContainedMissionService({ attention: f.rig.attention, owner: f.rig.owner, access: f.access, home, draining: () => false,
       env: bridge === undefined ? env : { ...env, OSSTACK_BRIDGE: bridge }, log: () => undefined });
-    // OSSTACK_BRIDGE=1 is still refused in 5-A: turning live on is 5-E.
-    await expect(create('1')).rejects.toThrow('BRIDGE_LIVE_NOT_IMPLEMENTED');
+    await expect(create('1')).rejects.toThrow(new Error('BRIDGE_CONFIG_INVALID:live:apps_rulesets_required'));
     const service = await create();
     cleanup.push(() => { void service.close(); });
     expect(await code(service.handle('mission.revision_grant_preview', { credential: cred('a'), mission_id: missionId }))).toBe('bridge_live_disabled');

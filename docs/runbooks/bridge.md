@@ -138,7 +138,7 @@ node scripts/rulesets-check.mjs --repo osborn-studio/osstack --target main-repo-
 | 未设 | 关闭：不读 `producers.json`，不建影子链。阶段 3 首轮发布不变：`apps.json` + `rulesets.json` 都在时用 App A/B，都缺时用主机 `gh` 凭证 | 关闭：授权 RPC 拒绝（`bridge_live_disabled`）；在途子 Mission 的推送被栅栏拒绝，子 Mission 停 `awaiting_decision(publication_failed:bridge_live_disabled)`；`revisionRecovery` 的推送回执对账照常运行 |
 | `0`（显式） | 关闭：不读 `producers.json`，不建影子链。**熔断（2026-11-07 用户决定）**：`bridge/` 配置存在时，对配置的仓库发布 Mission PR 被拒绝，固定码 `BRIDGE_DISABLED`；不取 App 令牌、不推送、不开 PR、不发 `osstack/verify`，也**不退回主机凭证**。配置外的仓库保持现状（`CONTAINED_BRIDGE_REPOSITORY`）；配置不存在时与未设相同（走主机凭证）。Mission 停 `awaiting_decision(publication_failed:BRIDGE_DISABLED)`（§5.1）。开关只在启动时读一次，改值后必须重启 | 关闭：授权 RPC 拒绝（`bridge_live_disabled`）；在途子 Mission 的推送被栅栏拒绝，子 Mission 停 `awaiting_decision(publication_failed:bridge_live_disabled)`；`revisionRecovery` 的推送回执对账照常运行 |
 | `shadow` | 影子：有 `producers.json` 时每 5 分钟只读扫描（§4.3），只写影子链表 | 同左 |
-| `1` | `serve` 启动失败：`BRIDGE_LIVE_NOT_IMPLEMENTED` | live：授权过的链由 live 对账器推进；未授权的根 Mission 仍影子记录。要求 `producers.json`、`apps.json`、`rulesets.json`、`revision-issuer.json` 全部有效，否则 `serve` 退出 |
+| `1` | 桥接仓库为 `osborn-studio/osstack-bridge-sandbox` 时，`serve` 才以 live 模式启动。其他仓库导致启动失败（`BRIDGE_LIVE_SANDBOX_ONLY`） | live：授权过的链由 live 对账器推进；未授权的根 Mission 仍影子记录。要求 `producers.json`、`apps.json`、`rulesets.json`、`revision-issuer.json` 全部有效，否则 `serve` 退出 |
 | 其他（含 `true`、`live`、空串、带空格） | `serve` 启动失败：`BRIDGE_MODE_INVALID` | 同左 |
 
 **关于 `0` 的语义：** 设计 §11 写的是“`OSSTACK_BRIDGE=0` 只停止新的预留与派发，在途子 Mission 走现有取消路径，`pending` 意图在下次启动时对账”。阶段 5 附录偏差 7 把它改得更严：`0` 同时拒绝在途子 Mission 的推送，关掉开关后不再有任何 App A 修订推送。这一偏差是否接受仍待用户决定（阶段 5 附录 §8 决定 8）。在决定之前，按更严的语义操作：关开关之后，要逐个处理停住的子 Mission（§5.4、§5.5）。
@@ -416,7 +416,8 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 |---|---|---|
 | `contained_config_required:<变量>` | 缺 Mission 环境变量 | 补变量（§2.1） |
 | `contained_missions_require_engineering`、`attention_disabled`、`engineering_auth_required`、`mission_disabled` | 工程面或 Mission 的功能开关、attention、授权文件变量缺失（§2.1 表） | 同上 |
-| `BRIDGE_LIVE_NOT_IMPLEMENTED`、`BRIDGE_MODE_INVALID` | `OSSTACK_BRIDGE` 取值（§3.1） | 改为未设、`0` 或 `shadow` |
+| `BRIDGE_LIVE_SANDBOX_ONLY` | 为沙箱以外的仓库启用了 live 桥接（见[设计说明](../design/2026-11-25-bridge-live-sandbox-gate.md)） | 使用沙箱仓库，或取消设置 `OSSTACK_BRIDGE`，或改为 `0` 或 `shadow` |
+| `BRIDGE_MODE_INVALID` | `OSSTACK_BRIDGE` 取值（§3.1） | 改为未设、`0` 或 `shadow` |
 | `BRIDGE_CONFIG_INVALID:incomplete` | `apps.json`、`rulesets.json` 只有一个 | 补齐或（只在确定要退回主机凭证时）两个都移走 |
 | `BRIDGE_CONFIG_INVALID:<文件>:<字段>`、`…:json`、`…:unreadable:<errno>`、`…:repository_mismatch` | 文件格式、字段，或 `apps.json` 与 `rulesets.json` 的仓库不一致（忽略大小写比较） | 按字段改。`producers.json` 的 `repository` 代码**不**与这两个文件比较：不一致时 `serve` 照常启动，Mission 在发现时被跳过（日志 `reason=repository_not_registered`）。三者一致是运维约定，配置后自己核对 |
 | `BRIDGE_KEY_PERMISSIONS:publisher\|evidence\|unreadable`、`BRIDGE_KEY_INVALID` | 私钥路径、权限、属主或内容 | §2.3 |

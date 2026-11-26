@@ -20,7 +20,7 @@ function setup() {
   const authFile = join(authDir, "authority.json");
   writeFileSync(authFile, JSON.stringify({ version: 1, principals: [{ credential_sha256: createHash("sha256").update("c".repeat(48)).digest("hex"), principal_id: "owner",
     client_session_id: "console", read_scopes: [], write_scopes: [], stop_scopes: [], operator_scopes: [] }] }), { mode: 0o600 });
-  const home = join(root, "home"); mkdirSync(join(home, "bridge"), { recursive: true });
+  const home = join(root, "home"); mkdirSync(join(home, "bridge"), { recursive: true, mode: 0o700 });
   const env = { OSSTACK_CONTAINED_CODEX_BIN: "/bin/true", OSSTACK_CONTAINED_CODEX_HOME: root, OSSTACK_CONTAINED_DOCKER_SOCKET: join(root, "d.sock"),
     OSSTACK_CONTAINED_DOCKER_DAEMON_ID: "d", OSSTACK_CONTAINED_BASE_IMAGE_ID: "sha256:" + "0".repeat(64) };
   const logs: string[] = [];
@@ -112,7 +112,7 @@ describe("createContainedMissionService bridge wiring", () => {
     const service = await createContainedMissionService({ ...f.deps, env });
     expect(typeof f.portsOf(service)["admitGithubCiCandidate"]).toBe("function");
     await service.close();
-    await expect(createContainedMissionService({ ...f.deps, env: { ...env, OSSTACK_BRIDGE: "1" } })).rejects.toThrow("BRIDGE_LIVE_NOT_IMPLEMENTED");
+    await expect(createContainedMissionService({ ...f.deps, env: { ...env, OSSTACK_BRIDGE: "1" } })).rejects.toThrow(new Error("BRIDGE_CONFIG_INVALID:live:producers_required"));
   });
 
   it.each(["shadow", "live"])("wires the production pilot without Docker and without ambient write authority (%s)", async mode => {
@@ -181,9 +181,9 @@ describe("createContainedMissionService bridge wiring", () => {
         });
       }
     }
-    it("OSSTACK_BRIDGE=1 and an invalid value still fail the start", async () => {
+    it("incomplete live configuration and invalid modes fail the start", async () => {
       const f = setup(); configure(f, "a/b");
-      await expect(f.create({ OSSTACK_BRIDGE: "1" })).rejects.toThrow("BRIDGE_LIVE_NOT_IMPLEMENTED");
+      await expect(f.create({ OSSTACK_BRIDGE: "1" })).rejects.toThrow(new Error("BRIDGE_CONFIG_INVALID:live:producers_required"));
       await expect(f.create({ OSSTACK_BRIDGE: "off" })).rejects.toThrow("BRIDGE_MODE_INVALID");
     });
   });
@@ -251,16 +251,16 @@ describe("live bridge configuration boundary", () => {
 });
 
 
-function liveConfiguration(f: ReturnType<typeof setup>) {
+function liveConfiguration(f: ReturnType<typeof setup>, repository = "osborn-studio/osstack-bridge-sandbox") {
   chmodSync(f.home, 0o700); chmodSync(join(f.home, "bridge"), 0o700);
   const key = join(f.root, "publisher.pem");
   writeFileSync(key, privateKey.export({ type: "pkcs8", format: "pem" }).toString(), { mode: 0o600 });
   const app = { app_id: 1, installation_id: 2, private_key_path: key };
   const { publicKey } = generateKeyPairSync("ed25519");
   const values: Record<string, unknown> = {
-    "apps.json": { version: 1, repository: "a/b", publisher: app, evidence: { ...app, app_id: 3, installation_id: 4 } },
-    "rulesets.json": { version: 1, repository: "a/b", mission_ruleset_ids: [1] },
-    "producers.json": { version: 1, repository: "a/b", publisher: [{ actor_id: 5, app_id: 1 }], reviewers: [{ actor_id: 6, app_id: 7 }] },
+    "apps.json": { version: 1, repository, publisher: app, evidence: { ...app, app_id: 3, installation_id: 4 } },
+    "rulesets.json": { version: 1, repository, mission_ruleset_ids: [1] },
+    "producers.json": { version: 1, repository, publisher: [{ actor_id: 5, app_id: 1 }], reviewers: [{ actor_id: 6, app_id: 7 }] },
     "revision-issuer.json": { version: 1, keys: [{ key_id: "k1", public_key_spki_b64: publicKey.export({ format: "der", type: "spki" }).toString("base64"), max_validity_ms: 86_400_000 }] },
   };
   for (const [name, value] of Object.entries(values)) writeFileSync(join(f.home, "bridge", name), JSON.stringify(value), { mode: 0o600 });
@@ -274,12 +274,17 @@ describe("live assembly configuration validation", () => {
       await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow("BRIDGE_CONFIG_INVALID");
     });
   }
-  it("validates repository and publisher App bindings", async () => {
-    const f = setup(); liveConfiguration(f);
+  it("accepts the sandbox repository with mixed case", async () => {
+    const f = setup(); const repository = "Osborn-Studio/OSSTACK-bridge-sandbox"; liveConfiguration(f, repository);
     const { loadLiveBridgeConfiguration } = await import("./contained-mission-bridge-assembly.js");
-    expect((await loadLiveBridgeConfiguration(f.home)).registry.repository).toBe("a/b");
+    expect((await loadLiveBridgeConfiguration(f.home)).registry.repository).toBe(repository);
+  });
+  it("rejects a non-sandbox repository after checking the publisher App binding", async () => {
+    const f = setup(); liveConfiguration(f, "a/b");
+    const { loadLiveBridgeConfiguration } = await import("./contained-mission-bridge-assembly.js");
+    await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow(new Error("BRIDGE_LIVE_SANDBOX_ONLY:repository"));
     writeFileSync(join(f.home, "bridge", "producers.json"), JSON.stringify({ version: 1, repository: "a/b", publisher: [{ actor_id: 5, app_id: 8 }], reviewers: [{ actor_id: 6, app_id: 7 }] }));
-    await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow("publisher_mismatch");
+    await expect(loadLiveBridgeConfiguration(f.home)).rejects.toThrow(new Error("BRIDGE_CONFIG_INVALID:live:publisher_mismatch"));
   });
   it('constructs the production factory from real host ports and signed configuration without side effects', async () => {
     const f = setup(); liveConfiguration(f);
@@ -306,8 +311,8 @@ describe("live assembly configuration validation", () => {
     await expect(assembly.revisionRecovery(new AbortController().signal)).rejects.toThrow();
     await assembly.stoppedScan.stop(); await service.close();
   });
-  async function assemblyFixture() {
-    const f = setup(); liveConfiguration(f);
+  async function assemblyFixture(repository?: string) {
+    const f = setup(); liveConfiguration(f, repository);
     const { ContainedMissionStore, RevisionChainStore } = await import("@osstack/core");
     const { assembleLiveBridge } = await import("./contained-mission-bridge-assembly.js");
     const missions = new ContainedMissionStore(f.deps.attention, f.deps.owner);
@@ -323,6 +328,18 @@ describe("live assembly configuration validation", () => {
       publication: { runner: { run: write }, readPr: read, localGit: read, remoteHead: read, compare: read, preflight: write, checkEnabled: true } };
     return { assembleLiveBridge, assemblyDeps, ports, service, read, write };
   }
+  it("refuses a non-sandbox production bridge before installing check authority", async () => {
+    const { assemblyDeps, ports, service } = await assemblyFixture("a/b");
+    const { createProductionLiveBridge } = await import("./contained-mission-bridge-production.js");
+    const install = vi.spyOn(ports, "installRevisionCheckAuthority");
+    try {
+      await expect(createProductionLiveBridge({ ...assemblyDeps, launchCaps: ports.revisionLaunchCaps! }))
+        .rejects.toThrow(new Error("BRIDGE_LIVE_SANDBOX_ONLY:repository"));
+      expect(install).not.toHaveBeenCalled();
+    } finally {
+      await service.close();
+    }
+  });
   it("refuses publication cancellation for an unknown chain before requesting a host cancel", async () => {
     const { assembleLiveBridge, assemblyDeps, service, write } = await assemblyFixture();
     const publication = await import("./contained-mission-revision-publication.js");
@@ -509,7 +526,6 @@ describe("local-failure factory boundary", () => {
     [undefined, "LOCAL_FAILURE_ROUTE_REQUIRES_LIVE_BRIDGE"],
     ["0", "LOCAL_FAILURE_ROUTE_REQUIRES_LIVE_BRIDGE"],
     ["shadow", "LOCAL_FAILURE_ROUTE_REQUIRES_LIVE_BRIDGE"],
-    ["1", "BRIDGE_LIVE_NOT_IMPLEMENTED:acceptance_required:5-F:5-G"],
     ["invalid", "BRIDGE_MODE_INVALID"],
   ] as const)("refuses bridge %j before config access or writes", async (bridge, error) => {
     const f = setup();
@@ -521,6 +537,15 @@ describe("local-failure factory boundary", () => {
       env: { ...f.deps.env, OSSTACK_LOCAL_FAILURE_REPAIR: "1", ...(bridge === undefined ? {} : { OSSTACK_BRIDGE: bridge }) },
     })).rejects.toThrow(new Error(error));
     expect(readHome).not.toHaveBeenCalled();
+    expect(changes()).toEqual(before);
+    expect(loads).toEqual([]);
+  });
+  it("refuses live local-failure repair without live configuration before writes", async () => {
+    const f = setup();
+    const changes = () => f.deps.attention.db.prepare("SELECT total_changes() AS changes").get();
+    const before = changes();
+    await expect(f.create({ OSSTACK_LOCAL_FAILURE_REPAIR: "1", OSSTACK_BRIDGE: "1" }))
+      .rejects.toThrow(new Error("BRIDGE_CONFIG_INVALID:live:apps_rulesets_required"));
     expect(changes()).toEqual(before);
     expect(loads).toEqual([]);
   });
