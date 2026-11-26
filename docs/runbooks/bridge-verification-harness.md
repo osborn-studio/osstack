@@ -20,6 +20,8 @@ Rules that hold throughout:
 
 This runbook does not perform these steps.
 
+> **Sandbox drill on the Grok Bots computer:** the two-user items below are replaced by [the 2026-11-25 amendment](../design/2026-11-25-b9-sandbox-shared-computer.md) §3 and its conditions §5. The rootful-Docker item is unchanged.
+
 - [ ] The cloud computer has two OS users besides the bots' user: one for the publisher and one for the harness. Neither can read the other's home directory. The bots' user can read neither.
 - [ ] The harness user runs **rootless Docker**. No rootful Docker daemon runs on the computer that holds the publisher's key. (Design decision 6, confirmed by the owner on 2026-11-25: no rootful Docker is installed or used on that computer. A container escape acts as the harness user; with a rootful daemon that equals root, and root can read the key.)
 - [ ] Before any repository that receives PRs from outside this system is added: the harness moves to a separate computer from the publisher (design decision 6).
@@ -169,7 +171,7 @@ Each item needs the owner's separate approval and goes only to `osborn-studio/os
 Preparation, read-only:
 
 - [ ] The commit both programs run from; `pnpm install --frozen-lockfile` and `pnpm build` succeed; SHA-256 of `packages/verify-harness/dist/bin.js` and `packages/verify-publisher/dist/bin.js`.
-- [ ] As the harness user, a read of the key file, the attempt ledger and the allowlist is refused. As the bots' user, the same reads and a read of the harness's data directory are refused. Record each refusal.
+- [ ] (Not on the Grok Bots computer: replaced by [amendment](../design/2026-11-25-b9-sandbox-shared-computer.md) §3 and §5.) As the harness user, a read of the key file, the attempt ledger and the allowlist is refused. As the bots' user, the same reads and a read of the harness's data directory are refused. Record each refusal.
 - [ ] `docker info` as the harness user shows a rootless daemon; record its id. No rootful daemon is running.
 
 | # | Step | Evidence to record |

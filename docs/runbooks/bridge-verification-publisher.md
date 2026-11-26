@@ -47,6 +47,8 @@ These are the owner's manual steps from design §3.6. This runbook does not perf
 ## 3. Key placement
 
 - The key in the cloud is a **second** private key of the same App (design §3.5, arrangement K1). The host keeps its own key and uses it only for the signed installation read. Each key can be revoked on its own.
+> **Sandbox drill on the Grok Bots computer:** the Bots can read the key there. The owner accepted this for the sandbox only, with a drill-only key that is deleted afterwards ([amendment](../design/2026-11-25-b9-sandbox-shared-computer.md) §3, §5).
+
 - The owner places the key by hand. It does not pass through this repository, a chat, a model or the host.
 - The key file, the allowlist and the attempt ledger live under an OS user (or a separate small service) that the bots' OS user cannot read. The PR checkout, the browser and the model executor must not be able to read that location.
 - File mode 0600, owned by the publisher's user. No copy in a shell profile, an environment file shared with the bots, or a routine prompt.
