@@ -1,6 +1,17 @@
 # 沙箱真实演练：负责人准备清单
 
-日期：2026-11-25。基线：`main` `091b9cd5`。状态：**清单，没有执行任何一步**。
+日期：2026-11-25。基线：`main` `091b9cd5`。状态：**暂停（2026-11-26）。没有执行任何一步。**
+
+> **2026-11-26 暂停：** 你选择暂停这次演练，改走 GitHub Actions 验证路线（[ADR-008](../decisions/ADR-008-app-e-live-merge.md) 决定 2，[Bot 合并设计](../design/2026-11-25-bot-merge.md) §5a）。暂停的原因：按 ADR-008，合并判断只认 Actions 写出的 `osstack/verify-actions`；Grok 共享电脑上的验证程序与发布程序、Mac mini 的复验都不计入合并，这次演练只能证明各部件能接通。
+>
+> 暂停时已经完成的：
+> - 验证 App `osstack-verifier`（5801554）的安装 182960535：只选了 `osborn-studio/osstack-bridge-sandbox`（id 1446327922）；权限只有 Checks 写、Metadata 读；不订阅事件，没有 webhook，没有被暂停。2026-11-26 用主机自己的验证 App 私钥读回。
+> - Grok 电脑 `/home/box/osstack-verify-docker/` 下装好了 #570 评审过的三个脚本，`sha256sum -c SHA256SUMS` 三个都是 `OK`（Bot 的报告，没有独立核对）。旧的两个脚本改名为 `*.old-unreviewed`，没有删。哪个脚本都没有运行，Docker 没有动。
+>
+> 暂停时还没做的，恢复前必须先补上：
+> - 没有生成演练专用私钥。生成之前要先确认放钥匙的办法：厂商文档没说 “Take control” 期间模型能否看到屏幕或按键。
+> - 演练用的验证 profile 还不存在。`skill_id`、`profile_id`、检查命令、基础镜像（按 digest 固定）、受信来源提交都要先定；`skill_blob` 和 `skill_manifest_digest` 在代码和文档里都没有定义。还需要一个脚本，从同一份输入算出各个 digest，写出验证程序配置、profile 文件、发布程序放行清单、主机生产者策略文件和主机 profile 文件。
+> - 两台机器上的 Docker 步骤各需要你重新同意。
 
 目标：按 [自循环升级方案](2026-11-16-osstack-self-loop-upgrade.md) U4 的验收，在沙箱仓库 `osborn-studio/osstack-bridge-sandbox` 里跑通一次真实链路：
 
