@@ -19,6 +19,11 @@ const configSchema = z
     publisher: identity,
     /** App B, the `osstack/verify` producer. */
     evidence_app_id: positive,
+    verify_actions: z.object({
+      app_id: z.literal(15368),
+      check_name: z.literal('osstack/verify-actions'),
+      workflow_path: z.literal('.github/workflows/osstack-verify.yml'),
+    }).strict().optional(),
     /** App E: `actor_id` is its bot user id (`mergedBy`), `app_id` the App id. */
     merger: identity,
     /** The only target branch (G2a). */
@@ -88,6 +93,7 @@ export async function loadMergerConfig(home: string): Promise<MergerConfig | und
   const rulesets = [c.main_quality_ruleset_id, c.main_update_ruleset_id, ...c.mission_ruleset_ids];
   if (new Set(rulesets).size !== rulesets.length) throw invalid('ruleset_ids_overlap');
   return {
+    ...(c.verify_actions && { verify_actions: c.verify_actions }),
     ...(c.live && { live: c.live }),
     ...(c.bot_approvers && { bot_approvers: c.bot_approvers }),
     repository: c.repository,

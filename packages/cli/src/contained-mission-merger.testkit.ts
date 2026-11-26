@@ -49,6 +49,7 @@ export interface World {
   renamed?: string[] | undefined;
   pr: Json; body: string; reviews: Json[]; threads: Json[]; timeline: string[]; files: string[]; changedFiles: number | undefined;
   defaultBranch: string | null; crossTip: string | null;
+  workflowRuns: Record<number, Json[]>;
   suites: Record<number, number[]>; runs: Record<number, Json[]>;
   baseRules: Json[]; missionRules: Json[];
   /** Body of `branches/main/protection`, or a RestResult failure. */
@@ -71,6 +72,7 @@ export function body(): string {
 export function makeWorld(): World {
   return {
     pr: {}, body: body(), reviews: [review(1)], threads: [], timeline: [], files: ['src/a.ts'], changedFiles: undefined, defaultBranch: 'main', crossTip: BASE,
+    workflowRuns: {},
     suites: { [APP.evidence]: [1201], [APP.actions]: [1, 2] },
     runs: { 1201: [run(5001, 'osstack/verify', APP.evidence, { external_id: `${MISSION}:${HEAD}` })], 1: [run(11, 'check', APP.actions), run(12, 'build', APP.actions)], 2: [run(21, 'lint-other', APP.actions)] },
     baseRules: [
@@ -133,6 +135,7 @@ export function serve(w: World, repository = REPO): { graphql: GraphqlTransport;
       const all = (w.runs[Number(runList[1])] ?? []).filter((r) => name === null || r['name'] === name);
       return ok({ check_runs: slice(all) });
     }
+    if (p === 'actions/runs') return ok({ workflow_runs: slice(w.workflowRuns[Number(q.get('check_suite_id'))] ?? []) });
     if (p === 'rules/branches/main') return ok(slice(w.baseRules));
     if (p === `rules/branches/${BRANCH}`) return ok(slice(w.missionRules));
     if (p === 'branches/main/protection') return (w.protection as { ok?: boolean }).ok === false ? (w.protection as RestResult) : ok(w.protection);

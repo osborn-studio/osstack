@@ -20,9 +20,9 @@ async function snap(w: World, limits?: { maxRequests?: number; maxPages?: number
   if (!r.ok) throw new Error(`read failed ${r.codes.join()}`);
   return { snapshot: r.snapshot, calls: s.calls, issues: r.issues };
 }
-async function verdict(w: World) {
+async function verdict(w: World, config = registry) {
   const s = serve(w);
-  const r = await readMergeGateInput({ graphql: s.graphql, rest: s.rest }, evidence, registry);
+  const r = await readMergeGateInput({ graphql: s.graphql, rest: s.rest }, evidence, config);
   if (!r.ok) return { read: r, calls: s.calls };
   return { read: r, calls: s.calls, verdict: evaluateMergeGates(r.input) };
 }
@@ -43,6 +43,7 @@ describe('end to end with the M-A gates', () => {
     expect(calls.rest.some((p) => /commits\/[0-9a-f]+\/check-runs/u.test(p))).toBe(false);
     expect(calls.rest.some((p) => p.includes(`commits/${HEAD}/check-suites?app_id=${APP.evidence}`))).toBe(true);
     for (const g of calls.gql) expect(g.query).not.toMatch(/mutation|subscription/iu);
+    expect(calls.rest.some(p => p.includes('/actions/runs') || p.includes('verify-actions'))).toBe(false);
     expect(MERGER_PULL_REQUEST_QUERY).not.toContain('baseRefOid');
   });
 
@@ -53,6 +54,43 @@ describe('end to end with the M-A gates', () => {
     expect(v?.verdict).toBe('refused');
     expect(read.ok && read.input.second).toBeNull();
     expect(calls.gql.length).toBe(1);
+  });
+});
+
+describe('Actions verification workflow provenance', () => {
+  const settings = { app_id: APP.actions, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml' };
+  const config = { ...registry, verify_actions: settings };
+  const workflow = { id: 91, path: settings.workflow_path, event: 'workflow_dispatch', head_branch: 'main', head_sha: BASE };
+  function world() {
+    const w = makeWorld();
+    w.runs[2] = [21, 22].map(id => run(id, settings.check_name, APP.actions, { external_id: `7:${HEAD}` }));
+    w.workflowRuns[2] = [workflow];
+    return w;
+  }
+  it('binds both checks to their suite workflow with one lookup on each pass', async () => {
+    const { verdict: v, calls } = await verdict(world(), config);
+    expect(v).toMatchObject({ verdict: 'would_merge', gates: { g3: { source: 'actions', duplicates: 1, workflow_run_id: 91, workflow_run_head_sha: BASE } } });
+    expect(calls.rest.filter(p => p.includes('/actions/runs'))).toEqual(Array(2).fill('repos/o/r/actions/runs?check_suite_id=2&per_page=100&page=1'));
+    expect(calls.rest.some(p => p.includes('check_name=osstack%2Fverify-actions'))).toBe(true);
+  });
+  it.each(['zero', 'two', 'failed'])('handles a %s workflow read', async kind => {
+    const w = world();
+    if (kind === 'zero') w.workflowRuns[2] = [];
+    if (kind === 'two') w.workflowRuns[2] = [workflow, { ...workflow, id: 92 }];
+    if (kind === 'failed') w.failRest.push({ match: /actions\/runs/u, result: { ok: false, status: 403, branchNotProtected: false } });
+    const { verdict: v, read } = await verdict(w, config);
+    expect(v?.codes).toEqual([kind === 'zero' ? 'G3.wrong_workflow' : 'U.read_incomplete:G3']);
+    expect(read.ok && read.input.snapshot.verify_actions).toMatchObject({ complete: kind === 'zero', runs: [{ workflow: null }, { workflow: null }] });
+  });
+  it('detects a different workflow commit on the second read', async () => {
+    const w = world();
+    w.onPass = pass => { if (pass === 2) w.workflowRuns[2] = [{ ...workflow, head_sha: HEAD }]; };
+    expect((await verdict(w, config)).verdict?.codes).toEqual(['U.snapshot_moved:verify_actions']);
+  });
+  it('reports an incomplete second lookup', async () => {
+    const w = world();
+    w.onPass = pass => { if (pass === 2) w.workflowRuns[2] = [workflow, workflow]; };
+    expect((await verdict(w, config)).read).toEqual({ ok: false, codes: ['U.read_incomplete:second'] });
   });
 });
 

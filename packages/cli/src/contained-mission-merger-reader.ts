@@ -71,6 +71,7 @@ export function assertRestPathAllowed(path: string, scope: RestScope): void {
   const patterns = [
     new RegExp(`^repos/${repo}/commits/${SHA}/check-suites${QUERY}$`, 'u'),
     new RegExp(`^repos/${repo}/check-suites/[0-9]+/check-runs${QUERY}$`, 'u'),
+    new RegExp(`^repos/${repo}/actions/runs\\?check_suite_id=[0-9]+&per_page=${PAGE}&page=[1-9][0-9]*$`, 'u'),
     new RegExp(`^repos/${repo}/rules/branches/${REF}${QUERY}$`, 'u'),
     new RegExp(`^repos/${repo}/branches/${REF}/protection$`, 'u'),
   ];
@@ -479,8 +480,8 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
       }
     };
     /** Pages a REST list. `pick` returns undefined for a malformed page. */
-    const pagedList = async (base: string, query: string, pick: (body: unknown) => unknown[] | undefined): Promise<{ items: unknown[]; complete: boolean }> => {
-      const items: unknown[] = [];
+    const pagedList = async <T,>(base: string, query: string, pick: (body: unknown) => T[] | undefined): Promise<{ items: T[]; complete: boolean }> => {
+      const items: T[] = [];
       for (let page = 1; ; page += 1) {
         let result: RestResult;
         try {
@@ -520,8 +521,8 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
       ),
     });
     /** Runs of the given Apps' check suites on the live head (design G3 / G4: per suite, never `commits/{head}/check-runs`). */
-    const collectRuns = async (apps: readonly number[], checkName: string | null): Promise<{ runs: SnapshotCheckRun[]; complete: boolean }> => {
-      const runs = new Map<number, SnapshotCheckRun>();
+    const collectRuns = async (apps: readonly number[], checkName: string | null) => {
+      const runs = new Map<number, { suite: number; check: SnapshotCheckRun }>();
       let complete = true;
       for (const app of apps) {
         const suites = await pagedList(`${repoPath}/commits/${head}/check-suites`, `app_id=${app}`, (body) => {
@@ -529,21 +530,48 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
           return p.success ? p.data.check_suites.filter((s) => s.app?.id === undefined || s.app.id === app) : undefined;
         });
         if (!suites.complete) complete = false;
-        const ids = [...new Set((suites.items as { id: number }[]).map((s) => s.id))];
+        const ids = [...new Set(suites.items.map((s) => s.id))];
         for (const id of ids) {
           const list = await pagedList(`${repoPath}/check-suites/${id}/check-runs`, `${checkName === null ? '' : `check_name=${encodeURIComponent(checkName)}&`}filter=all`, (body) => {
             const p = runsBody.safeParse(body);
             return p.success ? p.data.check_runs : undefined;
           });
           if (!list.complete) complete = false;
-          for (const r of list.items as z.infer<typeof runsBody>['check_runs']) {
-            runs.set(r.id, { id: r.id, app_id: r.app?.id ?? null, name: r.name, external_id: r.external_id ?? null, head_sha: r.head_sha, status: r.status, conclusion: r.conclusion });
+          for (const r of list.items) {
+            const check = { id: r.id, app_id: r.app?.id ?? null, name: r.name, external_id: r.external_id ?? null, head_sha: r.head_sha, status: r.status, conclusion: r.conclusion };
+            runs.set(r.id, { suite: id, check });
           }
         }
       }
-      return { runs: [...runs.values()].sort((a, b) => a.id - b.id), complete };
+      return { runs: [...runs.values()].sort((a, b) => a.check.id - b.check.id), complete };
     };
-    const verify = await collectRuns([registry.evidence_app_id], 'osstack/verify');
+    const actions = registry.verify_actions;
+    const verify = actions ? { runs: [], complete: false } : await collectRuns([registry.evidence_app_id], 'osstack/verify');
+    let verifyActions: MergeSnapshot['verify_actions'];
+    if (actions) {
+      const checks = await collectRuns([actions.app_id], actions.check_name);
+      type VerifyActionsRun = NonNullable<MergeSnapshot['verify_actions']>['runs'][number];
+      const workflows = new Map<number, VerifyActionsRun['workflow']>();
+      const workflowBody = z.object({ workflow_runs: z.array(z.object({
+        id: z.number().int().positive(), path: z.string(), event: z.string(), head_branch: z.string().nullable(), head_sha: z.string(),
+      })) });
+      let complete = checks.complete;
+      const runs: VerifyActionsRun[] = [];
+      for (const { check, suite } of checks.runs) {
+        if (check.name !== actions.check_name) continue;
+        if (!workflows.has(suite)) {
+          const list = await pagedList(`${repoPath}/actions/runs`, `check_suite_id=${suite}`, body => {
+            const parsed = workflowBody.safeParse(body);
+            return parsed.success ? parsed.data.workflow_runs : undefined;
+          });
+          if (!list.complete || list.items.length > 1) complete = false;
+          const run = list.complete && list.items.length === 1 ? list.items[0] : undefined;
+          workflows.set(suite, run ? { run_id: run.id, path: run.path, event: run.event, head_branch: run.head_branch, run_head_sha: run.head_sha } : null);
+        }
+        runs.push({ ...check, workflow: workflows.get(suite) ?? null });
+      }
+      verifyActions = { runs, complete };
+    }
     const requiredContexts = new Set(registry.required_checks.map((c) => c.context));
     const producers = [...new Set(registry.required_checks.map((c) => c.app_id))].sort((a, b) => a - b);
     const required = await collectRuns(producers, null);
@@ -687,8 +715,9 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
       reviews: { complete: reviewsComplete, items: reviewItems },
       threads: { complete: completeOf('reviewThreads'), unresolved: nodesOf<{ isResolved: boolean }>('reviewThreads').filter((t) => !t.isResolved).length },
       timeline: { complete: completeOf('timelineItems'), force_push_events: nodesOf<{ __typename: string }>('timelineItems').filter((t) => t.__typename === 'HeadRefForcePushedEvent').length },
-      verify: { complete: verify.complete, runs: verify.runs },
-      required_runs: { complete: required.complete, runs: required.runs.filter((r) => requiredContexts.has(r.name)) },
+      verify: { complete: verify.complete, runs: verify.runs.map(r => r.check) },
+      ...(verifyActions && { verify_actions: verifyActions }),
+      required_runs: { complete: required.complete, runs: required.runs.map(r => r.check).filter(r => requiredContexts.has(r.name)) },
       base_rules: { complete: baseComplete, status_checks: statusChecks, pull_request: pullRequest, legacy },
       mission_rules: { ...missionRules, complete: missionComplete },
       rulesets,
@@ -701,10 +730,10 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
   }
 }
 
-/** True when no section of the snapshot is marked incomplete (and the legacy protection read did not fail). */
+/** All required reads, including the selected verification source, must be complete. */
 export function snapshotIsComplete(s: MergeSnapshot): boolean {
   return (
-    s.files.complete && s.reviews.complete && s.threads.complete && s.timeline.complete && s.verify.complete && s.required_runs.complete
+    s.files.complete && s.reviews.complete && s.threads.complete && s.timeline.complete && (s.verify_actions ?? s.verify).complete && s.required_runs.complete
     && s.base_rules.complete && s.base_rules.legacy.read !== 'failed' && s.mission_rules.complete
   );
 }

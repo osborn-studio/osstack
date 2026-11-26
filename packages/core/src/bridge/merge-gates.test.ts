@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MERGE_GATE_OPTIONS, evaluateMergeGates, type MergeGateInput, type MergeGateOptions, type MergeSnapshot } from "./merge-gates.js";
+import { DEFAULT_MERGE_GATE_OPTIONS, evaluateMergeGates, type MergeGateInput, type MergeGateOptions, type MergeSnapshot, type VerifyActionsRun } from "./merge-gates.js";
 import { type Mutable, ACTIONS, APP_A, APP_B, APP_E, BASE_HEAD, CHECKS, H, OLD_HEAD, OWNER, baseInput, withEvidence, withRegistry, withSnap } from "./merge-gate-fixtures.js";
 
 const run = (input: MergeGateInput, options?: MergeGateOptions) => evaluateMergeGates(input, options);
@@ -23,6 +23,53 @@ describe("control", () => {
     expect(r).toMatchObject({ verdict: "would_merge", codes: [], request: { sha: H, merge_method: "squash" } });
     expect(r.gates).toMatchObject({ start_is_base: false, second_read: true, g3: { check_run_id: 10, conclusion: "success", duplicates: 0, foreign_same_name: 0 } });
     expect(r.gates.g2c).toEqual({ live: H, pushed: H, candidate: H, evidence: H, marker: H, check: H });
+  });
+});
+
+describe("G3 Actions verification", () => {
+  const config = { app_id: ACTIONS, check_name: "osstack/verify-actions", workflow_path: ".github/workflows/osstack-verify.yml" };
+  const workflow = { path: config.workflow_path, event: "workflow_dispatch", head_branch: "main", run_head_sha: BASE_HEAD, run_id: 91 };
+  const check: VerifyActionsRun = { id: 20, name: config.check_name, app_id: ACTIONS, external_id: `7:${H}`, head_sha: H, status: "completed", conclusion: "success", workflow };
+  function actionsInput(runs: VerifyActionsRun[], complete = true) {
+    const input = withSnap(s => { s.verify_actions = { complete, runs }; });
+    input.registry.verify_actions = config;
+    return input;
+  }
+
+  it("records the lowest eligible run and its workflow commit across both reads", () => {
+    const input = actionsInput([{ ...check, id: 21, workflow: { ...workflow, run_id: 92 } }, { ...check, id: 1, app_id: APP_B }, check]);
+    input.snapshot.verify = { complete: false, runs: [] };
+    const result = run(input);
+    expect(result.verdict).toBe("would_merge");
+    expect(result.gates.g2c?.check).toBe(H);
+    expect(result.gates.g3).toEqual({ source: "actions", check_run_id: 20, conclusion: "success", duplicates: 1, foreign_same_name: 1, workflow_run_id: 91, workflow_run_head_sha: BASE_HEAD });
+  });
+  it("requires a complete Actions read, even with a passing App B check", () => {
+    const missing = baseInput();
+    missing.registry.verify_actions = config;
+    unevaluated(missing, "U.read_incomplete:G3");
+    unevaluated(actionsInput([check], false), "U.read_incomplete:G3");
+  });
+  it("binds the producer, name, PR number and head", () => {
+    refusedOnly(actionsInput([{ ...check, app_id: APP_B }]), "G3.wrong_producer_only");
+    refusedOnly(actionsInput([{ ...check, external_id: `8:${H}` }, { ...check, name: "other" }]), "G3.missing");
+    const mismatch = actionsInput([{ ...check, head_sha: OLD_HEAD }]);
+    refusedOnly(mismatch, "G2.head_mismatch:check", "G3.missing");
+    expect(run(mismatch).gates.g2c?.check).toBe(OLD_HEAD);
+  });
+  it.each([null, { ...workflow, path: "other.yml" }, { ...workflow, event: "push" }, { ...workflow, head_branch: "other" },
+    { ...workflow, head_branch: null }, { ...workflow, run_head_sha: "unknown" }])("requires the registered workflow on the base branch (%j)", value => {
+    refusedOnly(actionsInput([{ ...check, workflow: value }]), "G3.wrong_workflow");
+  });
+  it("refuses a failing or pending duplicate even when the lowest ID succeeded", () => {
+    refusedOnly(actionsInput([check, { ...check, id: 21, conclusion: "failure" }]), "G3.not_success:failure");
+    refusedOnly(actionsInput([check, { ...check, id: 21, status: "in_progress", conclusion: null }]), "G3.not_success:in_progress");
+  });
+  it("preserves the legacy verdict and facts when Actions verification is unconfigured", () => {
+    const input = baseInput();
+    input.snapshot.verify_actions = { complete: false, runs: [] };
+    expect(run(input)).toEqual(run(baseInput()));
+    expect(run(input).gates.g3).toEqual({ check_run_id: 10, conclusion: "success", duplicates: 0, foreign_same_name: 0 });
   });
 });
 

@@ -103,7 +103,11 @@ const ruleFacts = object({
 const GATES_SCHEMA = object({
   start_is_base: v => typeof v === "boolean", second_read: v => typeof v === "boolean",
   g2c: object({ live: OID_OR_NULL, pushed: OID_OR_NULL, candidate: OID_OR_NULL, evidence: OID_OR_NULL, marker: OID_OR_NULL, check: OID_OR_NULL }),
-  g3: object({ check_run_id: INT_OR_NULL, conclusion: TOKEN_OR_NULL, duplicates: INT, foreign_same_name: INT }),
+  g3: object({
+    check_run_id: INT_OR_NULL, conclusion: TOKEN_OR_NULL, duplicates: INT, foreign_same_name: INT,
+    source: v => v === "actions" || v === "app_b", workflow_run_id: INT_OR_NULL,
+    workflow_run_head_sha: v => v === null || (typeof v === "string" && /^[0-9a-f]{40}$/iu.test(v)),
+  }),
   g4: object({ required: v => Array.isArray(v) && v.length <= 32 && v.every(r => Array.isArray(r) && r.length === 4 && TOKEN_OR_NULL(r[0]) && INT(r[1]) && INT_OR_NULL(r[2]) && TOKEN_OR_NULL(r[3])) }),
   g5: object({ base_head: OID_OR_NULL, live_tip: OID_OR_NULL }),
   g6a: object({ review_id: INT_OR_NULL, commit: OID_OR_NULL }),

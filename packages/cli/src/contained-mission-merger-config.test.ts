@@ -38,6 +38,15 @@ describe('loadMergerConfig', () => {
     expect(c?.required_checks).toHaveLength(2);
   });
 
+  it('accepts only the registered Actions verification settings', async () => {
+    const config = { app_id: 15368, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml' };
+    expect((await load(good))?.verify_actions).toBeUndefined();
+    expect((await load({ ...good, verify_actions: config }))?.verify_actions).toEqual(config);
+    for (const patch of [{ app_id: 1 }, { check_name: 'other' }, { workflow_path: 'other.yml' }, { extra: true }]) {
+      await expect(load({ ...good, verify_actions: { ...config, ...patch } })).rejects.toThrow(invalid('verify_actions'));
+    }
+  });
+
   it('invalid JSON or schema fails', async () => {
     await expect(loadMergerConfig(await home({ 'merger.json': '{nope' }))).rejects.toThrow(invalid('json'));
     await expect(load({ ...good, version: 2 })).rejects.toThrow(invalid('version'));
