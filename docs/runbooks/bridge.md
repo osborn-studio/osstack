@@ -28,7 +28,7 @@
 | 阶段 1：PR 机器标记、`mission status` 的 `publication` 字段 | 已实现 | #368 |
 | 阶段 3：App A 推送与开 PR、App B 发 `osstack/verify`、`mission publish-check` | 已实现，**只在沙箱**验收（App 只装在沙箱） | #373 |
 | 阶段 4-D：影子对账器 `OSSTACK_BRIDGE=shadow`、`mission status --json` 的 `chain` 字段 | 已实现（只读 GitHub，只写影子链表） | #378 |
-| App E 影子合并者 `OSSTACK_MERGER=shadow`、`merger.json`、`mission merger report` | **未实现**（只有设计） | M-A（迁移 52）、M-B、M-C |
+| App E 影子合并者 `OSSTACK_MERGER=shadow`、`merger.json`、`mission merger report` | 已实现，真实合并仅限沙箱（§3.2） | M-A（迁移 52）、M-B、M-C、M-E2 |
 | 阶段 5：`grant-revisions`、`chain-decide`、修订子 Mission、`publishRevision`、`OSSTACK_BRIDGE=1` | **未实现**（只有附录） | 5-P、5-A … 5-G |
 | W13：主机 git 子进程登记、`host_process_unproven`、`marker_lost`、`resume_workspace` | **未实现**（只有设计） | W13-A、W13-B、W13-C1、W13-C2 |
 | 阶段 6：Watcher/Reviewer 改用 App C/D，`grok/verify-osstack` 必需检查 | 待决定（平台侧） | — |
@@ -147,7 +147,16 @@ node scripts/rulesets-check.mjs --repo osborn-studio/osstack --target main-repo-
 
 ### 3.2 `OSSTACK_MERGER`
 
-**今天没有任何代码读 `OSSTACK_MERGER`**，设成什么都没有效果，也不会报错。M-C 合并之后 **【计划：M-C】**：`shadow` 且 `merger.json` 存在时启用影子合并者；未设或 `0` 关闭；`1`、`live` 或其他值让 `serve` 以 `MERGER_LIVE_NOT_IMPLEMENTED` 退出。它与 `OSSTACK_BRIDGE` 互不依赖。真实合并不在任何已批准的设计里（ADR-006 决定 2 “Shadow first”）。
+合并开关与 `OSSTACK_BRIDGE` 独立。修改服务环境后，重启 `serve`。
+
+| 值 | 行为 |
+|---|---|
+| 未设或 `0` | 关闭 Mission 合并。 |
+| `shadow` | 有有效的 `bridge/merger.json` 时，读取 Mission PR 并记录判定。 |
+| `1` | 仅对 `osborn-studio/osstack-bridge-sandbox` 启用 App E 真实合并，仓库名不区分大小写。`merger.json` 的 `live` 对象必须包含绝对路径 `merger_key_path` 和正整数 `merger_installation_id`。App E 核对当前 head 的批准及检查，预留 PR，写入前再核对，以 squash 合并并读回结果。 |
+| 其他值（含 `live`） | `serve` 以 `MERGER_MODE_INVALID` 退出。 |
+
+`counted_approvers` 登记人工账号。可选的 `bot_approvers` 使用相同的 `actor_id`、`app_id: null` 格式。机器账号的批准仅对 T0 的低风险 PR 计入。最多改动 5 个文件，增删合计最多 200 行，且不能改动工作流、Actions 或 Mission 受保护路径。
 
 ### 3.3 隐含的开关：`apps.json`
 
@@ -416,6 +425,7 @@ osstack mission decide --mission $M --decision retry_stop_check --json
 |---|---|---|
 | `contained_config_required:<变量>` | 缺 Mission 环境变量 | 补变量（§2.1） |
 | `contained_missions_require_engineering`、`attention_disabled`、`engineering_auth_required`、`mission_disabled` | 工程面或 Mission 的功能开关、attention、授权文件变量缺失（§2.1 表） | 同上 |
+| `MERGER_LIVE_SANDBOX_ONLY:repository` | 真实合并启动时缺少沙箱仓库登记 | 核对 `bridge/merger.json` 的 `repository`，或将 `OSSTACK_MERGER` 改为 `0` 或 `shadow` |
 | `BRIDGE_LIVE_SANDBOX_ONLY` | 为沙箱以外的仓库启用了 live 桥接（见[设计说明](../design/2026-11-25-bridge-live-sandbox-gate.md)） | 使用沙箱仓库，或取消设置 `OSSTACK_BRIDGE`，或改为 `0` 或 `shadow` |
 | `BRIDGE_MODE_INVALID` | `OSSTACK_BRIDGE` 取值（§3.1） | 改为未设、`0` 或 `shadow` |
 | `BRIDGE_CONFIG_INVALID:incomplete` | `apps.json`、`rulesets.json` 只有一个 | 补齐或（只在确定要退回主机凭证时）两个都移走 |

@@ -8,6 +8,7 @@ export type MergeVerdictName = "would_merge" | "refused" | "unevaluated";
 
 /** Owner decisions of design §8 that are still open. The defaults are the strict reading the design recommends. */
 export interface MergeGateOptions {
+  readonly missionLive?: boolean;
   /** §8 decision 1. `record_only`: write `start_is_base` as a fact and never refuse on it. `require_equal`: `G5.start_not_base` when `start_commit != base_head`. */
   readonly startCommit: "record_only" | "require_equal";
   /** §8 decision 2. `success_only`: `skipped`/`neutral` required checks are refused as `G4.not_success:<ctx>:<conclusion>`. `github_compatible`: also accept them (G3 stays success-only). */
@@ -17,6 +18,7 @@ export const DEFAULT_MERGE_GATE_OPTIONS: MergeGateOptions = Object.freeze({ star
 
 /** One `delivery_evidence` plus the ledger row, as the M-C view returns it. */
 export interface MissionMergeEvidence {
+  lowest_tier?: boolean;
   mission_id: string; spec_digest: string; start_commit: string; candidate_head: string;
   repository: string; branch: string; base: string; base_head: string | null; head: string; pr_number: number;
   /** `publication().kind`; null when the Mission has no publication. */
@@ -70,7 +72,7 @@ export interface SnapshotPullRequestRule {
 export interface MergeSnapshot {
   pr: SnapshotPr;
   marker: SnapshotMarker;
-  files: { complete: boolean; workflow_paths_changed: boolean };
+  files: { complete: boolean; workflow_paths_changed: boolean; low_risk?: boolean };
   reviews: { complete: boolean; items: readonly SnapshotReview[] };
   threads: { complete: boolean; unresolved: number };
   timeline: { complete: boolean; force_push_events: number };
@@ -96,6 +98,7 @@ export interface MergerRegistry {
   publisher: { actor_id: number; app_id: number };
   merger: { actor_id: number; app_id: number };
   evidence_app_id: number;
+  bot_approvers?: readonly { actor_id: number; app_id: number | null }[];
   counted_approvers: readonly { actor_id: number; app_id: number | null }[];
   required_checks: readonly { context: string; app_id: number }[];
   main_quality_ruleset_id: number; main_update_ruleset_id: number;
@@ -119,6 +122,8 @@ export interface MergeGateFacts {
   g4?: { required: ReadonlyArray<readonly [string, number, number | null, string | null]> };
   g5?: { base_head: string | null; live_tip: string | null };
   g6a?: { review_id: number | null; commit: string | null };
+  g6e?: Pick<SnapshotRuleset, "enforcement" | "bypass_actors"> | null;
+  g8?: Pick<SnapshotRuleset, "enforcement" | "bypass_actors"> | null;
   g6b?: { rulesets: readonly number[]; force_push_events: number };
   g7?: { mergeable: string; merge_state: string };
 }
@@ -136,6 +141,8 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
   const unknown = new Set<string>();
   const gates: MergeGateFacts = { start_is_base: e.base_head !== null && e.start_commit === e.base_head, second_read: input.second !== null };
   const head = s.pr.head_oid;
+  const quality = s.rulesets[String(r.main_quality_ruleset_id)];
+  const qualityDisabled = options.missionLive && quality?.enforcement === "disabled";
 
   // G0 -- the ledger join is the identity; more than one Mission for (repository, PR) is ambiguous.
   if (e.join_count !== 1) fail.add("G0.join_ambiguous");
@@ -201,7 +208,7 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
   ]);
   const setsEqual = present.size === wanted.size && [...wanted].every(k => present.has(k));
   if (s.base_rules.complete && s.base_rules.legacy.read !== "failed") {
-    if (!setsEqual) fail.add("G4.required_set_drift");
+    if (!setsEqual && !(qualityDisabled && present.size === 0)) fail.add("G4.required_set_drift");
     if (s.base_rules.legacy.contexts.length > 0) fail.add("G4.unbound_status_context");
     // Provenance is judged per source entry, not on the reduced set: a duplicate from another ruleset or from legacy protection is a bypass path.
     if (s.base_rules.status_checks.some(c => c.ruleset_id !== r.main_quality_ruleset_id) || s.base_rules.legacy.checks.length > 0
@@ -244,6 +251,9 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
     for (const x of [...stateful].sort((a, b) => a.submitted_at_ms - b.submitted_at_ms || a.review_id - b.review_id)) latestBy.set(`${x.author_type}:${x.author_id ?? "none"}`, x);
     if ([...latestBy.values()].some(x => x.state === "CHANGES_REQUESTED")) fail.add("G6.changes_requested");
     const counted = new Set(r.counted_approvers.filter(a => a.app_id === null).map(a => a.actor_id));
+    if (options.missionLive && s.files.complete && s.files.low_risk && !s.files.workflow_paths_changed) {
+      for (const bot of r.bot_approvers ?? []) if (bot.app_id === null) counted.add(bot.actor_id);
+    }
     const isCounted = (x: SnapshotReview): boolean => x.author_type === "User" && x.author_id !== null && counted.has(x.author_id);
     const good = [...latestBy.values()].filter(x => isCounted(x) && x.state === "APPROVED" && x.commit_oid === head && x.author_can_push);
     gates.g6a = { review_id: good[0]?.review_id ?? null, commit: good[0]?.commit_oid ?? null };
@@ -292,21 +302,26 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
 
   // G6e -- the platform rules that re-check at merge time still exist and cannot be bypassed.
   const pr = s.base_rules.pull_request;
-  if (s.base_rules.complete) {
+  const update = s.rulesets[String(r.main_update_ruleset_id)];
+  if (options.missionLive) {
+    const facts = (rule: SnapshotRuleset | undefined) => rule ? { enforcement: rule.enforcement, bypass_actors: rule.bypass_actors } : null;
+    gates.g6e = facts(quality);
+    gates.g8 = facts(update);
+  } else if (s.base_rules.complete) {
     if (pr === null || pr.ruleset_id !== r.main_quality_ruleset_id || pr.required_approving_review_count < 1 || !pr.require_last_push_approval
       || !pr.required_review_thread_resolution || !pr.dismiss_stale_reviews_on_push) fail.add("G6.platform_rules_missing");
-    const quality = s.rulesets[String(r.main_quality_ruleset_id)];
     if (quality === undefined || quality.enforcement !== "active" || quality.bypass_actors === null || quality.bypass_actors.length !== 0) fail.add("G6.platform_rules_bypass");
   }
 
   // G8 -- App E is on the main-update list in pull_request mode, and App A is not.
-  const update = s.rulesets[String(r.main_update_ruleset_id)];
-  if (update === undefined || update.bypass_actors === null) fail.add("G8.ruleset_unverifiable");
-  else {
-    const list = update.bypass_actors;
-    const listsMerger = list.some(b => b.actor_type === "Integration" && b.actor_id === r.merger.app_id && b.bypass_mode === "pull_request");
-    if (update.enforcement !== "active" || !update.covers_base_ref || !update.rule_types.includes("update") || !listsMerger) fail.add("G8.merger_not_allowed");
-    if (list.some(b => b.actor_type === "Integration" && b.actor_id === r.publisher.app_id)) fail.add("G8.publisher_allowed");
+  if (!options.missionLive) {
+    if (update === undefined || update.bypass_actors === null) fail.add("G8.ruleset_unverifiable");
+    else {
+      const list = update.bypass_actors;
+      const listsMerger = list.some(b => b.actor_type === "Integration" && b.actor_id === r.merger.app_id && b.bypass_mode === "pull_request");
+      if (update.enforcement !== "active" || !update.covers_base_ref || !update.rule_types.includes("update") || !listsMerger) fail.add("G8.merger_not_allowed");
+      if (list.some(b => b.actor_type === "Integration" && b.actor_id === r.publisher.app_id)) fail.add("G8.publisher_allowed");
+    }
   }
 
   // G7 -- open, mergeable, clean; the request that would be sent is bound to the live head.
@@ -318,7 +333,7 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
     else if (s.pr.mergeable === "CONFLICTING") fail.add("G7.conflicting");
     else if (s.pr.mergeable !== "MERGEABLE") fail.add(`G7.mergeable:${s.pr.mergeable}`);
     if (s.pr.merge_state_status !== "CLEAN") fail.add(`G7.merge_state:${s.pr.merge_state_status}`);
-    if (s.pr.review_decision !== "APPROVED") fail.add(`G7.review_decision:${s.pr.review_decision ?? "NONE"}`);
+    if (s.pr.review_decision !== "APPROVED" && !(qualityDisabled && s.pr.review_decision === null)) fail.add(`G7.review_decision:${s.pr.review_decision ?? "NONE"}`);
   }
 
   if (unknown.size > 0) return { verdict: "unevaluated", codes: [...unknown].sort(), gates };

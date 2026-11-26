@@ -18,6 +18,7 @@ import {
   type SnapshotRuleset,
   type SnapshotStatusRule,
 } from '@osstack/core';
+import { matchMissionProtectedPath } from '@osstack/governance';
 import { z } from 'zod';
 import { defaultGhExec, ghGraphqlTransport, type GhExec, type GraphqlTransport } from './contained-mission-bridge-reader.js';
 import { parseMissionMarkers } from './contained-mission-marker.js';
@@ -134,7 +135,7 @@ export const MERGER_PULL_REQUEST_QUERY = `query MergerPullRequest($owner: String
     pullRequest(number: $number) {
       number state isDraft mergeable mergeStateStatus reviewDecision body
       baseRepository { nameWithOwner } headRepository { nameWithOwner } isCrossRepository
-      headRefName baseRefName headRefOid changedFiles
+      headRefName baseRefName headRefOid changedFiles additions deletions
       author { __typename ... on User { databaseId } ... on Bot { databaseId } }
       baseRef { target { oid } }
       reviews(first: ${PAGE}, after: $reviewsAfter) @include(if: $reviews) {
@@ -184,6 +185,7 @@ const prSchema = z.object({
   headRefName: z.string(),
   baseRefName: z.string(),
   headRefOid: z.string(),
+  additions: z.number().int().nonnegative().optional(), deletions: z.number().int().nonnegative().optional(),
   changedFiles: z.number().int().nonnegative(),
   author: authorSchema.optional(),
   baseRef: z.object({ target: z.object({ oid: z.string() }).nullable() }).nullable(),
@@ -330,7 +332,7 @@ const CONNS: readonly { name: ConnName; flag: string; after: string }[] = [
   { name: 'files', flag: 'files', after: 'filesAfter' },
 ];
 
-async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, registry: MergerRegistry, budget: Budget): Promise<MergeSnapshotRead> {
+async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, registry: MergerRegistry, budget: Budget, missionLive = false): Promise<MergeSnapshotRead> {
   const limits: MergerReadLimits = { ...DEFAULT_MERGER_READ_LIMITS, ...deps.limits };
   const issues: string[] = [];
   const note = (code: string): void => {
@@ -678,7 +680,10 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
         base_tip_crosscheck_oid: crossTip,
       },
       marker,
-      files: { complete: filesComplete, workflow_paths_changed: workflowPathsChanged },
+      files: { complete: filesComplete, workflow_paths_changed: workflowPathsChanged,
+        ...(missionLive && { low_risk: evidence.lowest_tier === true && filesComplete && !workflowPathsChanged && changed.length === pr.changedFiles && changed.length <= 5
+          && pr.additions !== undefined && pr.deletions !== undefined && pr.additions + pr.deletions <= 200
+          && changed.every(f => matchMissionProtectedPath(f.path).length === 0) }) },
       reviews: { complete: reviewsComplete, items: reviewItems },
       threads: { complete: completeOf('reviewThreads'), unresolved: nodesOf<{ isResolved: boolean }>('reviewThreads').filter((t) => !t.isResolved).length },
       timeline: { complete: completeOf('timelineItems'), force_push_events: nodesOf<{ __typename: string }>('timelineItems').filter((t) => t.__typename === 'HeadRefForcePushedEvent').length },
@@ -723,12 +728,12 @@ export async function readMergeGateInput(
 ): Promise<MergeGateInputRead> {
   const limits = { ...DEFAULT_MERGER_READ_LIMITS, ...deps.limits };
   const budget = new Budget(limits.maxRequests);
-  const first = await readPass(deps, evidence, registry, budget);
+  const first = await readPass(deps, evidence, registry, budget, options.missionLive);
   if (!first.ok) return first;
   const firstVerdict = evaluateMergeGates({ evidence, snapshot: first.snapshot, second: null, registry }, options);
   const needsSecond = firstVerdict.verdict === 'unevaluated' && firstVerdict.codes.length === 1 && firstVerdict.codes[0] === 'U.second_read_missing';
   if (!needsSecond) return { ok: true, input: { evidence, snapshot: first.snapshot, second: null, registry }, issues: first.issues };
-  const second = await readPass(deps, evidence, registry, budget);
+  const second = await readPass(deps, evidence, registry, budget, options.missionLive);
   if (!second.ok) return { ok: false, codes: second.codes.map((c) => c.replace(/^U\./u, 'U.second.')) };
   if (!snapshotIsComplete(second.snapshot)) return { ok: false, codes: ['U.read_incomplete:second'] };
   if (JSON.stringify(first.timeline_events) !== JSON.stringify(second.timeline_events)) return { ok: false, codes: ['U.snapshot_moved:timeline'] };

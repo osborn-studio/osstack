@@ -1,4 +1,4 @@
-import type { ContainedMission, ContainedMissionStore, HostProcessRecord } from '@osstack/core';
+import { MergerShadowStore, type ContainedMission, type ContainedMissionStore, type HostProcessRecord } from '@osstack/core';
 import { z } from 'zod';
 import { latestCiEvent } from './contained-mission-github-ci-approval.js';
 import type { SandboxCiPushIntent } from './contained-mission-github-ci-publish.js';
@@ -146,9 +146,7 @@ export function createSandboxCiMerge(input: {
           store.attention.assertOwner(store.owner);
           if (!canWrite(root) || signal.aborted || !pushReceipt(root, child, target) || h.expiresAt <= now()
             || heldFor(root, target).held || key !== `${policy.repositoryId}:${target.pr}`
-            || store.db.prepare(`SELECT 1 FROM engineering_contained_events WHERE kind='ci_app_e_merge_reserved'
-              AND json_extract(payload_json,'$.binding.repositoryId')=? AND json_extract(payload_json,'$.binding.pr')=? LIMIT 1`)
-              .get(policy.repositoryId, target.pr)) return false;
+            || MergerShadowStore.hasAppEReservation(store.db, policy.repositoryId, target.pr)) return false;
           store.record(root.mission_id, 'ci_app_e_merge_reserved', h, now());
           return true;
         }).immediate()),

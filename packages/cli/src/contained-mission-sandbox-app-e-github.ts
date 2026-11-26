@@ -56,7 +56,7 @@ function bind(p: z.infer<ReturnType<typeof pull>>, b: SandboxMergeBinding, s: Ci
   if (p.number !== b.pr || p.head.sha !== b.head || p.head.ref !== b.branch || (p.state === 'open' && p.base.sha !== b.base)
     || p.user.id !== s.publisherId || p.user.type !== 'Bot') fail();
 }
-const githubDotCom: GhExec = (args, options) => defaultGhExec([args[0]!, '--hostname', 'github.com', ...args.slice(1)], options);
+export const githubDotCom: GhExec = (args, options) => defaultGhExec([args[0]!, '--hostname', 'github.com', ...args.slice(1)], options);
 
 /** Fixed GET paths, existing authenticated gh execution. Lists are bounded and never follow URLs. */
 function observerRest(exec: GhExec, s: CiMergerPolicy): RestGet {

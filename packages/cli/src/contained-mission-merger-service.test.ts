@@ -16,6 +16,8 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   };
 });
 
+import * as appE from './contained-mission-sandbox-app-e-github.js';
+import { APP_E_SANDBOX } from './contained-mission-sandbox-app-e.js';
 import * as bridgeModule from './contained-mission-bridge.js';
 import * as githubApp from './contained-mission-github-app.js';
 import { handleContainedMissionCommand } from './contained-mission-command.js';
@@ -26,8 +28,8 @@ import { ContainedMissionRunner } from './contained-mission-runner.js';
 import { type ContainedMissionService, createContainedMissionService, parseMergerMode } from './contained-mission-rpc.js';
 import type { MergerShadowHandle } from './contained-mission-merger-shadow.js';
 import { EngineeringAccess } from './engineering-access.js';
-import { BOT, IDS } from './contained-mission-merger.testkit.js';
-import { APP, MIN, OWNER, REPO, createRigged, ledgerDump, type Rigged } from './contained-mission-merger-shadow.testkit.js';
+import { BOT, IDS, review } from './contained-mission-merger.testkit.js';
+import { APP, MIN, OWNER, REPO, HEAD, config, createRigged, ledgerDump, type Rigged } from './contained-mission-merger-shadow.testkit.js';
 
 const cleanup: Array<() => void> = [];
 afterEach(() => { vi.restoreAllMocks(); cleanup.splice(0).forEach((fn) => { fn(); }); });
@@ -41,8 +43,8 @@ const MERGER_JSON = {
   main_quality_ruleset_id: IDS.quality, main_update_ruleset_id: IDS.update, mission_ruleset_ids: [IDS.writers, IDS.history],
 };
 
-function setup() {
-  const g: Rigged = createRigged();
+function setup(repository = REPO) {
+  const g: Rigged = createRigged(config({ repository }));
   cleanup.push(() => { g.close(); });
   const rig = g.rig;
   const authDir = join(rig.root, 'auth');
@@ -71,7 +73,7 @@ function setup() {
     });
   const mergerJson = (value: unknown = MERGER_JSON) => { writeFileSync(join(home, 'bridge', 'merger.json'), typeof value === 'string' ? value : JSON.stringify(value)); };
   const mergerOf = (service: ContainedMissionService) => (service as unknown as { options: { merger?: MergerShadowHandle } }).options.merger;
-  return { g, rig, home, logs, restCalls, create, mergerJson, mergerOf };
+  return { g, rig, home, env, logs, restCalls, create, mergerJson, mergerOf };
 }
 
 describe('OSSTACK_MERGER switch', () => {
@@ -79,8 +81,8 @@ describe('OSSTACK_MERGER switch', () => {
     expect(parseMergerMode(undefined)).toBe('off');
     expect(parseMergerMode('0')).toBe('off');
     expect(parseMergerMode('shadow')).toBe('shadow');
-    expect(() => parseMergerMode('1')).toThrow('MERGER_LIVE_NOT_IMPLEMENTED');
-    expect(() => parseMergerMode('live')).toThrow('MERGER_LIVE_NOT_IMPLEMENTED');
+    expect(parseMergerMode('1')).toBe('live');
+    expect(() => parseMergerMode('live')).toThrow('MERGER_MODE_INVALID');
     for (const bad of ['', 'true', 'SHADOW', 'shadow ', '2', 'on']) expect(() => parseMergerMode(bad)).toThrow('MERGER_MODE_INVALID');
   });
 
@@ -124,12 +126,19 @@ describe('OSSTACK_MERGER switch', () => {
     await expect(f.create('shadow')).rejects.toThrow('MERGER_CONFIG_INVALID:merger.json:credential_field');
   });
 
-  it('refuses 1, live and any other value before building anything', async () => {
+  it('checks live repository and settings before opening a key or constructing ports', async () => {
     const f = setup();
-    f.mergerJson();
-    await expect(f.create('1')).rejects.toThrow('MERGER_LIVE_NOT_IMPLEMENTED');
-    await expect(f.create('live')).rejects.toThrow('MERGER_LIVE_NOT_IMPLEMENTED');
-    for (const bad of ['garbage', '', 'on', 'true']) await expect(f.create(bad)).rejects.toThrow('MERGER_MODE_INVALID');
+    const live = { merger_key_path: join(f.home, 'absent-key'), merger_installation_id: 123 };
+    f.mergerJson({ ...MERGER_JSON, live });
+    await expect(f.create('1')).rejects.toThrow('MERGER_LIVE_SANDBOX_ONLY:repository');
+    const sandbox = { ...MERGER_JSON, repository: 'Osborn-Studio/OSStack-Bridge-Sandbox' };
+    f.mergerJson(sandbox);
+    await expect(f.create('1')).rejects.toThrow('MERGER_CONFIG_INVALID:merger.json:live');
+    f.mergerJson({ ...sandbox, live });
+    const service = await f.create('1');
+    expect(f.mergerOf(service)).toBeDefined();
+    await service.close();
+    expect(fsReads).not.toContain(live.merger_key_path);
   });
 
   it('a producers.json that disagrees with merger.json stops the start', async () => {
@@ -160,6 +169,73 @@ const HOST_CALLS = ['start', 'tick', 'decide', 'cancel', 'publishCheck', 'recove
 const SHADOW_WRITES = ['beginObservation', 'recordDecision', 'recordOutcome', 'recordCycle', 'beginScan'] as const;
 
 describe('merger run at the real service wiring', () => {
+  it.each(['merged', 'low-risk bot', 'unknown', 'disabled', 'draining', 'changed'] as const)('persists the live outcome for %s', async scenario => {
+    const repository = APP_E_SANDBOX.repository;
+    const f = setup(repository);
+    const live = { merger_key_path: join(f.home, 'missing-key'), merger_installation_id: 123 };
+    const bot = 12345;
+    f.mergerJson({ ...MERGER_JSON, repository, live, bot_approvers: [{ actor_id: bot, app_id: null }] });
+    if (scenario === 'low-risk bot') {
+      f.g.world.pr = { additions: 100, deletions: 100 };
+      f.g.world.reviews = [review(1, { author: { __typename: 'User', databaseId: bot } })];
+    } else {
+      f.g.world.pr = { additions: 1000, deletions: 500 };
+    }
+    const by = { actor_id: APP.publisher, actor_type: 'Integration', bypass_mode: 'always' };
+    for (const id of [IDS.quality, IDS.update]) Object.assign(f.g.world.rulesets[id] as object, { enforcement: 'disabled', bypass_actors: [by] });
+    f.g.world.baseRules = [];
+    f.g.world.pr['reviewDecision'] = null;
+    const sha = '9'.repeat(40);
+    const put = vi.fn();
+    vi.spyOn(appE, 'createSandboxAppEWriteAdapter').mockReturnValue({
+      merge: async (request, beforeWrite) => {
+        if (scenario === 'changed') f.g.world.threads = [{ isResolved: false, isOutdated: false }];
+        await beforeWrite();
+        put(request);
+        return { merged: true, sha };
+      },
+      readback: async binding => ({ binding, merged: true, actorAppId: APP.merger, actorType: 'Bot', actorVerified: true,
+        actorUserId: BOT.merger, sha, parents: [scenario === 'unknown' ? HEAD : binding.base] }),
+    });
+    const env = { ...f.env, OSSTACK_MERGER: '1' };
+    const service = await f.create('1', { env, draining: () => scenario === 'draining' });
+    if (scenario === 'disabled') env.OSSTACK_MERGER = '0';
+    await f.mergerOf(service)!.scan();
+    await service.close();
+    const events = f.rig.db.prepare("SELECT kind,payload_json FROM engineering_contained_events WHERE kind LIKE 'mission_app_e_merge_%' ORDER BY seq")
+      .all() as Array<{ kind: string; payload_json: string }>;
+    const disabled = scenario === 'disabled' || scenario === 'draining';
+    expect(events.filter(row => row.kind === 'mission_app_e_merge_reserved')).toHaveLength(disabled ? 0 : 1);
+    expect(put).toHaveBeenCalledTimes(disabled || scenario === 'changed' ? 0 : 1);
+    const result = JSON.parse(events.at(-1)!.payload_json);
+    expect(result.outcome).toBe(disabled ? 'refused:disabled' : scenario === 'changed' ? 'refused:gate_failed' : scenario === 'low-risk bot' ? 'merged' : scenario);
+    expect(result.gates.g8).toEqual({ enforcement: 'disabled', bypass_actors: [by] });
+    expect(JSON.parse(f.g.store.decisions(repository, 7)[0]!.gates_json).g6e).toEqual(result.gates.g8);
+    if (scenario === 'merged') {
+      expect(result.sha).toBe(sha);
+      expect(put).toHaveBeenCalledWith(expect.objectContaining({ sha: HEAD, merge_method: 'squash' }));
+      const restarted = await f.create('1');
+      await f.mergerOf(restarted)!.scan();
+      await restarted.close();
+      const last = f.rig.db.prepare("SELECT payload_json FROM engineering_contained_events WHERE kind='mission_app_e_merge_result' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string };
+      expect(JSON.parse(last.payload_json).outcome).toBe('refused:already_reserved');
+      expect(put).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('recovers an interrupted reservation once, without another PUT', async () => {
+    const repository = APP_E_SANDBOX.repository;
+    const f = setup(repository);
+    const binding = { repositoryId: APP_E_SANDBOX.repositoryId, pr: 7, head: HEAD, base: 'b'.repeat(40) };
+    const seq = f.g.store.reserveLiveMerge(f.g.mission.missionId, binding, f.g.clock.now);
+    expect(seq).not.toBeNull();
+    f.mergerJson({ ...MERGER_JSON, repository, live: { merger_key_path: join(f.home, 'missing-key'), merger_installation_id: 123 } });
+    for (let restart = 0; restart < 2; restart++) await (await f.create('1')).close();
+    const rows = f.rig.db.prepare("SELECT payload_json FROM engineering_contained_events WHERE kind='mission_app_e_merge_result'").all() as { payload_json: string }[];
+    expect(rows.map(row => JSON.parse(row.payload_json))).toEqual([{ binding, reservation: seq, outcome: 'unknown' }]);
+    expect(f.g.store.reserveLiveMerge(f.g.mission.missionId, binding, f.g.clock.now)).toBeNull();
+  });
+
   it('reads and records only: no token source, no Mission or chain write, no runner, no mutation, only GET paths, no App key path opened', async () => {
     const f = setup();
     f.mergerJson();

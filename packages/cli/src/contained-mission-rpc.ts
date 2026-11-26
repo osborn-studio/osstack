@@ -115,13 +115,11 @@ export function parseBridgeMode(value: string | undefined): BridgeMode {
   throw new Error('BRIDGE_MODE_INVALID');
 }
 
-export type MergerMode = 'off' | 'shadow';
-/** `OSSTACK_MERGER`: unset or `0` -> off; `shadow` -> read-only shadow. `1` and `live` need a later ADR (merger design §1, §5.3) and fail the service
- * start with MERGER_LIVE_NOT_IMPLEMENTED; any other value fails with MERGER_MODE_INVALID (it never degrades to off). Kept here so the module stays lazy. */
+export type MergerMode = 'off' | 'shadow' | 'live';
 export function parseMergerMode(value: string | undefined): MergerMode {
   if (value === undefined || value === '0') return 'off';
   if (value === 'shadow') return 'shadow';
-  if (value === '1' || value === 'live') throw new Error('MERGER_LIVE_NOT_IMPLEMENTED');
+  if (value === '1') return 'live';
   throw new Error('MERGER_MODE_INVALID');
 }
 
@@ -432,9 +430,13 @@ export async function createContainedMissionService(deps: {
     if (!registry) log('osstack: bridge shadow: off (no bridge/producers.json)');
   }
   let mergerConfig: import('./contained-mission-merger-config.js').MergerConfig | undefined;
-  if (mergerMode === 'shadow') {
+  if (mergerMode !== 'off') {
     // Present but invalid -> MERGER_CONFIG_INVALID:merger.json:* stops the service; missing -> the merger stays off.
     mergerConfig = await (await import('./contained-mission-merger-config.js')).loadMergerConfig(deps.home);
+    if (mergerMode === 'live') {
+      if (!mergerConfig || mergerConfig.repository.toLowerCase() !== GITHUB_CI_SANDBOX) throw Error('MERGER_LIVE_SANDBOX_ONLY:repository');
+      if (!mergerConfig.live) throw Error('MERGER_CONFIG_INVALID:merger.json:live');
+    }
     if (!mergerConfig) log('osstack: merger shadow: off (no bridge/merger.json)');
     else {
       // Both name lists must agree whenever both files exist (design §5.2), whether or not the bridge reconciler itself is on.
@@ -558,7 +560,11 @@ export async function createContainedMissionService(deps: {
   // Shadow merger (design §5.3): its own factory, nothing shared with loadBridgeConfig above or with the bridge reconciler.
   const { MergerShadowStore } = await import('@osstack/core');
   const mergerStore = new MergerShadowStore(deps.attention, deps.owner);
-  const merger = mergerConfig ? await createMergerShadow({ store, mergerStore, config: mergerConfig, log, ...(deps.merger ?? {}) }) : undefined;
+  const missionLive = mergerMode === 'live' && mergerConfig?.live
+    ? (await import('./contained-mission-merger-live.js')).createMissionLiveMerger(mergerConfig, mergerConfig.live, mergerStore,
+      () => env['OSSTACK_MERGER'] === '1' && !deps.draining(), deps.merger?.now ?? Date.now)
+    : undefined;
+  const merger = mergerConfig ? await createMergerShadow({ store, mergerStore, config: mergerConfig, log, ...(missionLive && { live: missionLive }), ...(deps.merger ?? {}) }) : undefined;
   const mergerReport = async (readScopes: readonly string[]) => {
     const { buildMergerReport } = await import('./contained-mission-merger-report.js');
     return buildMergerReport(mergerStore.db, (deps.merger?.now ?? Date.now)(), readScopes);
@@ -684,6 +690,7 @@ export async function createStoppedChainScan(deps: {
  * It does not call loadBridgeConfig and imports neither contained-mission-bridge.ts nor contained-mission-github-app.ts. */
 export async function createMergerShadow(deps: {
   store: Pick<ContainedMissionStore, 'db' | 'get' | 'listPrOpened'>;
+  live?: NonNullable<import('./contained-mission-merger-shadow.js').MergerShadowOptions['live']>;
   mergerStore: import('@osstack/core').MergerShadowStore;
   config: import('./contained-mission-merger-config.js').MergerConfig;
   log: (line: string) => void;
@@ -691,14 +698,16 @@ export async function createMergerShadow(deps: {
   rest?: import('./contained-mission-merger-reader.js').RestGet;
   now?: () => number;
 }): Promise<import('./contained-mission-merger-shadow.js').MergerShadowHandle> {
-  const [{ mergerShadowWriter }, shadow, reader] = await Promise.all([
+  const [{ mergerShadowWriter, DEFAULT_MERGE_GATE_OPTIONS }, shadow, reader] = await Promise.all([
     import('@osstack/core'), import('./contained-mission-merger-shadow.js'), import('./contained-mission-merger-reader.js'),
   ]);
   const c = deps.config;
+  const exec = deps.live ? (await import('./contained-mission-sandbox-app-e-github.js')).githubDotCom : undefined;
   return new shadow.MergerShadowReconciler({
     missions: shadow.createMergerMissionView(deps.store), ledger: shadow.createMergerLedgerView(deps.mergerStore), writer: mergerShadowWriter(deps.mergerStore),
-    graphql: deps.graphql ?? reader.ghGraphqlTransport(),
-    rest: deps.rest ?? reader.ghRestGetTransport({ repository: c.repository, rulesetIds: [c.main_quality_ruleset_id, c.main_update_ruleset_id, ...c.mission_ruleset_ids] }),
+    graphql: deps.graphql ?? reader.ghGraphqlTransport(exec),
+    rest: deps.rest ?? reader.ghRestGetTransport({ repository: c.repository, rulesetIds: [c.main_quality_ruleset_id, c.main_update_ruleset_id, ...c.mission_ruleset_ids] }, exec),
+    ...(deps.live && { live: deps.live, gateOptions: { ...DEFAULT_MERGE_GATE_OPTIONS, missionLive: true } }),
     config: c, now: deps.now ?? Date.now, log: deps.log,
   });
 }

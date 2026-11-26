@@ -79,7 +79,7 @@ export function createMergerMissionView(store: Pick<ContainedMissionStore, 'db' 
         base_head: baseHead, head, pr_number: prNumber, publication_kind: publication.kind,
         pushed_commit: 'pushed_commit' in publication ? publication.pushed_commit : null,
         record_digest: recordDigest, recomputed_digest: createHash('sha256').update(canonical(body)).digest('hex'), event_digest: event.evidence_digest,
-        join_count: joined.n,
+        join_count: joined.n, lowest_tier: payload['tier'] === 'T0',
       };
     },
   };
@@ -162,6 +162,8 @@ export interface MergerShadowOptions {
   readonly requestsPerScan?: number;
   readonly limits?: Partial<MergerReadLimits>;
   /** Owner decisions of design §8 that are still open; the strict defaults unless the owner decides otherwise. */
+  readonly live?: (evidence: MissionMergeEvidence, decision: Extract<MergeVerdict, { verdict: 'would_merge' }>,
+    observe: () => Promise<MergeVerdict | null>, running: () => boolean) => Promise<void>;
   readonly gateOptions?: MergeGateOptions;
 }
 
@@ -239,6 +241,7 @@ export class MergerShadowReconciler implements MergerShadowHandle {
     this.timer = undefined;
     const running = this.scanning;
     if (!running) return;
+    if (this.options.live) return running; // Finish the in-flight receipt before the store closes.
     let grace: ReturnType<typeof setTimeout> | undefined;
     await Promise.race([running, new Promise<void>((resolve) => { grace = setTimeout(resolve, STOP_GRACE_MS); grace.unref(); })]);
     if (grace) clearTimeout(grace);
@@ -390,12 +393,20 @@ export class MergerShadowReconciler implements MergerShadowHandle {
       this.decide(ctx, { verdict: 'unevaluated', head, base: null, codes: ['U.read_failed:base_missing'], gates: { ...verdict.gates }, readMs });
       return;
     }
-    this.decide(ctx, { verdict: verdict.verdict, head, base, codes: verdict.codes, gates: { ...verdict.gates }, readMs, ...(verdict.verdict === 'would_merge' ? { request: verdict.request } : {}) });
+    const recorded = this.decide(ctx, { verdict: verdict.verdict, head, base, codes: verdict.codes, gates: { ...verdict.gates }, readMs, ...(verdict.verdict === 'would_merge' ? { request: verdict.request } : {}) });
+    if (recorded && verdict.verdict === 'would_merge' && this.options.live) {
+      await this.options.live(evidence, verdict, async () => {
+        const current = this.options.missions.deliveryEvidence(ctx.missionId);
+        if (this.stopped || !current || current.record_digest !== evidence.record_digest) return null;
+        const fresh = await readMergeGateInput({ graphql: this.graphql, rest: this.rest, limits: this.limits }, current, this.options.config, this.gateOptions);
+        return fresh.ok ? evaluateMergeGates(fresh.input, this.gateOptions) : null;
+      }, () => !this.stopped);
+    }
   }
 
   /** Writes one decision through the fence. A stale observation (a newer cycle, possibly in another process, was accepted first) abandons this one. */
-  private decide(ctx: Ctx, d: DecisionDraft, fallback = true): void {
-    if (this.stopped) return;
+  private decide(ctx: Ctx, d: DecisionDraft, fallback = true): boolean {
+    if (this.stopped) return false;
     const { pub, evidence } = ctx;
     const gates = JSON.parse(JSON.stringify({ ...d.gates, read_ms: [...d.readMs] })) as Record<string, unknown>;
     const input: MergerDecisionInput = {
@@ -405,16 +416,18 @@ export class MergerShadowReconciler implements MergerShadowHandle {
     try {
       this.options.writer.recordDecision(input, ctx.seq, this.options.now());
       ctx.entries.push([pub.repository, pub.pr_number, ctx.seq, d.head, d.verdict]);
+      return true;
     } catch (error) {
       const code = errorCode(error);
       // The store validates in code first; a value outside its closed schema (for example a check context with an unexpected character) must
       // stay visible as an unevaluated record, not vanish. The failed transaction rolled back, fence included, so the same number is reusable.
       if (fallback && code === 'merger_invalid_input') {
         this.decide(ctx, { verdict: 'unevaluated', head: d.head, base: null, codes: ['U.read_failed:record_rejected'], gates: { start_is_base: false, second_read: false }, readMs: d.readMs }, false);
-        return;
+        return false;
       }
       // merger_stale_observation, merger_pr_merged and the like: this cycle is abandoned; the next one starts from a new number.
       this.log(`decision_abandoned mission=${ctx.missionId} code=${code}`);
+      return false;
     }
   }
 
