@@ -30,7 +30,7 @@ const mutants = [
   ['split-dispatch-transaction', 'packages/cli/src/contained-mission-revision.ts', 'const outcome = chains.transaction(', 'const outcome = (fn => fn())(', '@osstack/cli', ['src/contained-mission-revision.test.ts']],
   ['no-unsettled-publication-check', store, 'if (open) fail(open.state === "pending" ? "push_intent_pending" : "push_intent_uncertain");', '', '@osstack/core', storeTests],
   ['no-chain-classification', runner, 'const chain = this.classifyForChain(spec, chainDiff);', "const chain = { tier: 'T0', reasons: [] };", '@osstack/cli', ['src/contained-mission-revision.runner.test.ts']],
-  ['no-acknowledge-advance', runner, 'this.ports.revision.acknowledgeAdvance(m, spec, decision.kind);', '', '@osstack/cli', ['src/contained-mission-revision.runner.test.ts']],
+  ['no-acknowledge-advance', runner, 'this.ports.revision.acknowledgeAdvance(m, spec, kind);', '', '@osstack/cli', ['src/contained-mission-revision.runner.test.ts']],
   ['interrupted-push-failed', publication, "deps.chains.settleIntent(intentId, 'uncertain', deps.now(), detail);", "deps.chains.settleIntent(intentId, 'failed', deps.now(), detail);", '@osstack/cli', pubTests],
   ['wrong-revision-publish-port', runner, 'await publication.publishRevision(revisionInput)', "await this.ports.publish({ ...revisionInput, body: 'mutant' })", '@osstack/cli', ['src/contained-mission-revision.runner.test.ts']],
   ['no-release-fence', 'packages/core/src/state/engineering-host-process-store.ts', 'const result: unknown = fence();', 'const result: unknown = undefined;', '@osstack/core', ['src/state/engineering-host-process-store.test.ts']],
