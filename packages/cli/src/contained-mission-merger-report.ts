@@ -1,6 +1,7 @@
-// Comparison report for the shadow merger (merger design §4.3): classifies each PR's shadow decisions against what really happened.
-// Read-only by construction: it receives a `prepare` that must only ever see SELECT statements (checked on every call), and it renders
-// ids, hashes, counts and fixed codes only. It states no conclusion about enabling real merges (that is a later ADR).
+// Compare shadow decisions with real outcomes and report readiness for the §6.1 shadow comparison.
+// The report checks every statement for SELECT. Real merges require ADR-008 and the other §6 criteria.
+import { MERGE_GATE_REFUSAL_CODES } from '@osstack/core';
+import { GITHUB_CI_SANDBOX } from './contained-mission-ci-policy.js';
 
 export interface ReportDb { prepare(sql: string): { all(...params: unknown[]): unknown[]; get(...params: unknown[]): unknown } }
 
@@ -13,6 +14,11 @@ export type ReportCategory = (typeof REPORT_CATEGORIES)[number];
 const SCAN_INTERVAL_MS = 5 * 60_000;
 const CLOSED_WINDOW_MS = 15 * 60_000;
 const MAX_PRS = 500;
+
+const MIN_SAMPLES = 20;
+const MAX_GAP_ENTRIES = 50;
+const SAMPLE_CATEGORIES = new Set<ReportCategory>(['agree_merge', 'merged_while_refused', 'would_merge_closed', 'agree_no_merge']);
+const refusalCodes = new Set<string>(MERGE_GATE_REFUSAL_CODES);
 
 interface Decision { seq: number; mission_id: string; observation_seq: number; head_sha: string; verdict: 'would_merge' | 'refused' | 'unevaluated'; codes_json: string; observed_at: number }
 interface Outcome {
@@ -31,9 +37,22 @@ export interface ReportPr {
   would_merge_to_merged_ms: number | null;
 }
 export interface ReportOpenPr { repository: string; pr_number: number; mission_id: string; latest: { verdict: string; head: string; codes: string[]; observed_at: number } | null; decisions: number; ever_would_merge: boolean; reopened: boolean }
+type MisjudgedPr = Pick<ReportPr, 'repository' | 'pr_number' | 'mission_id'>;
+interface UnexplainedRefusal { repository: string; pr_number: number; decision_seq: number; codes: string[] }
+export type ReadinessGap =
+  | { code: 'samples_insufficient'; have: number; need: number }
+  | { code: 'would_merge_misjudged'; prs: MisjudgedPr[]; total: number }
+  | { code: 'refusal_unexplained'; refusals: UnexplainedRefusal[]; total: number }
+  | { code: 'report_truncated' };
+
 export interface MergerReport {
-  schema_version: 1; generated_at: number;
-  /** No judgement: whether and when to enable real merges, and how many agreeing merges that takes, belong to a later ADR. */
+  schema_version: 2; generated_at: number;
+  readiness: {
+    verdict: 'ready' | 'not_ready';
+    criteria: { min_samples: typeof MIN_SAMPLES; sample_repository: string; samples: number };
+    missing: ReadinessGap[];
+  };
+  /** Explains the scope of §6.1 readiness and the separate requirements for enabling real merges. */
   note: string;
   counts: Record<ReportCategory | 'open', number>;
   ever_would_merge: number;
@@ -45,7 +64,7 @@ export interface MergerReport {
 const codesOf = (json: string): string[] => { try { const v = JSON.parse(json) as unknown; return Array.isArray(v) ? v.filter((c): c is string => typeof c === 'string') : []; } catch { return []; } };
 const factsOf = (json: string): Record<string, unknown> => { try { const v = JSON.parse(json) as unknown; return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}; } catch { return {}; } };
 
-/** `readScopes`: when given, only PRs of Missions in those scopes appear (an RPC caller sees what its read scopes allow); omitted means every scope. */
+/** When readScopes is given, the report computes readiness over the visible subset only. Omit it to include every scope. */
 export function buildMergerReport(rawDb: ReportDb, now: number, readScopes?: readonly string[]): MergerReport {
   // Defence in depth: whatever object is handed in, this module can only run SELECT.
   const db: ReportDb = { prepare: (sql) => { if (!/^\s*SELECT\b/iu.test(sql)) throw new Error('merger_report_read_only'); return rawDb.prepare(sql); } };
@@ -64,6 +83,8 @@ export function buildMergerReport(rawDb: ReportDb, now: number, readScopes?: rea
   const counts = Object.fromEntries([...REPORT_CATEGORIES, 'open'].map((c) => [c, 0])) as MergerReport['counts'];
   const prs: ReportPr[] = []; const open: ReportOpenPr[] = [];
   let everCount = 0;
+  let unexplainedTotal = 0;
+  const refusals: UnexplainedRefusal[] = [];
 
   /** True when a cycle row in [from,to] lists this PR. */
   const cycleHas = (repo: string, pr: number, from: number, to: number, seq?: number): boolean => one(
@@ -77,6 +98,15 @@ export function buildMergerReport(rawDb: ReportDb, now: number, readScopes?: rea
     const decisions = all<Decision>(`SELECT seq,mission_id,observation_seq,head_sha,verdict,codes_json,observed_at FROM engineering_merger_shadow_decisions WHERE repository=? AND pr_number=? ${only} ORDER BY observation_seq`, key.repository, key.pr_number, ...sc);
     const outcomes = all<Outcome>(`SELECT * FROM engineering_merger_shadow_outcomes WHERE repository=? AND pr_number=? ${only} ORDER BY seq`, key.repository, key.pr_number, ...sc);
     decisionTotal += decisions.length; outcomeTotal += outcomes.length;
+    // Keys arrive in repository and PR order. Sort each PR's unexplained decisions by row sequence before capping the list.
+    const unexplained = decisions.flatMap((decision) => {
+      if (decision.verdict !== 'refused') return [];
+      const codes = codesOf(decision.codes_json);
+      if (codes.length && codes.every((code) => refusalCodes.has(code.split(':', 1)[0]!))) return [];
+      return [{ ...key, decision_seq: decision.seq, codes }];
+    });
+    unexplainedTotal += unexplained.length;
+    refusals.push(...unexplained.sort((a, b) => a.decision_seq - b.decision_seq).slice(0, MAX_GAP_ENTRIES - refusals.length));
     const ever = decisions.some((d) => d.verdict === 'would_merge');
     if (ever) everCount += 1;
     const last = outcomes.at(-1);
@@ -151,9 +181,24 @@ export function buildMergerReport(rawDb: ReportDb, now: number, readScopes?: rea
       would_merge_to_merged_ms: wm && Number.isFinite(mergedMs) ? mergedMs - wm.observed_at : null,
     });
   }
+  const samples = prs.filter((pr) => pr.repository === GITHUB_CI_SANDBOX && SAMPLE_CATEGORIES.has(pr.category)).length;
+  const misjudged = prs.filter((pr) => pr.category === 'would_merge_closed');
+  const missing: ReadinessGap[] = [];
+  if (samples < MIN_SAMPLES) missing.push({ code: 'samples_insufficient', have: samples, need: MIN_SAMPLES });
+  if (misjudged.length) missing.push({
+    code: 'would_merge_misjudged', total: misjudged.length,
+    prs: misjudged.slice(0, MAX_GAP_ENTRIES).map(({ repository, pr_number, mission_id }) => ({ repository, pr_number, mission_id })),
+  });
+  if (unexplainedTotal) missing.push({ code: 'refusal_unexplained', total: unexplainedTotal, refusals });
+  if (truncated) missing.push({ code: 'report_truncated' });
   return {
-    schema_version: 1, generated_at: now,
-    note: 'Shadow evidence only. This report makes no recommendation about enabling real merges; that needs a later ADR.',
+    readiness: {
+      verdict: missing.length ? 'not_ready' : 'ready',
+      criteria: { min_samples: MIN_SAMPLES, sample_repository: GITHUB_CI_SANDBOX, samples },
+      missing,
+    },
+    schema_version: 2, generated_at: now,
+    note: 'Ready means only that the §6.1 shadow-comparison criterion is met. Real merges still require ADR-008 and the other §6 criteria.',
     counts, ever_would_merge: everCount, prs, open,
     totals: { decisions: decisionTotal, outcomes: outcomeTotal },
     truncated,

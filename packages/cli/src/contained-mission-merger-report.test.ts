@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MergerShadowStore } from '@osstack/core';
+import { GITHUB_CI_SANDBOX } from './contained-mission-ci-policy.js';
 import { REPORT_CATEGORIES, buildMergerReport, type ReportDb } from './contained-mission-merger-report.js';
 import { BASE, HEAD, MIN, REPO, T0, createRigged, ledgerDump, seedMergerMission, type Rigged } from './contained-mission-merger-shadow.testkit.js';
 
@@ -13,22 +14,22 @@ const DAY = 86_400_000;
 /** Writes shadow rows straight through the store, the way a reconciler would, at a chosen local time. */
 class Script {
   readonly rigged: Rigged; private readonly store: MergerShadowStore; private readonly mission: string;
-  constructor(r: Rigged, readonly pr: number, private t: number) {
+  constructor(r: Rigged, readonly pr: number, private t: number, private readonly repository: string) {
     this.rigged = r; this.store = r.store;
-    this.mission = seedMergerMission(r.rig, pr, `osstack/mission/p${pr}`).missionId;
+    this.mission = seedMergerMission(r.rig, pr, `osstack/mission/p${pr}`, this.repository).missionId;
   }
   /** One scan at the current time: a decision (or none) and a cycle row listing it. */
-  scan(verdict: 'would_merge' | 'refused' | 'unevaluated' | null, head = HEAD, listed = true): this {
+  scan(verdict: 'would_merge' | 'refused' | 'unevaluated' | null, head = HEAD, listed = true, refusalCodes = ['G6.approval_stale_head']): this {
     const scanId = this.store.beginScan(this.t, this.t);
-    const seq = this.store.beginObservation(REPO, this.pr, this.t);
+    const seq = this.store.beginObservation(this.repository, this.pr, this.t);
     const entries: Array<[string, number, number, string, 'would_merge' | 'refused' | 'unevaluated']> = [];
     if (verdict) {
       this.store.recordDecision({
-        repository: REPO, pr_number: this.pr, mission_id: this.mission, head_sha: head, base_sha: BASE, verdict,
-        codes: verdict === 'would_merge' ? [] : verdict === 'refused' ? ['G6.approval_stale_head'] : ['U.read_failed:graphql_request'],
+        repository: this.repository, pr_number: this.pr, mission_id: this.mission, head_sha: head, base_sha: BASE, verdict,
+        codes: verdict === 'would_merge' ? [] : verdict === 'refused' ? refusalCodes : ['U.read_failed:graphql_request'],
         gates: { second_read: false, start_is_base: false }, merge_request: verdict === 'would_merge' ? { sha: head, merge_method: 'squash' } : null, evidence_digest: 'e'.repeat(64), observed_at: this.t,
       }, seq, this.t);
-      if (listed) entries.push([REPO, this.pr, seq, head, verdict]);
+      if (listed) entries.push([this.repository, this.pr, seq, head, verdict]);
     }
     this.store.recordCycle(scanId, this.t, this.t + 1000, entries, this.t + 1000);
     this.t += 5 * MIN;
@@ -37,10 +38,10 @@ class Script {
   /** An outcome observed in its own scan (the cycle row is written after it, as the reconciler does). */
   outcome(outcome: 'merged' | 'closed_unmerged' | 'observation_expired' | 'reopened', over: { head?: string; published?: string; reopenUnobserved?: boolean; by?: [number, 'User' | 'Bot'] } = {}): this {
     const scanId = this.store.beginScan(this.t, this.t);
-    const seq = this.store.beginObservation(REPO, this.pr, this.t);
+    const seq = this.store.beginObservation(this.repository, this.pr, this.t);
     const m = outcome === 'merged';
     this.store.recordOutcome({
-      repository: REPO, pr_number: this.pr, mission_id: this.mission, scan_id: scanId, outcome, head_at_close: over.head ?? HEAD, observed_at: this.t,
+      repository: this.repository, pr_number: this.pr, mission_id: this.mission, scan_id: scanId, outcome, head_at_close: over.head ?? HEAD, observed_at: this.t,
       ...(m ? { merged_at: new Date(this.t + 1000).toISOString(), merge_commit: 'f'.repeat(40), merged_by_actor_id: over.by?.[0] ?? 269, merged_by_type: over.by?.[1] ?? 'User', owner_approved_head: null } : {}),
       facts: { published_head: over.published ?? HEAD, ...(m ? { merged_by_class: 'owner' } : {}), ...(over.reopenUnobserved ? { reopen_unobserved: true } : {}) },
     }, seq, this.t + 500);
@@ -51,17 +52,17 @@ class Script {
   skip(minutes: number): this { this.t += minutes * MIN; return this; }
 }
 
-function report() {
+function report(repository: string = REPO) {
   const r = createRigged();
   open.push(r);
-  const at = (k: number, pr: number) => new Script(r, pr, T0 + k * DAY);
+  const at = (k: number, pr: number, repo = repository) => new Script(r, pr, T0 + k * DAY, repo);
   return { r, at, run: () => buildMergerReport(r.rig.db, T0) };
 }
 const category = (rep: ReturnType<typeof buildMergerReport>, pr: number) => rep.prs.find((p) => p.pr_number === pr)?.category;
 
 describe('comparison report categories (design §4.3)', () => {
   it('classifies one PR per category, in the order of the table', () => {
-    const { at, run } = report();
+    const { at, run } = report(GITHUB_CI_SANDBOX);
     at(1, 1).scan('would_merge').outcome('merged', { head: OTHER });                                              // merged_other_head
     at(2, 2).outcome('merged');                                                                                    // merged_unobserved (no cycles before)
     at(3, 3).scan('would_merge').scan('would_merge').scan('would_merge').outcome('merged');                        // agree_merge
@@ -83,6 +84,7 @@ describe('comparison report categories (design §4.3)', () => {
     expect(rep.counts).toEqual({ ...Object.fromEntries(REPORT_CATEGORIES.map((c) => [c, 1])), open: 2 });
     expect(rep.prs.find((p) => p.pr_number === 4)).toMatchObject({ ever_would_merge: true, last_decision: { verdict: 'refused', codes: ['G6.approval_stale_head'] } });
     expect(rep.prs.find((p) => p.pr_number === 10)!.ever_would_merge).toBe(false);
+    expect(rep.readiness.criteria.samples).toBe(4);
     expect(rep.ever_would_merge).toBe(4);
     expect(rep.totals.outcomes).toBeGreaterThan(8);
   });
@@ -191,6 +193,72 @@ describe('comparison report categories (design §4.3)', () => {
   });
 });
 
+describe('§6.1 shadow comparison readiness', () => {
+  it('requires 20 sandbox samples and counts misjudgements from every repository', () => {
+    const { at, run, r } = report(GITHUB_CI_SANDBOX);
+    const criteria = { min_samples: 20, sample_repository: GITHUB_CI_SANDBOX };
+    expect(run().readiness).toEqual({
+      verdict: 'not_ready', criteria: { ...criteria, samples: 0 },
+      missing: [{ code: 'samples_insufficient', have: 0, need: 20 }],
+    });
+    for (let pr = 1; pr < 20; pr++) at(pr, pr).scan('refused').outcome('closed_unmerged');
+    at(20, 20, REPO).scan('refused').outcome('closed_unmerged');
+    expect(run().readiness).toEqual({
+      verdict: 'not_ready', criteria: { ...criteria, samples: 19 },
+      missing: [{ code: 'samples_insufficient', have: 19, need: 20 }],
+    });
+    at(21, 21).scan('would_merge').outcome('merged');
+    expect(run().readiness).toEqual({ verdict: 'ready', criteria: { ...criteria, samples: 20 }, missing: [] });
+    at(22, 22, REPO).scan('would_merge').outcome('closed_unmerged');
+    const mission_id = r.store.decisions(REPO, 22)[0]!.mission_id;
+    expect(run().readiness).toEqual({
+      verdict: 'not_ready', criteria: { ...criteria, samples: 20 },
+      missing: [{ code: 'would_merge_misjudged', total: 1, prs: [{ repository: REPO, pr_number: 22, mission_id }] }],
+    });
+  });
+
+  it('checks historical refusals on both open and closed PRs and accepts known bases with suffixes', () => {
+    const { at, run, r } = report();
+    const mixed = ['G3.not_success:failure', 'G9.made_up'];
+    at(2, 2).scan('refused', HEAD, true, mixed).scan('would_merge').outcome('closed_unmerged');
+    at(1, 1).scan('refused', HEAD, true, ['X.y']).scan('refused', HEAD, true, ['G3.not_success:failure']);
+    const row = (pr: number) => r.store.decisions(REPO, pr)[0]!.seq;
+    expect(run().readiness.missing).toEqual([
+      { code: 'samples_insufficient', have: 0, need: 20 },
+      { code: 'would_merge_misjudged', total: 1, prs: [{ repository: REPO, pr_number: 2, mission_id: r.store.decisions(REPO, 2)[0]!.mission_id }] },
+      { code: 'refusal_unexplained', total: 2, refusals: [
+        { repository: REPO, pr_number: 1, decision_seq: row(1), codes: ['X.y'] },
+        { repository: REPO, pr_number: 2, decision_seq: row(2), codes: mixed },
+      ] },
+    ]);
+  });
+
+  it('caps both gap lists at the first 50 entries in PR order and includes their full totals', () => {
+    const { at, run } = report();
+    for (let pr = 51; pr >= 1; pr--) {
+      at(pr, pr).scan('refused', HEAD, true, ['X.y']).scan('would_merge').outcome('closed_unmerged');
+    }
+    const { missing } = run().readiness;
+    const misjudged = missing.find(gap => gap.code === 'would_merge_misjudged');
+    const unexplained = missing.find(gap => gap.code === 'refusal_unexplained');
+    const first50 = Array.from({ length: 50 }, (_, i) => i + 1);
+    expect(misjudged?.total).toBe(51);
+    expect(misjudged?.prs.map(pr => pr.pr_number)).toEqual(first50);
+    expect(unexplained?.total).toBe(51);
+    expect(unexplained?.refusals.map(refusal => refusal.pr_number)).toEqual(first50);
+  });
+
+  it('reports truncation even when all 20 sandbox samples agree', () => {
+    const { at, run, r } = report(GITHUB_CI_SANDBOX);
+    for (let pr = 1; pr <= 20; pr++) at(pr, pr).scan('refused').outcome('closed_unmerged');
+    for (let pr = 21; pr <= 501; pr++) r.store.beginObservation(GITHUB_CI_SANDBOX, pr, T0);
+    expect(run().readiness).toEqual({
+      verdict: 'not_ready', criteria: { min_samples: 20, sample_repository: GITHUB_CI_SANDBOX, samples: 20 },
+      missing: [{ code: 'report_truncated' }],
+    });
+  });
+});
+
 describe('report is read-only and leaks nothing', () => {
   it('runs only SELECT statements and leaves every table unchanged', () => {
     const { at, r } = report();
@@ -220,6 +288,9 @@ describe('report is read-only and leaks nothing', () => {
     r.store.recordDecision({ repository: REPO, pr_number: 7, mission_id: m.mission_id, head_sha: OTHER, base_sha: BASE, verdict: 'refused', codes: ['G2.secret_mission_code'],
       gates: { second_read: false, start_is_base: false }, evidence_digest: 'e'.repeat(64), observed_at: T0 }, seq, T0);
     const visible = buildMergerReport(r.rig.db, T0, [r.rig.scope.scope_id]);
+    expect(visible.readiness.missing.map((gap) => gap.code)).toEqual(['samples_insufficient']);
+    expect(buildMergerReport(r.rig.db, T0, [other.scope_id]).readiness.missing.map((gap) => gap.code))
+      .toEqual(['samples_insufficient', 'refusal_unexplained']);
     expect(visible.totals.decisions).toBe(1);
     expect(JSON.stringify(visible)).not.toContain(m.mission_id);
     expect(JSON.stringify(visible)).not.toContain('G2.secret_mission_code');
@@ -236,7 +307,7 @@ describe('report is read-only and leaks nothing', () => {
     await rec.scan();
     const text = JSON.stringify(run());
     for (const needle of ['SECRET-BODY-TOKEN', 'https://', 'http://', 'ghp_', 'github_pat', '.pem', 'apps.json', 'rulesets.json', 'Bearer', 'password']) expect(text).not.toContain(needle);
-    expect(JSON.parse(text)).toMatchObject({ schema_version: 1, counts: { open: 1 } });
+    expect(JSON.parse(text)).toMatchObject({ schema_version: 2, counts: { open: 1 } });
     expect(text).not.toMatch(/recommend(ed)? (to )?enable|safe to enable|ready to merge/iu);
   });
 });

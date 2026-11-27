@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MERGE_GATE_OPTIONS, evaluateMergeGates, type MergeGateInput, type MergeGateOptions, type MergeSnapshot, type VerifyActionsRun } from "./merge-gates.js";
+import { MERGE_GATE_REFUSAL_CODES, DEFAULT_MERGE_GATE_OPTIONS, evaluateMergeGates, type MergeGateInput, type MergeGateOptions, type MergeSnapshot, type VerifyActionsRun } from "./merge-gates.js";
 import { type Mutable, ACTIONS, APP_A, APP_B, APP_E, BASE_HEAD, CHECKS, H, OLD_HEAD, OWNER, baseInput, withEvidence, withRegistry, withSnap } from "./merge-gate-fixtures.js";
 
 const run = (input: MergeGateInput, options?: MergeGateOptions) => evaluateMergeGates(input, options);
@@ -361,4 +362,13 @@ describe("review authors", () => {
     unevaluated(withSnap(s => { s.reviews.items.push(anon(2, "CHANGES_REQUESTED"), anon(3, "APPROVED")); }), "U.read_failed:G6.review_author");
     expect(run(withSnap(s => { s.reviews.items.push({ ...anon(2, "APPROVED"), state: "COMMENTED" }); })).verdict).toBe("would_merge"); // a comment carries no state
   });
+});
+
+it("lists exactly the refusal code bases used by the gates", () => {
+  const source = readFileSync(new URL("./merge-gates.ts", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//gu, "")
+    .replace(/export const MERGE_GATE_REFUSAL_CODES = Object\.freeze\(\[[\s\S]*?\] as const\);/u, "");
+  // Anchor at the opening quote to exclude detail suffixes of U.read_failed codes.
+  const codes = Array.from(source.matchAll(/["'`](G\d\.[a-z_]+)/gu), (match) => match[1]);
+  expect([...MERGE_GATE_REFUSAL_CODES].sort()).toEqual([...new Set(codes)].sort());
 });
