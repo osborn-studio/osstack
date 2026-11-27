@@ -1,0 +1,12 @@
+{
+  "source_commit": "9ce2c010671dee41efd84e7301b9cd202c356958",
+  "app_id": 5801554,
+  "installation_id": 182960535,
+  "docker": {
+    "socket_path": "/run/user/1000/docker.sock",
+    "daemon_id": "example-rootless-daemon"
+  },
+  "cloud_profiles_root": "/srv/osstack/harness/profiles",
+  "host_profiles_root": "/srv/osstack/host/profiles",
+  "host_key_path": "/run/secrets/osstack-verifier.pem"
+}
