@@ -541,13 +541,13 @@ it("migrates a populated dispatch ledger without changing previous rows or objec
   const migrated = openDb({ path: f.path });
   try {
     const after = objects(migrated);
-    expect(migrated.pragma("user_version", { simple: true })).toBe(65);
+    expect(migrated.pragma("user_version", { simple: true })).toBe(66);
     expect(after.filter(o => schema.some(p => p.name === o.name))).toEqual(schema);
     expect(after.filter(o => !schema.some(p => p.name === o.name)).map(o => o.name)).toEqual([
       "engineering_local_failure_recheck_chain","engineering_local_failure_recheck_insert","engineering_local_failure_recheck_no_delete",
       "engineering_local_failure_recheck_no_replace","engineering_local_failure_recheck_update","engineering_local_failure_rechecks",
       "engineering_mission_depth_stop","engineering_mission_lineage_depth_cap",
-      "sqlite_autoindex_engineering_local_failure_rechecks_2", ...recheckRunObjects, "engineering_local_failure_grant_monotonic", "decision_probes", "decision_probes_answer_id", "decision_probes_pending_expiry",
+      "sqlite_autoindex_engineering_local_failure_rechecks_2", ...recheckRunObjects, "engineering_local_failure_grant_monotonic", "decision_probes", "decision_probes_answer_id", "decision_probes_pending_expiry", "engineering_merger_alerts", "engineering_merger_alerts_due", "engineering_merger_alerts_no_delete",
     ].sort());
     expect(rows(migrated)).toEqual(before);
     expect(migrated.pragma("foreign_key_check")).toEqual([]);

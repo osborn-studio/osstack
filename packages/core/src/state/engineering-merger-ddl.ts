@@ -153,3 +153,26 @@ BEGIN SELECT RAISE(ABORT,'merger_shadow_immutable'); END;
 CREATE TRIGGER engineering_merger_outcome_no_delete BEFORE DELETE ON engineering_merger_shadow_outcomes
 BEGIN SELECT RAISE(ABORT,'merger_shadow_immutable'); END;
 `;
+
+/** Live merge notices. Pending rows are inserted atomically with the terminal outcome. */
+export const ENGINEERING_MERGER_ALERT_DDL = `
+CREATE TABLE engineering_merger_alerts (
+  repository TEXT NOT NULL,
+  pr_number INTEGER NOT NULL CHECK(pr_number > 0),
+  merge_commit TEXT NOT NULL CHECK(length(merge_commit) IN (40,64) AND merge_commit NOT GLOB '*[^0-9a-f]*'),
+  mission_id TEXT NOT NULL,
+  merged_by_actor_id INTEGER NOT NULL CHECK(merged_by_actor_id > 0),
+  merged_by_class TEXT NOT NULL CHECK(merged_by_class IN ('owner','other_user','other_bot','publisher_app')),
+  status TEXT NOT NULL CHECK(status IN ('pending','claimed','sent','failed')),
+  attempts INTEGER NOT NULL CHECK(attempts BETWEEN 0 AND 3 AND ((attempts=0)=(status='pending'))),
+  error TEXT CHECK((error IS NOT NULL)=(status='failed') AND
+    (error IS NULL OR (length(error) BETWEEN 1 AND 64 AND error NOT GLOB '*[^a-z0-9_]*'))),
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(repository,pr_number,merge_commit)
+) WITHOUT ROWID;
+CREATE INDEX engineering_merger_alerts_due ON engineering_merger_alerts(repository,updated_at)
+  WHERE status IN ('pending','claimed') OR (status='failed' AND attempts<3);
+CREATE TRIGGER engineering_merger_alerts_no_delete BEFORE DELETE ON engineering_merger_alerts
+BEGIN SELECT RAISE(ABORT,'merger_alert_immutable'); END;
+`;

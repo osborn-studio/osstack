@@ -332,3 +332,33 @@ describe("verification waiting notice", () => {
     expect(() => buildAttentionWebhookNotice({ ...waiting, ...patch })).toThrow("attention_webhook_message_invalid");
   });
 });
+
+describe("merged outside App E notice", () => {
+  const id = "merged-outside-merger:" + "a".repeat(32);
+  const alert = { delivery_id: id, scope_id: "host", item_id: id, state: "merged_outside_merger",
+    question: "Mission PR merged outside App E: o/r#7 merge " + "f".repeat(40) + " by actor 99 (other_user)" };
+
+  it("delivers the same notice locally and builds a reference-only webhook", async () => {
+    const notice = buildAttentionWebhookNotice(alert);
+    expect(notice).toMatchObject({ reason_code: "merged_outside_merger", reminder: null,
+      text: "A Mission pull request was merged by someone other than App E, so App E's gates did not apply to it. This is a notice, not a request. Replying here does nothing.",
+      reference: { summary: alert.question } });
+    expect(notice).not.toHaveProperty("decision");
+    const home = await scratch();
+    const send = localAttentionSender(home);
+    await send(alert, new AbortController().signal);
+    await send(alert, new AbortController().signal);
+    const dir = join(home, "attention-notifications");
+    const files = await readdir(dir);
+    expect(files).toHaveLength(1);
+    expect(JSON.parse(await readFile(join(dir, files[0]!), "utf8"))).toEqual({ ...alert, transport: "local_spool" });
+  });
+
+  it.each([
+    { decision: { source: "session" as const, source_id: "fixture", requires_local_signature: false } },
+    { reminder: { sequence: 1, age_ms: 10 } }, { item_id: "merged-outside-merger:short" },
+    { item_id: "item" }, { state: "open" }, { state: "verification_waiting" },
+  ])("rejects incompatible notice fields %#", (patch) => {
+    expect(() => buildAttentionWebhookNotice({ ...alert, ...patch })).toThrow("attention_webhook_message_invalid");
+  });
+});

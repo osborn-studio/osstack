@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ContainedMissionStore, MergerShadowStore, RevisionChainStore } from '@osstack/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -169,6 +169,36 @@ const HOST_CALLS = ['start', 'tick', 'decide', 'cancel', 'publishCheck', 'recove
 const SHADOW_WRITES = ['beginObservation', 'recordDecision', 'recordOutcome', 'recordCycle', 'beginScan'] as const;
 
 describe('merger run at the real service wiring', () => {
+  it.each(['local', 'invalid webhook'] as const)('runs a live merge observation with %s attention configuration', async mode => {
+    const repository = APP_E_SANDBOX.repository;
+    const f = setup(repository);
+    f.mergerJson({ ...MERGER_JSON, repository, live: { merger_key_path: join(f.home, 'missing-key'), merger_installation_id: 123 } });
+    vi.stubEnv('OSSTACK_ATTENTION_NOTIFY', mode === 'local' ? 'local' : 'webhook');
+    vi.stubEnv('OSSTACK_ATTENTION_WEBHOOK_URL', 'SECRET-invalid-url');
+    try {
+      const service = await f.create('1');
+      f.g.setState('MERGED');
+      f.g.outcome.mergedAt = new Date(f.g.clock.now).toISOString();
+      f.g.outcome.mergeCommit = HEAD;
+      f.g.outcome.mergedBy = { __typename: 'User', databaseId: OWNER };
+      try {
+        await f.mergerOf(service)!.scan();
+      } finally { await service.close(); }
+      expect(f.g.store.outcomes(repository, 7)).toHaveLength(1);
+      const alerts = f.rig.db.prepare('SELECT status FROM engineering_merger_alerts').pluck().all();
+      if (mode === 'local') {
+        expect(alerts).toEqual(['sent']);
+        expect(readdirSync(join(f.home, 'attention-notifications'))).toHaveLength(1);
+      } else {
+        expect(alerts).toEqual([]);
+        expect(f.logs.filter(line => line.includes('configuration failed'))).toEqual([
+          'osstack: merger alert configuration failed code=attention_webhook_url_invalid',
+        ]);
+        expect(f.logs.join(' ')).not.toContain('SECRET');
+      }
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it.each(['merged', 'low-risk bot', 'unknown', 'disabled', 'draining', 'changed'] as const)('persists the live outcome for %s', async scenario => {
     const repository = APP_E_SANDBOX.repository;
     const f = setup(repository);

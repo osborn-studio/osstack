@@ -8,7 +8,7 @@ import { AttentionStore } from "./attention-store.js";
 import { ContainedMissionStore } from "./engineering-contained-store.js";
 import type { EngineeringPrincipal } from "./engineering-store.js";
 import { openDb } from "./db.js";
-import { ENGINEERING_MERGER_DDL } from "./engineering-merger-ddl.js";
+import { ENGINEERING_MERGER_ALERT_DDL, ENGINEERING_MERGER_DDL } from "./engineering-merger-ddl.js";
 import { ENGINEERING_MERGER_SCAN_DDL } from "./engineering-merger-scan-ddl.js";
 import {
   EMPTY_CODES_DIGEST, MergerShadowError, MergerShadowStore, mergerShadowWriter, type MergerDecisionInput, type MergerOutcomeInput,
@@ -574,7 +574,7 @@ it("adds migration 55 additively on a schema-54 database that already holds merg
   cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
   const old = new Database(path); old.pragma("foreign_keys = ON");
   for (const m of MIGRATIONS.filter(x => x.id <= 54)) { old.exec("BEGIN"); old.exec(m.sql); old.pragma(`user_version = ${m.id}`); old.exec("COMMIT"); }
-  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65]);
+  expect(MIGRATIONS.map(m => m.id).filter(id => id >= 52)).toEqual([52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66]);
   old.exec("INSERT INTO tasks(task_id,title,status,created_at,updated_at) VALUES('t','t','running',1,1)");
   old.exec("INSERT INTO engineering_merger_shadow_watermarks(repository,pr_number,issued_seq,accepted_seq,updated_at) VALUES('o/r',1,1,0,5)");
   old.exec("INSERT INTO engineering_merger_shadow_cycles(started_at,finished_at,prs_json) VALUES(1,2,'[]')");
@@ -584,7 +584,7 @@ it("adds migration 55 additively on a schema-54 database that already holds merg
   const db = openDb({ path });
   expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
   expect(CURRENT_SCHEMA_VERSION).toBeGreaterThanOrEqual(55);
-  const added = objects(db).filter(o => !before.includes(o) && o !== "trigger:engineering_mission_depth_stop" && !o.includes("engineering_mission_lineage") && !o.includes("engineering_verification_sources") && !o.includes("engineering_local_failure_") && !o.includes("engineering_root_exclusion_") && !o.includes("engineering_diagnosis_") && !o.includes("engineering_host_receipt") && !["table:decision_probes", "index:decision_probes_answer_id", "index:decision_probes_pending_expiry"].includes(o));
+  const added = objects(db).filter(o => !before.includes(o) && o !== "trigger:engineering_mission_depth_stop" && !o.includes("engineering_mission_lineage") && !o.includes("engineering_verification_sources") && !o.includes("engineering_local_failure_") && !o.includes("engineering_root_exclusion_") && !o.includes("engineering_diagnosis_") && !o.includes("engineering_host_receipt") && !["table:decision_probes", "index:decision_probes_answer_id", "index:decision_probes_pending_expiry", "table:engineering_merger_alerts", "index:engineering_merger_alerts_due", "trigger:engineering_merger_alerts_no_delete"].includes(o));
   expect(added.filter(o => o.startsWith("table:"))).toEqual(["table:engineering_merger_shadow_scans"]);
   expect(added.filter(o => o.startsWith("index:"))).toEqual(["index:engineering_merger_cycle_scan"]);
   expect(added.filter(o => o.startsWith("trigger:"))).toEqual([
@@ -602,4 +602,28 @@ it("adds migration 55 additively on a schema-54 database that already holds merg
   expect(store.lastPollAt("o/r", 1)).toBe(777);
   expect(MIGRATIONS.find(m => m.id === 55)).toMatchObject({ name: "engineering_merger_scans", sql: ENGINEERING_MERGER_SCAN_DDL });
   db.close();
+});
+
+it("upgrades schema 65 with an empty alert ledger and preserves existing objects and scans", () => {
+  const root = realpathSync(createScratchDirSync("tests", "merger-upgrade-66"));
+  cleanup.push(() => { rmSync(root, { recursive: true, force: true }); });
+  const path = join(root, "state.db");
+  const old = new Database(path);
+  for (const m of MIGRATIONS.filter(m => m.id <= 65)) {
+    old.exec(m.sql);
+    old.pragma(`user_version=${m.id}`);
+  }
+  old.exec("INSERT INTO engineering_merger_shadow_scans(started_at) VALUES(100)");
+  const schema = (db: Database.Database) => db.prepare("SELECT name,sql FROM sqlite_master ORDER BY name").all();
+  const before = schema(old);
+  old.close();
+  const db = openDb({ path });
+  try {
+    expect(MIGRATIONS.find(m => m.id === 66)).toMatchObject({ name: "engineering_merger_alerts", sql: ENGINEERING_MERGER_ALERT_DDL });
+    expect(db.pragma("user_version", { simple: true })).toBe(CURRENT_SCHEMA_VERSION);
+    expect(schema(db)).toEqual(expect.arrayContaining(before));
+    expect(db.prepare("SELECT started_at FROM engineering_merger_shadow_scans").all()).toEqual([{ started_at: 100 }]);
+    expect(db.prepare("SELECT * FROM engineering_merger_alerts").all()).toEqual([]);
+    expect(db.pragma("foreign_key_check")).toEqual([]);
+  } finally { db.close(); }
 });

@@ -53,7 +53,7 @@ it("upgrades a populated schema 64 and shares the single pending card between co
     fixture.db.close();
     const first = openDb({ path: fixture.path });
     try {
-      expect(first.pragma("user_version", { simple: true })).toBe(65);
+      expect(first.pragma("user_version", { simple: true })).toBe(66);
       expect(first.prepare("SELECT * FROM engineering_contained_missions").all()).toEqual(missions);
       const card = new DecisionProbes(first).create({ now: 1, created_by: "one" });
       const second = openDb({ path: fixture.path });

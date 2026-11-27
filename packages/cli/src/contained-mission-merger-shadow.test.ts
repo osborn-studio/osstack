@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { mergerShadowWriter } from '@osstack/core';
+import { createHash } from 'node:crypto';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mergerShadowWriter, type AttentionSender } from '@osstack/core';
 import { buildMergerReport } from './contained-mission-merger-report.js';
 import { MERGER_PR_OUTCOME_QUERY, MERGER_PR_STATE_QUERY, createMergerMissionView } from './contained-mission-merger-shadow.js';
 import { WORKFLOW_BLOB, APP, review, run } from './contained-mission-merger.testkit.js';
@@ -177,6 +178,140 @@ describe('outcomes', () => {
     r.outcome.mergeCommit = 'f'.repeat(40);
     r.outcome.mergedBy = by;
   };
+
+  const live = async () => {};
+  const rows = (r: Rigged) => r.rig.db.prepare('SELECT * FROM engineering_merger_alerts ORDER BY pr_number').all();
+  it.each([
+    ['owner', 'User', OWNER], ['other_user', 'User', 991], ['other_bot', 'Bot', 992],
+    ['publisher_app', 'Bot', config().publisher.actor_id], ['merger_app', 'Bot', config().merger.actor_id],
+  ] as const)('alerts once across restarts for a live merge by %s except App E', async (klass, __typename, databaseId) => {
+    const r = rigged();
+    const actor = { __typename, databaseId, login: 'SECRET-LOGIN' };
+    merged(r, actor);
+    r.world.pr = { ...r.world.pr, title: 'SECRET-TITLE', headRefName: 'osstack/mission/SECRET-BRANCH' };
+    const notify = vi.fn(async () => {});
+    const rec = r.reconciler({ live, notify });
+    await rec.scan();
+    await rec.scan();
+    await r.reconciler({ live, notify }).scan();
+    expect(r.store.outcomes(REPO, 7)).toHaveLength(1);
+    if (klass === 'merger_app') {
+      expect(rows(r)).toEqual([]);
+      expect(notify).not.toHaveBeenCalled();
+      return;
+    }
+    const commit = 'f'.repeat(40);
+    const id = 'merged-outside-merger:' + createHash('sha256').update(`${REPO}:7:${commit}`).digest('hex').slice(0, 32);
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledWith({ delivery_id: id, scope_id: 'host', item_id: id, state: 'merged_outside_merger',
+      question: `Mission PR merged outside App E: ${REPO}#7 merge ${commit} by actor ${databaseId} (${klass})` }, expect.any(AbortSignal));
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'sent', attempts: 1, error: null })]);
+    expect(JSON.stringify(rows(r))).not.toContain('SECRET');
+  });
+
+  it('never queues a shadow merge, even when subsequently started live', async () => {
+    const r = rigged();
+    merged(r);
+    const notify = vi.fn(async () => {});
+    await r.reconciler({ notify }).scan();
+    await r.reconciler({ live, notify }).scan();
+    expect(rows(r)).toEqual([]);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed delivery once per later live cycle, including after restart', async () => {
+    const r = rigged();
+    merged(r);
+    const notify = vi.fn(async () => { throw Error('SECRET free text'); });
+    const rec = r.reconciler({ live, notify });
+    await rec.scan();
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'failed', attempts: 1, error: 'send_failed' })]);
+    await r.reconciler({ notify }).scan();
+    for (let i = 0; i < 3; i++) await r.reconciler({ live, notify }).scan();
+    expect(notify).toHaveBeenCalledTimes(3);
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'failed', attempts: 3, error: 'send_failed' })]);
+    expect(r.logs.filter(line => line.endsWith(`merge_alert mission=${r.mission.missionId} pr=7 status=failed code=send_failed`))).toHaveLength(3);
+  });
+
+  it('records notify_disabled once and keeps the failure terminal when delivery is enabled', async () => {
+    const r = rigged();
+    merged(r);
+    await r.reconciler({ live }).scan();
+    const notify = vi.fn(async () => {});
+    await r.reconciler({ live, notify }).scan();
+    expect(notify).not.toHaveBeenCalled();
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'failed', attempts: 3, error: 'notify_disabled' })]);
+  });
+
+  it('defers quiet notices, respects fresh claims and recovers an expired claim', async () => {
+    const r = rigged();
+    merged(r);
+    const notify = vi.fn(async () => {});
+    r.rig.db.exec("INSERT INTO attention_postures(scope_id,actor,posture) VALUES('host','owner','quiet')");
+    await r.reconciler({ live, notify }).scan();
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'pending', attempts: 0 })]);
+    r.rig.db.exec("DELETE FROM attention_postures WHERE scope_id='host'");
+    const [old] = r.store.claimMergeAlerts(REPO, r.clock.now);
+    expect(old?.attempts).toBe(1);
+    const restarted = r.reconciler({ live, notify });
+    r.clock.now += 10 * MIN;
+    await restarted.scan();
+    expect(notify).not.toHaveBeenCalled();
+    r.clock.now++;
+    await restarted.scan();
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'sent', attempts: 2 })]);
+    expect(r.store.finishMergeAlert(old!, 'late_failure', r.clock.now, false)).toBe(false);
+  });
+
+  it('leaves an expired third claim failed without sending a fourth notice', async () => {
+    const r = rigged();
+    merged(r);
+    const notify = vi.fn(async () => { throw Error('attention_webhook_timeout'); });
+    const rec = r.reconciler({ live, notify });
+    await rec.scan();
+    await rec.scan();
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'failed', attempts: 2, error: 'attention_webhook_timeout' })]);
+    expect(r.store.claimMergeAlerts(REPO, r.clock.now)[0]?.attempts).toBe(3);
+    await next(r, rec, 10);
+    await rec.scan();
+    expect(notify).toHaveBeenCalledTimes(2);
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'failed', attempts: 3, error: 'claim_expired' })]);
+  });
+
+  it('times out a sender that ignores cancellation and retries with the same id', async () => {
+    const r = rigged();
+    merged(r);
+    const timeout = new AbortController();
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+    const notify = vi.fn<AttentionSender>(async () => {});
+    notify.mockImplementationOnce(() => {
+      queueMicrotask(() => timeout.abort());
+      return new Promise<void>(() => {});
+    });
+    try {
+      await r.reconciler({ live, notify }).scan();
+      expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+      expect(rows(r)).toEqual([expect.objectContaining({ status: 'failed', attempts: 1, error: 'send_timeout' })]);
+    } finally { timeoutSpy.mockRestore(); }
+    await r.reconciler({ live, notify }).scan();
+    expect(notify.mock.calls[0]?.[0]).toEqual(notify.mock.calls[1]?.[0]);
+    expect(rows(r)).toEqual([expect.objectContaining({ status: 'sent', attempts: 2 })]);
+  });
+
+  it('sends at most ten queued notices per cycle', async () => {
+    const r = rigged();
+    for (let pr = 10; pr <= 21; pr++) {
+      r.rig.db.prepare(`INSERT INTO engineering_merger_alerts VALUES(?,?,?,?,?,?,'pending',0,NULL,?,?)`)
+        .run(REPO, pr, HEAD, r.mission.missionId, OWNER, 'owner', T0, T0);
+    }
+    const notify = vi.fn(async () => {});
+    const rec = r.reconciler({ live, notify });
+    await rec.scan();
+    expect(notify).toHaveBeenCalledTimes(10);
+    await rec.scan();
+    expect(notify).toHaveBeenCalledTimes(12);
+  });
 
   it('a merge after three observed scans is recorded once, classified by numeric id, and ends observation', async () => {
     const r = rigged();
