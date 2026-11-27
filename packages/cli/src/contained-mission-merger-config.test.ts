@@ -4,6 +4,7 @@ import { createScratchDir } from '@osstack/core';
 import { describe, expect, it } from 'vitest';
 import { redactBridge as viaBridge } from './contained-mission-bridge.js';
 import { loadMergerConfig } from './contained-mission-merger-config.js';
+import { VERIFY_WORKFLOW_PATH } from './contained-mission-merger-reader.js';
 import { redactBridge } from './contained-mission-redact.js';
 
 const good = {
@@ -39,10 +40,13 @@ describe('loadMergerConfig', () => {
   });
 
   it('accepts only the registered Actions verification settings', async () => {
-    const config = { app_id: 15368, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml' };
+    const config = { app_id: 15368, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml', workflow_blob_sha: 'a'.repeat(40) };
     expect((await load(good))?.verify_actions).toBeUndefined();
-    expect((await load({ ...good, verify_actions: config }))?.verify_actions).toEqual(config);
-    for (const patch of [{ app_id: 1 }, { check_name: 'other' }, { workflow_path: 'other.yml' }, { extra: true }]) {
+    const accepted = (await load({ ...good, verify_actions: config }))?.verify_actions;
+    expect(accepted).toEqual(config);
+    expect(accepted?.workflow_path).toBe(VERIFY_WORKFLOW_PATH);
+    for (const patch of [{ app_id: 1 }, { check_name: 'other' }, { workflow_path: 'other.yml' }, { extra: true },
+      ...[undefined, 'A'.repeat(40), 'a'.repeat(39), 'a'.repeat(64)].map(workflow_blob_sha => ({ workflow_blob_sha }))]) {
       await expect(load({ ...good, verify_actions: { ...config, ...patch } })).rejects.toThrow(invalid('verify_actions'));
     }
   });

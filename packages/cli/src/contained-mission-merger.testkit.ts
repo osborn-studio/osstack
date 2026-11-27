@@ -5,6 +5,7 @@ import type { GraphqlTransport, RestGet, RestResult } from './contained-mission-
 
 export const REPO = 'o/r';
 export const HEAD = 'a'.repeat(40);
+export const WORKFLOW_BLOB = 'd'.repeat(40);
 export const BASE = 'b'.repeat(40);
 export const MISSION = 'cm_00000000-0000-4000-8000-000000000001';
 export const BRANCH = `osstack/mission/${MISSION}`;
@@ -135,6 +136,7 @@ export function serve(w: World, repository = REPO): { graphql: GraphqlTransport;
       const all = (w.runs[Number(runList[1])] ?? []).filter((r) => name === null || r['name'] === name);
       return ok({ check_runs: slice(all) });
     }
+    if (p === 'contents/.github/workflows/osstack-verify.yml') return ok({ type: 'file', sha: WORKFLOW_BLOB, content: 'workflow-content-sentinel' });
     if (p === 'actions/runs') return ok({ workflow_runs: slice(w.workflowRuns[Number(q.get('check_suite_id'))] ?? []) });
     if (p === 'rules/branches/main') return ok(slice(w.baseRules));
     if (p === `rules/branches/${BRANCH}`) return ok(slice(w.missionRules));
