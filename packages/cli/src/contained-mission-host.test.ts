@@ -785,6 +785,7 @@ describe("ContainedMissionHost status publication", () => {
     const digest = "2".repeat(64);
     f.store.record(mission_id, "ci_delivery_evidence", evidence(digest, "b".repeat(40)), 3000);
     f.store.record(mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3001);
+    expect(stats().ci_chain_merged).toEqual([]);
     expect(stats().ci_chain_open_wait_ms).toMatchObject({ as_of_ms: 3100, open_chains: 1, clock_skew: 0,
       by_state: [{ state: "initial_ci_waiting", n: 1, median_ms: 99, max_ms: 99 }],
       longest: [{ mission_id, state: "initial_ci_waiting", since: 3001, wait_ms: 99 }] });
@@ -822,8 +823,10 @@ describe("ContainedMissionHost status publication", () => {
 
   it("counts five consecutive closed chains and observed durations", async () => {
     const f = fixture();
+    const ids = [];
     for (let i = 0; i < 5; i++) {
       const root = ciRoot(f, String(i));
+      ids.push(root.mission_id);
       const head = String(i + 1).repeat(40); const digest = String(i + 1).repeat(64);
       f.store.record(root.mission_id, "ci_pilot_root_bound", {}, 3999 + i * 10);
       f.store.record(root.mission_id, "ci_delivery_evidence", evidence(digest, head), 4000 + i * 10);
@@ -834,13 +837,28 @@ describe("ContainedMissionHost status publication", () => {
     const stats = computeCiChainStats(f.store.db);
     expect(stats).toMatchObject({ ci_chain_closed: 5, ci_chain_repaired_closed: 1, ci_chain_consecutive_normal_closed: 5,
       ci_chain_by_state: [{ state: "closed", count: 5 }] });
+    expect(stats.ci_chain_merged).toEqual(ids.map((mission_id, i) => ({ mission_id, repository: "o/r",
+      pr: i + 1, merge_commit_sha: "f".repeat(40), merged_at_ms: 4005 + i * 10 })).reverse());
     expect(stats.ci_chain_registration_to_close_ms).toHaveLength(5);
     expect(stats.ci_chain_registration_to_close_ms.every(row => row.duration_ms === 6)).toBe(true);
     const stopped = ciRoot(f, "newest-stopped"); const digest = "a".repeat(64); const head = "a".repeat(40);
     f.store.record(stopped.mission_id, "ci_delivery_evidence", evidence(digest, head), 4100);
     f.store.record(stopped.mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 4101);
     f.store.record(stopped.mission_id, "ci_closed_unmerged", {}, 4102);
-    expect(computeCiChainStats(f.store.db).ci_chain_consecutive_normal_closed).toBe(0);
+    expect(computeCiChainStats(f.store.db)).toMatchObject({ ci_chain_consecutive_normal_closed: 0, ci_chain_merged: stats.ci_chain_merged });
+  });
+
+  it("limits follow-up reads to the 50 newest merge observations", () => {
+    const f = fixture();
+    const digest = "2".repeat(64);
+    // Register the newest merge first so mission creation order cannot select the sample.
+    for (let i = 51; i > 0; i--) {
+      const { mission_id } = ciRoot(f, String(i));
+      f.store.record(mission_id, "ci_delivery_evidence", evidence(digest, "b".repeat(40)), 3000);
+      f.store.record(mission_id, "pr_opened", { pr, evidence_digest: digest, verification_kind: "github_actions" }, 3001);
+      f.store.record(mission_id, "ci_pr_merged_observed", { pr: i, merge_commit_sha: "f".repeat(40) }, 4000 + i);
+    }
+    expect(computeCiChainStats(f.store.db).ci_chain_merged.map(row => row.pr)).toEqual(Array.from({ length: 50 }, (_, i) => 51 - i));
   });
 
   it("breaks the normal closure streak for a manual merge without App E evidence", () => {

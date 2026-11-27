@@ -168,7 +168,7 @@ function renderChineseMainHelp(): string {
   health              查看 daemon 健康状态
   status              查看 CLI/daemon 版本与升级状态
   cockpit             打开或查看产品控制台
-  stats               查看 agent 与 loop 指标
+  stats [--no-github] 查看 agent 与 loop 指标
 
 项目命令：
   remote-home inspect|cancel|query|issue-cancel-grant  远程只读快照、精确授权取消与回执查询
@@ -407,7 +407,7 @@ Daemon commands:
   dashboard open      Open the local development dashboard in a browser
   cockpit [url|open|snapshot]
                       Product cockpit alias for dashboard
-  stats               Show per-agent and loop metrics (requires running daemon)
+  stats [--no-github] Show per-agent and loop metrics (requires running daemon)
   killswitch          Check if the policy layer is earning its keep (F4)
   agent list          List registered sub-agents and their capabilities
   agent scorecard [agent_id]
@@ -778,6 +778,20 @@ See docs/V2_REFACTOR_PLAN.md for the full roadmap.
     if (!resp.ok) {
       console.error("osstack:", resp.error?.message ?? "stats failed");
       return 1;
+    }
+    const chain = (resp.result as StatsResult).ci_chain;
+    if (chain?.ci_chain_merged && !args.includes("--no-github")) {
+      if (chain.ci_chain_merged.length === 0) {
+        chain.ci_chain_reverted_or_hotfixed_7d = { merged: 0 };
+      } else {
+        try {
+          const { createFollowupReadPort, measureCiChainFollowup } = await import("./contained-mission-ci-chain-followup-reader.js");
+          chain.ci_chain_reverted_or_hotfixed_7d = await measureCiChainFollowup(chain.ci_chain_merged,
+            createFollowupReadPort(), Date.now(), AbortSignal.timeout(60_000));
+        } catch {
+          chain.ci_chain_reverted_or_hotfixed_7d = { measured: false, reason: "read_failed" };
+        }
+      }
     }
     printStats(resp.result);
     return 0;
@@ -11273,6 +11287,12 @@ interface LoopSessionSummary {
   profile?: LoopProfileSummary;
 }
 
+type FollowupMeasurement = Awaited<ReturnType<typeof import("./contained-mission-ci-chain-followup-reader.js").measureCiChainFollowup>>;
+type CiChainStatsView = Omit<CiChainStats, "ci_chain_reverted_or_hotfixed_7d"> & {
+  ci_chain_reverted_or_hotfixed_7d?: CiChainStats["ci_chain_reverted_or_hotfixed_7d"] | FollowupMeasurement
+    | { measured: false; reason: "read_failed" } | { merged: 0 };
+};
+
 interface StatsResult {
   total_runs: number;
   total_events: number;
@@ -11280,7 +11300,7 @@ interface StatsResult {
   loops?: LoopStatsSummary;
   rpc?: RpcLatencyRow[];
   bridge?: BridgeStatsView | null;
-  ci_chain?: CiChainStats | null;
+  ci_chain?: CiChainStatsView | null;
 }
 
 interface BridgeStatsView {
@@ -12776,8 +12796,8 @@ export function printStats(result: unknown): void {
   printRpcLatency(s.rpc);
 }
 
-/** CI chain metrics use only observed ledger facts. Missing values stay unknown. */
-function printCiChainStats(stats: CiChainStats | null | undefined): void {
+/** Print the ledger metrics and the optional client-side follow-up measurement. */
+function printCiChainStats(stats: CiChainStatsView | null | undefined): void {
   const c = stats?.ci_chain_available ? stats : undefined;
   const durations = c?.ci_chain_registration_to_close_ms ?? [];
   const known = durations.flatMap(row => row.duration_ms === null ? [] : [row.duration_ms]).sort((a, b) => a - b);
@@ -12827,7 +12847,22 @@ function printCiChainStats(stats: CiChainStats | null | undefined): void {
   }
 
   const followup = stats?.ci_chain_reverted_or_hotfixed_7d;
-  console.log(followup ? `reverted_or_hotfixed_within_7d: not measured (${followup.reason})` : "reverted_or_hotfixed_within_7d: unavailable");
+  const label = "reverted_or_hotfixed_within_7d: ";
+  if (!followup) console.log(label + "unavailable");
+  else if ("value" in followup) console.log(label + `not measured (${followup.reason})`);
+  else if ("merged" in followup && followup.merged === 0) console.log(label + "no data (n=0 merged chains)");
+  else if ("measured" in followup) {
+    if (!followup.measured) {
+      const counts = "unknown" in followup ? `; unknown=${followup.unknown} pending=${followup.pending} of n=${followup.merged} merged chains` : "";
+      console.log(label + `not measured (${followup.reason}${counts})`);
+    } else if (followup.rate === null) {
+      console.log(label + `no data (n=0 chains with a complete 7-day window; pending=${followup.pending})`);
+    } else {
+      console.log(label + `${followup.reverted + followup.hot_fixed}/${followup.eligible} = ${(100 * followup.rate).toFixed(1)}% `
+        + `(reverted=${followup.reverted} hot_fixed=${followup.hot_fixed} clean=${followup.clean} pending=${followup.pending}; `
+        + `n=${followup.eligible} chains with a complete 7-day window; rule: ${followup.rule})`);
+    }
+  }
 }
 
 /** Bridge section: omitted when the ledger has no revision-chain tables; one line per group, so it stays short with no bridge activity. */

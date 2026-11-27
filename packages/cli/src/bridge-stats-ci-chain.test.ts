@@ -100,3 +100,17 @@ describe("CI chain wait and outcome lines", () => {
     ]);
   });
 });
+
+it.each([
+  [{ merged: 0 }, "no data (n=0 merged chains)"],
+  [{ measured: false, reason: "read_failed" }, "not measured (read_failed)"],
+  [{ measured: false, reason: "incomplete_read", unknown: 1, pending: 2, merged: 4 },
+    "not measured (incomplete_read; unknown=1 pending=2 of n=4 merged chains)"],
+  [{ measured: true, merged: 2, pending: 2, eligible: 0, rate: null },
+    "no data (n=0 chains with a complete 7-day window; pending=2)"],
+  [{ measured: true, merged: 4, pending: 1, eligible: 3, reverted: 1, hot_fixed: 1, clean: 1, rate: 2 / 3, rule: "example rule" },
+    "2/3 = 66.7% (reverted=1 hot_fixed=1 clean=1 pending=1; n=3 chains with a complete 7-day window; rule: example rule)"],
+])("prints the follow-up outcome %#", (metric, text) => {
+  expect(output({ ...chain, ci_chain_reverted_or_hotfixed_7d: metric }).split("\n").at(-1))
+    .toBe(`reverted_or_hotfixed_within_7d: ${text}`);
+});
