@@ -1,6 +1,6 @@
 {
   "name": "@osstack/verify-publisher",
-  "version": "0.1.0",
+  "version": "0.24.0",
   "description": "Cloud-side publisher of verification results as check runs for osstack. Run from a pinned commit, never imported by host packages, never published.",
   "license": "MIT",
   "private": true,
