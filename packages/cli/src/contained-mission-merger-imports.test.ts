@@ -43,7 +43,7 @@ describe('merger isolation: import graph', () => {
       'contained-mission-bridge-reader.ts', 'contained-mission-bridge-registry.ts', 'contained-mission-bridge-shadow.ts', 'contained-mission-marker.ts',
       'contained-mission-merger-config.ts', 'contained-mission-merger-reader.ts', 'contained-mission-merger-shadow.ts', 'contained-mission-publication.ts',
     ]);
-    expect(importClosure('contained-mission-merger-report.ts').files).toEqual(['contained-mission-merger-report.ts']);
+    expect(importClosure('contained-mission-merger-report.ts').files).toEqual(['contained-mission-ci-policy.ts', 'contained-mission-merger-report.ts']);
   });
 
   it('the checker itself detects a forbidden edge (bridge.ts reaches the credential module)', () => {

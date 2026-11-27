@@ -19,7 +19,7 @@ applies and commits it, verifies in a no-network container, and stops at publica
   decide --mission ID --decision abandon|extra_repair|approve_publication|discard_changes|adopt_worktree|resume_workspace|retry_stop_check|resume_budget|resume_grant
          [--decision-id ID] [--expected-revision N]
   grant-revisions --mission ROOT | --chain CHAIN [--rounds 1|2] [--expires 24h] ...   (interactive terminal only; see grant-revisions --help)
-  merger report [--json]             (shadow merger: classify shadow decisions against real outcomes; read-only, no recommendation)
+  merger report [--json]             (read-only, prints ready/not_ready for the §6.1 shadow comparison)
   chain-decide --chain CHAIN --decision abandon|takeover|reconcile   (ends or checks a live revision chain)
          [--decision-id ID] [--expected-revision N]
 Host setup: OSSTACK_CONTAINED_MISSIONS=1 with OSSTACK_ENGINEERING=1 and OSSTACK_ATTENTION=1, plus
@@ -167,7 +167,17 @@ export async function handleContainedMissionCommand(args: string[], deps: Contai
       }
       return 0;
     }
-    out(json || command === "recheck-rearm" ? text : command === "merger-report" ? `Mission · merger report\n${text}\nShadow evidence only. Nothing is merged by OSStack.` : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
+    if (command === "merger-report" && !json) {
+      const report = response.result as Partial<import("./contained-mission-merger-report.js").MergerReport> | null;
+      out(`Mission · merger report\n${text}`);
+      if (report?.readiness) {
+        const { verdict, missing } = report.readiness;
+        out(`readiness: ${verdict}${missing.length ? ` (${missing.map(gap => gap.code).join(", ")})` : ""}`);
+      }
+      out("Shadow evidence only. Nothing is merged by OSStack.");
+      return 0;
+    }
+    out(json || command === "recheck-rearm" ? text : `Mission · ${command}\n${text}\nThe daemon advances the Mission on its own tick. Nothing is merged or published by this command.`);
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

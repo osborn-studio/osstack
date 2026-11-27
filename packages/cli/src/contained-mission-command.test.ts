@@ -14,6 +14,19 @@ function run(args: string[], result: unknown = { ok: true, result: { mission_id:
 }
 
 describe("osstack mission", () => {
+  it("prints the shadow readiness line only in text output", async () => {
+    for (const [readiness, line] of [
+      [{ verdict: "ready", missing: [] }, "readiness: ready"],
+      [{ verdict: "not_ready", missing: [{ code: "samples_insufficient" }, { code: "report_truncated" }] },
+        "readiness: not_ready (samples_insufficient, report_truncated)"],
+    ] as const) {
+      const response = { ok: true, result: { readiness } };
+      expect((await run(["merger", "report"], response)).out).toContain(line);
+      const json = await run(["merger", "report", "--json"], response);
+      expect(JSON.parse(json.out.join("\n"))).toEqual(response.result);
+    }
+  });
+
   it("builds a start request with repeated allow and verify arguments", async () => {
     const r = await run(["start", "--scope", "s1", "--repo", "repo", "--base", "main", "--goal", "fix it", "--allow", "src/**", "--allow", "test/**",
       "--verify-arg", "pnpm", "--verify-arg", "--filter", "--verify-arg", "x", "--max-repair", "1", "--json"]);
