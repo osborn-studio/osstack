@@ -10,6 +10,9 @@ export default defineConfig({
   entry: {
     bin: "src/cli-entry.ts",
     "graph-maintenance": "src/graph-maintenance.ts",
+    // Offline drill generator validates the two host files with the production loaders.
+    "verification-producer-config": "src/contained-mission-verification-producer-config.ts",
+    "verification-profile-host-config": "src/contained-mission-verification-profile-host-config.ts",
     // Bridge shadow reader + fixture tooling: lazy-loaded by the reconciler (4-D) and imported by
     // scripts/record-pr-timeline.mjs, which keeps one source of truth for the query and normalisation.
     "bridge-reader": "src/contained-mission-bridge-reader.ts",
