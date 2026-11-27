@@ -82,6 +82,7 @@ describe('declared candidate closure, not semantic discovery or activation', () 
     expect(out.files.every(f => f.component_ids.length === 3 && f.roles.length === 3)).toBe(true);
     expect(out.components).toHaveLength(3);
   });
+  // This CPU-heavy fixture needs more time when the macOS release job runs every package's tests in parallel.
   it('maps only oversized final candidate serialization to typed RESOURCE_LIMIT', () => {
     const x = nestedExample(32, 500);
     // Unique files (501) and bytes (507) are small. Two 64-byte IDs per
@@ -92,7 +93,7 @@ describe('declared candidate closure, not semantic discovery or activation', () 
     try { assemble(x); } catch (error) { failure = error; }
     expect(failure).toBeInstanceOf(SourceAdoptionError);
     expect(failure).toMatchObject({ code: 'RESOURCE_LIMIT', message: 'RESOURCE_LIMIT' });
-  });
+  }, 30_000);
   it.each([
     ['docs/license', false],
     ['docs/NOTICE', true],
