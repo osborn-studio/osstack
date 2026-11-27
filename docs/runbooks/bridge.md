@@ -523,6 +523,88 @@ osstack mission recheck-rearm --mission <根 Mission> --attempt <expected_attemp
 
 日志中的 `rearm_expired`、`rearm_route_disabled`、`rearm_authority_lost`、`rearm_stale` 表示请求在使用前被丢弃，没有运行。
 
+### 6.5 App E 真实合并：改用 Actions 验证后的沙箱上线（M-E5）
+
+依据：[bot-merge 设计](../design/2026-11-25-bot-merge.md) §5a、§5b、§6、§7，[ADR-008](../decisions/ADR-008-app-e-live-merge.md)。只适用于沙箱 `osborn-studio/osstack-bridge-sandbox`，与 §3.2 相同。下列数值 2026-11-26 从 GitHub 只读读回；执行前按第 2 步重新核对。
+
+**第 0 步：前提（负责人）**
+
+1. #580（非 App E 合并提醒，迁移 66）和 #581（影子报告 `ready / not_ready`）已合并。
+2. 发新版并升级**沙箱用的 serving home**。这是发布和部署，每次先停下来由负责人批准。2026-11-26 读回：常驻守护进程 `ai.osstack.daemon` 仍是 0.23.0（2026-11-01），没有 `bridge/merger.json`，早于 G3′（#576）、工作流固定（#578）和 #580。旧版本不认 `verify_actions`，`merger.json` 校验失败时 `serve` 直接退出（§5.7），所以**先升级，再放 `merger.json`**。
+3. 按 §6 末段，一个 serving home 只服务一个仓库。不要把沙箱的 `merger.json` 放进服务主仓库的 home。
+4. Grok 共用电脑上的 `gh` 只保留 Bot 账号：在那台电脑上以 `box` 用户执行 `gh auth logout --hostname github.com --user gilberthello`，再用 `gh auth status` 确认只剩 `Rubebun-Jadeem`。原因：`gilberthello` 是计入批准者，也是 admin，留在共用电脑上等于让所有 Bot 能以负责人身份批准（设计 §5b 第 3 条）。
+
+**第 1 步：`$OSSTACK_HOME/bridge/merger.json`（先按选项 A，不放 `bot_approvers`）**
+
+```json
+{
+  "version": 1,
+  "repository": "osborn-studio/osstack-bridge-sandbox",
+  "publisher": { "actor_id": 352680398, "app_id": 5620012 },
+  "evidence_app_id": 5620053,
+  "verify_actions": {
+    "app_id": 15368,
+    "check_name": "osstack/verify-actions",
+    "workflow_path": ".github/workflows/osstack-verify.yml",
+    "workflow_blob_sha": "61fc9cbca75655212d01b3beba3584a54b57fe68"
+  },
+  "merger": { "actor_id": 352681958, "app_id": 5620091 },
+  "base_ref": "main",
+  "inspection_evidence": true,
+  "counted_approvers": [
+    { "actor_id": 269190136, "app_id": null },
+    { "actor_id": 160148718, "app_id": null }
+  ],
+  "live": { "merger_key_path": "<osstack-merger.pem 的绝对路径，权限 0600>", "merger_installation_id": <App E 在沙箱的安装 id> },
+  "required_checks": [
+    { "context": "check", "app_id": 15368 },
+    { "context": "graph-macos-fixtures (22)", "app_id": 15368 },
+    { "context": "graph-macos-fixtures (24)", "app_id": 15368 },
+    { "context": "graph-runtime-matrix (20.6.0)", "app_id": 15368 },
+    { "context": "graph-runtime-matrix (22.23.1)", "app_id": 15368 }
+  ],
+  "main_quality_ruleset_id": 26575831,
+  "main_update_ruleset_id": 26577634,
+  "mission_ruleset_ids": [26577637, 26577639]
+}
+```
+
+身份对照：App A `osstack-publisher` 5620012（bot 用户 352680398）；App B `osstack-evidence` 5620053；App E `osstack-merger` 5620091（bot 用户 352681958）；GitHub Actions 15368；`gilosbornhello` 269190136；`gilberthello` 160148718；`Rubebun-Jadeem` 243772068。`live` 的两个值只由负责人在主机上填写，不进仓库、不进聊天。
+
+**第 2 步：核对会变的数值**
+
+```bash
+R=osborn-studio/osstack-bridge-sandbox
+gh api "repos/$R/contents/.github/workflows/osstack-verify.yml?ref=main" --jq .sha   # 应等于 workflow_blob_sha
+gh api repos/$R/rulesets/26575831 --jq '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks'   # 应与 required_checks 一致
+```
+
+`workflow_blob_sha` 登记的是**审阅过**的那一版工作流文件。以后任何人改了沙箱 `main` 上的 `osstack-verify.yml`，App E 对之后的验证都给出 `G3.workflow_blob_mismatch` 并停止合并；负责人审阅新版本后，在主机上更新这个值（从对应提交读：`gh api "repos/$R/contents/.github/workflows/osstack-verify.yml?ref=<提交>" --jq .sha`）。
+
+**第 3 步：开关**
+
+- `OSSTACK_MERGER=1`（§3.2）。熔断：改回 `0` 或 `shadow`，重启 `serve`。
+- 合并提醒 **【计划：#580】**：`OSSTACK_ATTENTION_NOTIFY=webhook`（加 `OSSTACK_ATTENTION_WEBHOOK_URL`，可选 `OSSTACK_ATTENTION_WEBHOOK_KEY`），或 `local`。未设置时提醒记为 `notify_disabled`，不发送。
+- Grok Watcher 的 routine 每 30 分钟派发一次 `osstack-verify.yml`（`deploy/grok-watcher/README.md`）。
+
+**第 4 步：演练 A（人批准，App E 合并）**
+
+1. 在沙箱开一个正常的 Mission PR。等 Watcher 派发后，PR head 上应出现 `osstack/verify-actions`，由 15368 写出，`external_id` 为 `<PR 号>:<head>`。
+2. `gilosbornhello` 在 head 上批准。下一轮 App E 合并；合并记录的 `g3` 应为 `source: "actions"`，`workflow_blob_sha` 等于登记值。
+3. 负向一：在一个由负责人审阅合并的 PR 里改动 `osstack-verify.yml`。之后的 Mission PR 应被拒绝，原因 `G3.workflow_blob_mismatch`，直到更新登记值。
+4. 负向二 **【计划：#580】**：负责人手动合并一个 Mission PR。应收到一条 `merged_outside_merger` 提醒（只含仓库、PR 号、合并提交、合并者 id 与类别），不回滚。
+5. `osstack mission merger report` **【计划：#581】**：样本不足 20 时为 `not_ready` 并说明缺什么。按设计 §6.1，`ready` 是打开选项 B 的前提之一。
+
+**第 5 步：演练 B（Bot 批准，只限低风险 PR）**
+
+前提：演练 A 通过，影子报告为 `ready`，负责人同意开启选项 B（设计 §8 决定 2）。
+
+1. 在 `merger.json` 加 `"bot_approvers": [{ "actor_id": 243772068, "app_id": null }]`，重启 `serve`。
+2. 低风险 Mission PR（最低层级；不超过 5 个文件、增删合计不超过 200 行；不碰工作流路径和 Mission 保护路径）只由 `Rubebun-Jadeem` 批准：App E 合并。
+3. 不符合低风险的 Mission PR 只由 `Rubebun-Jadeem` 批准：App E 拒绝（没有计入的批准）。
+
+**撤回**：`OSSTACK_MERGER=0`；删除 `bot_approvers` 回到选项 A；需要彻底停用时按 §5.2 E 行处理 App E 的安装与私钥。
+
 ## 7. 阶段 7 上线前检查清单
 
 > 2026-11-09 首发计划更新。下列是既有本地验证和 App 迁移路径的清单。GitHub CI 驱动首发须先按[实施方案阶段 7](../plans/2026-11-02-osstack-grok-bridge-implementation.md#阶段-7-主仓库单-scope-试运行)完成验证、更新运行手册，并审批 [ADR-007 提案](../decisions/ADR-007-bridge-github-ci-first.md)后再开启单 scope 试运行。
