@@ -1,4 +1,5 @@
 // Read-only CI chain projection. The event sequence, not the bounded status tail, is authoritative.
+import type { MergedChain } from './contained-mission-ci-chain-followup.js';
 import type Database from 'better-sqlite3';
 import type { ContainedMission } from '@osstack/core';
 import { readCiScanHealth, type CiScanStep } from './contained-mission-ci-scan-health.js';
@@ -155,6 +156,7 @@ export function computeCiChainStats(db: Database.Database, nowMs = Date.now()) {
   const counts = new Map<string, number>();
   const scanReasons = new Map<string, number>();
   let scanFailing = 0;
+  const merged: MergedChain[] = [];
   const durations: Array<{ mission_id: string; duration_ms: number | null }> = [];
   const timelines: StageTimeline[] = [];
   let firstPass = 0;
@@ -167,6 +169,9 @@ export function computeCiChainStats(db: Database.Database, nowMs = Date.now()) {
     counts.set(chain.state, (counts.get(chain.state) ?? 0) + 1);
     if (chain.state === 'closed') {
       closed++;
+      // For a closed chain, since and merge_commit_sha come from the same merge observation.
+      if (chain.merge_commit_sha) merged.push({ mission_id: chain.mission_id, repository: chain.repository,
+        pr: chain.pr, merge_commit_sha: chain.merge_commit_sha, merged_at_ms: chain.since });
       const root = firstStageEvents(db, chain.mission_id);
       const dispatch = root.get('ci_repair_dispatched');
       const childId = string(payload(dispatch)['child']);
@@ -204,8 +209,9 @@ export function computeCiChainStats(db: Database.Database, nowMs = Date.now()) {
       chains: chains.length, chains_with_later_failure: chainsWithLaterFailure, later_failures: laterFailures },
     ci_chain_hop_wait_ms: summarizeHops(timelines),
     ci_chain_open_wait_ms: summarizeOpenWaits(chains, nowMs),
+    ci_chain_merged: merged.sort((a, b) => b.merged_at_ms - a.merged_at_ms).slice(0, 50),
     ci_chain_reverted_or_hotfixed_7d: { value: null,
-      reason: 'not_wired: needs a read of later commits on the default branch; only the pure calculation exists' },
+      reason: 'not_read: the daemon does not read GitHub; osstack stats reads it' },
     ci_chain_registration_to_close_ms: durations };
 }
 

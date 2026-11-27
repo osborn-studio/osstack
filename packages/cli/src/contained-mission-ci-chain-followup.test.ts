@@ -9,7 +9,7 @@ function commit(message: string, changes = files, time = 11, sha = 'commit'): La
   return { message, files: changes, committed_at_ms: time, sha };
 }
 function reads(later: readonly LaterCommit[] = []) {
-  return { mergedFiles: vi.fn(async () => files), laterCommits: vi.fn(async () => later) };
+  return { mergedFiles: vi.fn(async () => ({ files, merge_committed_at_ms: chain.merged_at_ms })), laterCommits: vi.fn(async () => later) };
 }
 
 it.each([
@@ -27,7 +27,7 @@ it.each([
   const port = reads([later]);
   const result = await computeFollowupStats([chain], port, until, signal);
   expect(port.mergedFiles).toHaveBeenCalledWith(chain, signal);
-  expect(port.laterCommits).toHaveBeenCalledWith(chain, until, signal);
+  expect(port.laterCommits).toHaveBeenCalledWith(chain, chain.merged_at_ms, until, signal);
   expect(classifyFollowup(chain, files, [later])).toBe(verdict);
   expect(result).toMatchObject({ merged: 1, eligible: 1, [verdict]: 1, rate: verdict === 'clean' ? 0 : 1 });
   expect(result.rows).toEqual([{ mission_id: 'root', verdict, ...(verdict === 'clean' ? {} : { by: later.sha }) }]);
@@ -64,4 +64,14 @@ it('propagates cancellation during a port read', async () => {
   const port = { ...reads(), mergedFiles: async () => { controller.abort(reason); throw reason; } };
   await expect(computeFollowupStats([chain], port, until, controller.signal)).rejects.toBe(reason);
   expect(port.laterCommits).not.toHaveBeenCalled();
+});
+
+it('excludes the merge SHA even when its timestamp is inside the window', () => {
+  expect(classifyFollowup(chain, files, [commit('Reverts acme/app#12', files, 11, chain.merge_commit_sha)])).toBe('clean');
+});
+
+it('starts at the observation when the commit timestamp is later', async () => {
+  const port = { ...reads([commit('fix: repair')]), mergedFiles: async () => ({ files, merge_committed_at_ms: 15 }) };
+  expect(await computeFollowupStats([chain], port, until, signal)).toMatchObject({ hot_fixed: 1 });
+  expect(port.laterCommits).toHaveBeenCalledWith(chain, chain.merged_at_ms, until, signal);
 });
