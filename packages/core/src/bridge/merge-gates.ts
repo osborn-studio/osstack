@@ -55,6 +55,9 @@ export interface SnapshotReview {
   commit_oid: string | null; author_type: "User" | "Bot" | "Other"; author_id: number | null; author_can_push: boolean;
 }
 export interface SnapshotCheckRun { id: number; app_id: number | null; name: string; external_id: string | null; head_sha: string; status: string; conclusion: string | null }
+export type VerifyActionsRun = SnapshotCheckRun & {
+  workflow: { path: string; event: string; head_branch: string | null; run_head_sha: string; run_id: number } | null;
+};
 export interface SnapshotStatusRule { context: string; integration_id: number | null; ruleset_id: number | null }
 export type RulesetBypass = { actor_type: string; actor_id: number | null; bypass_mode: string };
 export interface SnapshotRuleset {
@@ -78,6 +81,7 @@ export interface MergeSnapshot {
   timeline: { complete: boolean; force_push_events: number };
   /** Every `osstack/verify` run found in App B's check suites on the live head. */
   verify: { complete: boolean; runs: readonly SnapshotCheckRun[] };
+  verify_actions?: { complete: boolean; runs: readonly VerifyActionsRun[] };
   /** Runs for the required contexts, from the registered producers' suites on the live head. */
   required_runs: { complete: boolean; runs: readonly SnapshotCheckRun[] };
   base_rules: {
@@ -98,6 +102,7 @@ export interface MergerRegistry {
   publisher: { actor_id: number; app_id: number };
   merger: { actor_id: number; app_id: number };
   evidence_app_id: number;
+  verify_actions?: { app_id: number; check_name: string; workflow_path: string };
   bot_approvers?: readonly { actor_id: number; app_id: number | null }[];
   counted_approvers: readonly { actor_id: number; app_id: number | null }[];
   required_checks: readonly { context: string; app_id: number }[];
@@ -118,7 +123,7 @@ export interface MergeGateFacts {
   start_is_base: boolean;
   second_read: boolean;
   g2c?: { live: string; pushed: string | null; candidate: string; evidence: string; marker: string | null; check: string | null };
-  g3?: { check_run_id: number | null; conclusion: string | null; duplicates: number; foreign_same_name: number };
+  g3?: { source?: "actions" | "app_b"; workflow_run_id?: number | null; workflow_run_head_sha?: string | null; check_run_id: number | null; conclusion: string | null; duplicates: number; foreign_same_name: number };
   g4?: { required: ReadonlyArray<readonly [string, number, number | null, string | null]> };
   g5?: { base_head: string | null; live_tip: string | null };
   g6a?: { review_id: number | null; commit: string | null };
@@ -162,27 +167,40 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
   // G2b -- author is App A's bot user.
   if (s.pr.author === null || s.pr.author.type !== "Bot" || s.pr.author.database_id !== r.publisher.actor_id) fail.add("G2.author_not_publisher");
 
-  // G3 -- the Mission evidence check, from App B only, bound to this Mission and head; lowest id decides.
-  const wantExternal = `${e.mission_id}:${head}`;
-  const verifyRuns = s.verify.runs.filter(x => x.name === "osstack/verify");
-  const verifyBound = verifyRuns.filter(x => x.app_id === r.evidence_app_id && x.external_id === wantExternal);
-  const verifyMine = verifyBound.filter(x => x.head_sha === head).sort((a, b) => a.id - b.id);
-  const verifyForeign = verifyRuns.filter(x => x.app_id !== r.evidence_app_id).length;
-  const chosen = verifyMine[0] ?? null;
-  gates.g3 = { check_run_id: chosen?.id ?? null, conclusion: chosen?.conclusion ?? null, duplicates: Math.max(0, verifyMine.length - 1), foreign_same_name: verifyForeign };
-  if (!s.verify.complete) unknown.add("U.read_incomplete:G3");
-  else if (chosen === null) fail.add(verifyForeign > 0 ? "G3.wrong_producer_only" : "G3.missing");
-  else if (chosen.status !== "completed" || chosen.conclusion !== "success") fail.add(`G3.not_success:${chosen.conclusion ?? chosen.status}`);
+  // G3 -- select the registered verification source, then bind its check to the live head.
+  const actions = r.verify_actions;
+  const section = actions ? s.verify_actions : s.verify;
+  const appId = actions?.app_id ?? r.evidence_app_id;
+  const wantExternal = `${actions ? e.pr_number : e.mission_id}:${head}`;
+  const runs: readonly (SnapshotCheckRun & Partial<Pick<VerifyActionsRun, "workflow">>)[] = section?.runs ?? [];
+  const candidates = runs.filter(x => x.name === (actions?.check_name ?? "osstack/verify"));
+  const matchingId = candidates.filter(x => x.app_id === appId && x.external_id === wantExternal);
+  const bound = matchingId.filter(x => x.head_sha === head);
+  const eligible = bound.filter(({ workflow }) => !actions || (workflow && workflow.path === actions.workflow_path
+    && workflow.event === "workflow_dispatch" && workflow.head_branch === r.base_ref && /^[0-9a-f]{40}$/iu.test(workflow.run_head_sha)))
+    .sort((a, b) => a.id - b.id);
+  const foreign = candidates.filter(x => x.app_id !== appId).length;
+  const chosen = eligible[0];
+  gates.g3 = { check_run_id: chosen?.id ?? null, conclusion: chosen?.conclusion ?? null, duplicates: Math.max(0, eligible.length - 1), foreign_same_name: foreign,
+    ...(actions && { source: "actions", workflow_run_id: chosen?.workflow?.run_id ?? null, workflow_run_head_sha: chosen?.workflow?.run_head_sha ?? null }) };
+  if (!section?.complete) unknown.add("U.read_incomplete:G3");
+  else if (!bound.length) fail.add(foreign ? "G3.wrong_producer_only" : "G3.missing");
+  else if (!chosen) fail.add("G3.wrong_workflow");
+  else {
+    for (const run of actions ? eligible : [chosen]) {
+      if (run.status !== "completed" || run.conclusion !== "success") fail.add(`G3.not_success:${run.conclusion ?? run.status}`);
+    }
+  }
 
   // G2c -- five-way head equality. A party that does not exist is reported by its own gate, not here.
   const markerHead = s.marker.marker?.head ?? null;
-  gates.g2c = { live: head, pushed: e.pushed_commit, candidate: e.candidate_head, evidence: e.head, marker: markerHead, check: chosen?.head_sha ?? verifyBound[0]?.head_sha ?? null };
+  gates.g2c = { live: head, pushed: e.pushed_commit, candidate: e.candidate_head, evidence: e.head, marker: markerHead, check: chosen?.head_sha ?? (bound.length ? null : matchingId[0]?.head_sha) ?? null };
   if (e.pushed_commit !== head) fail.add("G2.head_mismatch:pushed");
   if (e.candidate_head !== head) fail.add("G2.head_mismatch:candidate");
   if (e.head !== head) fail.add("G2.head_mismatch:evidence");
   if (markerHead !== null && markerHead !== head) fail.add("G2.head_mismatch:marker");
   // A run bound to this Mission and head by external_id but stamped with another head_sha is never selected (G3); say why.
-  if (chosen === null && verifyBound.length > 0) fail.add("G2.head_mismatch:check");
+  if (bound.length === 0 && matchingId.length > 0) fail.add("G2.head_mismatch:check");
 
   // G2d -- the marker agrees with the ledger.
   const m = s.marker.marker;
@@ -341,7 +359,7 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
 
   // Every first-pass gate holds: the second, complete read must be field-for-field identical.
   if (input.second === null) return { verdict: "unevaluated", codes: ["U.second_read_missing"], gates };
-  const moved = movedFields(s, input.second);
+  const moved = movedFields(s, input.second).filter(field => field !== (actions ? "verify" : "verify_actions"));
   if (moved.length > 0) return { verdict: "unevaluated", codes: moved.map(f => `U.snapshot_moved:${f}`), gates };
   return { verdict: "would_merge", codes: [], request: { sha: head, merge_method: "squash" }, gates };
 }

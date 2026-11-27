@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mergerShadowWriter } from '@osstack/core';
 import { buildMergerReport } from './contained-mission-merger-report.js';
 import { MERGER_PR_OUTCOME_QUERY, MERGER_PR_STATE_QUERY, createMergerMissionView } from './contained-mission-merger-shadow.js';
-import { review } from './contained-mission-merger.testkit.js';
+import { APP, review, run } from './contained-mission-merger.testkit.js';
 import {
   BASE, HEAD, MIN, OWNER, REPO, T0, config, createRigged, evidencePayload, ledgerDump, seedMergerMission, type Rigged,
 } from './contained-mission-merger-shadow.testkit.js';
@@ -43,6 +43,18 @@ describe('Mission view: deliveryEvidence', () => {
 });
 
 describe('scripted cycle series', () => {
+  it('persists Actions provenance with the shadow decision', async () => {
+    const actions = { app_id: APP.actions, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml' };
+    const r = rigged(config({ verify_actions: actions }));
+    r.world.runs[2] = [run(21, actions.check_name, APP.actions, { external_id: `7:${HEAD}` })];
+    r.world.workflowRuns[2] = [{ id: 91, path: actions.workflow_path, event: 'workflow_dispatch', head_branch: 'main', head_sha: BASE }];
+    await r.reconciler().scan();
+    expect(verdicts(r)).toEqual([['would_merge', []]]);
+    expect(JSON.parse(r.store.decisions(REPO, 7)[0]!.gates_json).g3).toMatchObject({
+      source: 'actions', check_run_id: 21, workflow_run_id: 91, workflow_run_head_sha: BASE,
+    });
+  });
+
   it('produces would_merge, refused and unevaluated, with dedupe, one cycle row per scan and nothing but GETs and queries', async () => {
     const r = rigged();
     const rec = r.reconciler();
