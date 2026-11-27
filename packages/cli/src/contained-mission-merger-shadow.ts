@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import {
   DEFAULT_MERGE_GATE_OPTIONS,
   evaluateMergeGates,
+  type AttentionSender,
   type ContainedMissionStore,
   type MergeGateOptions,
   type MergerCycleEntry,
@@ -164,6 +165,8 @@ export interface MergerShadowOptions {
   /** Owner decisions of design §8 that are still open; the strict defaults unless the owner decides otherwise. */
   readonly live?: (evidence: MissionMergeEvidence, decision: Extract<MergeVerdict, { verdict: 'would_merge' }>,
     observe: () => Promise<MergeVerdict | null>, running: () => boolean) => Promise<void>;
+  readonly notify?: AttentionSender;
+  readonly alerts?: Pick<MergerShadowStore, 'claimMergeAlerts' | 'finishMergeAlert'>;
   readonly gateOptions?: MergeGateOptions;
 }
 
@@ -250,9 +253,44 @@ export class MergerShadowReconciler implements MergerShadowHandle {
   scan(): Promise<void> {
     if (this.stopped) return Promise.resolve();
     if (!this.scanning) {
-      this.scanning = this.scanOnce().catch(() => this.log('scan_failed')).finally(() => { this.scanning = undefined; });
+      this.scanning = this.scanOnce().catch(() => this.log('scan_failed'))
+        .then(() => this.deliverAlerts()).catch(() => this.log('merge_alert_pass_failed')).finally(() => { this.scanning = undefined; });
     }
     return this.scanning;
+  }
+
+  private async deliverAlerts(): Promise<void> {
+    const { live, alerts, notify, config, now } = this.options;
+    if (this.stopped || !live || !alerts) return;
+    const claims = alerts.claimMergeAlerts(config.repository, now());
+    const results = await Promise.allSettled(claims.map(async (claim) => {
+      const ids = `merge_alert mission=${claim.mission_id} pr=${claim.pr_number}`;
+      if (claim.status === 'failed') {
+        this.log(`${ids} status=failed code=claim_expired`);
+        return;
+      }
+      let error: string | null = null;
+      if (!notify) error = 'notify_disabled';
+      else {
+        const { repository, pr_number, merge_commit, merged_by_actor_id, merged_by_class } = claim;
+        const digest = createHash('sha256').update(`${repository}:${pr_number}:${merge_commit}`).digest('hex').slice(0, 32);
+        const id = 'merged-outside-merger:' + digest;
+        const signal = AbortSignal.timeout(10_000);
+        try {
+          await Promise.race([
+            notify({ delivery_id: id, scope_id: 'host', item_id: id, state: 'merged_outside_merger',
+              question: `Mission PR merged outside App E: ${repository}#${pr_number} merge ${merge_commit} by actor ${merged_by_actor_id} (${merged_by_class})` }, signal),
+            new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(new Error('send_timeout')), { once: true })),
+          ]);
+        } catch (cause) {
+          error = cause instanceof Error && /^[a-z0-9_]{1,64}$/.test(cause.message) ? cause.message : 'send_failed';
+        }
+      }
+      if (alerts.finishMergeAlert(claim, error, now(), !notify)) {
+        this.log(`${ids} status=${error === null ? 'sent' : 'failed'} code=${error ?? 'ok'}`);
+      }
+    }));
+    if (results.some(result => result.status === 'rejected')) this.log('merge_alert_pass_failed');
   }
 
   private schedule(delayMs: number): void {
@@ -466,7 +504,8 @@ export class MergerShadowReconciler implements MergerShadowHandle {
   private outcome(ctx: Ctx, o: Omit<MergerOutcomeInput, 'repository' | 'pr_number' | 'mission_id' | 'observed_at' | 'scan_id'>): void {
     if (this.stopped) return;
     try {
-      this.options.writer.recordOutcome({ ...o, scan_id: ctx.scanId, repository: ctx.pub.repository, pr_number: ctx.pub.pr_number, mission_id: ctx.missionId, observed_at: ctx.startedAt }, ctx.seq, this.options.now());
+      this.options.writer.recordOutcome({ ...o, scan_id: ctx.scanId, repository: ctx.pub.repository, pr_number: ctx.pub.pr_number, mission_id: ctx.missionId, observed_at: ctx.startedAt }, ctx.seq, this.options.now(),
+        !!this.options.live && !!this.options.alerts);
       this.log(`outcome mission=${ctx.missionId} outcome=${o.outcome}`);
     } catch (error) {
       this.log(`outcome_rejected mission=${ctx.missionId} code=${errorCode(error)}`);

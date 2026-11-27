@@ -93,6 +93,7 @@ export function createRigged(cfg: MergerConfig = config()): Rigged {
   const logs: string[] = [];
   const reconciler = (over: Partial<MergerShadowOptions> = {}): MergerShadowReconciler => new MergerShadowReconciler({
     missions: createMergerMissionView(rig.missions), ledger: createMergerLedgerView(store), writer: mergerShadowWriter(store), graphql, rest: served.rest, config: cfg,
+    ...(over.live && { alerts: store }),
     now: () => clock.now, log: (line) => { logs.push(line); }, ...over,
   });
   const setState = (state: 'OPEN' | 'CLOSED' | 'MERGED'): void => {

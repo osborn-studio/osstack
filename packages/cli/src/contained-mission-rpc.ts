@@ -2,7 +2,7 @@
 // authenticated by the engineering authority file, with recovery at start and a tick timer.
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
-import type { ContainedMissionStore, RevisionChainStore } from '@osstack/core';
+import type { AttentionSender, ContainedMissionStore, RevisionChainStore } from '@osstack/core';
 import { MissionDecideRequest } from '@osstack/protocol';
 import type { EngineeringAccess } from './engineering-access.js';
 import { resolveContainedMissionStart, type ContainedMissionHost } from './contained-mission-host.js';
@@ -564,7 +564,18 @@ export async function createContainedMissionService(deps: {
     ? (await import('./contained-mission-merger-live.js')).createMissionLiveMerger(mergerConfig, mergerConfig.live, mergerStore,
       () => env['OSSTACK_MERGER'] === '1' && !deps.draining(), deps.merger?.now ?? Date.now)
     : undefined;
-  const merger = mergerConfig ? await createMergerShadow({ store, mergerStore, config: mergerConfig, log, ...(missionLive && { live: missionLive }), ...(deps.merger ?? {}) }) : undefined;
+  let notify: AttentionSender | undefined;
+  let alertConfigInvalid = false;
+  if (missionLive) {
+    try {
+      notify = (await import('./attention-webhook-delivery.js')).selectAttentionSender(process.env, deps.home);
+    } catch (cause) {
+      alertConfigInvalid = true;
+      const code = cause instanceof Error && /^[a-z0-9_]{1,64}$/.test(cause.message) ? cause.message : 'notify_config_invalid';
+      log(`osstack: merger alert configuration failed code=${code}`);
+    }
+  }
+  const merger = mergerConfig ? await createMergerShadow({ store, mergerStore, config: mergerConfig, log, ...(missionLive && { live: missionLive, alertConfigInvalid, ...(notify && { notify }) }), ...(deps.merger ?? {}) }) : undefined;
   const mergerReport = async (readScopes: readonly string[]) => {
     const { buildMergerReport } = await import('./contained-mission-merger-report.js');
     return buildMergerReport(mergerStore.db, (deps.merger?.now ?? Date.now)(), readScopes);
@@ -690,6 +701,8 @@ export async function createStoppedChainScan(deps: {
  * It does not call loadBridgeConfig and imports neither contained-mission-bridge.ts nor contained-mission-github-app.ts. */
 export async function createMergerShadow(deps: {
   store: Pick<ContainedMissionStore, 'db' | 'get' | 'listPrOpened'>;
+  notify?: AttentionSender;
+  alertConfigInvalid?: boolean;
   live?: NonNullable<import('./contained-mission-merger-shadow.js').MergerShadowOptions['live']>;
   mergerStore: import('@osstack/core').MergerShadowStore;
   config: import('./contained-mission-merger-config.js').MergerConfig;
@@ -707,6 +720,10 @@ export async function createMergerShadow(deps: {
     missions: shadow.createMergerMissionView(deps.store), ledger: shadow.createMergerLedgerView(deps.mergerStore), writer: mergerShadowWriter(deps.mergerStore),
     graphql: deps.graphql ?? reader.ghGraphqlTransport(exec),
     rest: deps.rest ?? reader.ghRestGetTransport({ repository: c.repository, rulesetIds: [c.main_quality_ruleset_id, c.main_update_ruleset_id, ...c.mission_ruleset_ids] }, exec),
+    ...(deps.live && !deps.alertConfigInvalid && { alerts: {
+      claimMergeAlerts: deps.mergerStore.claimMergeAlerts.bind(deps.mergerStore),
+      finishMergeAlert: deps.mergerStore.finishMergeAlert.bind(deps.mergerStore),
+    }, ...(deps.notify && { notify: deps.notify }) }),
     ...(deps.live && { live: deps.live, gateOptions: { ...DEFAULT_MERGE_GATE_OPTIONS, missionLive: true } }),
     config: c, now: deps.now ?? Date.now, log: deps.log,
   });

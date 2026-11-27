@@ -28,6 +28,14 @@ export interface MergerOutcomeRow {
 }
 
 export interface MergerPrRef { repository: string; pr_number: number }
+interface MergeAlert extends MergerPrRef {
+  merge_commit: string;
+  mission_id: string;
+  merged_by_actor_id: number;
+  merged_by_class: "owner" | "other_user" | "other_bot" | "publisher_app";
+  attempts: number;
+  status: "claimed" | "failed";
+}
 export interface MergerDecisionInput extends MergerPrRef {
   mission_id: string;
   head_sha: string;
@@ -76,7 +84,7 @@ export interface MergerShadowWriter {
   recordCycle(scanId: number, startedAt: number, finishedAt: number, prs: readonly MergerCycleEntry[], now: number): number;
   beginObservation(repository: string, prNumber: number, now: number): number;
   recordDecision(input: MergerDecisionInput, observationSeq: number, now: number): MergerDecisionResult;
-  recordOutcome(input: MergerOutcomeInput, observationSeq: number, now: number): MergerOutcomeRow;
+  recordOutcome(input: MergerOutcomeInput, observationSeq: number, now: number, queueAlert?: boolean): MergerOutcomeRow;
 }
 export function mergerShadowWriter(store: MergerShadowStore): MergerShadowWriter {
   return {
@@ -84,7 +92,7 @@ export function mergerShadowWriter(store: MergerShadowStore): MergerShadowWriter
     recordCycle: (scanId, startedAt, finishedAt, prs, now) => store.recordCycle(scanId, startedAt, finishedAt, prs, now),
     beginObservation: (repository, prNumber, now) => store.beginObservation(repository, prNumber, now),
     recordDecision: (input, n, now) => store.recordDecision(input, n, now),
-    recordOutcome: (input, n, now) => store.recordOutcome(input, n, now),
+    recordOutcome: (input, n, now, queueAlert) => store.recordOutcome(input, n, now, queueAlert),
   };
 }
 
@@ -252,7 +260,7 @@ export class MergerShadowStore {
   }
 
   /** Same fence as decisions: the segment carries the observation number that was just accepted. */
-  recordOutcome(input: MergerOutcomeInput, observationSeq: number, now: number): MergerOutcomeRow {
+  recordOutcome(input: MergerOutcomeInput, observationSeq: number, now: number, queueAlert = false): MergerOutcomeRow {
     this.ref(input); this.clock(now); this.clock(input.observed_at); this.seq(observationSeq); this.seq(input.scan_id);
     if (typeof input.mission_id !== "string" || input.mission_id.length === 0 || !HEX.test(input.head_at_close)) fail("merger_invalid_input");
     if (input.merge_commit != null && !HEX.test(input.merge_commit)) fail("merger_invalid_input");
@@ -265,8 +273,38 @@ export class MergerShadowStore {
       const r = this.db.prepare(SQL_OUTCOME).run(repository, input.pr_number, input.mission_id, observationSeq, input.outcome, input.head_at_close, input.merged_at ?? null,
         input.merge_commit ?? null, input.merged_by_actor_id ?? null, input.merged_by_type ?? null,
         input.owner_approved_head === undefined || input.owner_approved_head === null ? null : input.owner_approved_head ? 1 : 0, factsJson, input.observed_at, now, input.scan_id);
+      if (queueAlert && input.outcome === "merged" && input.facts?.["merged_by_class"] !== "merger_app") {
+        this.db.prepare(`INSERT INTO engineering_merger_alerts(repository,pr_number,merge_commit,mission_id,
+          merged_by_actor_id,merged_by_class,status,attempts,created_at,updated_at) VALUES(?,?,?,?,?,?,'pending',0,?,?)`)
+          .run(repository, input.pr_number, input.merge_commit, input.mission_id, input.merged_by_actor_id, input.facts?.["merged_by_class"], now, now);
+      }
       return this.db.prepare("SELECT * FROM engineering_merger_shadow_outcomes WHERE seq=?").get(Number(r.lastInsertRowid)) as MergerOutcomeRow;
     });
+  }
+
+  /** A claimed attempt already counts against the limit, even if the process never recorded its result. */
+  claimMergeAlerts(repository: string, now: number): MergeAlert[] {
+    return this.write(() => {
+      if (this.db.prepare("SELECT 1 FROM attention_postures WHERE scope_id='host' AND posture='quiet'").get()) return [];
+      return this.db.prepare(`UPDATE engineering_merger_alerts SET
+          status=CASE WHEN attempts=3 THEN 'failed' ELSE 'claimed' END,
+          error=CASE WHEN attempts=3 THEN 'claim_expired' ELSE NULL END,
+          attempts=min(attempts+1,3), updated_at=?
+        WHERE (repository,pr_number,merge_commit) IN (
+          SELECT repository,pr_number,merge_commit FROM engineering_merger_alerts WHERE repository=? AND
+          (status IN ('pending','claimed') OR (status='failed' AND attempts<3))
+          AND (status<>'claimed' OR updated_at<?)
+          ORDER BY updated_at,pr_number,merge_commit LIMIT 10)
+        RETURNING repository,pr_number,merge_commit,mission_id,merged_by_actor_id,merged_by_class,attempts,status`)
+        .all(now, this.repo(repository), now - 10 * 60_000) as MergeAlert[];
+    });
+  }
+
+  finishMergeAlert(alert: MergeAlert, error: string | null, now: number, disabled: boolean): boolean {
+    return this.write(() => this.db.prepare(`UPDATE engineering_merger_alerts SET status=?,error=?,attempts=?,updated_at=?
+      WHERE repository=? AND pr_number=? AND merge_commit=? AND status='claimed' AND attempts=?`)
+      .run(error === null ? "sent" : "failed", error, disabled ? 3 : alert.attempts, now,
+        alert.repository, alert.pr_number, alert.merge_commit, alert.attempts).changes === 1);
   }
 
   /** Repository names compare case-insensitively everywhere else; store and read one lowercase form so casing cannot split a PR's history. */
