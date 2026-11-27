@@ -56,7 +56,7 @@ export interface SnapshotReview {
 }
 export interface SnapshotCheckRun { id: number; app_id: number | null; name: string; external_id: string | null; head_sha: string; status: string; conclusion: string | null }
 export type VerifyActionsRun = SnapshotCheckRun & {
-  workflow: { path: string; event: string; head_branch: string | null; run_head_sha: string; run_id: number } | null;
+  workflow: { path: string; event: string; head_branch: string | null; run_head_sha: string; run_id: number; blob_sha: string | null } | null;
 };
 export interface SnapshotStatusRule { context: string; integration_id: number | null; ruleset_id: number | null }
 export type RulesetBypass = { actor_type: string; actor_id: number | null; bypass_mode: string };
@@ -102,7 +102,7 @@ export interface MergerRegistry {
   publisher: { actor_id: number; app_id: number };
   merger: { actor_id: number; app_id: number };
   evidence_app_id: number;
-  verify_actions?: { app_id: number; check_name: string; workflow_path: string };
+  verify_actions?: { app_id: number; check_name: string; workflow_path: string; workflow_blob_sha: string };
   bot_approvers?: readonly { actor_id: number; app_id: number | null }[];
   counted_approvers: readonly { actor_id: number; app_id: number | null }[];
   required_checks: readonly { context: string; app_id: number }[];
@@ -123,7 +123,7 @@ export interface MergeGateFacts {
   start_is_base: boolean;
   second_read: boolean;
   g2c?: { live: string; pushed: string | null; candidate: string; evidence: string; marker: string | null; check: string | null };
-  g3?: { source?: "actions" | "app_b"; workflow_run_id?: number | null; workflow_run_head_sha?: string | null; check_run_id: number | null; conclusion: string | null; duplicates: number; foreign_same_name: number };
+  g3?: { source?: "actions" | "app_b"; workflow_run_id?: number | null; workflow_run_head_sha?: string | null; workflow_blob_sha?: string | null; check_run_id: number | null; conclusion: string | null; duplicates: number; foreign_same_name: number };
   g4?: { required: ReadonlyArray<readonly [string, number, number | null, string | null]> };
   g5?: { base_head: string | null; live_tip: string | null };
   g6a?: { review_id: number | null; commit: string | null };
@@ -182,12 +182,13 @@ export function evaluateMergeGates(input: MergeGateInput, options: MergeGateOpti
   const foreign = candidates.filter(x => x.app_id !== appId).length;
   const chosen = eligible[0];
   gates.g3 = { check_run_id: chosen?.id ?? null, conclusion: chosen?.conclusion ?? null, duplicates: Math.max(0, eligible.length - 1), foreign_same_name: foreign,
-    ...(actions && { source: "actions", workflow_run_id: chosen?.workflow?.run_id ?? null, workflow_run_head_sha: chosen?.workflow?.run_head_sha ?? null }) };
+    ...(actions && { source: "actions", workflow_run_id: chosen?.workflow?.run_id ?? null, workflow_run_head_sha: chosen?.workflow?.run_head_sha ?? null, workflow_blob_sha: chosen?.workflow?.blob_sha ?? null }) };
   if (!section?.complete) unknown.add("U.read_incomplete:G3");
   else if (!bound.length) fail.add(foreign ? "G3.wrong_producer_only" : "G3.missing");
   else if (!chosen) fail.add("G3.wrong_workflow");
   else {
     for (const run of actions ? eligible : [chosen]) {
+      if (actions && run.workflow?.blob_sha !== actions.workflow_blob_sha) fail.add("G3.workflow_blob_mismatch");
       if (run.status !== "completed" || run.conclusion !== "success") fail.add(`G3.not_success:${run.conclusion ?? run.status}`);
     }
   }

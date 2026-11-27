@@ -2,6 +2,7 @@ import { DEFAULT_MERGE_GATE_OPTIONS, evaluateMergeGates } from '@osstack/core';
 import { describe, expect, it } from 'vitest';
 import {
   MERGER_PULL_REQUEST_QUERY,
+  VERIFY_WORKFLOW_PATH,
   assertRestArgv,
   assertRestPathAllowed,
   ghRestGetTransport,
@@ -10,7 +11,7 @@ import {
   restArgv,
   type RestScope,
 } from './contained-mission-merger-reader.js';
-import { APP, BASE, BOT, BRANCH, HEAD, IDS, MISSION, OWNER, REPO, evidence, makeWorld, registry, review, run, serve, type World } from './contained-mission-merger.testkit.js';
+import { WORKFLOW_BLOB, APP, BASE, BOT, BRANCH, HEAD, IDS, MISSION, OWNER, REPO, evidence, makeWorld, registry, review, run, serve, type World } from './contained-mission-merger.testkit.js';
 
 const scope: RestScope = { repository: REPO, rulesetIds: [IDS.quality, IDS.update, IDS.writers, IDS.history] };
 
@@ -43,7 +44,7 @@ describe('end to end with the M-A gates', () => {
     expect(calls.rest.some((p) => /commits\/[0-9a-f]+\/check-runs/u.test(p))).toBe(false);
     expect(calls.rest.some((p) => p.includes(`commits/${HEAD}/check-suites?app_id=${APP.evidence}`))).toBe(true);
     for (const g of calls.gql) expect(g.query).not.toMatch(/mutation|subscription/iu);
-    expect(calls.rest.some(p => p.includes('/actions/runs') || p.includes('verify-actions'))).toBe(false);
+    expect(calls.rest.some(p => p.includes('/actions/runs') || p.includes('verify-actions') || p.includes('/contents/'))).toBe(false);
     expect(MERGER_PULL_REQUEST_QUERY).not.toContain('baseRefOid');
   });
 
@@ -58,7 +59,7 @@ describe('end to end with the M-A gates', () => {
 });
 
 describe('Actions verification workflow provenance', () => {
-  const settings = { app_id: APP.actions, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml' };
+  const settings = { app_id: APP.actions, check_name: 'osstack/verify-actions', workflow_path: '.github/workflows/osstack-verify.yml', workflow_blob_sha: WORKFLOW_BLOB };
   const config = { ...registry, verify_actions: settings };
   const workflow = { id: 91, path: settings.workflow_path, event: 'workflow_dispatch', head_branch: 'main', head_sha: BASE };
   function world() {
@@ -67,6 +68,33 @@ describe('Actions verification workflow provenance', () => {
     w.workflowRuns[2] = [workflow];
     return w;
   }
+  const contents = `repos/${REPO}/contents/${settings.workflow_path}?ref=`;
+  it('reads each distinct workflow commit once per pass across suites', async () => {
+    const w = world();
+    for (const [suite, sha] of [[3, BASE], [4, HEAD]] as const) {
+      w.suites[APP.actions]!.push(suite);
+      w.runs[suite] = [run(30 + suite, settings.check_name, APP.actions, { external_id: `7:${HEAD}` })];
+      w.workflowRuns[suite] = [{ ...workflow, id: 100 + suite, head_sha: sha }];
+    }
+    const { read, calls, verdict: v } = await verdict(w, config);
+    expect(v?.verdict).toBe('would_merge');
+    expect(calls.rest.filter(p => p.includes('/contents/'))).toEqual([BASE, HEAD, BASE, HEAD].map(ref => contents + ref));
+    expect(read.ok && read.input.snapshot.verify_actions?.runs.map(r => r.workflow?.blob_sha)).toEqual(Array(4).fill(WORKFLOW_BLOB));
+    expect(JSON.stringify(read)).not.toContain('workflow-content-sentinel');
+  });
+  it.each([
+    { ok: false, status: 403, branchNotProtected: false } as const,
+    { ok: true, body: { type: 'dir', sha: WORKFLOW_BLOB } } as const,
+    { ok: true, body: { type: 'file', sha: 'malformed' } } as const,
+  ])('marks an unreadable workflow blob incomplete (%j)', async result => {
+    const w = world();
+    w.failRest.push({ match: /\/contents\//u, result });
+    const { read, verdict: v } = await verdict(w, config);
+    expect(v?.codes).toEqual(['U.read_incomplete:G3']);
+    expect(read.ok && read.input.snapshot.verify_actions).toMatchObject({
+      complete: false, runs: [{ workflow: { blob_sha: null } }, { workflow: { blob_sha: null } }],
+    });
+  });
   it('binds both checks to their suite workflow with one lookup on each pass', async () => {
     const { verdict: v, calls } = await verdict(world(), config);
     expect(v).toMatchObject({ verdict: 'would_merge', gates: { g3: { source: 'actions', duplicates: 1, workflow_run_id: 91, workflow_run_head_sha: BASE } } });
@@ -81,6 +109,13 @@ describe('Actions verification workflow provenance', () => {
     const { verdict: v, read } = await verdict(w, config);
     expect(v?.codes).toEqual([kind === 'zero' ? 'G3.wrong_workflow' : 'U.read_incomplete:G3']);
     expect(read.ok && read.input.snapshot.verify_actions).toMatchObject({ complete: kind === 'zero', runs: [{ workflow: null }, { workflow: null }] });
+  });
+  it('skips the contents request for an invalid workflow commit', async () => {
+    const w = world();
+    w.workflowRuns[2] = [{ ...workflow, head_sha: 'main' }];
+    const { verdict: v, calls } = await verdict(w, config);
+    expect(v?.codes).toEqual(['G3.wrong_workflow']);
+    expect(calls.rest.filter(p => p.includes('/contents/'))).toEqual([]);
   });
   it('detects a different workflow commit on the second read', async () => {
     const w = world();
@@ -577,7 +612,9 @@ describe('failures are fixed codes and never throw', () => {
 
 describe('REST method and path allowlist', () => {
   it('allows exactly the listed GET paths for the registered repository and rulesets', () => {
+    expect(VERIFY_WORKFLOW_PATH).toBe('.github/workflows/osstack-verify.yml');
     const ok = [
+      `repos/${REPO}/contents/${VERIFY_WORKFLOW_PATH}?ref=${BASE}`,
       `repos/${REPO}/commits/${HEAD}/check-suites?app_id=12&per_page=100&page=1`,
       `repos/${REPO}/check-suites/12/check-runs?check_name=osstack%2Fverify&filter=all&per_page=100`,
       `repos/${REPO}/rules/branches/main?per_page=100&page=1`,
@@ -590,6 +627,11 @@ describe('REST method and path allowlist', () => {
 
   it('refuses every other path', () => {
     const bad = [
+      `repos/${REPO}/contents/.github/workflows/other.yml?ref=${BASE}`,
+      `repos/${REPO}/contents/../${VERIFY_WORKFLOW_PATH}?ref=${BASE}`,
+      `repos/${REPO}/contents/${VERIFY_WORKFLOW_PATH}?ref=main`,
+      `repos/${REPO}/contents/${VERIFY_WORKFLOW_PATH}?ref=${BASE}&extra=1`,
+      `repos/other/r/contents/${VERIFY_WORKFLOW_PATH}?ref=${BASE}`,
       `repos/other/r/commits/${HEAD}/check-suites`, `repos/${REPO}x/rulesets/${IDS.quality}`, `repos/${REPO}/rulesets/999`, `repos/${REPO}/rulesets`,
       `repos/${REPO}/commits/${HEAD}/check-runs`, `repos/${REPO}/pulls/7/merge`, `repos/${REPO}/pulls/7/reviews`, `repos/${REPO}/git/refs/heads/main`,
       `repos/${REPO}/issues/7/comments`, `repos/${REPO}/rules/branches/../../x`, `repos/${REPO}/rules/branches/a/../b`, `repos/${REPO}/rules/branches/a%2F..%2Fb`,

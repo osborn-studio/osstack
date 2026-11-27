@@ -27,8 +27,8 @@ describe("control", () => {
 });
 
 describe("G3 Actions verification", () => {
-  const config = { app_id: ACTIONS, check_name: "osstack/verify-actions", workflow_path: ".github/workflows/osstack-verify.yml" };
-  const workflow = { path: config.workflow_path, event: "workflow_dispatch", head_branch: "main", run_head_sha: BASE_HEAD, run_id: 91 };
+  const config = { app_id: ACTIONS, check_name: "osstack/verify-actions", workflow_path: ".github/workflows/osstack-verify.yml", workflow_blob_sha: "d".repeat(40) };
+  const workflow = { path: config.workflow_path, event: "workflow_dispatch", head_branch: "main", run_head_sha: BASE_HEAD, run_id: 91, blob_sha: config.workflow_blob_sha };
   const check: VerifyActionsRun = { id: 20, name: config.check_name, app_id: ACTIONS, external_id: `7:${H}`, head_sha: H, status: "completed", conclusion: "success", workflow };
   function actionsInput(runs: VerifyActionsRun[], complete = true) {
     const input = withSnap(s => { s.verify_actions = { complete, runs }; });
@@ -42,7 +42,15 @@ describe("G3 Actions verification", () => {
     const result = run(input);
     expect(result.verdict).toBe("would_merge");
     expect(result.gates.g2c?.check).toBe(H);
-    expect(result.gates.g3).toEqual({ source: "actions", check_run_id: 20, conclusion: "success", duplicates: 1, foreign_same_name: 1, workflow_run_id: 91, workflow_run_head_sha: BASE_HEAD });
+    expect(result.gates.g3).toEqual({ source: "actions", check_run_id: 20, conclusion: "success", duplicates: 1, foreign_same_name: 1, workflow_run_id: 91, workflow_run_head_sha: BASE_HEAD, workflow_blob_sha: config.workflow_blob_sha });
+  });
+  it("refuses a blob mismatch on any eligible run and preserves failure codes", () => {
+    const mismatch = { ...check, workflow: { ...workflow, blob_sha: "e".repeat(40) } };
+    refusedOnly(actionsInput([mismatch]), "G3.workflow_blob_mismatch");
+    expect(run(actionsInput([mismatch])).gates.g3?.workflow_blob_sha).toBe(mismatch.workflow.blob_sha);
+    const duplicate = { ...mismatch, id: 21, conclusion: "failure" };
+    refusedOnly(actionsInput([check, duplicate]), "G3.workflow_blob_mismatch", "G3.not_success:failure");
+    unevaluated(actionsInput([check, duplicate], false), "U.read_incomplete:G3");
   });
   it("requires a complete Actions read, even with a passing App B check", () => {
     const missing = baseInput();

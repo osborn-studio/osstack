@@ -23,6 +23,7 @@ const configSchema = z
       app_id: z.literal(15368),
       check_name: z.literal('osstack/verify-actions'),
       workflow_path: z.literal('.github/workflows/osstack-verify.yml'),
+      workflow_blob_sha: z.string().regex(/^[0-9a-f]{40}$/u),
     }).strict().optional(),
     /** App E: `actor_id` is its bot user id (`mergedBy`), `app_id` the App id. */
     merger: identity,

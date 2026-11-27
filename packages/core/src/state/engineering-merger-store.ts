@@ -106,6 +106,7 @@ const GATES_SCHEMA = object({
   g3: object({
     check_run_id: INT_OR_NULL, conclusion: TOKEN_OR_NULL, duplicates: INT, foreign_same_name: INT,
     source: v => v === "actions" || v === "app_b", workflow_run_id: INT_OR_NULL,
+    workflow_blob_sha: v => v === null || (typeof v === "string" && /^[0-9a-f]{40}$/u.test(v)),
     workflow_run_head_sha: v => v === null || (typeof v === "string" && /^[0-9a-f]{40}$/iu.test(v)),
   }),
   g4: object({ required: v => Array.isArray(v) && v.length <= 32 && v.every(r => Array.isArray(r) && r.length === 4 && TOKEN_OR_NULL(r[0]) && INT(r[1]) && INT_OR_NULL(r[2]) && TOKEN_OR_NULL(r[3])) }),

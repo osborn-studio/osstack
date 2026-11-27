@@ -25,6 +25,7 @@ import { parseMissionMarkers } from './contained-mission-marker.js';
 
 export { ghGraphqlTransport, type GraphqlTransport };
 
+export const VERIFY_WORKFLOW_PATH = '.github/workflows/osstack-verify.yml';
 const PAGE = 100;
 
 export interface MergerReadLimits {
@@ -71,6 +72,7 @@ export function assertRestPathAllowed(path: string, scope: RestScope): void {
   const patterns = [
     new RegExp(`^repos/${repo}/commits/${SHA}/check-suites${QUERY}$`, 'u'),
     new RegExp(`^repos/${repo}/check-suites/[0-9]+/check-runs${QUERY}$`, 'u'),
+    new RegExp(`^repos/${repo}/contents/${escapeRe(VERIFY_WORKFLOW_PATH)}\\?ref=[0-9a-f]{40}$`, 'u'),
     new RegExp(`^repos/${repo}/actions/runs\\?check_suite_id=[0-9]+&per_page=${PAGE}&page=[1-9][0-9]*$`, 'u'),
     new RegExp(`^repos/${repo}/rules/branches/${REF}${QUERY}$`, 'u'),
     new RegExp(`^repos/${repo}/branches/${REF}/protection$`, 'u'),
@@ -472,10 +474,11 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
       } catch {
         throw new Abort('U.read_failed:denied');
       }
-      budget.take();
       try {
+        budget.take();
         return await deps.rest(path);
-      } catch {
+      } catch (error) {
+        if (error instanceof Cap) note('request_cap');
         return { ok: false, status: null, branchNotProtected: false };
       }
     };
@@ -483,16 +486,7 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
     const pagedList = async <T,>(base: string, query: string, pick: (body: unknown) => T[] | undefined): Promise<{ items: T[]; complete: boolean }> => {
       const items: T[] = [];
       for (let page = 1; ; page += 1) {
-        let result: RestResult;
-        try {
-          result = await rest(`${base}?${query}${query ? '&' : ''}per_page=${PAGE}&page=${page}`);
-        } catch (error) {
-          if (error instanceof Cap) {
-            note('request_cap');
-            return { items, complete: false };
-          }
-          throw error;
-        }
+        const result = await rest(`${base}?${query}${query ? '&' : ''}per_page=${PAGE}&page=${page}`);
         if (!result.ok) return { items, complete: false };
         const got = pick(result.body);
         if (got === undefined) return { items, complete: false };
@@ -552,10 +546,24 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
       const checks = await collectRuns([actions.app_id], actions.check_name);
       type VerifyActionsRun = NonNullable<MergeSnapshot['verify_actions']>['runs'][number];
       const workflows = new Map<number, VerifyActionsRun['workflow']>();
+      const blobs = new Map<string, string | null>();
+      const fileBody = z.object({ type: z.literal('file'), sha: z.string().regex(/^[0-9a-f]{40}$/u) });
+      let complete = checks.complete;
+      const readBlob = async (headSha: string): Promise<string | null> => {
+        if (!/^[0-9a-f]{40}$/iu.test(headSha)) return null;
+        const ref = headSha.toLowerCase();
+        const cached = blobs.get(ref);
+        if (cached !== undefined) return cached;
+        const result = await rest(`${repoPath}/contents/${VERIFY_WORKFLOW_PATH}?ref=${ref}`);
+        const parsed = result.ok ? fileBody.safeParse(result.body) : null;
+        const sha = parsed?.success ? parsed.data.sha : null;
+        if (sha === null) complete = false;
+        blobs.set(ref, sha);
+        return sha;
+      };
       const workflowBody = z.object({ workflow_runs: z.array(z.object({
         id: z.number().int().positive(), path: z.string(), event: z.string(), head_branch: z.string().nullable(), head_sha: z.string(),
       })) });
-      let complete = checks.complete;
       const runs: VerifyActionsRun[] = [];
       for (const { check, suite } of checks.runs) {
         if (check.name !== actions.check_name) continue;
@@ -566,7 +574,7 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
           });
           if (!list.complete || list.items.length > 1) complete = false;
           const run = list.complete && list.items.length === 1 ? list.items[0] : undefined;
-          workflows.set(suite, run ? { run_id: run.id, path: run.path, event: run.event, head_branch: run.head_branch, run_head_sha: run.head_sha } : null);
+          workflows.set(suite, run ? { run_id: run.id, path: run.path, event: run.event, head_branch: run.head_branch, run_head_sha: run.head_sha, blob_sha: await readBlob(run.head_sha) } : null);
         }
         runs.push({ ...check, workflow: workflows.get(suite) ?? null });
       }
@@ -625,14 +633,7 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
     // classic branch protection: 404 ("Branch not protected") = none; anything else that fails = unreadable (403 included)
     let legacy: MergeSnapshot['base_rules']['legacy'] = { read: 'failed', checks: [], contexts: [] };
     {
-      let result: RestResult;
-      try {
-        result = await rest(`${repoPath}/branches/${encodeRef(registry.base_ref)}/protection`);
-      } catch (error) {
-        if (!(error instanceof Cap)) throw error;
-        note('request_cap');
-        result = { ok: false, status: null, branchNotProtected: false };
-      }
+      const result = await rest(`${repoPath}/branches/${encodeRef(registry.base_ref)}/protection`);
       if (result.ok) {
         const p = z
           .object({
@@ -671,14 +672,7 @@ async function readPass(deps: MergerReadDeps, evidence: MissionMergeEvidence, re
     const rulesets: Record<string, SnapshotRuleset | undefined> = {};
     const transient = new Set<number>();
     for (const id of scope.rulesetIds) {
-      let result: RestResult;
-      try {
-        result = await rest(`${repoPath}/rulesets/${id}`);
-      } catch (error) {
-        if (!(error instanceof Cap)) throw error;
-        note('request_cap');
-        result = { ok: false, status: null, branchNotProtected: false };
-      }
+      const result = await rest(`${repoPath}/rulesets/${id}`);
       if (result.ok) {
         const p = rulesetSchema.safeParse(result.body);
         if (p.success) rulesets[String(id)] = normalizeRuleset(p.data, registry.base_ref, defaultBranch);
